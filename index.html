@@ -158,6 +158,12 @@
   .subbox-menu{background:var(--surface); justify-content:center;}
 
   .policy-category-toggle{display:flex; gap:6px; margin-bottom:16px;}
+  .policy-locked{
+    background:var(--surface); border-radius:20px; padding:48px 24px; text-align:center;
+    box-shadow:0 1px 2px rgba(29,30,51,0.04), 0 10px 24px -18px rgba(29,30,51,0.14);
+  }
+  .policy-locked-icon{font-size:34px; margin-bottom:12px;}
+  .policy-locked-text{font-size:13px; color:var(--ink-soft); line-height:1.8; font-weight:600;}
   .policy-category-toggle button{
     font-family:'Pretendard', sans-serif; font-size:13px; font-weight:700;
     background:var(--surface); border:none; padding:8px 18px; cursor:pointer;
@@ -810,7 +816,11 @@
   <!-- 퀵가이드 -->
   <section id="tab-quickguide" class="tab-panel">
     <h2 class="section-title">Quick Guide</h2>
-    <div class="guide-grid">
+    <div class="policy-locked" id="quickGuideLocked" style="display:none;">
+      <div class="policy-locked-icon">🔒</div>
+      <div class="policy-locked-text">Google 계정으로 로그인해야 볼 수 있어요.<br>설정 → 데이터 설정 → Google Drive 연동에서 로그인해주세요.</div>
+    </div>
+    <div class="guide-grid" id="quickGuideContent">
       <div class="guide-card" style="--accent:var(--guide-slate);">
         <h4>🕐 1. 근무시간</h4>
         <ul>
@@ -876,12 +886,18 @@
   <!-- 내부규정 -->
   <section id="tab-policy" class="tab-panel">
     <h2 class="section-title">내부규정 <span class="badge" id="policyEffectiveBadge">적용일자 -</span></h2>
+    <div class="policy-locked" id="policyDetailLocked" style="display:none;">
+      <div class="policy-locked-icon">🔒</div>
+      <div class="policy-locked-text">Google 계정으로 로그인해야 볼 수 있어요.<br>설정 → 데이터 설정 → Google Drive 연동에서 로그인해주세요.</div>
+    </div>
+    <div id="policyDetailOuter">
     <div class="policy-category-toggle">
       <button type="button" class="policy-cat-btn active" data-cat="hr">인사지침</button>
       <button type="button" class="policy-cat-btn" data-cat="ops">운영지침</button>
     </div>
     <div class="settings-box" style="max-width:none; padding:26px;">
       <div id="policyDetailWrap"></div>
+    </div>
     </div>
   </section>
 
@@ -895,6 +911,11 @@
     <p class="hint" style="font-size:12px; color:var(--ink-soft); margin:-6px 0 16px;">
       저장할 때마다 기존 내용을 덮어쓰지 않고 새 이력으로 쌓여요. '내부규정' 탭에는 항상 그 카테고리의 가장 최근 저장본이 표시됩니다.
     </p>
+    <div class="policy-locked" id="policyEditLocked" style="display:none;">
+      <div class="policy-locked-icon">🔒</div>
+      <div class="policy-locked-text">Google 계정으로 로그인해야 규정을 조회·수정할 수 있어요.<br>설정 → 데이터 설정 → Google Drive 연동에서 로그인해주세요.</div>
+    </div>
+    <div id="policyEditContent">
     <div class="settings-box" style="max-width:none;">
       <div class="field-row" style="display:flex; gap:24px; flex-wrap:wrap; margin-bottom:14px;">
         <div class="field" style="margin-bottom:0;">
@@ -920,6 +941,7 @@
     <h2 class="section-title" style="margin-top:26px;">수정 이력</h2>
     <div id="policyHistoryWrap"></div>
     <div id="policyPreviewWrap" style="margin-top:16px;"></div>
+    </div>
   </section>
 
   <!-- 전체현황 -->
@@ -1734,6 +1756,7 @@ async function loadAll(){
     document.getElementById('pol-d').value = Number(pd);
     renderPolicyDetail();
     renderPolicyHistory();
+    updatePolicyLockUI();
   }
 
   const monthInput = document.getElementById('monthSelect');
@@ -2935,6 +2958,22 @@ function renderPolicyHTML(text){
 }
 
 let viewingPolicyCategory = 'hr';
+
+function updatePolicyLockUI(){
+  const signedIn = !!gdriveAccessToken;
+  const pairs = [
+    ['quickGuideLocked', 'quickGuideContent'],
+    ['policyDetailLocked', 'policyDetailOuter'],
+    ['policyEditLocked', 'policyEditContent']
+  ];
+  pairs.forEach(([lockedId, contentId])=>{
+    const lockedEl = document.getElementById(lockedId);
+    const contentEl = document.getElementById(contentId);
+    if(!lockedEl || !contentEl) return;
+    lockedEl.style.display = signedIn ? 'none' : 'block';
+    contentEl.style.display = signedIn ? 'block' : 'none';
+  });
+}
 function renderPolicyDetail(){
   const cur = getCurrentPolicy(viewingPolicyCategory);
   document.getElementById('policyDetailWrap').innerHTML = renderPolicyHTML(cur.content || policyDefaultText(viewingPolicyCategory));
@@ -3417,6 +3456,7 @@ function gdriveConnect(){
       await gdrivePull();
       await gdrivePush();
       gdriveSetStatus('연결됨 · 방금 동기화함');
+      updatePolicyLockUI();
     }
   });
   gdriveTokenClient.requestAccessToken();
