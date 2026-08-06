@@ -3369,6 +3369,9 @@ async function gdriveEnsureFile(){
     headers: { Authorization: `Bearer ${gdriveAccessToken}` }
   });
   const searchData = await searchRes.json();
+  if(!searchRes.ok){
+    throw new Error(`파일 검색 실패: ${searchData.error ? searchData.error.message : searchRes.status}`);
+  }
   if(searchData.files && searchData.files.length){
     gdriveFileId = searchData.files[0].id;
   } else {
@@ -3378,6 +3381,9 @@ async function gdriveEnsureFile(){
       body: gdriveBuildMultipartBody(gdriveBuildPayload())
     });
     const createData = await createRes.json();
+    if(!createRes.ok || !createData.id){
+      throw new Error(`파일 생성 실패: ${createData.error ? createData.error.message : createRes.status}`);
+    }
     gdriveFileId = createData.id;
   }
   if(gdriveFileId) localStorage.setItem('worklog_gdrive_file_id', gdriveFileId);
@@ -3387,15 +3393,19 @@ async function gdriveEnsureFile(){
 async function gdrivePush(){
   if(!gdriveAccessToken || !gdriveFileId) return;
   try{
-    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${gdriveFileId}?uploadType=media`, {
+    const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${gdriveFileId}?uploadType=media`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${gdriveAccessToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(gdriveBuildPayload(), null, 2)
     });
+    if(!res.ok){
+      const errData = await res.json().catch(()=>({}));
+      throw new Error(errData.error ? errData.error.message : `저장 실패 (${res.status})`);
+    }
     gdriveSetStatus(`연결됨 · ${new Date().toLocaleTimeString('ko-KR')} 저장됨`);
   }catch(e){
     console.error('Drive 저장 실패', e);
-    gdriveSetStatus('저장 실패 (연결 상태를 확인해주세요)');
+    gdriveSetStatus('저장 실패: ' + e.message);
   }
 }
 
@@ -3452,11 +3462,16 @@ function gdriveConnect(){
       gdriveAccessToken = resp.access_token;
       document.getElementById('gdriveSyncBtn').disabled = false;
       gdriveSetStatus('연결됨 · 동기화 중...');
-      await gdriveEnsureFile();
-      await gdrivePull();
-      await gdrivePush();
-      gdriveSetStatus('연결됨 · 방금 동기화함');
-      updatePolicyLockUI();
+      try{
+        await gdriveEnsureFile();
+        await gdrivePull();
+        await gdrivePush();
+        gdriveSetStatus('연결됨 · 방금 동기화함');
+        updatePolicyLockUI();
+      }catch(err){
+        console.error('Drive 연동 오류', err);
+        gdriveSetStatus('오류: ' + err.message);
+      }
     }
   });
   gdriveTokenClient.requestAccessToken();
@@ -3468,9 +3483,15 @@ document.getElementById('gdrive-client-id').addEventListener('change', (e)=>{
 document.getElementById('gdriveConnectBtn').addEventListener('click', gdriveConnect);
 document.getElementById('gdriveSyncBtn').addEventListener('click', async ()=>{
   gdriveSetStatus('동기화 중...');
-  await gdrivePull();
-  await gdrivePush();
-  gdriveSetStatus('연결됨 · 방금 동기화함');
+  try{
+    await gdriveEnsureFile();
+    await gdrivePull();
+    await gdrivePush();
+    gdriveSetStatus('연결됨 · 방금 동기화함');
+  }catch(err){
+    console.error('Drive 동기화 오류', err);
+    gdriveSetStatus('오류: ' + err.message);
+  }
 });
 document.getElementById('gdrive-client-id').value = localStorage.getItem('worklog_gdrive_client_id') || '';
 
