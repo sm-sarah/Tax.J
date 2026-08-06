@@ -1198,6 +1198,7 @@
           <button type="button" id="gdriveConnectBtn" class="submit-btn" style="width:auto; padding:9px 16px;">🔗 Google 계정으로 연결</button>
           <button type="button" id="gdriveSyncBtn" class="submit-btn" style="width:auto; padding:9px 16px; background:var(--mint);" disabled>🔄 지금 동기화</button>
           <span class="save-msg" id="gdriveStatusMsg" style="margin-top:0;">연결 안 됨</span>
+          <a href="#" id="gdriveFileLink" target="_blank" rel="noopener" style="display:none; font-size:12px; color:var(--indigo); font-weight:700; margin-left:8px;">📂 드라이브에서 파일 직접 열어보기</a>
         </div>
       </div>
 
@@ -3339,6 +3340,17 @@ function gdriveSetStatus(text){
   if(el) el.textContent = text;
 }
 
+function gdriveUpdateFileLink(){
+  const linkEl = document.getElementById('gdriveFileLink');
+  if(!linkEl) return;
+  if(gdriveFileId){
+    linkEl.href = `https://drive.google.com/file/d/${gdriveFileId}/view`;
+    linkEl.style.display = 'inline';
+  } else {
+    linkEl.style.display = 'none';
+  }
+}
+
 function gdriveBuildPayload(){
   const profiles = getProfiles();
   const data = {};
@@ -3467,6 +3479,7 @@ function gdriveConnect(){
         await gdrivePull();
         await gdrivePush();
         gdriveSetStatus('연결됨 · 방금 동기화함');
+        gdriveUpdateFileLink();
         updatePolicyLockUI();
       }catch(err){
         console.error('Drive 연동 오류', err);
@@ -3488,12 +3501,14 @@ document.getElementById('gdriveSyncBtn').addEventListener('click', async ()=>{
     await gdrivePull();
     await gdrivePush();
     gdriveSetStatus('연결됨 · 방금 동기화함');
+    gdriveUpdateFileLink();
   }catch(err){
     console.error('Drive 동기화 오류', err);
     gdriveSetStatus('오류: ' + err.message);
   }
 });
 document.getElementById('gdrive-client-id').value = localStorage.getItem('worklog_gdrive_client_id') || '';
+gdriveUpdateFileLink();
 
 window.addEventListener('focus', ()=>{ if(gdriveAccessToken && gdriveFileId) gdrivePull(); });
 
