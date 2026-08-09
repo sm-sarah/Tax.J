@@ -715,14 +715,20 @@
       로그인하면 팀 데이터와 실시간으로 동기화되고, 내부규정·복리후생 페이지도 볼 수 있어요.<br>
       회사에서 이미 연동 설정을 마쳤다면 아래 버튼만 누르면 바로 연결돼요.
     </p>
+    <div id="clientIdFieldPersonal" style="max-width:480px; margin:0 auto 12px;">
+      <p class="hint" style="font-size:11.5px; margin:0 0 8px;">
+        <b>Google OAuth 클라이언트 ID</b> — 회사에서 이미 설정했다면 자동으로 채워져 있어요. 이 기기에서 처음이라면 관리자에게 받아서 입력해주세요.
+      </p>
+      <div class="field"><input type="text" id="gdrive-client-id-personal" placeholder="xxxxxxxx.apps.googleusercontent.com"></div>
+    </div>
     <div class="settings-box" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center; max-width:480px; margin-left:auto; margin-right:auto;">
       <button type="button" id="gdriveConnectBtnPersonal" class="submit-btn" style="width:auto; padding:9px 16px;">🔗 Google 계정으로 연결</button>
       <span class="save-msg" id="gdriveStatusMsgPersonal" style="margin-top:0;">연결 안 됨</span>
     </div>
 
-    <h2 class="section-title" style="margin-top:30px;">내 데이터 백업 · 복구 · 초기화</h2>
-    <p class="hint" style="font-size:12px; color:var(--ink-soft); margin:-6px 0 12px;">
-      이 브라우저에 저장된 내 근태·경비 기록을 직접 관리할 수 있어요.<br>
+    <h2 class="section-title" style="margin-top:30px;" id="personalBackupTitle">내 데이터 백업 · 복구 · 초기화</h2>
+    <p class="hint" style="font-size:12px; color:var(--ink-soft); margin:-6px 0 12px;" id="personalBackupDesc">
+      이 브라우저에 저장된 <b>내 근태·경비·개인일정 기록만</b> 직접 관리할 수 있어요. 공휴일·근무시간 같은 회사 공통 설정은 여기서 건드리지 않아요 (그건 관리자가 관리해요).<br>
       다른 기기로 옮기거나 이어서 쓰려면 백업 파일(JSON)로 내보냈다가 불러오세요. 예전 백업도 자동으로 최신 형식에 맞춰 변환돼요.
     </p>
     <div class="settings-box" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center; max-width:600px; margin-left:auto; margin-right:auto;">
@@ -1371,6 +1377,30 @@
           </form>
           <div id="adminEmailListWrap" style="margin-top:12px;"></div>
         </div>
+      </div>
+
+      <div class="settings-sub-title" style="margin-top:26px;">회사 공통설정 백업 · 복구 <span class="badge">관리자 전용</span></div>
+      <p class="hint">
+        공휴일, 근무시간 예외, 공지사항, 관리자 목록 등 <b>전 직원 공통 설정만</b> 백업·복구해요.<br>
+        직원 개개인의 근태·경비 기록은 포함되지 않아요 (그건 각 직원이 본인 설정에서 관리해요).
+      </p>
+      <div class="settings-box" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center; max-width:480px; margin-left:auto; margin-right:auto;">
+        <button type="button" id="exportSharedBtn" class="submit-btn" style="width:auto; padding:9px 16px;">⬇️ 공통설정 내보내기</button>
+        <button type="button" id="importSharedBtn" class="submit-btn" style="width:auto; padding:9px 16px; background:var(--mint);">⬆️ 공통설정 불러오기</button>
+        <input type="file" id="importSharedFile" accept="application/json" style="display:none;">
+        <span class="save-msg" id="sharedBackupSaveMsg" style="margin-top:0;"></span>
+      </div>
+
+      <div class="settings-sub-title" style="margin-top:26px;">전체 직원 일괄 백업 · 복구 <span class="badge">관리자 전용</span></div>
+      <p class="hint">
+        <b>전 직원의 근태·경비·개인일정 + 회사 공통설정을 전부 한 파일로</b> 백업·복구해요.<br>
+        이 브라우저가 이미 구글 드라이브와 동기화되어 있다면 모든 직원 데이터를 가지고 있으니, 여기서 회사 전체 백업본을 만들 수 있어요. 복구 시에는 <b>모든 직원 데이터가 파일 내용으로 통째로 교체</b>되니 신중하게 사용해주세요.
+      </p>
+      <div class="settings-box" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center; max-width:480px; margin-left:auto; margin-right:auto;">
+        <button type="button" id="exportAllBtn" class="submit-btn" style="width:auto; padding:9px 16px;">⬇️ 전 직원 일괄 백업</button>
+        <button type="button" id="importAllBtn" class="submit-btn" style="width:auto; padding:9px 16px; background:var(--coral);">⬆️ 전 직원 일괄 복구</button>
+        <input type="file" id="importAllFile" accept="application/json" style="display:none;">
+        <span class="save-msg" id="allBackupSaveMsg" style="margin-top:0;"></span>
       </div>
     </div>
 
@@ -2060,7 +2090,7 @@ async function loadAll(){
   }
 
   const monthInput = document.getElementById('monthSelect');
-  monthInput.value = todayStr().slice(0,7);
+  if(!monthInput.value) monthInput.value = todayStr().slice(0,7);
   document.getElementById('g-date').value = todayStr();
   document.getElementById('u-date').value = todayStr();
   document.getElementById('r-date').value = todayStr();
@@ -3773,6 +3803,22 @@ function applyPermissionUI(){
     }
   }
   renderAdminEmailList();
+  updatePersonalBackupLabel(admin);
+}
+
+function updatePersonalBackupLabel(admin){
+  const titleEl = document.getElementById('personalBackupTitle');
+  const descEl = document.getElementById('personalBackupDesc');
+  if(!titleEl || !descEl) return;
+  const viewingSelf = !admin || !currentUserEmail || (getProfiles().find(p=>(p.email||'').toLowerCase()===currentUserEmail)?.id === activeProfileId);
+  if(viewingSelf){
+    titleEl.textContent = '내 데이터 백업 · 복구 · 초기화';
+    descEl.innerHTML = '이 브라우저에 저장된 <b>내 근태·경비·개인일정 기록만</b> 직접 관리할 수 있어요. 공휴일·근무시간 같은 회사 공통 설정은 여기서 건드리지 않아요 (그건 관리자가 관리해요).<br>다른 기기로 옮기거나 이어서 쓰려면 백업 파일(JSON)로 내보냈다가 불러오세요. 예전 백업도 자동으로 최신 형식에 맞춰 변환돼요.';
+  } else {
+    const name = settings.employeeName || '(이름 미등록)';
+    titleEl.innerHTML = `<b style="color:var(--indigo);">${escHtml(name)}</b> 직원 데이터 백업 · 복구 · 초기화 <span class="badge">관리자가 대신 조회 중</span>`;
+    descEl.innerHTML = `지금 Dashboard에서 선택된 <b>${escHtml(name)} 직원의 근태·경비·개인일정 기록만</b> 관리자 권한으로 백업·복구할 수 있어요. 다른 직원 데이터나 회사 공통 설정은 건드리지 않아요.<br>직원을 잘못 선택하셨다면 위 Dashboard에서 프로필을 바꿔주세요.`;
+  }
 }
 
 function renderAdminEmailList(){
@@ -3913,8 +3959,8 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
     schemaVersion: SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
     app: 'monthly-board',
-    settings, attendance, expense, schedule,
-    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, adminEmails: sharedAdminEmails }
+    scope: 'personal', // 개인 백업: 이 직원의 근태/경비/설정만 포함, 회사 공통설정은 포함 안 함
+    settings, attendance, expense, schedule
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -3947,36 +3993,25 @@ document.getElementById('importFile').addEventListener('change', async (e)=>{
     const versionNote = fileVersion < SCHEMA_VERSION
       ? `\n\n이 백업은 이전 형식(v${fileVersion})이지만 불러올 때 자동으로 현재 형식(v${SCHEMA_VERSION})에 맞게 변환됩니다.`
       : '';
-    const ok = confirm(`현재 브라우저에 저장된 모든 기록을 백업 파일 내용으로 덮어씁니다. 계속할까요?${versionNote}`);
+    const ok = confirm(`내 근태·경비·개인일정 기록만 백업 파일 내용으로 덮어씁니다. (공휴일·근무시간·공지사항 같은 회사 공통 설정은 건드리지 않아요)${versionNote}`);
     if(!ok){ e.target.value=''; return; }
     settings = data.settings;
     attendance = data.attendance;
     expense = data.expense;
     schedule = data.schedule || { events:[] };
-    if(data.shared){
-      sharedExclusionDays = data.shared.exclusionDays || [];
-      sharedWorkHourExceptions = data.shared.workHourExceptions || [];
-      sharedNoticeHistory = data.shared.noticeHistory || [];
-      sharedAdminEmails = data.shared.adminEmails || [];
-      await saveSharedExclusions();
-      await saveSharedWorkHourExceptions();
-      await saveSharedNoticeHistory();
-      await saveSharedAdminEmails();
-    } else {
-      // 이 공유(공통) 데이터 개념이 없던 예전 백업 파일: 직원 데이터 안에 남아있던 제외일/근무시간예외를 공통데이터로 이관
-      loadSharedData();
-      if(!sharedExclusionDays.length && Array.isArray(data.expense && data.expense.exclusionDays) && data.expense.exclusionDays.length){
-        sharedExclusionDays = data.expense.exclusionDays;
-        await saveSharedExclusions();
-      }
-      if(!sharedWorkHourExceptions.length && Array.isArray(data.settings && data.settings.workHourExceptions) && data.settings.workHourExceptions.length){
-        sharedWorkHourExceptions = data.settings.workHourExceptions;
-        await saveSharedWorkHourExceptions();
-      }
+    // 개인 백업/복구는 회사 공통데이터(공휴일·근무시간예외·공지사항·관리자목록)를 절대 건드리지 않음 - 파일에 들어있어도 무시함
+    normalizeState();
+    await saveSettings();
+    await saveAttendance();
+    await saveExpense();
+    await saveSchedule();
+    if(gdriveAccessToken && gdriveFileId){
+      document.getElementById('backupSaveMsg').textContent = '불러오기 완료 · 드라이브에 반영 중...';
+      try{ await gdrivePush(); }catch(err){ console.error('불러오기 후 드라이브 반영 실패', err); }
     }
-    await loadAll(); // normalizeState()가 예전 형식을 현재 구조로 자동 변환 후 저장까지 처리
-    document.getElementById('backupSaveMsg').textContent = '불러오기 완료';
-    setTimeout(()=>document.getElementById('backupSaveMsg').textContent='',2000);
+    document.getElementById('backupSaveMsg').textContent = '불러오기 완료 · 새로고침합니다...';
+    setTimeout(()=>{ location.reload(); }, 400);
+    return;
   }catch(err){
     console.error(err);
     document.getElementById('backupSaveMsg').textContent = '불러오기 실패 (파일을 확인해주세요)';
@@ -3997,6 +4032,138 @@ document.getElementById('resetDataBtn').addEventListener('click', async ()=>{
   document.getElementById('resetSaveMsg').textContent = '초기화 완료';
   setTimeout(()=>document.getElementById('resetSaveMsg').textContent='',2000);
   await loadAll();
+});
+
+document.getElementById('exportSharedBtn').addEventListener('click', ()=>{
+  const backup = {
+    schemaVersion: SCHEMA_VERSION,
+    exportedAt: new Date().toISOString(),
+    app: 'monthly-board',
+    scope: 'shared', // 관리자용 백업: 회사 공통설정만 포함, 직원 개인데이터는 포함 안 함
+    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, adminEmails: sharedAdminEmails }
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `monthly-board-shared-backup-${todayStr()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  document.getElementById('sharedBackupSaveMsg').textContent = '내보내기 완료';
+  setTimeout(()=>document.getElementById('sharedBackupSaveMsg').textContent='',2000);
+});
+
+document.getElementById('importSharedBtn').addEventListener('click', ()=>{
+  document.getElementById('importSharedFile').click();
+});
+
+document.getElementById('importSharedFile').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  try{
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if(!data.shared){
+      throw new Error('공통설정 백업 형식이 아닙니다');
+    }
+    const ok = confirm('회사 공통설정(공휴일·근무시간예외·공지사항·관리자목록)만 백업 파일 내용으로 덮어씁니다. 직원 개인데이터는 건드리지 않아요. 계속할까요?');
+    if(!ok){ e.target.value=''; return; }
+    sharedExclusionDays = data.shared.exclusionDays || [];
+    sharedWorkHourExceptions = data.shared.workHourExceptions || [];
+    sharedNoticeHistory = data.shared.noticeHistory || [];
+    sharedAdminEmails = data.shared.adminEmails || [];
+    await saveSharedExclusions();
+    await saveSharedWorkHourExceptions();
+    await saveSharedNoticeHistory();
+    await saveSharedAdminEmails();
+    if(gdriveAccessToken && gdriveFileId){
+      document.getElementById('sharedBackupSaveMsg').textContent = '불러오기 완료 · 드라이브에 반영 중...';
+      try{ await gdrivePush(); }catch(err){ console.error('공통설정 불러오기 후 드라이브 반영 실패', err); }
+    }
+    document.getElementById('sharedBackupSaveMsg').textContent = '불러오기 완료 · 새로고침합니다...';
+    setTimeout(()=>{ location.reload(); }, 400);
+  }catch(err){
+    console.error(err);
+    document.getElementById('sharedBackupSaveMsg').textContent = '불러오기 실패 (파일을 확인해주세요)';
+  }
+  e.target.value = '';
+});
+
+document.getElementById('exportAllBtn').addEventListener('click', ()=>{
+  const payload = gdriveBuildPayload();
+  const backup = {
+    schemaVersion: SCHEMA_VERSION,
+    exportedAt: new Date().toISOString(),
+    app: 'monthly-board',
+    scope: 'all-employees', // 전 직원 일괄 백업: 모든 직원의 개인데이터 + 회사 공통설정 전부 포함
+    profiles: payload.profiles,
+    data: payload.data,
+    shared: payload.shared
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `monthly-board-all-employees-backup-${todayStr()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  document.getElementById('allBackupSaveMsg').textContent = `내보내기 완료 (${(payload.profiles||[]).length}명)`;
+  setTimeout(()=>document.getElementById('allBackupSaveMsg').textContent='',2500);
+});
+
+document.getElementById('importAllBtn').addEventListener('click', ()=>{
+  document.getElementById('importAllFile').click();
+});
+
+document.getElementById('importAllFile').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  try{
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if(!data.profiles || !data.data){
+      throw new Error('전 직원 일괄 백업 형식이 아닙니다');
+    }
+    const empCount = data.profiles.length;
+    const ok = confirm(`전 직원(${empCount}명)의 근태·경비·개인일정 기록과 회사 공통설정을 전부 이 파일 내용으로 덮어씁니다. 되돌릴 수 없어요. 정말 계속할까요?`);
+    if(!ok){ e.target.value=''; return; }
+    saveProfiles(data.profiles);
+    Object.keys(data.data).forEach(profileId=>{
+      const d = data.data[profileId];
+      if(!d) return;
+      if(d.settings) localStorage.setItem(`worklog_settings__${profileId}`, JSON.stringify(d.settings));
+      if(d.attendance) localStorage.setItem(`worklog_attendance__${profileId}`, JSON.stringify(d.attendance));
+      if(d.expense) localStorage.setItem(`worklog_expense__${profileId}`, JSON.stringify(d.expense));
+      if(d.schedule) localStorage.setItem(`worklog_schedule__${profileId}`, JSON.stringify(d.schedule));
+    });
+    if(data.shared){
+      sharedExclusionDays = data.shared.exclusionDays || [];
+      sharedWorkHourExceptions = data.shared.workHourExceptions || [];
+      sharedNoticeHistory = data.shared.noticeHistory || [];
+      sharedAdminEmails = data.shared.adminEmails || [];
+      await saveSharedExclusions();
+      await saveSharedWorkHourExceptions();
+      await saveSharedNoticeHistory();
+      await saveSharedAdminEmails();
+    }
+    if(!data.profiles.find(p=>p.id===activeProfileId)){
+      setActiveProfileId(data.profiles[0] ? data.profiles[0].id : null);
+    }
+    if(gdriveAccessToken && gdriveFileId){
+      document.getElementById('allBackupSaveMsg').textContent = '불러오기 완료 · 드라이브에 반영 중...';
+      try{ await gdrivePush(); }catch(err){ console.error('전 직원 일괄 불러오기 후 드라이브 반영 실패', err); }
+    }
+    document.getElementById('allBackupSaveMsg').textContent = '불러오기 완료 · 새로고침합니다...';
+    setTimeout(()=>{ location.reload(); }, 400);
+  }catch(err){
+    console.error(err);
+    document.getElementById('allBackupSaveMsg').textContent = '불러오기 실패 (파일을 확인해주세요)';
+  }
+  e.target.value = '';
 });
 
 function bulkRowHtml(rowId){
@@ -4153,6 +4320,7 @@ document.getElementById('saveBulkRowsBtn').addEventListener('click', async ()=>{
 document.getElementById('profileSelect').addEventListener('change', async (e)=>{
   setActiveProfileId(e.target.value);
   await loadAll();
+  updatePersonalBackupLabel(!!gdriveAccessToken && isCurrentUserAdmin);
 });
 
 document.getElementById('addProfileBtn').addEventListener('click', async ()=>{
@@ -4381,8 +4549,14 @@ document.getElementById('addAdminEmailForm').addEventListener('submit', async (e
 
 document.getElementById('gdriveConnectBtn').addEventListener('click', ()=>gdriveConnect(false));
 document.getElementById('gdriveConnectBtnPersonal').addEventListener('click', ()=>{
-  if(!document.getElementById('gdrive-client-id').value.trim()){
-    alert('아직 회사에서 Google Drive 연동 설정을 마치지 않았어요. 관리자에게 문의해주세요.');
+  const mainField = document.getElementById('gdrive-client-id');
+  const personalField = document.getElementById('gdrive-client-id-personal');
+  if(personalField.value.trim()){
+    mainField.value = personalField.value.trim();
+    localStorage.setItem('worklog_gdrive_client_id', personalField.value.trim());
+  }
+  if(!mainField.value.trim()){
+    alert('먼저 Google OAuth 클라이언트 ID를 입력해주세요. (관리자에게 문의하시면 알려드릴 수 있어요)');
     return;
   }
   gdriveConnect(false);
@@ -4401,6 +4575,7 @@ document.getElementById('gdriveSyncBtn').addEventListener('click', async ()=>{
   }
 });
 document.getElementById('gdrive-client-id').value = localStorage.getItem('worklog_gdrive_client_id') || '';
+document.getElementById('gdrive-client-id-personal').value = localStorage.getItem('worklog_gdrive_client_id') || '';
 gdriveUpdateFileLink();
 if(localStorage.getItem('worklog_gdrive_client_id')){
   // 이전에 연결한 적이 있으면, 화면을 열 때마다 다시 버튼을 누르지 않아도 되도록 조용히 재연결을 시도해요.
