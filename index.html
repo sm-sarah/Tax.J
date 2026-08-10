@@ -55,8 +55,8 @@
   .month-picker{display:flex; flex-direction:row; align-items:center; gap:6px;}
   .tab-inline-divider{width:1px; height:20px; background:rgba(91,95,239,0.25); margin:0 2px;}
 
-  .tab-btn-home{font-size:14px; display:flex; align-items:center; justify-content:center;}
-  .tab-btn-home.active{background:var(--navy); box-shadow:0 6px 14px -6px rgba(30,42,94,0.5);}
+  .tab-btn-home{font-size:14px; display:flex; align-items:center; justify-content:center; background:#DADEEE; color:var(--navy);}
+  .tab-btn-home.active{background:var(--navy); color:#fff; box-shadow:0 6px 14px -6px rgba(30,42,94,0.5);}
 
   .home-section-label{
     display:block; width:fit-content; font-weight:800; font-size:12.5px; color:#fff;
@@ -143,8 +143,20 @@
     box-shadow:0 1px 2px rgba(29,30,51,0.04), 0 6px 14px -10px rgba(29,30,51,0.18);
   }
   .tg-dashboard{ --group-accent:var(--indigo); background:#DEDCFC; border:1.5px solid #C3C0F9; }
+  .tg-staff{ --group-accent:#0EA5E9; background:#E0F5FF; border:1.5px solid #B9E6FA; }
+  .tg-staff .tab-btn{background:#fff; color:#0369A1; font-weight:800;}
+  .tg-staff .tab-btn.active{background:#0EA5E9; color:#fff;}
+  .tg-profile{ --group-accent:var(--navy); background:#DADEEE; border:1.5px solid #C4CAE3; }
+  #monthSelect, #teamCalMonthSelect{border:none; background:#fff; color:var(--navy); font-weight:800; border-radius:8px; padding:6px 10px; font-size:12.5px; font-family:'Pretendard',sans-serif;}
+  .tg-profile select{border:none; background:#fff; color:var(--navy); font-weight:800; border-radius:8px; padding:6px 10px; font-size:12.5px;}
   .tg-policy{ --group-accent:var(--guide-teal); background:#CDEFE5; border:1.5px solid #A9DFCF; }
-  .tg-mgmt{ --group-accent:var(--guide-mustard); background:#F8E7BC; border:1.5px solid #EFCF85; }
+  .tg-mgmt{ --group-accent:#F5C400; background:#FFFAD1; border:1.5px solid #F5E896; }
+  .tg-mgmt .tab-btn{background:#fff; color:#B8960B; font-weight:800;}
+  .tg-mgmt .tab-btn.active{background:#F5C400; color:#fff;}
+  .tg-mgmt-btn{background:#DADEEE; color:var(--navy);}
+  .tg-mgmt-btn.active{background:var(--navy); color:#fff;}
+  .tg-staff-btn{background:#DADEEE; color:var(--navy);}
+  .tg-staff-btn.active{background:var(--navy); color:#fff;}
   .tab-group.stacked{flex-direction:column; align-items:center; gap:8px;}
   .tab-subrow{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
   .tab-sublabel{font-size:10.5px; font-weight:800; color:var(--indigo-deep); white-space:nowrap;}
@@ -440,71 +452,58 @@
 <body>
 <div class="app">
 
+  <div id="landingHeader" style="text-align:center; margin-bottom:20px;">
+    <div style="font-size:38px; font-weight:800; letter-spacing:-0.02em; color:var(--ink);">Tax.J</div>
+    <p class="hint" style="font-size:12.5px; color:var(--ink-soft); margin:8px 0 0;">아래 메뉴를 눌러 원하는 화면으로 이동하세요.</p>
+  </div>
+
   <nav class="tabs">
-    <div style="display:flex; gap:9px; align-items:stretch; justify-content:center; flex-wrap:wrap;">
-      <div class="nav-toggle-group" style="display:none; gap:12px; flex-wrap:wrap;">
-        <div class="tab-group tg-policy">
-          <span class="tab-group-label">Summary</span>
-          <button class="tab-btn" data-tab="admin">📢 공지사항</button>
-          <button class="tab-btn" data-tab="teamcalendar">팀캘린더</button>
-          <button class="tab-btn" data-tab="quickguide">복리후생</button>
-        </div>
-      </div>
-      <button class="tab-btn tab-btn-home active" data-tab="home">📋 홈</button>
-      <button class="tab-btn" id="dashboardShortcutBtn" data-tab="attendance" title="Dashboard 바로가기" style="padding:9px 13px;">🎒 개인</button>
-      <div class="nav-toggle-group" style="display:none; gap:12px; flex-wrap:wrap;">
-        <div class="tab-group tg-mgmt">
-          <span class="tab-group-label">Management</span>
-          <button class="tab-btn" data-tab="policy">내부규정</button>
-          <button class="tab-btn" data-tab="policyedit">업데이트</button>
-          <button class="tab-btn" data-tab="settings">설정</button>
-        </div>
+    <div id="navCollapsedRow" style="display:flex; gap:9px; align-items:stretch; justify-content:center; flex-wrap:wrap;"></div>
+
+    <div id="navExpandedRow1" style="display:none; gap:9px; align-items:stretch; justify-content:center; flex-wrap:wrap;">
+      <button class="tab-btn tab-btn-home" data-tab="home">📋 홈</button>
+      <button type="button" id="toggleManagementBtn" class="tab-btn tg-mgmt-btn">Management</button>
+      <button type="button" id="toggleStaffBtn" class="tab-btn tg-staff-btn">Staff Dashboard</button>
+      <button type="button" id="mailNotifyBtn" title="관리자에게 메일로 알리기" style="width:38px; height:38px; border-radius:50%; border:none; background:var(--coral); color:#fff; font-size:17px; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 4px 10px -3px rgba(240,80,110,0.55); cursor:pointer;">📧</button>
+    </div>
+
+    <div id="managementSubRow" style="display:none; gap:9px; align-items:stretch; justify-content:center; flex-wrap:wrap; margin-top:9px;">
+      <div class="tab-group tg-mgmt">
+        <button class="tab-btn" data-tab="admin">📢 공지사항</button>
+        <button class="tab-btn" data-tab="teamcalendar">팀캘린더</button>
+        <button class="tab-btn" data-tab="quickguide">복리후생</button>
+        <button class="tab-btn" data-tab="policy">내부규정</button>
+        <button class="tab-btn" data-tab="policyedit">업데이트</button>
+        <button class="tab-btn" data-tab="settings">통합설정</button>
       </div>
     </div>
 
-    <div class="tab-group" id="asOfDateGroup" style="width:fit-content; max-width:100%; margin:10px auto 0; display:none;">
-      <span class="tab-group-label">기준일</span>
-      <div class="tab-subbox subbox-query">
-        <div class="month-picker" id="asOfDateWrap">
-          <label>기준일 <span style="font-weight:400; color:var(--ink-soft);">— 비워두면 오늘 기준</span></label>
-          <input type="date" id="asOfDate" min="2015-01-01" max="2099-12-31">
-          <button type="button" id="clearAsOfDateBtn" class="del-btn" title="기준일 지우고 오늘 기준으로">✕</button>
-          <button type="button" id="queryAsOfBtn" class="submit-btn" style="width:auto; padding:7px 14px; font-size:12.5px;">🔍 조회</button>
-          <button type="button" id="mailNotifyBtn" title="관리자에게 메일로 알리기" style="width:34px; height:34px; border-radius:50%; border:none; background:var(--indigo); color:#fff; font-size:16px; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 4px 10px -3px rgba(91,95,239,0.55); cursor:pointer; margin-left:4px;">📧</button>
-        </div>
+    <div id="staffSubRow" style="display:none; flex-direction:column; align-items:center; gap:8px; margin-top:9px;">
+      <div class="tab-group tg-staff">
+        <button class="tab-btn" data-tab="calendar">📅 캘린더</button>
+        <button class="tab-btn" data-tab="attendance">⏰ 근태</button>
+        <button class="tab-btn" data-tab="expense">💳 경비</button>
+        <button class="tab-btn" data-tab="settlement">🧮 정산</button>
+        <button class="tab-btn" data-tab="noticepost">📝 공지등록</button>
+        <button class="tab-btn" data-tab="attendance-settings">⚙️ 개인설정</button>
       </div>
-    </div>
-
-    <div class="tab-group tg-dashboard stacked" id="dashboardGroup" style="width:fit-content; max-width:100%; margin:10px auto 0; display:none;">
-      <span class="tab-group-label">Dashboard</span>
-      <div class="tab-subbox subbox-query">
-        <div class="profile-switch">
+      <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+        <div class="tab-group tg-profile">
           <select id="profileSelect"></select>
           <button type="button" id="addProfileBtn" class="del-btn" title="새 직원 추가">+ 직원</button>
           <button type="button" id="deleteProfileBtn" class="del-btn" title="현재 직원 삭제">삭제</button>
         </div>
-        <div class="month-picker">
-          <label>조회월</label>
+        <div class="tab-group tg-profile" id="dashboardGroup">
+          <label style="font-size:11px; font-weight:800; color:var(--navy); margin-right:2px;">조회월</label>
           <input type="month" id="monthSelect">
-          <button type="button" id="queryMonthBtn" class="submit-btn" style="width:auto; padding:7px 14px; font-size:12.5px;">🔍 조회</button>
+          <button type="button" id="queryMonthBtn" class="submit-btn" style="width:auto; min-width:110px; padding:7px 14px; font-size:12.5px;">🔍 조회</button>
         </div>
-      </div>
-      <div class="tab-subbox subbox-menu">
-        <button class="tab-btn" data-tab="attendance">⏰ 근태</button>
-        <button class="tab-btn" data-tab="expense">💳 경비</button>
-        <button class="tab-btn" data-tab="settlement">🧮 정산</button>
-        <button class="tab-btn" data-tab="calendar">📅 캘린더</button>
-        <button class="tab-btn" data-tab="attendance-settings">⚙️ 설정</button>
       </div>
     </div>
   </nav>
 
   <!-- 홈 -->
   <section id="tab-home" class="tab-panel active">
-    <div style="text-align:center; margin-bottom:28px;">
-      <div style="font-size:38px; font-weight:800; letter-spacing:-0.02em; color:var(--ink);">Tax.J</div>
-      <p class="hint" style="font-size:12.5px; color:var(--ink-soft); margin:8px 0 0;">아래 메뉴를 눌러 원하는 화면으로 이동하세요.</p>
-    </div>
 
     <div class="home-section-label">Management</div>
     <div class="home-tiles six">
@@ -535,13 +534,18 @@
       </div>
       <div class="home-tile" data-goto="settings" style="--tile-accent:var(--navy);">
         <div class="home-tile-icon">⚙️</div>
-        <div class="home-tile-title">설정</div>
+        <div class="home-tile-title">통합설정</div>
         <div class="home-tile-desc">직원 정보, 한도<br>백업, Drive 연동</div>
       </div>
     </div>
 
-    <div class="home-section-label" style="margin-top:24px;">Dashboard</div>
-    <div class="home-tiles">
+    <div class="home-section-label" style="margin-top:24px;">Staff Dashboard</div>
+    <div class="home-tiles six">
+      <div class="home-tile" data-goto="calendar" style="--tile-accent:var(--mint);">
+        <div class="home-tile-icon">📅</div>
+        <div class="home-tile-title">캘린더</div>
+        <div class="home-tile-desc">이번달 근태·개인일정 한눈에 보기</div>
+      </div>
       <div class="home-tile" data-goto="attendance" style="--tile-accent:var(--indigo);">
         <div class="home-tile-icon">⏰</div>
         <div class="home-tile-title">근태</div>
@@ -557,10 +561,15 @@
         <div class="home-tile-title">정산</div>
         <div class="home-tile-desc">근무일수·식대한도 현황, 지출결의서 출력</div>
       </div>
-      <div class="home-tile" data-goto="calendar" style="--tile-accent:var(--mint);">
-        <div class="home-tile-icon">📅</div>
-        <div class="home-tile-title">캘린더</div>
-        <div class="home-tile-desc">이번달 근태·개인일정 한눈에 보기</div>
+      <div class="home-tile" data-goto="noticepost" style="--tile-accent:#0EA5E9;">
+        <div class="home-tile-icon">📝</div>
+        <div class="home-tile-title">공지등록</div>
+        <div class="home-tile-desc">개인 공지 작성, 관리자는 전체공지도 가능</div>
+      </div>
+      <div class="home-tile" data-goto="attendance-settings" style="--tile-accent:var(--guide-slate);">
+        <div class="home-tile-icon">⚙️</div>
+        <div class="home-tile-title">개인설정</div>
+        <div class="home-tile-desc">과거 휴가이력 입력, 내 데이터 백업·복구</div>
       </div>
     </div>
   </section>
@@ -645,6 +654,27 @@
           <button type="submit" class="submit-btn">추가</button>
           <span class="save-msg" id="remoteSaveMsg"></span>
         </form>
+
+        <div style="border-top:1px solid rgba(29,30,51,0.08); margin:16px 0 14px;"></div>
+        <h3>연차 조회 <span style="font-weight:400; color:var(--ink-soft); font-size:11px;">(특정 기준일)</span></h3>
+        <div class="field"><label>기준일</label><input type="date" id="leave-query-date" min="2015-01-01" max="2099-12-31"></div>
+        <button type="button" id="leaveQueryBtn" class="submit-btn" style="background:var(--mint);">🔍 조회</button>
+        <div id="leaveQueryResult" style="display:none; margin-top:12px; text-align:center;">
+          <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+            <div style="background:var(--indigo-bg); color:var(--indigo-deep); border-radius:10px; padding:8px 14px;">
+              <div style="font-size:10.5px; font-weight:700;">총 연차</div>
+              <b id="leaveQueryTotal" style="font-family:'IBM Plex Mono',monospace; font-size:16px;">-</b>
+            </div>
+            <div style="background:var(--coral-bg); color:var(--coral); border-radius:10px; padding:8px 14px;">
+              <div style="font-size:10.5px; font-weight:700;">사용 연차</div>
+              <b id="leaveQueryUsed" style="font-family:'IBM Plex Mono',monospace; font-size:16px;">-</b>
+            </div>
+            <div style="background:var(--mint-bg); color:var(--mint); border-radius:10px; padding:8px 14px;">
+              <div style="font-size:10.5px; font-weight:700;">잔여 연차</div>
+              <b id="leaveQueryRemain" style="font-family:'IBM Plex Mono',monospace; font-size:16px;">-</b>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -984,6 +1014,46 @@
       <div class="policy-locked-text">관리자만 접근할 수 있어요.<br>지침 수정은 회사 정책을 다루는 영역이라 관리자 계정으로 로그인해야 볼 수 있어요.</div>
     </div>
     <div id="policyEditContent">
+    <h2 class="section-title" style="justify-content:center;">전체 공지 작성 <span class="badge">전 직원에게 발송</span></h2>
+    <div class="settings-box" style="max-width:640px;">
+      <form id="allNoticeForm">
+        <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+          <div class="field" style="flex:1 1 160px; margin-bottom:0;"><label>제목</label>
+            <input type="text" id="all-notice-title" placeholder="예: 8/15 사무실 휴무 안내" required>
+          </div>
+          <div class="field" style="flex:0 0 90px; margin-bottom:0;"><label>글자 크기</label>
+            <select id="all-notice-size">
+              <option value="13.5">보통</option>
+              <option value="16">크게</option>
+              <option value="20">아주 크게</option>
+            </select>
+          </div>
+          <div class="field" style="flex:0 0 90px; margin-bottom:0;"><label>색상</label>
+            <select id="all-notice-color">
+              <option value="">기본</option>
+              <option value="#DC2626">빨강</option>
+              <option value="#D97706">주황</option>
+              <option value="#2563EB">파랑</option>
+              <option value="#16A34A">초록</option>
+            </select>
+          </div>
+          <div class="field" style="flex:0 0 70px; margin-bottom:0; flex-direction:row; align-items:center; gap:6px; justify-content:center;">
+            <input type="checkbox" id="all-notice-bold" style="width:auto; margin-top:14px;">
+            <label for="all-notice-bold" style="margin:14px 0 0;">굵게</label>
+          </div>
+        </div>
+        <textarea id="allNoticeContent" placeholder="예: 8/15(금) 전사 워크숍으로 사무실 휴무입니다." style="width:100%; min-height:140px; font-family:'Pretendard',sans-serif; font-size:13.5px; line-height:1.7; border:1.5px solid transparent; border-radius:10px; padding:14px; background:var(--bg); color:var(--ink); resize:vertical;"></textarea>
+        <div style="text-align:center; margin-top:10px; display:flex; gap:8px; justify-content:center; align-items:center;">
+          <button type="submit" id="saveAllNoticeBtn" class="submit-btn" style="width:auto; padding:9px 20px;">전체 공지 등록</button>
+          <button type="button" id="allNoticeCancelEditBtn" class="del-btn" style="display:none;">취소</button>
+        </div>
+        <div style="text-align:center;"><span class="save-msg" id="allNoticeSaveMsg"></span></div>
+      </form>
+    </div>
+
+    <div style="border-top:1.5px dashed var(--border); margin:28px 0 22px;"></div>
+
+    <h2 class="section-title">지침 수정</h2>
     <div class="settings-box" style="max-width:none;">
       <div class="field-row" style="display:flex; gap:24px; flex-wrap:wrap; margin-bottom:14px;">
         <div class="field" style="margin-bottom:0;">
@@ -1021,17 +1091,15 @@
     <h2 class="section-title" style="margin-top:22px; justify-content:center;">공지사항 목록</h2>
     <div id="noticeHistoryWrap"></div>
     <div id="noticePreviewWrap" style="margin-top:14px;"></div>
+  </section>
 
-    <h2 class="section-title" style="margin-top:30px; justify-content:center;" id="noticeFormTitle">공지 작성</h2>
+  <!-- 공지등록 -->
+  <section id="tab-noticepost" class="tab-panel">
+    <h2 class="section-title" style="justify-content:center;" id="noticeFormTitle">개인 공지 작성</h2>
+    <p class="hint" style="font-size:12px; color:var(--ink-soft); margin:-6px 0 16px; text-align:center;">여기서 등록하는 공지는 내 이름으로 개인 공지로 올라가요. 전 직원 대상 공지는 관리자가 Management → 업데이트에서 등록해요.</p>
     <div class="settings-box" style="max-width:640px;">
       <form id="noticeForm">
         <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-          <div class="field" id="notice-scope-field" style="flex:1 1 120px; margin-bottom:0;"><label>구분</label>
-            <select id="notice-scope">
-              <option value="개인">개인 공지 (내 이름으로)</option>
-              <option value="전체" id="notice-scope-all">전체 공지 (관리자 전용)</option>
-            </select>
-          </div>
           <div class="field" style="flex:1 1 160px; margin-bottom:0;"><label>제목</label>
             <input type="text" id="notice-title" placeholder="예: 8/15 사무실 휴무 안내" required>
           </div>
@@ -1070,6 +1138,12 @@
   <section id="tab-teamcalendar" class="tab-panel">
     <h2 class="section-title">팀 캘린더 <span class="badge">전 직원 휴가·재택·일정</span></h2>
     <p class="hint" style="text-align:center; margin-top:-6px;">휴가·재택·개인일정은 직원별로 표시되고, 공휴일·회식·조기퇴근은 전 직원 공통 사항으로 반영돼요.</p>
+    <div style="display:flex; justify-content:center; margin-bottom:14px;">
+      <div class="tab-group tg-profile" style="margin:0;">
+        <label style="font-size:11px; font-weight:800; color:var(--navy); margin-right:2px;">조회월</label>
+        <input type="month" id="teamCalMonthSelect">
+      </div>
+    </div>
     <div class="calendar-panel">
       <div id="adminCalendarWrap"></div>
       <p class="cal-legend">
@@ -1085,15 +1159,41 @@
       <div style="font-size:44px; margin-bottom:14px;">🔒</div>
       <h2 style="font-size:20px; font-weight:900; color:var(--navy); margin-bottom:8px;">관리자만 접근할 수 있어요</h2>
       <p class="hint" style="max-width:360px; margin:0 auto;">직원·복지·데이터 설정은 회사 정책을 다루는 영역이라 관리자 계정으로 로그인해야 볼 수 있어요.<br>본인 근태·경비 설정은 Dashboard의 "설정" 탭에서 하실 수 있어요.</p>
+
+      <div style="max-width:420px; margin:28px auto 0; padding-top:20px; border-top:1.5px dashed var(--border);">
+        <p class="hint" style="font-size:11.5px; margin:0 0 8px;">
+          관리자이신데 아직 로그인이 안 됐다면, 여기서 바로 연결할 수 있어요.
+        </p>
+        <div class="field"><input type="text" id="gdrive-client-id-locked" placeholder="xxxxxxxx.apps.googleusercontent.com"></div>
+        <button type="button" id="gdriveConnectBtnLocked" class="submit-btn" style="width:auto; padding:8px 16px; margin-top:8px;">🔗 Google 계정으로 연결</button>
+      </div>
     </div>
     <div id="settingsContent">
 
     <div class="settings-group">
       <div class="settings-group-title">👤 직원</div>
-      <div class="settings-group-desc">전체현황 · 직원 정보 조회 · 입력/수정 · 변경이력</div>
+      <div class="settings-group-desc">직원 등록 · 전체현황 · 직원 정보 조회 · 입력/수정 · 변경이력</div>
 
-      <div class="settings-sub-title">전체 직원 현황 <span class="badge">기준일 연동</span></div>
+      <div class="settings-sub-title">직원 등록 <span class="badge">미리 등록해두면 첫 로그인 때 자동 연결</span></div>
+      <p class="hint">
+        이름과 로그인할 구글 이메일을 미리 등록해두면, 그 직원이 처음 로그인할 때 자동으로 본인 프로필에 연결돼요.
+      </p>
+      <div class="settings-box" style="max-width:480px;">
+        <form id="addEmployeeForm" style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; justify-content:center;">
+          <div class="field" style="flex:1 1 140px; margin-bottom:0;"><label>이름</label><input type="text" id="new-employee-name" placeholder="예: 홍길동" required></div>
+          <div class="field" style="flex:1 1 180px; margin-bottom:0;"><label>구글 이메일 <span style="font-weight:400; color:var(--ink-soft);">(선택)</span></label><input type="email" id="new-employee-email" placeholder="hong@gmail.com"></div>
+          <button type="submit" class="submit-btn" style="width:auto; padding:8px 16px;">등록</button>
+        </form>
+        <div id="employeeListWrap" style="margin-top:12px;"></div>
+      </div>
+
+      <div class="settings-sub-title" style="margin-top:26px;">전체 직원 현황 <span class="badge">기준일 연동</span></div>
       <p class="hint" style="text-align:center; margin-top:-6px;" id="adminOverviewBasis">기준일: 오늘</p>
+      <div style="display:flex; gap:8px; align-items:center; justify-content:center; margin-bottom:14px;">
+        <label style="font-size:12px; color:var(--ink-soft); font-weight:700;">잔여연차 기준일</label>
+        <input type="date" id="overviewAsOfDate" min="2015-01-01" max="2099-12-31" style="font-size:12.5px; padding:5px 8px; border:1.5px solid var(--border); border-radius:8px; background:var(--surface);">
+        <button type="button" id="overviewAsOfQueryBtn" class="submit-btn" style="width:auto; padding:6px 12px; font-size:12px;">🔍 조회</button>
+      </div>
       <div id="adminOverviewWrap" style="margin-bottom:24px;"></div>
 
       <div class="settings-sub-title">현재 등록된 직원 정보 <span class="badge">조회 전용</span></div>
@@ -1637,7 +1737,14 @@ function computeForProfile(profileId, monthStr, asOfDate){
   settings = readProfileRaw(profileId,'settings') || { hireDate:'', lunchLimitHistory:[] };
   attendance = readProfileRaw(profileId,'attendance') || { leaveGrants:[], leaveUsage:[], remoteEntries:[] };
   expense = readProfileRaw(profileId,'expense') || { lunchEntries:[], dinnerEntries:[], otherExpenses:[], taxiEntries:[] };
-  const att = calcAttendanceSummary(monthStr, asOfDate);
+  const att = calcAttendanceSummary(monthStr);
+  if(asOfDate){
+    const leaveAsOf = calcLeaveAsOf(asOfDate);
+    att.remainLeave = leaveAsOf.remainLeave;
+    att.totalGranted = leaveAsOf.totalGranted;
+    att.totalUsed = leaveAsOf.totalUsed;
+    att.asOfDate = leaveAsOf.asOfDate;
+  }
   const exp = calcExpenseSummary(monthStr);
   const name = settings.employeeName || '';
   settings = savedSettings; attendance = savedAttendance; expense = savedExpense;
@@ -1664,12 +1771,6 @@ function renderAllNoticeBanner(){
 function renderNoticeHistory(){
   const wrap = document.getElementById('noticeHistoryWrap');
   if(!wrap) return;
-  const scopeSelectEl = document.getElementById('notice-scope-all');
-  if(scopeSelectEl) scopeSelectEl.disabled = !isCurrentUserAdmin;
-  const scopeFieldEl = document.getElementById('notice-scope-field');
-  if(scopeFieldEl) scopeFieldEl.style.display = isCurrentUserAdmin ? 'block' : 'none';
-  const formTitleEl = document.getElementById('noticeFormTitle');
-  if(formTitleEl) formTitleEl.textContent = isCurrentUserAdmin ? '공지 작성' : '개인 공지';
   renderAllNoticeBanner();
   if(!sharedNoticeHistory.length){
     wrap.innerHTML = `<div class="empty-state">저장된 공지사항이 없습니다.</div>`;
@@ -1704,16 +1805,30 @@ function renderNoticeHistory(){
     btn.addEventListener('click', ()=>{
       const n = sharedNoticeHistory.find(x=>x.id===btn.dataset.id);
       if(!n) return;
-      editingNoticeId = n.id;
-      document.getElementById('notice-title').value = n.title || '';
-      document.getElementById('noticeContent').value = n.content || '';
-      document.getElementById('notice-scope').value = n.scope || '개인';
-      document.getElementById('notice-size').value = n.size || '13.5';
-      document.getElementById('notice-color').value = n.color || '';
-      document.getElementById('notice-bold').checked = !!n.bold;
-      document.getElementById('saveNoticeBtn').textContent = '수정 완료';
-      document.getElementById('noticeCancelEditBtn').style.display = 'inline-block';
-      document.getElementById('noticeFormTitle').scrollIntoView({behavior:'smooth', block:'center'});
+      if(n.scope === '전체'){
+        // 전체공지는 Management → 업데이트 탭에서 수정
+        document.querySelector('.tab-btn[data-tab="policyedit"]')?.click();
+        editingAllNoticeId = n.id;
+        document.getElementById('all-notice-title').value = n.title || '';
+        document.getElementById('allNoticeContent').value = n.content || '';
+        document.getElementById('all-notice-size').value = n.size || '13.5';
+        document.getElementById('all-notice-color').value = n.color || '';
+        document.getElementById('all-notice-bold').checked = !!n.bold;
+        document.getElementById('saveAllNoticeBtn').textContent = '수정 완료';
+        document.getElementById('allNoticeCancelEditBtn').style.display = 'inline-block';
+        setTimeout(()=>document.getElementById('allNoticeForm').scrollIntoView({behavior:'smooth', block:'center'}), 100);
+      } else {
+        document.querySelector('.tab-btn[data-tab="noticepost"]')?.click();
+        editingNoticeId = n.id;
+        document.getElementById('notice-title').value = n.title || '';
+        document.getElementById('noticeContent').value = n.content || '';
+        document.getElementById('notice-size').value = n.size || '13.5';
+        document.getElementById('notice-color').value = n.color || '';
+        document.getElementById('notice-bold').checked = !!n.bold;
+        document.getElementById('saveNoticeBtn').textContent = '수정 완료';
+        document.getElementById('noticeCancelEditBtn').style.display = 'inline-block';
+        setTimeout(()=>document.getElementById('noticeFormTitle').scrollIntoView({behavior:'smooth', block:'center'}), 100);
+      }
     });
   });
   wrap.querySelectorAll('.notice-del-btn').forEach(btn=>{
@@ -1728,6 +1843,13 @@ function renderNoticeHistory(){
         document.getElementById('notice-title').value = '';
         document.getElementById('noticeContent').value = '';
       }
+      if(editingAllNoticeId === btn.dataset.id){
+        editingAllNoticeId = null;
+        document.getElementById('saveAllNoticeBtn').textContent = '전체 공지 등록';
+        document.getElementById('allNoticeCancelEditBtn').style.display = 'none';
+        document.getElementById('all-notice-title').value = '';
+        document.getElementById('allNoticeContent').value = '';
+      }
       renderNoticeHistory();
     });
   });
@@ -1737,7 +1859,8 @@ function renderAdminOverview(){
   const wrap = document.getElementById('adminOverviewWrap');
   if(!wrap) return;
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
-  const asOf = getAsOfDate();
+  const overviewAsOfEl = document.getElementById('overviewAsOfDate');
+  const asOf = (overviewAsOfEl && overviewAsOfEl.value) ? overviewAsOfEl.value : null;
   const basisLabel = document.getElementById('adminOverviewBasis');
   if(basisLabel) basisLabel.textContent = asOf ? `기준일: ${asOf}` : '기준일: 오늘';
   const profiles = getProfiles();
@@ -2015,6 +2138,16 @@ function getCurrentPolicy(cat){
   return hist[hist.length - 1];
 }
 
+function syncDateFieldsToMonth(){
+  const m = document.getElementById('monthSelect').value;
+  const today = todayStr();
+  const defaultDate = (!m || today.startsWith(m)) ? today : m + '-01';
+  ['g-date','u-date','r-date','l-date','d-date','tx-date','sc-date','ex-date'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value = defaultDate;
+  });
+}
+
 async function loadAll(){
   activeProfileId = ensureProfileInit();
   settings = { hireDate:'', lunchLimitHistory:[] };
@@ -2095,14 +2228,9 @@ async function loadAll(){
 
   const monthInput = document.getElementById('monthSelect');
   if(!monthInput.value) monthInput.value = todayStr().slice(0,7);
-  document.getElementById('g-date').value = todayStr();
-  document.getElementById('u-date').value = todayStr();
-  document.getElementById('r-date').value = todayStr();
-  document.getElementById('l-date').value = todayStr();
-  document.getElementById('d-date').value = todayStr();
-  document.getElementById('tx-date').value = todayStr();
-  document.getElementById('sc-date').value = todayStr();
-  document.getElementById('ex-date').value = todayStr();
+  const teamCalMonthEl = document.getElementById('teamCalMonthSelect');
+  if(teamCalMonthEl) teamCalMonthEl.value = monthInput.value;
+  syncDateFieldsToMonth();
 
   await syncAutoGrants();
   renderAll();
@@ -2133,9 +2261,17 @@ function leaveAsOfDate(){
   return settings.leaveAsOfDate || todayStr();
 }
 
-function getAsOfDate(){
-  const el = document.getElementById('asOfDate');
-  return (el && el.value) ? el.value : null;
+function calcLeaveAsOf(dateStr){
+  const cutoff = dateStr || todayStr();
+  const totalGranted = attendance.leaveGrants.filter(g => g.date <= cutoff).reduce((s,g)=>s+Number(g.days||0), 0);
+  const deductOf = (u) => {
+    if(u.type==='연차') return 1;
+    if(u.type==='반차') return 0.5;
+    if(u.type==='반반차') return 0.25;
+    return 0;
+  };
+  const totalUsed = attendance.leaveUsage.filter(u => u.date <= cutoff).reduce((s,u)=>s+deductOf(u), 0);
+  return { asOfDate: cutoff, totalGranted, totalUsed, remainLeave: totalGranted - totalUsed };
 }
 
 function computeAutoGrants(hireDateStr){
@@ -2246,26 +2382,24 @@ function renderWorkdaysSuggestion(){
   }
 }
 
-function calcAttendanceSummary(monthStr, asOfDate){
-  const cutoff = asOfDate || todayStr();
-  const grantsUpTo = attendance.leaveGrants.filter(g => g.date <= cutoff);
-  const usageUpTo = attendance.leaveUsage.filter(u => u.date <= cutoff);
-  const totalGranted = grantsUpTo.reduce((s,g)=>s+Number(g.days||0), 0);
+function calcAttendanceSummary(monthStr){
+  const cutoff = todayStr();
+  const totalGranted = attendance.leaveGrants.filter(g => g.date <= cutoff).reduce((s,g)=>s+Number(g.days||0), 0);
   const deductOf = (u) => {
     if(u.type==='연차') return 1;
     if(u.type==='반차') return 0.5;
     if(u.type==='반반차') return 0.25;
     return 0; // 포상휴가/경조사휴가/기타휴가는 연차 차감 없음
   };
-  const totalUsed = usageUpTo.reduce((s,u)=>s+deductOf(u), 0);
+  const totalUsed = attendance.leaveUsage.filter(u => u.date <= cutoff).reduce((s,u)=>s+deductOf(u), 0);
   const remainLeave = totalGranted - totalUsed;
 
-  const monthUsage = attendance.leaveUsage.filter(u => u.date.startsWith(monthStr) && u.date <= cutoff);
+  const monthUsage = attendance.leaveUsage.filter(u => u.date.startsWith(monthStr));
   const monthUsedDays = monthUsage.reduce((s,u)=>s+deductOf(u), 0);
   const monthSpecialDays = monthUsage
     .filter(u => ['포상휴가','경조사휴가','기타휴가'].includes(u.type))
     .reduce((s,u)=>s+(Number(u.days)||0), 0);
-  const monthRemote = attendance.remoteEntries.filter(r => r.date.startsWith(monthStr) && r.date <= cutoff);
+  const monthRemote = attendance.remoteEntries.filter(r => r.date.startsWith(monthStr));
 
   return { remainLeave, totalGranted, totalUsed, monthUsedDays, monthSpecialDays, monthUsage, monthRemote, asOfDate: cutoff };
 }
@@ -2490,9 +2624,8 @@ function renderAllLeaveHistory(){
 
 function renderAttendance(){
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
-  const asOf = getAsOfDate();
-  const s = calcAttendanceSummary(monthStr, asOf);
-  document.getElementById('remainLeaveLabel').textContent = asOf ? `잔여 연차 (기준일: ${asOf})` : '잔여 연차 (오늘 기준)';
+  const s = calcAttendanceSummary(monthStr);
+  document.getElementById('remainLeaveLabel').textContent = '잔여 연차 (오늘 기준)';
 
   document.getElementById('remainLeaveDisplay').textContent = s.remainLeave + '일';
   document.getElementById('grantUsedDisplay').textContent = `누적 부여 ${s.totalGranted}일 · 누적 사용 ${s.totalUsed}일`;
@@ -2800,7 +2933,7 @@ function renderDeadlineBanner(){
   wrap.innerHTML = `<div class="deadline-banner">📌 ${prevMonthLabel}분 지출결의서, 매월 10일 지급 기준이니 상신 잊지 마세요! (마감까지 D-${daysLeft >= 0 ? daysLeft : 0})</div>`;
 }
 
-function renderAll(){ renderAttendance(); renderExpense(); renderWorkdaysSuggestion(); renderCalendar(); renderScheduleList(); renderDeadlineBanner(); renderAdminOverview(); renderAdminCalendar(); renderHome(); renderAllLeaveHistory(); renderNoticeHistory(); renderManualGrantList(); if(typeof twemoji !== 'undefined') twemoji.parse(document.body, {folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'}); }
+function renderAll(){ renderAttendance(); renderExpense(); renderWorkdaysSuggestion(); renderCalendar(); renderScheduleList(); renderDeadlineBanner(); renderAdminOverview(); renderAdminCalendar(); renderHome(); renderAllLeaveHistory(); renderNoticeHistory(); renderManualGrantList(); renderEmployeeList(); if(typeof twemoji !== 'undefined') twemoji.parse(document.body, {folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'}); }
 
 function renderScheduleList(){
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
@@ -3166,19 +3299,59 @@ function buildCalendarHTML(monthStr){
   `;
 }
 
+let navExpanded = false;
+let activeTopGroup = null; // null | 'management' | 'staff'
+
+const MANAGEMENT_TABS = ['admin','teamcalendar','quickguide','policy','policyedit','settings'];
+const STAFF_TABS = ['calendar','attendance','expense','settlement','noticepost','attendance-settings'];
+
+function updateNavVisibility(){
+  document.getElementById('landingHeader').style.display = navExpanded ? 'none' : 'block';
+  document.getElementById('navCollapsedRow').style.display = navExpanded ? 'none' : 'flex';
+  document.getElementById('navExpandedRow1').style.display = navExpanded ? 'flex' : 'none';
+  updateSubRows();
+}
+
+function updateSubRows(){
+  document.getElementById('managementSubRow').style.display = activeTopGroup === 'management' ? 'flex' : 'none';
+  document.getElementById('staffSubRow').style.display = activeTopGroup === 'staff' ? 'flex' : 'none';
+  document.getElementById('toggleManagementBtn').classList.toggle('active', activeTopGroup === 'management');
+  document.getElementById('toggleStaffBtn').classList.toggle('active', activeTopGroup === 'staff');
+}
+
+document.getElementById('toggleManagementBtn').addEventListener('click', ()=>{
+  activeTopGroup = 'management';
+  updateSubRows();
+  const currentTab = document.querySelector('.tab-panel.active')?.id.replace('tab-','');
+  if(!MANAGEMENT_TABS.includes(currentTab)){
+    document.querySelector('.tab-btn[data-tab="admin"]')?.click();
+  }
+});
+document.getElementById('toggleStaffBtn').addEventListener('click', ()=>{
+  activeTopGroup = 'staff';
+  updateSubRows();
+  const currentTab = document.querySelector('.tab-panel.active')?.id.replace('tab-','');
+  if(!STAFF_TABS.includes(currentTab)){
+    document.querySelector('.tab-btn[data-tab="calendar"]')?.click();
+  }
+});
+
 document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     if(!btn.dataset.tab) return;
+    if(btn.dataset.tab === 'home'){
+      navExpanded = false;
+      activeTopGroup = null;
+    } else {
+      navExpanded = true;
+      if(MANAGEMENT_TABS.includes(btn.dataset.tab)) activeTopGroup = 'management';
+      else if(STAFF_TABS.includes(btn.dataset.tab)) activeTopGroup = 'staff';
+    }
+    updateNavVisibility();
     document.querySelectorAll('.tab-btn').forEach(b=>{ if(b.dataset.tab) b.classList.remove('active'); });
     document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-    btn.classList.add('active');
+    document.querySelectorAll(`.tab-btn[data-tab="${btn.dataset.tab}"]`).forEach(b=>b.classList.add('active'));
     document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
-    const showGroups = (btn.dataset.tab !== 'home');
-    const DASHBOARD_TABS = ['attendance','expense','settlement','calendar','attendance-settings'];
-    document.querySelectorAll('.nav-toggle-group').forEach(el=>{ el.style.display = showGroups ? 'flex' : 'none'; });
-    document.getElementById('asOfDateGroup').style.display = showGroups ? 'flex' : 'none';
-    document.getElementById('dashboardGroup').style.display = DASHBOARD_TABS.includes(btn.dataset.tab) ? 'flex' : 'none';
-    document.getElementById('dashboardShortcutBtn').classList.toggle('active', DASHBOARD_TABS.includes(btn.dataset.tab));
   });
 });
 
@@ -3193,7 +3366,20 @@ function renderHome(){
   // 홈 화면은 정적 타일 메뉴라 별도 렌더링이 필요 없어요.
 }
 
-document.getElementById('monthSelect').addEventListener('change', ()=>{ /* 조회 버튼을 눌러야 실제로 반영돼요 */ });
+document.getElementById('monthSelect').addEventListener('change', ()=>{
+  const teamCalEl = document.getElementById('teamCalMonthSelect');
+  if(teamCalEl) teamCalEl.value = document.getElementById('monthSelect').value;
+  syncDateFieldsToMonth();
+  renderAll();
+  renderExclusionList();
+});
+
+document.getElementById('teamCalMonthSelect')?.addEventListener('change', ()=>{
+  document.getElementById('monthSelect').value = document.getElementById('teamCalMonthSelect').value;
+  syncDateFieldsToMonth();
+  renderAll();
+  renderExclusionList();
+});
 
 document.getElementById('queryMonthBtn').addEventListener('click', async ()=>{
   const profileSelectEl = document.getElementById('profileSelect');
@@ -3202,6 +3388,7 @@ document.getElementById('queryMonthBtn').addEventListener('click', async ()=>{
     await loadAll();
     updatePersonalBackupLabel(!!gdriveAccessToken && isCurrentUserAdmin);
   } else {
+    syncDateFieldsToMonth();
     renderAll();
     renderExclusionList();
   }
@@ -3213,26 +3400,23 @@ document.getElementById('queryMonthBtn').addEventListener('click', async ()=>{
   setTimeout(()=>{ btn.textContent = original; btn.disabled = false; }, 1200);
 });
 
-document.getElementById('asOfDate').addEventListener('change', (e)=>{
-  if(e.target.value){
-    document.getElementById('monthSelect').value = e.target.value.slice(0,7);
-  }
-  /* 조회 버튼을 눌러야 실제로 반영돼요 */
-});
-document.getElementById('queryAsOfBtn').addEventListener('click', ()=>{
-  renderAll();
-  renderExclusionList();
-  const btn = document.getElementById('queryAsOfBtn');
-  const dateVal = document.getElementById('asOfDate').value || '오늘';
+document.getElementById('overviewAsOfQueryBtn').addEventListener('click', ()=>{
+  renderAdminOverview();
+  const btn = document.getElementById('overviewAsOfQueryBtn');
+  const dateVal = document.getElementById('overviewAsOfDate').value || '오늘';
   const original = btn.textContent;
   btn.textContent = `✅ ${dateVal} 조회됨`;
   btn.disabled = true;
   setTimeout(()=>{ btn.textContent = original; btn.disabled = false; }, 1200);
 });
-document.getElementById('clearAsOfDateBtn').addEventListener('click', ()=>{
-  document.getElementById('asOfDate').value = '';
-  renderAll();
-  renderExclusionList();
+
+document.getElementById('leaveQueryBtn').addEventListener('click', ()=>{
+  const dateVal = document.getElementById('leave-query-date').value;
+  const result = calcLeaveAsOf(dateVal);
+  document.getElementById('leaveQueryTotal').textContent = result.totalGranted + '일';
+  document.getElementById('leaveQueryUsed').textContent = result.totalUsed + '일';
+  document.getElementById('leaveQueryRemain').textContent = result.remainLeave + '일';
+  document.getElementById('leaveQueryResult').style.display = 'block';
 });
 
 let editingGrantId = null;
@@ -3570,13 +3754,12 @@ document.getElementById('noticeForm').addEventListener('submit', async (e)=>{
   const content = document.getElementById('noticeContent').value.trim();
   const title = document.getElementById('notice-title').value.trim();
   if(!content || !title) return;
-  let scope = document.getElementById('notice-scope').value;
-  if(scope === '전체' && !isCurrentUserAdmin){ scope = '개인'; } // 관리자가 아니면 전체공지 불가, 자동으로 개인으로 전환
+  const scope = '개인';
   const size = document.getElementById('notice-size').value;
   const color = document.getElementById('notice-color').value;
   const bold = document.getElementById('notice-bold').checked;
   const myProfile = currentUserEmail ? getProfiles().find(p=>(p.email||'').toLowerCase()===currentUserEmail) : null;
-  const authorName = isCurrentUserAdmin ? '관리자' : (myProfile ? (readProfileRaw(myProfile.id,'settings')?.employeeName || myProfile.name || '직원') : (settings.employeeName || '직원'));
+  const authorName = myProfile ? (readProfileRaw(myProfile.id,'settings')?.employeeName || myProfile.name || '직원') : (settings.employeeName || '직원');
 
   if(editingNoticeId){
     const n = sharedNoticeHistory.find(x=>x.id===editingNoticeId);
@@ -3604,6 +3787,44 @@ document.getElementById('noticeCancelEditBtn').addEventListener('click', ()=>{
   document.getElementById('noticeCancelEditBtn').style.display = 'none';
   document.getElementById('noticeContent').value = '';
   document.getElementById('notice-title').value = '';
+});
+
+let editingAllNoticeId = null;
+
+document.getElementById('allNoticeForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const content = document.getElementById('allNoticeContent').value.trim();
+  const title = document.getElementById('all-notice-title').value.trim();
+  if(!content || !title) return;
+  const size = document.getElementById('all-notice-size').value;
+  const color = document.getElementById('all-notice-color').value;
+  const bold = document.getElementById('all-notice-bold').checked;
+
+  if(editingAllNoticeId){
+    const n = sharedNoticeHistory.find(x=>x.id===editingAllNoticeId);
+    if(n){ n.title = title; n.content = content; n.size = size; n.color = color; n.bold = bold; n.editedAt = new Date().toLocaleString('ko-KR'); }
+    editingAllNoticeId = null;
+    document.getElementById('saveAllNoticeBtn').textContent = '전체 공지 등록';
+    document.getElementById('allNoticeCancelEditBtn').style.display = 'none';
+    document.getElementById('allNoticeSaveMsg').textContent = '수정됨';
+  } else {
+    const savedAt = new Date().toLocaleString('ko-KR');
+    sharedNoticeHistory.unshift({ id: genId(), title, content, scope: '전체', authorName: '관리자', savedAt, size, color, bold });
+    document.getElementById('allNoticeSaveMsg').textContent = '등록됨';
+  }
+  await saveSharedNoticeHistory();
+  setTimeout(()=>document.getElementById('allNoticeSaveMsg').textContent='',1500);
+  document.getElementById('allNoticeContent').value = '';
+  document.getElementById('all-notice-title').value = '';
+  renderNoticeHistory();
+});
+
+document.getElementById('allNoticeCancelEditBtn').addEventListener('click', ()=>{
+  editingAllNoticeId = null;
+  document.getElementById('saveAllNoticeBtn').textContent = '전체 공지 등록';
+  document.getElementById('allNoticeCancelEditBtn').style.display = 'none';
+  document.getElementById('allNoticeContent').value = '';
+  document.getElementById('all-notice-title').value = '';
 });
 
 document.getElementById('addWorkHourExceptionBtn').addEventListener('click', async ()=>{
@@ -4350,6 +4571,34 @@ document.getElementById('saveBulkRowsBtn').addEventListener('click', async ()=>{
 
 document.getElementById('profileSelect').addEventListener('change', ()=>{ /* 조회 버튼을 눌러야 실제로 반영돼요 */ });
 
+document.getElementById('addEmployeeForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const nameInput = document.getElementById('new-employee-name');
+  const emailInput = document.getElementById('new-employee-email');
+  const name = nameInput.value.trim();
+  const email = emailInput.value.trim().toLowerCase();
+  if(!name) return;
+  const profiles = getProfiles();
+  const id = genId();
+  profiles.push({ id, name, email });
+  saveProfiles(profiles);
+  renderProfileSwitcher();
+  renderEmployeeList();
+  nameInput.value = '';
+  emailInput.value = '';
+});
+
+function renderEmployeeList(){
+  const wrap = document.getElementById('employeeListWrap');
+  if(!wrap) return;
+  const profiles = getProfiles();
+  if(!profiles.length){ wrap.innerHTML = `<div class="empty-state">등록된 직원이 없습니다.</div>`; return; }
+  wrap.innerHTML = profiles.map(p=>`
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; background:var(--bg); border-radius:8px; margin-bottom:6px; font-size:12.5px;">
+      <span>${escHtml(p.name || '(이름 미등록)')} ${p.email ? `<span style="color:var(--ink-soft); font-size:11px;">(${escHtml(p.email)})</span>` : '<span style="color:var(--coral); font-size:11px;">이메일 미등록</span>'}</span>
+    </div>`).join('');
+}
+
 document.getElementById('addProfileBtn').addEventListener('click', async ()=>{
   const name = prompt('새 직원 이름을 입력해주세요 (나중에 설정 탭에서도 수정할 수 있어요)');
   if(name === null) return; // 취소
@@ -4588,6 +4837,19 @@ document.getElementById('gdriveConnectBtnPersonal').addEventListener('click', ()
   }
   gdriveConnect(false);
 });
+document.getElementById('gdriveConnectBtnLocked').addEventListener('click', ()=>{
+  const mainField = document.getElementById('gdrive-client-id');
+  const lockedField = document.getElementById('gdrive-client-id-locked');
+  if(lockedField.value.trim()){
+    mainField.value = lockedField.value.trim();
+    localStorage.setItem('worklog_gdrive_client_id', lockedField.value.trim());
+  }
+  if(!mainField.value.trim()){
+    alert('먼저 Google OAuth 클라이언트 ID를 입력해주세요.');
+    return;
+  }
+  gdriveConnect(false);
+});
 document.getElementById('gdriveSyncBtn').addEventListener('click', async ()=>{
   gdriveSetStatus('동기화 중...');
   try{
@@ -4603,6 +4865,7 @@ document.getElementById('gdriveSyncBtn').addEventListener('click', async ()=>{
 });
 document.getElementById('gdrive-client-id').value = localStorage.getItem('worklog_gdrive_client_id') || '';
 document.getElementById('gdrive-client-id-personal').value = localStorage.getItem('worklog_gdrive_client_id') || '';
+document.getElementById('gdrive-client-id-locked').value = localStorage.getItem('worklog_gdrive_client_id') || '';
 gdriveUpdateFileLink();
 if(localStorage.getItem('worklog_gdrive_client_id')){
   // 이전에 연결한 적이 있으면, 화면을 열 때마다 다시 버튼을 누르지 않아도 되도록 조용히 재연결을 시도해요.
@@ -4628,6 +4891,7 @@ document.getElementById('mailNotifyBtn').addEventListener('click', ()=>{
 
 loadAll();
 applyPermissionUI();
+updateNavVisibility();
 if(typeof twemoji !== 'undefined') twemoji.parse(document.body, {folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'});
 </script>
 </body>
