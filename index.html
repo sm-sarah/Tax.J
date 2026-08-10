@@ -633,6 +633,7 @@
           </div>
           <div class="field"><label>메모</label><input type="text" id="u-memo" placeholder="예: 개인 사유"></div>
           <button type="submit" class="submit-btn">추가</button>
+          <button type="button" id="usage-cancel" class="del-btn" style="display:none; margin-top:6px;">취소</button>
           <span class="save-msg" id="usageSaveMsg"></span>
         </form>
       </div>
@@ -653,6 +654,7 @@
             <label for="r-bonus" style="margin:0; font-size:11.5px;">특별재택 (월 한도 미포함)</label>
           </div>
           <button type="submit" class="submit-btn">추가</button>
+          <button type="button" id="remote-cancel" class="del-btn" style="display:none; margin-top:6px;">취소</button>
           <span class="save-msg" id="remoteSaveMsg"></span>
         </form>
 
@@ -833,6 +835,7 @@
           <div class="field"><label>사용 금액 (원)</label><input type="number" id="l-amount" class="num-input" min="0" step="1" required></div>
           <div class="field"><label>내용</label><input type="text" id="l-memo" placeholder="예: 팀 점심"></div>
           <button type="submit" class="submit-btn">추가</button>
+          <button type="button" id="exp-cancel-lunch" class="del-btn" style="display:none; margin-top:6px;">취소</button>
           <span class="save-msg" id="lunchSaveMsg"></span>
         </form>
       </div>
@@ -843,6 +846,7 @@
           <div class="field"><label>사용 금액 (원)</label><input type="number" id="d-amount" class="num-input" min="0" step="1" required></div>
           <div class="field"><label>내용</label><input type="text" id="d-memo" placeholder="예: 야근 저녁"></div>
           <button type="submit" class="submit-btn">추가</button>
+          <button type="button" id="exp-cancel-dinner" class="del-btn" style="display:none; margin-top:6px;">취소</button>
           <span class="save-msg" id="dinnerSaveMsg"></span>
         </form>
       </div>
@@ -853,6 +857,7 @@
           <div class="field"><label>사용 금액 (원)</label><input type="number" id="tx-amount" class="num-input" min="0" step="1" required></div>
           <div class="field"><label>내용</label><input type="text" id="tx-memo" placeholder="예: 21:30 이후 야근"></div>
           <button type="submit" class="submit-btn">추가</button>
+          <button type="button" id="exp-cancel-taxi" class="del-btn" style="display:none; margin-top:6px;">취소</button>
           <span class="save-msg" id="taxiSaveMsg"></span>
         </form>
       </div>
@@ -863,6 +868,7 @@
           <div class="field"><label>사용 금액 (원)</label><input type="number" id="oe-amount" class="num-input" min="0" step="1" required></div>
           <div class="field"><label>내용</label><input type="text" id="oe-desc" placeholder="예: 사무용품 구입"></div>
           <button type="submit" class="submit-btn">추가</button>
+          <button type="button" id="exp-cancel-other" class="del-btn" style="display:none; margin-top:6px;">취소</button>
           <span class="save-msg" id="otherExpenseSaveMsg"></span>
         </form>
       </div>
@@ -873,6 +879,7 @@
           <div class="field"><label>금액 (원) <span style="font-weight:400; color:var(--ink-soft);">차감이면 마이너스로</span></label><input type="number" id="pp-amount" class="num-input" step="1" required placeholder="예: -50000"></div>
           <div class="field"><label>내용</label><input type="text" id="pp-memo" placeholder="예: 7월분 착오지급"></div>
           <button type="submit" class="submit-btn">추가</button>
+          <button type="button" id="exp-cancel-prepaid" class="del-btn" style="display:none; margin-top:6px;">취소</button>
           <span class="save-msg" id="prepaidSaveMsg"></span>
         </form>
       </div>
@@ -919,6 +926,7 @@
           <label for="sc-share" style="margin:0; font-weight:700; color:var(--ink);">팀캘린더에 공유 <span style="font-weight:400; color:var(--ink-soft);">(끄면 나에게만 보여요)</span></label>
         </div>
         <button type="submit" class="submit-btn">일정 추가</button>
+        <button type="button" id="schedule-cancel" class="del-btn" style="display:none; margin-top:6px;">취소</button>
         <span class="save-msg" id="scheduleSaveMsg"></span>
       </form>
     </div>
@@ -1456,6 +1464,7 @@
             <input type="text" id="ex-name" placeholder="예: 광복절">
           </div>
           <button type="submit" class="submit-btn" style="width:auto; padding:8px 16px; flex:0 0 auto;">추가</button>
+          <button type="button" id="exclusion-cancel" class="del-btn" style="display:none; flex:0 0 auto;">취소</button>
         </form>
         <div style="text-align:center;"><span class="save-msg" id="exclusionSaveMsg"></span></div>
       </div>
@@ -2689,16 +2698,47 @@ function renderAttendance(){
       }
     }
     else { tag = `<span class="tag tag-remote">${en.bonus ? '특별재택' : '정기재택'}</span>`; detail = '-'; }
+    const editBtn = (en.kind==='usage' || en.kind==='remote') ? `<button class="del-btn attendance-edit-btn" data-kind="${en.kind}" data-id="${en.id}">수정</button>` : '';
     return `<tr>
       <td class="num">${en.date}</td>
       <td>${tag}</td>
       <td class="num">${detail}</td>
       <td>${en.memo || ''}</td>
-      <td><button class="del-btn" data-kind="${en.kind}" data-id="${en.id}">삭제</button></td>
+      <td style="white-space:nowrap;">${editBtn}<button class="del-btn attendance-del-btn" data-kind="${en.kind}" data-id="${en.id}">삭제</button></td>
     </tr>`;
   }).join('');
   wrap.innerHTML = `<table><thead><tr><th>날짜</th><th>구분</th><th>일수</th><th>메모</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
-  wrap.querySelectorAll('.del-btn').forEach(btn=>{
+  wrap.querySelectorAll('.attendance-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const kind = btn.dataset.kind, id = btn.dataset.id;
+      if(kind==='usage'){
+        const en = attendance.leaveUsage.find(x=>x.id===id);
+        if(!en) return;
+        editingUsageId = id;
+        document.getElementById('u-date').value = en.date;
+        document.getElementById('u-end-date').value = '';
+        document.getElementById('u-type').value = en.type;
+        document.getElementById('u-type').dispatchEvent(new Event('change'));
+        if(en.subtype) document.getElementById('u-subtype').value = en.subtype;
+        if(en.days) document.getElementById('u-days').value = en.days;
+        document.getElementById('u-memo').value = en.memo || '';
+        document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '수정 완료';
+        document.getElementById('usage-cancel').style.display = 'inline-block';
+        document.getElementById('usageForm').scrollIntoView({behavior:'smooth', block:'center'});
+      } else if(kind==='remote'){
+        const en = attendance.remoteEntries.find(x=>x.id===id);
+        if(!en) return;
+        editingRemoteId = id;
+        document.getElementById('r-date').value = en.date;
+        document.getElementById('r-memo').value = en.memo || '';
+        document.getElementById('r-bonus').checked = !!en.bonus;
+        document.getElementById('remoteForm').querySelector('button[type="submit"]').textContent = '수정 완료';
+        document.getElementById('remote-cancel').style.display = 'inline-block';
+        document.getElementById('remoteForm').scrollIntoView({behavior:'smooth', block:'center'});
+      }
+    });
+  });
+  wrap.querySelectorAll('.attendance-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const kind = btn.dataset.kind, id = btn.dataset.id;
       if(kind==='grant') attendance.leaveGrants = attendance.leaveGrants.filter(x=>x.id!==id);
@@ -2746,11 +2786,31 @@ function renderExpense(){
       <td>${tag}</td>
       <td class="num">${won(Number(en.amount)||0)}</td>
       <td>${desc}</td>
-      <td><button class="del-btn" data-kind="${en.kind}" data-id="${en.id}">삭제</button></td>
+      <td style="white-space:nowrap;">
+        <button class="del-btn expense-edit-btn" data-kind="${en.kind}" data-id="${en.id}">수정</button>
+        <button class="del-btn expense-del-btn" data-kind="${en.kind}" data-id="${en.id}">삭제</button>
+      </td>
     </tr>`;
   }).join('');
   wrap.innerHTML = `<table><thead><tr><th>날짜</th><th>구분</th><th>금액</th><th>내용</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
-  wrap.querySelectorAll('.del-btn').forEach(btn=>{
+  wrap.querySelectorAll('.expense-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const kind = btn.dataset.kind, id = btn.dataset.id;
+      const listMap = { lunch: expense.lunchEntries, dinner: expense.dinnerEntries, taxi: expense.taxiEntries, other: expense.otherExpenses, prepaid: expense.prepaidEntries };
+      const en = listMap[kind].find(x=>x.id===id);
+      if(!en) return;
+      editingExpense = { kind, id };
+      const fields = EXPENSE_FIELD_MAP[kind];
+      document.getElementById(fields[0]).value = en.date;
+      document.getElementById(fields[1]).value = en.amount;
+      document.getElementById(fields[2]).value = kind==='other' ? (en.description||'') : (en.memo||'');
+      const form = document.getElementById(EXPENSE_FORM_MAP[kind]);
+      form.querySelector('button[type="submit"]').textContent = '수정 완료';
+      document.getElementById('exp-cancel-'+kind).style.display = 'inline-block';
+      form.scrollIntoView({behavior:'smooth', block:'center'});
+    });
+  });
+  wrap.querySelectorAll('.expense-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const kind = btn.dataset.kind, id = btn.dataset.id;
       if(kind==='lunch') expense.lunchEntries = expense.lunchEntries.filter(x=>x.id!==id);
@@ -2759,6 +2819,7 @@ function renderExpense(){
       if(kind==='other') expense.otherExpenses = expense.otherExpenses.filter(x=>x.id!==id);
       if(kind==='prepaid') expense.prepaidEntries = expense.prepaidEntries.filter(x=>x.id!==id);
       await saveExpense();
+      if(editingExpense.kind===kind && editingExpense.id===id) cancelExpenseEdit(kind);
       renderExpense();
     });
   });
@@ -2832,13 +2893,32 @@ function renderExclusionList(){
   const rows = monthList.map(x=>`<tr>
     <td class="num">${x.date}</td>
     <td><span class="tag tag-dinner">${x.reason}</span>${x.name ? ` <span style="font-size:11px; color:var(--ink-soft);">${escHtml(x.name)}</span>` : ''}</td>
-    <td><button class="del-btn exclusion-del-btn" data-id="${x.id}">삭제</button></td>
+    <td style="white-space:nowrap;"><button class="del-btn exclusion-edit-btn" data-id="${x.id}">수정</button><button class="del-btn exclusion-del-btn" data-id="${x.id}">삭제</button></td>
   </tr>`);
   renderPaginatedRows(wrap, '<tr><th>날짜</th><th>사유</th><th></th></tr>', rows, 10);
+  wrap.querySelectorAll('.exclusion-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const en = sharedExclusionDays.find(x=>x.id===btn.dataset.id);
+      if(!en) return;
+      editingExclusionId = en.id;
+      document.getElementById('ex-date').value = en.date;
+      document.getElementById('ex-reason').value = en.reason;
+      document.getElementById('ex-reason').dispatchEvent(new Event('change'));
+      document.getElementById('ex-name').value = en.name || '';
+      document.getElementById('exclusionForm').querySelector('button[type="submit"]').textContent = '수정 완료';
+      document.getElementById('exclusion-cancel').style.display = 'inline-block';
+      document.getElementById('exclusionForm').scrollIntoView({behavior:'smooth', block:'center'});
+    });
+  });
   wrap.querySelectorAll('.exclusion-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       sharedExclusionDays = sharedExclusionDays.filter(x=>x.id!==btn.dataset.id);
       await saveSharedExclusions();
+      if(editingExclusionId === btn.dataset.id){
+        editingExclusionId = null;
+        document.getElementById('exclusionForm').querySelector('button[type="submit"]').textContent = '추가';
+        document.getElementById('exclusion-cancel').style.display = 'none';
+      }
       renderExclusionList();
       renderExpense();
       renderWorkdaysSuggestion();
@@ -2979,14 +3059,35 @@ function renderScheduleList(){
       <td><span class="tag tag-usage">${e.type}</span></td>
       <td>${escHtml(e.memo || e.title || '')}</td>
       <td>${isShared ? '<span class="tag tag-grant">팀공유</span>' : '<span class="tag tag-usage">개인</span>'}</td>
-      <td><button class="del-btn" data-id="${e.id}">삭제</button></td>
+      <td style="white-space:nowrap;"><button class="del-btn schedule-edit-btn" data-id="${e.id}">수정</button><button class="del-btn schedule-del-btn" data-id="${e.id}">삭제</button></td>
     </tr>`;
   }).join('');
   wrap.innerHTML = `<table><thead><tr><th>날짜</th><th>시간</th><th>구분</th><th>메모</th><th>공유</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
-  wrap.querySelectorAll('.del-btn').forEach(btn=>{
+  wrap.querySelectorAll('.schedule-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const en = schedule.events.find(x=>x.id===btn.dataset.id);
+      if(!en) return;
+      editingScheduleId = en.id;
+      document.getElementById('sc-date').value = en.date;
+      document.getElementById('sc-start').value = en.startTime || '';
+      document.getElementById('sc-end').value = en.endTime || '';
+      document.getElementById('sc-type').value = en.type;
+      document.getElementById('sc-memo').value = en.memo || '';
+      document.getElementById('sc-share').checked = en.shared !== false;
+      document.getElementById('scheduleForm').querySelector('button[type="submit"]').textContent = '수정 완료';
+      document.getElementById('schedule-cancel').style.display = 'inline-block';
+      document.getElementById('scheduleForm').scrollIntoView({behavior:'smooth', block:'center'});
+    });
+  });
+  wrap.querySelectorAll('.schedule-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       schedule.events = schedule.events.filter(x=>x.id!==btn.dataset.id);
       await saveSchedule();
+      if(editingScheduleId === btn.dataset.id){
+        editingScheduleId = null;
+        document.getElementById('scheduleForm').querySelector('button[type="submit"]').textContent = '일정 추가';
+        document.getElementById('schedule-cancel').style.display = 'none';
+      }
       renderScheduleList();
       renderCalendar();
     });
@@ -3532,6 +3633,8 @@ familyPresetSelect.addEventListener('change', ()=>{
   document.getElementById('u-memo').value = label.split(' · ')[0];
 });
 
+let editingUsageId = null;
+
 document.getElementById('usageForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
   const date = document.getElementById('u-date').value;
@@ -3542,6 +3645,21 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
   const days = isSpecial ? (Number(document.getElementById('u-days').value) || 1) : null;
   const memo = document.getElementById('u-memo').value.trim();
   if(!date) return;
+
+  if(editingUsageId){
+    const en = attendance.leaveUsage.find(x=>x.id===editingUsageId);
+    if(en){ en.date=date; en.type=type; en.subtype=subtype; en.days=days; en.memo=memo; }
+    editingUsageId = null;
+    document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '추가';
+    document.getElementById('usage-cancel').style.display = 'none';
+    document.getElementById('usageSaveMsg').textContent = '수정됨';
+    await saveAttendance();
+    document.getElementById('u-memo').value='';
+    document.getElementById('u-end-date').value='';
+    renderAll();
+    setTimeout(()=>document.getElementById('usageSaveMsg').textContent='',1800);
+    return;
+  }
 
   let addedCount = 0;
   if((type === '연차' || isSpecial) && endDate && endDate > date){
@@ -3568,19 +3686,75 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
   renderAll();
 });
 
+document.getElementById('usage-cancel').addEventListener('click', ()=>{
+  editingUsageId = null;
+  document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '추가';
+  document.getElementById('usage-cancel').style.display = 'none';
+  document.getElementById('u-memo').value='';
+  document.getElementById('u-end-date').value='';
+});
+
+let editingRemoteId = null;
+
 document.getElementById('remoteForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
   const date = document.getElementById('r-date').value;
   const memo = document.getElementById('r-memo').value.trim();
   const bonus = document.getElementById('r-bonus').checked;
   if(!date) return;
-  attendance.remoteEntries.push({id:genId(), date, memo, bonus});
+  if(editingRemoteId){
+    const en = attendance.remoteEntries.find(x=>x.id===editingRemoteId);
+    if(en){ en.date=date; en.memo=memo; en.bonus=bonus; }
+    editingRemoteId = null;
+    document.getElementById('remoteForm').querySelector('button[type="submit"]').textContent = '추가';
+    document.getElementById('remote-cancel').style.display = 'none';
+    document.getElementById('remoteSaveMsg').textContent = '수정됨';
+  } else {
+    attendance.remoteEntries.push({id:genId(), date, memo, bonus});
+    document.getElementById('remoteSaveMsg').textContent = '추가됨';
+  }
   await saveAttendance();
-  document.getElementById('remoteSaveMsg').textContent = '추가됨';
   setTimeout(()=>document.getElementById('remoteSaveMsg').textContent='',1200);
   document.getElementById('r-memo').value='';
   document.getElementById('r-bonus').checked = false;
   renderAll();
+});
+
+document.getElementById('remote-cancel').addEventListener('click', ()=>{
+  editingRemoteId = null;
+  document.getElementById('remoteForm').querySelector('button[type="submit"]').textContent = '추가';
+  document.getElementById('remote-cancel').style.display = 'none';
+  document.getElementById('r-memo').value='';
+  document.getElementById('r-bonus').checked = false;
+});
+
+let editingExpense = { kind: null, id: null };
+
+const EXPENSE_FORM_MAP = { lunch:'lunchForm', dinner:'dinnerForm', taxi:'taxiForm', other:'otherExpenseForm', prepaid:'prepaidForm' };
+const EXPENSE_FIELD_MAP = {
+  lunch: ['l-date','l-amount','l-memo'],
+  dinner: ['d-date','d-amount','d-memo'],
+  taxi: ['tx-date','tx-amount','tx-memo'],
+  other: ['oe-date','oe-amount','oe-desc'],
+  prepaid: ['pp-date','pp-amount','pp-memo']
+};
+
+function cancelExpenseEdit(kind){
+  editingExpense = { kind: null, id: null };
+  const form = document.getElementById(EXPENSE_FORM_MAP[kind]);
+  if(form) form.querySelector('button[type="submit"]').textContent = '추가';
+  const cancelBtn = document.getElementById('exp-cancel-'+kind);
+  if(cancelBtn) cancelBtn.style.display = 'none';
+  const fields = EXPENSE_FIELD_MAP[kind];
+  if(fields){
+    document.getElementById(fields[1]).value = '';
+    document.getElementById(fields[2]).value = '';
+  }
+}
+
+Object.keys(EXPENSE_FORM_MAP).forEach(kind=>{
+  const btn = document.getElementById('exp-cancel-'+kind);
+  if(btn) btn.addEventListener('click', ()=> cancelExpenseEdit(kind));
 });
 
 document.getElementById('lunchForm').addEventListener('submit', async (e)=>{
@@ -3589,9 +3763,16 @@ document.getElementById('lunchForm').addEventListener('submit', async (e)=>{
   const amount = Number(document.getElementById('l-amount').value);
   const memo = document.getElementById('l-memo').value.trim();
   if(!date || !amount) return;
-  expense.lunchEntries.push({id:genId(), date, amount, memo});
+  if(editingExpense.kind==='lunch'){
+    const en = expense.lunchEntries.find(x=>x.id===editingExpense.id);
+    if(en){ en.date=date; en.amount=amount; en.memo=memo; }
+    cancelExpenseEdit('lunch');
+    document.getElementById('lunchSaveMsg').textContent = '수정됨';
+  } else {
+    expense.lunchEntries.push({id:genId(), date, amount, memo});
+    document.getElementById('lunchSaveMsg').textContent = '추가됨';
+  }
   await saveExpense();
-  document.getElementById('lunchSaveMsg').textContent = '추가됨';
   setTimeout(()=>document.getElementById('lunchSaveMsg').textContent='',1200);
   document.getElementById('l-amount').value='';
   document.getElementById('l-memo').value='';
@@ -3604,9 +3785,16 @@ document.getElementById('dinnerForm').addEventListener('submit', async (e)=>{
   const amount = Number(document.getElementById('d-amount').value);
   const memo = document.getElementById('d-memo').value.trim();
   if(!date || !amount) return;
-  expense.dinnerEntries.push({id:genId(), date, amount, memo});
+  if(editingExpense.kind==='dinner'){
+    const en = expense.dinnerEntries.find(x=>x.id===editingExpense.id);
+    if(en){ en.date=date; en.amount=amount; en.memo=memo; }
+    cancelExpenseEdit('dinner');
+    document.getElementById('dinnerSaveMsg').textContent = '수정됨';
+  } else {
+    expense.dinnerEntries.push({id:genId(), date, amount, memo});
+    document.getElementById('dinnerSaveMsg').textContent = '추가됨';
+  }
   await saveExpense();
-  document.getElementById('dinnerSaveMsg').textContent = '추가됨';
   setTimeout(()=>document.getElementById('dinnerSaveMsg').textContent='',1200);
   document.getElementById('d-amount').value=''; document.getElementById('d-memo').value='';
   renderExpense();
@@ -3618,13 +3806,22 @@ document.getElementById('taxiForm').addEventListener('submit', async (e)=>{
   const amount = Number(document.getElementById('tx-amount').value);
   const memo = document.getElementById('tx-memo').value.trim();
   if(!date || !amount) return;
-  expense.taxiEntries.push({id:genId(), date, amount, memo});
+  if(editingExpense.kind==='taxi'){
+    const en = expense.taxiEntries.find(x=>x.id===editingExpense.id);
+    if(en){ en.date=date; en.amount=amount; en.memo=memo; }
+    cancelExpenseEdit('taxi');
+    document.getElementById('taxiSaveMsg').textContent = '수정됨';
+  } else {
+    expense.taxiEntries.push({id:genId(), date, amount, memo});
+    document.getElementById('taxiSaveMsg').textContent = '추가됨';
+  }
   await saveExpense();
-  document.getElementById('taxiSaveMsg').textContent = '추가됨';
   setTimeout(()=>document.getElementById('taxiSaveMsg').textContent='',1200);
   document.getElementById('tx-amount').value=''; document.getElementById('tx-memo').value='';
   renderExpense();
 });
+
+let editingScheduleId = null;
 
 document.getElementById('scheduleForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
@@ -3635,9 +3832,18 @@ document.getElementById('scheduleForm').addEventListener('submit', async (e)=>{
   const memo = document.getElementById('sc-memo').value.trim();
   const shared = document.getElementById('sc-share').checked;
   if(!date) return;
-  schedule.events.push({id:genId(), date, startTime, endTime, type, memo, shared});
+  if(editingScheduleId){
+    const en = schedule.events.find(x=>x.id===editingScheduleId);
+    if(en){ en.date=date; en.startTime=startTime; en.endTime=endTime; en.type=type; en.memo=memo; en.shared=shared; }
+    editingScheduleId = null;
+    document.getElementById('scheduleForm').querySelector('button[type="submit"]').textContent = '일정 추가';
+    document.getElementById('schedule-cancel').style.display = 'none';
+    document.getElementById('scheduleSaveMsg').textContent = '수정됨';
+  } else {
+    schedule.events.push({id:genId(), date, startTime, endTime, type, memo, shared});
+    document.getElementById('scheduleSaveMsg').textContent = '추가됨';
+  }
   await saveSchedule();
-  document.getElementById('scheduleSaveMsg').textContent = '추가됨';
   setTimeout(()=>document.getElementById('scheduleSaveMsg').textContent='',1200);
   document.getElementById('sc-memo').value='';
   document.getElementById('sc-start').value='';
@@ -3646,15 +3852,31 @@ document.getElementById('scheduleForm').addEventListener('submit', async (e)=>{
   renderCalendar();
 });
 
+document.getElementById('schedule-cancel').addEventListener('click', ()=>{
+  editingScheduleId = null;
+  document.getElementById('scheduleForm').querySelector('button[type="submit"]').textContent = '일정 추가';
+  document.getElementById('schedule-cancel').style.display = 'none';
+  document.getElementById('sc-memo').value='';
+  document.getElementById('sc-start').value='';
+  document.getElementById('sc-end').value='';
+});
+
 document.getElementById('otherExpenseForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
   const date = document.getElementById('oe-date').value;
   const description = document.getElementById('oe-desc').value.trim();
   const amount = Number(document.getElementById('oe-amount').value);
   if(!date || !amount) return;
-  expense.otherExpenses.push({id:genId(), date, description, amount});
+  if(editingExpense.kind==='other'){
+    const en = expense.otherExpenses.find(x=>x.id===editingExpense.id);
+    if(en){ en.date=date; en.amount=amount; en.description=description; }
+    cancelExpenseEdit('other');
+    document.getElementById('otherExpenseSaveMsg').textContent = '수정됨';
+  } else {
+    expense.otherExpenses.push({id:genId(), date, description, amount});
+    document.getElementById('otherExpenseSaveMsg').textContent = '추가됨';
+  }
   await saveExpense();
-  document.getElementById('otherExpenseSaveMsg').textContent = '추가됨';
   setTimeout(()=>document.getElementById('otherExpenseSaveMsg').textContent='',1200);
   document.getElementById('oe-desc').value=''; document.getElementById('oe-amount').value='';
   renderExpense();
@@ -3666,13 +3888,22 @@ document.getElementById('prepaidForm').addEventListener('submit', async (e)=>{
   const memo = document.getElementById('pp-memo').value.trim();
   const amount = Number(document.getElementById('pp-amount').value);
   if(!date || !amount) return;
-  expense.prepaidEntries.push({id:genId(), date, memo, amount});
+  if(editingExpense.kind==='prepaid'){
+    const en = expense.prepaidEntries.find(x=>x.id===editingExpense.id);
+    if(en){ en.date=date; en.amount=amount; en.memo=memo; }
+    cancelExpenseEdit('prepaid');
+    document.getElementById('prepaidSaveMsg').textContent = '수정됨';
+  } else {
+    expense.prepaidEntries.push({id:genId(), date, memo, amount});
+    document.getElementById('prepaidSaveMsg').textContent = '추가됨';
+  }
   await saveExpense();
-  document.getElementById('prepaidSaveMsg').textContent = '추가됨';
   setTimeout(()=>document.getElementById('prepaidSaveMsg').textContent='',1200);
   document.getElementById('pp-memo').value=''; document.getElementById('pp-amount').value='';
   renderExpense();
 });
+
+let editingExclusionId = null;
 
 document.getElementById('exclusionForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
@@ -3680,15 +3911,31 @@ document.getElementById('exclusionForm').addEventListener('submit', async (e)=>{
   const reason = document.getElementById('ex-reason').value;
   const name = document.getElementById('ex-name').value.trim();
   if(!date) return;
-  sharedExclusionDays.push({id:genId(), date, reason, name});
+  if(editingExclusionId){
+    const en = sharedExclusionDays.find(x=>x.id===editingExclusionId);
+    if(en){ en.date=date; en.reason=reason; en.name=name; }
+    editingExclusionId = null;
+    document.getElementById('exclusionForm').querySelector('button[type="submit"]').textContent = '추가';
+    document.getElementById('exclusion-cancel').style.display = 'none';
+    document.getElementById('exclusionSaveMsg').textContent = '수정됨';
+  } else {
+    sharedExclusionDays.push({id:genId(), date, reason, name});
+    document.getElementById('exclusionSaveMsg').textContent = '추가됨';
+  }
   await saveSharedExclusions();
-  document.getElementById('exclusionSaveMsg').textContent = '추가됨';
   setTimeout(()=>document.getElementById('exclusionSaveMsg').textContent='',1200);
   document.getElementById('ex-name').value = '';
   renderExclusionList();
   renderExpense();
   renderWorkdaysSuggestion();
   renderCalendar();
+});
+
+document.getElementById('exclusion-cancel').addEventListener('click', ()=>{
+  editingExclusionId = null;
+  document.getElementById('exclusionForm').querySelector('button[type="submit"]').textContent = '추가';
+  document.getElementById('exclusion-cancel').style.display = 'none';
+  document.getElementById('ex-name').value = '';
 });
 
 document.getElementById('ex-reason').addEventListener('change', (e)=>{
