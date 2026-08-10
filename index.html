@@ -465,6 +465,7 @@
       <button type="button" id="toggleManagementBtn" class="tab-btn tg-mgmt-btn">Management</button>
       <button type="button" id="toggleStaffBtn" class="tab-btn tg-staff-btn">Staff Dashboard</button>
       <button type="button" id="mailNotifyBtn" title="관리자에게 메일로 알리기" style="width:38px; height:38px; border-radius:50%; border:none; background:var(--coral); color:#fff; font-size:17px; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 4px 10px -3px rgba(240,80,110,0.55); cursor:pointer;">📧</button>
+      <button type="button" id="quickConnectBtn" title="Google 계정 연결 상태 · 클릭해서 연결" style="width:38px; height:38px; border-radius:50%; border:none; background:var(--ink-soft); color:#fff; font-size:17px; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 4px 10px -3px rgba(29,30,51,0.35); cursor:pointer;">🔌</button>
     </div>
 
     <div id="managementSubRow" style="display:none; gap:9px; align-items:stretch; justify-content:center; flex-wrap:wrap; margin-top:9px;">
@@ -4640,6 +4641,16 @@ function gdriveSetStatus(text){
   if(el) el.textContent = text;
   const el2 = document.getElementById('gdriveStatusMsgPersonal');
   if(el2) el2.textContent = text;
+  updateQuickConnectBtn();
+}
+
+function updateQuickConnectBtn(){
+  const btn = document.getElementById('quickConnectBtn');
+  if(!btn) return;
+  const connected = !!gdriveAccessToken;
+  btn.style.background = connected ? '#16A34A' : 'var(--ink-soft)';
+  btn.textContent = connected ? '✅' : '🔌';
+  btn.title = connected ? 'Google 계정 연결됨' : 'Google 계정 연결 안 됨 · 클릭해서 연결';
 }
 
 function gdriveUpdateFileLink(){
@@ -4837,6 +4848,19 @@ document.getElementById('gdriveConnectBtnPersonal').addEventListener('click', ()
   }
   gdriveConnect(false);
 });
+
+document.getElementById('quickConnectBtn').addEventListener('click', ()=>{
+  if(gdriveAccessToken){
+    alert('이미 Google 계정에 연결되어 있어요.');
+    return;
+  }
+  const mainField = document.getElementById('gdrive-client-id');
+  if(!mainField.value.trim()){
+    alert('아직 Google OAuth 클라이언트 ID가 없어요. 개인설정 탭에서 먼저 입력해주세요. (관리자에게 문의하시면 알려드릴 수 있어요)');
+    return;
+  }
+  gdriveConnect(false);
+});
 document.getElementById('gdriveConnectBtnLocked').addEventListener('click', ()=>{
   const mainField = document.getElementById('gdrive-client-id');
   const lockedField = document.getElementById('gdrive-client-id-locked');
@@ -4892,6 +4916,7 @@ document.getElementById('mailNotifyBtn').addEventListener('click', ()=>{
 loadAll();
 applyPermissionUI();
 updateNavVisibility();
+updateQuickConnectBtn();
 if(typeof twemoji !== 'undefined') twemoji.parse(document.body, {folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'});
 </script>
 </body>
