@@ -456,6 +456,7 @@
   <div id="landingHeader" style="text-align:center; margin-bottom:20px;">
     <div style="font-size:38px; font-weight:800; letter-spacing:-0.02em; color:var(--ink);">Tax.J</div>
     <p class="hint" style="font-size:12.5px; color:var(--ink-soft); margin:8px 0 0;">아래 메뉴를 눌러 원하는 화면으로 이동하세요.</p>
+    <button type="button" id="landingConnectBtn" style="background:var(--indigo); color:#fff; margin-top:14px; border:none; border-radius:24px; padding:11px 26px; font-size:14px; font-weight:800; font-family:'Pretendard',sans-serif; cursor:pointer; box-shadow:0 4px 14px -3px rgba(91,95,239,0.6);">🔑 로그인</button>
   </div>
 
   <nav class="tabs">
@@ -1533,6 +1534,16 @@
       </div>
     </div>
 
+    </div>
+  </section>
+
+  <!-- 로그인 필요 공통 잠금화면 -->
+  <section id="tab-loginlock" class="tab-panel">
+    <div style="text-align:center; padding:70px 20px;">
+      <div style="font-size:44px; margin-bottom:14px;">🔒</div>
+      <h2 style="font-size:20px; font-weight:900; color:var(--navy); margin-bottom:8px;">Google 계정 로그인이 필요해요</h2>
+      <p class="hint" style="max-width:360px; margin:0 auto 20px;">홈 화면 말고 다른 메뉴들은 팀 데이터와 연결되어 있어서, 로그인해야 볼 수 있어요.</p>
+      <button type="button" id="loginLockConnectBtn" class="submit-btn" style="width:auto; padding:10px 22px;">🔗 Google 계정으로 로그인</button>
     </div>
   </section>
 </div>
@@ -3474,6 +3485,8 @@ document.getElementById('toggleStaffBtn').addEventListener('click', ()=>{
   }
 });
 
+let pendingTabAfterLogin = null;
+
 document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     if(!btn.dataset.tab) return;
@@ -3489,7 +3502,9 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     document.querySelectorAll('.tab-btn').forEach(b=>{ if(b.dataset.tab) b.classList.remove('active'); });
     document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
     document.querySelectorAll(`.tab-btn[data-tab="${btn.dataset.tab}"]`).forEach(b=>b.classList.add('active'));
-    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+    const needsLogin = btn.dataset.tab !== 'home' && !gdriveAccessToken;
+    pendingTabAfterLogin = needsLogin ? btn.dataset.tab : null;
+    document.getElementById(needsLogin ? 'tab-loginlock' : 'tab-'+btn.dataset.tab).classList.add('active');
   });
 });
 
@@ -4932,12 +4947,15 @@ function gdriveSetStatus(text){
 }
 
 function updateQuickConnectBtn(){
-  const btn = document.getElementById('quickConnectBtn');
-  if(!btn) return;
   const connected = !!gdriveAccessToken;
-  btn.style.background = connected ? '#16A34A' : 'var(--ink-soft)';
-  btn.textContent = connected ? '✅ 연결됨' : '🔌 로그인';
-  btn.title = connected ? 'Google 계정 연결됨' : 'Google 계정 연결 안 됨 · 클릭해서 로그인';
+  ['quickConnectBtn','landingConnectBtn'].forEach(id=>{
+    const btn = document.getElementById(id);
+    if(!btn) return;
+    btn.style.background = connected ? '#16A34A' : 'var(--indigo)';
+    btn.style.boxShadow = connected ? '0 4px 12px -4px rgba(22,163,74,0.5)' : '0 4px 14px -3px rgba(91,95,239,0.6)';
+    btn.textContent = connected ? '✅ 연결됨' : '🔑 로그인';
+    btn.title = connected ? 'Google 계정 연결됨' : 'Google 계정 연결 안 됨 · 클릭해서 로그인';
+  });
 }
 
 function gdriveUpdateFileLink(){
@@ -5089,6 +5107,11 @@ function gdriveConnect(silent){
       gdriveSetStatus('연결됨 · 동기화 중...');
       applyPermissionUI();
       updatePolicyLockUI(); // 로그인 자체는 성공했으니, 파일 동기화 결과와 무관하게 즉시 잠금 해제
+      if(pendingTabAfterLogin){
+        const targetTab = pendingTabAfterLogin;
+        pendingTabAfterLogin = null;
+        document.querySelector(`.tab-btn[data-tab="${targetTab}"]`)?.click();
+      }
       try{
         await gdriveEnsureFile();
         await gdrivePull();
@@ -5147,6 +5170,26 @@ document.getElementById('quickConnectBtn').addEventListener('click', ()=>{
   const mainField = document.getElementById('gdrive-client-id');
   if(!mainField.value.trim()){
     alert('아직 Google OAuth 클라이언트 ID가 없어요. 개인설정 탭에서 먼저 입력해주세요. (관리자에게 문의하시면 알려드릴 수 있어요)');
+    return;
+  }
+  gdriveConnect(false);
+});
+document.getElementById('loginLockConnectBtn').addEventListener('click', ()=>{
+  const mainField = document.getElementById('gdrive-client-id');
+  if(!mainField.value.trim()){
+    alert('아직 Google OAuth 클라이언트 ID가 없어요. 관리자에게 문의해주세요.');
+    return;
+  }
+  gdriveConnect(false);
+});
+document.getElementById('landingConnectBtn').addEventListener('click', ()=>{
+  if(gdriveAccessToken){
+    alert('이미 Google 계정에 연결되어 있어요.');
+    return;
+  }
+  const mainField = document.getElementById('gdrive-client-id');
+  if(!mainField.value.trim()){
+    alert('아직 Google OAuth 클라이언트 ID가 없어요. 관리자에게 문의해주세요.');
     return;
   }
   gdriveConnect(false);
