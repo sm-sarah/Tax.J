@@ -5087,6 +5087,8 @@ function gdriveConnect(silent){
       gdriveAccessToken = resp.access_token;
       document.getElementById('gdriveSyncBtn').disabled = false;
       gdriveSetStatus('연결됨 · 동기화 중...');
+      applyPermissionUI();
+      updatePolicyLockUI(); // 로그인 자체는 성공했으니, 파일 동기화 결과와 무관하게 즉시 잠금 해제
       try{
         await gdriveEnsureFile();
         await gdrivePull();
@@ -5096,9 +5098,10 @@ function gdriveConnect(silent){
         gdriveSetStatus('연결됨 · 방금 동기화함' + (currentUserEmail ? ` (${currentUserEmail}${isCurrentUserAdmin ? ' · 관리자' : ''})` : ''));
         gdriveUpdateFileLink();
         updatePolicyLockUI();
+        renderAll();
       }catch(err){
         console.error('Drive 연동 오류', err);
-        gdriveSetStatus('오류: ' + err.message);
+        gdriveSetStatus('로그인은 됐지만 데이터 동기화 실패: ' + err.message + ' (관리자에게 드라이브 파일 편집 권한을 요청해주세요)');
       }
     }
   });
