@@ -829,6 +829,7 @@
         <div class="card-icon">💰</div>
         <div class="card-label">미사용분</div>
         <div class="card-value num" id="naverPayDisplay">0원</div>
+        <div class="card-sub" id="naverPayCarrySub"></div>
       </div>
       <div class="card card-indigo">
         <div class="card-icon">🧾</div>
@@ -897,7 +898,13 @@
         <h3>차액정산</h3>
         <form id="prepaidForm">
           <div class="field"><label>날짜</label><input type="date" id="pp-date" required min="2015-01-01" max="2099-12-31"></div>
-          <div class="field"><label>금액 (원) <span style="font-weight:400; color:var(--ink-soft);">차감이면 마이너스로</span></label><input type="number" id="pp-amount" class="num-input" step="1" required placeholder="예: -50000"></div>
+          <div class="field"><label>정산방식</label>
+            <select id="pp-method">
+              <option value="cash">현금 청구액에 반영</option>
+              <option value="meal">식대·네이버페이에 반영</option>
+            </select>
+          </div>
+          <div class="field"><label>금액 (원) <span style="font-weight:400; color:var(--ink-soft);">더 받을 금액이면 +, 덜 받을 금액(차감)이면 -</span></label><input type="number" id="pp-amount" class="num-input" step="1" required placeholder="예: -50000"></div>
           <div class="field"><label>내용</label><input type="text" id="pp-memo" placeholder="예: 7월분 착오지급"></div>
           <button type="submit" class="submit-btn">추가</button>
           <button type="button" id="exp-cancel-prepaid" class="del-btn" style="display:none; margin-top:6px;">취소</button>
@@ -2724,14 +2731,31 @@ function getLunchLimitFor(monthStr){
   return { dailyAmount: Number(applicable[0].dailyAmount)||0 };
 }
 
-function calcExpenseSummary(monthStr){
+function nextMonthStr(monthStr){
+  const [y,m] = monthStr.split('-').map(Number);
+  const d = new Date(y, m, 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+function getEarliestExpenseMonth(){
+  const dates = [];
+  (expense.lunchEntries||[]).forEach(e=>dates.push(e.date));
+  (expense.dinnerEntries||[]).forEach(e=>dates.push(e.date));
+  (expense.otherExpenses||[]).forEach(e=>dates.push(e.date));
+  (expense.taxiEntries||[]).forEach(e=>dates.push(e.date));
+  (expense.prepaidEntries||[]).forEach(e=>dates.push(e.date));
+  if(!dates.length) return null;
+  dates.sort();
+  return dates[0].slice(0,7);
+}
+
+function calcExpenseMonthRaw(monthStr){
   const wd = calcWorkdays(monthStr);
   const workdays = wd.workdays;
   const { dailyAmount } = getLunchLimitFor(monthStr);
   const monthlyLimit = workdays * dailyAmount;
   const lunchMonth = expense.lunchEntries.filter(e => e.date.startsWith(monthStr));
   const lunchSpend = lunchMonth.reduce((s,e)=>s+Number(e.amount||0),0);
-  const naverPay = Math.max(0, monthlyLimit - lunchSpend);
   const lunchOver = Math.max(0, lunchSpend - monthlyLimit);
   const dinnerMonth = expense.dinnerEntries.filter(e => e.date.startsWith(monthStr));
   const dinnerTotal = dinnerMonth.reduce((s,e)=>s+Number(e.amount||0),0);
@@ -2741,11 +2765,47 @@ function calcExpenseSummary(monthStr){
   const taxiTotal = taxiMonth.reduce((s,e)=>s+Number(e.amount||0),0);
   const prepaidMonth = (expense.prepaidEntries||[]).filter(e => e.date.startsWith(monthStr));
   const prepaidTotal = prepaidMonth.reduce((s,e)=>s+Number(e.amount||0),0);
+  const prepaidCashTotal = prepaidMonth.filter(e=>(e.method||'cash')==='cash').reduce((s,e)=>s+Number(e.amount||0),0);
+  const prepaidMealTotal = prepaidMonth.filter(e=>e.method==='meal').reduce((s,e)=>s+Number(e.amount||0),0);
+  const baseCash = lunchSpend + dinnerTotal + otherExpenseTotal + taxiTotal;
+  const baseMeal = Math.max(0, monthlyLimit - lunchSpend);
   return {
     workdays, weekdays: wd.weekdays, deductedDays: wd.noLunchDays + wd.exclusionCount,
-    dailyAmount, monthlyLimit, lunchSpend, naverPay, lunchOver, dinnerTotal,
+    dailyAmount, monthlyLimit, lunchSpend, lunchOver, dinnerTotal,
     lunchMonth, dinnerMonth, otherExpenseMonth, otherExpenseTotal, taxiMonth, taxiTotal,
-    prepaidMonth, prepaidTotal
+    prepaidMonth, prepaidTotal, prepaidCashTotal, prepaidMealTotal,
+    cashRaw: baseCash + prepaidCashTotal,
+    mealRaw: baseMeal + prepaidMealTotal
+  };
+}
+
+function calcExpenseSummary(monthStr){
+  const earliest = getEarliestExpenseMonth();
+  let cashCarry = 0, mealCarry = 0;
+  if(earliest && earliest < monthStr){
+    let cur = earliest;
+    let guard = 0;
+    while(cur < monthStr && guard < 600){ // 최대 50년치까지만 순회 (무한루프 방지)
+      const r = calcExpenseMonthRaw(cur);
+      const cashFinal = r.cashRaw + cashCarry;
+      const mealFinal = r.mealRaw + mealCarry;
+      cashCarry = cashFinal < 0 ? cashFinal : 0;
+      mealCarry = mealFinal < 0 ? mealFinal : 0;
+      cur = nextMonthStr(cur);
+      guard++;
+    }
+  }
+  const r = calcExpenseMonthRaw(monthStr);
+  const cashFinal = r.cashRaw + cashCarry;
+  const mealFinal = r.mealRaw + mealCarry;
+  return {
+    ...r,
+    naverPay: Math.max(0, mealFinal),
+    cardRequest: Math.max(0, cashFinal),
+    cashCarryIn: cashCarry,
+    mealCarryIn: mealCarry,
+    cashCarryOut: cashFinal < 0 ? cashFinal : 0,
+    mealCarryOut: mealFinal < 0 ? mealFinal : 0
   };
 }
 
@@ -3061,6 +3121,7 @@ function renderExpense(){
   document.getElementById('lunchLimitDisplay').textContent = won(s.monthlyLimit);
   document.getElementById('lunchSpendCardDisplay').textContent = won(s.lunchSpend);
   document.getElementById('naverPayDisplay').textContent = won(s.naverPay);
+  document.getElementById('naverPayCarrySub').textContent = s.mealCarryOut<0 ? `다음달로 ${won(Math.abs(s.mealCarryOut))} 이월` : (s.mealCarryIn<0 ? `전월 이월분 ${won(s.mealCarryIn)} 포함` : '');
   const etcTotal = s.dinnerTotal + s.otherExpenseTotal + s.taxiTotal;
   document.getElementById('etcExpenseTotalDisplay').textContent = won(etcTotal);
   document.getElementById('prepaidTotalDisplay').textContent = won(s.prepaidTotal);
@@ -3082,7 +3143,7 @@ function renderExpense(){
     if(en.kind==='lunch') tag = `<span class="tag tag-lunch">점심식대</span>`;
     else if(en.kind==='dinner') tag = `<span class="tag tag-dinner">저녁식대(야근)</span>`;
     else if(en.kind==='taxi') tag = `<span class="tag tag-dinner">택시비(야근)</span>`;
-    else if(en.kind==='prepaid') tag = `<span class="tag" style="background:#E2E8F0; color:#334155;">차액정산</span>`;
+    else if(en.kind==='prepaid') tag = `<span class="tag" style="background:#E2E8F0; color:#334155;">차액정산(${(en.method||'cash')==='meal' ? '식대' : '현금'})</span>`;
     else tag = `<span class="tag tag-usage">업무경비</span>`;
     const desc = en.kind==='other' ? (en.description || '') : (en.memo || '');
     return `<tr>
@@ -3108,6 +3169,7 @@ function renderExpense(){
       document.getElementById(fields[0]).value = en.date;
       document.getElementById(fields[1]).value = en.amount;
       document.getElementById(fields[2]).value = kind==='other' ? (en.description||'') : (en.memo||'');
+      if(kind==='prepaid') document.getElementById('pp-method').value = en.method || 'cash';
       const form = document.getElementById(EXPENSE_FORM_MAP[kind]);
       form.querySelector('button[type="submit"]').textContent = '수정 완료';
       document.getElementById('exp-cancel-'+kind).style.display = 'inline-block';
@@ -3469,10 +3531,10 @@ function buildExpenseReportHTML(monthStr){
     || `<tr><td colspan="3" style="text-align:center; color:#888;">사용 내역 없음</td></tr>`;
 
   const prepaidRows = [...s.prepaidMonth].sort((a,b)=> a.date < b.date ? -1 : 1)
-    .map(e=>`<tr><td>${e.date}</td><td class="num">${Number(e.amount)<0 ? '−' : '+'}${won(Math.abs(Number(e.amount)||0))}</td><td>${escHtml(e.memo||'')}</td></tr>`).join('')
-    || `<tr><td colspan="3" style="text-align:center; color:#888;">차액정산 내역 없음</td></tr>`;
+    .map(e=>`<tr><td>${e.date}</td><td class="num">${Number(e.amount)<0 ? '−' : '+'}${won(Math.abs(Number(e.amount)||0))}</td><td>${(e.method||'cash')==='meal' ? '식대·네이버페이' : '현금 청구액'}</td><td>${escHtml(e.memo||'')}</td></tr>`).join('')
+    || `<tr><td colspan="4" style="text-align:center; color:#888;">차액정산 내역 없음</td></tr>`;
 
-  const cardRequest = Math.max(0, s.lunchSpend + s.dinnerTotal + s.otherExpenseTotal + s.taxiTotal + s.prepaidTotal);
+  const cardRequest = s.cardRequest;
 
   const monthUsageForBreakdown = attendance.leaveUsage.filter(u=>u.date.startsWith(monthStr));
   const bAnnual = monthUsageForBreakdown.filter(u=>u.type==='연차').length;
@@ -3505,14 +3567,14 @@ function buildExpenseReportHTML(monthStr){
             <span class="label">최종 청구액</span>
             <span class="amount">${won(cardRequest)}</span>
           </div>
-          <p class="doc-note" style="margin:2px 0 0; font-size:9px;">※ 점심식대·저녁식대·택시비·경비 사용분 → 급여계좌로 기준월 익월 10일 현금 지급${s.lunchOver>0 ? `<br>※ 점심식대 한도 초과액 ${won(s.lunchOver)}은 개인 부담분으로 제외됨` : ''}</p>
+          <p class="doc-note" style="margin:2px 0 0; font-size:9px;">※ 점심식대·저녁식대·택시비·경비 사용분 → 급여계좌로 기준월 익월 10일 현금 지급${s.lunchOver>0 ? `<br>※ 점심식대 한도 초과액 ${won(s.lunchOver)}은 개인 부담분으로 제외됨` : ''}${s.prepaidCashTotal ? `<br>※ 차액정산(현금) ${s.prepaidCashTotal>0?'+':''}${won(s.prepaidCashTotal)} 반영됨` : ''}${s.cashCarryIn<0 ? `<br>※ 전월 이월된 차감분 ${won(s.cashCarryIn)} 포함` : ''}${s.cashCarryOut<0 ? `<br>※ 이번 달에 다 못 뺀 ${won(Math.abs(s.cashCarryOut))}은 다음 달로 이월됨` : ''}</p>
         </div>
         <div class="total-box" style="--doc-accent:var(--guide-wine); --doc-accent-bg:var(--guide-wine-bg); flex:1; flex-direction:column; align-items:flex-start; gap:4px; margin:0;">
           <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
             <span class="label">식대 미사용분</span>
             <span class="amount">${won(s.naverPay)}</span>
           </div>
-          <p class="doc-note" style="margin:2px 0 0; font-size:9px;">※ 점심식대 월한도 내 미사용분 → 네이버페이로 별도 지급</p>
+          <p class="doc-note" style="margin:2px 0 0; font-size:9px;">※ 점심식대 월한도 내 미사용분 → 네이버페이로 별도 지급${s.prepaidMealTotal ? `<br>※ 차액정산(식대) ${s.prepaidMealTotal>0?'+':''}${won(s.prepaidMealTotal)} 반영됨` : ''}${s.mealCarryIn<0 ? `<br>※ 전월 이월된 차감분 ${won(s.mealCarryIn)} 포함` : ''}${s.mealCarryOut<0 ? `<br>※ 이번 달에 다 못 뺀 ${won(Math.abs(s.mealCarryOut))}은 다음 달로 이월됨` : ''}</p>
         </div>
       </div>
 
@@ -3581,7 +3643,7 @@ function buildExpenseReportHTML(monthStr){
       <div style="--doc-accent:#64748B; --doc-accent-bg:#E2E8F0;">
         <h2>5. 차액정산</h2>
         <table class="items">
-          <thead><tr><th>일자</th><th class="num">기지급 금액</th><th>내용</th></tr></thead>
+          <thead><tr><th>일자</th><th class="num">금액</th><th>정산방식</th><th>내용</th></tr></thead>
           <tbody>${prepaidRows}</tbody>
         </table>
       </div>` : ''}
@@ -4119,6 +4181,10 @@ function cancelExpenseEdit(kind){
     document.getElementById(fields[1]).value = '';
     document.getElementById(fields[2]).value = '';
   }
+  if(kind==='prepaid'){
+    const methodEl = document.getElementById('pp-method');
+    if(methodEl) methodEl.value = 'cash';
+  }
 }
 
 Object.keys(EXPENSE_FORM_MAP).forEach(kind=>{
@@ -4256,14 +4322,15 @@ document.getElementById('prepaidForm').addEventListener('submit', async (e)=>{
   const date = document.getElementById('pp-date').value;
   const memo = document.getElementById('pp-memo').value.trim();
   const amount = Number(document.getElementById('pp-amount').value);
+  const method = document.getElementById('pp-method').value;
   if(!date || !amount) return;
   if(editingExpense.kind==='prepaid'){
     const en = expense.prepaidEntries.find(x=>x.id===editingExpense.id);
-    if(en){ en.date=date; en.amount=amount; en.memo=memo; }
+    if(en){ en.date=date; en.amount=amount; en.memo=memo; en.method=method; }
     cancelExpenseEdit('prepaid');
     document.getElementById('prepaidSaveMsg').textContent = '수정됨';
   } else {
-    expense.prepaidEntries.push({id:genId(), date, memo, amount});
+    expense.prepaidEntries.push({id:genId(), date, memo, amount, method});
     document.getElementById('prepaidSaveMsg').textContent = '추가됨';
   }
   await saveExpense();
