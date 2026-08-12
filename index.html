@@ -578,7 +578,10 @@
 
   <!-- 근태관리 -->
   <section id="tab-attendance" class="tab-panel">
-    <div class="forms-row two">
+    <div id="attendanceInputLock" class="hint" style="display:none; color:var(--coral); font-weight:700; background:#FFF1EE; border:1.5px solid var(--coral); border-radius:10px; padding:10px 14px; margin-bottom:14px; text-align:center;">
+      ⚠️ 직원등록(이메일)과 직원정보 저장이 모두 완료되어야 근태를 입력할 수 있어요. 관리자에게 문의해주세요.
+    </div>
+    <div class="forms-row two" id="attendanceInputForms">
       <div class="mini-form">
         <div class="card-icon">🐶</div>
         <div class="card-label" id="remainLeaveLabel">잔여 연차 (오늘 기준)</div>
@@ -828,7 +831,10 @@
 
   <!-- 경비 -->
   <section id="tab-expense" class="tab-panel">
-    <div class="forms-row five">
+    <div id="expenseInputLock" class="hint" style="display:none; color:var(--coral); font-weight:700; background:#FFF1EE; border:1.5px solid var(--coral); border-radius:10px; padding:10px 14px; margin-bottom:14px; text-align:center;">
+      ⚠️ 직원등록(이메일)과 직원정보 저장이 모두 완료되어야 경비를 입력할 수 있어요. 관리자에게 문의해주세요.
+    </div>
+    <div class="forms-row five" id="expenseInputForms">
       <div class="mini-form compact" style="border-top:4px solid var(--amber);">
         <h3>점심식대</h3>
         <form id="lunchForm">
@@ -1227,7 +1233,10 @@
       </div>
 
       <div class="settings-sub-title" style="margin-top:26px;">직원 정보 입력 / 수정</div>
-      <div class="settings-box">
+      <div id="employeeInfoFormLock" class="hint" style="display:none; color:var(--coral); font-weight:700; background:#FFF1EE; border:1.5px solid var(--coral); border-radius:10px; padding:10px 14px; margin-bottom:12px;">
+        ⚠️ 이 직원은 구글 이메일이 등록되어 있지 않아 정보를 입력할 수 없어요.<br>위 "직원 등록"에서 이 직원의 이메일을 먼저 등록해주세요.
+      </div>
+      <div class="settings-box" id="settingsFormBox">
         <form id="settingsForm">
           <div class="field">
             <label>이름</label>
@@ -2025,6 +2034,42 @@ function formatEmployeeSnapshot(sn){
   return `<table><tbody>${rows.map(([k,v])=>`<tr><th style="width:45%; background:var(--bg); text-align:center; padding:9px 10px; font-size:12.5px; color:var(--ink-soft); font-weight:700; border-top:1px solid var(--border);">${k}</th><td style="padding:9px 10px; font-size:13px; border-top:1px solid var(--border); text-align:center;">${escHtml(v)}</td></tr>`).join('')}</tbody></table>`;
 }
 
+function updateInputFormLocks(){
+  const current = getProfiles().find(p=>p.id===activeProfileId);
+  const hasEmail = !!(current && current.email);
+  const hasInfoSaved = !!(settings.employeeInfoHistory && settings.employeeInfoHistory.length > 0);
+  const unlocked = hasEmail && hasInfoSaved;
+
+  const lockConfigs = [
+    { lockId:'attendanceInputLock', formIds:['usageForm','remoteForm'] },
+    { lockId:'expenseInputLock', formIds:['lunchForm','dinnerForm','taxiForm','otherExpenseForm','prepaidForm'] }
+  ];
+  lockConfigs.forEach(cfg=>{
+    const lockEl = document.getElementById(cfg.lockId);
+    if(lockEl) lockEl.style.display = unlocked ? 'none' : '';
+    cfg.formIds.forEach(fid=>{
+      const formEl = document.getElementById(fid);
+      if(!formEl) return;
+      const card = formEl.closest('.mini-form') || formEl;
+      card.style.opacity = unlocked ? '1' : '0.5';
+      card.style.pointerEvents = unlocked ? '' : 'none';
+      formEl.querySelectorAll('input, select, button').forEach(el=>{ el.disabled = !unlocked; });
+    });
+  });
+}
+
+function updateEmployeeInfoFormLock(){
+  const lockEl = document.getElementById('employeeInfoFormLock');
+  const boxEl = document.getElementById('settingsFormBox');
+  if(!lockEl || !boxEl) return;
+  const current = getProfiles().find(p=>p.id===activeProfileId);
+  const hasEmail = !!(current && current.email);
+  lockEl.style.display = hasEmail ? 'none' : '';
+  boxEl.style.opacity = hasEmail ? '1' : '0.5';
+  boxEl.style.pointerEvents = hasEmail ? '' : 'none';
+  boxEl.querySelectorAll('input, button').forEach(el=>{ el.disabled = !hasEmail; });
+}
+
 function renderEmployeeInfoView(){
   const wrap = document.getElementById('employeeInfoViewWrap');
   if(!wrap) return;
@@ -2212,6 +2257,8 @@ async function loadAll(){
   renderEmployeeInfoView();
   renderEmployeeInfoHistory();
   renderProfileSwitcher();
+  updateEmployeeInfoFormLock();
+  updateInputFormLocks();
   if(settings.birthDate){
     const [by,bm,bd] = settings.birthDate.split('-');
     document.getElementById('s-birth-y').value = by;
@@ -3967,6 +4014,11 @@ document.getElementById('ex-reason').addEventListener('change', (e)=>{
 
 document.getElementById('settingsForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
+  const currentProfileForSave = getProfiles().find(p=>p.id===activeProfileId);
+  if(!currentProfileForSave || !currentProfileForSave.email){
+    alert('이 직원은 구글 이메일이 등록되어 있지 않아 정보를 저장할 수 없어요.\n먼저 "직원 등록"에서 이 직원의 이메일을 등록해주세요.');
+    return;
+  }
   settings.employeeName = document.getElementById('s-name').value.trim();
   const bby = document.getElementById('s-birth-y').value;
   const bbm = document.getElementById('s-birth-m').value;
@@ -4016,6 +4068,7 @@ document.getElementById('settingsForm').addEventListener('submit', async (e)=>{
   renderAll();
   renderEmployeeInfoView();
   renderEmployeeInfoHistory();
+  updateInputFormLocks();
 });
 
 document.getElementById('clearAsOfBtn').addEventListener('click', async ()=>{
@@ -4883,24 +4936,104 @@ document.getElementById('addEmployeeForm').addEventListener('submit', async (e)=
   if(!name) return;
   const profiles = getProfiles();
   const id = genId();
-  profiles.push({ id, name, email });
+  const now = new Date();
+  const editedAt = `${fmt(now)} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  profiles.push({ id, name, email, regHistory: [{id:genId(), editedAt, name, email}] });
   saveProfiles(profiles);
+  gdriveScheduleSync();
   renderProfileSwitcher();
   renderEmployeeList();
   nameInput.value = '';
   emailInput.value = '';
 });
 
+let editingEmployeeRegId = null;
+let expandedEmployeeRegHistoryId = null;
+
 function renderEmployeeList(){
   const wrap = document.getElementById('employeeListWrap');
   if(!wrap) return;
   const profiles = getProfiles();
   if(!profiles.length){ wrap.innerHTML = `<div class="empty-state">등록된 직원이 없습니다.</div>`; return; }
-  wrap.innerHTML = profiles.map(p=>`
-    <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; background:var(--bg); border-radius:8px; margin-bottom:6px; font-size:12.5px;">
-      <span>${escHtml(p.name || '(이름 미등록)')} ${p.email ? `<span style="color:var(--ink-soft); font-size:11px;">(${escHtml(p.email)})</span>` : '<span style="color:var(--coral); font-size:11px;">이메일 미등록</span>'}</span>
-    </div>`).join('');
+  wrap.innerHTML = profiles.map(p=>{
+    const hist = [...(p.regHistory || [])].reverse();
+    if(editingEmployeeRegId === p.id){
+      return `<div style="padding:10px; background:var(--bg); border-radius:8px; margin-bottom:6px;">
+        <form class="employee-reg-edit-form" data-id="${p.id}" style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; justify-content:center;">
+          <div class="field" style="flex:1 1 120px; margin-bottom:0;"><label style="font-size:11px;">이름</label><input type="text" class="reg-edit-name" value="${escHtml(p.name || '')}" required></div>
+          <div class="field" style="flex:1 1 160px; margin-bottom:0;"><label style="font-size:11px;">구글 이메일</label><input type="email" class="reg-edit-email" value="${escHtml(p.email || '')}"></div>
+          <button type="submit" class="submit-btn" style="width:auto; padding:7px 14px;">저장</button>
+          <button type="button" class="del-btn employee-reg-cancel-btn" data-id="${p.id}">취소</button>
+        </form>
+      </div>`;
+    }
+    return `
+    <div style="padding:6px 10px; background:var(--bg); border-radius:8px; margin-bottom:6px; font-size:12.5px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+        <span>${escHtml(p.name || '(이름 미등록)')} ${p.email ? `<span style="color:var(--ink-soft); font-size:11px;">(${escHtml(p.email)})</span>` : '<span style="color:var(--coral); font-size:11px;">이메일 미등록</span>'}</span>
+        <span style="white-space:nowrap;">
+          <button type="button" class="del-btn employee-reg-edit-btn" data-id="${p.id}">수정</button>
+          ${hist.length ? `<button type="button" class="del-btn employee-reg-hist-btn" data-id="${p.id}">이력 (${hist.length})</button>` : ''}
+        </span>
+      </div>
+      ${expandedEmployeeRegHistoryId === p.id ? `
+        <div style="margin-top:8px; overflow-x:auto;">
+          <table style="min-width:320px;"><thead><tr><th>변경일시</th><th>이름</th><th>이메일</th></tr></thead>
+            <tbody>${hist.map(h=>`<tr><td class="num">${h.editedAt}</td><td>${escHtml(h.name||'-')}</td><td>${escHtml(h.email||'-')}</td></tr>`).join('')}</tbody>
+          </table>
+        </div>` : ''}
+    </div>`;
+  }).join('');
+
+  wrap.querySelectorAll('.employee-reg-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      editingEmployeeRegId = btn.dataset.id;
+      expandedEmployeeRegHistoryId = null;
+      renderEmployeeList();
+    });
+  });
+  wrap.querySelectorAll('.employee-reg-cancel-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      editingEmployeeRegId = null;
+      renderEmployeeList();
+    });
+  });
+  wrap.querySelectorAll('.employee-reg-hist-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      expandedEmployeeRegHistoryId = (expandedEmployeeRegHistoryId === btn.dataset.id) ? null : btn.dataset.id;
+      renderEmployeeList();
+    });
+  });
+  wrap.querySelectorAll('.employee-reg-edit-form').forEach(form=>{
+    form.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const id = form.dataset.id;
+      const newName = form.querySelector('.reg-edit-name').value.trim();
+      const newEmail = form.querySelector('.reg-edit-email').value.trim().toLowerCase();
+      if(!newName) return;
+      const list = getProfiles();
+      const target = list.find(p=>p.id===id);
+      if(!target) return;
+      const changed = (target.name||'') !== newName || (target.email||'') !== newEmail;
+      if(changed){
+        target.regHistory = target.regHistory || [];
+        const now = new Date();
+        const editedAt = `${fmt(now)} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        target.regHistory.push({id:genId(), editedAt, name:newName, email:newEmail});
+        target.name = newName;
+        target.email = newEmail;
+        saveProfiles(list);
+        gdriveScheduleSync();
+      }
+      editingEmployeeRegId = null;
+      renderProfileSwitcher();
+      renderEmployeeList();
+      renderAdminOverview();
+      if(id === activeProfileId){ updateEmployeeInfoFormLock(); updateInputFormLocks(); }
+    });
+  });
 }
+
 
 document.getElementById('addProfileBtn').addEventListener('click', async ()=>{
   const name = prompt('새 직원 이름을 입력해주세요 (나중에 설정 탭에서도 수정할 수 있어요)');
@@ -4908,8 +5041,13 @@ document.getElementById('addProfileBtn').addEventListener('click', async ()=>{
   const email = prompt('그 직원이 로그인할 구글 이메일을 입력해주세요 (입력하면 로그인 시 자동으로 본인 프로필로 연결돼요, 나중에 입력해도 됩니다)');
   const profiles = getProfiles();
   const id = genId();
-  profiles.push({ id, name: name.trim(), email: (email||'').trim().toLowerCase() });
+  const trimmedName = name.trim();
+  const trimmedEmail = (email||'').trim().toLowerCase();
+  const now = new Date();
+  const editedAt = `${fmt(now)} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  profiles.push({ id, name: trimmedName, email: trimmedEmail, regHistory: [{id:genId(), editedAt, name:trimmedName, email:trimmedEmail}] });
   saveProfiles(profiles);
+  gdriveScheduleSync();
   setActiveProfileId(id);
   await loadAll();
 });
