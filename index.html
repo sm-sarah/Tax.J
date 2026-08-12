@@ -67,8 +67,9 @@
   .home-tiles.five{grid-template-columns:repeat(5, 1fr);}
   .home-tiles.three{grid-template-columns:repeat(3, 1fr);}
   .home-tiles.six{grid-template-columns:repeat(6, 1fr);}
-  @media (max-width:900px){ .home-tiles, .home-tiles.five, .home-tiles.six{grid-template-columns:repeat(2, 1fr);} }
-  @media (max-width:560px){ .home-tiles, .home-tiles.five, .home-tiles.three, .home-tiles.six{grid-template-columns:1fr;} }
+  .home-tiles.seven{grid-template-columns:repeat(7, 1fr);}
+  @media (max-width:900px){ .home-tiles, .home-tiles.five, .home-tiles.six, .home-tiles.seven{grid-template-columns:repeat(2, 1fr);} }
+  @media (max-width:560px){ .home-tiles, .home-tiles.five, .home-tiles.three, .home-tiles.six, .home-tiles.seven{grid-template-columns:1fr;} }
   .home-tile{
     background:var(--surface); border-radius:18px; padding:20px 18px;
     cursor:pointer; border-top:4px solid var(--tile-accent, var(--indigo));
@@ -256,6 +257,8 @@
   .empty-state{text-align:center; padding:28px 10px; color:var(--ink-soft); font-size:13px; font-weight:600; border-radius:14px; background:var(--surface);}
 
   .settings-box{background:var(--surface); border-radius:16px; padding:18px; max-width:420px; margin-left:auto; margin-right:auto; box-shadow:0 1px 2px rgba(29,30,51,0.04), 0 6px 16px -12px rgba(29,30,51,0.14);}
+  .modal-section{background:var(--bg); border-radius:14px; padding:18px 18px 20px; margin-top:18px;}
+  .modal-section:first-of-type{margin-top:6px;}
   .settings-group{
     background:#F1EFFB; border-radius:24px; padding:28px 24px 32px; margin-bottom:26px;
     text-align:center; box-shadow:0 1px 2px rgba(29,30,51,0.04), 0 10px 24px -18px rgba(29,30,51,0.14);
@@ -474,6 +477,7 @@
       <div class="tab-group tg-mgmt">
         <button class="tab-btn" data-tab="admin">📢 공지사항</button>
         <button class="tab-btn" data-tab="teamcalendar">팀캘린더</button>
+        <button class="tab-btn" data-tab="allstatus">전체직원현황</button>
         <button class="tab-btn" data-tab="quickguide">복리후생</button>
         <button class="tab-btn" data-tab="policy">내부규정</button>
         <button class="tab-btn" data-tab="policyedit">업데이트</button>
@@ -508,7 +512,7 @@
   <section id="tab-home" class="tab-panel active">
 
     <div class="home-section-label">Management</div>
-    <div class="home-tiles six">
+    <div class="home-tiles seven">
       <div class="home-tile" data-goto="admin" style="--tile-accent:var(--guide-slate);">
         <div class="home-tile-icon">📢</div>
         <div class="home-tile-title">공지사항</div>
@@ -518,6 +522,11 @@
         <div class="home-tile-icon">🗂️</div>
         <div class="home-tile-title">팀캘린더</div>
         <div class="home-tile-desc">전 직원 휴가·재택<br>일정 통합 캘린더</div>
+      </div>
+      <div class="home-tile" data-goto="allstatus" style="--tile-accent:#0EA5E9;">
+        <div class="home-tile-icon">📊</div>
+        <div class="home-tile-title">전체직원현황</div>
+        <div class="home-tile-desc">직원별 잔여연차·재택·경비<br>한눈에 보기</div>
       </div>
       <div class="home-tile" data-goto="quickguide" style="--tile-accent:var(--guide-mustard);">
         <div class="home-tile-icon">🎁</div>
@@ -1079,9 +1088,10 @@
     <h2 class="section-title">공지사항</h2>
 
     <div id="allNoticeBannerWrap"></div>
+    <div id="myLatestNoticeBannerWrap"></div>
 
     <div id="allNoticeAdminSection" style="display:none;">
-      <h2 class="section-title" style="margin-top:22px; justify-content:center;">전체 공지 작성 <span class="badge">관리자 전용</span></h2>
+      <h2 class="section-title" style="margin-top:22px; justify-content:center;">전체 공지 작성하기 <span class="badge">관리자 전용</span></h2>
       <div class="settings-box" style="max-width:640px;">
         <form id="allNoticeForm">
           <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
@@ -1123,7 +1133,7 @@
       <div id="allNoticeVersionPreviewWrap" style="margin-top:14px;"></div>
     </div>
 
-    <h2 class="section-title" style="margin-top:22px; justify-content:center;">공지사항 목록</h2>
+    <h2 class="section-title" style="margin-top:22px; justify-content:center;">공지 목록</h2>
     <div id="noticeHistoryWrap"></div>
     <div id="noticePreviewWrap" style="margin-top:14px;"></div>
   </section>
@@ -1167,6 +1177,10 @@
         <div style="text-align:center;"><span class="save-msg" id="noticeSaveMsg"></span></div>
       </form>
     </div>
+
+    <h2 class="section-title" style="margin-top:26px;">내 공지 이력</h2>
+    <div id="myNoticeHistoryWrap"></div>
+    <div id="myNoticePreviewWrap" style="margin-top:14px;"></div>
   </section>
 
   <!-- 팀 캘린더 -->
@@ -1184,6 +1198,24 @@
       <p class="cal-legend">
         <span><b class="cal-legend-icon">🌴</b> 휴가</span><span><b class="cal-legend-icon">🏠</b> 재택근무</span><span><b class="cal-legend-icon">🎌</b> 공휴일</span><span><b class="cal-legend-icon">🍻</b> 회식</span><span><b class="cal-legend-icon">🗓️</b> 개인 일정</span><span><b class="cal-legend-icon">⏰</b> 조기퇴근</span>
       </p>
+    </div>
+  </section>
+
+  <!-- 전체직원현황 -->
+  <section id="tab-allstatus" class="tab-panel">
+    <h2 class="section-title" style="justify-content:center;">전체직원현황</h2>
+    <div class="policy-locked" id="allStatusLocked" style="display:none;">
+      <div class="policy-locked-icon">🔒</div>
+      <div class="policy-locked-text">관리자만 접근할 수 있어요.<br>전 직원 현황은 회사 정책을 다루는 영역이라 관리자 계정으로 로그인해야 볼 수 있어요.</div>
+    </div>
+    <div id="allStatusContent">
+      <p class="hint" style="text-align:center; margin-top:-6px;" id="adminOverviewBasis">기준일: 오늘</p>
+      <div style="display:flex; gap:8px; align-items:center; justify-content:center; margin-bottom:14px;">
+        <label style="font-size:12px; color:var(--ink-soft); font-weight:700;">잔여연차 기준일</label>
+        <input type="date" id="overviewAsOfDate" min="2015-01-01" max="2099-12-31" style="font-size:12.5px; padding:5px 8px; border:1.5px solid var(--border); border-radius:8px; background:var(--surface);">
+        <button type="button" id="overviewAsOfQueryBtn" class="submit-btn" style="width:auto; padding:6px 12px; font-size:12px;">🔍 조회</button>
+      </div>
+      <div id="adminOverviewWrap"></div>
     </div>
   </section>
 
@@ -1207,7 +1239,7 @@
 
     <div class="settings-group">
       <div class="settings-group-title">👤 직원</div>
-      <div class="settings-group-desc">직원 등록 · 전체현황, 이름 클릭 시 상세정보 팝업(입력/수정/변경이력)</div>
+      <div class="settings-group-desc">직원 등록, 이름 클릭 시 상세정보 팝업(입력/수정/변경이력)</div>
 
       <div class="settings-sub-title">직원 등록 <span class="badge">이름을 클릭하면 상세정보 팝업</span></div>
       <p class="hint">
@@ -1222,15 +1254,6 @@
         </form>
         <div id="employeeListWrap" style="margin-top:12px;"></div>
       </div>
-
-      <div class="settings-sub-title" style="margin-top:26px;">전체 직원 현황 <span class="badge">기준일 연동</span></div>
-      <p class="hint" style="text-align:center; margin-top:-6px;" id="adminOverviewBasis">기준일: 오늘</p>
-      <div style="display:flex; gap:8px; align-items:center; justify-content:center; margin-bottom:14px;">
-        <label style="font-size:12px; color:var(--ink-soft); font-weight:700;">잔여연차 기준일</label>
-        <input type="date" id="overviewAsOfDate" min="2015-01-01" max="2099-12-31" style="font-size:12.5px; padding:5px 8px; border:1.5px solid var(--border); border-radius:8px; background:var(--surface);">
-        <button type="button" id="overviewAsOfQueryBtn" class="submit-btn" style="width:auto; padding:6px 12px; font-size:12px;">🔍 조회</button>
-      </div>
-      <div id="adminOverviewWrap" style="margin-bottom:24px;"></div>
     </div>
 
     <div class="settings-group">
@@ -1321,6 +1344,7 @@
             <input type="text" id="wh-memo" placeholder="예: 종합소득세 신고 종료 조기퇴근" style="width:100%; border:1.5px solid var(--border); border-radius:8px; padding:6px 7px; background:#F1EFFB; font-size:13px;">
           </div>
           <button type="button" id="addWorkHourExceptionBtn" class="submit-btn" style="width:auto; padding:9px 16px;">기간 추가</button>
+          <button type="button" id="workHourExceptionCancelBtn" class="del-btn" style="display:none;">취소</button>
         </div>
         <div style="text-align:center;"><span class="save-msg" id="workHourExceptionMsg"></span></div>
       </div>
@@ -1345,8 +1369,9 @@
             </div>
           </div>
           <div class="field"><label>1일 기준 금액 (원)</label><input type="number" id="ll-daily" class="num-input" min="0" step="1" required></div>
-          <div style="text-align:center;">
-            <button type="submit" class="submit-btn">한도 추가</button>
+          <div style="text-align:center; display:flex; gap:8px; justify-content:center; align-items:center;">
+            <button type="submit" class="submit-btn" id="lunchLimitSubmitBtn">한도 추가</button>
+            <button type="button" id="lunchLimitCancelEditBtn" class="del-btn" style="display:none;">취소</button>
           </div>
           <div style="text-align:center;"><span class="save-msg" id="lunchLimitSaveMsg"></span></div>
         </form>
@@ -1354,8 +1379,12 @@
       <div class="settings-sub-title">한도 변동이력</div>
       <div id="lunchLimitHistoryWrap"></div>
 
-      <div class="settings-sub-title" style="margin-top:26px;">휴가 수동조정 <span class="badge">관리자 전용</span></div>
+      <div class="settings-sub-title" style="margin-top:26px;">직원휴가 수동조정 <span class="badge">직원별 개별조정</span></div>
       <p class="hint">입사일 등록 시 법정휴가는 자동으로 부여돼요. 여기는 회사 기준과 다를 때 수동으로 더하거나 빼서 맞추는 용도예요.</p>
+      <div style="display:flex; gap:8px; align-items:center; justify-content:center; margin-bottom:14px;">
+        <label style="font-size:12px; color:var(--ink-soft); font-weight:700;">직원 선택</label>
+        <select id="grantEmployeeSelect" style="font-size:12.5px; padding:6px 10px; border:1.5px solid var(--border); border-radius:8px; background:var(--surface); font-weight:700; color:var(--navy);"></select>
+      </div>
       <div class="mini-form" style="max-width:420px; margin:0 auto;">
         <form id="grantForm">
           <div class="field"><label>날짜</label><input type="date" id="g-date" required min="2015-01-01" max="2099-12-31"></div>
@@ -1483,96 +1512,102 @@
     <button type="button" id="employeeModalCloseBtn" style="position:absolute; top:16px; right:16px; width:32px; height:32px; border-radius:50%; border:none; background:var(--bg); color:var(--ink-soft); font-size:16px; cursor:pointer;">✕</button>
     <h2 class="section-title" id="employeeModalTitle" style="justify-content:center; margin-top:0;">직원 정보 관리</h2>
 
-    <div class="settings-sub-title">기본 등록정보</div>
-    <div class="settings-box" style="max-width:520px;">
-      <form id="modalRegForm" style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; justify-content:center;">
-        <div class="field" style="flex:1 1 140px; margin-bottom:0;"><label>이름</label><input type="text" id="modal-reg-name" required></div>
-        <div class="field" style="flex:1 1 180px; margin-bottom:0;"><label>구글 이메일</label><input type="email" id="modal-reg-email" placeholder="hong@gmail.com"></div>
-        <button type="submit" class="submit-btn" style="width:auto; padding:8px 16px;">등록정보 저장</button>
-      </form>
-      <div style="text-align:center;"><span class="save-msg" id="modalRegSaveMsg"></span></div>
-      <div id="modalRegHistoryWrap"></div>
+    <div class="modal-section">
+      <div class="settings-sub-title" style="margin-top:0;">기본 등록정보</div>
+      <div class="settings-box" style="max-width:520px;">
+        <form id="modalRegForm" style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; justify-content:center;">
+          <div class="field" style="flex:1 1 140px; margin-bottom:0;"><label>이름</label><input type="text" id="modal-reg-name" required></div>
+          <div class="field" style="flex:1 1 180px; margin-bottom:0;"><label>구글 이메일</label><input type="email" id="modal-reg-email" placeholder="hong@gmail.com"></div>
+          <button type="submit" class="submit-btn" style="width:auto; padding:8px 16px;">등록정보 저장</button>
+        </form>
+        <div style="text-align:center;"><span class="save-msg" id="modalRegSaveMsg"></span></div>
+        <div id="modalRegHistoryWrap"></div>
+      </div>
     </div>
 
-    <div class="settings-sub-title" style="margin-top:24px;">직원 정보 입력 / 수정</div>
-    <div id="employeeInfoFormLock" class="hint" style="display:none; color:var(--coral); font-weight:700; background:#FFF1EE; border:1.5px solid var(--coral); border-radius:10px; padding:10px 14px; margin-bottom:12px;">
-      ⚠️ 이 직원은 구글 이메일이 등록되어 있지 않아 정보를 입력할 수 없어요.<br>위 등록정보에 이메일을 먼저 등록해주세요.
-    </div>
-    <div class="settings-box" id="settingsFormBox">
-      <form id="settingsForm">
-        <div class="field">
-          <label>이름</label>
-          <input type="text" id="s-name" placeholder="예: 홍길동">
-        </div>
-        <div class="field">
-          <label>생년월일</label>
-          <div style="display:flex; align-items:center; gap:5px;">
-            <input type="number" id="s-birth-y" placeholder="1995" min="1900" max="2100" class="num-input" style="width:82px;">
-            <span style="font-size:13px; color:var(--ink-soft);">년</span>
-            <input type="number" id="s-birth-m" placeholder="1" min="1" max="12" class="num-input" style="width:52px;">
-            <span style="font-size:13px; color:var(--ink-soft);">월</span>
-            <input type="number" id="s-birth-d" placeholder="1" min="1" max="31" class="num-input" style="width:52px;">
-            <span style="font-size:13px; color:var(--ink-soft);">일</span>
+    <div class="modal-section">
+      <div class="settings-sub-title" style="margin-top:0;">직원 정보 입력 / 수정</div>
+      <div id="employeeInfoFormLock" class="hint" style="display:none; color:var(--coral); font-weight:700; background:#FFF1EE; border:1.5px solid var(--coral); border-radius:10px; padding:10px 14px; margin-bottom:12px;">
+        ⚠️ 이 직원은 구글 이메일이 등록되어 있지 않아 정보를 입력할 수 없어요.<br>위 등록정보에 이메일을 먼저 등록해주세요.
+      </div>
+      <div class="settings-box" id="settingsFormBox">
+        <form id="settingsForm">
+          <div class="field">
+            <label>이름</label>
+            <input type="text" id="s-name" placeholder="예: 홍길동">
           </div>
-        </div>
-        <div class="field">
-          <label>입사일 (법정연차 자동계산 기준)</label>
-          <div style="display:flex; align-items:center; gap:5px;">
-            <input type="number" id="s-hire-y" placeholder="2024" min="1980" max="2100" class="num-input" style="width:82px;">
-            <span style="font-size:13px; color:var(--ink-soft);">년</span>
-            <input type="number" id="s-hire-m" placeholder="1" min="1" max="12" class="num-input" style="width:52px;">
-            <span style="font-size:13px; color:var(--ink-soft);">월</span>
-            <input type="number" id="s-hire-d" placeholder="1" min="1" max="31" class="num-input" style="width:52px;">
-            <span style="font-size:13px; color:var(--ink-soft);">일</span>
-          </div>
-          <p class="hint">이것만 등록하면 법정휴가는 자동으로 계산돼요.<br>아래 두 항목은 특수한 경우에만 필요한 선택 사항이에요.</p>
-        </div>
-
-        <details class="settings-advanced">
-          <summary>⚙️ 고급 설정 (선택사항 — 보통은 안 건드리셔도 돼요)</summary>
-          <div class="field" style="margin-top:12px;">
-            <label>일괄부여 기준일 <span style="font-weight:400; color:var(--ink-soft);">— 자동계산 대신 특정 날짜까지 숫자로 몰아서 넣고 싶을 때만</span></label>
+          <div class="field">
+            <label>생년월일</label>
             <div style="display:flex; align-items:center; gap:5px;">
-              <input type="number" id="s-base-y" placeholder="2026" min="1980" max="2100" class="num-input" style="width:82px;">
+              <input type="number" id="s-birth-y" placeholder="1995" min="1900" max="2100" class="num-input" style="width:82px;">
               <span style="font-size:13px; color:var(--ink-soft);">년</span>
-              <input type="number" id="s-base-m" placeholder="6" min="1" max="12" class="num-input" style="width:52px;">
+              <input type="number" id="s-birth-m" placeholder="1" min="1" max="12" class="num-input" style="width:52px;">
               <span style="font-size:13px; color:var(--ink-soft);">월</span>
-              <input type="number" id="s-base-d" placeholder="30" min="1" max="31" class="num-input" style="width:52px;">
+              <input type="number" id="s-birth-d" placeholder="1" min="1" max="31" class="num-input" style="width:52px;">
               <span style="font-size:13px; color:var(--ink-soft);">일</span>
             </div>
           </div>
           <div class="field">
-            <label>기준일까지 부여된 법정휴가 (일)</label>
-            <input type="number" id="s-base-days" class="num-input" step="0.5" min="0" placeholder="예: 15 (비워두면 자동계산만 사용)">
-          </div>
-          <div class="field">
-            <label>휴가현황 조회 기준일 <span style="font-weight:400; color:var(--ink-soft);">— 특정 시점 기준으로 미리보고 싶을 때만</span></label>
+            <label>입사일 (법정연차 자동계산 기준)</label>
             <div style="display:flex; align-items:center; gap:5px;">
-              <input type="number" id="s-asof-y" placeholder="년" min="1980" max="2100" class="num-input" style="width:82px;">
+              <input type="number" id="s-hire-y" placeholder="2024" min="1980" max="2100" class="num-input" style="width:82px;">
               <span style="font-size:13px; color:var(--ink-soft);">년</span>
-              <input type="number" id="s-asof-m" placeholder="월" min="1" max="12" class="num-input" style="width:52px;">
+              <input type="number" id="s-hire-m" placeholder="1" min="1" max="12" class="num-input" style="width:52px;">
               <span style="font-size:13px; color:var(--ink-soft);">월</span>
-              <input type="number" id="s-asof-d" placeholder="일" min="1" max="31" class="num-input" style="width:52px;">
+              <input type="number" id="s-hire-d" placeholder="1" min="1" max="31" class="num-input" style="width:52px;">
               <span style="font-size:13px; color:var(--ink-soft);">일</span>
-              <button type="button" id="clearAsOfBtn" class="del-btn">오늘 날짜로 초기화</button>
             </div>
+            <p class="hint">이것만 등록하면 법정휴가는 자동으로 계산돼요.<br>아래 두 항목은 특수한 경우에만 필요한 선택 사항이에요.</p>
           </div>
-        </details>
 
-        <p class="hint" style="margin:14px 0 4px;">이미 등록된 정보도 위 값을 바꾸고 다시 저장하면 바로 수정돼요.</p>
-        <div style="text-align:center;">
-          <button type="submit" class="submit-btn" style="margin-top:2px;">직원 정보 저장 / 수정</button>
-        </div>
-        <div style="text-align:center;"><span class="save-msg" id="settingsSaveMsg"></span></div>
-      </form>
+          <details class="settings-advanced">
+            <summary>⚙️ 고급 설정 (선택사항 — 보통은 안 건드리셔도 돼요)</summary>
+            <div class="field" style="margin-top:12px;">
+              <label>일괄부여 기준일 <span style="font-weight:400; color:var(--ink-soft);">— 자동계산 대신 특정 날짜까지 숫자로 몰아서 넣고 싶을 때만</span></label>
+              <div style="display:flex; align-items:center; gap:5px;">
+                <input type="number" id="s-base-y" placeholder="2026" min="1980" max="2100" class="num-input" style="width:82px;">
+                <span style="font-size:13px; color:var(--ink-soft);">년</span>
+                <input type="number" id="s-base-m" placeholder="6" min="1" max="12" class="num-input" style="width:52px;">
+                <span style="font-size:13px; color:var(--ink-soft);">월</span>
+                <input type="number" id="s-base-d" placeholder="30" min="1" max="31" class="num-input" style="width:52px;">
+                <span style="font-size:13px; color:var(--ink-soft);">일</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>기준일까지 부여된 법정휴가 (일)</label>
+              <input type="number" id="s-base-days" class="num-input" step="0.5" min="0" placeholder="예: 15 (비워두면 자동계산만 사용)">
+            </div>
+            <div class="field">
+              <label>휴가현황 조회 기준일 <span style="font-weight:400; color:var(--ink-soft);">— 특정 시점 기준으로 미리보고 싶을 때만</span></label>
+              <div style="display:flex; align-items:center; gap:5px;">
+                <input type="number" id="s-asof-y" placeholder="년" min="1980" max="2100" class="num-input" style="width:82px;">
+                <span style="font-size:13px; color:var(--ink-soft);">년</span>
+                <input type="number" id="s-asof-m" placeholder="월" min="1" max="12" class="num-input" style="width:52px;">
+                <span style="font-size:13px; color:var(--ink-soft);">월</span>
+                <input type="number" id="s-asof-d" placeholder="일" min="1" max="31" class="num-input" style="width:52px;">
+                <span style="font-size:13px; color:var(--ink-soft);">일</span>
+                <button type="button" id="clearAsOfBtn" class="del-btn">오늘 날짜로 초기화</button>
+              </div>
+            </div>
+          </details>
+
+          <p class="hint" style="margin:14px 0 4px;">이미 등록된 정보도 위 값을 바꾸고 다시 저장하면 바로 수정돼요.</p>
+          <div style="text-align:center;">
+            <button type="submit" class="submit-btn" style="margin-top:2px;">직원 정보 저장 / 수정</button>
+          </div>
+          <div style="text-align:center;"><span class="save-msg" id="settingsSaveMsg"></span></div>
+        </form>
+      </div>
+      <p class="hint" style="margin-top:10px;">
+        입사일을 등록하면 근로기준법 기준으로 법정휴가가 자동 부여됩니다.<br>(1년 미만: 매월 개근 1일 / 1년 이상: 15일 + 2년마다 1일 가산, 최대 25일)
+      </p>
     </div>
-    <p class="hint" style="margin-top:10px;">
-      입사일을 등록하면 근로기준법 기준으로 법정휴가가 자동 부여됩니다.<br>(1년 미만: 매월 개근 1일 / 1년 이상: 15일 + 2년마다 1일 가산, 최대 25일)
-    </p>
 
-    <div class="settings-sub-title" style="margin-top:24px;">직원 정보 변경이력</div>
-    <div id="employeeInfoHistoryWrap"></div>
-    <div id="employeeInfoPreviewWrap" style="margin-top:14px;"></div>
+    <div class="modal-section">
+      <div class="settings-sub-title" style="margin-top:0;">직원 정보 변경이력</div>
+      <div id="employeeInfoHistoryWrap"></div>
+      <div id="employeeInfoPreviewWrap" style="margin-top:14px;"></div>
+    </div>
   </div>
 </div>
 
@@ -1825,20 +1860,132 @@ function computeForProfile(profileId, monthStr, asOfDate){
 }
 
 function renderAllNoticeBanner(){
-  const wrap = document.getElementById('allNoticeBannerWrap');
+  const allWrap = document.getElementById('allNoticeBannerWrap');
+  const personalWrap = document.getElementById('myLatestNoticeBannerWrap');
+  if(allWrap){
+    const latestAll = sharedNoticeHistory.find(n=>n.scope==='전체');
+    if(!latestAll){ allWrap.innerHTML = ''; }
+    else {
+      const styleStr = `font-size:${latestAll.size||16}px; ${latestAll.color ? 'color:'+latestAll.color+';' : ''} ${latestAll.bold ? 'font-weight:800;' : ''}`;
+      allWrap.innerHTML = `
+        <div style="background:var(--indigo); border-radius:16px; padding:18px 22px; margin-bottom:14px; box-shadow:0 8px 20px -10px rgba(91,95,239,0.5);">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="background:rgba(255,255,255,0.25); color:#fff; font-size:11px; font-weight:800; padding:3px 10px; border-radius:20px;">📢 전체공지</span>
+            <span style="color:rgba(255,255,255,0.75); font-size:11px;">${latestAll.savedAt} · ${escHtml(latestAll.authorName||'관리자')}</span>
+          </div>
+          <div style="color:#fff; font-weight:800; font-size:15px; margin-bottom:6px;">${escHtml(latestAll.title || '')}</div>
+          <div style="white-space:pre-wrap; line-height:1.7; color:#fff; ${styleStr}">${escHtml(latestAll.content || '')}</div>
+        </div>`;
+    }
+  }
+  if(personalWrap){
+    const latestPersonal = sharedNoticeHistory.find(n=>n.scope==='개인');
+    if(!latestPersonal){ personalWrap.innerHTML = ''; }
+    else {
+      const styleStr = `font-size:${latestPersonal.size||16}px; ${latestPersonal.color ? 'color:'+latestPersonal.color+';' : ''} ${latestPersonal.bold ? 'font-weight:800;' : ''}`;
+      personalWrap.innerHTML = `
+        <div style="background:#0EA5E9; border-radius:16px; padding:18px 22px; margin-bottom:20px; box-shadow:0 8px 20px -10px rgba(14,165,233,0.45);">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span style="background:rgba(255,255,255,0.25); color:#fff; font-size:11px; font-weight:800; padding:3px 10px; border-radius:20px;">📝 직원공지</span>
+            <span style="color:rgba(255,255,255,0.8); font-size:11px;">${latestPersonal.savedAt} · ${escHtml(latestPersonal.authorName||'직원')}</span>
+          </div>
+          <div style="color:#fff; font-weight:800; font-size:15px; margin-bottom:6px;">${escHtml(latestPersonal.title || '')}</div>
+          <div style="white-space:pre-wrap; line-height:1.7; color:#fff; ${styleStr}">${escHtml(latestPersonal.content || '')}</div>
+        </div>`;
+    }
+  }
+}
+
+function getMyDisplayName(){
+  const myProfile = currentUserEmail ? getProfiles().find(p=>(p.email||'').toLowerCase()===currentUserEmail) : null;
+  if(myProfile) return readProfileRaw(myProfile.id,'settings')?.employeeName || myProfile.name || '직원';
+  const activeProfile = getProfiles().find(p=>p.id===activeProfileId);
+  return settings.employeeName || (activeProfile && activeProfile.name) || '직원';
+}
+
+function renderMyNoticeHistory(){
+  const wrap = document.getElementById('myNoticeHistoryWrap');
   if(!wrap) return;
-  const latest = sharedNoticeHistory.find(n=>n.scope==='전체');
-  if(!latest){ wrap.innerHTML = ''; return; }
-  const styleStr = `font-size:${latest.size||16}px; ${latest.color ? 'color:'+latest.color+';' : ''} ${latest.bold ? 'font-weight:800;' : ''}`;
-  wrap.innerHTML = `
-    <div style="background:var(--indigo); border-radius:16px; padding:18px 22px; margin-bottom:20px; box-shadow:0 8px 20px -10px rgba(91,95,239,0.5);">
-      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-        <span style="background:rgba(255,255,255,0.25); color:#fff; font-size:11px; font-weight:800; padding:3px 10px; border-radius:20px;">📢 전체공지</span>
-        <span style="color:rgba(255,255,255,0.75); font-size:11px;">${latest.savedAt} · ${escHtml(latest.authorName||'관리자')}</span>
-      </div>
-      <div style="color:#fff; font-weight:800; font-size:15px; margin-bottom:6px;">${escHtml(latest.title || '')}</div>
-      <div style="white-space:pre-wrap; line-height:1.7; color:#fff; ${styleStr}">${escHtml(latest.content || '')}</div>
-    </div>`;
+  const myName = getMyDisplayName();
+  const list = sharedNoticeHistory.filter(n=> n.scope==='개인' && n.authorName===myName);
+  if(!list.length){
+    wrap.innerHTML = `<div class="empty-state">아직 작성한 개인 공지가 없습니다.</div>`;
+    return;
+  }
+  const rows = list.map(n=>`<tr>
+      <td class="num">${n.savedAt}${n.editedAt ? `<br><span style="font-size:10px; color:var(--ink-soft);">(수정 ${n.editedAt})</span>` : ''}</td>
+      <td>${escHtml(n.title || '(제목 없음)')}</td>
+      <td style="white-space:nowrap;">
+        <button class="del-btn mynotice-view-btn" data-id="${n.id}">보기</button>
+        <button class="del-btn mynotice-edit-btn" data-id="${n.id}">수정</button>
+        ${n.versions && n.versions.length ? `<button class="del-btn mynotice-hist-btn" data-id="${n.id}">이전버전(${n.versions.length})</button>` : ''}
+        <button class="del-btn mynotice-del-btn" data-id="${n.id}">삭제</button>
+      </td>
+    </tr>`);
+  renderPaginatedRows(wrap, '<tr><th>작성/수정일시</th><th>제목</th><th></th></tr>', rows, 10);
+
+  wrap.querySelectorAll('.mynotice-view-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const n = sharedNoticeHistory.find(x=>x.id===btn.dataset.id);
+      if(!n) return;
+      const styleStr = `font-size:${n.size||13.5}px; ${n.color ? 'color:'+n.color+';' : ''} ${n.bold ? 'font-weight:800;' : ''}`;
+      document.getElementById('myNoticePreviewWrap').innerHTML = `
+        <div class="settings-box" style="max-width:640px;">
+          <p class="hint" style="text-align:center; margin-bottom:4px; font-weight:800; color:var(--ink);">${escHtml(n.title||'')}</p>
+          <p class="hint" style="text-align:center; margin-bottom:8px;">${n.savedAt}${n.editedAt ? ' · 수정됨 '+n.editedAt : ''}</p>
+          <div style="white-space:pre-wrap; line-height:1.7; padding:14px; background:var(--bg); border-radius:10px; ${styleStr}">${escHtml(n.content || '(내용 없음)')}</div>
+        </div>`;
+    });
+  });
+  wrap.querySelectorAll('.mynotice-hist-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const n = sharedNoticeHistory.find(x=>x.id===btn.dataset.id);
+      if(!n || !n.versions || !n.versions.length) return;
+      const vRows = [...n.versions].reverse().map(v=>`<tr>
+          <td class="num">${v.savedAt || '-'}</td>
+          <td>${escHtml(v.title || '-')}</td>
+          <td style="white-space:pre-wrap; max-width:280px; text-align:left;">${escHtml(v.content || '')}</td>
+        </tr>`).join('');
+      document.getElementById('myNoticePreviewWrap').innerHTML = `
+        <div class="settings-box" style="max-width:none;">
+          <p class="hint" style="text-align:center; font-weight:800; color:var(--ink); margin-bottom:8px;">${escHtml(n.title)} · 수정 전 이전 버전 (${n.versions.length}건)</p>
+          <div style="overflow-x:auto;"><table><thead><tr><th>당시 시각</th><th>당시 제목</th><th>당시 내용</th></tr></thead><tbody>${vRows}</tbody></table></div>
+        </div>`;
+    });
+  });
+  wrap.querySelectorAll('.mynotice-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const n = sharedNoticeHistory.find(x=>x.id===btn.dataset.id);
+      if(!n) return;
+      editingNoticeId = n.id;
+      document.getElementById('notice-title').value = n.title || '';
+      document.getElementById('noticeContent').value = n.content || '';
+      document.getElementById('notice-size').value = n.size || '13.5';
+      document.getElementById('notice-color').value = n.color || '';
+      document.getElementById('notice-bold').checked = !!n.bold;
+      document.getElementById('saveNoticeBtn').textContent = '수정 완료';
+      document.getElementById('noticeCancelEditBtn').style.display = 'inline-block';
+      document.getElementById('noticeFormTitle').scrollIntoView({behavior:'smooth', block:'center'});
+    });
+  });
+  wrap.querySelectorAll('.mynotice-del-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const ok = confirm('이 공지를 삭제합니다 (이전 버전 이력 포함). 계속할까요?');
+      if(!ok) return;
+      sharedNoticeHistory = sharedNoticeHistory.filter(x=>x.id!==btn.dataset.id);
+      await saveSharedNoticeHistory();
+      document.getElementById('myNoticePreviewWrap').innerHTML = '';
+      if(editingNoticeId === btn.dataset.id){
+        editingNoticeId = null;
+        document.getElementById('saveNoticeBtn').textContent = '등록';
+        document.getElementById('noticeCancelEditBtn').style.display = 'none';
+        document.getElementById('notice-title').value = '';
+        document.getElementById('noticeContent').value = '';
+      }
+      renderMyNoticeHistory();
+      renderNoticeHistory();
+    });
+  });
 }
 
 function renderNoticeHistory(){
@@ -1942,6 +2089,7 @@ function renderNoticeHistory(){
       }
       renderNoticeHistory();
       renderAllNoticeVersionHistory();
+      renderMyNoticeHistory();
     });
   });
 }
@@ -2194,6 +2342,10 @@ function renderProfileSwitcher(){
   sel.innerHTML = profiles.map(p=>`<option value="${p.id}" ${p.id===activeProfileId?'selected':''}>${p.name ? p.name : '(이름 미등록)'}</option>`).join('');
   document.getElementById('deleteProfileBtn').disabled = profiles.length <= 1;
   document.getElementById('deleteProfileBtn').style.opacity = profiles.length <= 1 ? '0.4' : '1';
+  const grantSel = document.getElementById('grantEmployeeSelect');
+  if(grantSel){
+    grantSel.innerHTML = profiles.map(p=>`<option value="${p.id}" ${p.id===activeProfileId?'selected':''}>${escHtml(p.name || '(이름 미등록)')}</option>`).join('');
+  }
 }
 
 function syncProfileName(){
@@ -2794,11 +2946,13 @@ function renderAllLeaveHistory(){
     } else {
       label = `${g.type} (${g.totalDays}일, 연차차감 없음)`;
     }
+    const canEdit = g.ids.length === 1;
+    const editBtn = canEdit ? `<button class="del-btn all-leave-edit-btn" data-id="${g.ids[0]}">수정</button>` : '';
     return `<tr>
       <td class="num">${dateLabel}</td>
       <td>${escHtml(label)}</td>
       <td>${escHtml(g.memo || '')}</td>
-      <td><button class="del-btn all-leave-del-btn" data-ids="${g.ids.join(',')}">삭제</button></td>
+      <td style="white-space:nowrap;">${editBtn}<button class="del-btn all-leave-del-btn" data-ids="${g.ids.join(',')}">삭제</button></td>
     </tr>`;
   }).join('');
 
@@ -2827,6 +2981,23 @@ function renderAllLeaveHistory(){
       btn.style.background = nowOpen ? 'var(--indigo-bg)' : 'var(--indigo)';
       btn.style.color = nowOpen ? 'var(--indigo-deep)' : '#fff';
       btn.querySelector('span[style*="margin-left"]').textContent = nowOpen ? '▼' : '▲';
+    });
+  });
+  wrap.querySelectorAll('.all-leave-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const en = attendance.leaveUsage.find(x=>x.id===btn.dataset.id);
+      if(!en) return;
+      editingUsageId = en.id;
+      document.getElementById('u-date').value = en.date;
+      document.getElementById('u-end-date').value = '';
+      document.getElementById('u-type').value = en.type;
+      document.getElementById('u-type').dispatchEvent(new Event('change'));
+      if(en.subtype) document.getElementById('u-subtype').value = en.subtype;
+      if(en.days) document.getElementById('u-days').value = en.days;
+      document.getElementById('u-memo').value = en.memo || '';
+      document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '수정 완료';
+      document.getElementById('usage-cancel').style.display = 'inline-block';
+      document.getElementById('usageForm').scrollIntoView({behavior:'smooth', block:'center'});
     });
   });
   wrap.querySelectorAll('.all-leave-del-btn').forEach(btn=>{
@@ -3012,6 +3183,8 @@ function renderExpense(){
   });
 }
 
+let editingWorkHourExceptionId = null;
+
 function renderWorkHourExceptions(){
   const wrap = document.getElementById('workHourExceptionListWrap');
   if(!wrap) return;
@@ -3024,18 +3197,45 @@ function renderWorkHourExceptions(){
     <td class="num">${ex.startDate} ~ ${ex.endDate}</td>
     <td class="num">${ex.endTime} 퇴근</td>
     <td>${escHtml(ex.memo||'')}</td>
-    <td><button class="del-btn workhour-del-btn" data-id="${ex.id}">삭제</button></td>
+    <td style="white-space:nowrap;"><button class="del-btn workhour-edit-btn" data-id="${ex.id}">수정</button><button class="del-btn workhour-del-btn" data-id="${ex.id}">삭제</button></td>
   </tr>`).join('');
   wrap.innerHTML = `<table><thead><tr><th>기간</th><th>퇴근시각</th><th>메모</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.querySelectorAll('.workhour-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const ex = sharedWorkHourExceptions.find(x=>x.id===btn.dataset.id);
+      if(!ex) return;
+      editingWorkHourExceptionId = ex.id;
+      const [sy,sm,sd] = ex.startDate.split('-');
+      const [ey,em,ed] = ex.endDate.split('-');
+      document.getElementById('wh-start-y').value = sy;
+      document.getElementById('wh-start-m').value = Number(sm);
+      document.getElementById('wh-start-d').value = Number(sd);
+      document.getElementById('wh-end-y').value = ey;
+      document.getElementById('wh-end-m').value = Number(em);
+      document.getElementById('wh-end-d').value = Number(ed);
+      document.getElementById('wh-end-time').value = ex.endTime;
+      document.getElementById('wh-memo').value = ex.memo || '';
+      document.getElementById('addWorkHourExceptionBtn').textContent = '수정 완료';
+      document.getElementById('workHourExceptionCancelBtn').style.display = 'inline-block';
+      document.getElementById('addWorkHourExceptionBtn').scrollIntoView({behavior:'smooth', block:'center'});
+    });
+  });
   wrap.querySelectorAll('.workhour-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       sharedWorkHourExceptions = sharedWorkHourExceptions.filter(x=>x.id!==btn.dataset.id);
       await saveSharedWorkHourExceptions();
+      if(editingWorkHourExceptionId === btn.dataset.id){
+        editingWorkHourExceptionId = null;
+        document.getElementById('addWorkHourExceptionBtn').textContent = '기간 추가';
+        document.getElementById('workHourExceptionCancelBtn').style.display = 'none';
+      }
       renderWorkHourExceptions();
       renderCalendar();
     });
   });
 }
+
+let editingLunchLimitId = null;
 
 function renderLunchLimitHistory(){
   const wrap = document.getElementById('lunchLimitHistoryWrap');
@@ -3055,14 +3255,34 @@ function renderLunchLimitHistory(){
       <td class="num">${h.effectiveDate}</td>
       <td class="num">${won(h.dailyAmount)}</td>
       <td>${status}</td>
-      <td><button class="del-btn lunch-limit-del-btn" data-id="${h.id}">삭제</button></td>
+      <td style="white-space:nowrap;"><button class="del-btn lunch-limit-edit-btn" data-id="${h.id}">수정</button><button class="del-btn lunch-limit-del-btn" data-id="${h.id}">삭제</button></td>
     </tr>`;
   });
   renderPaginatedRows(wrap, '<tr><th>적용 시작일</th><th>1일 기준</th><th>상태</th><th></th></tr>', rows, 10);
+  wrap.querySelectorAll('.lunch-limit-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const h = settings.lunchLimitHistory.find(x=>x.id===btn.dataset.id);
+      if(!h) return;
+      editingLunchLimitId = h.id;
+      const [ly,lm,ld] = h.effectiveDate.split('-');
+      document.getElementById('ll-y').value = ly;
+      document.getElementById('ll-m').value = Number(lm);
+      document.getElementById('ll-d').value = Number(ld);
+      document.getElementById('ll-daily').value = h.dailyAmount;
+      document.getElementById('lunchLimitSubmitBtn').textContent = '수정 완료';
+      document.getElementById('lunchLimitCancelEditBtn').style.display = 'inline-block';
+      document.getElementById('lunchLimitForm').scrollIntoView({behavior:'smooth', block:'center'});
+    });
+  });
   wrap.querySelectorAll('.lunch-limit-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       settings.lunchLimitHistory = settings.lunchLimitHistory.filter(x=>x.id!==btn.dataset.id);
       await saveSettings();
+      if(editingLunchLimitId === btn.dataset.id){
+        editingLunchLimitId = null;
+        document.getElementById('lunchLimitSubmitBtn').textContent = '한도 추가';
+        document.getElementById('lunchLimitCancelEditBtn').style.display = 'none';
+      }
       renderLunchLimitHistory();
       renderExpense();
     });
@@ -3225,7 +3445,7 @@ function renderDeadlineBanner(){
   wrap.innerHTML = `<div class="deadline-banner">📌 ${prevMonthLabel}분 지출결의서, 매월 10일 지급 기준이니 상신 잊지 마세요! (마감까지 D-${daysLeft >= 0 ? daysLeft : 0})</div>`;
 }
 
-function renderAll(){ renderAttendance(); renderExpense(); renderWorkdaysSuggestion(); renderCalendar(); renderScheduleList(); renderDeadlineBanner(); renderAdminOverview(); renderAdminCalendar(); renderHome(); renderAllLeaveHistory(); renderNoticeHistory(); renderAllNoticeVersionHistory(); renderManualGrantList(); renderEmployeeList(); if(typeof twemoji !== 'undefined') twemoji.parse(document.body, {folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'}); }
+function renderAll(){ renderAttendance(); renderExpense(); renderWorkdaysSuggestion(); renderCalendar(); renderScheduleList(); renderDeadlineBanner(); renderAdminOverview(); renderAdminCalendar(); renderHome(); renderAllLeaveHistory(); renderNoticeHistory(); renderAllNoticeVersionHistory(); renderMyNoticeHistory(); renderManualGrantList(); renderEmployeeList(); if(typeof twemoji !== 'undefined') twemoji.parse(document.body, {folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'}); }
 
 function renderScheduleList(){
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
@@ -3778,6 +3998,18 @@ document.getElementById('grantCancelEditBtn').addEventListener('click', ()=>{
   document.getElementById('g-memo').value='';
 });
 
+document.getElementById('grantEmployeeSelect').addEventListener('change', async (e)=>{
+  editingGrantId = null;
+  document.getElementById('grantSubmitBtn').textContent = '추가';
+  document.getElementById('grantCancelEditBtn').style.display = 'none';
+  document.getElementById('g-date').value='';
+  document.getElementById('g-mode').value='add';
+  document.getElementById('g-days').value='1';
+  document.getElementById('g-memo').value='';
+  setActiveProfileId(e.target.value);
+  await loadAll();
+});
+
 const uTypeSelect = document.getElementById('u-type');
 const halfdaySubtypeField = document.getElementById('halfdaySubtypeField');
 const uSubtypeSelect = document.getElementById('u-subtype');
@@ -4268,6 +4500,7 @@ document.getElementById('noticeForm').addEventListener('submit', async (e)=>{
   document.getElementById('notice-title').value = '';
   document.getElementById('noticePreviewWrap').innerHTML = '';
   renderNoticeHistory();
+  renderMyNoticeHistory();
 });
 
 document.getElementById('noticeCancelEditBtn').addEventListener('click', ()=>{
@@ -4343,13 +4576,36 @@ document.getElementById('addWorkHourExceptionBtn').addEventListener('click', asy
     setTimeout(()=>msgEl.textContent='',2500);
     return;
   }
-  sharedWorkHourExceptions.push({ id:genId(), startDate, endDate, endTime, memo });
+  if(editingWorkHourExceptionId){
+    const ex = sharedWorkHourExceptions.find(x=>x.id===editingWorkHourExceptionId);
+    if(ex){ ex.startDate = startDate; ex.endDate = endDate; ex.endTime = endTime; ex.memo = memo; }
+    editingWorkHourExceptionId = null;
+    document.getElementById('addWorkHourExceptionBtn').textContent = '기간 추가';
+    document.getElementById('workHourExceptionCancelBtn').style.display = 'none';
+    msgEl.textContent = '수정됨';
+  } else {
+    sharedWorkHourExceptions.push({ id:genId(), startDate, endDate, endTime, memo });
+    msgEl.textContent = '추가됨';
+  }
   await saveSharedWorkHourExceptions();
-  msgEl.textContent = '추가됨';
   setTimeout(()=>msgEl.textContent='',1500);
   document.getElementById('wh-memo').value = '';
   renderWorkHourExceptions();
   renderCalendar();
+});
+
+document.getElementById('workHourExceptionCancelBtn').addEventListener('click', ()=>{
+  editingWorkHourExceptionId = null;
+  document.getElementById('addWorkHourExceptionBtn').textContent = '기간 추가';
+  document.getElementById('workHourExceptionCancelBtn').style.display = 'none';
+  document.getElementById('wh-start-y').value = '';
+  document.getElementById('wh-start-m').value = '';
+  document.getElementById('wh-start-d').value = '';
+  document.getElementById('wh-end-y').value = '';
+  document.getElementById('wh-end-m').value = '';
+  document.getElementById('wh-end-d').value = '';
+  document.getElementById('wh-end-time').value = '';
+  document.getElementById('wh-memo').value = '';
 });
 
 document.getElementById('lunchLimitForm').addEventListener('submit', async (e)=>{
@@ -4361,13 +4617,32 @@ document.getElementById('lunchLimitForm').addEventListener('submit', async (e)=>
   if(!ly || !lm || !ld || !dailyAmount) return;
   const date = `${ly}-${String(lm).padStart(2,'0')}-${String(ld).padStart(2,'0')}`;
   settings.lunchLimitHistory = settings.lunchLimitHistory || [];
-  settings.lunchLimitHistory.push({id:genId(), effectiveDate:date, dailyAmount});
+  if(editingLunchLimitId){
+    const h = settings.lunchLimitHistory.find(x=>x.id===editingLunchLimitId);
+    if(h){ h.effectiveDate = date; h.dailyAmount = dailyAmount; }
+    editingLunchLimitId = null;
+    document.getElementById('lunchLimitSubmitBtn').textContent = '한도 추가';
+    document.getElementById('lunchLimitCancelEditBtn').style.display = 'none';
+    document.getElementById('lunchLimitSaveMsg').textContent = '수정됨';
+  } else {
+    settings.lunchLimitHistory.push({id:genId(), effectiveDate:date, dailyAmount});
+    document.getElementById('lunchLimitSaveMsg').textContent = '추가됨';
+  }
   await saveSettings();
-  document.getElementById('lunchLimitSaveMsg').textContent = '추가됨';
   setTimeout(()=>document.getElementById('lunchLimitSaveMsg').textContent='',1200);
   document.getElementById('ll-daily').value='';
   renderLunchLimitHistory();
   renderExpense();
+});
+
+document.getElementById('lunchLimitCancelEditBtn').addEventListener('click', ()=>{
+  editingLunchLimitId = null;
+  document.getElementById('lunchLimitSubmitBtn').textContent = '한도 추가';
+  document.getElementById('lunchLimitCancelEditBtn').style.display = 'none';
+  document.getElementById('ll-y').value = '';
+  document.getElementById('ll-m').value = '';
+  document.getElementById('ll-d').value = '';
+  document.getElementById('ll-daily').value = '';
 });
 
 document.querySelectorAll('.policy-cat-btn').forEach(btn=>{
@@ -4594,7 +4869,8 @@ function updatePolicyLockUI(){
   const pairs = [
     ['quickGuideLocked', 'quickGuideContent', signedIn],
     ['policyDetailLocked', 'policyDetailOuter', signedIn],
-    ['policyEditLocked', 'policyEditContent', admin]
+    ['policyEditLocked', 'policyEditContent', admin],
+    ['allStatusLocked', 'allStatusContent', admin]
   ];
   pairs.forEach(([lockedId, contentId, unlocked])=>{
     const lockedEl = document.getElementById(lockedId);
@@ -4666,7 +4942,7 @@ function openPolicyVersionModal(id){
     const { added, removed } = summarizeLineDiff(prevEntry.content, entry.content);
     const diffHtml = diffLines(prevEntry.content, entry.content);
     summaryHtml = `
-      <div class="settings-box" style="max-width:none; background:var(--indigo-bg); border:none;">
+      <div class="modal-section" style="margin-top:14px;">
         <p class="hint" style="margin:0 0 8px; font-weight:800; color:var(--indigo-deep); text-align:center;">변경 요약 (이전 버전 대비)</p>
         <p class="hint" style="text-align:center; margin-bottom:${(added.length||removed.length) ? '10px' : '0'};">
           ${added.length ? `<span style="color:#16A34A; font-weight:700;">+${added.length}줄 추가</span>` : ''}
@@ -4678,22 +4954,24 @@ function openPolicyVersionModal(id){
           <ul style="margin:4px 0 0; padding-left:18px; font-size:12px; line-height:1.6;">${added.slice(0,5).map(l=>`<li>${escHtml(short(l))}</li>`).join('')}${added.length>5?`<li>...외 ${added.length-5}줄</li>`:''}</ul></div>` : ''}
         ${removed.length ? `<div><b style="font-size:11px; color:#DC2626;">삭제된 내용</b>
           <ul style="margin:4px 0 0; padding-left:18px; font-size:12px; line-height:1.6;">${removed.slice(0,5).map(l=>`<li>${escHtml(short(l))}</li>`).join('')}${removed.length>5?`<li>...외 ${removed.length-5}줄</li>`:''}</ul></div>` : ''}
-      </div>
-      <details style="margin-top:12px;">
-        <summary style="cursor:pointer; font-size:12px; font-weight:700; color:var(--indigo-deep);">전체 개정 전후 비교 보기</summary>
-        <p class="hint" style="font-size:11px; margin:8px 0;"><span class="diff-removed" style="padding:1px 5px;">빨간 배경</span>은 삭제된 줄, <span class="diff-added" style="padding:1px 5px;">초록 배경</span>은 추가된 줄이에요.</p>
-        <div class="diff-view">${diffHtml}</div>
-      </details>`;
+        <details style="margin-top:12px;">
+          <summary style="cursor:pointer; font-size:12px; font-weight:700; color:var(--indigo-deep);">전체 개정 전후 비교 보기</summary>
+          <p class="hint" style="font-size:11px; margin:8px 0;"><span class="diff-removed" style="padding:1px 5px;">빨간 배경</span>은 삭제된 줄, <span class="diff-added" style="padding:1px 5px;">초록 배경</span>은 추가된 줄이에요.</p>
+          <div class="diff-view">${diffHtml}</div>
+        </details>
+      </div>`;
   }
 
   document.getElementById('policyModalTitle').textContent = `${policyCategoryLabel(editingPolicyCategory)} · ${isCurrent ? '현재 버전' : '이전 버전'}`;
   document.getElementById('policyModalBody').innerHTML = `
-    <p class="hint" style="text-align:center; margin-bottom:14px;">생성일 ${entry.editedDate || '-'} · 적용일자 ${entry.effectiveDate || '-'}</p>
+    <p class="hint" style="text-align:center; margin-bottom:0;">생성일 ${entry.editedDate || '-'} · 적용일자 ${entry.effectiveDate || '-'}</p>
     ${summaryHtml}
-    <details style="margin-top:14px;" ${prevEntry ? '' : 'open'}>
-      <summary style="cursor:pointer; font-size:12px; font-weight:700; color:var(--ink);">이 버전 전체 내용 보기</summary>
-      <div class="settings-box" style="max-width:none; margin-top:10px;">${renderPolicyHTML(entry.content)}</div>
-    </details>`;
+    <div class="modal-section">
+      <details ${prevEntry ? '' : 'open'}>
+        <summary style="cursor:pointer; font-size:12px; font-weight:700; color:var(--ink);">이 버전 전체 내용 보기</summary>
+        <div class="settings-box" style="max-width:none; margin-top:10px;">${renderPolicyHTML(entry.content)}</div>
+      </details>
+    </div>`;
   document.getElementById('policyModalOverlay').style.display = 'flex';
 }
 
