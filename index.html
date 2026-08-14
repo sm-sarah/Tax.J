@@ -307,6 +307,9 @@
   .cal-cell.empty{background:transparent; box-shadow:none;}
   .cal-date{font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:12px; color:var(--ink-soft); margin-bottom:4px; display:flex; align-items:center; justify-content:space-between;}
   .cal-date.today{color:var(--indigo);}
+  .cal-date.dow-sat{color:#2563EB;}
+  .cal-date.dow-sun{color:#DC2626;}
+  .cal-date.is-holiday{color:#DC2626;}
   .cal-badges{display:flex; flex-direction:column; gap:3px;}
   .cal-badge{font-size:10.5px; font-weight:700; padding:2px 6px; border-radius:8px; line-height:1.4; white-space:normal; word-break:keep-all; overflow-wrap:break-word; max-width:100%;}
   .cal-badge.leave{background:var(--coral-bg); color:var(--coral);}
@@ -428,6 +431,9 @@
   .doc table.cal td .cal-day-num{font-weight:800; font-size:13.5px; color:var(--ink);}
   .doc table.cal td.weekend{background:#f7f7fb;}
   .doc table.cal td.weekend .cal-day-num{color:var(--coral);}
+  .doc table.cal td .cal-day-num.dow-sat{color:#2563EB;}
+  .doc table.cal td .cal-day-num.dow-sun{color:#DC2626;}
+  .doc table.cal td .cal-day-num.is-holiday{color:#DC2626;}
   .doc .cal-line{
     display:inline-block; font-size:10.5px; line-height:1.5; font-weight:700; padding:2px 5px;
     border-radius:6px; margin:0 2px 2px 0;
@@ -2225,15 +2231,19 @@ function renderAdminCalendar(){
       (byDate[dateStr]=byDate[dateStr]||[]).push(`<span class="cal-badge schedule">⏰ ${whExceptionTeam.endTime} 조기퇴근</span>`);
     }
     const holidayEntry = (sharedExclusionDays||[]).find(x=>x.date===dateStr && x.reason==='공휴일');
+    if(holidayEntry){
+      const info = exclusionBadgeInfo(holidayEntry);
+      (byDate[dateStr]=byDate[dateStr]||[]).unshift(`<span class="cal-badge holiday">${info.icon} ${escHtml(info.label)}</span>`);
+    }
     (sharedExclusionDays||[]).filter(x=>x.date===dateStr && x.reason!=='공휴일').forEach(x=>{
       const cls = x.reason==='점심회식' ? 'lunchparty' : x.reason==='저녁회식' ? 'party' : 'other';
       const info = exclusionBadgeInfo(x);
       (byDate[dateStr]=byDate[dateStr]||[]).push(`<span class="cal-badge ${cls}">${info.icon} ${escHtml(info.label)}</span>`);
     });
     const badges = (byDate[dateStr]||[]).join('');
-    const holidayIconTeam = holidayEntry ? `<span class="cal-work-icon holiday-icon">${exclusionBadgeInfo(holidayEntry).icon} ${escHtml(exclusionBadgeInfo(holidayEntry).label)}</span>` : '';
+    const dateColorClass = holidayEntry ? 'is-holiday' : (dow===0 ? 'dow-sun' : (dow===6 ? 'dow-sat' : ''));
     cells += `<div class="cal-cell ${isWeekend?'weekend':''}">
-      <div class="cal-date ${dateStr===todayS?'today':''}">${d}${holidayIconTeam}</div>
+      <div class="cal-date ${dateStr===todayS?'today':''} ${dateColorClass}">${d}</div>
       <div class="cal-badges">${badges}</div>
     </div>`;
   }
@@ -3338,6 +3348,7 @@ function renderExclusionList(){
       renderExpense();
       renderWorkdaysSuggestion();
       renderCalendar();
+      renderAdminCalendar();
     });
   });
 }
@@ -3399,17 +3410,18 @@ function renderCalendar(){
       badges += `<span class="cal-badge leave"${titleAttr}>🌴 ${label}</span>`;
     });
     if(remoteByDate[dateStr]) badges += remoteByDate[dateStr]==='bonus' ? `<span class="cal-badge special">🎁 특별재택</span>` : `<span class="cal-badge remote">🏠 정기재택</span>`;
-    let holidayIcon = '';
+    let holidayBadge = '';
     (exclusionByDate[dateStr]||[]).forEach(x=>{
       if(x.reason==='공휴일'){
         const info = exclusionBadgeInfo(x);
-        holidayIcon = `<span class="cal-work-icon holiday-icon">${info.icon} ${escHtml(info.label)}</span>`;
+        holidayBadge = `<span class="cal-badge holiday">${info.icon} ${escHtml(info.label)}</span>`;
         return;
       }
       const cls = x.reason==='점심회식' ? 'lunchparty' : x.reason==='저녁회식' ? 'party' : 'other';
       const info = exclusionBadgeInfo(x);
       badges += `<span class="cal-badge ${cls}">${info.icon} ${escHtml(info.label)}</span>`;
     });
+    if(holidayBadge) badges = holidayBadge + badges;
     (scheduleByDate[dateStr]||[]).forEach(e=>{
       const timeLabel = e.startTime ? `${e.startTime}${e.endTime ? '~'+e.endTime : ''}` : '';
       const memoText = [timeLabel, (e.memo || e.title || '')].filter(Boolean).join(' · ');
@@ -3420,12 +3432,13 @@ function renderCalendar(){
     if(whException && !isWeekend) badges += `<span class="cal-badge schedule">⏰ ${whException.endTime} 조기퇴근</span>`;
     const hasAnnualLeave = (rawLeaveByDate[dateStr]||[]).some(u=>GROUPABLE_LEAVE_TYPES.includes(u.type));
     const hasHoliday = (exclusionByDate[dateStr]||[]).some(x=>x.reason==='공휴일');
-    let workIcon = holidayIcon;
+    let workIcon = '';
     if(!isWeekend && !hasAnnualLeave && !hasHoliday){
       workIcon = `<span class="cal-work-icon" title="근무">💼</span>`;
     }
+    const dateColorClass = hasHoliday ? 'is-holiday' : (dow===0 ? 'dow-sun' : (dow===6 ? 'dow-sat' : ''));
     cells += `<div class="cal-cell ${isWeekend?'weekend':''}">
-      <div class="cal-date ${dateStr===todayS?'today':''}">${d}${workIcon}</div>
+      <div class="cal-date ${dateStr===todayS?'today':''} ${dateColorClass}">${d}${workIcon}</div>
       <div class="cal-badges">${badges}</div>
     </div>`;
   }
@@ -3714,17 +3727,18 @@ function buildCalendarHTML(monthStr){
       if(timeLabel) lines += `<span class="cal-line tag-leave" style="opacity:0.82;">🕐 ${timeLabel}</span>`;
     });
     if(remoteByDate[dateStr]) lines += remoteByDate[dateStr]==='bonus' ? `<span class="cal-line tag-special">🎁 특별재택</span>` : `<span class="cal-line tag-remote">🏠 정기재택</span>`;
-    let holidayIconPrint = '';
+    let holidayLinePrint = '';
     (exclusionByDate[dateStr]||[]).forEach(x=>{
       if(x.reason==='공휴일'){
         const info = exclusionBadgeInfo(x);
-        holidayIconPrint = `<span class="cal-work-icon holiday-icon">${info.icon} ${escHtml(info.label)}</span>`;
+        holidayLinePrint = `<span class="cal-line tag-holiday">${info.icon} ${escHtml(info.label)}</span>`;
         return;
       }
       const cls = x.reason==='점심회식' ? 'tag-lunchparty' : x.reason==='저녁회식' ? 'tag-party' : 'tag-schedule';
       const info = exclusionBadgeInfo(x);
       lines += `<span class="cal-line ${cls}">${info.icon} ${escHtml(info.label)}</span>`;
     });
+    if(holidayLinePrint) lines = holidayLinePrint + lines;
     (scheduleByDate[dateStr]||[]).forEach(e=>{
       const t = e.startTime ? `${e.startTime}${e.endTime?'~'+e.endTime:''}` : '';
       lines += `<span class="cal-line tag-schedule">🗓️ ${escHtml(e.type || '일정')}</span>`;
@@ -3734,11 +3748,12 @@ function buildCalendarHTML(monthStr){
     if(whExceptionPrint && !isWeekend) lines += `<span class="cal-line tag-schedule">⏰ ${whExceptionPrint.endTime} 조기퇴근</span>`;
     const hasAnnualLeavePrint = (rawLeaveByDate[dateStr]||[]).some(u=>GROUPABLE_LEAVE_TYPES.includes(u.type));
     const hasHolidayPrint = (exclusionByDate[dateStr]||[]).some(x=>x.reason==='공휴일');
-    let workIconPrint = holidayIconPrint;
+    let workIconPrint = '';
     if(!isWeekend && !hasAnnualLeavePrint && !hasHolidayPrint){
       workIconPrint = `<span class="cal-work-icon">💼 근무</span>`;
     }
-    return `<td class="${isWeekend?'weekend':''}"><div class="cal-cell-inner"><div class="cal-day-row"><span class="cal-day-num">${d}</span>${workIconPrint}</div><div class="cal-lines-wrap">${lines}</div></div></td>`;
+    const dateColorClassPrint = hasHolidayPrint ? 'is-holiday' : (dow===0 ? 'dow-sun' : (dow===6 ? 'dow-sat' : ''));
+    return `<td class="${isWeekend?'weekend':''}"><div class="cal-cell-inner"><div class="cal-day-row"><span class="cal-day-num ${dateColorClassPrint}">${d}</span>${workIconPrint}</div><div class="cal-lines-wrap">${lines}</div></div></td>`;
   }
 
   let dayCursor = 1;
@@ -4365,6 +4380,7 @@ document.getElementById('exclusionForm').addEventListener('submit', async (e)=>{
   renderExpense();
   renderWorkdaysSuggestion();
   renderCalendar();
+  renderAdminCalendar();
 });
 
 document.getElementById('exclusion-cancel').addEventListener('click', ()=>{
