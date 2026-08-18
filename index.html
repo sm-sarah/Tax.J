@@ -67,8 +67,9 @@
   .home-tiles.five{grid-template-columns:repeat(5, 1fr);}
   .home-tiles.three{grid-template-columns:repeat(3, 1fr);}
   .home-tiles.six{grid-template-columns:repeat(6, 1fr);}
-  @media (max-width:900px){ .home-tiles, .home-tiles.five, .home-tiles.six{grid-template-columns:repeat(2, 1fr);} }
-  @media (max-width:560px){ .home-tiles, .home-tiles.five, .home-tiles.three, .home-tiles.six{grid-template-columns:1fr;} }
+  .home-tiles.seven{grid-template-columns:repeat(4, 1fr);}
+  @media (max-width:900px){ .home-tiles, .home-tiles.five, .home-tiles.six, .home-tiles.seven{grid-template-columns:repeat(2, 1fr);} }
+  @media (max-width:560px){ .home-tiles, .home-tiles.five, .home-tiles.three, .home-tiles.six, .home-tiles.seven{grid-template-columns:1fr;} }
   .home-tile{
     background:var(--surface); border-radius:18px; padding:20px 18px;
     cursor:pointer; border-top:4px solid var(--tile-accent, var(--indigo));
@@ -487,6 +488,7 @@
         <button class="tab-btn" data-tab="attendance">⏰ 근태</button>
         <button class="tab-btn" data-tab="expense">💳 경비</button>
         <button class="tab-btn" data-tab="settlement">🧮 정산</button>
+        <button class="tab-btn" data-tab="clients">🏢 거래처</button>
         <button class="tab-btn" data-tab="noticepost">📝 공지등록</button>
         <button class="tab-btn" data-tab="attendance-settings">⚙️ 개인설정</button>
       </div>
@@ -542,7 +544,7 @@
     </div>
 
     <div class="home-section-label" style="margin-top:24px;">Staff Dashboard</div>
-    <div class="home-tiles six">
+    <div class="home-tiles seven">
       <div class="home-tile" data-goto="calendar" style="--tile-accent:var(--mint);">
         <div class="home-tile-icon">📅</div>
         <div class="home-tile-title">캘린더</div>
@@ -562,6 +564,11 @@
         <div class="home-tile-icon">🧮</div>
         <div class="home-tile-title">정산</div>
         <div class="home-tile-desc">근무일수·식대한도 현황, 지출결의서 출력</div>
+      </div>
+      <div class="home-tile" data-goto="clients" style="--tile-accent:#8B5CF6;">
+        <div class="home-tile-icon">🏢</div>
+        <div class="home-tile-title">거래처</div>
+        <div class="home-tile-desc">담당 거래처 정보, 계약·수임 현황 관리</div>
       </div>
       <div class="home-tile" data-goto="noticepost" style="--tile-accent:#0EA5E9;">
         <div class="home-tile-icon">📝</div>
@@ -957,21 +964,9 @@
       <div class="guide-card" style="--accent:var(--guide-wine);">
         <h4>🌴 2. 휴가시간표</h4>
         <ul>
-          <li><b>연차(1.0)</b>: 종일 (출근 의무 X)</li>
-          <li><b>반차(0.5)</b>: 3시간 근무
-            <ul>
-              <li>오전: 14:00 출근~정시퇴근</li>
-              <li>오후(식사O): 14:00 퇴근</li>
-              <li>오후(식사X): 13:00(상)/12:30(하) 퇴근</li>
-            </ul>
-          </li>
-          <li><b>반반차(0.25)</b>: 1.5시간 사용
-            <ul>
-              <li>늦은출근: 11:00 출근</li>
-              <li>점심연장: 11~14시(3H)</li>
-              <li>조기퇴근: 16:00(하반기 15:30)</li>
-            </ul>
-          </li>
+          <li><b>연차</b> · 1일 차감</li>
+          <li><b>반차</b> · 0.5일 차감</li>
+          <li><b>반반차</b> · 0.25일 차감</li>
         </ul>
         <div class="guide-sos">🆘 SOS! 급한 일 생기면 반반차(0.25)는 당일 신청 가능!</div>
       </div>
@@ -980,7 +975,7 @@
         <h4>🎁 3. 복지혜택</h4>
         <ul>
           <li>🍱 <b>식대</b> · 법인카드 사용, 남은 금액은 네이버페이 지급</li>
-          <li>📱 <b>업무폰</b> · 퇴근 시 회사에 두고 가기 (밤엔 없는 저녁 보장)</li>
+          <li>📱 <b>업무폰</b> · 퇴근 시 사내 보관 원칙</li>
           <li>🖥️ <b>비품</b> · 업무 필수템 청구 OK (고가는 사전 컨펌)</li>
           <li>🚕 <b>야간 교통비</b> · 21:30 이후 야근 퇴근 시 택시비 지원</li>
           <li>💰 <b>상여금</b> · 시즌 종료 후 기본급 100%</li>
@@ -1001,7 +996,6 @@
         <ul>
           <li>시기: 매달 10일 (전월분)</li>
         </ul>
-        <div class="guide-tip">* 식대잔액의 경우 네이버페이 지급</div>
       </div>
     </div>
   </section>
@@ -1116,6 +1110,56 @@
     <h2 class="section-title" style="margin-top:22px; justify-content:center;">공지사항 목록</h2>
     <div id="noticeHistoryWrap"></div>
     <div id="noticePreviewWrap" style="margin-top:14px;"></div>
+  </section>
+
+  <!-- 거래처관리 -->
+  <section id="tab-clients" class="tab-panel">
+    <h2 class="section-title">거래처 등록</h2>
+    <div class="settings-box" style="max-width:760px;">
+      <form id="clientForm">
+        <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
+          <div class="field" style="flex:2 1 200px;"><label>상호</label><input type="text" id="cl-name" required placeholder="예: (주)청인상사"></div>
+          <div class="field" style="flex:1 1 160px;"><label>사업자번호</label><input type="text" id="cl-bizno" placeholder="예: 123-45-67890"></div>
+        </div>
+        <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
+          <div class="field" style="flex:1 1 140px;"><label>담당자</label><input type="text" id="cl-contact" placeholder="예: 홍길동 대표"></div>
+          <div class="field" style="flex:1 1 160px;"><label>연락처</label><input type="text" id="cl-phone" placeholder="예: 010-1234-5678"></div>
+        </div>
+        <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
+          <div class="field" style="flex:1 1 160px;"><label>세무 유형</label>
+            <select id="cl-taxtype">
+              <option value="기장대리">기장대리</option>
+              <option value="조정">조정</option>
+              <option value="원천세">원천세</option>
+              <option value="부가세">부가세</option>
+              <option value="양도소득세">양도소득세</option>
+              <option value="상속·증여세">상속·증여세</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
+          <div class="field" style="flex:1 1 140px;"><label>수임료(월, 원)</label><input type="number" id="cl-fee" class="num-input" min="0" step="1" placeholder="예: 200000"></div>
+        </div>
+        <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
+          <div class="field" style="flex:1 1 140px;"><label>계약 시작일</label><input type="date" id="cl-start" min="2015-01-01" max="2099-12-31"></div>
+          <div class="field" style="flex:1 1 140px;"><label>다음 신고기한</label><input type="date" id="cl-deadline" min="2015-01-01" max="2099-12-31"></div>
+          <div class="field" style="flex:1 1 140px;"><label>진행상황</label>
+            <select id="cl-status">
+              <option value="진행중">진행중</option>
+              <option value="보류">보류</option>
+              <option value="종료">종료</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>메모</label><input type="text" id="cl-memo" placeholder="예: 매년 12월 재계약, 특이사항 등"></div>
+        <button type="submit" class="submit-btn">거래처 추가</button>
+        <button type="button" id="client-cancel" class="del-btn" style="display:none; margin-top:6px;">취소</button>
+        <span class="save-msg" id="clientSaveMsg"></span>
+      </form>
+    </div>
+
+    <h2 class="section-title" style="margin-top:22px;">거래처 목록 <span class="badge" id="clientCountBadge">0건</span></h2>
+    <div class="field" style="max-width:320px; margin:0 auto 14px;"><input type="text" id="cl-search" placeholder="🔍 상호·담당자 검색"></div>
+    <div id="clientListWrap"></div>
   </section>
 
   <!-- 공지등록 -->
@@ -1658,6 +1702,7 @@ function policyCategoryLabel(cat){ return cat === 'ops' ? '운영지침' : '인�
 let attendance = { leaveGrants:[], leaveUsage:[], remoteEntries:[] };
 let expense = { lunchEntries:[], dinnerEntries:[], otherExpenses:[], taxiEntries:[], prepaidEntries:[] };
 let schedule = { events:[] };
+let clients = { list:[] };
 // ===== 팀 공통 데이터 (직원별이 아니라 이 브라우저 전체에서 공유) =====
 let sharedExclusionDays = [];   // 공휴일/회식 등 제외일
 let sharedWorkHourExceptions = []; // 조기퇴근 등 근무시간 예외기간
@@ -2134,6 +2179,7 @@ function normalizeState(){
   expense.taxiEntries = expense.taxiEntries || [];
   expense.prepaidEntries = expense.prepaidEntries || [];
   schedule.events = schedule.events || [];
+  clients.list = clients.list || [];
   delete expense.monthlyWorkdays; // 구버전 수동 근무일수 필드 (근태 자동계산으로 대체됨)
 
   // settings 기본 구조 보장
@@ -2192,10 +2238,12 @@ async function loadAll(){
   attendance = { leaveGrants:[], leaveUsage:[], remoteEntries:[] };
   expense = { lunchEntries:[], dinnerEntries:[], otherExpenses:[], taxiEntries:[], prepaidEntries:[] };
   schedule = { events:[] };
+  clients = { list:[] };
   try{ const s = localStorage.getItem(skey('settings')); if(s) settings = JSON.parse(s); }catch(e){ console.error('설정 불러오기 실패', e); }
   try{ const a = localStorage.getItem(skey('attendance')); if(a) attendance = JSON.parse(a); }catch(e){ console.error('근태 불러오기 실패', e); }
   try{ const ex = localStorage.getItem(skey('expense')); if(ex) expense = JSON.parse(ex); }catch(e){ console.error('경비 불러오기 실패', e); }
   try{ const sc = localStorage.getItem(skey('schedule')); if(sc) schedule = JSON.parse(sc); }catch(e){ console.error('일정 불러오기 실패', e); }
+  try{ const cl = localStorage.getItem(skey('clients')); if(cl) clients = JSON.parse(cl); }catch(e){ console.error('거래처 불러오기 실패', e); }
   loadSharedData();
   normalizeState();
   {
@@ -2207,6 +2255,7 @@ async function loadAll(){
   await saveAttendance();
   await saveExpense();
   await saveSchedule();
+  await saveClients();
 
   document.getElementById('s-name').value = settings.employeeName || '';
   renderEmployeeInfoView();
@@ -2294,6 +2343,7 @@ async function saveSettings(){ try{ localStorage.setItem(skey('settings'), JSON.
 async function saveAttendance(){ try{ localStorage.setItem(skey('attendance'), JSON.stringify(attendance)); }catch(e){ console.error('근태 저장 실패', e); } gdriveScheduleSync(); }
 async function saveExpense(){ try{ localStorage.setItem(skey('expense'), JSON.stringify(expense)); }catch(e){ console.error('경비 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSchedule(){ try{ localStorage.setItem(skey('schedule'), JSON.stringify(schedule)); }catch(e){ console.error('일정 저장 실패', e); } gdriveScheduleSync(); }
+async function saveClients(){ try{ localStorage.setItem(skey('clients'), JSON.stringify(clients)); }catch(e){ console.error('거래처 저장 실패', e); } gdriveScheduleSync(); }
 
 function leaveAsOfDate(){
   return settings.leaveAsOfDate || todayStr();
@@ -3049,7 +3099,7 @@ function renderDeadlineBanner(){
   wrap.innerHTML = `<div class="deadline-banner">📌 ${prevMonthLabel}분 지출결의서, 매월 10일 지급 기준이니 상신 잊지 마세요! (마감까지 D-${daysLeft >= 0 ? daysLeft : 0})</div>`;
 }
 
-function renderAll(){ renderAttendance(); renderExpense(); renderWorkdaysSuggestion(); renderCalendar(); renderScheduleList(); renderDeadlineBanner(); renderAdminOverview(); renderAdminCalendar(); renderHome(); renderAllLeaveHistory(); renderNoticeHistory(); renderManualGrantList(); renderEmployeeList(); if(typeof twemoji !== 'undefined') twemoji.parse(document.body, {folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'}); }
+function renderAll(){ renderAttendance(); renderExpense(); renderWorkdaysSuggestion(); renderCalendar(); renderScheduleList(); renderClients(); renderDeadlineBanner(); renderAdminOverview(); renderAdminCalendar(); renderHome(); renderAllLeaveHistory(); renderNoticeHistory(); renderManualGrantList(); renderEmployeeList(); if(typeof twemoji !== 'undefined') twemoji.parse(document.body, {folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'}); }
 
 function renderScheduleList(){
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
@@ -3101,6 +3151,70 @@ function renderScheduleList(){
       }
       renderScheduleList();
       renderCalendar();
+    });
+  });
+}
+
+function renderClients(){
+  const wrap = document.getElementById('clientListWrap');
+  const badge = document.getElementById('clientCountBadge');
+  const searchEl = document.getElementById('cl-search');
+  const q = (searchEl && searchEl.value || '').trim().toLowerCase();
+  let list = [...(clients.list||[])];
+  if(q){
+    list = list.filter(c=> (c.name||'').toLowerCase().includes(q) || (c.contact||'').toLowerCase().includes(q));
+  }
+  list.sort((a,b)=> (a.name||'') < (b.name||'') ? -1 : 1);
+  if(badge) badge.textContent = `${(clients.list||[]).length}건`;
+  if(!list.length){
+    wrap.innerHTML = `<div class="empty-state">${q ? '검색 결과가 없습니다.' : '등록된 거래처가 없습니다.'}</div>`;
+    return;
+  }
+  const statusTagClass = { '진행중':'tag-grant', '보류':'tag-usage', '종료':'' };
+  const rows = list.map(c=>{
+    return `<tr>
+      <td>${escHtml(c.name||'')}</td>
+      <td class="num">${escHtml(c.bizNo||'')}</td>
+      <td>${escHtml(c.contact||'')}${c.phone ? `<br><span style="font-size:11px; color:var(--ink-soft);">${escHtml(c.phone)}</span>` : ''}</td>
+      <td>${escHtml(c.taxType||'')}</td>
+      <td class="num">${c.fee ? Number(c.fee).toLocaleString() + '원' : '-'}</td>
+      <td class="num">${escHtml(c.deadline||'-')}</td>
+      <td><span class="tag ${statusTagClass[c.status]||''}">${escHtml(c.status||'진행중')}</span></td>
+      <td style="white-space:nowrap;"><button class="del-btn client-edit-btn" data-id="${c.id}">수정</button><button class="del-btn client-del-btn" data-id="${c.id}">삭제</button></td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<table><thead><tr><th>상호</th><th>사업자번호</th><th>담당자</th><th>세무유형</th><th>수임료</th><th>다음신고기한</th><th>진행상황</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.querySelectorAll('.client-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const c = clients.list.find(x=>x.id===btn.dataset.id);
+      if(!c) return;
+      editingClientId = c.id;
+      document.getElementById('cl-name').value = c.name || '';
+      document.getElementById('cl-bizno').value = c.bizNo || '';
+      document.getElementById('cl-contact').value = c.contact || '';
+      document.getElementById('cl-phone').value = c.phone || '';
+      document.getElementById('cl-taxtype').value = c.taxType || '기장대리';
+      document.getElementById('cl-fee').value = c.fee || '';
+      document.getElementById('cl-start').value = c.start || '';
+      document.getElementById('cl-deadline').value = c.deadline || '';
+      document.getElementById('cl-status').value = c.status || '진행중';
+      document.getElementById('cl-memo').value = c.memo || '';
+      document.getElementById('clientForm').querySelector('button[type="submit"]').textContent = '수정 완료';
+      document.getElementById('client-cancel').style.display = 'inline-block';
+      document.getElementById('clientForm').scrollIntoView({behavior:'smooth', block:'center'});
+    });
+  });
+  wrap.querySelectorAll('.client-del-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!confirm('이 거래처를 삭제할까요?')) return;
+      clients.list = clients.list.filter(x=>x.id!==btn.dataset.id);
+      await saveClients();
+      if(editingClientId === btn.dataset.id){
+        editingClientId = null;
+        document.getElementById('clientForm').querySelector('button[type="submit"]').textContent = '거래처 추가';
+        document.getElementById('client-cancel').style.display = 'none';
+      }
+      renderClients();
     });
   });
 }
@@ -3452,7 +3566,7 @@ let navExpanded = false;
 let activeTopGroup = null; // null | 'management' | 'staff'
 
 const MANAGEMENT_TABS = ['admin','teamcalendar','quickguide','policy','policyedit','settings'];
-const STAFF_TABS = ['calendar','attendance','expense','settlement','noticepost','attendance-settings'];
+const STAFF_TABS = ['calendar','attendance','expense','settlement','clients','noticepost','attendance-settings'];
 
 function updateNavVisibility(){
   document.getElementById('landingHeader').style.display = navExpanded ? 'none' : 'block';
@@ -3837,6 +3951,7 @@ document.getElementById('taxiForm').addEventListener('submit', async (e)=>{
 });
 
 let editingScheduleId = null;
+let editingClientId = null;
 
 document.getElementById('scheduleForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
@@ -3875,6 +3990,52 @@ document.getElementById('schedule-cancel').addEventListener('click', ()=>{
   document.getElementById('sc-start').value='';
   document.getElementById('sc-end').value='';
 });
+
+document.getElementById('clientForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const name = document.getElementById('cl-name').value.trim();
+  if(!name) return;
+  const fields = {
+    name,
+    bizNo: document.getElementById('cl-bizno').value.trim(),
+    contact: document.getElementById('cl-contact').value.trim(),
+    phone: document.getElementById('cl-phone').value.trim(),
+    taxType: document.getElementById('cl-taxtype').value,
+    fee: document.getElementById('cl-fee').value ? Number(document.getElementById('cl-fee').value) : null,
+    start: document.getElementById('cl-start').value,
+    deadline: document.getElementById('cl-deadline').value,
+    status: document.getElementById('cl-status').value,
+    memo: document.getElementById('cl-memo').value.trim()
+  };
+  if(editingClientId){
+    const c = clients.list.find(x=>x.id===editingClientId);
+    if(c) Object.assign(c, fields);
+    editingClientId = null;
+    document.getElementById('clientForm').querySelector('button[type="submit"]').textContent = '거래처 추가';
+    document.getElementById('client-cancel').style.display = 'none';
+    document.getElementById('clientSaveMsg').textContent = '수정됨';
+  } else {
+    clients.list.push({id:genId(), ...fields});
+    document.getElementById('clientSaveMsg').textContent = '추가됨';
+  }
+  await saveClients();
+  setTimeout(()=>document.getElementById('clientSaveMsg').textContent='',1200);
+  document.getElementById('clientForm').reset();
+  document.getElementById('cl-taxtype').value = '기장대리';
+  document.getElementById('cl-status').value = '진행중';
+  renderClients();
+});
+
+document.getElementById('client-cancel').addEventListener('click', ()=>{
+  editingClientId = null;
+  document.getElementById('clientForm').querySelector('button[type="submit"]').textContent = '거래처 추가';
+  document.getElementById('client-cancel').style.display = 'none';
+  document.getElementById('clientForm').reset();
+  document.getElementById('cl-taxtype').value = '기장대리';
+  document.getElementById('cl-status').value = '진행중';
+});
+
+document.getElementById('cl-search').addEventListener('input', ()=>renderClients());
 
 document.getElementById('otherExpenseForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
@@ -4300,7 +4461,10 @@ async function fetchCurrentUserEmail(){
     const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
       headers: { Authorization: `Bearer ${gdriveAccessToken}` }
     });
-    if(!res.ok) return;
+    if(!res.ok){
+      if(res.status === 401) gdriveHandleUnauthorized();
+      return;
+    }
     const data = await res.json();
     currentUserEmail = (data.email || '').toLowerCase();
     isCurrentUserAdmin = sharedAdminEmails.map(e=>e.toLowerCase()).includes(currentUserEmail);
@@ -4515,8 +4679,8 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
     schemaVersion: SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
     app: 'monthly-board',
-    scope: 'personal', // 개인 백업: 이 직원의 근태/경비/설정만 포함, 회사 공통설정은 포함 안 함
-    settings, attendance, expense, schedule
+    scope: 'personal', // 개인 백업: 이 직원의 근태/경비/설정/거래처만 포함, 회사 공통설정은 포함 안 함
+    settings, attendance, expense, schedule, clients
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -4555,12 +4719,14 @@ document.getElementById('importFile').addEventListener('change', async (e)=>{
     attendance = data.attendance;
     expense = data.expense;
     schedule = data.schedule || { events:[] };
+    clients = data.clients || { list:[] };
     // 개인 백업/복구는 회사 공통데이터(공휴일·근무시간예외·공지사항·관리자목록)를 절대 건드리지 않음 - 파일에 들어있어도 무시함
     normalizeState();
     await saveSettings();
     await saveAttendance();
     await saveExpense();
     await saveSchedule();
+    await saveClients();
     if(gdriveAccessToken && gdriveFileId){
       document.getElementById('backupSaveMsg').textContent = '불러오기 완료 · 드라이브에 반영 중...';
       try{ await gdrivePush(); }catch(err){ console.error('불러오기 후 드라이브 반영 실패', err); }
@@ -4695,6 +4861,7 @@ document.getElementById('importAllFile').addEventListener('change', async (e)=>{
       if(d.attendance) localStorage.setItem(`worklog_attendance__${profileId}`, JSON.stringify(d.attendance));
       if(d.expense) localStorage.setItem(`worklog_expense__${profileId}`, JSON.stringify(d.expense));
       if(d.schedule) localStorage.setItem(`worklog_schedule__${profileId}`, JSON.stringify(d.schedule));
+      if(d.clients) localStorage.setItem(`worklog_clients__${profileId}`, JSON.stringify(d.clients));
     });
     if(data.shared){
       sharedExclusionDays = data.shared.exclusionDays || [];
@@ -4932,12 +5099,77 @@ document.getElementById('deleteProfileBtn').addEventListener('click', async ()=>
 // ===== Google Drive 연동 =====
 const GDRIVE_FILE_NAME = 'taxj-shared-data.json';
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email';
+const GDRIVE_TOKEN_KEY = 'worklog_gdrive_token';
+const GDRIVE_TOKEN_EXPIRY_KEY = 'worklog_gdrive_token_expiry';
+const GDRIVE_TOKEN_SAFETY_MARGIN_MS = 5 * 60 * 1000; // 만료 5분 전부터는 재사용 안 하고 미리 새로 받아요
 let gdriveTokenClient = null;
 let gdriveAccessToken = null;
 let currentUserEmail = null;
 let isCurrentUserAdmin = false;
 let gdriveFileId = localStorage.getItem('worklog_gdrive_file_id') || '';
 let gdriveSyncTimer = null;
+
+// 액세스 토큰을 만료시각과 함께 저장해둬요 - 새로고침해도 (토큰이 아직 살아있으면) 로그인을 다시 안 거치도록 하기 위함
+function saveGdriveTokenToStorage(token, expiresInSec){
+  try{
+    const expiresAt = Date.now() + (Number(expiresInSec || 3600) * 1000);
+    localStorage.setItem(GDRIVE_TOKEN_KEY, token);
+    localStorage.setItem(GDRIVE_TOKEN_EXPIRY_KEY, String(expiresAt));
+  }catch(e){ console.error('토큰 저장 실패', e); }
+}
+function clearGdriveTokenStorage(){
+  localStorage.removeItem(GDRIVE_TOKEN_KEY);
+  localStorage.removeItem(GDRIVE_TOKEN_EXPIRY_KEY);
+}
+// 아직 유효기간이 5분 이상 남은 저장된 토큰이 있으면 반환, 없거나 곧 만료면 null
+function getValidStoredGdriveToken(){
+  const token = localStorage.getItem(GDRIVE_TOKEN_KEY);
+  const expiryStr = localStorage.getItem(GDRIVE_TOKEN_EXPIRY_KEY);
+  if(!token || !expiryStr) return null;
+  const expiresAt = Number(expiryStr);
+  if(!expiresAt || Date.now() > (expiresAt - GDRIVE_TOKEN_SAFETY_MARGIN_MS)){
+    clearGdriveTokenStorage();
+    return null;
+  }
+  return token;
+}
+// 로그인 성공(신규 OAuth 또는 저장된 토큰 재사용) 직후 공통으로 처리할 로직
+async function afterGdriveConnected(){
+  const syncBtn = document.getElementById('gdriveSyncBtn');
+  if(syncBtn) syncBtn.disabled = false;
+  gdriveSetStatus('연결됨 · 동기화 중...');
+  applyPermissionUI();
+  updatePolicyLockUI(); // 로그인 자체는 성공했으니, 파일 동기화 결과와 무관하게 즉시 잠금 해제
+  if(pendingTabAfterLogin){
+    const targetTab = pendingTabAfterLogin;
+    pendingTabAfterLogin = null;
+    document.querySelector(`.tab-btn[data-tab="${targetTab}"]`)?.click();
+  }
+  try{
+    await gdriveEnsureFile();
+    await gdrivePull();
+    await fetchCurrentUserEmail();
+    applyPermissionUI();
+    await gdrivePush();
+    gdriveSetStatus('연결됨 · 방금 동기화함' + (currentUserEmail ? ` (${currentUserEmail}${isCurrentUserAdmin ? ' · 관리자' : ''})` : ''));
+    gdriveUpdateFileLink();
+    updatePolicyLockUI();
+    renderAll();
+  }catch(err){
+    console.error('Drive 연동 오류', err);
+    gdriveSetStatus('로그인은 됐지만 데이터 동기화 실패: ' + err.message + ' (관리자에게 드라이브 파일 편집 권한을 요청해주세요)');
+  }
+}
+// 토큰이 만료/무효화된 경우(401) 공통 처리 - 저장된 토큰을 지우고 조용히 재연결을 시도해요
+function gdriveHandleUnauthorized(){
+  clearGdriveTokenStorage();
+  gdriveAccessToken = null;
+  applyPermissionUI();
+  updatePolicyLockUI();
+  updateQuickConnectBtn();
+  gdriveSetStatus('로그인이 만료됐어요 · 자동 재연결 시도 중...');
+  gdriveConnect(true);
+}
 
 function gdriveSetStatus(text){
   const el = document.getElementById('gdriveStatusMsg');
@@ -4978,7 +5210,8 @@ function gdriveBuildPayload(){
       settings: readProfileRaw(p.id,'settings'),
       attendance: readProfileRaw(p.id,'attendance'),
       expense: readProfileRaw(p.id,'expense'),
-      schedule: readProfileRaw(p.id,'schedule')
+      schedule: readProfileRaw(p.id,'schedule'),
+      clients: readProfileRaw(p.id,'clients')
     };
   });
   return {
@@ -5003,6 +5236,7 @@ async function gdriveEnsureFile(){
   });
   const searchData = await searchRes.json();
   if(!searchRes.ok){
+    if(searchRes.status === 401) gdriveHandleUnauthorized();
     throw new Error(`파일 검색 실패: ${searchData.error ? searchData.error.message : searchRes.status}`);
   }
   if(searchData.files && searchData.files.length){
@@ -5016,6 +5250,7 @@ async function gdriveEnsureFile(){
     });
     const createData = await createRes.json();
     if(!createRes.ok || !createData.id){
+      if(createRes.status === 401) gdriveHandleUnauthorized();
       throw new Error(`파일 생성 실패: ${createData.error ? createData.error.message : createRes.status}`);
     }
     gdriveFileId = createData.id;
@@ -5034,6 +5269,7 @@ async function gdrivePush(){
       body: JSON.stringify(gdriveBuildPayload(), null, 2)
     });
     if(!res.ok){
+      if(res.status === 401){ gdriveHandleUnauthorized(); return; }
       const errData = await res.json().catch(()=>({}));
       throw new Error(errData.error ? errData.error.message : `저장 실패 (${res.status})`);
     }
@@ -5057,7 +5293,10 @@ async function gdrivePull(){
     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${gdriveFileId}?alt=media`, {
       headers: { Authorization: `Bearer ${gdriveAccessToken}` }
     });
-    if(!res.ok) return;
+    if(!res.ok){
+      if(res.status === 401) gdriveHandleUnauthorized();
+      return;
+    }
     const remote = await res.json();
     if(!remote || !remote.profiles) return;
     saveProfiles(remote.profiles);
@@ -5067,6 +5306,7 @@ async function gdrivePull(){
       if(d.attendance) localStorage.setItem(`worklog_attendance__${pid}`, JSON.stringify(d.attendance));
       if(d.expense) localStorage.setItem(`worklog_expense__${pid}`, JSON.stringify(d.expense));
       if(d.schedule) localStorage.setItem(`worklog_schedule__${pid}`, JSON.stringify(d.schedule));
+      if(d.clients) localStorage.setItem(`worklog_clients__${pid}`, JSON.stringify(d.clients));
     });
     if(remote.shared){
       if(remote.shared.exclusionDays) localStorage.setItem('worklog_shared_exclusions', JSON.stringify(remote.shared.exclusionDays));
@@ -5108,29 +5348,8 @@ function gdriveConnect(silent){
         return;
       }
       gdriveAccessToken = resp.access_token;
-      document.getElementById('gdriveSyncBtn').disabled = false;
-      gdriveSetStatus('연결됨 · 동기화 중...');
-      applyPermissionUI();
-      updatePolicyLockUI(); // 로그인 자체는 성공했으니, 파일 동기화 결과와 무관하게 즉시 잠금 해제
-      if(pendingTabAfterLogin){
-        const targetTab = pendingTabAfterLogin;
-        pendingTabAfterLogin = null;
-        document.querySelector(`.tab-btn[data-tab="${targetTab}"]`)?.click();
-      }
-      try{
-        await gdriveEnsureFile();
-        await gdrivePull();
-        await fetchCurrentUserEmail();
-        applyPermissionUI();
-        await gdrivePush();
-        gdriveSetStatus('연결됨 · 방금 동기화함' + (currentUserEmail ? ` (${currentUserEmail}${isCurrentUserAdmin ? ' · 관리자' : ''})` : ''));
-        gdriveUpdateFileLink();
-        updatePolicyLockUI();
-        renderAll();
-      }catch(err){
-        console.error('Drive 연동 오류', err);
-        gdriveSetStatus('로그인은 됐지만 데이터 동기화 실패: ' + err.message + ' (관리자에게 드라이브 파일 편집 권한을 요청해주세요)');
-      }
+      saveGdriveTokenToStorage(resp.access_token, resp.expires_in);
+      await afterGdriveConnected();
     }
   });
   gdriveTokenClient.requestAccessToken(silent ? { prompt: '' } : {});
@@ -5231,8 +5450,13 @@ document.getElementById('gdrive-client-id').value = savedClientId;
 document.getElementById('gdrive-client-id-personal').value = savedClientId;
 document.getElementById('gdrive-client-id-locked').value = savedClientId;
 gdriveUpdateFileLink();
-if(localStorage.getItem('worklog_gdrive_client_id')){
-  // 이전에 연결한 적이 있으면, 화면을 열 때마다 다시 버튼을 누르지 않아도 되도록 조용히 재연결을 시도해요.
+const restoredGdriveToken = getValidStoredGdriveToken();
+if(restoredGdriveToken){
+  // 저장된 토큰이 아직 안 만료됐으면 구글 로그인 과정 전체를 건너뛰고 바로 재사용해요 (새로고침해도 다시 로그인 안 해도 됨)
+  gdriveAccessToken = restoredGdriveToken;
+  afterGdriveConnected();
+} else if(localStorage.getItem('worklog_gdrive_client_id')){
+  // 저장된 토큰이 없거나 만료됐으면, 화면을 열 때마다 다시 버튼을 누르지 않아도 되도록 조용히 재연결을 시도해요.
   // (구글 로그인 세션이 브라우저에 아직 살아있으면 자동으로 성공, 아니면 조용히 실패하고 수동 연결 버튼을 쓰면 돼요)
   setTimeout(()=>{ gdriveConnect(true); }, 600);
 }
