@@ -1374,23 +1374,26 @@
           <div class="field" style="flex:1 1 140px;"><label>회사코드</label><input type="text" id="cl-company-code" placeholder="예: 1001" disabled></div>
         </div>
         <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
-          <div class="field" style="flex:1 1 140px;"><label>대표자</label><input type="text" id="cl-rep-name" placeholder="예: 홍길동"></div>
           <div class="field" style="flex:1 1 140px;"><label>수임료(월, 원)</label><input type="number" id="cl-fee" class="num-input" min="0" step="1" placeholder="예: 200000"></div>
         </div>
         <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
           <div class="field" style="flex:1 1 140px;"><label>계약일</label><input type="date" id="cl-contract-date" min="2015-01-01" max="2099-12-31"></div>
           <div class="field" style="flex:1 1 140px;"><label>수임시작일</label><input type="date" id="cl-start" min="2015-01-01" max="2099-12-31"></div>
         </div>
-        <div class="field"><label>메모</label><input type="text" id="cl-memo" placeholder="예: 매년 12월 재계약, 특이사항 등"></div>
+        <div class="field"><label>메모 <span style="font-weight:400; color:var(--ink-soft);">(여러 건 추가할 수 있어요)</span></label></div>
+        <div id="cl-memo-list"></div>
+        <button type="button" id="cl-memo-add-btn" class="del-btn" style="margin:2px 0 10px;">+ 메모 추가</button>
 
         <div style="font-size:13px; font-weight:800; color:var(--indigo-deep); text-align:center; margin-top:22px; margin-bottom:10px;">✚ 추가 정보</div>
         <div style="background:var(--bg); border-radius:12px; padding:16px 16px 6px;">
+          <div style="text-align:center; font-size:13px; font-weight:800; color:var(--ink); margin-bottom:8px;">대표자</div>
           <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
-            <div class="field" style="flex:1 1 160px;"><label>대표자 연락처</label><input type="text" id="cl-rep-phone" placeholder="예: 010-1234-5678"></div>
-            <div class="field" style="flex:1 1 180px;"><label>대표자 이메일</label><input type="email" id="cl-rep-email" placeholder="예: ceo@client.com"></div>
+            <div class="field" style="flex:1 1 130px;"><label>이름</label><input type="text" id="cl-rep-name" placeholder="예: 홍길동"></div>
+            <div class="field" style="flex:1 1 130px;"><label>연락처</label><input type="text" id="cl-rep-phone" placeholder="예: 010-1234-5678"></div>
+            <div class="field" style="flex:1 1 160px;"><label>이메일</label><input type="email" id="cl-rep-email" placeholder="예: ceo@client.com"></div>
           </div>
-          <div style="display:flex; align-items:center; justify-content:space-between; margin:12px 0 10px;">
-            <span style="font-size:13px; font-weight:800; color:var(--ink);">실무담당자</span>
+          <div style="display:flex; align-items:center; justify-content:space-between; margin:16px 0 10px;">
+            <span style="font-size:13px; font-weight:800; color:var(--ink);">실무자</span>
             <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-soft); font-weight:700; cursor:pointer;">
               <input type="checkbox" id="cl-contact-same-as-rep" style="width:15px; height:15px; cursor:pointer;">
               대표자와 동일
@@ -3704,11 +3707,19 @@ function updateAllSensitiveUnlockButtons(){
 // 기장거래처/기타거래처/해지목록 전용 - 지정한 필터에 맞는 거래처만 요청하신 컬럼구성으로 보여줌 (showTermination=true면 해지사유/해지일/종료월 컬럼도 추가)
 // 사업자구분(법인/개인) 대분류 - 법인 계열이 위, 개인 계열이 아래로 묶여서 표시되도록
 // 메모 팝업 (거래처 목록 표에서 메모 칸이 너무 길어져 열이 밀리는 걸 막기 위해 별도 팝업으로 보여줌)
-function openMemoModal(title, memo){
+function openMemoModal(title, memos){
   document.getElementById('memoModalTitle').textContent = title || '메모';
-  document.getElementById('memoModalBody').innerHTML = `
-    <div style="text-align:center; font-size:15px; font-weight:800; color:var(--indigo-deep); margin-bottom:10px;">메모</div>
-    <div style="white-space:pre-wrap;">${escHtml(memo || '(메모 없음)')}</div>`;
+  const subtitle = `<div style="text-align:center; font-size:15px; font-weight:800; color:var(--indigo-deep); margin-bottom:10px;">메모</div>`;
+  const body = document.getElementById('memoModalBody');
+  if(!memos || !memos.length){
+    body.innerHTML = subtitle + `<div style="text-align:center; color:var(--ink-soft); font-size:12.5px;">(메모 없음)</div>`;
+  } else {
+    body.innerHTML = subtitle + memos.map(m=>`
+      <div style="padding:8px 0; border-bottom:1px solid var(--border);">
+        ${m.date ? `<div style="font-size:11px; color:var(--ink-soft); font-weight:700; margin-bottom:3px;">${escHtml(m.date)}</div>` : ''}
+        <div style="font-size:12.5px; white-space:pre-wrap;">${escHtml(m.text||'')}</div>
+      </div>`).join('');
+  }
   document.getElementById('memoModalOverlay').style.display = 'flex';
 }
 // 수정이력 팝업 (같은 모달 틀을 재사용, 목록이라 innerHTML로 넣음)
@@ -3731,32 +3742,41 @@ function openHistoryModal(title, history){
 function openClientDetailModal(c){
   document.getElementById('memoModalTitle').textContent = c.name || '추가정보';
   const programDisplay = c.program === '기타' ? (c.programEtc || '기타') : (c.program || '-');
-  const rows = [
-    ['프로그램', programDisplay],
-    ['회사코드', c.companyCode || '-'],
-    ['대표자 연락처', c.repPhone || '-'],
-    ['대표자 이메일', c.repEmail || '-'],
-  ];
-  // 실무담당자는 여러 명일 수 있어서 담당자1/담당자2...로 각각 보여줌 (옛 단일 필드 데이터도 호환)
-  const contacts = (c.contacts && c.contacts.length) ? c.contacts : (c.contact || c.phone || c.email) ? [{name:c.contact, phone:c.phone, email:c.email}] : [];
-  if(!contacts.length){
-    rows.push(['실무담당자', '-']);
-  } else {
-    contacts.forEach((p, i)=>{
-      const n = contacts.length > 1 ? i+1 : '';
-      rows.push([`실무자${n} 이름`, p.name || '-']);
-      rows.push([`실무자${n} 연락처`, p.phone || '-']);
-      rows.push([`실무자${n} 이메일`, p.email || '-']);
-    });
-  }
-  const rowsHtml = rows.map(([label,val])=>`
+  const rowHtml = (label,val) => `
     <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid var(--border); font-size:12.5px;">
       <span style="color:var(--ink-soft); font-weight:700; flex-shrink:0;">${escHtml(label)}</span>
       <span style="text-align:right;">${escHtml(val)}</span>
-    </div>`).join('');
+    </div>`;
+  const groupTitle = (t) => `<div style="font-size:12px; font-weight:800; color:var(--ink); margin:16px 0 4px;">${escHtml(t)}</div>`;
+
+  // 1) 기본정보
+  let html = groupTitle('기본정보')
+    + rowHtml('프로그램', programDisplay)
+    + rowHtml('회사코드', c.companyCode || '-');
+
+  // 2) 대표자
+  html += groupTitle('대표자')
+    + rowHtml('이름', c.repName || '-')
+    + rowHtml('연락처', c.repPhone || '-')
+    + rowHtml('이메일', c.repEmail || '-');
+
+  // 3) 실무자 (여러 명일 수 있어서 실무자1/실무자2...로 각각 보여줌, 옛 단일 필드 데이터도 호환)
+  const contacts = (c.contacts && c.contacts.length) ? c.contacts : (c.contact || c.phone || c.email) ? [{name:c.contact, phone:c.phone, email:c.email}] : [];
+  html += groupTitle('실무자');
+  if(!contacts.length){
+    html += rowHtml('실무자', '-');
+  } else {
+    contacts.forEach((p, i)=>{
+      const n = contacts.length > 1 ? i+1 : '';
+      html += rowHtml(`실무자${n} 이름`, p.name || '-')
+        + rowHtml(`실무자${n} 연락처`, p.phone || '-')
+        + rowHtml(`실무자${n} 이메일`, p.email || '-');
+    });
+  }
+
   document.getElementById('memoModalBody').innerHTML = `
-    <div style="text-align:center; font-size:15px; font-weight:800; color:var(--indigo-deep); margin-bottom:6px;">추가정보</div>
-    ${rowsHtml}`;
+    <div style="text-align:center; font-size:15px; font-weight:800; color:var(--indigo-deep); margin-bottom:4px;">추가정보</div>
+    ${html}`;
   document.getElementById('memoModalOverlay').style.display = 'flex';
 }
 function closeMemoModal(){
@@ -3886,7 +3906,7 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
     btn.addEventListener('click', ()=>{
       const c = clients.list.find(x=>x.id===btn.dataset.id);
       if(!c) return;
-      openMemoModal(c.name||'', c.memo||'');
+      openMemoModal(c.name||'', c.memos && c.memos.length ? c.memos : (c.memo ? [{text:c.memo, date:''}] : []));
     });
   });
   wrap.querySelectorAll('.client-history-btn').forEach(btn=>{
@@ -3999,7 +4019,10 @@ async function populateClientEditForm(c){
   document.getElementById('cl-termination-date').value = c.terminationDate || '';
   document.getElementById('cl-termination-month').value = c.terminationMonth || '';
   updateTerminationFieldsVisibility();
-  document.getElementById('cl-memo').value = c.memo || '';
+  clMemoRows = (c.memos && c.memos.length)
+    ? c.memos.map(m=>({ id: m.id||genId(), text: m.text||'', date: m.date||'' }))
+    : (c.memo ? [{ id: genId(), text: c.memo, date: '' }] : []);
+  renderMemoRows();
   document.getElementById('clientForm').querySelector('button[type="submit"]').textContent = '수정 완료';
   document.getElementById('client-cancel').style.display = 'inline-block';
   document.getElementById('clientForm').scrollIntoView({behavior:'smooth', block:'center'});
@@ -5742,6 +5765,7 @@ function autoImportClientsFromExcel(){
         terminationDate: d.terminationDate || '',
         terminationMonth: '',
         memo: d.memo || '',
+        memos: d.memo ? [{ id: genId(), text: d.memo, date: '' }] : [],
         editHistory: [{ date: new Date().toLocaleString('ko-KR'), changes: '엑셀 일괄 가져오기로 등록' }]
       });
     });
@@ -5873,8 +5897,11 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
     terminationReason: document.getElementById('cl-status').value === '해지' ? document.getElementById('cl-termination-reason').value : '',
     terminationDate: document.getElementById('cl-status').value === '해지' ? document.getElementById('cl-termination-date').value : '',
     terminationMonth: document.getElementById('cl-status').value === '해지' ? document.getElementById('cl-termination-month').value : '',
-    memo: document.getElementById('cl-memo').value.trim()
+    memos: clMemoRows
+      .map(r=>({ id: r.id||genId(), text: (r.text||'').trim(), date: r.date || new Date().toLocaleString('ko-KR') }))
+      .filter(r=>r.text),
   };
+  fields.memo = fields.memos.map(m=>m.text).join(' / ');
   if(editingClientId){
     const c = clients.list.find(x=>x.id===editingClientId);
     if(c){
@@ -5901,6 +5928,8 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
   setTimeout(()=>document.getElementById('clientSaveMsg').textContent='',1200);
   document.getElementById('clientForm').reset();
   clContactRows = [{ name:'', phone:'', email:'' }];
+  clMemoRows = [];
+  renderMemoRows();
   document.getElementById('cl-taxtype').value = '기장대행';
   document.getElementById('cl-taxtype-etc-field').style.display = 'none';
   document.getElementById('cl-status').value = '수임';
@@ -5921,6 +5950,8 @@ document.getElementById('client-cancel').addEventListener('click', ()=>{
   document.getElementById('client-cancel').style.display = 'none';
   document.getElementById('clientForm').reset();
   clContactRows = [{ name:'', phone:'', email:'' }];
+  clMemoRows = [];
+  renderMemoRows();
   document.getElementById('cl-taxtype').value = '기장대행';
   document.getElementById('cl-taxtype-etc-field').style.display = 'none';
   document.getElementById('cl-status').value = '수임';
@@ -6002,6 +6033,36 @@ function renderContactRows(){
 document.getElementById('cl-contact-add-btn').addEventListener('click', ()=>{
   clContactRows.push({ name:'', phone:'', email:'' });
   renderContactRows();
+});
+
+// 메모도 여러 건 등록할 수 있게 배열로 관리. 각 건에는 처음 추가한 날짜가 같이 저장돼서
+// 메모 팝업에서 "언제 적어둔 메모인지" 행별로 구분해서 보여줄 수 있음
+let clMemoRows = [];
+
+function renderMemoRows(){
+  const wrap = document.getElementById('cl-memo-list');
+  if(!wrap) return;
+  if(!clMemoRows.length){
+    wrap.innerHTML = '';
+    return;
+  }
+  wrap.innerHTML = clMemoRows.map((row, i)=>`
+    <div class="field-row cl-memo-row" data-idx="${i}" style="display:flex; gap:8px; align-items:center; margin-bottom:6px;">
+      <input type="text" class="cl-memo-text" placeholder="예: 매년 12월 재계약, 특이사항 등" value="${escHtml(row.text)}" style="flex:1;">
+      <button type="button" class="del-btn cl-memo-remove-btn">삭제</button>
+    </div>`).join('');
+  wrap.querySelectorAll('.cl-memo-row').forEach(rowEl=>{
+    const idx = Number(rowEl.dataset.idx);
+    rowEl.querySelector('.cl-memo-text').addEventListener('input', e=>{ clMemoRows[idx].text = e.target.value; });
+    rowEl.querySelector('.cl-memo-remove-btn').addEventListener('click', ()=>{
+      clMemoRows.splice(idx, 1);
+      renderMemoRows();
+    });
+  });
+}
+document.getElementById('cl-memo-add-btn').addEventListener('click', ()=>{
+  clMemoRows.push({ id: genId(), text:'', date: new Date().toLocaleString('ko-KR') });
+  renderMemoRows();
 });
 
 // 사업자번호(3-2-5)·법인등록번호(6-7)는 숫자만 입력해도 하이픈이 자동으로 채워지게
