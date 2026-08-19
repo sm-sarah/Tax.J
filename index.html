@@ -254,7 +254,7 @@
   tbody td{padding:10px 12px; font-size:13px; border-top:1px solid var(--border);}
   .table-scroll{overflow-x:auto; border-radius:14px; box-shadow:0 1px 2px rgba(29,30,51,0.04);}
   .table-scroll table{box-shadow:none; border-radius:0; table-layout:auto;}
-  .table-scroll th, .table-scroll td{white-space:nowrap; padding:7px 8px; font-size:12px;}
+  .table-scroll th, .table-scroll td{white-space:nowrap; padding:7px 8px; font-size:12px; text-align:center;}
   .table-scroll td.cell-memo, .table-scroll th.th-memo{white-space:normal; word-break:break-word; min-width:160px;}
   .table-scroll thead th{position:sticky; top:0; z-index:2; box-shadow:0 1px 0 var(--border);}
   .tag{display:inline-block; font-size:11px; padding:3px 10px; border-radius:20px; font-weight:700;}
@@ -470,8 +470,8 @@
 <body>
 <div id="memoModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:480px; width:100%; max-height:70vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:10px;">
-      <div id="memoModalTitle" style="font-weight:800; font-size:14px; color:var(--ink);"></div>
+    <div id="memoModalTitle" style="font-weight:800; font-size:15px; color:var(--ink); text-align:center; margin-bottom:6px;"></div>
+    <div style="text-align:right; margin-bottom:12px;">
       <button type="button" id="memoModalClose" class="del-btn" style="flex-shrink:0;">닫기</button>
     </div>
     <div id="memoModalBody" style="font-size:13px; color:var(--ink); white-space:pre-wrap; line-height:1.6;"></div>
@@ -1387,13 +1387,11 @@
           </div>
           <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-soft); font-weight:700; margin:2px 0 10px; cursor:pointer;">
             <input type="checkbox" id="cl-contact-same-as-rep" style="width:15px; height:15px; cursor:pointer;">
-            대표자와 실무담당자 동일 (연락처·이메일 그대로 사용)
+            대표자와 담당자1 동일 (연락처·이메일 그대로 사용)
           </label>
-          <div class="field-row" id="cl-contact-fields-row" style="display:flex; gap:10px; flex-wrap:wrap;">
-            <div class="field" style="flex:1 1 140px;"><label>실무 담당자명</label><input type="text" id="cl-contact" placeholder="예: 김실장 (주 컨택)"></div>
-            <div class="field" style="flex:1 1 140px;"><label>담당자 연락처</label><input type="text" id="cl-phone" placeholder="예: 010-2345-6789"></div>
-            <div class="field" style="flex:1 1 180px;"><label>담당자 이메일</label><input type="email" id="cl-email" placeholder="예: staff@client.com"></div>
-          </div>
+          <div class="field" style="margin-bottom:6px;"><label style="margin-bottom:6px;">실무담당자 <span style="font-weight:400; color:var(--ink-soft);">(여러 명이면 아래에서 추가해주세요)</span></label></div>
+          <div id="cl-contacts-list"></div>
+          <button type="button" id="cl-contact-add-btn" class="del-btn" style="margin:2px 0 10px;">+ 담당자 추가</button>
         </div>
 
         <button type="submit" class="submit-btn">거래처 추가</button>
@@ -3722,22 +3720,34 @@ function openHistoryModal(title, history){
 }
 // 거래처 표에는 자리를 다 못 넣은 나머지 등록 정보(프로그램·담당자·이메일 등)를 팝업으로 보여줌
 function openClientDetailModal(c){
-  document.getElementById('memoModalTitle').textContent = c.name ? `${c.name} · 추가정보` : '추가정보';
+  document.getElementById('memoModalTitle').textContent = c.name || '추가정보';
   const programDisplay = c.program === '기타' ? (c.programEtc || '기타') : (c.program || '-');
   const rows = [
     ['프로그램', programDisplay],
     ['회사코드', c.companyCode || '-'],
     ['대표자 연락처', c.repPhone || '-'],
     ['대표자 이메일', c.repEmail || '-'],
-    ['실무담당자', c.contact || '-'],
-    ['담당자 연락처', c.phone || '-'],
-    ['담당자 이메일', c.email || '-'],
   ];
-  document.getElementById('memoModalBody').innerHTML = rows.map(([label,val])=>`
-    <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid var(--border); font-size:12.5px;">
-      <span style="color:var(--ink-soft); font-weight:700; flex-shrink:0;">${escHtml(label)}</span>
-      <span style="text-align:right;">${escHtml(val)}</span>
+  // 실무담당자는 여러 명일 수 있어서 담당자1/담당자2...로 각각 보여줌 (옛 단일 필드 데이터도 호환)
+  const contacts = (c.contacts && c.contacts.length) ? c.contacts : (c.contact || c.phone || c.email) ? [{name:c.contact, phone:c.phone, email:c.email}] : [];
+  if(!contacts.length){
+    rows.push(['실무담당자', '-']);
+  } else {
+    contacts.forEach((p, i)=>{
+      const n = contacts.length > 1 ? i+1 : '';
+      rows.push([`담당자${n} 이름`, p.name || '-']);
+      rows.push([`담당자${n} 연락처`, p.phone || '-']);
+      rows.push([`담당자${n} 이메일`, p.email || '-']);
+    });
+  }
+  const rowsHtml = rows.map(([label,val])=>`
+    <div style="display:grid; grid-template-columns:100px 1fr; gap:10px; padding:6px 0; border-bottom:1px solid var(--border); font-size:12.5px;">
+      <span style="color:var(--ink-soft); font-weight:700;">${escHtml(label)}</span>
+      <span>${escHtml(val)}</span>
     </div>`).join('');
+  document.getElementById('memoModalBody').innerHTML = `
+    <div style="text-align:center; font-size:11px; font-weight:800; color:var(--indigo-deep); letter-spacing:0.03em; margin-bottom:8px;">추가정보</div>
+    ${rowsHtml}`;
   document.getElementById('memoModalOverlay').style.display = 'flex';
 }
 function closeMemoModal(){
@@ -3813,7 +3823,7 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
     const taxTypeDisplay = ['기타','용역대행','단건신고'].includes(c.taxType) && c.taxTypeEtc ? c.taxTypeEtc : (c.taxType||'');
     // 기장대행/신고대리, 법인/개인을 은은하게 색으로 구분 (튀지 않는 선에서)
     const taxColor = c.taxType === '기장대행' ? 'var(--indigo-deep)' : c.taxType === '신고대리' ? '#B45309' : 'inherit';
-    const entityColor = c.entityType === '법인' ? '#0B5A78' : c.entityType === '개인' ? '#6B21A8' : 'inherit';
+    const entityColor = c.entityType === '법인' ? '#0B5A78' : c.entityType === '개인' ? '#BE185D' : 'inherit';
     let groupNoCell = '';
     if(showGroupNo){
       let groupNoDisplay = '-';
@@ -3838,14 +3848,14 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
       <td class="num">${idx+1}</td>${groupNoCell}
       <td style="color:${taxColor}; font-weight:600;">${escHtml(taxTypeDisplay)}</td>
       <td style="color:${entityColor}; font-weight:600;">${escHtml(c.entityType||'-')}</td>
-      <td>${escHtml(c.name||'')}</td>
+      <td style="background:var(--indigo-bg); color:var(--indigo-deep); font-weight:800;">${escHtml(c.name||'')}</td>
       <td class="num">${escHtml(c.bizNo||'')}</td>
       <td class="num">${escHtml(c.corpRegNo||'')}</td>
       <td>${escHtml(c.repName||'')}</td>
       <td class="num">${c.fee ? Number(c.fee).toLocaleString() : '-'}</td>
       <td class="num">${escHtml(c.contractDate||'-')}</td>
       <td class="num">${escHtml(c.start||'-')}</td>
-      <td class="num">${escHtml(c.phone || c.repPhone || '-')}</td>${terminationCells}
+      <td class="num">${escHtml((c.contacts && c.contacts[0] && c.contacts[0].phone) || c.phone || c.repPhone || '-')}</td>${terminationCells}
       <td style="white-space:nowrap;">${detailBtn}${memoBtn}${historyBtn}<button class="del-btn client-action-btn client-jump-edit-btn" data-id="${c.id}">수정</button><button class="del-btn client-action-btn client-jump-del-btn" data-id="${c.id}">삭제</button></td>
     </tr>`;
   }).join('');
@@ -3958,9 +3968,9 @@ async function populateClientEditForm(c){
   document.getElementById('cl-rep-name').value = c.repName || '';
   document.getElementById('cl-rep-phone').value = c.repPhone || '';
   document.getElementById('cl-rep-email').value = c.repEmail || '';
-  document.getElementById('cl-contact').value = c.contact || '';
-  document.getElementById('cl-phone').value = c.phone || '';
-  document.getElementById('cl-email').value = c.email || '';
+  clContactRows = (c.contacts && c.contacts.length)
+    ? c.contacts.map(x=>({ name: x.name||'', phone: x.phone||'', email: x.email||'' }))
+    : [{ name: c.contact||'', phone: c.phone||'', email: c.email||'' }];
   document.getElementById('cl-contact-same-as-rep').checked = !!c.contactSameAsRep;
   updateContactSameAsRep();
   document.getElementById('cl-taxtype').value = c.taxType || '기장대행';
@@ -5835,6 +5845,10 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
   if(!name) return;
   const programSel = document.getElementById('cl-program').value;
   const contactSameAsRep = document.getElementById('cl-contact-same-as-rep').checked;
+  // 담당자 여러 명 중 빈 행은 걸러내고 저장 (이름·연락처·이메일 다 비어있으면 제외)
+  const contacts = clContactRows
+    .map(r=>({ name: (r.name||'').trim(), phone: (r.phone||'').trim(), email: (r.email||'').trim() }))
+    .filter(r=> r.name || r.phone || r.email);
   const fields = {
     name,
     entityType: document.getElementById('cl-entity-type').value,
@@ -5846,9 +5860,11 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
     repPhone: document.getElementById('cl-rep-phone').value.trim(),
     repEmail: document.getElementById('cl-rep-email').value.trim(),
     contactSameAsRep,
-    contact: contactSameAsRep ? document.getElementById('cl-rep-name').value.trim() : document.getElementById('cl-contact').value.trim(),
-    phone: contactSameAsRep ? document.getElementById('cl-rep-phone').value.trim() : document.getElementById('cl-phone').value.trim(),
-    email: contactSameAsRep ? document.getElementById('cl-rep-email').value.trim() : document.getElementById('cl-email').value.trim(),
+    contacts,
+    // 예전 화면(표의 연락처 칸 등)과 호환을 위해 대표 담당자 1명 기준 요약값도 같이 저장
+    contact: contacts.map(c=>c.name).filter(Boolean).join(', '),
+    phone: contacts.map(c=>c.phone).filter(Boolean).join(' '),
+    email: contacts.map(c=>c.email).filter(Boolean).join(' '),
     taxType: document.getElementById('cl-taxtype').value,
     taxTypeEtc: ['기타','용역대행','단건신고'].includes(document.getElementById('cl-taxtype').value) ? document.getElementById('cl-taxtype-etc').value.trim() : '',
     fee: document.getElementById('cl-fee').value ? Number(document.getElementById('cl-fee').value) : null,
@@ -5885,6 +5901,7 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
   await saveClients();
   setTimeout(()=>document.getElementById('clientSaveMsg').textContent='',1200);
   document.getElementById('clientForm').reset();
+  clContactRows = [{ name:'', phone:'', email:'' }];
   document.getElementById('cl-taxtype').value = '기장대행';
   document.getElementById('cl-taxtype-etc-field').style.display = 'none';
   document.getElementById('cl-status').value = '수임';
@@ -5904,6 +5921,7 @@ document.getElementById('client-cancel').addEventListener('click', ()=>{
   document.getElementById('clientForm').querySelector('button[type="submit"]').textContent = '거래처 추가';
   document.getElementById('client-cancel').style.display = 'none';
   document.getElementById('clientForm').reset();
+  clContactRows = [{ name:'', phone:'', email:'' }];
   document.getElementById('cl-taxtype').value = '기장대행';
   document.getElementById('cl-taxtype-etc-field').style.display = 'none';
   document.getElementById('cl-status').value = '수임';
@@ -5957,16 +5975,47 @@ document.getElementById('cl-program').addEventListener('change', (e)=>{
 });
 
 // "대표자와 실무담당자 동일" 체크시 실무담당자 필드를 대표자 값으로 자동 채우고 잠금(중복입력 방지)
+// 실무담당자는 여러 명일 수 있어서 배열(clContactRows)로 관리하고, 폼에 동적으로 행을 그려줌
+let clContactRows = [{ name:'', phone:'', email:'' }];
+
+function renderContactRows(){
+  const wrap = document.getElementById('cl-contacts-list');
+  const same = document.getElementById('cl-contact-same-as-rep').checked;
+  wrap.innerHTML = clContactRows.map((row, i)=>`
+    <div class="field-row cl-contact-row" data-idx="${i}" style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; margin-bottom:8px;">
+      <div class="field" style="flex:1 1 130px; margin-bottom:0;">${i===0?'<label style="font-size:11px;">담당자1 이름</label>':`<label style="font-size:11px;">담당자${i+1} 이름</label>`}<input type="text" class="cl-contact-name" placeholder="예: 김실장 (주 컨택)" value="${escHtml(row.name)}" ${same && i===0 ? 'disabled' : ''}></div>
+      <div class="field" style="flex:1 1 130px; margin-bottom:0;"><label style="font-size:11px;">연락처</label><input type="text" class="cl-contact-phone" placeholder="예: 010-2345-6789" value="${escHtml(row.phone)}" ${same && i===0 ? 'disabled' : ''}></div>
+      <div class="field" style="flex:1 1 160px; margin-bottom:0;"><label style="font-size:11px;">이메일</label><input type="email" class="cl-contact-email" placeholder="예: staff@client.com" value="${escHtml(row.email)}" ${same && i===0 ? 'disabled' : ''}></div>
+      <button type="button" class="del-btn cl-contact-remove-btn" ${clContactRows.length<=1 ? 'style="opacity:0.35; cursor:default;" disabled' : ''}>삭제</button>
+    </div>`).join('');
+  wrap.querySelectorAll('.cl-contact-row').forEach(rowEl=>{
+    const idx = Number(rowEl.dataset.idx);
+    rowEl.querySelector('.cl-contact-name').addEventListener('input', e=>{ clContactRows[idx].name = e.target.value; });
+    rowEl.querySelector('.cl-contact-phone').addEventListener('input', e=>{ clContactRows[idx].phone = e.target.value; });
+    rowEl.querySelector('.cl-contact-email').addEventListener('input', e=>{ clContactRows[idx].email = e.target.value; });
+    rowEl.querySelector('.cl-contact-remove-btn').addEventListener('click', ()=>{
+      if(clContactRows.length <= 1) return;
+      clContactRows.splice(idx, 1);
+      renderContactRows();
+    });
+  });
+}
+document.getElementById('cl-contact-add-btn').addEventListener('click', ()=>{
+  clContactRows.push({ name:'', phone:'', email:'' });
+  renderContactRows();
+});
+
 function updateContactSameAsRep(){
   const same = document.getElementById('cl-contact-same-as-rep').checked;
-  const row = document.getElementById('cl-contact-fields-row');
-  ['cl-contact','cl-phone','cl-email'].forEach(id=>{ document.getElementById(id).disabled = same; });
-  row.style.opacity = same ? '0.55' : '1';
   if(same){
-    document.getElementById('cl-contact').value = document.getElementById('cl-rep-name').value;
-    document.getElementById('cl-phone').value = document.getElementById('cl-rep-phone').value;
-    document.getElementById('cl-email').value = document.getElementById('cl-rep-email').value;
+    if(!clContactRows.length) clContactRows.push({name:'',phone:'',email:''});
+    clContactRows[0] = {
+      name: document.getElementById('cl-rep-name').value,
+      phone: document.getElementById('cl-rep-phone').value,
+      email: document.getElementById('cl-rep-email').value
+    };
   }
+  renderContactRows();
 }
 document.getElementById('cl-contact-same-as-rep').addEventListener('change', updateContactSameAsRep);
 ['cl-rep-name','cl-rep-phone','cl-rep-email'].forEach(id=>{
@@ -5974,6 +6023,7 @@ document.getElementById('cl-contact-same-as-rep').addEventListener('change', upd
     if(document.getElementById('cl-contact-same-as-rep').checked) updateContactSameAsRep();
   });
 });
+renderContactRows();
 
 document.getElementById('cl-regular-search').addEventListener('input', ()=>renderClientsRegular());
 document.getElementById('cl-other-search').addEventListener('input', ()=>renderClientsOther());
