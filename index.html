@@ -254,8 +254,9 @@
   tbody td{padding:10px 12px; font-size:13px; border-top:1px solid var(--border);}
   .table-scroll{overflow-x:auto; border-radius:14px; box-shadow:0 1px 2px rgba(29,30,51,0.04);}
   .table-scroll table{box-shadow:none; border-radius:0; table-layout:auto;}
-  .table-scroll th, .table-scroll td{white-space:nowrap; padding:9px 10px; font-size:12.5px;}
+  .table-scroll th, .table-scroll td{white-space:nowrap; padding:7px 8px; font-size:12px;}
   .table-scroll td.cell-memo, .table-scroll th.th-memo{white-space:normal; word-break:break-word; min-width:160px;}
+  .table-scroll thead th{position:sticky; top:0; z-index:2; box-shadow:0 1px 0 var(--border);}
   .tag{display:inline-block; font-size:11px; padding:3px 10px; border-radius:20px; font-weight:700;}
   .tag-usage{background:var(--coral-bg); color:var(--coral);}
   .tag-remote{background:#CFEFFB; color:#0B5A78;}
@@ -264,6 +265,7 @@
   .tag-lunch{background:var(--amber-bg); color:var(--amber);}
   .tag-dinner{background:var(--mint-bg); color:var(--mint);}
   .del-btn{background:var(--bg); border:none; color:var(--ink-soft); border-radius:8px; padding:4px 10px; font-size:11px; cursor:pointer; font-weight:700;}
+  .client-action-btn{padding:3px 6px; font-size:10px; margin-right:2px;}
   .more-toggle-btn{background:var(--indigo-bg); border:none; color:var(--indigo-deep); border-radius:8px; padding:7px 16px; font-size:12px; cursor:pointer; font-weight:800;}
   .more-toggle-btn:hover{background:var(--indigo); color:#fff;}
   .del-btn:hover{background:var(--coral-bg); color:var(--coral);}
@@ -1254,13 +1256,13 @@
   <section id="tab-clients-regular" class="tab-panel">
     <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap;">
       <div>
-        <h2 class="section-title">기장거래처 <span class="badge" id="clientsRegularBadge">0건</span></h2>
+        <h2 class="section-title">기장거래처 <span class="badge" id="clientsRegularBadge" title="지금 이 순간 기준(해지 제외) 거래처 수">0건</span></h2>
         <p class="hint" style="font-size:12px; color:var(--ink-soft); margin:2px 0 0;">기장대행·신고대리로 등록된 정기 거래처만 모아서 보여줘요.</p>
       </div>
       <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
         <div style="display:flex; align-items:center; gap:6px;">
           <label style="font-size:11px; color:var(--ink-soft); font-weight:700;">조회월</label>
-          <input type="month" id="cl-fee-month" style="font-size:12.5px; padding:6px 8px; border:1.5px solid var(--border); border-radius:8px; background:var(--surface);">
+          <input type="month" id="cl-fee-month" style="font-family:'Pretendard',sans-serif; font-weight:700; color:var(--navy); font-size:12.5px; padding:6px 8px; border:1.5px solid var(--border); border-radius:8px; background:var(--surface);">
           <span id="clFeeMonthLabel" style="font-size:11px; color:var(--ink-soft); font-weight:700;"></span>
         </div>
         <div class="card card-mint" style="padding:10px 16px; min-width:200px; text-align:right;">
@@ -1270,7 +1272,7 @@
         </div>
       </div>
     </div>
-    <div class="field" style="max-width:320px; margin:14px auto;"><input type="text" id="cl-regular-search" placeholder="🔍 상호·대표자 검색"></div>
+    <div class="field" style="max-width:220px; margin:14px 0 14px auto;"><input type="text" id="cl-regular-search" placeholder="🔍 검색"></div>
     <div id="clientsRegularListWrap"></div>
   </section>
 
@@ -3782,7 +3784,7 @@ function clientTaxTypeWeight(taxType){
   return 2;
 }
 
-async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterFn, emptyMsgDefault, showTermination){
+async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterFn, emptyMsgDefault, showTermination, showGroupNo){
   const wrap = document.getElementById(wrapId);
   if(!wrap) return;
   const badge = document.getElementById(badgeId);
@@ -3806,24 +3808,34 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
     wrap.innerHTML = `<div class="empty-state">${q ? '검색 결과가 없습니다.' : emptyMsgDefault}</div>`;
     return;
   }
+  const groupCounters = { '법인':0, '개인':0 };
   const rows = list.map((c, idx)=>{
     const taxTypeDisplay = ['기타','용역대행','단건신고'].includes(c.taxType) && c.taxTypeEtc ? c.taxTypeEtc : (c.taxType||'');
     // 기장대행/신고대리, 법인/개인을 은은하게 색으로 구분 (튀지 않는 선에서)
     const taxColor = c.taxType === '기장대행' ? 'var(--indigo-deep)' : c.taxType === '신고대리' ? '#B45309' : 'inherit';
     const entityColor = c.entityType === '법인' ? '#0B5A78' : c.entityType === '개인' ? '#6B21A8' : 'inherit';
+    let groupNoCell = '';
+    if(showGroupNo){
+      let groupNoDisplay = '-';
+      if(c.entityType === '법인' || c.entityType === '개인'){
+        groupCounters[c.entityType]++;
+        groupNoDisplay = `${c.entityType} ${groupCounters[c.entityType]}`;
+      }
+      groupNoCell = `<td class="num" style="color:${entityColor};">${escHtml(groupNoDisplay)}</td>`;
+    }
     const terminationCells = showTermination ? `
       <td class="num">${escHtml(c.terminationDate||'-')}</td>
       <td class="num">${escHtml(c.terminationMonth||'-')}</td>
       <td>${escHtml(c.terminationReason||'-')}</td>` : '';
     const memoBtn = c.memo
-      ? `<button class="del-btn client-memo-btn" data-id="${c.id}" title="메모 보기">📝 메모</button>`
-      : `<button class="del-btn" disabled style="opacity:0.35; cursor:default;" title="메모 없음">📝 메모</button>`;
+      ? `<button class="del-btn client-action-btn client-memo-btn" data-id="${c.id}" title="메모 보기">메모</button>`
+      : `<button class="del-btn client-action-btn" disabled style="opacity:0.35; cursor:default;" title="메모 없음">메모</button>`;
     const historyBtn = (c.editHistory && c.editHistory.length)
-      ? `<button class="del-btn client-history-btn" data-id="${c.id}" title="수정이력 보기">🕘 이력</button>`
-      : `<button class="del-btn" disabled style="opacity:0.35; cursor:default;" title="수정이력 없음">🕘 이력</button>`;
-    const detailBtn = `<button class="del-btn client-detail-btn" data-id="${c.id}" title="추가정보 보기">ℹ️ 상세</button>`;
+      ? `<button class="del-btn client-action-btn client-history-btn" data-id="${c.id}" title="수정이력 보기">이력</button>`
+      : `<button class="del-btn client-action-btn" disabled style="opacity:0.35; cursor:default;" title="수정이력 없음">이력</button>`;
+    const detailBtn = `<button class="del-btn client-action-btn client-detail-btn" data-id="${c.id}" title="추가정보 보기">상세</button>`;
     return `<tr>
-      <td class="num">${idx+1}</td>
+      <td class="num">${idx+1}</td>${groupNoCell}
       <td style="color:${taxColor}; font-weight:600;">${escHtml(taxTypeDisplay)}</td>
       <td style="color:${entityColor}; font-weight:600;">${escHtml(c.entityType||'-')}</td>
       <td>${escHtml(c.name||'')}</td>
@@ -3834,11 +3846,12 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
       <td class="num">${escHtml(c.contractDate||'-')}</td>
       <td class="num">${escHtml(c.start||'-')}</td>
       <td class="num">${escHtml(c.phone || c.repPhone || '-')}</td>${terminationCells}
-      <td style="white-space:nowrap;">${detailBtn}${memoBtn}${historyBtn}<button class="del-btn client-jump-edit-btn" data-id="${c.id}">수정</button><button class="del-btn client-jump-del-btn" data-id="${c.id}">삭제</button></td>
+      <td style="white-space:nowrap;">${detailBtn}${memoBtn}${historyBtn}<button class="del-btn client-action-btn client-jump-edit-btn" data-id="${c.id}">수정</button><button class="del-btn client-action-btn client-jump-del-btn" data-id="${c.id}">삭제</button></td>
     </tr>`;
   }).join('');
+  const groupNoHeader = showGroupNo ? '<th>법인/개인N</th>' : '';
   const terminationHeaders = showTermination ? '<th>해지일</th><th>종료월</th><th>해지사유</th>' : '';
-  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th>N</th><th>수임구분</th><th>사업자구분</th><th>상호명</th><th>사업자번호</th><th>법인등록번호</th><th>대표자</th><th>수임료</th><th>계약일</th><th>수임시작일</th><th>연락처</th>${terminationHeaders}<th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th>N</th>${groupNoHeader}<th>수임구분</th><th>사업자구분</th><th>상호명</th><th>사업자번호</th><th>법인등록번호</th><th>대표자</th><th>수임료</th><th>계약일</th><th>수임시작일</th><th>연락처</th>${terminationHeaders}<th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
   wrap.querySelectorAll('.client-detail-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const c = clients.list.find(x=>x.id===btn.dataset.id);
@@ -3906,12 +3919,12 @@ function renderClientFeeMonthSummary(){
   const countEl = document.getElementById('clFeeMonthCount');
   if(labelEl) labelEl.textContent = '(말일)';
   if(totalEl) totalEl.textContent = Number(total).toLocaleString();
-  if(countEl) countEl.textContent = `${count}개 거래처`;
+  if(countEl) countEl.textContent = `${count}개 거래처 (말일 기준)`;
 }
 document.getElementById('cl-fee-month')?.addEventListener('change', renderClientFeeMonthSummary);
 
 async function renderClientsRegular(){
-  await renderClientFilteredTable('clientsRegularListWrap','clientsRegularBadge','cl-regular-search', c=>['기장대행','신고대리'].includes(c.taxType) && c.status!=='해지', '등록된 기장거래처가 없습니다.');
+  await renderClientFilteredTable('clientsRegularListWrap','clientsRegularBadge','cl-regular-search', c=>['기장대행','신고대리'].includes(c.taxType) && c.status!=='해지', '등록된 기장거래처가 없습니다.', false, true);
   renderClientFeeMonthSummary();
 }
 async function renderClientsOther(){
