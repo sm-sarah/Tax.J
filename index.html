@@ -257,6 +257,10 @@
   table{width:100%; border-collapse:collapse; background:var(--surface); border-radius:14px; overflow:hidden; box-shadow:0 1px 2px rgba(29,30,51,0.04);}
   thead th{text-align:left; font-size:11.5px; color:var(--ink-soft); font-weight:700; padding:10px 12px; background:var(--bg);}
   tbody td{padding:10px 12px; font-size:13px; border-top:1px solid var(--border);}
+  .table-scroll{overflow-x:auto; border-radius:14px; box-shadow:0 1px 2px rgba(29,30,51,0.04);}
+  .table-scroll table{box-shadow:none; border-radius:0;}
+  .table-scroll th, .table-scroll td{white-space:nowrap;}
+  .table-scroll td.cell-memo{white-space:nowrap; max-width:240px; overflow:hidden; text-overflow:ellipsis; cursor:default;}
   .tag{display:inline-block; font-size:11px; padding:3px 10px; border-radius:20px; font-weight:700;}
   .tag-usage{background:var(--coral-bg); color:var(--coral);}
   .tag-remote{background:var(--mint-bg); color:var(--mint);}
@@ -1147,6 +1151,11 @@
   <section id="tab-clients-regular" class="tab-panel">
     <h2 class="section-title">기장거래처 <span class="badge" id="clientsRegularBadge">0건</span></h2>
     <p class="hint" style="font-size:12px; color:var(--ink-soft); text-align:center; margin-top:-6px;">기장대행·신고대리로 등록된 정기 거래처만 모아서 보여줘요.</p>
+    <div id="clientImportBanner" style="display:none; max-width:640px; margin:0 auto 16px; background:var(--indigo-bg); border:1.5px dashed var(--indigo); border-radius:12px; padding:14px 16px; text-align:center;">
+      <div style="font-size:12.5px; font-weight:800; color:var(--indigo-deep); margin-bottom:6px;">📥 엑셀(기장현황)에서 정리해둔 <span id="clientImportCount2">0</span>건이 아직 안 들어와 있어요</div>
+      <button type="button" id="clientImportBtn2" class="submit-btn" style="background:var(--indigo);">지금 가져오기</button>
+      <div class="save-msg" id="clientImportMsg2" style="margin-top:4px;"></div>
+    </div>
     <div class="field" style="max-width:320px; margin:0 auto 14px;"><input type="text" id="cl-regular-search" placeholder="🔍 상호·대표자 검색"></div>
     <div id="clientsRegularListWrap"></div>
   </section>
@@ -1160,6 +1169,7 @@
   </section>
 
   <!-- 거래처관리: 등록/수정 -->
+
   <section id="tab-clients-edit" class="tab-panel">
     <h2 class="section-title">거래처 등록·수정</h2>
     <p class="hint" style="font-size:12px; color:var(--ink-soft); text-align:center; margin-top:-6px;">입력 순서는 기장거래처 목록의 컬럼 순서와 동일해요. 여기서 등록·수정하면 기장거래처·기타거래처·해지목록에 바로 반영돼요.</p>
@@ -3538,12 +3548,12 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
       <td class="num">${c.fee ? Number(c.fee).toLocaleString() + '원' : '-'}</td>
       <td class="num">${escHtml(c.contractDate||'-')}</td>
       <td class="num">${escHtml(c.start||'-')}</td>${terminationCells}
-      <td>${escHtml(c.memo||'')}</td>
+      <td class="cell-memo" title="${escHtml(c.memo||'')}">${escHtml(c.memo||'')}</td>
       <td style="white-space:nowrap;"><button class="del-btn client-jump-edit-btn" data-id="${c.id}">수정</button><button class="del-btn client-jump-del-btn" data-id="${c.id}">삭제</button></td>
     </tr>`;
   }).join('');
   const terminationHeaders = showTermination ? '<th>해지사유</th><th>해지일</th><th>종료월</th>' : '';
-  wrap.innerHTML = `<table><thead><tr><th>구분</th><th>상호명</th><th>사업자구분</th><th>사업자번호</th><th>법인등록번호</th><th>대표자</th><th>수임료</th><th>계약일</th><th>수임시작일</th>${terminationHeaders}<th>메모</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th>구분</th><th>상호명</th><th>사업자구분</th><th>사업자번호</th><th>법인등록번호</th><th>대표자</th><th>수임료</th><th>계약일</th><th>수임시작일</th>${terminationHeaders}<th>메모</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
   wrap.querySelectorAll('.client-jump-edit-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const c = clients.list.find(x=>x.id===btn.dataset.id);
@@ -3558,10 +3568,11 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
 }
 
 async function renderClientsRegular(){
-  await renderClientFilteredTable('clientsRegularListWrap','clientsRegularBadge','cl-regular-search', c=>['기장대행','신고대리'].includes(c.taxType), '등록된 기장거래처가 없습니다.');
+  await renderClientFilteredTable('clientsRegularListWrap','clientsRegularBadge','cl-regular-search', c=>['기장대행','신고대리'].includes(c.taxType) && c.status!=='해지', '등록된 기장거래처가 없습니다.');
+  if(typeof updateClientImportBanner === 'function') updateClientImportBanner();
 }
 async function renderClientsOther(){
-  await renderClientFilteredTable('clientsOtherListWrap','clientsOtherBadge','cl-other-search', c=>!['기장대행','신고대리'].includes(c.taxType), '등록된 기타거래처가 없습니다.');
+  await renderClientFilteredTable('clientsOtherListWrap','clientsOtherBadge','cl-other-search', c=>!['기장대행','신고대리'].includes(c.taxType) && c.status!=='해지', '등록된 기타거래처가 없습니다.');
 }
 async function renderClientsTerminated(){
   await renderClientFilteredTable('clientsTerminatedRegularListWrap','clientsTerminatedRegularBadge','cl-terminated-search', c=>c.status==='해지' && ['기장대행','신고대리'].includes(c.taxType), '해지된 정기 거래처가 없습니다.', true);
@@ -5265,8 +5276,17 @@ const CLIENT_IMPORT_DATA = [
 ];
 
 document.getElementById('clientImportCount').textContent = CLIENT_IMPORT_DATA.length;
+document.getElementById('clientImportCount2').textContent = CLIENT_IMPORT_DATA.length;
 
-document.getElementById('clientImportBtn').addEventListener('click', async ()=>{
+function updateClientImportBanner(){
+  const banner = document.getElementById('clientImportBanner');
+  if(!banner) return;
+  const existingBizNos = new Set((clients.list||[]).map(c=>(c.bizNo||'').trim()).filter(Boolean));
+  const remaining = CLIENT_IMPORT_DATA.filter(d => !(d.bizNo && existingBizNos.has(d.bizNo.trim())));
+  banner.style.display = remaining.length ? '' : 'none';
+}
+
+async function importClientsFromExcel(){
   const existingBizNos = new Set((clients.list||[]).map(c=>(c.bizNo||'').trim()).filter(Boolean));
   const toAdd = CLIENT_IMPORT_DATA.filter(d => !(d.bizNo && existingBizNos.has(d.bizNo.trim())));
   const skippedCount = CLIENT_IMPORT_DATA.length - toAdd.length;
@@ -5308,9 +5328,20 @@ document.getElementById('clientImportBtn').addEventListener('click', async ()=>{
   renderClientsRegular();
   renderClientsOther();
   renderClientsTerminated();
-  document.getElementById('clientImportMsg').textContent = `${toAdd.length}건 추가됨`;
-  setTimeout(()=>document.getElementById('clientImportMsg').textContent='',2500);
-});
+  updateClientImportBanner();
+  const msg = `${toAdd.length}건 추가됨`;
+  document.getElementById('clientImportMsg').textContent = msg;
+  document.getElementById('clientImportMsg2').textContent = msg;
+  setTimeout(()=>{
+    document.getElementById('clientImportMsg').textContent='';
+    document.getElementById('clientImportMsg2').textContent='';
+  }, 2500);
+}
+
+document.getElementById('clientImportBtn').addEventListener('click', importClientsFromExcel);
+document.getElementById('clientImportBtn2').addEventListener('click', importClientsFromExcel);
+updateClientImportBanner();
+
 
 
 document.getElementById('scheduleForm').addEventListener('submit', async (e)=>{
