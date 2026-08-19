@@ -1401,6 +1401,9 @@
     <div style="text-align:center; margin-top:14px;">
       <button type="button" id="clientDedupeBtn" title="이름·대표자·사업자번호가 같은 거래처가 여러 건 있으면 1건만 남기고 정리해요" style="background:none; border:none; color:var(--ink-soft); font-size:11px; cursor:pointer; text-decoration:underline; padding:4px;">🧹 중복 거래처 정리</button>
       <span class="save-msg" id="clientDedupeMsg"></span>
+      <br>
+      <button type="button" id="clientMemoCleanBtn" title="메모에 자동으로 붙어있던 '개업일 YYYY-MM-DD' 같은 옛날 텍스트를 지워요" style="background:none; border:none; color:var(--ink-soft); font-size:11px; cursor:pointer; text-decoration:underline; padding:4px; margin-top:4px;">🧹 메모 속 개업일 텍스트 정리</button>
+      <span class="save-msg" id="clientMemoCleanMsg"></span>
     </div>
   </section>
 
@@ -3697,18 +3700,21 @@ function updateAllSensitiveUnlockButtons(){
 // 사업자구분(법인/개인) 대분류 - 법인 계열이 위, 개인 계열이 아래로 묶여서 표시되도록
 // 메모 팝업 (거래처 목록 표에서 메모 칸이 너무 길어져 열이 밀리는 걸 막기 위해 별도 팝업으로 보여줌)
 function openMemoModal(title, memo){
-  document.getElementById('memoModalTitle').textContent = title ? `${title} · 메모` : '메모';
-  document.getElementById('memoModalBody').textContent = memo || '(메모 없음)';
+  document.getElementById('memoModalTitle').textContent = title || '메모';
+  document.getElementById('memoModalBody').innerHTML = `
+    <div style="text-align:center; font-size:15px; font-weight:800; color:var(--indigo-deep); margin-bottom:10px;">메모</div>
+    <div style="white-space:pre-wrap;">${escHtml(memo || '(메모 없음)')}</div>`;
   document.getElementById('memoModalOverlay').style.display = 'flex';
 }
 // 수정이력 팝업 (같은 모달 틀을 재사용, 목록이라 innerHTML로 넣음)
 function openHistoryModal(title, history){
-  document.getElementById('memoModalTitle').textContent = title ? `${title} · 수정이력` : '수정이력';
+  document.getElementById('memoModalTitle').textContent = title || '수정이력';
   const body = document.getElementById('memoModalBody');
+  const subtitle = `<div style="text-align:center; font-size:15px; font-weight:800; color:var(--indigo-deep); margin-bottom:10px;">수정이력</div>`;
   if(!history || !history.length){
-    body.textContent = '(수정 이력이 없어요)';
+    body.innerHTML = subtitle + `<div style="text-align:center; color:var(--ink-soft); font-size:12.5px;">(수정 이력이 없어요)</div>`;
   } else {
-    body.innerHTML = history.map(h=>`
+    body.innerHTML = subtitle + history.map(h=>`
       <div style="padding:8px 0; border-bottom:1px solid var(--border);">
         <div style="font-size:11px; color:var(--ink-soft); font-weight:700; margin-bottom:3px;">${escHtml(h.date||'')}</div>
         <div style="font-size:12.5px;">${escHtml(h.changes||'')}</div>
@@ -5799,6 +5805,26 @@ document.getElementById('clientDedupeBtn').addEventListener('click', async ()=>{
   renderClientsTerminated();
   document.getElementById('clientDedupeMsg').textContent = `${removed}건 정리됨`;
   setTimeout(()=>document.getElementById('clientDedupeMsg').textContent='',2500);
+});
+
+// 예전 버전에서 메모에 자동으로 붙던 "개업일 YYYY-MM-DD" 텍스트를 지워주는 1회성 정리 유틸
+document.getElementById('clientMemoCleanBtn').addEventListener('click', async ()=>{
+  const pattern = /\s*\/?\s*개업일\s*\d{4}-\d{2}-\d{2}/g;
+  const targets = clients.list
+    .map(c=>({ c, cleaned: c.memo ? c.memo.replace(pattern, '').trim().replace(/^\/\s*/, '').trim() : c.memo }))
+    .filter(x=> x.c.memo && x.cleaned !== x.c.memo);
+  if(!targets.length){
+    alert('메모에 "개업일" 텍스트가 있는 거래처가 없어요.');
+    return;
+  }
+  if(!confirm(`${targets.length}건의 메모에서 "개업일 YYYY-MM-DD" 텍스트를 지울까요?`)) return;
+  targets.forEach(({c, cleaned})=>{ c.memo = cleaned; });
+  await saveClients();
+  renderClientsRegular();
+  renderClientsOther();
+  renderClientsTerminated();
+  document.getElementById('clientMemoCleanMsg').textContent = `${targets.length}건 정리됨`;
+  setTimeout(()=>document.getElementById('clientMemoCleanMsg').textContent='',2500);
 });
 
 
