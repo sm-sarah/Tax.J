@@ -1190,6 +1190,23 @@
           </div>
           <div class="field" id="cl-taxtype-etc-field" style="flex:1 1 160px; display:none;"><label>수임구분 직접입력</label><input type="text" id="cl-taxtype-etc" placeholder="예: 세무조사 대응"></div>
         </div>
+        <div id="cl-termination-fields" style="display:none; background:var(--coral-bg); border-radius:10px; padding:12px; margin:-4px 0 12px;">
+          <div style="font-size:11.5px; font-weight:800; color:var(--coral); margin-bottom:8px;">🚫 해지 정보</div>
+          <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
+            <div class="field" style="flex:1 1 160px;"><label>해지사유</label>
+              <select id="cl-termination-reason">
+                <option value="폐업">폐업</option>
+                <option value="법인전환">법인전환</option>
+                <option value="이관">이관</option>
+                <option value="종료">종료</option>
+                <option value="기장전환">기장전환</option>
+                <option value="기타">기타</option>
+              </select>
+            </div>
+            <div class="field" style="flex:1 1 140px;"><label>해지일</label><input type="date" id="cl-termination-date" min="2015-01-01" max="2099-12-31"></div>
+            <div class="field" style="flex:1 1 140px;"><label>종료월</label><input type="month" id="cl-termination-month"></div>
+          </div>
+        </div>
         <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
           <div class="field" style="flex:2 1 200px;"><label>상호명</label><input type="text" id="cl-name" required placeholder="예: (주)청인상사"></div>
           <div class="field" style="flex:1 1 160px;"><label>사업자 구분</label>
@@ -1305,10 +1322,15 @@
 
   <!-- 거래처관리: 해지목록 -->
   <section id="tab-clients-terminated" class="tab-panel">
-    <h2 class="section-title">해지목록 <span class="badge" id="clientsTerminatedBadge">0건</span></h2>
-    <p class="hint" style="font-size:12px; color:var(--ink-soft); text-align:center; margin-top:-6px;">진행상황이 "해지"로 표시된 거래처만 모아서 보여줘요.</p>
+    <h2 class="section-title">해지목록</h2>
+    <p class="hint" style="font-size:12px; color:var(--ink-soft); text-align:center; margin-top:-6px;">진행상황이 "해지"로 표시된 거래처를 정기·비정기로 나눠서 보여줘요.</p>
     <div class="field" style="max-width:320px; margin:0 auto 14px;"><input type="text" id="cl-terminated-search" placeholder="🔍 상호·대표자 검색"></div>
-    <div id="clientsTerminatedListWrap"></div>
+
+    <h3 style="font-size:14px; font-weight:800; color:var(--navy); text-align:center; margin:18px 0 8px;">정기 (기장대행·신고대리) <span class="badge" id="clientsTerminatedRegularBadge">0건</span></h3>
+    <div id="clientsTerminatedRegularListWrap"></div>
+
+    <h3 style="font-size:14px; font-weight:800; color:var(--navy); text-align:center; margin:22px 0 8px;">비정기 <span class="badge" id="clientsTerminatedOtherBadge">0건</span></h3>
+    <div id="clientsTerminatedOtherListWrap"></div>
   </section>
 
 
@@ -3470,8 +3492,8 @@ function updateAllSensitiveUnlockButtons(){
   });
 }
 
-// 기장거래처/해지목록 전용 - 지정한 필터에 맞는 거래처만 요청하신 컬럼구성(구분/상호명/사업자번호/법인등록번호/대표자/주민번호/수임료/계약일/수임시작일/메모)으로 보여줌
-async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterFn, emptyMsgDefault){
+// 기장거래처/기타거래처/해지목록 전용 - 지정한 필터에 맞는 거래처만 요청하신 컬럼구성으로 보여줌 (showTermination=true면 해지사유/해지일/종료월 컬럼도 추가)
+async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterFn, emptyMsgDefault, showTermination){
   const wrap = document.getElementById(wrapId);
   if(!wrap) return;
   const badge = document.getElementById(badgeId);
@@ -3489,6 +3511,10 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
   }
   const rows = list.map(c=>{
     const taxTypeDisplay = c.taxType === '기타' && c.taxTypeEtc ? c.taxTypeEtc : (c.taxType||'');
+    const terminationCells = showTermination ? `
+      <td>${escHtml(c.terminationReason||'-')}</td>
+      <td class="num">${escHtml(c.terminationDate||'-')}</td>
+      <td class="num">${escHtml(c.terminationMonth||'-')}</td>` : '';
     return `<tr>
       <td>${escHtml(taxTypeDisplay)}</td>
       <td>${escHtml(c.name||'')}</td>
@@ -3498,12 +3524,13 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
       <td>${escHtml(c.repName||'')}</td>
       <td class="num">${c.fee ? Number(c.fee).toLocaleString() + '원' : '-'}</td>
       <td class="num">${escHtml(c.contractDate||'-')}</td>
-      <td class="num">${escHtml(c.start||'-')}</td>
+      <td class="num">${escHtml(c.start||'-')}</td>${terminationCells}
       <td>${escHtml(c.memo||'')}</td>
       <td style="white-space:nowrap;"><button class="del-btn client-jump-edit-btn" data-id="${c.id}">수정</button><button class="del-btn client-jump-del-btn" data-id="${c.id}">삭제</button></td>
     </tr>`;
   }).join('');
-  wrap.innerHTML = `<table><thead><tr><th>구분</th><th>상호명</th><th>사업자구분</th><th>사업자번호</th><th>법인등록번호</th><th>대표자</th><th>수임료</th><th>계약일</th><th>수임시작일</th><th>메모</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  const terminationHeaders = showTermination ? '<th>해지사유</th><th>해지일</th><th>종료월</th>' : '';
+  wrap.innerHTML = `<table><thead><tr><th>구분</th><th>상호명</th><th>사업자구분</th><th>사업자번호</th><th>법인등록번호</th><th>대표자</th><th>수임료</th><th>계약일</th><th>수임시작일</th>${terminationHeaders}<th>메모</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
   wrap.querySelectorAll('.client-jump-edit-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const c = clients.list.find(x=>x.id===btn.dataset.id);
@@ -3524,7 +3551,8 @@ async function renderClientsOther(){
   await renderClientFilteredTable('clientsOtherListWrap','clientsOtherBadge','cl-other-search', c=>!['기장대행','신고대리'].includes(c.taxType), '등록된 기타거래처가 없습니다.');
 }
 async function renderClientsTerminated(){
-  await renderClientFilteredTable('clientsTerminatedListWrap','clientsTerminatedBadge','cl-terminated-search', c=>c.status==='해지', '해지된 거래처가 없습니다.');
+  await renderClientFilteredTable('clientsTerminatedRegularListWrap','clientsTerminatedRegularBadge','cl-terminated-search', c=>c.status==='해지' && ['기장대행','신고대리'].includes(c.taxType), '해지된 정기 거래처가 없습니다.', true);
+  await renderClientFilteredTable('clientsTerminatedOtherListWrap','clientsTerminatedOtherBadge','cl-terminated-search', c=>c.status==='해지' && !['기장대행','신고대리'].includes(c.taxType), '해지된 비정기 거래처가 없습니다.', true);
 }
 
 // 거래처 편집폼에 값 채우기 (기장거래처/기타거래처/해지목록 표의 '수정' 버튼과, 예전 통합목록에서 공통으로 씀)
@@ -3562,6 +3590,10 @@ async function populateClientEditForm(c){
   document.getElementById('cl-contract-date').value = c.contractDate || '';
   document.getElementById('cl-start').value = c.start || '';
   document.getElementById('cl-status').value = (c.status === '진행중' ? '수임' : c.status) || '수임';
+  document.getElementById('cl-termination-reason').value = c.terminationReason || '폐업';
+  document.getElementById('cl-termination-date').value = c.terminationDate || '';
+  document.getElementById('cl-termination-month').value = c.terminationMonth || '';
+  updateTerminationFieldsVisibility();
   document.getElementById('cl-memo').value = c.memo || '';
   document.getElementById('clientForm').querySelector('button[type="submit"]').textContent = '수정 완료';
   document.getElementById('client-cancel').style.display = 'inline-block';
@@ -4540,6 +4572,9 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
     contractDate: document.getElementById('cl-contract-date').value,
     start: document.getElementById('cl-start').value,
     status: document.getElementById('cl-status').value,
+    terminationReason: document.getElementById('cl-status').value === '해지' ? document.getElementById('cl-termination-reason').value : '',
+    terminationDate: document.getElementById('cl-status').value === '해지' ? document.getElementById('cl-termination-date').value : '',
+    terminationMonth: document.getElementById('cl-status').value === '해지' ? document.getElementById('cl-termination-month').value : '',
     memo: document.getElementById('cl-memo').value.trim()
   };
   if(editingClientId){
@@ -4563,6 +4598,7 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
   document.getElementById('cl-program-etc-field').style.display = 'none';
   updateCompanyCodeDisabled();
   updateContactSameAsRep();
+  updateTerminationFieldsVisibility();
   renderClients();
 });
 
@@ -4578,11 +4614,18 @@ document.getElementById('client-cancel').addEventListener('click', ()=>{
   document.getElementById('cl-program-etc-field').style.display = 'none';
   updateCompanyCodeDisabled();
   updateContactSameAsRep();
+  updateTerminationFieldsVisibility();
 });
 
 document.getElementById('cl-taxtype').addEventListener('change', (e)=>{
   document.getElementById('cl-taxtype-etc-field').style.display = e.target.value === '기타' ? '' : 'none';
 });
+
+// 진행상황이 "해지"일 때만 해지사유/해지일/종료월 입력란 노출
+function updateTerminationFieldsVisibility(){
+  document.getElementById('cl-termination-fields').style.display = document.getElementById('cl-status').value === '해지' ? '' : 'none';
+}
+document.getElementById('cl-status').addEventListener('change', updateTerminationFieldsVisibility);
 
 // 프로그램 "위하고" 선택시 회사코드 비활성화(위하고는 회사코드 개념이 없음), "기타" 선택시 직접입력란 노출
 function updateCompanyCodeDisabled(){
