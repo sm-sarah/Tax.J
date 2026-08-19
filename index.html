@@ -1254,11 +1254,11 @@
 
   <!-- 거래처관리: 기장거래처 현황 -->
   <section id="tab-clients-regular" class="tab-panel">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap;">
-      <div>
-        <h2 class="section-title">기장거래처 <span class="badge" id="clientsRegularBadge" title="지금 이 순간 기준(해지 제외) 거래처 수">0건</span></h2>
-        <p class="hint" style="font-size:12px; color:var(--ink-soft); margin:2px 0 0;">기장대행·신고대리로 등록된 정기 거래처만 모아서 보여줘요.</p>
-      </div>
+    <div style="text-align:center; margin-bottom:16px;">
+      <h2 class="section-title" style="justify-content:center; font-size:24px;">기장거래처 <span class="badge" id="clientsRegularBadge" title="지금 이 순간 기준(해지 제외) 거래처 수">0건</span></h2>
+      <p class="hint" style="font-size:12px; color:var(--ink-soft); margin:4px 0 0;">기장대행·신고대리로 등록된 정기 거래처만 모아서 보여줘요.</p>
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:14px; flex-wrap:wrap;">
       <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
         <div style="display:flex; align-items:center; gap:6px;">
           <label style="font-size:11px; color:var(--ink-soft); font-weight:700;">조회월</label>
@@ -3741,12 +3741,14 @@ function openClientDetailModal(c){
     });
   }
   const rowsHtml = rows.map(([label,val])=>`
-    <div style="display:grid; grid-template-columns:100px 1fr; gap:10px; padding:6px 0; border-bottom:1px solid var(--border); font-size:12.5px;">
-      <span style="color:var(--ink-soft); font-weight:700;">${escHtml(label)}</span>
-      <span>${escHtml(val)}</span>
+    <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid var(--border); font-size:12.5px;">
+      <span style="color:var(--ink-soft); font-weight:700; flex-shrink:0;">${escHtml(label)}</span>
+      <span style="text-align:right;">${escHtml(val)}</span>
     </div>`).join('');
   document.getElementById('memoModalBody').innerHTML = `
-    <div style="text-align:center; font-size:11px; font-weight:800; color:var(--indigo-deep); letter-spacing:0.03em; margin-bottom:8px;">추가정보</div>
+    <div style="text-align:center; margin-bottom:16px;">
+      <span style="display:inline-block; font-size:12.5px; font-weight:800; color:var(--indigo-deep); background:var(--indigo-bg); padding:5px 16px; border-radius:20px; letter-spacing:0.02em;">✨ 추가정보</span>
+    </div>
     ${rowsHtml}`;
   document.getElementById('memoModalOverlay').style.display = 'flex';
 }
@@ -3824,12 +3826,13 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
     // 기장대행/신고대리, 법인/개인을 은은하게 색으로 구분 (튀지 않는 선에서)
     const taxColor = c.taxType === '기장대행' ? 'var(--indigo-deep)' : c.taxType === '신고대리' ? '#B45309' : 'inherit';
     const entityColor = c.entityType === '법인' ? '#0B5A78' : c.entityType === '개인' ? '#BE185D' : 'inherit';
+    const nameBg = c.entityType === '법인' ? '#DCEEF5' : c.entityType === '개인' ? '#FBE2ED' : 'var(--indigo-bg)';
     let groupNoCell = '';
     if(showGroupNo){
       let groupNoDisplay = '-';
       if(c.entityType === '법인' || c.entityType === '개인'){
         groupCounters[c.entityType]++;
-        groupNoDisplay = `${c.entityType} ${groupCounters[c.entityType]}`;
+        groupNoDisplay = `${groupCounters[c.entityType]}`;
       }
       groupNoCell = `<td class="num" style="color:${entityColor};">${escHtml(groupNoDisplay)}</td>`;
     }
@@ -3848,20 +3851,19 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
       <td class="num">${idx+1}</td>${groupNoCell}
       <td style="color:${taxColor}; font-weight:600;">${escHtml(taxTypeDisplay)}</td>
       <td style="color:${entityColor}; font-weight:600;">${escHtml(c.entityType||'-')}</td>
-      <td style="background:var(--indigo-bg); color:var(--indigo-deep); font-weight:800;">${escHtml(c.name||'')}</td>
+      <td style="background:${nameBg}; color:${entityColor}; font-weight:800;">${escHtml(c.name||'')}</td>
       <td class="num">${escHtml(c.bizNo||'')}</td>
       <td class="num">${escHtml(c.corpRegNo||'')}</td>
       <td>${escHtml(c.repName||'')}</td>
       <td class="num">${c.fee ? Number(c.fee).toLocaleString() : '-'}</td>
       <td class="num">${escHtml(c.contractDate||'-')}</td>
-      <td class="num">${escHtml(c.start||'-')}</td>
-      <td class="num">${escHtml((c.contacts && c.contacts[0] && c.contacts[0].phone) || c.phone || c.repPhone || '-')}</td>${terminationCells}
+      <td class="num">${escHtml(c.start||'-')}</td>${terminationCells}
       <td style="white-space:nowrap;">${detailBtn}${memoBtn}${historyBtn}<button class="del-btn client-action-btn client-jump-edit-btn" data-id="${c.id}">수정</button><button class="del-btn client-action-btn client-jump-del-btn" data-id="${c.id}">삭제</button></td>
     </tr>`;
   }).join('');
-  const groupNoHeader = showGroupNo ? '<th>법인/개인N</th>' : '';
+  const groupNoHeader = showGroupNo ? '<th></th>' : '';
   const terminationHeaders = showTermination ? '<th>해지일</th><th>종료월</th><th>해지사유</th>' : '';
-  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th>N</th>${groupNoHeader}<th>수임구분</th><th>사업자구분</th><th>상호명</th><th>사업자번호</th><th>법인등록번호</th><th>대표자</th><th>수임료</th><th>계약일</th><th>수임시작일</th><th>연락처</th>${terminationHeaders}<th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th>순번</th>${groupNoHeader}<th>수임구분</th><th>사업자구분</th><th>상호명</th><th>사업자번호</th><th>법인등록번호</th><th>대표자</th><th>수임료</th><th>계약일</th><th>수임시작일</th>${terminationHeaders}<th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
   wrap.querySelectorAll('.client-detail-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const c = clients.list.find(x=>x.id===btn.dataset.id);
