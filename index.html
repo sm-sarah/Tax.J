@@ -71,22 +71,18 @@
     letter-spacing:0.02em; margin:0 auto 12px; background:var(--navy);
     padding:5px 14px; border-radius:20px;
   }
-  .home-tiles{display:grid; grid-template-columns:repeat(4, 1fr); gap:14px;}
-  .home-tiles.five{grid-template-columns:repeat(5, 1fr);}
-  .home-tiles.three{grid-template-columns:repeat(3, 1fr);}
-  .home-tiles.six{grid-template-columns:repeat(6, 1fr);}
-  .home-tiles.seven{grid-template-columns:repeat(4, 1fr);}
-  @media (max-width:900px){ .home-tiles, .home-tiles.five, .home-tiles.six, .home-tiles.seven{grid-template-columns:repeat(2, 1fr);} }
-  @media (max-width:560px){ .home-tiles, .home-tiles.five, .home-tiles.three, .home-tiles.six, .home-tiles.seven{grid-template-columns:1fr;} }
+  .home-tiles{display:grid; grid-template-columns:repeat(auto-fill, 128px); gap:14px; justify-content:center;}
+  @media (max-width:560px){ .home-tiles{grid-template-columns:repeat(auto-fill, 104px); gap:10px;} }
   .home-tile{
-    background:var(--surface); border-radius:18px; padding:20px 18px;
+    background:var(--surface); border-radius:18px; padding:14px 10px;
     cursor:pointer; border-top:4px solid var(--tile-accent, var(--indigo));
     box-shadow:0 1px 2px rgba(29,30,51,0.04), 0 8px 20px -12px rgba(29,30,51,0.16);
     transition:transform 0.15s, box-shadow 0.15s;
+    aspect-ratio:1/1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
   }
   .home-tile:hover{transform:translateY(-3px); box-shadow:0 4px 6px rgba(29,30,51,0.06), 0 14px 26px -12px rgba(29,30,51,0.22);}
-  .home-tile-icon{font-size:26px; margin-bottom:10px; height:30px; line-height:30px; display:flex; align-items:center;}
-  .home-tile-title{font-weight:800; font-size:15px; color:var(--ink); margin-bottom:0;}
+  .home-tile-icon{font-size:26px; margin-bottom:10px; height:30px; line-height:30px; display:flex; align-items:center; justify-content:center;}
+  .home-tile-title{font-weight:800; font-size:14px; color:var(--ink); margin-bottom:0;}
   .month-picker label{font-size:10px; color:var(--indigo-deep); font-weight:700;}
   .month-picker input{
     font-family:'IBM Plex Mono', monospace; font-size:12.5px; font-weight:700;
@@ -303,7 +299,7 @@
   }
 
   .cal-grid{display:grid; grid-template-columns:minmax(0,0.85fr) repeat(5,minmax(0,1.55fr)) minmax(0,0.85fr); gap:6px;}
-  .cal-dow{font-size:11px; font-weight:700; color:var(--ink-soft); text-align:center; padding-bottom:2px;}
+  .cal-dow{font-size:11.5px; font-weight:800; color:var(--ink); text-align:center; padding-bottom:2px;}
   .cal-cell{background:var(--surface); border-radius:12px; min-height:78px; padding:6px 6px 8px; box-shadow:0 1px 2px rgba(29,30,51,0.04);}
   .calendar-panel{
     background:#F7F8FD; border-radius:20px; padding:18px;
@@ -316,7 +312,7 @@
   .cal-legend-icon{font-size:22px; margin-right:2px; vertical-align:middle;}
   .cal-cell.weekend{background:transparent; box-shadow:none;}
   .cal-cell.empty{background:transparent; box-shadow:none;}
-  .cal-date{font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:12px; color:var(--ink-soft); margin-bottom:4px; display:flex; align-items:center; justify-content:space-between;}
+  .cal-date{font-family:'IBM Plex Mono', monospace; font-weight:800; font-size:13px; color:var(--ink); margin-bottom:4px; display:flex; align-items:center; justify-content:space-between;}
   .cal-date.today{color:var(--indigo);}
   .cal-badges{display:flex; flex-direction:column; gap:3px;}
   .cal-badge{font-size:10.5px; font-weight:700; padding:2px 6px; border-radius:8px; line-height:1.4; white-space:normal; word-break:keep-all; overflow-wrap:break-word; max-width:100%;}
@@ -3791,7 +3787,7 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
     wrap.innerHTML = `<div class="empty-state">${q ? '검색 결과가 없습니다.' : emptyMsgDefault}</div>`;
     return;
   }
-  const rows = list.map(c=>{
+  const rows = list.map((c, idx)=>{
     const taxTypeDisplay = ['기타','용역대행'].includes(c.taxType) && c.taxTypeEtc ? c.taxTypeEtc : (c.taxType||'');
     const terminationCells = showTermination ? `
       <td class="num">${escHtml(c.terminationDate||'-')}</td>
@@ -3804,20 +3800,21 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
       ? `<button class="del-btn client-history-btn" data-id="${c.id}" title="수정이력 보기">🕘</button>`
       : `<button class="del-btn" disabled style="opacity:0.35; cursor:default;" title="수정이력 없음">🕘</button>`;
     return `<tr>
+      <td class="num">${idx+1}</td>
       <td>${escHtml(taxTypeDisplay)}</td>
       <td>${escHtml(c.entityType||'-')}</td>
       <td>${escHtml(c.name||'')}</td>
       <td class="num">${escHtml(c.bizNo||'')}</td>
       <td class="num">${escHtml(c.corpRegNo||'')}</td>
       <td>${escHtml(c.repName||'')}</td>
-      <td class="num">${c.fee ? Number(c.fee).toLocaleString() + '원' : '-'}</td>
+      <td class="num">${c.fee ? Number(c.fee).toLocaleString() : '-'}</td>
       <td class="num">${escHtml(c.contractDate||'-')}</td>
       <td class="num">${escHtml(c.start||'-')}</td>${terminationCells}
       <td style="white-space:nowrap;">${memoBtn}${historyBtn}<button class="del-btn client-jump-edit-btn" data-id="${c.id}">수정</button><button class="del-btn client-jump-del-btn" data-id="${c.id}">삭제</button></td>
     </tr>`;
   }).join('');
   const terminationHeaders = showTermination ? '<th>해지일</th><th>종료월</th><th>해지사유</th>' : '';
-  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th>수임구분</th><th>사업자구분</th><th>상호명</th><th>사업자번호</th><th>법인등록번호</th><th>대표자</th><th>수임료</th><th>계약일</th><th>수임시작일</th>${terminationHeaders}<th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th>№</th><th>수임구분</th><th>사업자구분</th><th>상호명</th><th>사업자번호</th><th>법인등록번호</th><th>대표자</th><th>수임료</th><th>계약일</th><th>수임시작일</th>${terminationHeaders}<th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
   wrap.querySelectorAll('.client-memo-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const c = clients.list.find(x=>x.id===btn.dataset.id);
@@ -3876,8 +3873,8 @@ function renderClientFeeMonthSummary(){
   const labelEl = document.getElementById('clFeeMonthLabel');
   const totalEl = document.getElementById('clFeeMonthTotal');
   const countEl = document.getElementById('clFeeMonthCount');
-  if(labelEl) labelEl.textContent = `(${monthStr} 말일 기준)`;
-  if(totalEl) totalEl.textContent = won(total);
+  if(labelEl) labelEl.textContent = `${monthStr}(말일)`;
+  if(totalEl) totalEl.textContent = Number(total).toLocaleString();
   if(countEl) countEl.textContent = `${count}개 거래처`;
 }
 document.getElementById('cl-fee-month')?.addEventListener('change', renderClientFeeMonthSummary);
@@ -5704,7 +5701,8 @@ function clientCompletenessScore(c){
 function dedupeClients(){
   const groups = new Map();
   (clients.list||[]).forEach(c=>{
-    const key = clientIdentityKey(c) || `__noid__${c.id}`;
+    // 사업자번호가 있으면 그걸로, 없으면 상호명으로(정리 버튼은 사람이 눌러서 확인하는 조작이라 이 정도는 안전함) 그룹핑
+    const key = clientIdentityKey(c) || `name:${normalizeClientName(c.name)}` || `__noid__${c.id}`;
     if(!groups.has(key)) groups.set(key, []);
     groups.get(key).push(c);
   });
@@ -7164,14 +7162,36 @@ function updateQuickConnectBtn(){
   if(landingBtn){
     landingBtn.style.color = connected ? '#16A34A' : 'var(--indigo-deep)';
     landingBtn.textContent = connected ? '✅ 연결' : '🔑 로그인';
-    landingBtn.title = connected ? 'Google 계정 연결됨' : 'Google 계정 연결 안 됨 · 클릭해서 로그인';
+    landingBtn.title = connected ? '클릭해서 로그아웃' : 'Google 계정 연결 안 됨 · 클릭해서 로그인';
   }
   const quickBtn = document.getElementById('quickConnectBtn');
   if(quickBtn){
     quickBtn.style.background = connected ? '#16A34A' : 'var(--indigo)';
     quickBtn.style.boxShadow = connected ? '0 4px 12px -4px rgba(22,163,74,0.5)' : '0 4px 14px -3px rgba(91,95,239,0.6)';
     quickBtn.textContent = connected ? '✅' : '🔑';
-    quickBtn.title = connected ? 'Google 계정 연결됨' : 'Google 계정 연결 안 됨 · 클릭해서 로그인';
+    quickBtn.title = connected ? '클릭해서 로그아웃' : 'Google 계정 연결 안 됨 · 클릭해서 로그인';
+  }
+}
+
+// 로그아웃: 확인 팝업을 띄운 뒤, 구글 쪽 토큰도 함께 revoke해서 완전히 로그아웃 처리함
+function gdriveLogout(){
+  const who = currentUserEmail ? `'${currentUserEmail}' 계정에서` : '이 계정에서';
+  if(!confirm(`${who} 로그아웃할까요? 다시 쓰려면 로그인 버튼을 눌러 재연결하시면 돼요.`)) return;
+  const tokenToRevoke = gdriveAccessToken;
+  const finishLogout = ()=>{
+    clearGdriveTokenStorage();
+    gdriveAccessToken = null;
+    currentUserEmail = null;
+    isCurrentUserAdmin = false;
+    applyPermissionUI();
+    updatePolicyLockUI();
+    updateQuickConnectBtn();
+    gdriveSetStatus('로그아웃됨');
+  };
+  if(tokenToRevoke && typeof google !== 'undefined' && google.accounts && google.accounts.oauth2 && google.accounts.oauth2.revoke){
+    google.accounts.oauth2.revoke(tokenToRevoke, finishLogout);
+  } else {
+    finishLogout();
   }
 }
 
@@ -7401,7 +7421,7 @@ document.getElementById('gdriveConnectBtn').addEventListener('click', ()=>gdrive
 
 document.getElementById('quickConnectBtn').addEventListener('click', ()=>{
   if(gdriveAccessToken){
-    alert('이미 Google 계정에 연결되어 있어요.');
+    gdriveLogout();
     return;
   }
   const mainField = document.getElementById('gdrive-client-id');
@@ -7421,7 +7441,7 @@ document.getElementById('loginLockConnectBtn').addEventListener('click', ()=>{
 });
 document.getElementById('landingConnectBtn').addEventListener('click', ()=>{
   if(gdriveAccessToken){
-    alert('이미 Google 계정에 연결되어 있어요.');
+    gdriveLogout();
     return;
   }
   const mainField = document.getElementById('gdrive-client-id');
