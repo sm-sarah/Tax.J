@@ -1416,10 +1416,15 @@
           <button type="button" id="cl-contact-add-btn" class="del-btn" style="margin:2px 0 14px;">+ 담당자 추가</button>
         </div>
 
-        <button type="submit" class="submit-btn">거래처 추가</button>
+        <button type="submit" class="submit-btn" id="clientSubmitBtn">거래처 추가</button>
         <button type="button" id="client-cancel" class="del-btn" style="display:none; margin-top:6px;">취소</button>
         <span class="save-msg" id="clientSaveMsg"></span>
       </form>
+      <div id="clientAfterEditActions" style="display:none; text-align:center; margin-top:10px;">
+        <button type="button" id="clientNewEntryBtn" class="submit-btn" style="width:auto; padding:9px 20px; display:inline-block; margin:0 4px;">🆕 신규등록</button>
+        <button type="button" id="clientReEditBtn" class="del-btn" style="margin:0 4px;">✏️ 수정</button>
+        <button type="button" id="clientGoToListBtn" class="del-btn" style="margin:0 4px; background:var(--indigo-bg); color:var(--indigo-deep);">📋 확인하기</button>
+      </div>
     </div>
   </section>
 
@@ -2966,7 +2971,9 @@ function calcWorkdays(monthStr){
     // 오후반차(식사O)와 반반차는 점심을 먹으므로 근무일수에서 제외하지 않음
   });
   const monthExclusions = (sharedExclusionDays||[]).filter(x=>x.date.startsWith(monthStr));
-  const holidayCount = monthExclusions.filter(x=>x.reason==='공휴일').length;
+  const isWeekday = (dateStr) => { const [yy,mm,dd] = dateStr.split('-').map(Number); const dow = new Date(yy, mm-1, dd).getDay(); return dow !== 0 && dow !== 6; };
+  // 공휴일이 주말과 겹치면(예: 광복절이 토요일) 그 공휴일은 원래도 평일수에 안 잡혀있으니 또 빼면 안 됨 → 평일에 걸린 공휴일만 셈
+  const holidayCount = monthExclusions.filter(x=>x.reason==='공휴일' && isWeekday(x.date)).length;
   // 점심회식·기타는 점심을 회사가 제공/대체하므로 근무일수(식대계산)에서 제외, 저녁회식은 식대계산과 무관(일정 공유용)
   const otherExclusionCount = monthExclusions.filter(x=>x.reason==='점심회식' || x.reason==='기타').length;
   const weekdays = Math.max(0, rawWeekdays - holidayCount); // '근무가능일수' = 주말·공휴일 제외
@@ -4097,6 +4104,7 @@ async function populateClientEditForm(c){
   renderMemoRows();
   document.getElementById('clientForm').querySelector('button[type="submit"]').textContent = '수정 완료';
   document.getElementById('client-cancel').style.display = 'inline-block';
+  unlockClientForm();
   document.getElementById('clientForm').scrollIntoView({behavior:'smooth', block:'center'});
 }
 
@@ -4698,25 +4706,46 @@ document.getElementById('toggleClientBtn').addEventListener('click', ()=>{
 
 let pendingTabAfterLogin = null;
 
+// 탭 이동 로직을 함수로 분리 - 버튼 클릭과 브라우저 뒤로가기(popstate) 둘 다에서 재사용함
+function activateTab(tabName, pushHistory){
+  if(!tabName) return;
+  if(tabName === 'home'){
+    navExpanded = false;
+    activeTopGroup = null;
+  } else {
+    navExpanded = true;
+    if(MANAGEMENT_TABS.includes(tabName)) activeTopGroup = 'management';
+    else if(STAFF_TABS.includes(tabName)) activeTopGroup = 'staff';
+    else if(CLIENT_TABS.includes(tabName)) activeTopGroup = 'client';
+  }
+  updateNavVisibility();
+  document.querySelectorAll('.tab-btn').forEach(b=>{ if(b.dataset.tab) b.classList.remove('active'); });
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll(`.tab-btn[data-tab="${tabName}"]`).forEach(b=>b.classList.add('active'));
+  const needsLogin = tabName !== 'home' && !gdriveAccessToken;
+  pendingTabAfterLogin = needsLogin ? tabName : null;
+  document.getElementById(needsLogin ? 'tab-loginlock' : 'tab-'+tabName).classList.add('active');
+  // 새로고침해도 지금 보던 화면으로 돌아올 수 있게 마지막 탭을 기억해둠
+  try{ localStorage.setItem('worklog_last_tab', tabName); }catch(e){}
+  // 뒤로가기를 누르면 이 앱 안의 이전 화면으로 돌아오도록 브라우저 방문기록에 남겨둠
+  if(pushHistory){
+    try{ history.pushState({ tab: tabName }, '', location.pathname + location.search); }catch(e){}
+  }
+}
+
+window.addEventListener('popstate', (e)=>{
+  const tab = (e.state && e.state.tab) || 'home';
+  activateTab(tab, false);
+  if(tab === 'home'){
+    // 홈까지 뒤로 왔으면, 여기서 더 뒤로가기를 눌러도 앱 밖(구글 등)으로 안 나가고 계속 홈에 머물도록
+    // 홈 상태를 다시 하나 쌓아둠 (뒤로가기를 눌러도 또 이 지점으로 돌아오게 됨)
+    try{ history.pushState({ tab: 'home' }, '', location.pathname + location.search); }catch(e){}
+  }
+});
+
 document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    if(!btn.dataset.tab) return;
-    if(btn.dataset.tab === 'home'){
-      navExpanded = false;
-      activeTopGroup = null;
-    } else {
-      navExpanded = true;
-      if(MANAGEMENT_TABS.includes(btn.dataset.tab)) activeTopGroup = 'management';
-      else if(STAFF_TABS.includes(btn.dataset.tab)) activeTopGroup = 'staff';
-      else if(CLIENT_TABS.includes(btn.dataset.tab)) activeTopGroup = 'client';
-    }
-    updateNavVisibility();
-    document.querySelectorAll('.tab-btn').forEach(b=>{ if(b.dataset.tab) b.classList.remove('active'); });
-    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-    document.querySelectorAll(`.tab-btn[data-tab="${btn.dataset.tab}"]`).forEach(b=>b.classList.add('active'));
-    const needsLogin = btn.dataset.tab !== 'home' && !gdriveAccessToken;
-    pendingTabAfterLogin = needsLogin ? btn.dataset.tab : null;
-    document.getElementById(needsLogin ? 'tab-loginlock' : 'tab-'+btn.dataset.tab).classList.add('active');
+    activateTab(btn.dataset.tab, true);
   });
 });
 
@@ -6068,18 +6097,24 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
         c.editHistory.unshift({ date: new Date().toLocaleString('ko-KR'), changes });
       }
     }
+    lastEditedClientId = editingClientId;
     editingClientId = null;
-    document.getElementById('clientForm').querySelector('button[type="submit"]').textContent = '거래처 추가';
-    document.getElementById('client-cancel').style.display = 'none';
-    document.getElementById('clientSaveMsg').textContent = '수정됨';
-  } else {
-    clients.list.push({
-      id: genId(),
-      editHistory: [{ date: new Date().toLocaleString('ko-KR'), changes: '최초 등록' }],
-      ...fields
-    });
-    document.getElementById('clientSaveMsg').textContent = '추가됨';
+    document.getElementById('clientSaveMsg').textContent = '수정 완료';
+    await saveClients();
+    renderClients();
+    renderClientsRegular();
+    renderClientsOther();
+    renderClientsTerminated();
+    // 수정 저장 후에는 폼을 비우지 않고, 방금 수정한 내용을 보여준 채로 잠가둠 (신규등록/수정 버튼으로 다음 동작 선택)
+    lockClientFormAfterEdit();
+    return;
   }
+  clients.list.push({
+    id: genId(),
+    editHistory: [{ date: new Date().toLocaleString('ko-KR'), changes: '최초 등록' }],
+    ...fields
+  });
+  document.getElementById('clientSaveMsg').textContent = '추가됨';
   await saveClients();
   setTimeout(()=>document.getElementById('clientSaveMsg').textContent='',1200);
   document.getElementById('clientForm').reset();
@@ -6098,6 +6133,58 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
   renderClientsRegular();
   renderClientsOther();
   renderClientsTerminated();
+});
+
+// 수정 저장 직후: 입력칸을 비활성화해서 "방금 뭘 저장했는지" 그대로 보여주고, 신규등록/수정 버튼만 남김
+let lastEditedClientId = null;
+function lockClientFormAfterEdit(){
+  const form = document.getElementById('clientForm');
+  form.querySelectorAll('input, select, textarea, button').forEach(el=>{ el.disabled = true; });
+  document.getElementById('clientSubmitBtn').style.display = 'none';
+  document.getElementById('client-cancel').style.display = 'none';
+  document.getElementById('clientAfterEditActions').style.display = 'block';
+}
+function unlockClientForm(){
+  const form = document.getElementById('clientForm');
+  form.querySelectorAll('input, select, textarea, button').forEach(el=>{ el.disabled = false; });
+  document.getElementById('clientSubmitBtn').style.display = '';
+  document.getElementById('clientAfterEditActions').style.display = 'none';
+  updateTaxTypeEtcVisibility(document.getElementById('cl-taxtype').value);
+  document.getElementById('cl-program-etc-field').style.display = document.getElementById('cl-program').value === '기타' ? '' : 'none';
+  updateTerminationFieldsVisibility();
+  updateCompanyCodeDisabled();
+}
+document.getElementById('clientNewEntryBtn').addEventListener('click', async ()=>{
+  unlockClientForm();
+  editingClientId = null;
+  lastEditedClientId = null;
+  document.getElementById('clientSubmitBtn').textContent = '거래처 추가';
+  document.getElementById('clientForm').reset();
+  clContactRows = [{ name:'', phone:'', email:'' }];
+  clMemoRows = [];
+  renderMemoRows();
+  document.getElementById('cl-taxtype').value = '기장대행';
+  document.getElementById('cl-status').value = '수임';
+  document.getElementById('cl-program').value = '위하고';
+  updateCompanyCodeDisabled();
+  updateContactSameAsRep();
+  updateTerminationFieldsVisibility();
+});
+document.getElementById('clientReEditBtn').addEventListener('click', ()=>{
+  unlockClientForm();
+  editingClientId = lastEditedClientId;
+  document.getElementById('clientSubmitBtn').textContent = '수정 완료';
+  document.getElementById('client-cancel').style.display = 'inline-block';
+});
+
+document.getElementById('clientGoToListBtn').addEventListener('click', ()=>{
+  const c = clients.list.find(x=>x.id===lastEditedClientId);
+  let targetTab = 'clients-regular';
+  if(c){
+    if(c.status === '해지') targetTab = 'clients-terminated';
+    else if(!['기장대행','신고대리'].includes(c.taxType)) targetTab = 'clients-other';
+  }
+  document.querySelector(`.tab-btn[data-tab="${targetTab}"]`)?.click();
 });
 
 document.getElementById('client-cancel').addEventListener('click', ()=>{
@@ -7887,6 +7974,16 @@ renderClientsTerminated();
 applyPermissionUI();
 updateNavVisibility();
 updateQuickConnectBtn();
+// 뒤로가기를 눌렀을 때 이 앱 밖으로 바로 안 나가고 "홈"부터 거치도록, 최초 진입 시점을 기준선으로 남겨둠
+try{ history.replaceState({ tab: 'home' }, '', location.pathname + location.search); }catch(e){}
+// 새로고침해도 홈이 아니라 마지막으로 보고 있던 화면으로 돌아가기
+try{
+  const lastTab = localStorage.getItem('worklog_last_tab');
+  if(lastTab && lastTab !== 'home'){
+    const lastTabBtn = document.querySelector(`.tab-btn[data-tab="${lastTab}"]`);
+    if(lastTabBtn) lastTabBtn.click();
+  }
+}catch(e){}
 if(typeof twemoji !== 'undefined') twemoji.parse(document.body, {folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'});
 </script>
 </body>
