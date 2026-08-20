@@ -1447,10 +1447,17 @@
     <h2 class="section-title" style="margin-top:34px; padding-top:20px; border-top:1.5px dashed var(--border);">개인정보 입력·수정</h2>
     <div class="settings-box" style="max-width:680px;">
       <form id="personalInfoForm">
-        <div class="field"><label>거래처 선택 <span style="font-weight:400; color:var(--ink-soft);">(등록및수정에 입력된 거래처 중에서 골라주세요)</span></label>
-          <select id="pi-client-select">
-            <option value="">-- 거래처를 선택하세요 --</option>
-          </select>
+        <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
+          <div class="field" style="flex:1 1 220px;"><label>수임 거래처 선택</label>
+            <select id="pi-client-select-active">
+              <option value="">-- 거래처를 선택하세요 --</option>
+            </select>
+          </div>
+          <div class="field" style="flex:1 1 220px;"><label>해지 거래처 선택 <span style="font-weight:400; color:var(--ink-soft);">(과거 등록된 정보만)</span></label>
+            <select id="pi-client-select-terminated">
+              <option value="">-- 거래처를 선택하세요 --</option>
+            </select>
+          </div>
         </div>
         <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
           <div class="field" style="flex:1 1 180px;"><label>상호명</label><input type="text" id="pi-name" required placeholder="예: (주)청인상사" disabled></div>
@@ -4128,23 +4135,35 @@ async function deleteClientById(id){
 
 // ===== Client > 개인정보 (거래처와 별개의 독립 데이터, 대표자 개인/계정정보 전용) =====
 // 개인정보는 아무 이름이나 새로 입력하지 않고, "등록및수정"에 이미 있는 거래처 중에서 골라야만 입력란이 켜지게 함
+// 수임 중인 거래처와 해지된 거래처를 각각 다른 select에 나눠서 보여줌
 function renderPersonalInfoClientSelect(){
-  const sel = document.getElementById('pi-client-select');
-  if(!sel) return;
-  const prevValue = sel.value;
-  // 기장거래처 목록과 같은 순서(법인/개인 → 기장대행/신고대리 → 등록 순서)로 보여줌
-  const options = (clients.list||[]).map((c,i)=>({c,i})).sort((a,b)=>{
-    const w1 = clientCategoryWeight(a.c.entityType) - clientCategoryWeight(b.c.entityType);
+  const selActive = document.getElementById('pi-client-select-active');
+  const selTerminated = document.getElementById('pi-client-select-terminated');
+  if(!selActive || !selTerminated) return;
+  const prevActive = selActive.value;
+  const prevTerminated = selTerminated.value;
+
+  const namesWithInfo = new Set((personalInfo.list||[]).map(p=>normalizeClientName(p.name)));
+  const sortFn = (a,b)=>{
+    const w1 = clientCategoryWeight(a.entityType) - clientCategoryWeight(b.entityType);
     if(w1 !== 0) return w1;
-    const w2 = clientTaxTypeWeight(a.c.taxType) - clientTaxTypeWeight(b.c.taxType);
+    const w2 = clientTaxTypeWeight(a.taxType) - clientTaxTypeWeight(b.taxType);
     if(w2 !== 0) return w2;
-    return a.i - b.i;
-  }).map(x=>x.c);
-  sel.innerHTML = '<option value="">-- 거래처를 선택하세요 --</option>' + options.map(c=>`<option value="${c.id}">${escHtml(c.name||'(이름 없음)')}${c.repName?' · '+escHtml(c.repName):''}</option>`).join('');
-  if(options.some(c=>c.id===prevValue)) sel.value = prevValue;
+    return 0;
+  };
+  const optionHtml = (c) => `<option value="${c.id}">${escHtml(c.name||'(이름 없음)')}${c.repName?' · '+escHtml(c.repName):''}</option>`;
+
+  // 수임(보류 포함) 거래처
+  const activeList = (clients.list||[]).filter(c=>c.status !== '해지').sort(sortFn);
+  selActive.innerHTML = '<option value="">-- 거래처를 선택하세요 --</option>' + activeList.map(optionHtml).join('');
+  if(activeList.some(c=>c.id===prevActive)) selActive.value = prevActive;
+
+  // 해지 거래처는, 수임 중일 때 이미 개인정보를 등록해둔 경우에만 남겨서 과거 정보를 조회·수정할 수 있게 함
+  const terminatedList = (clients.list||[]).filter(c=>c.status === '해지' && namesWithInfo.has(normalizeClientName(c.name))).sort(sortFn);
+  selTerminated.innerHTML = '<option value="">-- 거래처를 선택하세요 --</option>' + terminatedList.map(optionHtml).join('');
+  if(terminatedList.some(c=>c.id===prevTerminated)) selTerminated.value = prevTerminated;
 }
-document.getElementById('pi-client-select').addEventListener('change', ()=>{
-  const id = document.getElementById('pi-client-select').value;
+function selectPersonalInfoClient(id){
   const nameEl = document.getElementById('pi-name');
   const repEl = document.getElementById('pi-rep-name');
   const memoEl = document.getElementById('pi-memo');
@@ -4157,6 +4176,16 @@ document.getElementById('pi-client-select').addEventListener('change', ()=>{
   nameEl.value = c ? (c.name||'') : '';
   repEl.value = c ? (c.repName||'') : '';
   nameEl.disabled = false; repEl.disabled = false; memoEl.disabled = false;
+}
+document.getElementById('pi-client-select-active').addEventListener('change', ()=>{
+  const id = document.getElementById('pi-client-select-active').value;
+  if(id) document.getElementById('pi-client-select-terminated').value = '';
+  selectPersonalInfoClient(id);
+});
+document.getElementById('pi-client-select-terminated').addEventListener('change', ()=>{
+  const id = document.getElementById('pi-client-select-terminated').value;
+  if(id) document.getElementById('pi-client-select-active').value = '';
+  selectPersonalInfoClient(id);
 });
 
 function updatePersonalInfoFormState(){
@@ -4260,7 +4289,13 @@ async function renderPersonalInfo(){
       if(!p) return;
       editingPersonalInfoId = p.id;
       const matchedClient = clients.list.find(x=>(x.name||'')===(p.name||''));
-      document.getElementById('pi-client-select').value = matchedClient ? matchedClient.id : '';
+      const activeSel = document.getElementById('pi-client-select-active');
+      const terminatedSel = document.getElementById('pi-client-select-terminated');
+      activeSel.value = ''; terminatedSel.value = '';
+      if(matchedClient){
+        if(matchedClient.status === '해지') terminatedSel.value = matchedClient.id;
+        else activeSel.value = matchedClient.id;
+      }
       document.getElementById('pi-name').value = p.name || '';
       document.getElementById('pi-rep-name').value = p.repName || '';
       document.getElementById('pi-memo').value = p.memo || '';
