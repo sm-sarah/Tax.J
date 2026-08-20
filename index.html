@@ -140,7 +140,12 @@
   .card-value{font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:20px; letter-spacing:-0.02em;}
   .card-sub{font-size:11px; color:var(--ink-soft); margin-top:4px; min-height:14px; font-weight:500;}
 
-  .tabs{display:flex; flex-direction:column; gap:10px; margin-bottom:26px;}
+  .tabs{
+    display:flex; flex-direction:column; gap:10px; margin-bottom:26px;
+    position:sticky; top:0; z-index:100;
+    background:var(--bg); padding:12px 0 8px; margin-top:-12px;
+    box-shadow:0 4px 10px -6px rgba(29,30,51,0.12);
+  }
   .tab-row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
   .tab-group{
     display:inline-flex; align-items:center; gap:4px; flex-wrap:wrap;
@@ -314,8 +319,8 @@
     gap:10px 18px; margin:16px 0 2px; font-size:12.5px; font-weight:700; color:var(--ink);
   }
   .cal-legend-icon{font-size:22px; margin-right:2px; vertical-align:middle;}
-  .cal-cell.weekend{background:transparent; box-shadow:none;}
-  .cal-cell.empty{background:transparent; box-shadow:none;}
+  .cal-cell.weekend{background:var(--bg); border:1px solid var(--border); box-shadow:none;}
+  .cal-cell.empty{background:transparent; box-shadow:none; border:none;}
   .cal-date{font-family:'IBM Plex Mono', monospace; font-weight:800; font-size:13px; color:var(--ink); margin-bottom:4px; display:flex; align-items:center; justify-content:space-between;}
   .cal-date.today{color:var(--indigo);}
   .cal-badges{display:flex; flex-direction:column; gap:3px;}
@@ -1206,6 +1211,7 @@
         <textarea id="policyContent" style="width:100%; min-height:400px; font-family:'Pretendard',sans-serif; font-size:13px; line-height:1.6; border:1.5px solid transparent; border-radius:10px; padding:14px; background:var(--bg); color:var(--ink); resize:vertical;"></textarea>
       </div>
       <button type="button" id="savePolicyBtn" class="submit-btn" style="width:auto; padding:10px 20px;">새 버전으로 저장</button>
+      <button type="button" id="cancelPolicyEditBtn" class="del-btn" style="display:none;">취소</button>
       <span class="save-msg" id="policySaveMsg"></span>
     </div>
 
@@ -1448,13 +1454,21 @@
     <div class="settings-box" style="max-width:680px;">
       <form id="personalInfoForm">
         <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
-          <div class="field" style="flex:1 1 220px;"><label>수임 거래처 선택</label>
-            <select id="pi-client-select-active">
+          <div class="field" style="flex:1 1 220px;">
+            <label style="display:flex; align-items:center; gap:6px;">
+              <span style="display:inline-flex; align-items:center; gap:3px; font-size:10.5px; font-weight:800; color:var(--mint); background:var(--mint-bg); padding:2px 9px; border-radius:20px;">🟢 수임중</span>
+              거래처 선택
+            </label>
+            <select id="pi-client-select-active" style="border:1.5px solid var(--mint); background:var(--mint-bg);">
               <option value="">-- 거래처를 선택하세요 --</option>
             </select>
           </div>
-          <div class="field" style="flex:1 1 220px;"><label>해지 거래처 선택 <span style="font-weight:400; color:var(--ink-soft);">(과거 등록된 정보만)</span></label>
-            <select id="pi-client-select-terminated">
+          <div class="field" style="flex:1 1 220px;">
+            <label style="display:flex; align-items:center; gap:6px;">
+              <span style="display:inline-flex; align-items:center; gap:3px; font-size:10.5px; font-weight:800; color:var(--ink-soft); background:var(--bg); padding:2px 9px; border-radius:20px;">⚫ 해지됨</span>
+              거래처 선택 <span style="font-weight:400; color:var(--ink-soft);">(과거 등록된 정보만)</span>
+            </label>
+            <select id="pi-client-select-terminated" style="border:1.5px solid var(--ink-soft); background:var(--bg);">
               <option value="">-- 거래처를 선택하세요 --</option>
             </select>
           </div>
@@ -2382,8 +2396,29 @@ function renderAdminCalendar(){
         const titleAttr = t ? ` title="${escHtml(t)}"` : '';
         (byDate[g.startDate]=byDate[g.startDate]||[]).push(`<span class="cal-badge leave"${titleAttr}>🌴 ${escHtml(name)} · ${u.type}</span>`);
       } else {
-        (byDate[g.startDate]=byDate[g.startDate]||[]).push(`<span class="cal-badge leave">🌴 ${g.type} (${g.totalDays}일)) ${escHtml(name)}</span>`);
-        (byDate[g.endDate]=byDate[g.endDate]||[]).push(`<span class="cal-badge leave">🌴 ${g.type} 복귀일) ${escHtml(name)}</span>`);
+        // 연속 휴가는 하루짜리 뱃지 두 개(시작일/복귀일)로 뚝 끊어 보여주지 않고, 그 사이 평일들을 이어지는 막대로 표시함
+        // (같은 주(그리드 한 줄) 안에서만 시각적으로 이어붙임 - 주가 바뀌면(금→다음주 월) 자연스럽게 막대가 새로 시작됨)
+        const weekdayDates = [];
+        let cur = g.startDate;
+        while(cur <= g.endDate){
+          const dow = new Date(cur+'T00:00:00').getDay();
+          if(dow !== 0 && dow !== 6) weekdayDates.push(cur);
+          const d2 = new Date(cur+'T00:00:00'); d2.setDate(d2.getDate()+1);
+          cur = fmt(d2);
+        }
+        weekdayDates.forEach((dateStr, i)=>{
+          const prevStr = weekdayDates[i-1];
+          const nextStr = weekdayDates[i+1];
+          const dowOf = (ds)=> new Date(ds+'T00:00:00').getDay();
+          const connectPrev = prevStr && dowOf(dateStr) > dowOf(prevStr);
+          const connectNext = nextStr && dowOf(nextStr) > dowOf(dateStr);
+          const isSpanStart = !connectPrev;
+          const isSpanEnd = !connectNext;
+          const radiusStyle = `border-radius:${isSpanStart?'8px':'0'} ${isSpanEnd?'8px':'0'} ${isSpanEnd?'8px':'0'} ${isSpanStart?'8px':'0'};`;
+          const marginStyle = `margin-left:${connectPrev?'-9px':'0'}; margin-right:${connectNext?'-9px':'0'};`;
+          const label = isSpanStart ? `🌴 ${escHtml(name)} · ${g.type} (${g.totalDays}일)` : '';
+          (byDate[dateStr]=byDate[dateStr]||[]).push(`<span class="cal-badge leave cal-badge-span" style="display:block; text-align:${isSpanStart?'left':'center'}; ${radiusStyle} ${marginStyle} position:relative; z-index:1;">${label || '&nbsp;'}</span>`);
+        });
       }
     });
     (att.remoteEntries||[]).filter(r=>r.date.startsWith(monthStr)).forEach(r=>{
@@ -2724,7 +2759,16 @@ function getCurrentPolicy(cat){
   cat = cat || 'hr';
   const hist = settings[policyHistoryKey(cat)] || [];
   if(!hist.length) return { content: policyDefaultText(cat), editedDate:'', effectiveDate:'2026-07-01' };
-  return hist[hist.length - 1];
+  return sortPolicyHistoryByEffective(hist)[0];
+}
+// 적용일자가 가장 늦은 게 "현재 버전". 저장한(입력한) 순서가 아니라 적용일자 기준으로 최신을 가려냄.
+// 적용일자가 같으면 나중에 저장한 걸 우선(더 최근 입력이므로).
+function sortPolicyHistoryByEffective(hist){
+  return [...hist].map((h,i)=>({h,i})).sort((a,b)=>{
+    const d = (b.h.effectiveDate||'').localeCompare(a.h.effectiveDate||'');
+    if(d !== 0) return d;
+    return b.i - a.i;
+  }).map(x=>x.h);
 }
 
 function syncDateFieldsToMonth(){
@@ -3556,8 +3600,24 @@ function renderCalendar(){
     if(g.startDate === g.endDate){
       (leaveByDate[g.startDate] = leaveByDate[g.startDate]||[]).push({group:g, role:'single'});
     } else {
-      (leaveByDate[g.startDate] = leaveByDate[g.startDate]||[]).push({group:g, role:'start'});
-      (leaveByDate[g.endDate] = leaveByDate[g.endDate]||[]).push({group:g, role:'end'});
+      // 연속 휴가는 시작일/복귀일 두 뱃지로 뚝 끊지 않고, 그 사이 평일들을 이어지는 막대로 표시
+      // (같은 주(그리드 한 줄) 안에서만 이어붙이고, 주가 바뀌면 자연스럽게 새로 시작됨)
+      const weekdayDates = [];
+      let cur = g.startDate;
+      while(cur <= g.endDate){
+        const dow = new Date(cur+'T00:00:00').getDay();
+        if(dow !== 0 && dow !== 6) weekdayDates.push(cur);
+        const d2 = new Date(cur+'T00:00:00'); d2.setDate(d2.getDate()+1);
+        cur = fmt(d2);
+      }
+      weekdayDates.forEach((dateStr, i)=>{
+        const prevStr = weekdayDates[i-1];
+        const nextStr = weekdayDates[i+1];
+        const dowOf = (ds)=> new Date(ds+'T00:00:00').getDay();
+        const connectPrev = prevStr && dowOf(dateStr) > dowOf(prevStr);
+        const connectNext = nextStr && dowOf(nextStr) > dowOf(dateStr);
+        (leaveByDate[dateStr] = leaveByDate[dateStr]||[]).push({group:g, role:'span', connectPrev, connectNext});
+      });
     }
   });
   const remoteByDate = {};
@@ -3579,11 +3639,18 @@ function renderCalendar(){
     const dow = new Date(y, m-1, d).getDay();
     const isWeekend = dow===0 || dow===6;
     let badges = '';
-    (leaveByDate[dateStr]||[]).forEach(({group:g, role})=>{
+    (leaveByDate[dateStr]||[]).forEach(({group:g, role, connectPrev, connectNext})=>{
       let label, timeLabel = '';
-      if(role === 'start') label = `${g.type} (${g.totalDays}일)`;
-      else if(role === 'end') label = `${g.type} 복귀일`;
-      else {
+      if(role === 'span'){
+        const isSpanStart = !connectPrev;
+        const isSpanEnd = !connectNext;
+        const radiusStyle = `border-radius:${isSpanStart?'8px':'0'} ${isSpanEnd?'8px':'0'} ${isSpanEnd?'8px':'0'} ${isSpanStart?'8px':'0'};`;
+        const marginStyle = `margin-left:${connectPrev?'-9px':'0'}; margin-right:${connectNext?'-9px':'0'};`;
+        const spanLabel = isSpanStart ? `🌴 ${g.type} (${g.totalDays}일)` : '&nbsp;';
+        badges += `<span class="cal-badge leave cal-badge-span" style="display:block; text-align:${isSpanStart?'left':'center'}; ${radiusStyle} ${marginStyle} position:relative; z-index:1;">${spanLabel}</span>`;
+        return;
+      }
+      {
         const u = g.entries[0];
         if(u.type==='연차') label = '연차';
         else if(u.type==='반차' || u.type==='반반차'){
@@ -3818,38 +3885,39 @@ function openClientDetailModal(c){
   document.getElementById('memoModalTitle').textContent = c.name || '추가정보';
   const programDisplay = c.program === '기타' ? (c.programEtc || '기타') : (c.program || '-');
   const rowHtml = (label,val) => `
-    <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; font-size:12.5px;">
+    <div style="display:flex; justify-content:space-between; gap:10px; padding:5px 0; font-size:12.5px;">
       <span style="color:var(--ink-soft); font-weight:700; flex-shrink:0;">${escHtml(label)}</span>
       <span style="text-align:right;">${escHtml(val)}</span>
     </div>`;
-  const divider = (t) => `<div style="text-align:left; margin:18px 0 6px;"><span style="display:inline-block; font-size:11px; font-weight:800; color:var(--indigo-deep); padding-bottom:3px; border-bottom:2px solid var(--indigo);">${escHtml(t)}</span></div>`;
+  // 밑줄 대신 옅은 배경 박스로 묶어서, 그룹 사이 여백이 "빈 공간"이 아니라 "하나의 덩어리"로 보이게 함
+  const group = (t, rowsHtml) => `
+    <div style="background:var(--bg); border-radius:10px; padding:10px 12px; margin-bottom:10px;">
+      <div style="font-size:11px; font-weight:800; color:var(--indigo-deep); margin-bottom:4px;">${escHtml(t)}</div>
+      ${rowsHtml}
+    </div>`;
 
   // 1) 기본정보
-  let html = divider('기본정보')
-    + rowHtml('프로그램', programDisplay)
-    + rowHtml('회사코드', c.companyCode || '-');
+  let html = group('기본정보', rowHtml('프로그램', programDisplay) + rowHtml('회사코드', c.companyCode || '-'));
 
   // 2) 대표자
-  html += divider('대표자')
-    + rowHtml('이름', c.repName || '-')
-    + rowHtml('연락처', c.repPhone || '-')
-    + rowHtml('이메일', c.repEmail || '-');
+  html += group('대표자', rowHtml('이름', c.repName || '-') + rowHtml('연락처', c.repPhone || '-') + rowHtml('이메일', c.repEmail || '-'));
 
   // 3) 실무자 (등록할 때 "대표자와 동일" 체크했으면 중복으로 안 보여주고 한 줄로 표시, 여러 명이면 실무자1/실무자2...로 각각 표시)
   const contacts = (c.contacts && c.contacts.length) ? c.contacts : (c.contact || c.phone || c.email) ? [{name:c.contact, phone:c.phone, email:c.email}] : [];
-  html += divider('실무자');
+  let contactRows = '';
   if(c.contactSameAsRep){
-    html += rowHtml('실무자', '대표자와 동일 ✓');
+    contactRows = rowHtml('실무자', '대표자와 동일 ✓');
   } else if(!contacts.length){
-    html += rowHtml('실무자', '-');
+    contactRows = rowHtml('실무자', '-');
   } else {
     contacts.forEach((p, i)=>{
       const n = contacts.length > 1 ? i+1 : '';
-      html += rowHtml(`실무자${n} 이름`, p.name || '-')
+      contactRows += rowHtml(`실무자${n} 이름`, p.name || '-')
         + rowHtml(`실무자${n} 연락처`, p.phone || '-')
         + rowHtml(`실무자${n} 이메일`, p.email || '-');
     });
   }
+  html += group('실무자', contactRows);
 
   document.getElementById('memoModalBody').innerHTML = `
     <div style="text-align:center; margin-bottom:12px;"><span style="display:inline-block; font-size:12px; font-weight:800; color:var(--indigo-deep); background:var(--indigo-bg); padding:4px 14px; border-radius:20px;">추가정보</span></div>
@@ -6764,6 +6832,9 @@ document.querySelectorAll('.policyedit-cat-btn').forEach(btn=>{
     document.querySelectorAll('.policyedit-cat-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     editingPolicyCategory = btn.dataset.cat;
+    editingPolicyHistoryId = null;
+    document.getElementById('savePolicyBtn').textContent = '새 버전으로 저장';
+    document.getElementById('cancelPolicyEditBtn').style.display = 'none';
     const cur = getCurrentPolicy(editingPolicyCategory);
     document.getElementById('policyContent').value = cur.content || policyDefaultText(editingPolicyCategory);
     const peDate = cur.effectiveDate || '2026-07-01';
@@ -6782,15 +6853,37 @@ document.getElementById('savePolicyBtn').addEventListener('click', async ()=>{
   const pm = document.getElementById('pol-m').value;
   const pd = document.getElementById('pol-d').value;
   const effectiveDate = (py && pm && pd) ? `${py}-${String(pm).padStart(2,'0')}-${String(pd).padStart(2,'0')}` : '';
-  const editedDate = todayStr();
   const key = policyHistoryKey(editingPolicyCategory);
   settings[key] = settings[key] || [];
-  settings[key].push({ id:genId(), content, editedDate, effectiveDate });
+  if(editingPolicyHistoryId){
+    const entry = settings[key].find(h=>h.id === editingPolicyHistoryId);
+    if(entry){
+      entry.content = content;
+      entry.effectiveDate = effectiveDate;
+      entry.editedDate = todayStr();
+    }
+    editingPolicyHistoryId = null;
+    document.getElementById('savePolicyBtn').textContent = '새 버전으로 저장';
+    document.getElementById('cancelPolicyEditBtn').style.display = 'none';
+    document.getElementById('policySaveMsg').textContent = `${policyCategoryLabel(editingPolicyCategory)} 수정됨`;
+  } else {
+    const editedDate = todayStr();
+    settings[key].push({ id:genId(), content, editedDate, effectiveDate });
+    document.getElementById('policySaveMsg').textContent = `${policyCategoryLabel(editingPolicyCategory)} 새 버전으로 저장됨`;
+  }
   await saveSettings();
-  document.getElementById('policySaveMsg').textContent = `${policyCategoryLabel(editingPolicyCategory)} 새 버전으로 저장됨`;
   setTimeout(()=>document.getElementById('policySaveMsg').textContent='',1800);
   renderPolicyDetail();
   renderPolicyHistory();
+});
+document.getElementById('cancelPolicyEditBtn').addEventListener('click', ()=>{
+  editingPolicyHistoryId = null;
+  document.getElementById('policyContent').value = '';
+  document.getElementById('pol-y').value = '';
+  document.getElementById('pol-m').value = '';
+  document.getElementById('pol-d').value = '';
+  document.getElementById('savePolicyBtn').textContent = '새 버전으로 저장';
+  document.getElementById('cancelPolicyEditBtn').style.display = 'none';
 });
 
 function escHtml(s){
@@ -7006,26 +7099,43 @@ function renderPolicyDetail(){
 }
 
 let editingPolicyCategory = 'hr';
+let editingPolicyHistoryId = null;
 function renderPolicyHistory(){
   const wrap = document.getElementById('policyHistoryWrap');
   const histAsc = settings[policyHistoryKey(editingPolicyCategory)] || [];
-  const hist = [...histAsc].reverse();
+  // 저장한(입력한) 순서가 아니라 "적용일자"가 늦은 순으로 보여줌 -> 적용일자가 제일 늦은 게 항상 "현재 버전"
+  const hist = sortPolicyHistoryByEffective(histAsc);
   if(!hist.length){
     wrap.innerHTML = `<div class="empty-state">저장된 수정 이력이 없습니다.</div>`;
     return;
   }
   const rows = hist.map((h, idx)=>{
     const isCurrent = idx === 0;
-    const hasPrev = (idx + 1) < hist.length; // 시간순 이전 버전이 존재하는지
+    const hasPrev = (idx + 1) < hist.length; // 적용일자 기준 이전 버전이 존재하는지
     const diffBtn = hasPrev ? `<button class="del-btn policy-diff-btn" data-id="${h.id}">개정전후 비교</button>` : '';
     return `<tr>
       <td class="num">${h.editedDate || '-'}</td>
       <td class="num">${h.effectiveDate || '-'}</td>
       <td>${isCurrent ? '<span class="tag tag-grant">현재 버전</span>' : '<span class="tag tag-usage">이전 버전</span>'}</td>
-      <td style="white-space:nowrap;"><button class="del-btn policy-view-btn" data-id="${h.id}">내용 보기</button> ${diffBtn} <button class="del-btn policy-history-del-btn" data-id="${h.id}">삭제</button></td>
+      <td style="white-space:nowrap;"><button class="del-btn policy-view-btn" data-id="${h.id}">내용 보기</button> <button class="del-btn policy-edit-btn" data-id="${h.id}">수정</button> ${diffBtn} <button class="del-btn policy-history-del-btn" data-id="${h.id}">삭제</button></td>
     </tr>`;
   });
   renderPaginatedRows(wrap, '<tr><th>수정일</th><th>적용일자</th><th>상태</th><th></th></tr>', rows, 10);
+  wrap.querySelectorAll('.policy-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const entry = histAsc.find(h=>h.id === btn.dataset.id);
+      if(!entry) return;
+      editingPolicyHistoryId = entry.id;
+      document.getElementById('policyContent').value = entry.content || '';
+      const [ey,em,ed] = (entry.effectiveDate||'').split('-');
+      document.getElementById('pol-y').value = ey || '';
+      document.getElementById('pol-m').value = em ? Number(em) : '';
+      document.getElementById('pol-d').value = ed ? Number(ed) : '';
+      document.getElementById('savePolicyBtn').textContent = '수정 완료';
+      document.getElementById('cancelPolicyEditBtn').style.display = 'inline-block';
+      document.getElementById('policyContent').scrollIntoView({behavior:'smooth', block:'center'});
+    });
+  });
   wrap.querySelectorAll('.policy-history-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const key = policyHistoryKey(editingPolicyCategory);
@@ -7055,16 +7165,16 @@ function renderPolicyHistory(){
   });
   wrap.querySelectorAll('.policy-diff-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const idx = histAsc.findIndex(h=>h.id === btn.dataset.id);
-      if(idx <= 0) return;
-      const prevEntry = histAsc[idx - 1];
-      const curEntry = histAsc[idx];
+      const idx = hist.findIndex(h=>h.id === btn.dataset.id);
+      if(idx < 0 || idx+1 >= hist.length) return;
+      const curEntry = hist[idx];
+      const prevEntry = hist[idx + 1]; // 적용일자 기준 바로 이전 버전
       const diffHtml = diffLines(prevEntry.content, curEntry.content);
       const previewWrap = document.getElementById('policyPreviewWrap');
       previewWrap.innerHTML = `
         <div class="settings-box" style="max-width:680px; border:2px solid var(--guide-wine);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <span class="badge">개정 비교 · ${prevEntry.editedDate || '-'} (개정전) → ${curEntry.editedDate || '-'} (개정후)</span>
+            <span class="badge">개정 비교 · ${prevEntry.effectiveDate || '-'} (개정전) → ${curEntry.effectiveDate || '-'} (개정후)</span>
             <button type="button" class="del-btn" id="closePolicyPreviewBtn">닫기</button>
           </div>
           <p class="hint" style="font-size:11px; margin:0 0 10px;"><span class="diff-removed" style="padding:1px 5px;">빨간 배경</span>은 삭제된 줄, <span class="diff-added" style="padding:1px 5px;">초록 배경</span>은 추가된 줄이에요.</p>
