@@ -474,7 +474,7 @@
   <div style="background:var(--surface); border-radius:16px; padding:16px 22px 20px; max-width:480px; width:100%; max-height:70vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4); position:relative;">
     <button type="button" id="memoModalClose" class="del-btn" style="position:absolute; top:14px; right:16px; font-size:10px; padding:3px 8px;">닫기</button>
     <div style="text-align:center; margin-bottom:18px; padding:2px 46px 0;">
-      <span id="memoModalTitle" style="display:inline-block; font-weight:800; font-size:19px; color:var(--indigo-deep); background:var(--indigo-bg); padding:6px 18px; border-radius:10px;"></span>
+      <span id="memoModalTitle" style="display:inline-block; font-weight:800; font-size:19px; color:var(--ink);"></span>
     </div>
     <div id="memoModalBody" style="font-size:13px; color:var(--ink); line-height:1.6;"></div>
   </div>
@@ -1221,7 +1221,7 @@
 
     <div id="allNoticeBannerWrap"></div>
 
-    <h2 class="section-title" style="margin-top:22px; justify-content:center;">공지사항 목록</h2>
+    <div style="font-size:12px; font-weight:800; color:var(--ink-soft); margin:22px 0 8px; text-align:left;">공지사항 목록</div>
     <div id="noticeHistoryWrap"></div>
     <div id="noticePreviewWrap" style="margin-top:14px;"></div>
 
@@ -3756,7 +3756,7 @@ function updateAllSensitiveUnlockButtons(){
 // 메모 팝업 (거래처 목록 표에서 메모 칸이 너무 길어져 열이 밀리는 걸 막기 위해 별도 팝업으로 보여줌)
 function openMemoModal(title, memos){
   document.getElementById('memoModalTitle').textContent = title || '메모';
-  const subtitle = `<div style="text-align:left; margin-bottom:10px; padding-bottom:5px; border-bottom:1.5px solid var(--border); font-size:11px; font-weight:800; color:var(--ink-soft); letter-spacing:0.03em;">메모</div>`;
+  const subtitle = `<div style="text-align:center; margin-bottom:12px;"><span style="display:inline-block; font-size:12px; font-weight:800; color:var(--indigo-deep); background:var(--indigo-bg); padding:4px 14px; border-radius:20px;">메모</span></div>`;
   const body = document.getElementById('memoModalBody');
   if(!memos || !memos.length){
     body.innerHTML = subtitle + `<div style="text-align:center; color:var(--ink-soft); font-size:12.5px; padding-top:10px;">(메모 없음)</div>`;
@@ -3776,7 +3776,7 @@ function openMemoModal(title, memos){
 function openHistoryModal(title, history){
   document.getElementById('memoModalTitle').textContent = title || '수정이력';
   const body = document.getElementById('memoModalBody');
-  const subtitle = `<div style="text-align:left; margin-bottom:10px; padding-bottom:5px; border-bottom:1.5px solid var(--border); font-size:11px; font-weight:800; color:var(--ink-soft); letter-spacing:0.03em;">수정이력</div>`;
+  const subtitle = `<div style="text-align:center; margin-bottom:12px;"><span style="display:inline-block; font-size:12px; font-weight:800; color:var(--indigo-deep); background:var(--indigo-bg); padding:4px 14px; border-radius:20px;">수정이력</span></div>`;
   if(!history || !history.length){
     body.innerHTML = subtitle + `<div style="text-align:center; color:var(--ink-soft); font-size:12.5px;">(수정 이력이 없어요)</div>`;
   } else {
@@ -3809,7 +3809,7 @@ function openClientDetailModal(c){
       <span style="color:var(--ink-soft); font-weight:700; flex-shrink:0;">${escHtml(label)}</span>
       <span style="text-align:right;">${escHtml(val)}</span>
     </div>`;
-  const divider = (t) => `<div style="text-align:left; margin:18px 0 6px; padding-bottom:5px; border-bottom:1.5px solid var(--border); font-size:11px; font-weight:800; color:var(--ink-soft); letter-spacing:0.03em;">${escHtml(t)}</div>`;
+  const divider = (t) => `<div style="text-align:left; margin:18px 0 6px;"><span style="display:inline-block; font-size:11px; font-weight:800; color:var(--indigo-deep); padding-bottom:3px; border-bottom:2px solid var(--indigo);">${escHtml(t)}</span></div>`;
 
   // 1) 기본정보
   let html = divider('기본정보')
@@ -3822,10 +3822,12 @@ function openClientDetailModal(c){
     + rowHtml('연락처', c.repPhone || '-')
     + rowHtml('이메일', c.repEmail || '-');
 
-  // 3) 실무자 (여러 명일 수 있어서 실무자1/실무자2...로 각각 보여줌, 옛 단일 필드 데이터도 호환)
+  // 3) 실무자 (등록할 때 "대표자와 동일" 체크했으면 중복으로 안 보여주고 한 줄로 표시, 여러 명이면 실무자1/실무자2...로 각각 표시)
   const contacts = (c.contacts && c.contacts.length) ? c.contacts : (c.contact || c.phone || c.email) ? [{name:c.contact, phone:c.phone, email:c.email}] : [];
   html += divider('실무자');
-  if(!contacts.length){
+  if(c.contactSameAsRep){
+    html += rowHtml('실무자', '대표자와 동일 ✓');
+  } else if(!contacts.length){
     html += rowHtml('실무자', '-');
   } else {
     contacts.forEach((p, i)=>{
@@ -3837,7 +3839,7 @@ function openClientDetailModal(c){
   }
 
   document.getElementById('memoModalBody').innerHTML = `
-    <div style="text-align:left; margin-bottom:6px; padding-bottom:5px; border-bottom:1.5px solid var(--border); font-size:11px; font-weight:800; color:var(--ink-soft); letter-spacing:0.03em;">추가정보</div>
+    <div style="text-align:center; margin-bottom:12px;"><span style="display:inline-block; font-size:12px; font-weight:800; color:var(--indigo-deep); background:var(--indigo-bg); padding:4px 14px; border-radius:20px;">추가정보</span></div>
     ${html}`;
   document.getElementById('memoModalOverlay').style.display = 'flex';
 }
