@@ -569,6 +569,7 @@
       <div style="font-size:12px; font-weight:800; color:var(--ink-soft);">공지사항 목록</div>
       <div style="display:flex; align-items:center; gap:6px;">
         <button type="button" id="noticeSearchBackBtn" class="notice-back-chip" style="display:none;" title="돌아가기"><span>↩️</span><span class="notice-back-chip-label">돌아가기</span></button>
+        <button type="button" id="noticeNotifyToggleBtn" class="del-btn">🔕 알림 받기</button>
         <button type="button" id="noticeSearchToggleBtn" class="del-btn">🔍 검색</button>
         <button type="button" id="noticeAddBtn" class="del-btn" style="background:var(--indigo); color:#fff;">➕ 등록</button>
       </div>
@@ -2455,6 +2456,74 @@ function updateNoticeUnreadBadge(){
   badge.style.display = unreadNoticeCount() > 0 ? 'flex' : 'none';
 }
 
+// 새 공지 브라우저 알림 - 이 기기(브라우저)에서만 켜고 끌 수 있는 설정이라 계정 동기화는 하지 않음
+const NOTICE_NOTIFY_KEY = 'worklog_notice_browser_notify';
+function noticeNotifyEnabled(){ return localStorage.getItem(NOTICE_NOTIFY_KEY) === '1'; }
+function updateNoticeNotifyBtn(){
+  const btn = document.getElementById('noticeNotifyToggleBtn');
+  if(!btn) return;
+  const on = noticeNotifyEnabled() && typeof Notification !== 'undefined' && Notification.permission === 'granted';
+  btn.textContent = on ? '🔔 알림 받는 중' : '🔕 알림 받기';
+  btn.style.background = on ? 'var(--indigo)' : '';
+  btn.style.color = on ? '#fff' : '';
+}
+async function toggleNoticeNotify(){
+  if(typeof Notification === 'undefined'){ alert('이 브라우저는 알림 기능을 지원하지 않아요.'); return; }
+  if(noticeNotifyEnabled()){
+    localStorage.setItem(NOTICE_NOTIFY_KEY, '0');
+    updateNoticeNotifyBtn();
+    return;
+  }
+  if(Notification.permission === 'denied'){
+    alert('브라우저 알림 권한이 차단되어 있어요. 주소창 왼쪽 자물쇠(사이트 정보) 아이콘에서 이 사이트의 알림 권한을 허용해주세요.');
+    return;
+  }
+  const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+  if(perm !== 'granted'){ alert('알림 권한이 허용되지 않았어요.'); return; }
+  localStorage.setItem(NOTICE_NOTIFY_KEY, '1');
+  // 지금까지의 공지는 새 알림으로 안 뜨게, 켠 시점의 공지 목록을 미리 "확인함"으로 표시해둠
+  localStorage.setItem('worklog_notified_notice_ids', JSON.stringify(sharedNoticeHistory.map(x=>x.id)));
+  updateNoticeNotifyBtn();
+  alert('새 공지가 등록되면 이 브라우저에서 알림을 받아요. 이 탭(창)이 열려 있어야 알림이 와요.');
+}
+document.getElementById('noticeNotifyToggleBtn')?.addEventListener('click', toggleNoticeNotify);
+// 동기화로 공지 목록이 갱신될 때마다 호출됨 - 내가 아직 알림받지 않은 새 공지(남이 쓴 글)가 있으면 브라우저 알림을 띄움
+function checkNewNoticesForBrowserNotify(){
+  if(!noticeNotifyEnabled()) return;
+  if(typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  let notified = [];
+  try{ notified = JSON.parse(localStorage.getItem('worklog_notified_notice_ids') || '[]'); }catch(e){ notified = []; }
+  const notifiedSet = new Set(notified);
+  const me = currentStaffDisplayName();
+  const fresh = sharedNoticeHistory.filter(n => !notifiedSet.has(n.id) && (n.authorName||'') !== me);
+  fresh.forEach(n=>{
+    try{
+      const notif = new Notification(`📢 새 공지: ${n.title || '(제목 없음)'}`, { body: (n.content||'').slice(0,150), tag: 'notice-'+n.id });
+      notif.onclick = ()=>{ window.focus(); openNoticeModal(); setTimeout(()=>openNoticeViewPopup(n), 80); };
+    }catch(e){ console.error('알림 표시 실패', e); }
+  });
+  localStorage.setItem('worklog_notified_notice_ids', JSON.stringify(sharedNoticeHistory.map(n=>n.id).slice(0,500)));
+}
+// 공지사항을 메일로 전달할 때 기본으로 채워둘 수신자(전 직원 + 관리자 이메일, 중복 제거) - Gmail 창에서 실제 보낼 사람만 남기고 지우면 됨
+function noticeAllRecipientEmails(){
+  const profileEmails = getProfiles().map(p=>(p.email||'').trim()).filter(Boolean);
+  const adminEmails = (sharedAdminEmails||[]).map(e=>(e||'').trim()).filter(Boolean);
+  const seen = new Set();
+  const result = [];
+  [...profileEmails, ...adminEmails].forEach(e=>{
+    const key = e.toLowerCase();
+    if(!seen.has(key)){ seen.add(key); result.push(e); }
+  });
+  return result;
+}
+function openNoticeMailCompose(n){
+  const emails = noticeAllRecipientEmails();
+  const subject = `[Tax.J 공지] ${n.title || '(제목 없음)'}`;
+  const body = `${n.content || ''}\n\n— ${n.authorName || ''} (${noticeDateOf(n)})`;
+  const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emails.join(','))}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(url, '_blank');
+}
+
 // 순번: 배열 0번(가장 최근 등록)이 제일 큰 번호를 받고, 가장 오래된 게 1번이 되도록
 function noticeSeqMap(){
   const total = sharedNoticeHistory.length;
@@ -2538,6 +2607,7 @@ function renderNoticeListModal(){
             <input type="checkbox" class="notice-important-check" data-id="${n.id}" ${n.important?'checked':''} ${canSetImportant?'':'disabled'}>⭐
           </label>
           <button class="del-btn notice-view-btn" data-id="${n.id}">보기</button>
+          <button class="del-btn notice-mail-btn" data-id="${n.id}" title="메일로 전달">📧 메일</button>
           <button class="del-btn notice-edit-btn" data-id="${n.id}">수정</button>
           <button class="del-btn notice-del-btn" data-id="${n.id}">삭제</button>
         </div>
@@ -2560,6 +2630,12 @@ function renderNoticeListModal(){
       if(n) openNoticeViewPopup(n);
     });
   });
+  wrap.querySelectorAll('.notice-mail-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const n = sharedNoticeHistory.find(x=>x.id===btn.dataset.id);
+      if(n) openNoticeMailCompose(n);
+    });
+  });
   wrap.querySelectorAll('.notice-edit-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       openNoticeFormModal(btn.dataset.id);
@@ -2578,6 +2654,7 @@ function renderNoticeListModal(){
 // 공지사항 목록 팝업이 지금 열려 있을 때만 다시 그림 (동기화로 데이터가 바뀌었을 때 갱신용)
 function renderNoticeIfOpen(){
   updateNoticeUnreadBadge();
+  checkNewNoticesForBrowserNotify();
   if(document.getElementById('noticeModalOverlay')?.style.display === 'flex') renderNoticeListModal();
 }
 
@@ -2682,6 +2759,7 @@ function openNoticeModal(){
   document.getElementById('notice-search-date').value = '';
   document.getElementById('noticeSearchPanel').style.display = 'none';
   document.getElementById('noticeSearchBackBtn').style.display = 'none';
+  updateNoticeNotifyBtn();
   renderNoticeListModal();
   document.getElementById('noticeModalOverlay').style.display = 'flex';
 }
@@ -9405,6 +9483,8 @@ if(restoredGdriveToken){
 }
 
 window.addEventListener('focus', ()=>{ if(gdriveAccessToken && gdriveFileId) gdrivePull(); });
+// 브라우저 알림을 켜둔 경우, 이 탭을 계속 열어두기만 해도(다른 탭을 보고 있어도) 몇 분마다 자동으로 동기화해서 새 공지를 놓치지 않게 함
+setInterval(()=>{ if(gdriveAccessToken && gdriveFileId) gdrivePull(); }, 3*60*1000);
 
 document.getElementById('mailNotifyBtn').addEventListener('click', ()=>{
   const myProfile = currentUserEmail ? getProfiles().find(p=>(p.email||'').toLowerCase()===currentUserEmail) : null;
