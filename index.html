@@ -1447,14 +1447,12 @@
     <div style="display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:14px;">
       <div></div>
       <div style="text-align:center;">
-        <h2 class="section-title" style="justify-content:center; font-size:24px;">개인정보 <span class="badge" id="personalInfoBadge">0건</span></h2>
-        <p class="hint" style="font-size:12px; color:var(--ink-soft); margin:4px 0 0; text-align:center;">거래처와 별개로 대표자 개인정보·각종 계정정보만 따로 관리해요. 전부 암호화 저장되고 관리자만 조회·수정 가능해요.</p>
+        <h2 class="section-title" style="justify-content:center; font-size:24px;">개인정보</h2>
+        <div id="sensitiveUnlockWrapPersonal" style="display:none; text-align:center; margin-top:8px;">
+          <button type="button" id="sensitiveUnlockBtnPersonal" class="del-btn"></button>
+        </div>
       </div>
       <div class="field" style="justify-self:end; max-width:220px; margin:0;"><input type="text" id="pi-search" placeholder="🔍 검색"></div>
-    </div>
-    <div id="sensitiveUnlockWrapPersonal" style="display:none; text-align:center; margin:14px 0;">
-      <button type="button" id="sensitiveUnlockBtnPersonal" class="del-btn">🔒 민감정보 전체조회</button>
-      <span class="hint" id="sensitiveUnlockHintPersonal" style="display:block; margin-top:4px;"></span>
     </div>
     <div id="personalInfoListWrap" style="margin-top:14px;"></div>
 
@@ -1483,8 +1481,8 @@
           <div class="field" style="flex:1 1 180px;"><label>상호명</label><input type="text" id="pi-name" required placeholder="예: (주)청인상사" disabled></div>
           <div class="field" style="flex:1 1 140px;"><label>대표자</label><input type="text" id="pi-rep-name" placeholder="예: 홍길동" disabled></div>
         </div>
-        <div id="personalInfoLockNotice" class="hint" style="text-align:center; padding:10px; background:var(--coral-bg); border-radius:8px; margin:6px 0;">
-          🔒 잠겨있어요. 위 "민감정보 전체조회"로 먼저 잠금을 해제해야 입력·수정할 수 있어요.
+        <div id="personalInfoLockNotice" class="hint" style="text-align:center; padding:8px; background:var(--coral-bg); border-radius:8px; margin:6px 0; font-weight:700;">
+          🔒 잠김
         </div>
         <div id="personalInfoFields" style="display:none;">
           <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
@@ -2041,8 +2039,14 @@ function loadSharedData(){
     }catch(e){ /* 이관할 이전 데이터 없음 */ }
   }
   try{ sharedAdminEmails = JSON.parse(localStorage.getItem('worklog_shared_admins') || '[]'); }catch(e){ sharedAdminEmails = []; }
+  const prevManageVerifierRaw = JSON.stringify(sharedManageVerifier);
   try{ sharedManageSalt = localStorage.getItem('worklog_shared_managesalt') || ''; }catch(e){ sharedManageSalt = ''; }
   try{ const v = localStorage.getItem('worklog_shared_manageverifier'); sharedManageVerifier = v ? JSON.parse(v) : null; }catch(e){ sharedManageVerifier = null; }
+  // 다른 기기·탭에서 관리비밀번호가 바뀐 채로 다시 불러와지면, 지금 들고 있는 잠금해제 상태·암호화키는 옛 비밀번호 기준이라 더 이상 못 믿음
+  // -> "잠겨있는데 화면은 전체조회 중으로 나오는" 상태가 생기지 않도록, 바뀐 걸 감지하면 안전하게 다시 잠가줌
+  if(typeof adminSensitiveUnlocked !== 'undefined' && adminSensitiveUnlocked && JSON.stringify(sharedManageVerifier) !== prevManageVerifierRaw){
+    lockSensitiveView();
+  }
 }
 async function saveSharedExclusions(){ try{ localStorage.setItem('worklog_shared_exclusions', JSON.stringify(sharedExclusionDays)); }catch(e){ console.error('공통 제외일 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedWorkHourExceptions(){ try{ localStorage.setItem('worklog_shared_workhours', JSON.stringify(sharedWorkHourExceptions)); }catch(e){ console.error('공통 근무시간 예외 저장 실패', e); } gdriveScheduleSync(); }
@@ -3817,26 +3821,27 @@ async function unlockSensitiveView(){
     updatePersonalInfoFormState();
     renderPersonalInfo();
   }catch(err){
-    alert('비밀번호가 일치하지 않습니다.');
+    // 실패해도 잠금 상태(변수)는 원래 안 바뀌지만, 혹시 화면이 이전 상태(예: 전체조회 중)로 남아있을 수 있으니 버튼 표시를 실제 상태에 맞게 다시 그려줌
+    updateAllSensitiveUnlockButtons();
+    alert('비밀번호가 일치하지 않습니다.\n\n(방금 다른 기기에서 관리비밀번호를 바꿨다면, 화면을 새로고침한 뒤 새 비밀번호로 다시 시도해주세요.)');
   }
 }
 
 function updateAllSensitiveUnlockButtons(){
   const admin = !!gdriveAccessToken && isCurrentUserAdmin;
   const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
-  [['sensitiveUnlockBtnPersonal','sensitiveUnlockHintPersonal']].forEach(([btnId,hintId])=>{
+  ['sensitiveUnlockBtnPersonal'].forEach(btnId=>{
     const unlockBtn = document.getElementById(btnId);
-    const unlockHint = document.getElementById(hintId);
     if(!unlockBtn) return;
     if(unlocked){
       const minsLeft = adminSensitiveUnlockUntil ? Math.max(0, Math.ceil((adminSensitiveUnlockUntil - Date.now())/60000)) : 0;
-      unlockBtn.textContent = '🔓 전체조회 중 · 지금 잠그기';
+      unlockBtn.textContent = '🔓 잠그기';
+      unlockBtn.title = `약 ${minsLeft}분 후 자동으로 다시 잠겨요`;
       unlockBtn.onclick = lockSensitiveView;
-      if(unlockHint) unlockHint.textContent = `약 ${minsLeft}분 후 자동으로 다시 잠겨요.`;
     } else {
-      unlockBtn.textContent = '🔒 민감정보 전체조회';
+      unlockBtn.textContent = '🔒 잠금해제';
+      unlockBtn.title = '5분간 조회 가능';
       unlockBtn.onclick = unlockSensitiveView;
-      if(unlockHint) unlockHint.textContent = '민감정보는 암호화되어 저장돼요. 평소엔 완전히 잠겨있고, 비밀번호 입력 시 5분간만 조회 가능';
     }
   });
 }
@@ -3987,6 +3992,30 @@ function clientTaxTypeWeight(taxType){
   if(taxType === '기장대행') return 0;
   if(taxType === '신고대리') return 1;
   return 2;
+}
+
+// 기장거래처/기타거래처/해지목록 표에서 쓰는 것과 완전히 같은 필터·정렬 기준 - 개인정보 표의 순번을 이 표들과 그대로 연동시키는 데 씀
+const CLIENT_TABLE_FILTERS = [
+  c=>['기장대행','신고대리'].includes(c.taxType) && c.status!=='해지',   // 기장거래처
+  c=>!['기장대행','신고대리'].includes(c.taxType) && c.status!=='해지',  // 기타거래처
+  c=>c.status==='해지' && ['기장대행','신고대리'].includes(c.taxType),  // 해지목록(정기)
+  c=>c.status==='해지' && !['기장대행','신고대리'].includes(c.taxType)  // 해지목록(비정기)
+];
+// 거래처가 기장거래처·기타거래처·해지목록 중 실제로 속하는 표에서 몇 번째 줄인지 계산 - 검색어와 무관하게 항상 "전체 목록 기준" 순번
+// 거래처 상태가 바뀌거나(수임해지 등) 다른 거래처가 추가·삭제되면 다음 렌더링 때 자동으로 새 순번이 나옴(그때그때 다시 계산하기 때문)
+function computeClientRowNumber(client){
+  if(!client) return null;
+  const filterFn = CLIENT_TABLE_FILTERS.find(f=>f(client));
+  if(!filterFn) return null;
+  const sorted = (clients.list||[]).filter(filterFn).map((c,i)=>({c,i})).sort((a,b)=>{
+    const w1 = clientCategoryWeight(a.c.entityType) - clientCategoryWeight(b.c.entityType);
+    if(w1 !== 0) return w1;
+    const w2 = clientTaxTypeWeight(a.c.taxType) - clientTaxTypeWeight(b.c.taxType);
+    if(w2 !== 0) return w2;
+    return a.i - b.i;
+  }).map(x=>x.c);
+  const idx = sorted.findIndex(c=>c.id===client.id);
+  return idx>=0 ? idx+1 : null;
 }
 
 // 거래처명 옆 * 표시(성실/면세 등)를 눌러서 연 툴팁은, 다른 곳을 누르면 자동으로 닫힘
@@ -4246,6 +4275,7 @@ async function deleteClientById(id){
   renderClientsRegular();
   renderClientsOther();
   renderClientsTerminated();
+  renderPersonalInfo();
 }
 
 // ===== Client > 개인정보 (거래처와 별개의 독립 데이터, 대표자 개인/계정정보 전용) =====
@@ -4323,7 +4353,21 @@ async function renderPersonalInfo(){
   if(q){
     list = list.filter(p=> (p.name||'').toLowerCase().includes(q) || (p.repName||'').toLowerCase().includes(q));
   }
-  list.sort((a,b)=> (a.name||'') < (b.name||'') ? -1 : 1);
+  // 순번은 이 표 자체에서 새로 매기지 않고, 기장거래처·기타거래처·해지목록에서 그 거래처가 실제로 몇 번째인지 그대로 가져다 씀
+  // (거래처가 수정되거나 수임해지로 바뀌면, 다음 렌더링 때 다른 표들처럼 자동으로 번호가 바뀌고 연동됨)
+  const linkedClientMap = {}, rowNumMap = {};
+  list.forEach(p=>{
+    const c = (clients.list||[]).find(x=>normalizeClientName(x.name)===normalizeClientName(p.name));
+    linkedClientMap[p.id] = c || null;
+    rowNumMap[p.id] = computeClientRowNumber(c);
+  });
+  list.sort((a,b)=>{
+    const na = rowNumMap[a.id], nb = rowNumMap[b.id];
+    if(na===null && nb===null) return (a.name||'') < (b.name||'') ? -1 : 1;
+    if(na===null) return 1; // 연결된 거래처가 없는(이름이 안 맞는) 개인정보는 맨 아래로
+    if(nb===null) return -1;
+    return na - nb;
+  });
   if(badge) badge.textContent = `${(personalInfo.list||[]).length}건`;
   if(!list.length){
     wrap.innerHTML = `<div class="empty-state">${q ? '검색 결과가 없습니다.' : '등록된 개인정보가 없습니다.'}</div>`;
@@ -4339,9 +4383,10 @@ async function renderPersonalInfo(){
   }
   // 기장거래처 표와 같은 형태로 - 거래처(사람) 하나가 한 행, 항목이 각각 한 열이 되게 함
   const piCell = (value, extraStyle) => `<td style="${extraStyle||''}">${(value===undefined||value===null||value==='') ? '<span style="color:var(--ink-soft);">-</span>' : escHtml(String(value))}</td>`;
-  const rows = list.map((p, idx)=>{
+  const rows = list.map((p)=>{
     // 개인정보는 거래처와 별개 데이터라 법인/개인 구분을 직접 갖고 있지 않음 -> 같은 이름의 거래처를 찾아서 가져옴
-    const linkedClient = (clients.list||[]).find(x=>normalizeClientName(x.name)===normalizeClientName(p.name));
+    const linkedClient = linkedClientMap[p.id];
+    const rowNum = rowNumMap[p.id];
     const entityType = linkedClient ? (linkedClient.entityType||'') : '';
     const entityColor = entityType==='법인' ? '#0B5A78' : entityType==='개인' ? '#BE185D' : 'inherit';
 
@@ -4363,7 +4408,7 @@ async function renderPersonalInfo(){
       : `<button class="del-btn" disabled style="opacity:0.3; cursor:default;" title="수정이력 없음">🕘</button>`;
 
     return `<tr>
-      <td class="num">${idx+1}</td>
+      <td class="num">${rowNum===null ? '-' : rowNum}</td>
       <td style="color:${entityColor}; font-weight:700;">${escHtml(entityType||'-')}</td>
       <td style="font-weight:800;">${escHtml(p.name||'')}</td>
       ${piCell(p.repName)}
@@ -6292,6 +6337,7 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
     renderClientsRegular();
     renderClientsOther();
     renderClientsTerminated();
+    renderPersonalInfo();
     // 수정 저장 후에는 폼을 비우지 않고, 방금 수정한 내용을 보여준 채로 잠가둠 (신규등록/수정 버튼으로 다음 동작 선택)
     lockClientFormAfterEdit();
     return;
@@ -6325,6 +6371,7 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
   renderClientsRegular();
   renderClientsOther();
   renderClientsTerminated();
+  renderPersonalInfo();
 });
 
 // 수정 저장 직후: 입력칸을 비활성화해서 "방금 뭘 저장했는지" 그대로 보여주고, 신규등록/수정 버튼만 남김
@@ -7231,6 +7278,7 @@ function applyPermissionUI(){
   if(typeof renderClientsRegular === 'function') renderClientsRegular();
   if(typeof renderClientsOther === 'function') renderClientsOther();
   if(typeof renderClientsTerminated === 'function') renderClientsTerminated();
+  if(typeof renderPersonalInfo === 'function') renderPersonalInfo();
 }
 
 function updatePersonalBackupLabel(admin){
