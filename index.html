@@ -390,6 +390,11 @@
     background:#F7F8FD; border-radius:20px; padding:18px;
     border:1.5px solid #E4E7F5; box-shadow:0 1px 2px rgba(29,30,51,0.04), 0 10px 24px -18px rgba(29,30,51,0.2);
   }
+  .cal-header-nav{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; margin-bottom:16px; gap:8px; }
+  .cal-nav-btn{ border:none; background:#fff; color:var(--indigo); font-size:14px; font-weight:900; width:32px; height:32px; border-radius:10px; cursor:pointer; box-shadow:0 1px 2px rgba(29,30,51,0.08); display:flex; align-items:center; justify-content:center; transition:background 0.12s, transform 0.12s; flex-shrink:0; }
+  .cal-nav-btn:hover{ background:var(--indigo-bg); transform:scale(1.06); }
+  .cal-title-big{ font-size:23px; font-weight:900; color:var(--navy); letter-spacing:-0.01em; min-width:120px; text-align:center; }
+  .cal-owner-label{ font-size:12px; font-weight:700; color:var(--ink-soft); text-align:center; margin-top:2px; }
   .cal-legend{
     display:flex; justify-content:center; align-items:center; flex-wrap:wrap;
     gap:10px 18px; margin:16px 0 2px; font-size:12.5px; font-weight:700; color:var(--ink);
@@ -635,6 +640,117 @@
       </div>
       <div style="text-align:center;"><span class="save-msg" id="noticeModalSaveMsg"></span></div>
     </form>
+  </div>
+</div>
+<div id="calRegisterModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:560px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:14px;">
+      <div style="font-weight:800; font-size:17px; color:var(--ink);">일정 · 휴가 · 재택근무 등록</div>
+      <button type="button" id="calRegisterModalClose" class="del-btn">닫기</button>
+    </div>
+    <div style="display:flex; gap:8px; justify-content:center; margin-bottom:16px;">
+      <label class="notice-toggle-chip"><input type="radio" name="cal-reg-type" id="cal-reg-type-schedule" value="schedule" checked><span>🗓️ 개인일정</span></label>
+      <label class="notice-toggle-chip"><input type="radio" name="cal-reg-type" id="cal-reg-type-usage" value="usage"><span>🌴 휴가·재택근무</span></label>
+    </div>
+
+    <div id="calRegScheduleSection">
+      <p class="hint" style="font-size:12px; color:var(--ink-soft); margin:-4px 0 14px; text-align:center;">
+        "팀캘린더에 공유"를 켜면 팀원들도 볼 수 있고, 꺼두면 나에게만 보여요. 시간대까지 기록할 수 있어요.
+      </p>
+      <form id="scheduleForm">
+        <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
+          <div class="field" style="flex:1 1 130px;"><label>날짜</label><input type="date" id="sc-date" required min="2015-01-01" max="2099-12-31"></div>
+          <div class="field" style="flex:1 1 100px;"><label>시작시간</label><input type="time" id="sc-start"></div>
+          <div class="field" style="flex:1 1 100px;"><label>종료시간</label><input type="time" id="sc-end"></div>
+          <div class="field" style="flex:1 1 100px;"><label>구분</label>
+            <select id="sc-type">
+              <option value="회의">회의</option>
+              <option value="출장">출장</option>
+              <option value="외근">외근</option>
+              <option value="부재">부재</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>메모 <span style="font-weight:400; color:var(--ink-soft);">(선택, 달력에서 마우스를 올리면 보여요)</span></label><input type="text" id="sc-memo" placeholder="예: 3층 회의실, A사 미팅 관련"></div>
+        <div style="display:flex; align-items:center; gap:8px; justify-content:center; margin-bottom:12px;">
+          <input type="checkbox" id="sc-share" style="width:auto;" checked>
+          <label for="sc-share" style="margin:0; font-weight:700; color:var(--ink);">팀캘린더에 공유 <span style="font-weight:400; color:var(--ink-soft);">(끄면 나에게만 보여요)</span></label>
+        </div>
+        <div style="text-align:center;">
+          <button type="submit" class="submit-btn" style="width:auto; padding:9px 20px;">일정 추가</button>
+          <button type="button" id="schedule-cancel" class="del-btn" style="display:none; margin-left:8px;">취소</button>
+        </div>
+        <div style="text-align:center;"><span class="save-msg" id="scheduleSaveMsg"></span></div>
+      </form>
+    </div>
+
+    <div id="calRegUsageSection" style="display:none;">
+      <form id="usageForm">
+        <div class="field">
+          <label>종류</label>
+          <select id="u-kind">
+            <option value="leave">휴가</option>
+            <option value="remote">재택근무</option>
+          </select>
+        </div>
+        <div class="field-row" style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+          <div class="field" style="flex:1 1 160px; margin-bottom:0;"><label>시작일</label><input type="date" id="u-date" required min="2015-01-01" max="2099-12-31"></div>
+          <div class="field" id="singleDayField" style="flex:0 0 auto; margin-bottom:0; display:flex; align-items:center; gap:5px; padding-bottom:9px;">
+            <input type="checkbox" id="u-single-day" checked style="width:auto;">
+            <label for="u-single-day" style="margin:0; font-size:11.5px; white-space:nowrap; font-weight:600;">당일</label>
+          </div>
+        </div>
+        <div class="field" id="endDateField" style="display:none;">
+          <label>종료일</label>
+          <input type="date" id="u-end-date" min="2015-01-01" max="2099-12-31">
+        </div>
+        <div class="field" id="leaveTypeField"><label>휴가 구분</label>
+          <select id="u-type">
+            <option value="연차">연차 (1일, 연차 차감)</option>
+            <option value="반차">반차 (0.5일, 연차 차감)</option>
+            <option value="반반차">반반차 (0.25일, 연차 차감)</option>
+            <option value="포상휴가">포상휴가 (연차 차감 없음)</option>
+            <option value="경조사휴가">경조사휴가 (연차 차감 없음)</option>
+            <option value="기타휴가">기타휴가 (연차 차감 없음)</option>
+          </select>
+        </div>
+        <div class="field" id="halfdaySubtypeField" style="display:none;">
+          <label id="subtypeFieldLabel">반차 세부유형</label>
+          <select id="u-subtype"></select>
+          <span class="hint" style="font-size:11px; color:var(--ink-soft);" id="subtypeFieldHint">점심 섭취 여부가 점심식대 근무일수 계산에 반영돼요.</span>
+        </div>
+        <div class="field" id="specialDaysField" style="display:none;">
+          <label>사용 일수</label>
+          <input type="number" id="u-days" class="num-input" step="0.5" min="0.5" value="1">
+        </div>
+        <div class="field" id="familyPresetField" style="display:none;">
+          <label>경조사 사유 (선택 시 일수 자동 입력)</label>
+          <select id="u-familypreset">
+            <option value="">직접 입력</option>
+            <option value="5">결혼(본인) · 5일</option>
+            <option value="1">결혼(자녀) · 1일</option>
+            <option value="90">출산(본인) · 90일</option>
+            <option value="20">출산(배우자) · 20일</option>
+            <option value="6">난임치료 · 6일</option>
+            <option value="5">사망(배우자·부모) · 5일</option>
+            <option value="5">사망(자녀) · 5일</option>
+            <option value="3">사망(조부모·외조부모) · 3일</option>
+            <option value="3">사망(형제자매) · 3일</option>
+          </select>
+        </div>
+        <div class="field" id="remoteBonusField" style="display:none; flex-direction:row; align-items:center; gap:6px;">
+          <input type="checkbox" id="r-bonus" style="width:auto;">
+          <label for="r-bonus" style="margin:0; font-size:11.5px;">특별재택 (월 한도 미포함)</label>
+        </div>
+        <div class="field"><label>메모</label><input type="text" id="u-memo" placeholder="예: 개인 사유"></div>
+        <div style="text-align:center;">
+          <button type="submit" class="submit-btn" style="width:auto; padding:9px 20px;">추가</button>
+          <button type="button" id="usage-cancel" class="del-btn" style="display:none; margin-left:8px;">취소</button>
+        </div>
+        <div style="text-align:center;"><span class="save-msg" id="usageSaveMsg"></span></div>
+      </form>
+    </div>
   </div>
 </div>
 <div id="ciEntryFormModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
@@ -972,71 +1088,9 @@
       </div>
     </div>
 
-    <div class="mini-form" style="max-width:520px; margin:0 auto 30px;">
-      <h3 style="text-align:center;">휴가 · 재택근무 추가</h3>
-      <form id="usageForm">
-        <div class="field">
-          <label>종류</label>
-          <select id="u-kind">
-            <option value="leave">휴가</option>
-            <option value="remote">재택근무</option>
-          </select>
-        </div>
-        <div class="field-row" style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
-          <div class="field" style="flex:1 1 160px; margin-bottom:0;"><label>시작일</label><input type="date" id="u-date" required min="2015-01-01" max="2099-12-31"></div>
-          <div class="field" id="singleDayField" style="flex:0 0 auto; margin-bottom:0; display:flex; align-items:center; gap:5px; padding-bottom:9px;">
-            <input type="checkbox" id="u-single-day" checked style="width:auto;">
-            <label for="u-single-day" style="margin:0; font-size:11.5px; white-space:nowrap; font-weight:600;">당일</label>
-          </div>
-        </div>
-        <div class="field" id="endDateField" style="display:none;">
-          <label>종료일</label>
-          <input type="date" id="u-end-date" min="2015-01-01" max="2099-12-31">
-        </div>
-        <div class="field" id="leaveTypeField"><label>휴가 구분</label>
-          <select id="u-type">
-            <option value="연차">연차 (1일, 연차 차감)</option>
-            <option value="반차">반차 (0.5일, 연차 차감)</option>
-            <option value="반반차">반반차 (0.25일, 연차 차감)</option>
-            <option value="포상휴가">포상휴가 (연차 차감 없음)</option>
-            <option value="경조사휴가">경조사휴가 (연차 차감 없음)</option>
-            <option value="기타휴가">기타휴가 (연차 차감 없음)</option>
-          </select>
-        </div>
-        <div class="field" id="halfdaySubtypeField" style="display:none;">
-          <label id="subtypeFieldLabel">반차 세부유형</label>
-          <select id="u-subtype"></select>
-          <span class="hint" style="font-size:11px; color:var(--ink-soft);" id="subtypeFieldHint">점심 섭취 여부가 점심식대 근무일수 계산에 반영돼요.</span>
-        </div>
-        <div class="field" id="specialDaysField" style="display:none;">
-          <label>사용 일수</label>
-          <input type="number" id="u-days" class="num-input" step="0.5" min="0.5" value="1">
-        </div>
-        <div class="field" id="familyPresetField" style="display:none;">
-          <label>경조사 사유 (선택 시 일수 자동 입력)</label>
-          <select id="u-familypreset">
-            <option value="">직접 입력</option>
-            <option value="5">결혼(본인) · 5일</option>
-            <option value="1">결혼(자녀) · 1일</option>
-            <option value="90">출산(본인) · 90일</option>
-            <option value="20">출산(배우자) · 20일</option>
-            <option value="6">난임치료 · 6일</option>
-            <option value="5">사망(배우자·부모) · 5일</option>
-            <option value="5">사망(자녀) · 5일</option>
-            <option value="3">사망(조부모·외조부모) · 3일</option>
-            <option value="3">사망(형제자매) · 3일</option>
-          </select>
-        </div>
-        <div class="field" id="remoteBonusField" style="display:none; flex-direction:row; align-items:center; gap:6px;">
-          <input type="checkbox" id="r-bonus" style="width:auto;">
-          <label for="r-bonus" style="margin:0; font-size:11.5px;">특별재택 (월 한도 미포함)</label>
-        </div>
-        <div class="field"><label>메모</label><input type="text" id="u-memo" placeholder="예: 개인 사유"></div>
-        <button type="submit" class="submit-btn">추가</button>
-        <button type="button" id="usage-cancel" class="del-btn" style="display:none; margin-top:6px;">취소</button>
-        <span class="save-msg" id="usageSaveMsg"></span>
-      </form>
-    </div>
+    <p class="hint" style="font-size:12px; color:var(--ink-soft); margin:-6px 0 20px; text-align:center;">
+      휴가·재택근무 등록은 <b>개인캘린더</b> 탭의 "➕ 등록" 버튼에서 할 수 있어요.
+    </p>
 
     <h2 class="section-title" style="margin-top:34px; padding-top:20px; border-top:1.5px dashed var(--border);">이번달 근태 내역 <span class="badge">결재 확인용</span></h2>
     <div id="attendanceLedgerWrap" style="max-width:1000px; margin-left:auto; margin-right:auto;"></div>
@@ -1255,8 +1309,21 @@
 
   <!-- 달력 -->
   <section id="tab-calendar" class="tab-panel">
-    <h2 style="text-align:center; font-size:22px; font-weight:900; color:var(--navy); margin-bottom:16px; letter-spacing:-0.01em;">📅 이번달 한눈에 보기</h2>
     <div class="calendar-panel">
+      <div class="cal-header-nav">
+        <div></div>
+        <div style="display:flex; align-items:center; gap:12px; justify-content:center;">
+          <button type="button" class="cal-nav-btn" id="calPrevMonthBtn" title="이전달">◀</button>
+          <div>
+            <div class="cal-title-big" id="calMonthTitleBig">📅 -</div>
+            <div class="cal-owner-label" id="calOwnerLabel"></div>
+          </div>
+          <button type="button" class="cal-nav-btn" id="calNextMonthBtn" title="다음달">▶</button>
+        </div>
+        <div style="text-align:right;">
+          <button type="button" id="calRegisterBtn" class="del-btn" style="background:var(--indigo); color:#fff;">➕ 등록</button>
+        </div>
+      </div>
       <div id="calendarGridWrap"></div>
       <p class="cal-legend">
         <span><b class="cal-legend-icon">🌴</b> 휴가</span><span><b class="cal-legend-icon">🏠</b> 재택근무</span><span><b class="cal-legend-icon">🎌</b> 공휴일</span><span><b class="cal-legend-icon">🍻</b> 회식</span><span><b class="cal-legend-icon">🗓️</b> 개인 일정</span><span><b class="cal-legend-icon">💼</b> 일반 근무일</span>
@@ -1265,35 +1332,8 @@
 
     <h2 class="section-title" style="margin-top:34px; padding-top:20px; border-top:1.5px dashed var(--border);">개인 일정 <span class="badge">회의 · 부재 등</span></h2>
     <p class="hint" style="font-size:12px; color:var(--ink-soft); margin:-6px 0 14px; text-align:center;">
-      "팀캘린더에 공유"를 켜면 팀원들도 볼 수 있고, 꺼두면 나에게만 보여요. 시간대까지 기록할 수 있어요.
+      위 "➕ 등록" 버튼으로 개인일정·휴가·재택근무를 등록할 수 있어요. "팀캘린더에 공유"를 켜면 팀원들도 볼 수 있고, 꺼두면 나에게만 보여요.
     </p>
-    <div class="mini-form" style="max-width:640px; margin:0 auto 16px;">
-      <h3>일정 추가</h3>
-      <form id="scheduleForm">
-        <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
-          <div class="field" style="flex:1 1 130px;"><label>날짜</label><input type="date" id="sc-date" required min="2015-01-01" max="2099-12-31"></div>
-          <div class="field" style="flex:1 1 100px;"><label>시작시간</label><input type="time" id="sc-start"></div>
-          <div class="field" style="flex:1 1 100px;"><label>종료시간</label><input type="time" id="sc-end"></div>
-          <div class="field" style="flex:1 1 100px;"><label>구분</label>
-            <select id="sc-type">
-              <option value="회의">회의</option>
-              <option value="출장">출장</option>
-              <option value="외근">외근</option>
-              <option value="부재">부재</option>
-              <option value="기타">기타</option>
-            </select>
-          </div>
-        </div>
-        <div class="field"><label>메모 <span style="font-weight:400; color:var(--ink-soft);">(선택, 달력에서 마우스를 올리면 보여요)</span></label><input type="text" id="sc-memo" placeholder="예: 3층 회의실, A사 미팅 관련"></div>
-        <div style="display:flex; align-items:center; gap:8px; justify-content:center; margin-bottom:12px;">
-          <input type="checkbox" id="sc-share" style="width:auto;" checked>
-          <label for="sc-share" style="margin:0; font-weight:700; color:var(--ink);">팀캘린더에 공유 <span style="font-weight:400; color:var(--ink-soft);">(끄면 나에게만 보여요)</span></label>
-        </div>
-        <button type="submit" class="submit-btn">일정 추가</button>
-        <button type="button" id="schedule-cancel" class="del-btn" style="display:none; margin-top:6px;">취소</button>
-        <span class="save-msg" id="scheduleSaveMsg"></span>
-      </form>
-    </div>
     <div id="scheduleListWrap"></div>
   </section>
 
@@ -1782,13 +1822,17 @@
   <section id="tab-teamcalendar" class="tab-panel">
     <h2 class="section-title">팀 캘린더 <span class="badge">전 직원 휴가·재택·일정</span></h2>
     <p class="hint" style="text-align:center; margin-top:-6px;">휴가·재택·개인일정은 직원별로 표시되고, 공휴일·회식·조기퇴근은 전 직원 공통 사항으로 반영돼요.</p>
-    <div style="display:flex; justify-content:center; margin-bottom:14px;">
-      <div class="tab-group tg-profile" style="margin:0;">
-        <label style="font-size:11px; font-weight:800; color:var(--navy); margin-right:2px;">조회월</label>
-        <input type="month" id="teamCalMonthSelect">
-      </div>
-    </div>
+    <input type="month" id="teamCalMonthSelect" style="display:none;">
     <div class="calendar-panel">
+      <div class="cal-header-nav">
+        <div></div>
+        <div style="display:flex; align-items:center; gap:12px; justify-content:center;">
+          <button type="button" class="cal-nav-btn" id="teamCalPrevMonthBtn" title="이전달">◀</button>
+          <div class="cal-title-big" id="teamCalMonthTitleBig">-</div>
+          <button type="button" class="cal-nav-btn" id="teamCalNextMonthBtn" title="다음달">▶</button>
+        </div>
+        <div></div>
+      </div>
       <div id="adminCalendarWrap"></div>
       <p class="cal-legend">
         <span><b class="cal-legend-icon">🌴</b> 휴가</span><span><b class="cal-legend-icon">🏠</b> 재택근무</span><span><b class="cal-legend-icon">🎌</b> 공휴일</span><span><b class="cal-legend-icon">🍻</b> 회식</span><span><b class="cal-legend-icon">🗓️</b> 개인 일정</span><span><b class="cal-legend-icon">⏰</b> 조기퇴근</span>
@@ -2872,6 +2916,7 @@ function leaveTeamCalShortType(type, subtype){
 }
 
 function renderAdminCalendar(){
+  updateTeamCalHeader();
   const wrap = document.getElementById('adminCalendarWrap');
   if(!wrap) return;
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
@@ -3536,6 +3581,61 @@ async function syncAutoGrants(){
 
 function daysInMonth(monthStr){ const [y,m]=monthStr.split('-').map(Number); return new Date(y,m,0).getDate(); }
 function formatMonthTitle(monthStr){ const [y,m]=(monthStr||'').split('-').map(Number); return (y && m) ? `${y}년 ${m}월` : ''; }
+
+// 개인캘린더/팀캘린더 헤더의 큰 월 타이틀을 조회월(#monthSelect) 값에 맞춰 갱신
+function updateCalHeader(){
+  const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
+  const titleEl = document.getElementById('calMonthTitleBig');
+  if(titleEl) titleEl.textContent = `📅 ${formatMonthTitle(monthStr)}`;
+  const ownerEl = document.getElementById('calOwnerLabel');
+  if(ownerEl) ownerEl.textContent = `${currentStaffDisplayName()}님의 캘린더`;
+}
+function updateTeamCalHeader(){
+  const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
+  const titleEl = document.getElementById('teamCalMonthTitleBig');
+  if(titleEl) titleEl.textContent = formatMonthTitle(monthStr);
+}
+// 캘린더 헤더의 ◀▶ 버튼으로 조회월을 한 달씩 이동 - 실제 값 변경은 공용 #monthSelect에 반영해서, 기존 동기화 로직(팀캘린더·근태·경비 등)이 그대로 이어받도록 함
+function shiftViewMonth(delta){
+  const monthInput = document.getElementById('monthSelect');
+  const [y,m] = (monthInput.value || todayStr().slice(0,7)).split('-').map(Number);
+  const d = new Date(y, (m-1)+delta, 1);
+  monthInput.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  monthInput.dispatchEvent(new Event('change'));
+}
+document.getElementById('calPrevMonthBtn')?.addEventListener('click', ()=>shiftViewMonth(-1));
+document.getElementById('calNextMonthBtn')?.addEventListener('click', ()=>shiftViewMonth(1));
+document.getElementById('teamCalPrevMonthBtn')?.addEventListener('click', ()=>shiftViewMonth(-1));
+document.getElementById('teamCalNextMonthBtn')?.addEventListener('click', ()=>shiftViewMonth(1));
+
+// 개인일정+휴가+재택근무 통합 등록 팝업 - 근태 탭의 "휴가·재택근무 추가"와 캘린더 탭의 "일정 추가"를 이 팝업 하나로 통합
+function updateCalRegisterTypeFields(){
+  const isUsage = document.getElementById('cal-reg-type-usage').checked;
+  document.getElementById('calRegScheduleSection').style.display = isUsage ? 'none' : '';
+  document.getElementById('calRegUsageSection').style.display = isUsage ? '' : 'none';
+}
+document.getElementById('cal-reg-type-schedule').addEventListener('change', updateCalRegisterTypeFields);
+document.getElementById('cal-reg-type-usage').addEventListener('change', updateCalRegisterTypeFields);
+function openCalRegisterModal(type){
+  document.getElementById(type==='usage' ? 'cal-reg-type-usage' : 'cal-reg-type-schedule').checked = true;
+  updateCalRegisterTypeFields();
+  document.getElementById('calRegisterModalOverlay').style.display = 'flex';
+}
+function closeCalRegisterModal(){
+  document.getElementById('calRegisterModalOverlay').style.display = 'none';
+}
+document.getElementById('calRegisterModalClose').addEventListener('click', closeCalRegisterModal);
+document.getElementById('calRegisterModalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'calRegisterModalOverlay') closeCalRegisterModal();
+});
+document.getElementById('calRegisterBtn')?.addEventListener('click', ()=>{
+  // 새로 등록하는 경우 - 혹시 남아있던 수정 상태를 정리하고 "일정" 탭으로 기본 오픈
+  editingScheduleId = null;
+  document.getElementById('scheduleForm').querySelector('button[type="submit"]').textContent = '일정 추가';
+  document.getElementById('schedule-cancel').style.display = 'none';
+  resetUsageFormEditState();
+  openCalRegisterModal('schedule');
+});
 function countWeekdays(monthStr){
   const [y,m]=monthStr.split('-').map(Number);
   const total = daysInMonth(monthStr);
@@ -3915,7 +4015,7 @@ function renderAttendance(){
         document.getElementById('u-memo').value = en.memo || '';
         document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '수정 완료';
         document.getElementById('usage-cancel').style.display = 'inline-block';
-        document.getElementById('usageForm').scrollIntoView({behavior:'smooth', block:'center'});
+        openCalRegisterModal('usage');
       } else if(kind==='remote'){
         const en = attendance.remoteEntries.find(x=>x.id===id);
         if(!en) return;
@@ -3928,7 +4028,7 @@ function renderAttendance(){
         document.getElementById('r-bonus').checked = !!en.bonus;
         document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '수정 완료';
         document.getElementById('usage-cancel').style.display = 'inline-block';
-        document.getElementById('usageForm').scrollIntoView({behavior:'smooth', block:'center'});
+        openCalRegisterModal('usage');
       }
     });
   });
@@ -4137,6 +4237,7 @@ function renderExclusionList(){
 }
 
 function renderCalendar(){
+  updateCalHeader();
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
   const [y,m] = monthStr.split('-').map(Number);
   const startWeekday = new Date(y, m-1, 1).getDay();
@@ -4308,7 +4409,7 @@ function renderScheduleList(){
       document.getElementById('sc-share').checked = en.shared !== false;
       document.getElementById('scheduleForm').querySelector('button[type="submit"]').textContent = '수정 완료';
       document.getElementById('schedule-cancel').style.display = 'inline-block';
-      document.getElementById('scheduleForm').scrollIntoView({behavior:'smooth', block:'center'});
+      openCalRegisterModal('schedule');
     });
   });
   wrap.querySelectorAll('.schedule-del-btn').forEach(btn=>{
@@ -6213,6 +6314,7 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
       if(en){ en.date=date; en.type=type; en.subtype=subtype; en.days=days; en.memo=memo; }
       document.getElementById('usageSaveMsg').textContent = '수정됨';
       resetUsageFormEditState();
+      closeCalRegisterModal();
       await saveAttendance();
       renderAll();
       setTimeout(()=>document.getElementById('usageSaveMsg').textContent='',1800);
@@ -6249,6 +6351,7 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
       if(en){ en.date=date; en.memo=memo; en.bonus=bonus; }
       document.getElementById('usageSaveMsg').textContent = '수정됨';
       resetUsageFormEditState();
+      closeCalRegisterModal();
       await saveAttendance();
       renderAll();
       setTimeout(()=>document.getElementById('usageSaveMsg').textContent='',1800);
@@ -7374,6 +7477,7 @@ document.getElementById('scheduleForm').addEventListener('submit', async (e)=>{
     document.getElementById('scheduleForm').querySelector('button[type="submit"]').textContent = '일정 추가';
     document.getElementById('schedule-cancel').style.display = 'none';
     document.getElementById('scheduleSaveMsg').textContent = '수정됨';
+    closeCalRegisterModal();
   } else {
     schedule.events.push({id:genId(), date, startTime, endTime, type, memo, shared});
     document.getElementById('scheduleSaveMsg').textContent = '추가됨';
