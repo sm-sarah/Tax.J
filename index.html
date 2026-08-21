@@ -106,10 +106,10 @@
     font-size:11px; font-weight:700;
     color:var(--indigo); background:var(--indigo-bg); border-radius:20px; padding:3px 10px;
   }
-  #tab-settings .section-title, #tab-quickguide .section-title, #tab-policy .section-title, #tab-policyedit .section-title{
+  #tab-settings .section-title, #tab-quickguide .section-title, #tab-policy .section-title{
     justify-content:center;
   }
-  #tab-policy .policy-category-toggle, #tab-policyedit .policy-category-toggle{
+  #tab-policy .policy-category-toggle{
     justify-content:center;
   }
 
@@ -229,6 +229,11 @@
     color:var(--ink-soft); border-radius:20px; box-shadow:0 1px 2px rgba(29,30,51,0.05);
   }
   .policy-category-toggle button.active{color:#fff; background:var(--guide-slate);}
+  .policy-cat-title-btn{font-size:19px !important; font-weight:800 !important; padding:12px 30px !important; border-radius:14px !important;}
+  .floating-popup{position:fixed; background:var(--surface); border-radius:14px; box-shadow:0 20px 40px -10px rgba(29,30,51,0.45); border:1.5px solid var(--border);}
+  .floating-popup-header{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 16px; border-bottom:1.5px solid var(--border); cursor:move; border-radius:12px 12px 0 0; background:var(--bg);}
+  .floating-popup-body{padding:16px; max-height:70vh; overflow-y:auto;}
+  .floating-popup table th, .floating-popup table td{text-align:center;}
   .tab-group-label{
     font-weight:800; font-size:12.5px; color:var(--navy);
     letter-spacing:0.01em; padding:0 8px 0 0; white-space:nowrap;
@@ -285,16 +290,17 @@
   }
   .cl-subtag-trigger-btn.has-selection{color:var(--indigo-deep); font-weight:700; border-color:var(--indigo);}
   .cl-subtag-trigger-btn::after{content:'▾'; float:right; color:var(--ink-soft); font-size:11px;}
-  .cl-subtag-popover{
-    position:absolute; top:100%; right:0; left:auto; margin-top:4px; z-index:60; min-width:270px;
-    background:var(--surface); border-radius:12px; padding:8px; box-shadow:0 10px 26px -10px rgba(29,30,51,0.28), 0 2px 6px rgba(29,30,51,0.08);
-    border:1px solid var(--border); display:flex; flex-direction:column; gap:2px;
-  }
-  .cl-subtag-row{padding:6px 8px; border-radius:8px; transition:background 0.12s;}
+  .cl-subtag-row{padding:6px 8px; border-radius:8px; transition:background 0.12s; margin-bottom:2px;}
   .cl-subtag-row:hover{background:var(--bg);}
   .cl-subtag-check-label{display:flex; align-items:center; gap:9px; font-size:12.5px; font-weight:700; color:var(--ink); cursor:pointer; padding:2px 0;}
   .cl-subtag-check-label input{width:16px; height:16px; cursor:pointer; flex-shrink:0; accent-color:var(--indigo);}
-  .cl-subtag-note{margin:6px 0 2px 25px; width:calc(100% - 25px); box-sizing:border-box; font-size:11.5px; padding:6px 8px; border:1.5px solid var(--border); border-left:2.5px solid var(--indigo); border-radius:8px; background:var(--bg); font-family:'Pretendard',sans-serif;}
+  .cl-subtag-history-wrap{margin:6px 0 2px 25px; padding:8px 10px; border:1.5px solid var(--border); border-left:2.5px solid var(--indigo); border-radius:8px; background:var(--bg);}
+  .cl-subtag-history-item{display:flex; align-items:center; gap:6px; padding:4px 0; font-size:11.5px;}
+  .cl-subtag-history-item input[type="radio"]{width:14px; height:14px; cursor:pointer; flex-shrink:0; accent-color:var(--indigo);}
+  .cl-subtag-history-item .cl-sh-text{flex:1; word-break:break-all;}
+  .cl-subtag-history-item .cl-sh-date{color:var(--ink-soft); font-size:10px; flex-shrink:0;}
+  .cl-subtag-history-add-row{display:flex; gap:6px; margin-top:6px;}
+  .cl-subtag-history-add-row input{flex:1; font-size:11.5px; padding:6px 8px; border:1.5px solid var(--border); border-radius:8px; background:var(--surface); font-family:'Pretendard',sans-serif;}
   .submit-btn{
     background:var(--indigo); color:#fff; border:none; border-radius:12px;
     padding:10px 28px; font-size:13px; font-weight:700; cursor:pointer;
@@ -431,8 +437,6 @@
   .bulk-d::-webkit-inner-spin-button, .bulk-d::-webkit-outer-spin-button{
     -webkit-appearance:none; margin:0;
   }
-  .bulk-y, .bulk-m, .bulk-d{-moz-appearance:textfield; text-align:center;}
-  #bulkRowsBody td{padding:5px 6px;}
   #policyContent:focus{outline:none; border-color:var(--indigo) !important; background:var(--surface) !important;}
 
   .guide-grid{display:grid; grid-template-columns:1fr; gap:14px; margin:0 auto 28px; max-width:640px;}
@@ -807,6 +811,110 @@
     </form>
   </div>
 </div>
+<div id="clSubtagModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:420px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px;">
+      <div style="font-weight:800; font-size:17px; color:var(--ink);">상세구분 선택</div>
+      <button type="button" id="clSubtagModalClose" class="del-btn">닫기</button>
+    </div>
+    <p class="hint" style="margin:0 0 10px;">해당하는 항목을 체크하고, 필요하면 이름 옆 * 표시에 뜰 문구를 이력으로 관리할 수 있어요.</p>
+    <div id="cl-subtag-chips"></div>
+  </div>
+</div>
+<div id="calScheduleHistoryModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:640px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px;">
+      <div style="font-weight:800; font-size:17px; color:var(--ink);">이달의 개인일정</div>
+      <button type="button" id="calScheduleHistoryModalClose" class="del-btn">닫기</button>
+    </div>
+    <p class="hint" style="margin:0 0 10px;">"➕ 등록" 버튼으로 개인일정·휴가·재택근무를 등록할 수 있어요. "팀캘린더에 공유"를 켜면 팀원들도 볼 수 있고, 꺼두면 나에게만 보여요.</p>
+    <div id="scheduleListWrap"></div>
+  </div>
+</div>
+<div id="calAttendanceHistoryModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:640px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px;">
+      <div style="font-weight:800; font-size:17px; color:var(--ink);">이달의 근태내역 <span class="badge">결재 확인용</span></div>
+      <button type="button" id="calAttendanceHistoryModalClose" class="del-btn">닫기</button>
+    </div>
+    <div id="attendanceLedgerWrap"></div>
+  </div>
+</div>
+<div id="leaveHistoryModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:640px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px;">
+      <div style="font-weight:800; font-size:17px; color:var(--ink);">휴가 이력 <span class="badge">전체 기간, 조회월과 무관</span></div>
+      <button type="button" id="leaveHistoryModalClose" class="del-btn">닫기</button>
+    </div>
+    <p class="hint" style="margin:0 0 10px;">과거·미래 상관없이 저장된 휴가 사용 기록을 전부 최신순으로 보여줘요. 잘못 입력한 게 있으면 여기서 바로 수정·삭제할 수 있어요.</p>
+    <div id="allLeaveHistoryWrap"></div>
+  </div>
+</div>
+<div id="leaveAsOfModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:420px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px;">
+      <div style="font-weight:800; font-size:17px; color:var(--ink);">특정일자 기준 휴가 조회</div>
+      <button type="button" id="leaveAsOfModalClose" class="del-btn">닫기</button>
+    </div>
+    <p class="hint" style="margin:0 0 10px;">날짜를 입력하면 그 시점까지의 법정휴가·특별휴가 자동계산분과 사용 내역을 반영해서 총 휴가·사용휴가·잔여휴가를 알려줘요. 조회용이라 기록이 남거나 수정·삭제되지 않아요.</p>
+    <div style="text-align:center;">
+      <div class="field"><label>기준일</label><input type="date" id="leave-query-date" min="2015-01-01" max="2099-12-31"></div>
+      <button type="button" id="leaveQueryBtn" class="submit-btn" style="background:var(--mint); width:auto; padding:8px 16px;">조회</button>
+      <div id="leaveQueryResult" style="display:none; margin-top:12px; text-align:center;">
+        <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+          <div style="background:var(--indigo-bg); color:var(--indigo-deep); border-radius:10px; padding:8px 14px;">
+            <div style="font-size:10.5px; font-weight:700;">총 휴가</div>
+            <b id="leaveQueryTotal" style="font-family:'IBM Plex Mono',monospace; font-size:16px;">-</b>
+          </div>
+          <div style="background:var(--coral-bg); color:var(--coral); border-radius:10px; padding:8px 14px;">
+            <div style="font-size:10.5px; font-weight:700;">사용 휴가</div>
+            <b id="leaveQueryUsed" style="font-family:'IBM Plex Mono',monospace; font-size:16px;">-</b>
+          </div>
+          <div style="background:var(--mint-bg); color:var(--mint); border-radius:10px; padding:8px 14px;">
+            <div style="font-size:10.5px; font-weight:700;">잔여 휴가</div>
+            <b id="leaveQueryRemain" style="font-family:'IBM Plex Mono',monospace; font-size:16px;">-</b>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="expenseRegisterModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:420px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:14px;">
+      <div id="expenseRegisterModalTitle" style="font-weight:800; font-size:17px; color:var(--ink);">경비 등록</div>
+      <button type="button" id="expenseRegisterModalClose" class="del-btn">닫기</button>
+    </div>
+    <form id="expenseEntryForm">
+      <div class="field"><label>날짜</label><input type="date" id="exp-date" required min="2015-01-01" max="2099-12-31"></div>
+      <div class="field"><label>구분</label>
+        <select id="exp-kind">
+          <option value="lunch">점심식대</option>
+          <option value="dinner">저녁식대</option>
+          <option value="taxi">택시비</option>
+          <option value="other">경비</option>
+          <option value="prepaid">차액정산</option>
+        </select>
+      </div>
+      <div class="field"><label id="exp-amount-label">금액 (원)</label><input type="number" id="exp-amount" class="num-input" step="1" required></div>
+      <div class="field"><label>내용</label><input type="text" id="exp-desc" placeholder="예: 팀 점심"></div>
+      <div style="text-align:center; margin-top:10px;">
+        <button type="submit" id="expenseEntrySubmitBtn" class="submit-btn" style="width:auto; padding:9px 20px;">추가</button>
+      </div>
+      <div style="text-align:center;"><span class="save-msg" id="expenseEntrySaveMsg"></span></div>
+    </form>
+  </div>
+</div>
+<div id="expenseHistoryModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:640px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px;">
+      <div id="expenseHistoryModalTitle" style="font-weight:800; font-size:17px; color:var(--ink);">이력</div>
+      <button type="button" id="expenseHistoryModalClose" class="del-btn">닫기</button>
+    </div>
+    <p class="hint" style="margin:0 0 10px;">지금 선택된 조회월(상단 연월) 기준으로 보여줘요.</p>
+    <div id="expenseHistoryModalWrap"></div>
+  </div>
+</div>
 <div id="memoModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--surface); border-radius:16px; padding:16px 22px 20px; max-width:480px; width:100%; max-height:70vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4); position:relative;">
     <button type="button" id="memoModalClose" class="del-btn" style="position:absolute; top:14px; right:16px; font-size:10px; padding:3px 8px;">닫기</button>
@@ -852,6 +960,27 @@
             <span style="font-size:13px; color:var(--ink-soft);">일</span>
           </div>
           <p class="hint" style="text-align:center;">이것만 등록하면 법정휴가는 자동으로 계산돼요.<br>아래 두 항목은 특수한 경우에만 필요한 선택 사항이에요.</p>
+        </div>
+
+        <div class="field">
+          <label>재직상태</label>
+          <select id="s-employment-status">
+            <option value="근무중">근무중</option>
+            <option value="퇴사">퇴사</option>
+          </select>
+        </div>
+        <div id="s-resign-fields" style="display:none;">
+          <div class="field">
+            <label>마지막근무일</label>
+            <input type="date" id="s-last-work-date" min="1980-01-01" max="2099-12-31">
+          </div>
+          <div class="field">
+            <label>퇴사사유</label>
+            <select id="s-resign-reason">
+              <option value="자진퇴사">자진퇴사</option>
+              <option value="권고사직">권고사직</option>
+            </select>
+          </div>
         </div>
 
         <details class="settings-advanced">
@@ -944,14 +1073,8 @@
 
     <div id="navExpandedRow1" style="display:none; gap:9px; align-items:stretch; justify-content:center; flex-wrap:wrap;">
       <button class="tab-btn tab-btn-home" data-tab="home">📋 홈</button>
-      <span style="position:relative; display:inline-block;">
-        <button type="button" id="toggleManagementBtn" class="tab-btn tg-mgmt-btn">Company</button>
-        <button type="button" class="tab-btn" data-tab="settings" title="통합설정 바로가기" style="position:absolute; top:-7px; right:-7px; width:20px; height:20px; border-radius:50%; padding:0; font-size:11px; line-height:18px; background:#fff; border:2px solid var(--navy); box-shadow:0 2px 4px rgba(29,30,51,0.3); z-index:2;">⚙️</button>
-      </span>
-      <span style="position:relative; display:inline-block;">
-        <button type="button" id="toggleStaffBtn" class="tab-btn tg-staff-btn">Staff</button>
-        <button type="button" class="tab-btn" data-tab="attendance-settings" title="개인설정 바로가기" style="position:absolute; top:-7px; right:-7px; width:20px; height:20px; border-radius:50%; padding:0; font-size:11px; line-height:18px; background:#fff; border:2px solid var(--guide-slate); box-shadow:0 2px 4px rgba(29,30,51,0.3); z-index:2;">⚙️</button>
-      </span>
+      <button type="button" id="toggleManagementBtn" class="tab-btn tg-mgmt-btn">Company</button>
+      <button type="button" id="toggleStaffBtn" class="tab-btn tg-staff-btn">Staff</button>
       <span style="position:relative; display:inline-block;">
         <button type="button" id="toggleClientBtn" class="tab-btn tg-client-btn">Client</button>
         <button type="button" class="tab-btn" data-tab="clients-settings" title="거래처 설정 바로가기" style="position:absolute; top:-7px; right:-7px; width:20px; height:20px; border-radius:50%; padding:0; font-size:11px; line-height:18px; background:#fff; border:2px solid #8B5CF6; box-shadow:0 2px 4px rgba(29,30,51,0.3); z-index:2;">⚙️</button>
@@ -959,7 +1082,22 @@
       <button type="button" id="mailNotifyBtn" title="관리자에게 메일로 알리기" style="width:38px; height:38px; border-radius:50%; border:none; background:var(--coral); color:#fff; font-size:17px; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 4px 10px -3px rgba(240,80,110,0.55); cursor:pointer;">📧</button>
       <button type="button" id="quickConnectBtn" class="tab-btn" title="Google 계정 연결 상태 · 클릭해서 로그인" style="background:var(--ink-soft); color:#fff; width:38px; height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; font-size:16px;">🔌</button>
       <button type="button" id="noticeIconBtn" title="공지사항" style="position:relative; background:var(--guide-slate); color:#fff; width:38px; height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; font-size:16px; border:none; cursor:pointer;">📢<span id="noticeUnreadBadge" style="display:none; position:absolute; top:-2px; right:-2px; background:var(--coral); color:#fff; font-size:9px; font-weight:800; border-radius:50%; width:15px; height:15px; align-items:center; justify-content:center; line-height:1; box-shadow:0 0 0 2px var(--surface);">N</span></button>
+      <button type="button" id="megaSettingsIconBtn" title="설정" style="background:var(--navy); color:#fff; width:38px; height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; font-size:16px; border:none; cursor:pointer;">⚙️</button>
       <button type="button" id="trashIconBtn2" title="휴지통" style="background:var(--bg); color:var(--ink-soft); width:38px; height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; font-size:16px; border:none; cursor:pointer;">🗑️</button>
+    </div>
+
+    <!-- 설정 아이콘 클릭 시 컴패니/스태프 선택 팝업 -->
+    <div id="megaSettingsChooserOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+      <div style="background:var(--surface); border-radius:16px; padding:24px 26px; max-width:360px; width:100%; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4); text-align:center;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:16px;">
+          <div style="font-weight:800; font-size:17px; color:var(--ink);">⚙️ 설정</div>
+          <button type="button" id="megaSettingsChooserClose" class="del-btn">닫기</button>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <button type="button" id="megaSettingsGoCompanyBtn" class="submit-btn" style="width:100%; padding:14px; font-size:15px;">🏢 컴패니</button>
+          <button type="button" id="megaSettingsGoStaffBtn" class="submit-btn" style="width:100%; padding:14px; font-size:15px; background:var(--guide-slate);">🙋 스태프</button>
+        </div>
+      </div>
     </div>
 
     <div id="managementSubRow" style="display:none; gap:9px; align-items:stretch; justify-content:center; flex-wrap:wrap; margin-top:9px;">
@@ -967,8 +1105,11 @@
         <button class="tab-btn" data-tab="teamcalendar">🗂️ 팀캘린더</button>
         <button class="tab-btn" data-tab="quickguide">🎁 복리후생</button>
         <button class="tab-btn" data-tab="policy">📘 내부규정</button>
-        <button class="tab-btn" data-tab="policyedit">✏️ 업데이트</button>
         <button class="tab-btn" data-tab="companyinfo">📇 사내정보</button>
+        <span style="position:relative; display:inline-block;">
+          <button class="tab-btn" data-tab="approval">🖋️ 결재</button>
+          <span id="approvalPendingBadge" style="display:none; position:absolute; top:-5px; right:-5px; background:var(--coral); color:#fff; font-size:9px; font-weight:800; border-radius:50%; min-width:15px; height:15px; padding:0 3px; align-items:center; justify-content:center; line-height:1; box-shadow:0 0 0 2px var(--surface);">N</span>
+        </span>
       </div>
     </div>
 
@@ -985,9 +1126,7 @@
     <div id="staffSubRow" style="display:none; flex-direction:column; align-items:center; gap:8px; margin-top:9px;">
       <div class="tab-group tg-staff">
         <button class="tab-btn" data-tab="calendar">📅 개인캘린더</button>
-        <button class="tab-btn" data-tab="attendance">⏰ 근태</button>
-        <button class="tab-btn" data-tab="expense">💳 경비</button>
-        <button class="tab-btn" data-tab="settlement">🧮 정산</button>
+        <button class="tab-btn" data-tab="attendance">⏰ 근태 및 경비</button>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
         <div class="tab-group tg-profile">
@@ -1005,7 +1144,7 @@
   <section id="tab-home" class="tab-panel active">
 
     <div class="home-section-label">Company</div>
-    <div class="home-tiles six">
+    <div class="home-tiles five">
       <div class="home-tile" data-goto="teamcalendar" style="--tile-accent:var(--guide-teal);">
         <div class="home-tile-icon">🗂️</div>
         <div class="home-tile-title">팀캘린더</div>
@@ -1018,13 +1157,13 @@
         <div class="home-tile-icon">📘</div>
         <div class="home-tile-title">내부규정</div>
       </div>
-      <div class="home-tile" data-goto="policyedit" style="--tile-accent:var(--indigo-deep);">
-        <div class="home-tile-icon">✏️</div>
-        <div class="home-tile-title">업데이트</div>
-      </div>
       <div class="home-tile" data-goto="companyinfo" style="--tile-accent:#8B5CF6;">
         <div class="home-tile-icon">📇</div>
         <div class="home-tile-title">사내정보</div>
+      </div>
+      <div class="home-tile" data-goto="approval" style="--tile-accent:#0EA5A5;">
+        <div class="home-tile-icon">🖋️</div>
+        <div class="home-tile-title">결재</div>
       </div>
       <div class="home-tile" data-goto="settings" style="--tile-accent:var(--navy);">
         <div class="home-tile-icon">⚙️</div>
@@ -1040,15 +1179,7 @@
       </div>
       <div class="home-tile" data-goto="attendance" style="--tile-accent:var(--indigo);">
         <div class="home-tile-icon">⏰</div>
-        <div class="home-tile-title">근태</div>
-      </div>
-      <div class="home-tile" data-goto="expense" style="--tile-accent:var(--amber);">
-        <div class="home-tile-icon">💳</div>
-        <div class="home-tile-title">경비</div>
-      </div>
-      <div class="home-tile" data-goto="settlement" style="--tile-accent:var(--coral);">
-        <div class="home-tile-icon">🧮</div>
-        <div class="home-tile-title">정산</div>
+        <div class="home-tile-title">근태 및 경비</div>
       </div>
       <div class="home-tile" data-goto="attendance-settings" style="--tile-accent:var(--guide-slate);">
         <div class="home-tile-icon">⚙️</div>
@@ -1087,7 +1218,7 @@
 
   <!-- 근태관리 -->
   <section id="tab-attendance" class="tab-panel">
-    <h2 class="section-title" style="justify-content:center;">근태 현황</h2>
+    <div style="text-align:center; margin-bottom:14px;"><span class="section-subtitle-label" style="font-size:15px;">근태현황</span></div>
 
     <div class="summary-cards">
       <div class="card card-navy">
@@ -1095,6 +1226,8 @@
         <div class="card-label" style="display:flex; align-items:center; justify-content:center; gap:4px;">
           <span id="remainLeaveLabel">잔여 연차</span>
           <button type="button" id="leaveScheduleInfoBtn" title="법정연차 자동부여 일정 보기" style="border:none; background:none; cursor:pointer; padding:0; font-size:12px; line-height:1;">ℹ️</button>
+          <button type="button" id="leaveHistoryIconBtn" title="휴가 이력 (전체 기간)" style="border:none; background:none; cursor:pointer; padding:0; font-size:12px; line-height:1;">🕐</button>
+          <button type="button" id="leaveAsOfIconBtn" title="특정일자 기준 휴가 조회" style="border:none; background:none; cursor:pointer; padding:0; font-size:12px; line-height:1;">🔍</button>
         </div>
         <div class="card-value num" id="remainLeaveDisplay">-</div>
         <div class="card-sub" id="grantUsedDisplay"></div>
@@ -1117,96 +1250,63 @@
       휴가·재택근무 등록은 <b>개인캘린더</b> 탭의 "➕ 등록" 버튼에서 할 수 있어요.
     </p>
 
-    <h2 class="section-title" style="margin-top:34px; padding-top:20px; border-top:1.5px dashed var(--border);">이번달 근태 내역 <span class="badge">결재 확인용</span></h2>
-    <div id="attendanceLedgerWrap" style="max-width:1000px; margin-left:auto; margin-right:auto;"></div>
-
-    <div style="display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:34px; padding-top:20px; border-top:1.5px dashed var(--border);">
-      <h2 class="section-title" style="margin:0;">휴가 이력 <span class="badge">전체 기간, 조회월과 무관</span></h2>
-      <button type="button" id="leaveQueryToggleBtn" class="del-btn">🔍 휴가조회</button>
+    <div style="text-align:center; margin:26px 0 14px;"><span class="section-subtitle-label" style="font-size:15px;">정산</span></div>
+    <div id="deadlineBanner"></div>
+    <div style="display:flex; gap:12px; align-items:stretch; justify-content:center; flex-wrap:wrap; margin-bottom:16px; max-width:1100px; margin-left:auto; margin-right:auto;">
+      <div class="workdays-box" style="margin-bottom:0; flex:0 0 auto; justify-content:center;">
+        <label>이번달 식대기준일수</label>
+        <span class="num" id="workdaysAutoValue" style="font-size:16px;">-</span>
+      </div>
+      <button type="button" id="expenseRegisterBtn" class="workdays-box" style="cursor:pointer; border:none; background:var(--indigo); color:#fff; justify-content:center; flex:0 0 auto; align-self:stretch; margin:0; font-family:inherit;">
+        <span style="font-size:15px; font-weight:800;">➕ 등록</span>
+      </button>
+      <button type="button" id="quickPrintReportBtn" class="workdays-box" style="cursor:pointer; border:none; background:var(--coral-bg); justify-content:center; flex:0 0 auto; align-self:stretch; margin:0; font-family:inherit;">
+        <span style="font-size:15px; font-weight:800; color:var(--coral);">📄 지출결의서 출력</span>
+      </button>
     </div>
-    <div id="leaveQueryPanel" style="display:none; max-width:360px; margin:14px auto 24px; text-align:center; background:var(--bg); border-radius:14px; padding:16px;">
-      <div class="field"><label>기준일</label><input type="date" id="leave-query-date" min="2015-01-01" max="2099-12-31"></div>
-      <button type="button" id="leaveQueryBtn" class="submit-btn" style="background:var(--mint); width:auto; padding:8px 16px;">조회</button>
-      <div id="leaveQueryResult" style="display:none; margin-top:12px; text-align:center;">
-        <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
-          <div style="background:var(--indigo-bg); color:var(--indigo-deep); border-radius:10px; padding:8px 14px;">
-            <div style="font-size:10.5px; font-weight:700;">총 연차</div>
-            <b id="leaveQueryTotal" style="font-family:'IBM Plex Mono',monospace; font-size:16px;">-</b>
-          </div>
-          <div style="background:var(--coral-bg); color:var(--coral); border-radius:10px; padding:8px 14px;">
-            <div style="font-size:10.5px; font-weight:700;">사용 연차</div>
-            <b id="leaveQueryUsed" style="font-family:'IBM Plex Mono',monospace; font-size:16px;">-</b>
-          </div>
-          <div style="background:var(--mint-bg); color:var(--mint); border-radius:10px; padding:8px 14px;">
-            <div style="font-size:10.5px; font-weight:700;">잔여 연차</div>
-            <b id="leaveQueryRemain" style="font-family:'IBM Plex Mono',monospace; font-size:16px;">-</b>
-          </div>
+
+    <div class="summary-cards five">
+      <div class="card card-amber">
+        <div class="card-icon">🍱</div>
+        <div class="card-label">이달의 점심식대한도</div>
+        <div class="card-value num" id="lunchLimitDisplay">0원</div>
+      </div>
+      <div class="card card-coral">
+        <div class="card-icon">🍚</div>
+        <div class="card-label" style="display:flex; align-items:center; justify-content:center; gap:4px;">
+          <span>점심식대</span>
+          <button type="button" class="expense-history-icon-btn" data-kinds="lunch" data-title="점심식대 이력" title="점심식대 이력" style="border:none; background:none; cursor:pointer; padding:0; font-size:11px; line-height:1;">🕐</button>
         </div>
+        <div class="card-value num" id="lunchSpendCardDisplay">0원</div>
+      </div>
+      <div class="card card-navy">
+        <div class="card-icon">💰</div>
+        <div class="card-label">미사용분</div>
+        <div class="card-value num" id="naverPayDisplay">0원</div>
+      </div>
+      <div class="card card-indigo">
+        <div class="card-icon">🧾</div>
+        <div class="card-label" style="display:flex; align-items:center; justify-content:center; gap:4px;">
+          <span>기타경비</span>
+          <button type="button" class="expense-history-icon-btn" data-kinds="dinner,taxi,other" data-title="기타경비 이력 (저녁·택시비·경비)" title="기타경비 이력" style="border:none; background:none; cursor:pointer; padding:0; font-size:11px; line-height:1;">🕐</button>
+        </div>
+        <div class="card-value num" id="etcExpenseTotalDisplay">0원</div>
+      </div>
+      <div class="card" style="border-top-color:#64748B;">
+        <div class="card-icon">↩️</div>
+        <div class="card-label" style="display:flex; align-items:center; justify-content:center; gap:4px;">
+          <span>차액정산</span>
+          <button type="button" class="expense-history-icon-btn" data-kinds="prepaid" data-title="차액정산 이력" title="차액정산 이력" style="border:none; background:none; cursor:pointer; padding:0; font-size:11px; line-height:1;">🕐</button>
+        </div>
+        <div class="card-value num" id="prepaidTotalDisplay">0원</div>
       </div>
     </div>
-    <p class="hint" style="font-size:12px; color:var(--ink-soft); margin:-6px 0 12px; text-align:center;">
-      과거·미래 상관없이 저장된 휴가 사용 기록을 전부 최신순으로 보여줘요. 잘못 입력한 게 있으면 여기서 바로 삭제할 수 있어요.
-    </p>
-    <div id="allLeaveHistoryWrap" style="max-width:1000px; margin-left:auto; margin-right:auto;"></div>
   </section>
 
   <!-- 근태 설정 -->
   <section id="tab-attendance-settings" class="tab-panel">
-    <h2 class="section-title" style="margin-top:0;">과거 휴가이력 일괄 입력 <span class="badge">여러 건 한번에</span></h2>
-    <p class="hint" style="font-size:12px; color:var(--ink-soft); margin:-6px 0 12px; text-align:center;">
-      기준일 이전에 이미 사용한 휴가를 월별로 오갈 필요 없이 한 번에 등록하세요. 날짜는 년/월/일 칸에 숫자로 입력합니다.
-    </p>
-    <div class="mini-form" style="margin-bottom:14px; background:var(--indigo-bg); max-width:680px; margin-left:auto; margin-right:auto;">
-      <h3 style="color:var(--indigo-deep);">🗓️ 기간으로 한번에 행 생성</h3>
-      <p class="hint" style="font-size:11px; color:var(--ink-soft); margin:-4px 0 10px; text-align:center;">시작일~종료일을 입력하면 그 사이 평일마다 선택한 유형의 행이 자동으로 아래 표에 추가돼요 (주말 제외). 추가된 행은 저장 전에 자유롭게 수정·삭제할 수 있어요.</p>
-      <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end;">
-        <div>
-          <label style="font-size:11px; color:var(--ink-soft); display:block; margin-bottom:4px;">유형</label>
-          <select id="bulk-range-type" class="num-input" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 7px; background:#F1EFFB;">
-            <option value="연차">연차</option>
-            <option value="포상휴가">포상휴가</option>
-            <option value="경조사휴가">경조사휴가</option>
-            <option value="기타휴가">기타휴가</option>
-          </select>
-        </div>
-        <div>
-          <label style="font-size:11px; color:var(--ink-soft); display:block; margin-bottom:4px;">시작일</label>
-          <div style="display:flex; gap:3px; align-items:center;">
-            <input type="number" id="bulk-range-start-y" placeholder="YYYY" min="1980" max="2100" class="num-input" style="width:64px; border:1.5px solid var(--border); border-radius:8px; padding:6px 7px; background:#F1EFFB;">
-            <input type="number" id="bulk-range-start-m" placeholder="M" min="1" max="12" class="num-input" style="width:42px; border:1.5px solid var(--border); border-radius:8px; padding:6px 7px; background:#F1EFFB;">
-            <input type="number" id="bulk-range-start-d" placeholder="D" min="1" max="31" class="num-input" style="width:42px; border:1.5px solid var(--border); border-radius:8px; padding:6px 7px; background:#F1EFFB;">
-          </div>
-        </div>
-        <div>
-          <label style="font-size:11px; color:var(--ink-soft); display:block; margin-bottom:4px;">종료일</label>
-          <div style="display:flex; gap:3px; align-items:center;">
-            <input type="number" id="bulk-range-end-y" placeholder="YYYY" min="1980" max="2100" class="num-input" style="width:64px; border:1.5px solid var(--border); border-radius:8px; padding:6px 7px; background:#F1EFFB;">
-            <input type="number" id="bulk-range-end-m" placeholder="M" min="1" max="12" class="num-input" style="width:42px; border:1.5px solid var(--border); border-radius:8px; padding:6px 7px; background:#F1EFFB;">
-            <input type="number" id="bulk-range-end-d" placeholder="D" min="1" max="31" class="num-input" style="width:42px; border:1.5px solid var(--border); border-radius:8px; padding:6px 7px; background:#F1EFFB;">
-          </div>
-        </div>
-        <button type="button" id="bulkRangeGenerateBtn" class="submit-btn" style="width:auto; padding:9px 16px;">행 생성</button>
-        <span class="save-msg" id="bulkRangeMsg" style="margin-top:0;"></span>
-      </div>
-    </div>
-    <div class="mini-form" style="max-width:680px; margin-left:auto; margin-right:auto;">
-      <div style="overflow-x:auto;">
-        <table style="min-width:640px;">
-          <thead>
-            <tr><th style="width:170px;">날짜</th><th style="width:110px;">구분</th><th style="width:130px;">반차/반반차 세부유형</th><th style="width:70px;">일수*</th><th>메모</th><th></th></tr>
-          </thead>
-          <tbody id="bulkRowsBody"></tbody>
-        </table>
-      </div>
-      <p class="hint" style="font-size:10.5px; margin:6px 0 10px; text-align:center;">*일수는 포상휴가·경조사휴가·기타휴가에만 사용됩니다. (연차 1일 / 반차 0.5일 / 반반차 0.25일은 자동 적용)</p>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <button type="button" id="addBulkRowBtn" class="submit-btn" style="width:auto; padding:9px 16px;">+ 행 추가</button>
-        <button type="button" id="saveBulkRowsBtn" class="submit-btn" style="width:auto; padding:9px 16px; background:var(--mint);">일괄 저장</button>
-        <span class="save-msg" id="bulkSaveMsg" style="margin-top:0;"></span>
-      </div>
-    </div>
-
-    <h2 class="section-title" style="margin-top:34px; padding-top:20px; border-top:1.5px dashed var(--border);" id="personalBackupTitle">내 데이터 백업 · 복구 · 초기화</h2>
+    <div style="text-align:center; margin-bottom:6px;"><span class="section-subtitle-label" style="font-size:15px;">데이터</span></div>
+    <h2 class="section-title" style="margin-top:0;" id="personalBackupTitle">내 데이터 백업 · 복구 · 초기화</h2>
     <p class="hint" style="font-size:12px; color:var(--ink-soft); margin:-6px 0 12px; text-align:center;" id="personalBackupDesc">
       이 브라우저에 저장된 <b>내 근태·경비·개인일정 기록만</b> 직접 관리할 수 있어요. 공휴일·근무시간 같은 회사 공통 설정은 여기서 건드리지 않아요 (그건 관리자가 관리해요).<br>
       다른 기기로 옮기거나 이어서 쓰려면 백업 파일(JSON)로 내보냈다가 불러오세요. 예전 백업도 자동으로 최신 형식에 맞춰 변환돼요.
@@ -1227,110 +1327,7 @@
   </section>
 
   <!-- 경비정산 -->
-  <section id="tab-settlement" class="tab-panel">
-    <div id="deadlineBanner"></div>
-    <div style="display:flex; gap:12px; align-items:stretch; justify-content:center; flex-wrap:wrap; margin-bottom:16px; max-width:1100px; margin-left:auto; margin-right:auto;">
-      <div class="workdays-box" style="margin-bottom:0; flex:0 0 auto; justify-content:center;">
-        <label>이번달 식대기준일수</label>
-        <span class="num" id="workdaysAutoValue" style="font-size:16px;">-</span>
-      </div>
-      <button type="button" id="quickPrintReportBtn" class="workdays-box" style="cursor:pointer; border:none; background:var(--coral-bg); justify-content:center; flex:0 0 auto; align-self:stretch; margin:0; font-family:inherit;">
-        <span style="font-size:15px; font-weight:800; color:var(--coral);">📄 지출결의서 출력</span>
-      </button>
-    </div>
-
-    <div class="summary-cards five">
-      <div class="card card-amber">
-        <div class="card-icon">🍱</div>
-        <div class="card-label">이달의 점심식대한도</div>
-        <div class="card-value num" id="lunchLimitDisplay">0원</div>
-      </div>
-      <div class="card card-coral">
-        <div class="card-icon">🍚</div>
-        <div class="card-label">점심식대</div>
-        <div class="card-value num" id="lunchSpendCardDisplay">0원</div>
-      </div>
-      <div class="card card-navy">
-        <div class="card-icon">💰</div>
-        <div class="card-label">미사용분</div>
-        <div class="card-value num" id="naverPayDisplay">0원</div>
-      </div>
-      <div class="card card-indigo">
-        <div class="card-icon">🧾</div>
-        <div class="card-label">기타경비</div>
-        <div class="card-value num" id="etcExpenseTotalDisplay">0원</div>
-      </div>
-      <div class="card" style="border-top-color:#64748B;">
-        <div class="card-icon">↩️</div>
-        <div class="card-label">차액정산</div>
-        <div class="card-value num" id="prepaidTotalDisplay">0원</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 경비 -->
-  <section id="tab-expense" class="tab-panel">
-    <div class="forms-row five">
-      <div class="mini-form compact" style="border-top:4px solid var(--amber);">
-        <h3>점심식대</h3>
-        <form id="lunchForm">
-          <div class="field"><label>날짜</label><input type="date" id="l-date" required min="2015-01-01" max="2099-12-31"></div>
-          <div class="field"><label>사용 금액 (원)</label><input type="number" id="l-amount" class="num-input" min="0" step="1" required></div>
-          <div class="field"><label>내용</label><input type="text" id="l-memo" placeholder="예: 팀 점심"></div>
-          <button type="submit" class="submit-btn">추가</button>
-          <button type="button" id="exp-cancel-lunch" class="del-btn" style="display:none; margin-top:6px;">취소</button>
-          <span class="save-msg" id="lunchSaveMsg"></span>
-        </form>
-      </div>
-      <div class="mini-form compact" style="border-top:4px solid var(--mint);">
-        <h3>저녁식대</h3>
-        <form id="dinnerForm">
-          <div class="field"><label>날짜</label><input type="date" id="d-date" required min="2015-01-01" max="2099-12-31"></div>
-          <div class="field"><label>사용 금액 (원)</label><input type="number" id="d-amount" class="num-input" min="0" step="1" required></div>
-          <div class="field"><label>내용</label><input type="text" id="d-memo" placeholder="예: 야근 저녁"></div>
-          <button type="submit" class="submit-btn">추가</button>
-          <button type="button" id="exp-cancel-dinner" class="del-btn" style="display:none; margin-top:6px;">취소</button>
-          <span class="save-msg" id="dinnerSaveMsg"></span>
-        </form>
-      </div>
-      <div class="mini-form compact" style="border-top:4px solid var(--indigo);">
-        <h3>택시비</h3>
-        <form id="taxiForm">
-          <div class="field"><label>날짜</label><input type="date" id="tx-date" required min="2015-01-01" max="2099-12-31"></div>
-          <div class="field"><label>사용 금액 (원)</label><input type="number" id="tx-amount" class="num-input" min="0" step="1" required></div>
-          <div class="field"><label>내용</label><input type="text" id="tx-memo" placeholder="예: 21:30 이후 야근"></div>
-          <button type="submit" class="submit-btn">추가</button>
-          <button type="button" id="exp-cancel-taxi" class="del-btn" style="display:none; margin-top:6px;">취소</button>
-          <span class="save-msg" id="taxiSaveMsg"></span>
-        </form>
-      </div>
-      <div class="mini-form compact" style="border-top:4px solid var(--coral);">
-        <h3>경비</h3>
-        <form id="otherExpenseForm">
-          <div class="field"><label>날짜</label><input type="date" id="oe-date" required min="2015-01-01" max="2099-12-31"></div>
-          <div class="field"><label>사용 금액 (원)</label><input type="number" id="oe-amount" class="num-input" min="0" step="1" required></div>
-          <div class="field"><label>내용</label><input type="text" id="oe-desc" placeholder="예: 사무용품 구입"></div>
-          <button type="submit" class="submit-btn">추가</button>
-          <button type="button" id="exp-cancel-other" class="del-btn" style="display:none; margin-top:6px;">취소</button>
-          <span class="save-msg" id="otherExpenseSaveMsg"></span>
-        </form>
-      </div>
-      <div class="mini-form compact" style="border-top:4px solid #64748B;">
-        <h3>차액정산</h3>
-        <form id="prepaidForm">
-          <div class="field"><label>날짜</label><input type="date" id="pp-date" required min="2015-01-01" max="2099-12-31"></div>
-          <div class="field"><label>금액 (원) <span style="font-weight:400; color:var(--ink-soft);">차감이면 마이너스로</span></label><input type="number" id="pp-amount" class="num-input" step="1" required placeholder="예: -50000"></div>
-          <div class="field"><label>내용</label><input type="text" id="pp-memo" placeholder="예: 7월분 착오지급"></div>
-          <button type="submit" class="submit-btn">추가</button>
-          <button type="button" id="exp-cancel-prepaid" class="del-btn" style="display:none; margin-top:6px;">취소</button>
-          <span class="save-msg" id="prepaidSaveMsg"></span>
-        </form>
-      </div>
-    </div>
-
-    <h2 class="section-title">이번달 경비 내역</h2>
-    <div id="expenseLedgerWrap" style="max-width:1000px; margin-left:auto; margin-right:auto;"></div>
-  </section>
+  <div id="expenseLedgerWrap" style="display:none;"></div>
 
   <!-- 달력 -->
   <section id="tab-calendar" class="tab-panel">
@@ -1345,8 +1342,10 @@
           </div>
           <button type="button" class="cal-nav-btn" id="calNextMonthBtn" title="다음달">▶</button>
         </div>
-        <div style="text-align:right;">
+        <div style="text-align:right; display:flex; gap:6px; justify-content:flex-end; flex-wrap:wrap;">
           <button type="button" id="calRegisterBtn" class="del-btn" style="background:var(--indigo); color:#fff;">➕ 등록</button>
+          <button type="button" id="calScheduleHistoryBtn" class="del-btn" title="이달의 개인일정">🕐 일정</button>
+          <button type="button" id="calAttendanceHistoryBtn" class="del-btn" title="이달의 근태내역">🕐 근태</button>
         </div>
       </div>
       <div id="calendarGridWrap"></div>
@@ -1354,12 +1353,6 @@
         <span><b class="cal-legend-icon">🌴</b> 휴가</span><span><b class="cal-legend-icon">🏠</b> 재택근무</span><span><b class="cal-legend-icon">🎌</b> 공휴일</span><span><b class="cal-legend-icon">🍻</b> 회식</span><span><b class="cal-legend-icon">🗓️</b> 개인 일정</span><span><b class="cal-legend-icon">💼</b> 일반 근무일</span>
       </p>
     </div>
-
-    <h2 class="section-title" style="margin-top:34px; padding-top:20px; border-top:1.5px dashed var(--border);">개인 일정 <span class="badge">회의 · 부재 등</span></h2>
-    <p class="hint" style="font-size:12px; color:var(--ink-soft); margin:-6px 0 14px; text-align:center;">
-      위 "➕ 등록" 버튼으로 개인일정·휴가·재택근무를 등록할 수 있어요. "팀캘린더에 공유"를 켜면 팀원들도 볼 수 있고, 꺼두면 나에게만 보여요.
-    </p>
-    <div id="scheduleListWrap"></div>
   </section>
 
   <!-- 연간요약 -->
@@ -1424,39 +1417,35 @@
 
   <!-- 내부규정 -->
   <section id="tab-policy" class="tab-panel">
-    <h2 class="section-title">내부규정 <span class="badge" id="policyEffectiveBadge">적용일자 -</span></h2>
     <div class="policy-locked" id="policyDetailLocked" style="display:none;">
       <div class="policy-locked-icon">🔒</div>
       <div class="policy-locked-text">Google 계정으로 로그인해야 볼 수 있어요.<br>홈 화면의 로그인 버튼을 눌러주세요.</div>
     </div>
     <div id="policyDetailOuter">
     <div class="policy-category-toggle">
-      <button type="button" class="policy-cat-btn active" data-cat="hr">인사지침</button>
-      <button type="button" class="policy-cat-btn" data-cat="ops">운영지침</button>
+      <button type="button" class="policy-cat-btn policy-cat-title-btn active" data-cat="hr">인사지침</button>
+      <button type="button" class="policy-cat-btn policy-cat-title-btn" data-cat="ops">운영지침</button>
     </div>
-    <div class="settings-box" style="max-width:680px; padding:26px;">
-      <div id="policyDetailWrap"></div>
+    <div style="max-width:680px; margin:0 auto;">
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:8px;">
+        <button type="button" class="notice-toggle-chip" id="policyRegisterChip" style="display:none;">✏️ 등록및수정</button>
+        <button type="button" class="notice-toggle-chip" id="policyHistoryChip">🕐 이력</button>
+      </div>
+      <div class="settings-box" style="max-width:680px; padding:26px; background:#fff; position:relative;">
+        <span class="badge" id="policyEffectiveBadge" style="position:absolute; top:16px; right:18px;">적용일자 -</span>
+        <div id="policyDetailWrap"></div>
+      </div>
     </div>
     </div>
   </section>
 
-  <!-- 규정 수정 -->
-  <section id="tab-policyedit" class="tab-panel">
-    <h2 class="section-title">규정 업데이트 <span class="badge">이력 관리</span></h2>
-    <div class="policy-category-toggle">
-      <button type="button" class="policyedit-cat-btn active" data-cat="hr">인사지침</button>
-      <button type="button" class="policyedit-cat-btn" data-cat="ops">운영지침</button>
-    </div>
-    <p class="hint" style="font-size:12px; color:var(--ink-soft); margin:-6px 0 16px; text-align:center;">
-      저장할 때마다 기존 내용을 덮어쓰지 않고 새 이력으로 쌓여요. '내부규정' 탭에는 항상 그 카테고리의 가장 최근 저장본이 표시됩니다.
-    </p>
-    <div class="policy-locked" id="policyEditLocked" style="display:none;">
-      <div class="policy-locked-icon">🔒</div>
-      <div class="policy-locked-text">관리자만 접근할 수 있어요.<br>지침 수정은 회사 정책을 다루는 영역이라 관리자 계정으로 로그인해야 볼 수 있어요.</div>
-    </div>
-    <div id="policyEditContent">
-    <h2 class="section-title" style="margin-top:20px; padding-top:20px; border-top:1.5px dashed var(--border);">지침 수정</h2>
-    <div class="settings-box" style="max-width:680px;">
+  <!-- 규정 등록/수정 팝업 -->
+  <div id="policyRegisterModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:640px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:14px;">
+        <div id="policyRegisterModalTitle" style="font-weight:800; font-size:17px; color:var(--ink);">인사지침 등록</div>
+        <button type="button" id="policyRegisterModalClose" class="del-btn">닫기</button>
+      </div>
       <div class="field-row" style="display:flex; gap:24px; flex-wrap:wrap; margin-bottom:14px;">
         <div class="field" style="margin-bottom:0;">
           <label>적용일자</label>
@@ -1471,19 +1460,18 @@
         </div>
       </div>
       <div class="field">
-        <label>지침 내용 (수정 후 저장하면 새 버전으로 기록됩니다)</label>
-        <textarea id="policyContent" style="width:100%; min-height:400px; font-family:'Pretendard',sans-serif; font-size:13px; line-height:1.6; border:1.5px solid transparent; border-radius:10px; padding:14px; background:var(--bg); color:var(--ink); resize:vertical;"></textarea>
+        <label>지침 내용</label>
+        <textarea id="policyContent" style="width:100%; min-height:360px; font-family:'Pretendard',sans-serif; font-size:13px; line-height:1.6; border:1.5px solid transparent; border-radius:10px; padding:14px; background:var(--bg); color:var(--ink); resize:vertical;"></textarea>
       </div>
-      <button type="button" id="savePolicyBtn" class="submit-btn" style="width:auto; padding:10px 20px;">새 버전으로 저장</button>
-      <button type="button" id="cancelPolicyEditBtn" class="del-btn" style="display:none;">취소</button>
-      <span class="save-msg" id="policySaveMsg"></span>
+      <label style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:700; color:var(--ink-soft); margin:4px 0 10px; cursor:pointer;">
+        <input type="checkbox" id="pol-current-apply"> 현재 적용 (지금 바로 이 버전을 현재 버전으로 지정)
+      </label>
+      <div>
+        <button type="button" id="savePolicyBtn" class="submit-btn" style="width:auto; padding:10px 20px;">등록</button>
+        <span class="save-msg" id="policySaveMsg"></span>
+      </div>
     </div>
-
-    <h2 class="section-title" style="margin-top:34px; padding-top:20px; border-top:1.5px dashed var(--border);">수정 이력</h2>
-    <div id="policyHistoryWrap"></div>
-    <div id="policyPreviewWrap" style="margin-top:16px;"></div>
-    </div>
-  </section>
+  </div>
 
   <!-- 사내정보 -->
   <section id="tab-companyinfo" class="tab-panel">
@@ -1518,6 +1506,11 @@
           <button type="button" id="sensitiveUnlockBtnCompanyInfoTeam" class="del-btn"></button>
         </div>
       </div>
+      <div style="display:flex; justify-content:flex-end; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+        <button type="button" id="ciTeamGeneralAddBtn" class="del-btn" style="display:none; background:var(--indigo); color:#fff;">➕ 팀 총괄 항목 추가</button>
+      </div>
+      <div id="ciTeamGeneralListWrap" style="margin-bottom:18px;"></div>
+      <div style="text-align:center; margin:10px 0 6px;"><span style="font-size:12px; font-weight:800; color:var(--ink-soft); letter-spacing:0.02em;">👥 팀원별 정보</span></div>
       <div style="display:flex; justify-content:flex-end; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
         <button type="button" id="ciTeamDefaultsBtn" class="del-btn" style="display:none;">📋 기본값 불러오기</button>
         <button type="button" id="ciTeamAddPersonBtn" class="del-btn" style="display:none; background:var(--indigo); color:#fff;">➕ 팀원 추가</button>
@@ -1624,19 +1617,8 @@
               <option value="개인">개인</option>
             </select>
           </div>
-          <div class="field" style="flex:1 1 160px; position:relative;"><label>상세구분 <span style="font-weight:400; color:var(--ink-soft);">(선택)</span></label>
+          <div class="field" style="flex:1 1 160px;"><label>상세구분 <span style="font-weight:400; color:var(--ink-soft);">(선택)</span></label>
             <button type="button" id="cl-subtag-trigger" class="cl-subtag-trigger-btn">선택 안 함</button>
-            <div id="cl-subtag-popover" class="cl-subtag-popover" style="display:none;">
-              <div id="cl-subtag-chips"></div>
-            </div>
-          </div>
-        </div>
-        <div class="field-row" id="cl-faithful-year-field" style="display:none; flex-direction:column; gap:8px;">
-          <label style="margin-bottom:0;">성실신고 귀속연도 <span style="font-weight:400; color:var(--ink-soft);">(해당되는 연도를 전부 추가해주세요 - 매년 바뀔 수 있어요)</span></label>
-          <div id="cl-faithful-years-list" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
-          <div style="display:flex; gap:8px; align-items:center;">
-            <div class="field" style="flex:0 0 110px; margin-bottom:0;"><input type="number" id="cl-faithful-year-input" class="num-input" placeholder="예: 2025"></div>
-            <button type="button" id="cl-faithful-year-add-btn" class="del-btn">+ 연도 추가</button>
           </div>
         </div>
         <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
@@ -1835,8 +1817,6 @@
 
   <!-- 팀 캘린더 -->
   <section id="tab-teamcalendar" class="tab-panel">
-    <h2 class="section-title">팀 캘린더 <span class="badge">전 직원 휴가·재택·일정</span></h2>
-    <p class="hint" style="text-align:center; margin-top:-6px;">휴가·재택·개인일정은 직원별로 표시되고, 공휴일·회식·조기퇴근은 전 직원 공통 사항으로 반영돼요.</p>
     <input type="month" id="teamCalMonthSelect" style="position:absolute; left:-9999px; width:140px;" tabindex="-1" aria-hidden="true">
     <div class="calendar-panel">
       <div class="cal-header-nav">
@@ -1854,6 +1834,97 @@
       </p>
     </div>
   </section>
+
+  <!-- 결재 -->
+  <section id="tab-approval" class="tab-panel">
+    <div class="policy-locked" id="approvalLocked" style="display:none;">
+      <div class="policy-locked-icon">🔒</div>
+      <div class="policy-locked-text">Google 계정으로 로그인해야 볼 수 있어요.<br>홈 화면의 로그인 버튼을 눌러주세요.</div>
+    </div>
+    <div id="approvalContent">
+      <div class="policy-category-toggle" id="approvalCatToggle" style="margin-bottom:20px;">
+        <button type="button" class="approval-cat-btn active" data-approval-cat="status">📋 신고현황</button>
+        <button type="button" class="approval-cat-btn" data-approval-cat="help">🧾 신고도움</button>
+        <button type="button" class="approval-cat-btn" data-approval-cat="doc">🖋️ 결재</button>
+      </div>
+
+      <!-- 신고현황: 원천세/부가세/법인세/종소세별 검토표 -->
+      <div class="approval-panel" data-approval-cat="status">
+        <div class="policy-category-toggle" id="filingTypeToggle" style="margin-bottom:14px;">
+          <button type="button" class="filing-type-btn active" data-filing-type="원천세">원천세</button>
+          <button type="button" class="filing-type-btn" data-filing-type="부가세">부가세</button>
+          <button type="button" class="filing-type-btn" data-filing-type="법인세">법인세</button>
+          <button type="button" class="filing-type-btn" data-filing-type="종소세">종소세</button>
+        </div>
+        <p class="hint" style="text-align:center;" id="filingStatusPeriodHint"></p>
+        <div class="settings-box" style="max-width:760px;">
+          <div id="filingStatusTableWrap"></div>
+        </div>
+      </div>
+
+      <!-- 신고도움: 거래처 신고 시 필요사항 체크리스트 -->
+      <div class="approval-panel" data-approval-cat="help" style="display:none;">
+        <p class="hint" style="text-align:center;">거래처를 고르면, 신고 전 챙겨야 할 사항들을 체크리스트로 확인·기록할 수 있어요.</p>
+        <div style="text-align:center; margin-bottom:14px;">
+          <select id="filingHelpClientSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:8px 10px; background:var(--surface); font-family:'Pretendard',sans-serif; min-width:220px;"></select>
+        </div>
+        <div class="settings-box" style="max-width:640px;">
+          <div id="filingHelpChecklistWrap"></div>
+        </div>
+      </div>
+
+      <!-- 결재: 작은 그룹웨어 (기안/결재자/첨부/알림) -->
+      <div class="approval-panel" data-approval-cat="doc" style="display:none;">
+        <div class="policy-category-toggle" id="approvalDocToggle" style="margin-bottom:14px;">
+          <button type="button" class="approval-doc-btn active" data-approval-doc="new">✏️ 기안하기</button>
+          <button type="button" class="approval-doc-btn" data-approval-doc="inbox">📥 결재함<span id="approvalInboxCount" style="display:none;"></span></button>
+          <button type="button" class="approval-doc-btn" data-approval-doc="mine">📤 기안함</button>
+          <button type="button" class="approval-doc-btn" data-approval-doc="all">📚 전체이력</button>
+        </div>
+
+        <div class="approval-doc-panel" data-approval-doc="new">
+          <div class="settings-box" style="max-width:560px;">
+            <form id="approvalDraftForm">
+              <div class="field"><label>제목</label><input type="text" id="ad-title" placeholder="예: 8월 휴가 신청" required></div>
+              <div class="field"><label>내용</label><textarea id="ad-content" style="width:100%; min-height:120px; font-family:'Pretendard',sans-serif; font-size:13px; border:1.5px solid transparent; border-radius:10px; padding:10px; background:var(--bg); color:var(--ink); resize:vertical;" placeholder="결재 내용을 적어주세요"></textarea></div>
+              <div class="field"><label>첨부 (링크) <span style="font-weight:400; color:var(--ink-soft);">— 구글드라이브 등 파일 링크를 붙여넣으세요</span></label><input type="url" id="ad-attachment" placeholder="https://drive.google.com/..."></div>
+              <div class="field"><label>결재자</label>
+                <select id="ad-approver" required></select>
+              </div>
+              <div style="text-align:center;"><button type="submit" class="submit-btn" style="width:auto; padding:9px 18px;">기안 상신</button></div>
+              <div style="text-align:center;"><span class="save-msg" id="approvalDraftSaveMsg"></span></div>
+            </form>
+          </div>
+        </div>
+
+        <div class="approval-doc-panel" data-approval-doc="inbox" style="display:none;">
+          <p class="hint" style="text-align:center;">나에게 결재를 요청한 문서예요. 승인하거나 반려할 수 있어요.</p>
+          <div id="approvalInboxWrap"></div>
+        </div>
+
+        <div class="approval-doc-panel" data-approval-doc="mine" style="display:none;">
+          <p class="hint" style="text-align:center;">내가 기안한 문서와 진행 상태예요.</p>
+          <div id="approvalMineWrap"></div>
+        </div>
+
+        <div class="approval-doc-panel" data-approval-doc="all" style="display:none;">
+          <p class="hint" style="text-align:center;">회사 전체 결재 이력이에요.</p>
+          <div id="approvalAllWrap"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 결재 상세보기 팝업 -->
+  <div id="approvalDetailModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:520px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:14px;">
+        <div id="approvalDetailModalTitle" style="font-weight:800; font-size:16px; color:var(--ink);"></div>
+        <button type="button" id="approvalDetailModalClose" class="del-btn">닫기</button>
+      </div>
+      <div id="approvalDetailModalBody"></div>
+    </div>
+  </div>
 
   <!-- 설정 -->
   <section id="tab-settings" class="tab-panel">
@@ -1873,19 +1944,33 @@
     </div>
     <div id="settingsContent">
 
-    <div class="settings-group">
+    <div class="policy-category-toggle" id="settingsCatToggle" style="margin-bottom:22px;">
+      <button type="button" class="policy-cat-btn settings-cat-btn active" data-settings-cat="company">🏢 회사</button>
+      <button type="button" class="policy-cat-btn settings-cat-btn" data-settings-cat="employee">👤 직원</button>
+      <button type="button" class="policy-cat-btn settings-cat-btn" data-settings-cat="welfare">🎁 복지</button>
+      <button type="button" class="policy-cat-btn settings-cat-btn" data-settings-cat="data">💾 데이터</button>
+    </div>
+
+    <div class="settings-group" data-settings-cat="company">
       <div class="settings-group-title">🏢 회사 정보</div>
-      <div class="settings-group-desc">사내정보 탭 등에서 회사명을 표시할 때 쓰여요</div>
-      <div class="settings-box" style="max-width:480px;">
-        <form id="companyNameForm" style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; justify-content:center;">
-          <div class="field" style="flex:1 1 220px; margin-bottom:0;"><label>회사(법인)명</label><input type="text" id="company-name-input" placeholder="예: 회계법인청인"></div>
-          <button type="submit" class="submit-btn" style="width:auto; padding:8px 16px;">저장</button>
+      <div class="settings-group-desc">등록하면 사내정보 &gt; 법인 탭의 "기본정보" 표에 그대로 연동돼요. 개별 항목의 수정이력·삭제는 사내정보 탭에서 할 수 있어요.</div>
+      <div class="settings-box" style="max-width:560px;">
+        <form id="companyNameForm">
+          <div class="field"><label>회사(법인)명</label><input type="text" id="company-name-input" placeholder="예: 회계법인청인"></div>
+          <div class="field"><label>창립일</label><input type="date" id="company-founded-input" min="1900-01-01" max="2099-12-31"></div>
+          <div class="field"><label>대표자</label><input type="text" id="company-ceo-input" placeholder="예: 홍길동"></div>
+          <div class="field"><label>주민등록번호</label><input type="text" id="company-ssn-input" placeholder="000000-0000000"></div>
+          <div class="field"><label>주소</label><input type="text" id="company-address-input" placeholder="예: 서울특별시 ..."></div>
+          <div class="field"><label>대표번호</label><input type="text" id="company-phone-input" placeholder="02-0000-0000"></div>
+          <div class="field"><label>팩스</label><input type="text" id="company-fax-input" placeholder="02-0000-0000"></div>
+          <div class="field"><label>메모</label><textarea id="company-memo-input" style="width:100%; min-height:70px; font-family:'Pretendard',sans-serif; font-size:13px; border:1.5px solid transparent; border-radius:10px; padding:10px; background:var(--bg); color:var(--ink); resize:vertical;"></textarea></div>
+          <div style="text-align:center;"><button type="submit" class="submit-btn" style="width:auto; padding:8px 16px;">등록/수정</button></div>
         </form>
         <div style="text-align:center;"><span class="save-msg" id="companyNameSaveMsg"></span></div>
       </div>
     </div>
 
-    <div class="settings-group">
+    <div class="settings-group" data-settings-cat="employee" style="display:none;">
       <div class="settings-group-title">👤 직원</div>
       <div class="settings-group-desc">직원 등록 · 현황 · 입력/수정 · 변경이력을 이름 옆 메뉴에서 한 번에</div>
 
@@ -1900,11 +1985,14 @@
           <div class="field" style="flex:1 1 180px; margin-bottom:0;"><label>구글 이메일 <span style="font-weight:400; color:var(--ink-soft);">(선택)</span></label><input type="email" id="new-employee-email" placeholder="hong@gmail.com"></div>
           <button type="submit" class="submit-btn" style="width:auto; padding:8px 16px;">등록</button>
         </form>
+        <div style="text-align:center; margin-top:10px;">
+          <button type="button" id="employeeShowTerminatedBtn" class="del-btn">🚫 퇴사자 보기</button>
+        </div>
         <div id="employeeRosterWrap" style="margin-top:14px;"></div>
       </div>
     </div>
 
-    <div class="settings-group">
+    <div class="settings-group" data-settings-cat="welfare" style="display:none;">
       <div class="settings-group-title">🎁 복지</div>
       <div class="settings-group-desc">근무시간·식대·근무일수 제외일·휴가 수동조정 등 회사 정책 관리</div>
 
@@ -2072,7 +2160,7 @@
       <div id="exclusionListWrap" style="max-width:420px; margin:12px auto 0;"></div>
     </div>
 
-    <div class="settings-group">
+    <div class="settings-group" data-settings-cat="data" style="display:none;">
       <div class="settings-group-title">💾 데이터</div>
       <div class="settings-group-desc">Google Drive 연동 · 백업 · 초기화</div>
 
@@ -2111,6 +2199,18 @@
         </div>
       </div>
 
+      <div class="settings-sub-title" style="margin-top:26px;">🔐 민감정보 통합 비밀번호 <span class="badge">거래처 정보 + 사내정보 계정정보 공용</span></div>
+      <p class="hint" style="text-align:center;">
+        거래처 민감정보(사업자번호 등)와 사내정보의 계정 ID/PW를 열람할 때 공통으로 쓰이는 비밀번호예요.<br>
+        실제 설정·변경은 사내정보 잠금해제와 같은 곳에서 이뤄지니, 아래 버튼으로 바로 이동해서 설정하세요.
+      </p>
+      <div class="settings-box" style="max-width:480px;">
+        <div id="megaManagePwStatus" class="hint" style="text-align:center; margin-bottom:10px;"></div>
+        <div style="text-align:center;">
+          <button type="button" id="megaGoManagePwBtn" class="submit-btn" style="width:auto; padding:9px 16px;">🔐 비밀번호 설정/변경하러 가기</button>
+        </div>
+      </div>
+
       <div class="settings-sub-title" style="margin-top:26px;">회사 공통설정 백업 · 복구 <span class="badge">관리자 전용</span></div>
       <p class="hint" style="text-align:center;">
         공휴일, 근무시간 예외, 공지사항, 관리자 목록 등 <b>전 직원 공통 설정만</b> 백업·복구해요.<br>
@@ -2133,6 +2233,18 @@
         <button type="button" id="importAllBtn" class="submit-btn" style="width:auto; padding:9px 16px; background:var(--coral);">⬆️ 전 직원 일괄 복구</button>
         <input type="file" id="importAllFile" accept="application/json" style="display:none;">
         <span class="save-msg" id="allBackupSaveMsg" style="margin-top:0;"></span>
+      </div>
+
+      <div class="settings-sub-title" style="margin-top:26px;">직원 선택 백업 · 복구 <span class="badge">관리자 전용</span></div>
+      <p class="hint" style="text-align:center;">
+        전 직원이 아니라 <b>한 명만 골라서</b> 그 직원의 근태·경비·개인일정 기록만 백업·복구해요. 회사 공통설정과 다른 직원 데이터는 건드리지 않아요.
+      </p>
+      <div class="settings-box" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center; max-width:680px; margin-left:auto; margin-right:auto;">
+        <select id="oneEmployeeBackupSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:8px 10px; background:var(--surface); font-family:'Pretendard',sans-serif;"></select>
+        <button type="button" id="exportOneBtn" class="submit-btn" style="width:auto; padding:9px 16px;">⬇️ 선택 직원 백업</button>
+        <button type="button" id="importOneBtn" class="submit-btn" style="width:auto; padding:9px 16px; background:var(--coral);">⬆️ 선택 직원으로 복구</button>
+        <input type="file" id="importOneFile" accept="application/json" style="display:none;">
+        <span class="save-msg" id="oneBackupSaveMsg" style="margin-top:0;"></span>
       </div>
     </div>
 
@@ -2272,8 +2384,11 @@ let sharedAdminEmails = []; // 관리자 이메일 목록 (여러 명 가능)
 let sharedAdminNames = {}; // 관리자 이메일 -> 이름 (직원 프로필이 없는 관리자도 공지 작성자 이름이 뜨도록)
 let sharedManageSalt = ''; // PBKDF2 솔트(base64, 비밀값 아님) - 거래처 민감정보 암호화키를 관리비밀번호에서 재생성하는데 사용
 let sharedManageVerifier = null; // 관리비밀번호 검증용 - 비밀번호 자체는 절대 저장 안하고, 그 비밀번호로 암호화한 검증용 토큰만 저장
-let sharedCompanyInfo = { corp: [], team: [], personal: [] }; // 사내정보(법인/팀) - corp·team의 ID/PW는 sensitiveEnc로 암호화되어 저장
+let sharedCompanyInfo = { corp: [], team: [], teamGeneral: [], personal: [] }; // 사내정보(법인/팀) - corp·team·teamGeneral의 ID/PW는 sensitiveEnc로 암호화되어 저장. teamGeneral은 특정 팀원이 아닌 "팀 총괄" 기본정보
 let sharedCompanyName = ''; // 회사(법인)명 - 사내정보 섹션 제목 등에 쓰임, 관리자가 직접 입력
+let sharedFilingStatus = {}; // 결재 > 신고현황: { [taxType]: { [period]: { [clientId]: {status, memo, updatedAt} } } }
+let sharedFilingHelp = {}; // 결재 > 신고도움: { [clientId]: { items: { [itemKey]: {checked, note} } } }
+let sharedApprovals = []; // 결재 > 결재(그룹웨어): [{id, title, content, attachmentLink, drafterEmail, drafterName, approverEmail, approverName, status, comment, createdAt, decidedAt}]
 function loadSharedData(){
   try{ sharedExclusionDays = JSON.parse(localStorage.getItem('worklog_shared_exclusions') || '[]'); }catch(e){ sharedExclusionDays = []; }
   // 예전 '회식' 하나였던 사유를 '점심회식'/'저녁회식'으로 분리하면서, 기존 데이터는 기존 차감 동작과 동일하게 '점심회식'으로 이관
@@ -2297,8 +2412,12 @@ function loadSharedData(){
   try{ sharedCompanyInfo = JSON.parse(localStorage.getItem('worklog_shared_companyinfo') || 'null') || {}; }catch(e){ sharedCompanyInfo = {}; }
   if(!Array.isArray(sharedCompanyInfo.corp)) sharedCompanyInfo.corp = [];
   if(!Array.isArray(sharedCompanyInfo.team)) sharedCompanyInfo.team = [];
+  if(!Array.isArray(sharedCompanyInfo.teamGeneral)) sharedCompanyInfo.teamGeneral = [];
   if(!Array.isArray(sharedCompanyInfo.personal)) sharedCompanyInfo.personal = [];
   sharedCompanyName = localStorage.getItem('worklog_shared_companyname') || '';
+  try{ sharedFilingStatus = JSON.parse(localStorage.getItem('worklog_shared_filingstatus') || '{}') || {}; }catch(e){ sharedFilingStatus = {}; }
+  try{ sharedFilingHelp = JSON.parse(localStorage.getItem('worklog_shared_filinghelp') || '{}') || {}; }catch(e){ sharedFilingHelp = {}; }
+  try{ sharedApprovals = JSON.parse(localStorage.getItem('worklog_shared_approvals') || '[]') || []; }catch(e){ sharedApprovals = []; }
   const prevManageVerifierRaw = JSON.stringify(sharedManageVerifier);
   try{ sharedManageSalt = localStorage.getItem('worklog_shared_managesalt') || ''; }catch(e){ sharedManageSalt = ''; }
   try{ const v = localStorage.getItem('worklog_shared_manageverifier'); sharedManageVerifier = v ? JSON.parse(v) : null; }catch(e){ sharedManageVerifier = null; }
@@ -2315,6 +2434,9 @@ async function saveSharedAdminEmails(){ try{ localStorage.setItem('worklog_share
 async function saveSharedAdminNames(){ try{ localStorage.setItem('worklog_shared_admin_names', JSON.stringify(sharedAdminNames)); }catch(e){ console.error('관리자 이름 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedCompanyInfo(){ try{ localStorage.setItem('worklog_shared_companyinfo', JSON.stringify(sharedCompanyInfo)); }catch(e){ console.error('사내정보 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedCompanyName(){ try{ localStorage.setItem('worklog_shared_companyname', sharedCompanyName || ''); }catch(e){ console.error('회사명 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedFilingStatus(){ try{ localStorage.setItem('worklog_shared_filingstatus', JSON.stringify(sharedFilingStatus)); }catch(e){ console.error('신고현황 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedFilingHelp(){ try{ localStorage.setItem('worklog_shared_filinghelp', JSON.stringify(sharedFilingHelp)); }catch(e){ console.error('신고도움 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedApprovals(){ try{ localStorage.setItem('worklog_shared_approvals', JSON.stringify(sharedApprovals)); }catch(e){ console.error('결재 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedManagePassword(){
   try{
     localStorage.setItem('worklog_shared_managesalt', sharedManageSalt);
@@ -2916,12 +3038,19 @@ async function openEmployeeModal(mode, profileId){
     renderEmployeeInfoView({
       employeeName: snap.employeeName, birthDate: snap.birthDate, hireDate: snap.hireDate,
       leaveBaselineDate: snap.leaveBaselineDate, leaveBaselineDays: snap.leaveBaselineDays,
-      leaveAsOfDate: snap.leaveAsOfDate
+      leaveAsOfDate: snap.leaveAsOfDate,
+      employmentStatus: snap.employmentStatus, lastWorkDate: snap.lastWorkDate, resignReason: snap.resignReason
     });
   } else {
     // 입력/수정, 수정이력은 그 직원 프로필로 전환해서 기존 폼·이력 로직을 그대로 재사용
     setActiveProfileId(profileId);
     await loadAll();
+    // 직원등록 칩에서 이름만 먼저 등록해두고 아직 "입력/수정" 폼은 한 번도 저장한 적 없는 경우,
+    // settings.employeeName이 비어있어서 폼에 이름이 빈 채로 뜨고, 그대로 저장하면 로스터 이름까지 지워짐 -> 미리 채워둠
+    if(mode === 'edit' && !settings.employeeName && p && p.name){
+      settings.employeeName = p.name;
+      document.getElementById('s-name').value = p.name;
+    }
   }
 }
 function closeEmployeeModal(){
@@ -3048,15 +3177,20 @@ function formatEmployeeSnapshot(sn){
     ['이름', sn.employeeName || '-'],
     ['생년월일', sn.birthDate || '-'],
     ['입사일', sn.hireDate || '-'],
+    ['재직상태', sn.employmentStatus || '근무중'],
     ['일괄부여 기준일', sn.leaveBaselineDate || '-'],
     ['기준일까지 부여 법정휴가', (sn.leaveBaselineDays !== null && sn.leaveBaselineDays !== undefined) ? sn.leaveBaselineDays + '일' : '-'],
     ['휴가현황 조회 기준일', sn.leaveAsOfDate || '(오늘 날짜 기준)']
   ];
+  if(sn.employmentStatus === '퇴사'){
+    rows.push(['마지막근무일', sn.lastWorkDate || '-']);
+    rows.push(['퇴사사유', sn.resignReason || '-']);
+  }
   return `<table><tbody>${rows.map(([k,v])=>`<tr><th style="width:45%; background:var(--bg); text-align:center; padding:9px 10px; font-size:12.5px; color:var(--ink-soft); font-weight:700; border-top:1px solid var(--border);">${k}</th><td style="padding:9px 10px; font-size:13px; border-top:1px solid var(--border); text-align:center;">${escHtml(v)}</td></tr>`).join('')}</tbody></table>`;
 }
 
 // ===== 휴지통 (근태·경비·일정·거래처·개인정보 삭제 시 바로 지우지 않고 여기로 먼저 이동) =====
-const TRASH_TYPE_LABELS = { attendance:'근태', expense:'경비', schedule:'일정', client:'거래처', personalInfo:'개인정보' };
+const TRASH_TYPE_LABELS = { attendance:'근태', expense:'경비', schedule:'일정', client:'거래처', personalInfo:'개인정보', policy:'내부규정', employee:'직원' };
 
 function pushToTrash(type, kind, label, data){
   settings.trash = settings.trash || [];
@@ -3088,6 +3222,18 @@ async function restoreTrashItem(id){
   } else if(item.type==='personalInfo'){
     personalInfo.list.push(item.data);
     await savePersonalInfo();
+  } else if(item.type==='policy'){
+    const key = policyHistoryKey(item.kind);
+    settings[key] = settings[key] || [];
+    settings[key].push(item.data);
+    await saveSettings();
+    renderPolicyDetail();
+  } else if(item.type==='employee'){
+    const profiles = getProfiles();
+    profiles.push(item.data);
+    saveProfiles(profiles);
+    renderProfileSwitcher();
+    renderEmployeeRoster();
   }
   settings.trash = (settings.trash||[]).filter(x=>x.id!==id);
   await saveSettings();
@@ -3189,7 +3335,8 @@ function renderEmployeeInfoView(snapshotOverride){
   const current = snapshotOverride || {
     employeeName: settings.employeeName, birthDate: settings.birthDate, hireDate: settings.hireDate,
     leaveBaselineDate: settings.leaveBaselineDate, leaveBaselineDays: settings.leaveBaselineDays,
-    leaveAsOfDate: settings.leaveAsOfDate
+    leaveAsOfDate: settings.leaveAsOfDate,
+    employmentStatus: settings.employmentStatus, lastWorkDate: settings.lastWorkDate, resignReason: settings.resignReason
   };
   wrap.innerHTML = formatEmployeeSnapshot(current);
 }
@@ -3197,7 +3344,8 @@ function renderEmployeeInfoView(snapshotOverride){
 // 직원 정보 항목별 한글 라벨 - 수정이력에 "무엇이 바뀌었는지" 문장으로 보여줄 때 씀
 const EMPLOYEE_FIELD_LABELS = {
   employeeName:'이름', birthDate:'생년월일', hireDate:'입사일',
-  leaveBaselineDate:'일괄부여 기준일', leaveBaselineDays:'기준일까지 부여 법정휴가', leaveAsOfDate:'휴가현황 조회 기준일'
+  leaveBaselineDate:'일괄부여 기준일', leaveBaselineDays:'기준일까지 부여 법정휴가', leaveAsOfDate:'휴가현황 조회 기준일',
+  employmentStatus:'재직상태', lastWorkDate:'마지막근무일', resignReason:'퇴사사유'
 };
 function diffEmployeeSnapshot(before, after){
   if(!before) return '최초 등록';
@@ -3304,6 +3452,9 @@ function normalizeState(){
   });
   // 직원 정보 기본값 보장
   settings.employeeName = settings.employeeName || '';
+  settings.employmentStatus = settings.employmentStatus || '근무중';
+  settings.lastWorkDate = settings.lastWorkDate || '';
+  settings.resignReason = settings.resignReason || '';
   settings.leaveAsOfDate = settings.leaveAsOfDate || '';
   settings.employeeInfoHistory = settings.employeeInfoHistory || [];
   settings.trash = settings.trash || []; // 휴지통 - 근태·경비·일정·거래처·개인정보 삭제 시 여기로 먼저 들어감
@@ -3351,7 +3502,7 @@ function syncDateFieldsToMonth(){
   const m = document.getElementById('monthSelect').value;
   const today = todayStr();
   const defaultDate = (!m || today.startsWith(m)) ? today : m + '-01';
-  ['g-date','u-date','l-date','d-date','tx-date','sc-date','ex-date','pp-date'].forEach(id=>{
+  ['g-date','u-date','sc-date','ex-date','exp-date'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.value = defaultDate;
   });
@@ -3398,6 +3549,13 @@ async function loadAll(){
     document.getElementById('s-hire-d').value = Number(hd);
   }
   {
+    const status = settings.employmentStatus || '근무중';
+    document.getElementById('s-employment-status').value = status;
+    document.getElementById('s-last-work-date').value = settings.lastWorkDate || '';
+    document.getElementById('s-resign-reason').value = settings.resignReason || '자진퇴사';
+    document.getElementById('s-resign-fields').style.display = status === '퇴사' ? '' : 'none';
+  }
+  {
     const baseDate = settings.leaveBaselineDate || '2026-06-30';
     const [by,bm,bd] = baseDate.split('-');
     document.getElementById('s-base-y').value = by;
@@ -3425,16 +3583,16 @@ async function loadAll(){
     document.getElementById('ll-d').value = t.getDate();
   }
   {
-    const cur = getCurrentPolicy(editingPolicyCategory);
-    document.getElementById('policyContent').value = cur.content || policyDefaultText(editingPolicyCategory);
-    const peDate = cur.effectiveDate || '2026-07-01';
-    const [py,pm,pd] = peDate.split('-');
-    document.getElementById('pol-y').value = py;
-    document.getElementById('pol-m').value = Number(pm);
-    document.getElementById('pol-d').value = Number(pd);
     renderPolicyDetail();
-    renderPolicyHistory();
     updatePolicyLockUI();
+  }
+  {
+    populateFilingHelpClientSelect();
+    renderFilingHelpChecklist();
+    populateApproverSelect();
+    renderApprovalInbox();
+    renderApprovalMine();
+    renderApprovalAll();
   }
 
   const monthInput = document.getElementById('monthSelect');
@@ -3442,6 +3600,7 @@ async function loadAll(){
   const teamCalMonthEl = document.getElementById('teamCalMonthSelect');
   if(teamCalMonthEl) teamCalMonthEl.value = monthInput.value;
   syncDateFieldsToMonth();
+  renderFilingStatusTable();
 
   await syncAutoGrants();
   renderAll();
@@ -3679,6 +3838,47 @@ document.getElementById('calRegisterBtn')?.addEventListener('click', ()=>{
   document.getElementById('schedule-cancel').style.display = 'none';
   resetUsageFormEditState();
   openCalRegisterModal('schedule');
+});
+document.getElementById('calScheduleHistoryBtn')?.addEventListener('click', ()=>{
+  renderScheduleList();
+  document.getElementById('calScheduleHistoryModalOverlay').style.display = 'flex';
+});
+document.getElementById('calScheduleHistoryModalClose').addEventListener('click', ()=>{
+  document.getElementById('calScheduleHistoryModalOverlay').style.display = 'none';
+});
+document.getElementById('calScheduleHistoryModalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'calScheduleHistoryModalOverlay') e.currentTarget.style.display = 'none';
+});
+document.getElementById('calAttendanceHistoryBtn')?.addEventListener('click', ()=>{
+  renderAttendance();
+  document.getElementById('calAttendanceHistoryModalOverlay').style.display = 'flex';
+});
+document.getElementById('calAttendanceHistoryModalClose').addEventListener('click', ()=>{
+  document.getElementById('calAttendanceHistoryModalOverlay').style.display = 'none';
+});
+document.getElementById('calAttendanceHistoryModalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'calAttendanceHistoryModalOverlay') e.currentTarget.style.display = 'none';
+});
+document.getElementById('leaveHistoryIconBtn')?.addEventListener('click', ()=>{
+  renderAllLeaveHistory();
+  document.getElementById('leaveHistoryModalOverlay').style.display = 'flex';
+});
+document.getElementById('leaveHistoryModalClose').addEventListener('click', ()=>{
+  document.getElementById('leaveHistoryModalOverlay').style.display = 'none';
+});
+document.getElementById('leaveHistoryModalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'leaveHistoryModalOverlay') e.currentTarget.style.display = 'none';
+});
+document.getElementById('leaveAsOfIconBtn')?.addEventListener('click', ()=>{
+  document.getElementById('leaveQueryResult').style.display = 'none';
+  document.getElementById('leave-query-date').value = '';
+  document.getElementById('leaveAsOfModalOverlay').style.display = 'flex';
+});
+document.getElementById('leaveAsOfModalClose').addEventListener('click', ()=>{
+  document.getElementById('leaveAsOfModalOverlay').style.display = 'none';
+});
+document.getElementById('leaveAsOfModalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'leaveAsOfModalOverlay') e.currentTarget.style.display = 'none';
 });
 function countWeekdays(monthStr){
   const [y,m]=monthStr.split('-').map(Number);
@@ -3933,11 +4133,12 @@ function renderAllLeaveHistory(){
     } else {
       label = `${g.type} (${g.totalDays}일, 연차차감 없음)`;
     }
+    const editBtn = g.ids.length===1 ? `<button class="del-btn all-leave-edit-btn" data-id="${g.ids[0]}">수정</button>` : '';
     return `<tr>
       <td class="num">${dateLabel}</td>
       <td>${escHtml(label)}</td>
       <td>${escHtml(g.memo || '')}</td>
-      <td><button class="del-btn all-leave-del-btn" data-ids="${g.ids.join(',')}">삭제</button></td>
+      <td style="white-space:nowrap;">${editBtn}<button class="del-btn all-leave-del-btn" data-ids="${g.ids.join(',')}">삭제</button></td>
     </tr>`;
   }).join('');
 
@@ -3980,6 +4181,30 @@ function renderAllLeaveHistory(){
       renderAll();
     });
   });
+  wrap.querySelectorAll('.all-leave-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.dataset.id;
+      const en = attendance.leaveUsage.find(x=>x.id===id);
+      if(!en) return;
+      const kindSelect = document.getElementById('u-kind');
+      kindSelect.disabled = true;
+      document.getElementById('u-single-day').checked = true;
+      editingUsageId = id;
+      kindSelect.value = 'leave';
+      kindSelect.dispatchEvent(new Event('change'));
+      document.getElementById('u-date').value = en.date;
+      document.getElementById('u-end-date').value = '';
+      document.getElementById('u-type').value = en.type;
+      document.getElementById('u-type').dispatchEvent(new Event('change'));
+      if(en.subtype) document.getElementById('u-subtype').value = en.subtype;
+      if(en.days) document.getElementById('u-days').value = en.days;
+      document.getElementById('u-memo').value = en.memo || '';
+      document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '수정 완료';
+      document.getElementById('usage-cancel').style.display = 'inline-block';
+      document.getElementById('leaveHistoryModalOverlay').style.display = 'none';
+      openCalRegisterModal('usage');
+    });
+  });
 }
 
 function renderAttendance(){
@@ -3988,7 +4213,7 @@ function renderAttendance(){
   document.getElementById('remainLeaveLabel').textContent = `잔여 연차 (${todayStr().replace(/-/g,'.')})`;
 
   document.getElementById('remainLeaveDisplay').textContent = s.remainLeave + '일';
-  document.getElementById('grantUsedDisplay').textContent = `누적 부여 ${s.totalGranted}일 · 누적 사용 ${s.totalUsed}일`;
+  document.getElementById('grantUsedDisplay').textContent = `총 휴가 ${s.totalGranted}일 / 사용휴가 ${s.totalUsed}일`;
   document.getElementById('monthUsedDisplay').textContent = s.monthUsedDays + '일';
   const typeCount = {};
   s.monthUsage.forEach(u=>{ typeCount[u.type]=(typeCount[u.type]||0)+1; });
@@ -4107,16 +4332,31 @@ function renderExpense(){
   document.getElementById('etcExpenseTotalDisplay').textContent = won(etcTotal);
   document.getElementById('prepaidTotalDisplay').textContent = won(s.prepaidTotal);
 
-  const wrap = document.getElementById('expenseLedgerWrap');
+  // 이 달 전체 내역표는 더 이상 화면에 그대로 노출하지 않고, 카드별 "🕐 이력" 버튼을 눌렀을 때만
+  // renderExpenseCategoryHistory()가 그 카드에 해당하는 구분만 걸러서 팝업에 보여줌 (아래 함수 참고)
+  if(document.getElementById('expenseHistoryModalOverlay').style.display === 'flex' && expenseHistoryModalKinds.length){
+    renderExpenseCategoryHistory(expenseHistoryModalKinds);
+  }
+}
+
+// 경비 카드별 "🕐 이력" 팝업 - kinds에 해당하는 구분만 걸러서, 지금 조회월 기준으로 최신순 표로 보여줌
+let expenseHistoryModalKinds = [];
+function renderExpenseCategoryHistory(kinds){
+  const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
+  const s = calcExpenseSummary(monthStr);
+  const wrap = document.getElementById('expenseHistoryModalWrap');
+  if(!wrap) return;
   const lunchRows = s.lunchMonth.map(e=>({...e, kind:'lunch'}));
   const dinnerRows = s.dinnerMonth.map(e=>({...e, kind:'dinner'}));
   const otherRows = s.otherExpenseMonth.map(e=>({...e, kind:'other'}));
   const taxiRows = s.taxiMonth.map(e=>({...e, kind:'taxi'}));
   const prepaidRows = s.prepaidMonth.map(e=>({...e, kind:'prepaid'}));
-  const all = [...lunchRows, ...dinnerRows, ...otherRows, ...taxiRows, ...prepaidRows].sort((a,b)=> a.date < b.date ? 1 : -1);
+  const all = [...lunchRows, ...dinnerRows, ...otherRows, ...taxiRows, ...prepaidRows]
+    .filter(en=>kinds.includes(en.kind))
+    .sort((a,b)=> a.date < b.date ? 1 : -1);
 
   if(!all.length){
-    wrap.innerHTML = `<div class="empty-state">이번달 경비 기록이 아직 없습니다.</div>`;
+    wrap.innerHTML = `<div class="empty-state">이번달 기록이 아직 없습니다.</div>`;
     return;
   }
   const rows = all.map(en=>{
@@ -4131,7 +4371,7 @@ function renderExpense(){
       <td class="num">${en.date}</td>
       <td>${tag}</td>
       <td class="num">${won(Number(en.amount)||0)}</td>
-      <td>${desc}</td>
+      <td>${escHtml(desc)}</td>
       <td style="white-space:nowrap;">
         <button class="del-btn expense-edit-btn" data-kind="${en.kind}" data-id="${en.id}">수정</button>
         <button class="del-btn expense-del-btn" data-kind="${en.kind}" data-id="${en.id}">삭제</button>
@@ -4145,15 +4385,7 @@ function renderExpense(){
       const listMap = { lunch: expense.lunchEntries, dinner: expense.dinnerEntries, taxi: expense.taxiEntries, other: expense.otherExpenses, prepaid: expense.prepaidEntries };
       const en = listMap[kind].find(x=>x.id===id);
       if(!en) return;
-      editingExpense = { kind, id };
-      const fields = EXPENSE_FIELD_MAP[kind];
-      document.getElementById(fields[0]).value = en.date;
-      document.getElementById(fields[1]).value = en.amount;
-      document.getElementById(fields[2]).value = kind==='other' ? (en.description||'') : (en.memo||'');
-      const form = document.getElementById(EXPENSE_FORM_MAP[kind]);
-      form.querySelector('button[type="submit"]').textContent = '수정 완료';
-      document.getElementById('exp-cancel-'+kind).style.display = 'inline-block';
-      form.scrollIntoView({behavior:'smooth', block:'center'});
+      openExpenseRegisterModal({ kind, id, date: en.date, amount: en.amount, desc: kind==='other' ? (en.description||'') : (en.memo||'') });
     });
   });
   wrap.querySelectorAll('.expense-del-btn').forEach(btn=>{
@@ -4172,7 +4404,7 @@ function renderExpense(){
       }
       await saveExpense();
       await saveSettings();
-      if(editingExpense.kind===kind && editingExpense.id===id) cancelExpenseEdit(kind);
+      if(editingExpense.kind===kind && editingExpense.id===id) closeExpenseRegisterModal();
       renderExpense();
     });
   });
@@ -4415,7 +4647,7 @@ function renderDeadlineBanner(){
   wrap.innerHTML = `<div class="deadline-banner">📌 ${prevMonthLabel}분 지출결의서, 매월 10일 지급 기준이니 상신 잊지 마세요! (마감까지 D-${daysLeft >= 0 ? daysLeft : 0})</div>`;
 }
 
-function renderAll(){ renderAttendance(); renderExpense(); renderWorkdaysSuggestion(); renderCalendar(); renderScheduleList(); renderClients(); renderClientsRegular(); renderClientsOther(); renderClientsTerminated(); renderPersonalInfo(); renderDeadlineBanner(); renderAdminCalendar(); renderHome(); renderAllLeaveHistory(); renderNoticeIfOpen(); renderManualGrantList(); renderEmployeeRoster(); renderCompanyInfoCorp(); renderCompanyInfoTeam(); if(typeof twemoji !== 'undefined') twemoji.parse(document.body, {folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'}); }
+function renderAll(){ renderAttendance(); renderExpense(); renderWorkdaysSuggestion(); renderCalendar(); renderScheduleList(); renderClients(); renderClientsRegular(); renderClientsOther(); renderClientsTerminated(); renderPersonalInfo(); renderDeadlineBanner(); renderAdminCalendar(); renderHome(); renderAllLeaveHistory(); renderNoticeIfOpen(); renderManualGrantList(); renderEmployeeRoster(); renderCompanyInfoCorp(); renderCompanyInfoTeam(); renderApprovalBadge(); if(typeof twemoji !== 'undefined') twemoji.parse(document.body, {folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'}); }
 
 function renderScheduleList(){
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
@@ -4659,11 +4891,7 @@ function summarizeSubTags(c){
   const tags = getClientSubTags(c);
   if(!tags.length) return '';
   return tags.map(t=>{
-    let note = t.note || '';
-    if(!note && t.key==='성실'){
-      const years = (c.faithfulYears && c.faithfulYears.length) ? [...c.faithfulYears].sort().join(', ')+'년 귀속' : (c.faithfulTaxYear ? `${c.faithfulTaxYear}년 귀속` : '');
-      note = years;
-    }
+    const note = activeSubTagNoteText(t);
     return note ? `${t.key}(${note})` : t.key;
   }).join(', ');
 }
@@ -4799,10 +5027,7 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
     // 상세구분(성실/면세/간이/간세, 법인은 본점/지점도 포함)은 본점·지점 배지와 같은 스타일의 칩으로 이름 옆에 붙이고,
     // 칩마다 문구가 있으면(직접 입력한 메모, 또는 성실의 귀속연도) 칩 오른쪽 위에 작은 * 를 달아서 마우스를 올리면 보이게 함
     const subTagChips = getClientSubTags(c).map(t=>{
-      let note = t.note || '';
-      if(!note && t.key==='성실'){
-        note = (c.faithfulYears && c.faithfulYears.length) ? `${[...c.faithfulYears].sort().join(', ')}년 귀속` : (c.faithfulTaxYear ? `${c.faithfulTaxYear}년 귀속` : '');
-      }
+      const note = activeSubTagNoteText(t);
       const star = note ? `<sup class="chip-star" data-tip="${escHtml(note)}" style="position:absolute; top:-5px; right:-4px; cursor:pointer; font-size:10px; font-weight:900; line-height:1; color:${entityColor};">*</sup>` : '';
       return `<span style="position:relative; display:inline-flex; align-items:center; margin-left:5px; padding:1px 7px; border-radius:8px; background:rgba(255,255,255,0.65); font-size:9.5px; font-weight:800; color:${entityColor}; vertical-align:middle;">${escHtml(t.key)}${star}</span>`;
     }).join('');
@@ -4956,9 +5181,6 @@ async function populateClientEditForm(c){
   document.getElementById('cl-entity-type').value = c.entityType || '법인';
   clSubTags = getClientSubTags(c);
   renderSubTagChipOptions();
-  clFaithfulYears = c.faithfulYears && c.faithfulYears.length ? [...c.faithfulYears] : (c.faithfulTaxYear ? [c.faithfulTaxYear] : []);
-  renderFaithfulYearChips();
-  updateFaithfulYearVisibility();
   document.getElementById('cl-bizno').value = c.bizNo || '';
   document.getElementById('cl-corpregno').value = c.corpRegNo || '';
   const knownPrograms = ['없음','위하고','세무사랑'];
@@ -5371,6 +5593,7 @@ function bindCiRowButtons(wrap){
       const cat = btn.dataset.cat, id = btn.dataset.id, person = btn.dataset.person||null;
       let it;
       if(cat==='corp') it = (sharedCompanyInfo.corp||[]).find(x=>x.id===id);
+      else if(cat==='teamGeneral') it = (sharedCompanyInfo.teamGeneral||[]).find(x=>x.id===id);
       else if(cat==='team'){ const p = (sharedCompanyInfo.team||[]).find(x=>x.person===person); it = p && (p.items||[]).find(x=>x.id===id); }
       else it = (sharedCompanyInfo.personal||[]).find(x=>x.id===id);
       openHistoryModal(`${it&&it.label||''} 수정이력`, it&&it.history);
@@ -5414,7 +5637,42 @@ async function renderCompanyInfoCorp(){
   bindCiRowButtons(wrap);
 }
 
+// 팀 총괄 기본정보 - 특정 팀원이 아닌 팀 전체에 해당하는 항목(예: 팀 공용 메일함, 팀 공유 계정 등)
+async function renderCompanyInfoTeamGeneral(){
+  const wrap = document.getElementById('ciTeamGeneralListWrap');
+  if(!wrap) return;
+  const admin = !!gdriveAccessToken && isCurrentUserAdmin;
+  const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
+  const addBtn = document.getElementById('ciTeamGeneralAddBtn');
+  if(addBtn) addBtn.style.display = admin ? 'inline-block' : 'none';
+  if(!admin){ wrap.innerHTML = ''; return; }
+  const list = sharedCompanyInfo.teamGeneral || [];
+  const ciTeamPrefix = sharedCompanyName ? sharedCompanyName + '팀 ' : '';
+  if(!list.length){
+    wrap.innerHTML = `<div style="text-align:center; margin:14px 0 10px;"><span class="section-subtitle-label">${escHtml(ciTeamPrefix+'기본정보')}</span></div><div class="empty-state">등록된 팀 총괄 항목이 없습니다. "➕ 팀 총괄 항목 추가"로 등록해보세요.</div>`;
+    return;
+  }
+  const infoList = list.filter(it=>(it.type||'account')==='info');
+  const acctList = list.filter(it=>(it.type||'account')==='account');
+  const decryptedMap = {}, failedSet = new Set();
+  if(unlocked){
+    for(const it of acctList){
+      if(it.sensitiveEnc){
+        try{ decryptedMap[it.id] = await decryptJSON(it.sensitiveEnc, adminCryptoKey); }
+        catch(e){ console.error('사내정보(팀 총괄) 복호화 실패', it.id, e); failedSet.add(it.id); }
+      }
+    }
+  }
+  const infoHtml = buildCiInfoTable(infoList, 'teamGeneral', admin, null, ciTeamPrefix);
+  const acctHtml = !acctList.length ? '' : unlocked
+    ? buildCiAccountTable(acctList, 'teamGeneral', admin, unlocked, decryptedMap, failedSet, null, ciTeamPrefix)
+    : `<div style="text-align:center; margin:14px 0 10px;"><span class="section-subtitle-label">${escHtml(ciTeamPrefix+'공용ID/PW')}</span></div><div class="empty-state" style="padding:14px;">🔒 먼저 위에서 잠금을 해제해주세요. (${acctList.length}건)</div>`;
+  wrap.innerHTML = (infoHtml + acctHtml) || `<div class="empty-state">등록된 항목이 없습니다.</div>`;
+  bindCiRowButtons(wrap);
+}
+
 async function renderCompanyInfoTeam(){
+  renderCompanyInfoTeamGeneral();
   const wrap = document.getElementById('ciTeamListWrap');
   if(!wrap) return;
   const admin = !!gdriveAccessToken && isCurrentUserAdmin;
@@ -5551,6 +5809,7 @@ async function renderCompanyInfoPersonal(){
 }
 document.getElementById('ciCorpAddBtn').addEventListener('click', ()=> openCiEntryFormModal('corp', null));
 document.getElementById('ciTeamAddPersonBtn').addEventListener('click', ()=> openCiTeamPersonModal(null));
+document.getElementById('ciTeamGeneralAddBtn').addEventListener('click', ()=> openCiEntryFormModal('teamGeneral', null));
 document.getElementById('ciTeamPersonModalClose').addEventListener('click', closeCiTeamPersonModal);
 document.getElementById('ciTeamPersonModalOverlay').addEventListener('click', (e)=>{
   if(e.target.id === 'ciTeamPersonModalOverlay') closeCiTeamPersonModal();
@@ -5617,6 +5876,7 @@ function openCiEntryFormModal(category, id, person, owner){
   let entry = null;
   if(id){
     if(category==='corp') entry = (sharedCompanyInfo.corp||[]).find(x=>x.id===id);
+    else if(category==='teamGeneral') entry = (sharedCompanyInfo.teamGeneral||[]).find(x=>x.id===id);
     else if(category==='team'){
       const p = (sharedCompanyInfo.team||[]).find(x=>x.person===person);
       entry = p ? (p.items||[]).find(x=>x.id===id) : null;
@@ -5626,7 +5886,7 @@ function openCiEntryFormModal(category, id, person, owner){
   }
   const type = entry ? (entry.type || 'account') : 'info';
   // ID/PW가 필요한(암호화된) 항목만 잠금해제가 필요함 - 기본정보(주소·번호 등) 항목은 비밀번호 없이도 등록/조회 가능
-  if(type==='account' && (category==='corp' || category==='team') && !unlocked){
+  if(type==='account' && (category==='corp' || category==='team' || category==='teamGeneral') && !unlocked){
     alert('ID/PW를 저장·조회하려면 먼저 위에서 🔒 잠금해제를 해주세요.');
     return;
   }
@@ -5669,6 +5929,8 @@ async function deleteCiEntry(category, id, person){
   if(!confirm('이 항목을 삭제할까요?')) return;
   if(category==='corp'){
     sharedCompanyInfo.corp = (sharedCompanyInfo.corp||[]).filter(x=>x.id!==id);
+  } else if(category==='teamGeneral'){
+    sharedCompanyInfo.teamGeneral = (sharedCompanyInfo.teamGeneral||[]).filter(x=>x.id!==id);
   } else if(category==='team'){
     const p = (sharedCompanyInfo.team||[]).find(x=>x.person===person);
     if(p) p.items = (p.items||[]).filter(x=>x.id!==id);
@@ -5677,7 +5939,7 @@ async function deleteCiEntry(category, id, person){
   }
   await saveSharedCompanyInfo();
   if(category==='corp') renderCompanyInfoCorp();
-  else if(category==='team') renderCompanyInfoTeam();
+  else if(category==='team' || category==='teamGeneral') renderCompanyInfoTeam();
   else renderCompanyInfoPersonal();
 }
 document.getElementById('ciEntryModalDeleteBtn').addEventListener('click', async ()=>{
@@ -5729,6 +5991,18 @@ document.getElementById('ciEntryModalForm').addEventListener('submit', async (e)
         if(!sharedCompanyInfo.corp) sharedCompanyInfo.corp = [];
         sharedCompanyInfo.corp.push({ id: genId(), type, label, link, note, content, sensitiveEnc, updatedAt: todayStr(), history:[] });
       }
+    } else if(category==='teamGeneral'){
+      if(id){
+        const entry = (sharedCompanyInfo.teamGeneral||[]).find(x=>x.id===id);
+        if(entry){
+          const changes = diffCiEntryFields(entry, label, link, note, credChanged, content);
+          entry.type=type; entry.label=label; entry.link=link; entry.note=note; entry.content=content; entry.sensitiveEnc=sensitiveEnc; entry.updatedAt = todayStr();
+          if(changes.length){ if(!entry.history) entry.history=[]; entry.history.unshift({date:new Date().toLocaleString('ko-KR'), changes}); }
+        }
+      } else {
+        if(!sharedCompanyInfo.teamGeneral) sharedCompanyInfo.teamGeneral = [];
+        sharedCompanyInfo.teamGeneral.push({ id: genId(), type, label, link, note, content, sensitiveEnc, updatedAt: todayStr(), history:[] });
+      }
     } else if(category==='team'){
       const p = (sharedCompanyInfo.team||[]).find(x=>x.person===person);
       if(!p) return;
@@ -5750,7 +6024,7 @@ document.getElementById('ciEntryModalForm').addEventListener('submit', async (e)
   setTimeout(()=>{
     closeCiEntryFormModal();
     if(category==='corp') renderCompanyInfoCorp();
-    else if(category==='team') renderCompanyInfoTeam();
+    else if(category==='team' || category==='teamGeneral') renderCompanyInfoTeam();
     else renderCompanyInfoPersonal();
   }, 350);
 });
@@ -6110,8 +6384,8 @@ function buildCalendarHTML(monthStr){
 let navExpanded = false;
 let activeTopGroup = null; // null | 'management' | 'staff' | 'client'
 
-const MANAGEMENT_TABS = ['teamcalendar','quickguide','policy','policyedit','companyinfo','settings'];
-const STAFF_TABS = ['calendar','attendance','expense','settlement','attendance-settings'];
+const MANAGEMENT_TABS = ['teamcalendar','quickguide','policy','companyinfo','settings','approval'];
+const STAFF_TABS = ['calendar','attendance','attendance-settings'];
 const CLIENT_TABS = ['clients-regular','clients-other','clients-edit','clients-personal','clients-terminated','clients-settings'];
 
 function updateNavVisibility(){
@@ -6153,6 +6427,25 @@ document.getElementById('toggleClientBtn').addEventListener('click', ()=>{
   if(!CLIENT_TABS.includes(currentTab)){
     document.querySelector('.tab-btn[data-tab="clients-regular"]')?.click();
   }
+});
+
+// 통합설정/스태프설정/클라이언트설정 아이콘 3개를 없애고, 공지사항 옆 큰 ⚙️ 아이콘 하나로 - 눌러서 컴패니/스태프 선택
+document.getElementById('megaSettingsIconBtn').addEventListener('click', ()=>{
+  document.getElementById('megaSettingsChooserOverlay').style.display = 'flex';
+});
+document.getElementById('megaSettingsChooserClose').addEventListener('click', ()=>{
+  document.getElementById('megaSettingsChooserOverlay').style.display = 'none';
+});
+document.getElementById('megaSettingsChooserOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'megaSettingsChooserOverlay') e.currentTarget.style.display = 'none';
+});
+document.getElementById('megaSettingsGoCompanyBtn').addEventListener('click', ()=>{
+  document.getElementById('megaSettingsChooserOverlay').style.display = 'none';
+  activateTab('settings', true);
+});
+document.getElementById('megaSettingsGoStaffBtn').addEventListener('click', ()=>{
+  document.getElementById('megaSettingsChooserOverlay').style.display = 'none';
+  activateTab('attendance-settings', true);
 });
 
 let pendingTabAfterLogin = null;
@@ -6475,102 +6768,70 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
 
 document.getElementById('usage-cancel').addEventListener('click', resetUsageFormEditState);
 
-document.getElementById('leaveQueryToggleBtn').addEventListener('click', ()=>{
-  const panel = document.getElementById('leaveQueryPanel');
-  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-});
-
 let editingExpense = { kind: null, id: null };
+const EXPENSE_KIND_LABELS = { lunch:'점심식대', dinner:'저녁식대', taxi:'택시비', other:'경비', prepaid:'차액정산' };
+const EXPENSE_LIST_MAP = () => ({ lunch: expense.lunchEntries, dinner: expense.dinnerEntries, taxi: expense.taxiEntries, other: expense.otherExpenses, prepaid: expense.prepaidEntries });
 
-const EXPENSE_FORM_MAP = { lunch:'lunchForm', dinner:'dinnerForm', taxi:'taxiForm', other:'otherExpenseForm', prepaid:'prepaidForm' };
-const EXPENSE_FIELD_MAP = {
-  lunch: ['l-date','l-amount','l-memo'],
-  dinner: ['d-date','d-amount','d-memo'],
-  taxi: ['tx-date','tx-amount','tx-memo'],
-  other: ['oe-date','oe-amount','oe-desc'],
-  prepaid: ['pp-date','pp-amount','pp-memo']
-};
-
-function cancelExpenseEdit(kind){
-  editingExpense = { kind: null, id: null };
-  const form = document.getElementById(EXPENSE_FORM_MAP[kind]);
-  if(form) form.querySelector('button[type="submit"]').textContent = '추가';
-  const cancelBtn = document.getElementById('exp-cancel-'+kind);
-  if(cancelBtn) cancelBtn.style.display = 'none';
-  const fields = EXPENSE_FIELD_MAP[kind];
-  if(fields){
-    document.getElementById(fields[1]).value = '';
-    document.getElementById(fields[2]).value = '';
-  }
+// 근태 및 경비 탭의 "➕ 등록"과, 각 카드 "🕐 이력" 팝업의 "수정" 둘 다 이 팝업 하나로 처리함 (추가/수정 겸용)
+function openExpenseRegisterModal(edit){
+  editingExpense = edit && edit.id ? { kind: edit.kind, id: edit.id } : { kind: null, id: null };
+  document.getElementById('expenseRegisterModalTitle').textContent = edit && edit.id ? '경비 수정' : '경비 등록';
+  document.getElementById('expenseEntrySubmitBtn').textContent = edit && edit.id ? '수정 완료' : '추가';
+  document.getElementById('exp-kind').value = (edit && edit.kind) || 'lunch';
+  document.getElementById('exp-date').value = (edit && edit.date) || todayStr();
+  document.getElementById('exp-amount').value = edit && edit.amount !== undefined ? edit.amount : '';
+  document.getElementById('exp-desc').value = (edit && edit.desc) || '';
+  updateExpenseAmountLabel();
+  document.getElementById('expenseEntrySaveMsg').textContent = '';
+  document.getElementById('expenseRegisterModalOverlay').style.display = 'flex';
 }
-
-Object.keys(EXPENSE_FORM_MAP).forEach(kind=>{
-  const btn = document.getElementById('exp-cancel-'+kind);
-  if(btn) btn.addEventListener('click', ()=> cancelExpenseEdit(kind));
+function closeExpenseRegisterModal(){
+  document.getElementById('expenseRegisterModalOverlay').style.display = 'none';
+  editingExpense = { kind: null, id: null };
+}
+function updateExpenseAmountLabel(){
+  const kind = document.getElementById('exp-kind').value;
+  document.getElementById('exp-amount-label').textContent = kind==='prepaid' ? '금액 (원) — 차감이면 마이너스로' : '금액 (원)';
+}
+document.getElementById('exp-kind').addEventListener('change', updateExpenseAmountLabel);
+document.getElementById('expenseRegisterBtn').addEventListener('click', ()=> openExpenseRegisterModal(null));
+document.getElementById('expenseRegisterModalClose').addEventListener('click', closeExpenseRegisterModal);
+document.getElementById('expenseRegisterModalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'expenseRegisterModalOverlay') closeExpenseRegisterModal();
 });
-
-document.getElementById('lunchForm').addEventListener('submit', async (e)=>{
+document.getElementById('expenseEntryForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
-  const date = document.getElementById('l-date').value;
-  const amount = Number(document.getElementById('l-amount').value);
-  const memo = document.getElementById('l-memo').value.trim();
+  const kind = document.getElementById('exp-kind').value;
+  const date = document.getElementById('exp-date').value;
+  const amount = Number(document.getElementById('exp-amount').value);
+  const desc = document.getElementById('exp-desc').value.trim();
   if(!date || !amount) return;
-  if(editingExpense.kind==='lunch'){
-    const en = expense.lunchEntries.find(x=>x.id===editingExpense.id);
-    if(en){ en.date=date; en.amount=amount; en.memo=memo; }
-    cancelExpenseEdit('lunch');
-    document.getElementById('lunchSaveMsg').textContent = '수정됨';
+  const list = EXPENSE_LIST_MAP()[kind];
+  const descField = kind==='other' ? 'description' : 'memo';
+  if(editingExpense.id && editingExpense.kind===kind){
+    const en = list.find(x=>x.id===editingExpense.id);
+    if(en){ en.date=date; en.amount=amount; en[descField]=desc; }
   } else {
-    expense.lunchEntries.push({id:genId(), date, amount, memo});
-    document.getElementById('lunchSaveMsg').textContent = '추가됨';
+    list.push({id:genId(), date, amount, [descField]:desc});
   }
   await saveExpense();
-  setTimeout(()=>document.getElementById('lunchSaveMsg').textContent='',1200);
-  document.getElementById('l-amount').value='';
-  document.getElementById('l-memo').value='';
-  renderExpense();
+  document.getElementById('expenseEntrySaveMsg').textContent = '저장됨';
+  setTimeout(()=>{ closeExpenseRegisterModal(); renderExpense(); document.getElementById('expenseEntrySaveMsg').textContent=''; }, 350);
 });
-
-document.getElementById('dinnerForm').addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const date = document.getElementById('d-date').value;
-  const amount = Number(document.getElementById('d-amount').value);
-  const memo = document.getElementById('d-memo').value.trim();
-  if(!date || !amount) return;
-  if(editingExpense.kind==='dinner'){
-    const en = expense.dinnerEntries.find(x=>x.id===editingExpense.id);
-    if(en){ en.date=date; en.amount=amount; en.memo=memo; }
-    cancelExpenseEdit('dinner');
-    document.getElementById('dinnerSaveMsg').textContent = '수정됨';
-  } else {
-    expense.dinnerEntries.push({id:genId(), date, amount, memo});
-    document.getElementById('dinnerSaveMsg').textContent = '추가됨';
-  }
-  await saveExpense();
-  setTimeout(()=>document.getElementById('dinnerSaveMsg').textContent='',1200);
-  document.getElementById('d-amount').value=''; document.getElementById('d-memo').value='';
-  renderExpense();
+document.querySelectorAll('.expense-history-icon-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    expenseHistoryModalKinds = btn.dataset.kinds.split(',');
+    document.getElementById('expenseHistoryModalTitle').textContent = btn.dataset.title;
+    document.getElementById('expenseHistoryModalOverlay').style.display = 'flex';
+    renderExpenseCategoryHistory(expenseHistoryModalKinds);
+  });
 });
-
-document.getElementById('taxiForm').addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const date = document.getElementById('tx-date').value;
-  const amount = Number(document.getElementById('tx-amount').value);
-  const memo = document.getElementById('tx-memo').value.trim();
-  if(!date || !amount) return;
-  if(editingExpense.kind==='taxi'){
-    const en = expense.taxiEntries.find(x=>x.id===editingExpense.id);
-    if(en){ en.date=date; en.amount=amount; en.memo=memo; }
-    cancelExpenseEdit('taxi');
-    document.getElementById('taxiSaveMsg').textContent = '수정됨';
-  } else {
-    expense.taxiEntries.push({id:genId(), date, amount, memo});
-    document.getElementById('taxiSaveMsg').textContent = '추가됨';
-  }
-  await saveExpense();
-  setTimeout(()=>document.getElementById('taxiSaveMsg').textContent='',1200);
-  document.getElementById('tx-amount').value=''; document.getElementById('tx-memo').value='';
-  renderExpense();
+document.getElementById('expenseHistoryModalClose').addEventListener('click', ()=>{
+  document.getElementById('expenseHistoryModalOverlay').style.display = 'none';
+  expenseHistoryModalKinds = [];
+});
+document.getElementById('expenseHistoryModalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'expenseHistoryModalOverlay'){ e.currentTarget.style.display = 'none'; expenseHistoryModalKinds = []; }
 });
 
 let editingScheduleId = null;
@@ -7602,9 +7863,8 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
   const fields = {
     name,
     entityType: document.getElementById('cl-entity-type').value,
-    subTags: clSubTags.map(t=>({key:t.key, note:(t.note||'').trim()})),
+    subTags: clSubTags.map(t=>({key:t.key, notes:(t.notes||[]).map(n=>({id:n.id, text:n.text, date:n.date||''})), activeNoteId:t.activeNoteId||null})),
     entitySubType: '', // 예전 단일값 필드는 더 이상 새로 쓰지 않음(과거 데이터 호환용으로만 남겨둠)
-    faithfulYears: clSubTags.some(t=>t.key==='성실') ? [...clFaithfulYears] : [],
     bizNo: document.getElementById('cl-bizno').value.trim(),
     corpRegNo: document.getElementById('cl-corpregno').value.trim(),
     program: programSel === '기타' ? document.getElementById('cl-program-etc').value.trim() : programSel,
@@ -7671,9 +7931,6 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
   renderMemoRows();
   clSubTags = [];
   renderSubTagChipOptions();
-  clFaithfulYears = [];
-  renderFaithfulYearChips();
-  updateFaithfulYearVisibility();
   document.getElementById('cl-taxtype').value = '기장대행';
   document.getElementById('cl-taxtype-etc-field').style.display = 'none';
   document.getElementById('cl-status').value = '수임';
@@ -7719,9 +7976,6 @@ document.getElementById('clientNewEntryBtn').addEventListener('click', async ()=
   renderMemoRows();
   clSubTags = [];
   renderSubTagChipOptions();
-  clFaithfulYears = [];
-  renderFaithfulYearChips();
-  updateFaithfulYearVisibility();
   document.getElementById('cl-taxtype').value = '기장대행';
   document.getElementById('cl-status').value = '수임';
   document.getElementById('cl-program').value = '위하고';
@@ -7756,9 +8010,6 @@ document.getElementById('client-cancel').addEventListener('click', ()=>{
   renderMemoRows();
   clSubTags = [];
   renderSubTagChipOptions();
-  clFaithfulYears = [];
-  renderFaithfulYearChips();
-  updateFaithfulYearVisibility();
   document.getElementById('cl-taxtype').value = '기장대행';
   document.getElementById('cl-taxtype-etc-field').style.display = 'none';
   document.getElementById('cl-status').value = '수임';
@@ -7776,18 +8027,35 @@ document.getElementById('cl-taxtype').addEventListener('change', (e)=>{
 // 수임구분이 "기타"/"용역대행"일 때만 직접입력란을 보여주고, 라벨/안내문구도 맞게 바꿔줌
 
 // 사업자구분 상세유형(법인: 성실/면세/본점/지점, 개인: 성실/면세/간이/간세)은 한 거래처에 여러 개를 동시에 붙일 수 있고,
-// 칩마다 이름 옆 * 표시에 뜨는 문구(귀속연도, 전환일 등)를 자유 텍스트로 따로 붙일 수 있음
+// 칩마다 이름 옆 * 표시에 뜨는 문구(귀속연도, 전환일 등)는 한 건이 아니라 "이력"으로 여러 건 쌓아두고, 그중 하나만 "표시 중"으로 고를 수 있음
 const CLIENT_SUBTAG_OPTIONS = {
   법인: ['성실','면세','본점','지점'],
   개인: ['성실','면세','간이','간세','본점','지점']
 };
-// 예전 데이터는 상세유형을 entitySubType 문자열 하나로만 갖고 있었음(본점/지점은 법인등록번호로 자동 판정) ->
-// subTags 배열이 아직 없는 거래처는 여기서 그때그때 변환해서 써 줌 (저장은 폼을 저장할 때 한 번에 됨)
+// 예전 데이터는 상세유형이 entitySubType 문자열 하나뿐이거나, subTags[].note가 문구 1건짜리 문자열이거나,
+// "성실"만 별도로 faithfulYears/faithfulTaxYear에 귀속연도를 갖고 있었음 -> 여기서 전부 "이력 배열 1건"으로 변환해서 씀
+// (실제 데이터 저장은 폼을 저장할 때 한 번에 새 구조로 됨. 읽을 때마다 변환하므로 옛 데이터를 열어보기만 해도 저장 전까지는 원본이 안 바뀜)
 function getClientSubTags(c){
-  if(Array.isArray(c.subTags)) return c.subTags.map(t=>({key:t.key, note:t.note||''}));
-  return c.entitySubType ? [{key:c.entitySubType, note:''}] : [];
+  const toTag = (t)=>{
+    if(Array.isArray(t.notes)) return { key:t.key, notes:t.notes, activeNoteId: t.activeNoteId||null };
+    let legacyText = t.note || '';
+    if(!legacyText && t.key==='성실'){
+      if(c.faithfulYears && c.faithfulYears.length) legacyText = `${[...c.faithfulYears].sort().join(', ')}년 귀속`;
+      else if(c.faithfulTaxYear) legacyText = `${c.faithfulTaxYear}년 귀속`;
+    }
+    if(!legacyText) return { key:t.key, notes:[], activeNoteId:null };
+    const id = genId();
+    return { key:t.key, notes:[{id, text:legacyText, date: c.updatedAt || ''}], activeNoteId:id };
+  };
+  if(Array.isArray(c.subTags)) return c.subTags.map(toTag);
+  return c.entitySubType ? [toTag({key:c.entitySubType})] : [];
 }
-let clSubTags = []; // [{key, note}]
+// 특정 태그의 "지금 표시 중인" 이력 문구(없으면 빈 문자열)
+function activeSubTagNoteText(tag){
+  const n = (tag.notes||[]).find(x=>x.id===tag.activeNoteId);
+  return n ? (n.text||'') : '';
+}
+let clSubTags = []; // [{key, notes:[{id,text,date}], activeNoteId}]
 
 function updateSubTagTriggerLabel(){
   const trigger = document.getElementById('cl-subtag-trigger');
@@ -7809,12 +8077,26 @@ function renderSubTagChipOptions(){
   wrap.innerHTML = options.map(key=>{
     const tag = clSubTags.find(t=>t.key===key);
     const active = !!tag;
+    const historyHtml = active ? `<div class="cl-subtag-history-wrap">
+      ${(tag.notes&&tag.notes.length) ? tag.notes.map(n=>`
+        <div class="cl-subtag-history-item" data-tag="${escHtml(key)}" data-note-id="${escHtml(n.id)}">
+          <input type="radio" name="cl-subtag-active-${escHtml(key)}" class="cl-subtag-note-active" ${tag.activeNoteId===n.id?'checked':''} title="이 문구를 * 표시에 보여줌">
+          <span class="cl-sh-text">${escHtml(n.text)}</span>
+          <span class="cl-sh-date">${escHtml(n.date||'')}</span>
+          <button type="button" class="del-btn cl-subtag-note-edit" style="padding:2px 6px; font-size:10px;">수정</button>
+          <button type="button" class="del-btn cl-subtag-note-del" style="padding:2px 6px; font-size:10px;">삭제</button>
+        </div>`).join('') : `<div style="font-size:11px; color:var(--ink-soft); padding:2px 0;">등록된 이력이 없어요.</div>`}
+      <div class="cl-subtag-history-add-row">
+        <input type="text" class="cl-subtag-note-new" data-key="${escHtml(key)}" placeholder="예: 2026.05.24 전환">
+        <button type="button" class="del-btn cl-subtag-note-add-btn" data-key="${escHtml(key)}">+ 이력 추가</button>
+      </div>
+    </div>` : '';
     return `<div class="cl-subtag-row">
       <label class="cl-subtag-check-label">
         <input type="checkbox" class="cl-subtag-toggle" data-key="${escHtml(key)}" ${active?'checked':''}>
         <span>${escHtml(key)}</span>
       </label>
-      ${active ? `<input type="text" class="cl-subtag-note" data-key="${escHtml(key)}" value="${escHtml(tag.note||'')}" placeholder="예: 2026.05.24 전환">` : ''}
+      ${historyHtml}
     </div>`;
   }).join('');
   wrap.querySelectorAll('.cl-subtag-toggle').forEach(cb=>{
@@ -7822,15 +8104,54 @@ function renderSubTagChipOptions(){
       const key = cb.dataset.key;
       const idx = clSubTags.findIndex(t=>t.key===key);
       if(idx>=0) clSubTags.splice(idx,1);
-      else clSubTags.push({key, note:''});
+      else clSubTags.push({key, notes:[], activeNoteId:null});
       renderSubTagChipOptions();
-      updateFaithfulYearVisibility();
     });
   });
-  wrap.querySelectorAll('.cl-subtag-note').forEach(inp=>{
-    inp.addEventListener('input', ()=>{
-      const tag = clSubTags.find(t=>t.key===inp.dataset.key);
-      if(tag) tag.note = inp.value;
+  wrap.querySelectorAll('.cl-subtag-note-active').forEach(radio=>{
+    radio.addEventListener('change', ()=>{
+      const row = radio.closest('.cl-subtag-history-item');
+      const tag = clSubTags.find(t=>t.key===row.dataset.tag);
+      if(tag) tag.activeNoteId = row.dataset.noteId;
+    });
+  });
+  wrap.querySelectorAll('.cl-subtag-note-edit').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const row = btn.closest('.cl-subtag-history-item');
+      const tag = clSubTags.find(t=>t.key===row.dataset.tag);
+      const note = tag && (tag.notes||[]).find(n=>n.id===row.dataset.noteId);
+      if(!note) return;
+      const next = prompt('이력 문구 수정', note.text);
+      if(next === null) return;
+      note.text = next.trim();
+      renderSubTagChipOptions();
+    });
+  });
+  wrap.querySelectorAll('.cl-subtag-note-del').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const row = btn.closest('.cl-subtag-history-item');
+      const tag = clSubTags.find(t=>t.key===row.dataset.tag);
+      if(!tag) return;
+      if(!confirm('이 이력을 삭제할까요?')) return;
+      tag.notes = (tag.notes||[]).filter(n=>n.id!==row.dataset.noteId);
+      if(tag.activeNoteId === row.dataset.noteId) tag.activeNoteId = tag.notes.length ? tag.notes[0].id : null;
+      renderSubTagChipOptions();
+    });
+  });
+  wrap.querySelectorAll('.cl-subtag-note-add-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const key = btn.dataset.key;
+      const input = wrap.querySelector(`.cl-subtag-note-new[data-key="${key}"]`);
+      const text = input.value.trim();
+      if(!text) return;
+      const tag = clSubTags.find(t=>t.key===key);
+      if(!tag) return;
+      const id = genId();
+      if(!tag.notes) tag.notes = [];
+      tag.notes.unshift({id, text, date: todayStr()});
+      tag.activeNoteId = id; // 새로 추가한 이력을 기본으로 "표시 중"으로 지정 (필요하면 라디오로 다른 이력으로 바꿀 수 있음)
+      input.value = '';
+      renderSubTagChipOptions();
     });
   });
   updateSubTagTriggerLabel();
@@ -7841,58 +8162,20 @@ document.getElementById('cl-entity-type').addEventListener('change', ()=>{
   const allowed = CLIENT_SUBTAG_OPTIONS[entityType] || [];
   clSubTags = clSubTags.filter(t=>allowed.includes(t.key));
   renderSubTagChipOptions();
-  updateFaithfulYearVisibility();
 });
-document.getElementById('cl-subtag-trigger').addEventListener('click', (e)=>{
-  e.stopPropagation();
-  const pop = document.getElementById('cl-subtag-popover');
-  pop.style.display = pop.style.display === 'none' ? 'block' : 'none';
+document.getElementById('cl-subtag-trigger').addEventListener('click', ()=>{
+  renderSubTagChipOptions();
+  document.getElementById('clSubtagModalOverlay').style.display = 'flex';
 });
-document.addEventListener('click', (e)=>{
-  const pop = document.getElementById('cl-subtag-popover');
-  const trigger = document.getElementById('cl-subtag-trigger');
-  if(pop && pop.style.display !== 'none' && !pop.contains(e.target) && e.target !== trigger){
-    pop.style.display = 'none';
-  }
+function closeClSubtagModal(){
+  document.getElementById('clSubtagModalOverlay').style.display = 'none';
+  updateSubTagTriggerLabel();
+}
+document.getElementById('clSubtagModalClose').addEventListener('click', closeClSubtagModal);
+document.getElementById('clSubtagModalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'clSubtagModalOverlay') closeClSubtagModal();
 });
 renderSubTagChipOptions();
-
-// 상세유형 중 "성실"이 붙어있을 때만 귀속연도 입력칸을 보여줌 (성실신고 대상 여부는 해마다 바뀔 수 있어서)
-function updateFaithfulYearVisibility(){
-  const isFaithful = clSubTags.some(t=>t.key==='성실');
-  document.getElementById('cl-faithful-year-field').style.display = isFaithful ? 'flex' : 'none';
-}
-
-// 성실신고 대상 귀속연도는 여러 해가 될 수 있어서 배열로 관리 (매년 새로 추가/삭제 가능)
-let clFaithfulYears = [];
-function renderFaithfulYearChips(){
-  const wrap = document.getElementById('cl-faithful-years-list');
-  if(!wrap) return;
-  if(!clFaithfulYears.length){
-    wrap.innerHTML = `<span style="font-size:11.5px; color:var(--ink-soft);">아직 추가된 연도가 없어요.</span>`;
-    return;
-  }
-  wrap.innerHTML = [...clFaithfulYears].sort().map(y=>`
-    <span style="display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:700; background:var(--amber-bg); color:#8A6200; padding:3px 6px 3px 10px; border-radius:14px;">
-      ${escHtml(y)}년
-      <button type="button" class="cl-faithful-year-remove" data-year="${escHtml(y)}" style="background:none; border:none; cursor:pointer; color:#8A6200; font-weight:900; padding:0 2px; font-size:13px; line-height:1;">×</button>
-    </span>`).join('');
-  wrap.querySelectorAll('.cl-faithful-year-remove').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      clFaithfulYears = clFaithfulYears.filter(y=>y !== btn.dataset.year);
-      renderFaithfulYearChips();
-    });
-  });
-}
-document.getElementById('cl-faithful-year-add-btn').addEventListener('click', ()=>{
-  const input = document.getElementById('cl-faithful-year-input');
-  const y = input.value.trim();
-  if(!/^\d{4}$/.test(y)){ alert('연도를 4자리 숫자로 입력해주세요. (예: 2025)'); return; }
-  if(!clFaithfulYears.includes(y)) clFaithfulYears.push(y);
-  input.value = '';
-  renderFaithfulYearChips();
-});
-renderFaithfulYearChips();
 
 function updateTaxTypeEtcVisibility(taxType){
   const field = document.getElementById('cl-taxtype-etc-field');
@@ -7975,7 +8258,7 @@ function renderMemoRows(){
   }
   wrap.innerHTML = clMemoRows.map((row, i)=>`
     <div class="field-row cl-memo-row" data-idx="${i}" style="display:flex; gap:8px; align-items:center; margin-bottom:6px;">
-      <input type="text" class="cl-memo-text" placeholder="예: 매년 12월 재계약, 특이사항 등" value="${escHtml(row.text)}" style="flex:1;">
+      <div class="field" style="flex:1; margin-bottom:0;"><input type="text" class="cl-memo-text" placeholder="예: 매년 12월 재계약, 특이사항 등" value="${escHtml(row.text)}"></div>
       <button type="button" class="del-btn cl-memo-remove-btn">삭제</button>
     </div>`).join('');
   wrap.querySelectorAll('.cl-memo-row').forEach(rowEl=>{
@@ -8097,48 +8380,6 @@ document.getElementById('personalinfo-cancel').addEventListener('click', ()=>{
 
 document.getElementById('pi-search').addEventListener('input', ()=>renderPersonalInfo());
 
-document.getElementById('otherExpenseForm').addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const date = document.getElementById('oe-date').value;
-  const description = document.getElementById('oe-desc').value.trim();
-  const amount = Number(document.getElementById('oe-amount').value);
-  if(!date || !amount) return;
-  if(editingExpense.kind==='other'){
-    const en = expense.otherExpenses.find(x=>x.id===editingExpense.id);
-    if(en){ en.date=date; en.amount=amount; en.description=description; }
-    cancelExpenseEdit('other');
-    document.getElementById('otherExpenseSaveMsg').textContent = '수정됨';
-  } else {
-    expense.otherExpenses.push({id:genId(), date, description, amount});
-    document.getElementById('otherExpenseSaveMsg').textContent = '추가됨';
-  }
-  await saveExpense();
-  setTimeout(()=>document.getElementById('otherExpenseSaveMsg').textContent='',1200);
-  document.getElementById('oe-desc').value=''; document.getElementById('oe-amount').value='';
-  renderExpense();
-});
-
-document.getElementById('prepaidForm').addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const date = document.getElementById('pp-date').value;
-  const memo = document.getElementById('pp-memo').value.trim();
-  const amount = Number(document.getElementById('pp-amount').value);
-  if(!date || !amount) return;
-  if(editingExpense.kind==='prepaid'){
-    const en = expense.prepaidEntries.find(x=>x.id===editingExpense.id);
-    if(en){ en.date=date; en.amount=amount; en.memo=memo; }
-    cancelExpenseEdit('prepaid');
-    document.getElementById('prepaidSaveMsg').textContent = '수정됨';
-  } else {
-    expense.prepaidEntries.push({id:genId(), date, memo, amount});
-    document.getElementById('prepaidSaveMsg').textContent = '추가됨';
-  }
-  await saveExpense();
-  setTimeout(()=>document.getElementById('prepaidSaveMsg').textContent='',1200);
-  document.getElementById('pp-memo').value=''; document.getElementById('pp-amount').value='';
-  renderExpense();
-});
-
 let editingExclusionId = null;
 
 document.getElementById('exclusionForm').addEventListener('submit', async (e)=>{
@@ -8216,10 +8457,20 @@ document.getElementById('settingsForm').addEventListener('submit', async (e)=>{
   const ad = document.getElementById('s-asof-d').value;
   settings.leaveAsOfDate = (ay && am && ad) ? `${ay}-${String(am).padStart(2,'0')}-${String(ad).padStart(2,'0')}` : '';
 
+  settings.employmentStatus = document.getElementById('s-employment-status').value || '근무중';
+  if(settings.employmentStatus === '퇴사'){
+    settings.lastWorkDate = document.getElementById('s-last-work-date').value || '';
+    settings.resignReason = document.getElementById('s-resign-reason').value || '자진퇴사';
+  } else {
+    settings.lastWorkDate = '';
+    settings.resignReason = '';
+  }
+
   const newSnapshot = {
     employeeName: settings.employeeName, birthDate: settings.birthDate, hireDate: settings.hireDate,
     leaveBaselineDate: settings.leaveBaselineDate, leaveBaselineDays: settings.leaveBaselineDays,
-    leaveAsOfDate: settings.leaveAsOfDate
+    leaveAsOfDate: settings.leaveAsOfDate,
+    employmentStatus: settings.employmentStatus, lastWorkDate: settings.lastWorkDate, resignReason: settings.resignReason
   };
   settings.employeeInfoHistory = settings.employeeInfoHistory || [];
   const lastEntry = settings.employeeInfoHistory[settings.employeeInfoHistory.length - 1];
@@ -8237,6 +8488,10 @@ document.getElementById('settingsForm').addEventListener('submit', async (e)=>{
   renderAll();
   renderEmployeeInfoView();
   renderEmployeeInfoHistory();
+});
+
+document.getElementById('s-employment-status').addEventListener('change', (e)=>{
+  document.getElementById('s-resign-fields').style.display = e.target.value === '퇴사' ? '' : 'none';
 });
 
 document.getElementById('clearAsOfBtn').addEventListener('click', async ()=>{
@@ -8320,33 +8575,58 @@ document.getElementById('lunchLimitForm').addEventListener('submit', async (e)=>
   renderExpense();
 });
 
-document.querySelectorAll('.policy-cat-btn').forEach(btn=>{
+document.querySelectorAll('.policy-cat-btn[data-cat]').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.policy-cat-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.policy-cat-btn[data-cat]').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     viewingPolicyCategory = btn.dataset.cat;
     renderPolicyDetail();
+    updatePolicyRegisterChipVisibility();
   });
 });
 
-document.querySelectorAll('.policyedit-cat-btn').forEach(btn=>{
+// 설정(회사/직원/복지/데이터) 카테고리 칩 - 눌린 칩에 해당하는 .settings-group만 보여줌
+document.querySelectorAll('.settings-cat-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.policyedit-cat-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.settings-cat-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
-    editingPolicyCategory = btn.dataset.cat;
-    editingPolicyHistoryId = null;
-    document.getElementById('savePolicyBtn').textContent = '새 버전으로 저장';
-    document.getElementById('cancelPolicyEditBtn').style.display = 'none';
-    const cur = getCurrentPolicy(editingPolicyCategory);
-    document.getElementById('policyContent').value = cur.content || policyDefaultText(editingPolicyCategory);
-    const peDate = cur.effectiveDate || '2026-07-01';
-    const [py,pm,pd] = peDate.split('-');
-    document.getElementById('pol-y').value = py;
-    document.getElementById('pol-m').value = Number(pm);
-    document.getElementById('pol-d').value = Number(pd);
-    document.getElementById('policyPreviewWrap').innerHTML = '';
-    renderPolicyHistory();
+    const cat = btn.dataset.settingsCat;
+    document.querySelectorAll('#settingsContent > .settings-group[data-settings-cat]').forEach(g=>{
+      g.style.display = (g.dataset.settingsCat === cat) ? 'block' : 'none';
+    });
   });
+});
+
+function updatePolicyRegisterChipVisibility(){
+  const chip = document.getElementById('policyRegisterChip');
+  if(!chip) return;
+  chip.style.display = (gdriveAccessToken && isCurrentUserAdmin) ? 'inline-flex' : 'none';
+}
+
+// 내부규정 탭의 "✏️ 등록및수정" 칩 - 새 버전을 등록하는 팝업을 염 (기존 내용을 시작점으로 채워줌)
+function openPolicyRegisterModal(){
+  const cur = getCurrentPolicy(viewingPolicyCategory);
+  document.getElementById('policyRegisterModalTitle').textContent = `${policyCategoryLabel(viewingPolicyCategory)} 등록`;
+  document.getElementById('policyContent').value = cur.content || policyDefaultText(viewingPolicyCategory);
+  const peDate = cur.effectiveDate || todayStr();
+  const [py,pm,pd] = peDate.split('-');
+  document.getElementById('pol-y').value = py;
+  document.getElementById('pol-m').value = Number(pm);
+  document.getElementById('pol-d').value = Number(pd);
+  document.getElementById('pol-current-apply').checked = false;
+  document.getElementById('policySaveMsg').textContent = '';
+  document.getElementById('policyRegisterModalOverlay').style.display = 'flex';
+}
+function closePolicyRegisterModal(){
+  document.getElementById('policyRegisterModalOverlay').style.display = 'none';
+}
+document.getElementById('policyRegisterChip').addEventListener('click', openPolicyRegisterModal);
+document.getElementById('policyRegisterModalClose').addEventListener('click', closePolicyRegisterModal);
+document.getElementById('policyRegisterModalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'policyRegisterModalOverlay') closePolicyRegisterModal();
+});
+document.getElementById('policyHistoryChip').addEventListener('click', ()=>{
+  openPolicyHistoryPopup(viewingPolicyCategory);
 });
 
 document.getElementById('savePolicyBtn').addEventListener('click', async ()=>{
@@ -8355,41 +8635,341 @@ document.getElementById('savePolicyBtn').addEventListener('click', async ()=>{
   const pm = document.getElementById('pol-m').value;
   const pd = document.getElementById('pol-d').value;
   const effectiveDate = (py && pm && pd) ? `${py}-${String(pm).padStart(2,'0')}-${String(pd).padStart(2,'0')}` : '';
-  const key = policyHistoryKey(editingPolicyCategory);
+  const cat = viewingPolicyCategory;
+  const key = policyHistoryKey(cat);
   settings[key] = settings[key] || [];
-  if(editingPolicyHistoryId){
-    const entry = settings[key].find(h=>h.id === editingPolicyHistoryId);
-    if(entry){
-      entry.content = content;
-      entry.effectiveDate = effectiveDate;
-      entry.editedDate = todayStr();
-    }
-    editingPolicyHistoryId = null;
-    document.getElementById('savePolicyBtn').textContent = '새 버전으로 저장';
-    document.getElementById('cancelPolicyEditBtn').style.display = 'none';
-    document.getElementById('policySaveMsg').textContent = `${policyCategoryLabel(editingPolicyCategory)} 수정됨`;
-  } else {
-    const editedDate = todayStr();
-    settings[key].push({ id:genId(), content, editedDate, effectiveDate });
-    document.getElementById('policySaveMsg').textContent = `${policyCategoryLabel(editingPolicyCategory)} 새 버전으로 저장됨`;
-  }
+  const pinNow = document.getElementById('pol-current-apply').checked;
+  if(pinNow) settings[key].forEach(h=>{ h.pinnedAsCurrent = false; });
+  const editedDate = todayStr();
+  settings[key].push({ id:genId(), content, editedDate, effectiveDate, pinnedAsCurrent: pinNow });
+  document.getElementById('policySaveMsg').textContent = `${policyCategoryLabel(cat)} 등록됨`;
   await saveSettings();
-  setTimeout(()=>document.getElementById('policySaveMsg').textContent='',1800);
   renderPolicyDetail();
-  renderPolicyHistory();
-});
-document.getElementById('cancelPolicyEditBtn').addEventListener('click', ()=>{
-  editingPolicyHistoryId = null;
-  document.getElementById('policyContent').value = '';
-  document.getElementById('pol-y').value = '';
-  document.getElementById('pol-m').value = '';
-  document.getElementById('pol-d').value = '';
-  document.getElementById('savePolicyBtn').textContent = '새 버전으로 저장';
-  document.getElementById('cancelPolicyEditBtn').style.display = 'none';
+  setTimeout(()=>{ closePolicyRegisterModal(); }, 700);
 });
 
 function escHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ══════════════════════════════════════════════════════════
+// 🖋️ 결재 탭: 신고현황 / 신고도움 / 결재(그룹웨어)
+// ══════════════════════════════════════════════════════════
+
+function updateApprovalLockUI(){
+  const signedIn = !!gdriveAccessToken;
+  const lockedEl = document.getElementById('approvalLocked');
+  const contentEl = document.getElementById('approvalContent');
+  if(!lockedEl || !contentEl) return;
+  lockedEl.style.display = signedIn ? 'none' : 'block';
+  contentEl.style.display = signedIn ? 'block' : 'none';
+}
+
+// ── 신고현황: 원천세/부가세/법인세/종소세별 검토표 ──
+let viewingFilingType = '원천세';
+function filingStatusClientList(taxType){
+  const active = (clients.list||[]).filter(c=> c.status !== '해지' && ['기장대행','신고대리'].includes(c.taxType));
+  if(taxType === '법인세') return active.filter(c=>c.entityType === '법인');
+  if(taxType === '종소세') return active.filter(c=>c.entityType === '개인');
+  return active; // 원천세/부가세: 법인+개인 모두
+}
+function currentFilingPeriod(taxType){
+  const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
+  return (taxType === '법인세' || taxType === '종소세') ? monthStr.slice(0,4) : monthStr;
+}
+function renderFilingStatusTable(){
+  const taxType = viewingFilingType;
+  const period = currentFilingPeriod(taxType);
+  const hintEl = document.getElementById('filingStatusPeriodHint');
+  const periodLabel = (taxType === '법인세' || taxType === '종소세') ? `${period}년 귀속` : `${period.replace('-','년 ')}월`;
+  if(hintEl) hintEl.textContent = `${periodLabel} · ${taxType} 신고현황`;
+  const list = filingStatusClientList(taxType);
+  const wrap = document.getElementById('filingStatusTableWrap');
+  if(!wrap) return;
+  if(!list.length){ wrap.innerHTML = `<div class="empty-state">해당하는 거래처가 없습니다.</div>`; return; }
+  sharedFilingStatus[taxType] = sharedFilingStatus[taxType] || {};
+  sharedFilingStatus[taxType][period] = sharedFilingStatus[taxType][period] || {};
+  const periodData = sharedFilingStatus[taxType][period];
+  const sorted = [...list].sort((a,b)=> (a.name||'').localeCompare(b.name||'', 'ko'));
+  const rows = sorted.map(c=>{
+    const entry = periodData[c.id] || { status:'미확인', memo:'' };
+    return `<tr>
+      <td>${escHtml(c.name)}</td>
+      <td><select class="filing-status-select" data-client-id="${c.id}">
+        <option value="미확인" ${entry.status==='미확인'?'selected':''}>미확인</option>
+        <option value="검토중" ${entry.status==='검토중'?'selected':''}>검토중</option>
+        <option value="신고완료" ${entry.status==='신고완료'?'selected':''}>신고완료</option>
+      </select></td>
+      <td><input type="text" class="filing-status-memo" data-client-id="${c.id}" value="${escHtml(entry.memo||'')}" placeholder="메모" style="width:100%; border:1.5px solid var(--border); border-radius:6px; padding:4px 8px; font-family:'Pretendard',sans-serif; font-size:12px;"></td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<table><thead><tr><th>거래처</th><th>진행상태</th><th>메모</th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.querySelectorAll('.filing-status-select').forEach(sel=>{
+    sel.addEventListener('change', async ()=>{
+      const cid = sel.dataset.clientId;
+      periodData[cid] = periodData[cid] || { status:'미확인', memo:'' };
+      periodData[cid].status = sel.value;
+      periodData[cid].updatedAt = new Date().toLocaleString('ko-KR');
+      await saveSharedFilingStatus();
+    });
+  });
+  let filingMemoTimer = null;
+  wrap.querySelectorAll('.filing-status-memo').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const cid = inp.dataset.clientId;
+      periodData[cid] = periodData[cid] || { status:'미확인', memo:'' };
+      periodData[cid].memo = inp.value;
+      clearTimeout(filingMemoTimer);
+      filingMemoTimer = setTimeout(async ()=>{ await saveSharedFilingStatus(); }, 500);
+    });
+  });
+}
+document.querySelectorAll('.filing-type-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.filing-type-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    viewingFilingType = btn.dataset.filingType;
+    renderFilingStatusTable();
+  });
+});
+
+// ── 신고도움: 거래처별 신고 전 체크리스트 ──
+const FILING_HELP_ITEMS = [
+  { key:'openDate', label:'개업일' },
+  { key:'bizType', label:'업종' },
+  { key:'staffCount', label:'직원 수' },
+  { key:'vehicleInfo', label:'차량 정보' },
+  { key:'realEstate', label:'부동산 보유 현황' },
+  { key:'bankAccount', label:'사업용 계좌' },
+  { key:'cardInfo', label:'사업용 카드' },
+  { key:'etcNote', label:'기타 특이사항' },
+];
+function populateFilingHelpClientSelect(){
+  const sel = document.getElementById('filingHelpClientSelect');
+  if(!sel) return;
+  const activeList = (clients.list||[]).filter(c=>c.status !== '해지').sort((a,b)=>(a.name||'').localeCompare(b.name||'', 'ko'));
+  const prevVal = sel.value;
+  if(!activeList.length){ sel.innerHTML = `<option value="">거래처 없음</option>`; return; }
+  sel.innerHTML = activeList.map(c=>`<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
+  if(activeList.some(c=>c.id===prevVal)) sel.value = prevVal;
+}
+function renderFilingHelpChecklist(){
+  const sel = document.getElementById('filingHelpClientSelect');
+  const wrap = document.getElementById('filingHelpChecklistWrap');
+  if(!sel || !wrap) return;
+  const cid = sel.value;
+  if(!cid){ wrap.innerHTML = `<div class="empty-state">거래처가 없습니다.</div>`; return; }
+  sharedFilingHelp[cid] = sharedFilingHelp[cid] || { items:{} };
+  const data = sharedFilingHelp[cid].items;
+  const rows = FILING_HELP_ITEMS.map(item=>{
+    const cur = data[item.key] || { checked:false, note:'' };
+    return `<div style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--border);">
+      <input type="checkbox" class="filing-help-check" data-key="${item.key}" ${cur.checked ? 'checked' : ''}>
+      <span style="min-width:92px; font-weight:700; font-size:13px;">${escHtml(item.label)}</span>
+      <input type="text" class="filing-help-note" data-key="${item.key}" value="${escHtml(cur.note||'')}" placeholder="메모" style="flex:1; border:1.5px solid var(--border); border-radius:6px; padding:5px 8px; font-family:'Pretendard',sans-serif; font-size:12px;">
+    </div>`;
+  }).join('');
+  wrap.innerHTML = rows;
+  wrap.querySelectorAll('.filing-help-check').forEach(chk=>{
+    chk.addEventListener('change', async ()=>{
+      const key = chk.dataset.key;
+      data[key] = data[key] || { checked:false, note:'' };
+      data[key].checked = chk.checked;
+      await saveSharedFilingHelp();
+    });
+  });
+  let filingHelpNoteTimer = null;
+  wrap.querySelectorAll('.filing-help-note').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const key = inp.dataset.key;
+      data[key] = data[key] || { checked:false, note:'' };
+      data[key].note = inp.value;
+      clearTimeout(filingHelpNoteTimer);
+      filingHelpNoteTimer = setTimeout(async ()=>{ await saveSharedFilingHelp(); }, 500);
+    });
+  });
+}
+document.getElementById('filingHelpClientSelect')?.addEventListener('change', renderFilingHelpChecklist);
+
+// ── 신고현황/신고도움/결재 상위 카테고리 칩 전환 ──
+document.querySelectorAll('.approval-cat-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.approval-cat-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const cat = btn.dataset.approvalCat;
+    document.querySelectorAll('#approvalContent > .approval-panel[data-approval-cat]').forEach(p=>{
+      p.style.display = (p.dataset.approvalCat === cat) ? 'block' : 'none';
+    });
+    if(cat === 'status') renderFilingStatusTable();
+    else if(cat === 'help'){ populateFilingHelpClientSelect(); renderFilingHelpChecklist(); }
+    else if(cat === 'doc'){ populateApproverSelect(); renderApprovalInbox(); renderApprovalMine(); renderApprovalAll(); }
+  });
+});
+
+// ── 결재(그룹웨어): 기안하기 / 결재함 / 기안함 / 전체이력 ──
+function resolveNameByEmail(email){
+  if(!email) return '';
+  const lower = email.toLowerCase();
+  const p = getProfiles().find(x=>(x.email||'').toLowerCase()===lower);
+  if(p) return readProfileRaw(p.id,'settings')?.employeeName || p.name || email;
+  if(sharedAdminNames[email]) return sharedAdminNames[email];
+  return email;
+}
+function populateApproverSelect(){
+  const sel = document.getElementById('ad-approver');
+  if(!sel) return;
+  const myEmail = (currentUserEmail||'').toLowerCase();
+  const others = (sharedAdminEmails||[]).filter(e=>e && e.toLowerCase() !== myEmail);
+  const list = others.length ? others : (sharedAdminEmails||[]);
+  if(!list.length){ sel.innerHTML = `<option value="">등록된 관리자가 없어요</option>`; return; }
+  const prevVal = sel.value;
+  sel.innerHTML = list.map(email=>{
+    const nm = sharedAdminNames[email];
+    return `<option value="${escHtml(email)}">${nm ? escHtml(nm)+' · ' : ''}${escHtml(email)}</option>`;
+  }).join('');
+  if(list.includes(prevVal)) sel.value = prevVal;
+}
+document.getElementById('approvalDraftForm')?.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const title = document.getElementById('ad-title').value.trim();
+  const content = document.getElementById('ad-content').value.trim();
+  const attachmentLink = document.getElementById('ad-attachment').value.trim();
+  const approverEmail = document.getElementById('ad-approver').value;
+  const msgEl = document.getElementById('approvalDraftSaveMsg');
+  if(!title){ if(msgEl) msgEl.textContent = '제목을 입력해주세요'; return; }
+  if(!approverEmail){ if(msgEl) msgEl.textContent = '결재자를 선택해주세요 (등록된 관리자가 있어야 해요)'; return; }
+  sharedApprovals.unshift({
+    id: genId(), title, content, attachmentLink,
+    drafterEmail: currentUserEmail || '',
+    drafterName: currentStaffDisplayName(),
+    approverEmail, approverName: resolveNameByEmail(approverEmail),
+    status:'대기', comment:'', createdAt: new Date().toLocaleString('ko-KR'), decidedAt:''
+  });
+  await saveSharedApprovals();
+  if(msgEl) msgEl.textContent = '기안 상신 완료';
+  document.getElementById('approvalDraftForm').reset();
+  populateApproverSelect();
+  renderApprovalBadge();
+  renderApprovalMine();
+  renderApprovalAll();
+  setTimeout(()=>{ if(msgEl) msgEl.textContent=''; }, 2500);
+});
+
+document.querySelectorAll('.approval-doc-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.approval-doc-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const doc = btn.dataset.approvalDoc;
+    document.querySelectorAll('.approval-panel[data-approval-cat="doc"] > .approval-doc-panel[data-approval-doc]').forEach(p=>{
+      p.style.display = (p.dataset.approvalDoc === doc) ? 'block' : 'none';
+    });
+    if(doc === 'new') populateApproverSelect();
+    else if(doc === 'inbox') renderApprovalInbox();
+    else if(doc === 'mine') renderApprovalMine();
+    else if(doc === 'all') renderApprovalAll();
+  });
+});
+
+function approvalStatusTagHtml(status){
+  if(status === '승인') return `<span class="tag tag-grant">승인</span>`;
+  if(status === '반려') return `<span class="tag" style="background:#FEE2E2; color:#B91C1C;">반려</span>`;
+  return `<span class="tag tag-usage">대기</span>`;
+}
+function approvalRowHtml(item){
+  return `<tr>
+    <td>${escHtml(item.title)}</td>
+    <td>${escHtml(item.drafterName || item.drafterEmail || '')}</td>
+    <td>${escHtml(item.approverName || item.approverEmail || '')}</td>
+    <td>${approvalStatusTagHtml(item.status)}</td>
+    <td class="num">${escHtml(item.createdAt||'')}</td>
+    <td><button type="button" class="del-btn approval-view-btn" data-id="${item.id}">보기</button></td>
+  </tr>`;
+}
+function bindApprovalViewButtons(wrap){
+  wrap.querySelectorAll('.approval-view-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>openApprovalDetailModal(btn.dataset.id));
+  });
+}
+function renderApprovalTable(wrapId, list, emptyText){
+  const wrap = document.getElementById(wrapId);
+  if(!wrap) return;
+  if(!list.length){ wrap.innerHTML = `<div class="empty-state">${emptyText}</div>`; return; }
+  const rows = list.map(approvalRowHtml).join('');
+  wrap.innerHTML = `<table><thead><tr><th>제목</th><th>기안자</th><th>결재자</th><th>상태</th><th>기안일</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  bindApprovalViewButtons(wrap);
+}
+function renderApprovalInbox(){
+  const myEmail = (currentUserEmail||'').toLowerCase();
+  const list = (sharedApprovals||[]).filter(a=>(a.approverEmail||'').toLowerCase()===myEmail && a.status==='대기');
+  renderApprovalTable('approvalInboxWrap', list, '결재 대기 문서가 없습니다.');
+}
+function renderApprovalMine(){
+  const myEmail = (currentUserEmail||'').toLowerCase();
+  const list = (sharedApprovals||[]).filter(a=>(a.drafterEmail||'').toLowerCase()===myEmail);
+  renderApprovalTable('approvalMineWrap', list, '기안한 문서가 없습니다.');
+}
+function renderApprovalAll(){
+  renderApprovalTable('approvalAllWrap', sharedApprovals||[], '결재 이력이 없습니다.');
+}
+function openApprovalDetailModal(id){
+  const item = (sharedApprovals||[]).find(a=>a.id===id);
+  if(!item) return;
+  document.getElementById('approvalDetailModalTitle').textContent = item.title;
+  const myEmail = (currentUserEmail||'').toLowerCase();
+  const canDecide = item.status === '대기' && (item.approverEmail||'').toLowerCase() === myEmail;
+  const attachmentHtml = item.attachmentLink ? `<div style="margin-top:8px;"><a href="${escHtml(item.attachmentLink)}" target="_blank" rel="noopener" style="color:var(--navy); font-weight:700;">📎 첨부 보기</a></div>` : '';
+  document.getElementById('approvalDetailModalBody').innerHTML = `
+    <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:10px;">기안자 ${escHtml(item.drafterName||item.drafterEmail||'')} · 결재자 ${escHtml(item.approverName||item.approverEmail||'')} · ${escHtml(item.createdAt||'')}</div>
+    <div style="white-space:pre-wrap; line-height:1.6; font-size:13.5px; color:var(--ink); background:var(--bg); border-radius:10px; padding:12px;">${escHtml(item.content||'(내용 없음)')}</div>
+    ${attachmentHtml}
+    <div style="margin-top:12px; font-weight:700;">상태: ${approvalStatusTagHtml(item.status)}${item.comment ? ' · '+escHtml(item.comment) : ''}${item.decidedAt ? ' · '+escHtml(item.decidedAt) : ''}</div>
+    ${canDecide ? `
+      <div class="field" style="margin-top:14px;"><label>의견 (선택)</label><input type="text" id="approvalDecisionComment" placeholder="의견을 남길 수 있어요"></div>
+      <div style="text-align:center; display:flex; gap:8px; justify-content:center; margin-top:10px;">
+        <button type="button" class="submit-btn" style="width:auto; padding:8px 18px;" id="approvalApproveBtn">승인</button>
+        <button type="button" class="del-btn" style="padding:8px 18px;" id="approvalRejectBtn">반려</button>
+      </div>
+    ` : ''}
+  `;
+  if(canDecide){
+    document.getElementById('approvalApproveBtn').addEventListener('click', ()=>decideApproval(id, '승인'));
+    document.getElementById('approvalRejectBtn').addEventListener('click', ()=>decideApproval(id, '반려'));
+  }
+  document.getElementById('approvalDetailModalOverlay').style.display = 'flex';
+}
+async function decideApproval(id, decision){
+  const item = (sharedApprovals||[]).find(a=>a.id===id);
+  if(!item) return;
+  const commentEl = document.getElementById('approvalDecisionComment');
+  item.status = decision;
+  item.comment = (commentEl?.value || '').trim();
+  item.decidedAt = new Date().toLocaleString('ko-KR');
+  await saveSharedApprovals();
+  document.getElementById('approvalDetailModalOverlay').style.display = 'none';
+  renderApprovalInbox();
+  renderApprovalMine();
+  renderApprovalAll();
+  renderApprovalBadge();
+}
+document.getElementById('approvalDetailModalClose')?.addEventListener('click', ()=>{
+  document.getElementById('approvalDetailModalOverlay').style.display = 'none';
+});
+document.getElementById('approvalDetailModalOverlay')?.addEventListener('click', (e)=>{
+  if(e.target.id === 'approvalDetailModalOverlay') document.getElementById('approvalDetailModalOverlay').style.display = 'none';
+});
+function renderApprovalBadge(){
+  const myEmail = (currentUserEmail||'').toLowerCase();
+  const count = (sharedApprovals||[]).filter(a=>(a.approverEmail||'').toLowerCase()===myEmail && a.status==='대기').length;
+  const navBadge = document.getElementById('approvalPendingBadge');
+  if(navBadge){
+    navBadge.style.display = count>0 ? 'flex' : 'none';
+    navBadge.textContent = String(count);
+  }
+  const inboxCount = document.getElementById('approvalInboxCount');
+  if(inboxCount){
+    inboxCount.style.display = count>0 ? 'inline-block' : 'none';
+    inboxCount.textContent = count>0 ? ` (${count})` : '';
+  }
 }
 
 function renderPolicyHTML(text){
@@ -8517,7 +9097,7 @@ function applyPermissionUI(){
     const w = document.getElementById(id);
     if(w) w.style.display = admin ? 'block' : 'none';
   });
-  ['ciCorpDefaultsBtn','ciCorpAddBtn','ciTeamDefaultsBtn','ciTeamAddPersonBtn'].forEach(id=>{
+  ['ciCorpDefaultsBtn','ciCorpAddBtn','ciTeamDefaultsBtn','ciTeamAddPersonBtn','ciTeamGeneralAddBtn'].forEach(id=>{
     const b = document.getElementById(id);
     if(b) b.style.display = admin ? 'inline-block' : 'none';
   });
@@ -8600,11 +9180,9 @@ function renderAdminEmailList(){
 
 function updatePolicyLockUI(){
   const signedIn = !!gdriveAccessToken;
-  const admin = signedIn && isCurrentUserAdmin;
   const pairs = [
     ['quickGuideLocked', 'quickGuideContent', signedIn],
-    ['policyDetailLocked', 'policyDetailOuter', signedIn],
-    ['policyEditLocked', 'policyEditContent', admin]
+    ['policyDetailLocked', 'policyDetailOuter', signedIn]
   ];
   pairs.forEach(([lockedId, contentId, unlocked])=>{
     const lockedEl = document.getElementById(lockedId);
@@ -8613,115 +9191,137 @@ function updatePolicyLockUI(){
     lockedEl.style.display = unlocked ? 'none' : 'block';
     contentEl.style.display = unlocked ? 'block' : 'none';
   });
+  updatePolicyRegisterChipVisibility();
+  updateApprovalLockUI();
 }
 function renderPolicyDetail(){
   const cur = getCurrentPolicy(viewingPolicyCategory);
   document.getElementById('policyDetailWrap').innerHTML = renderPolicyHTML(cur.content || policyDefaultText(viewingPolicyCategory));
-  document.getElementById('policyEffectiveBadge').textContent = `${policyCategoryLabel(viewingPolicyCategory)} · 적용일자 ${cur.effectiveDate || '-'}`;
+  const effLabel = cur.effectiveDate ? `(${cur.effectiveDate.replace(/-/g,'.')}개정)` : '(적용일자 -)';
+  document.getElementById('policyEffectiveBadge').textContent = effLabel;
 }
 
-let editingPolicyCategory = 'hr';
-let editingPolicyHistoryId = null;
-function renderPolicyHistory(){
-  const wrap = document.getElementById('policyHistoryWrap');
-  const histAsc = settings[policyHistoryKey(editingPolicyCategory)] || [];
-  // 저장한(입력한) 순서가 아니라 "적용일자"가 늦은 순으로 보여줌 -> 적용일자가 제일 늦은 게 항상 "현재 버전"
+// ── 여러 개 동시에 띄우고 화면 위에서 자유롭게 이동시킬 수 있는 팝업(모달 아님, 배경 잠금 없음) ──
+let floatPopupZ = 10000;
+let floatPopupOpenCount = 0;
+function openDraggablePopup(opts){
+  const { title, html, width } = opts;
+  const cascade = (floatPopupOpenCount % 6) * 26;
+  floatPopupOpenCount++;
+  const el = document.createElement('div');
+  el.className = 'floating-popup';
+  const w = width || 460;
+  el.style.top = (70 + cascade) + 'px';
+  el.style.left = `calc(50% - ${w/2}px + ${cascade}px)`;
+  el.style.width = w + 'px';
+  el.style.maxWidth = '92vw';
+  el.style.zIndex = String(++floatPopupZ);
+  el.innerHTML = `
+    <div class="floating-popup-header">
+      <span style="font-weight:800; font-size:14px; color:var(--ink);">${escHtml(title)}</span>
+      <button type="button" class="del-btn floating-popup-close">닫기</button>
+    </div>
+    <div class="floating-popup-body"></div>
+  `;
+  el.querySelector('.floating-popup-body').innerHTML = html;
+  document.body.appendChild(el);
+  el.addEventListener('mousedown', ()=>{ el.style.zIndex = String(++floatPopupZ); });
+  el.querySelector('.floating-popup-close').addEventListener('click', ()=>{ el.remove(); });
+  const header = el.querySelector('.floating-popup-header');
+  let dragging = false, startX=0, startY=0, origX=0, origY=0;
+  header.addEventListener('mousedown', (e)=>{
+    dragging = true;
+    const rect = el.getBoundingClientRect();
+    startX = e.clientX; startY = e.clientY; origX = rect.left; origY = rect.top;
+    el.style.left = origX + 'px';
+    el.style.top = origY + 'px';
+    e.preventDefault();
+  });
+  const onMove = (e)=>{
+    if(!dragging) return;
+    el.style.left = (origX + (e.clientX - startX)) + 'px';
+    el.style.top = (origY + (e.clientY - startY)) + 'px';
+  };
+  const onUp = ()=>{ dragging = false; };
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+  return el;
+}
+
+// 내부규정 탭의 "🕐 이력" 칩 - 적용일자 / 적용여부(체크) / 이력관리(내용보기·개정전후비교·삭제) 팝업
+function policyHistoryPopupBodyHtml(cat){
+  const histAsc = settings[policyHistoryKey(cat)] || [];
   const hist = sortPolicyHistoryByEffective(histAsc);
-  if(!hist.length){
-    wrap.innerHTML = `<div class="empty-state">저장된 수정 이력이 없습니다.</div>`;
-    return;
-  }
+  if(!hist.length) return `<div class="empty-state">저장된 이력이 없습니다.</div>`;
+  const admin = !!gdriveAccessToken && isCurrentUserAdmin;
   const rows = hist.map((h, idx)=>{
     const isCurrent = idx === 0;
-    const hasPrev = (idx + 1) < hist.length; // 적용일자 기준 이전 버전이 존재하는지
-    const diffBtn = hasPrev ? `<button class="del-btn policy-diff-btn" data-id="${h.id}">개정전후 비교</button>` : '';
-    const statusTag = isCurrent
-      ? (h.pinnedAsCurrent ? '<span class="tag tag-grant">현재 버전 · 직접 지정</span>' : '<span class="tag tag-grant">현재 버전</span>')
-      : '<span class="tag tag-usage">이전 버전</span>';
-    // 적용일자가 겹치거나 정렬 순서와 다르게 "이걸 지금 현재 버전으로 쓰고 싶다" 할 때 직접 지정할 수 있는 버튼
-    const applyBtn = isCurrent ? '' : `<button class="del-btn policy-pin-btn" data-id="${h.id}">이 버전을 최신으로 적용</button>`;
+    const hasPrev = (idx + 1) < hist.length;
+    const diffBtn = hasPrev ? `<button class="del-btn policy-pop-diff-btn" data-id="${h.id}" data-cat="${cat}">개정전후비교</button>` : '';
+    const delBtn = admin ? `<button class="del-btn policy-pop-del-btn" data-id="${h.id}" data-cat="${cat}">삭제</button>` : '';
     return `<tr>
-      <td class="num">${h.editedDate || '-'}</td>
       <td class="num">${h.effectiveDate || '-'}</td>
-      <td>${statusTag}</td>
-      <td style="white-space:nowrap;"><button class="del-btn policy-view-btn" data-id="${h.id}">내용 보기</button> <button class="del-btn policy-edit-btn" data-id="${h.id}">수정</button> ${applyBtn} ${diffBtn} <button class="del-btn policy-history-del-btn" data-id="${h.id}">삭제</button></td>
+      <td><input type="checkbox" class="policy-pop-active-check" data-id="${h.id}" data-cat="${cat}" ${isCurrent ? 'checked' : ''} ${admin ? '' : 'disabled'}></td>
+      <td style="white-space:nowrap;"><button class="del-btn policy-pop-view-btn" data-id="${h.id}" data-cat="${cat}">내용보기</button> ${diffBtn} ${delBtn}</td>
     </tr>`;
-  });
-  renderPaginatedRows(wrap, '<tr><th>수정일</th><th>적용일자</th><th>상태</th><th></th></tr>', rows, 10);
-  wrap.querySelectorAll('.policy-pin-btn').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      const key = policyHistoryKey(editingPolicyCategory);
-      if(!confirm('이 버전을 "현재 버전"으로 지정할까요? (적용일자 순서와 상관없이 이 버전이 맨 위로 와요)')) return;
-      (settings[key]||[]).forEach(h=>{ h.pinnedAsCurrent = (h.id === btn.dataset.id); });
+  }).join('');
+  return `<table><thead><tr><th>적용일자</th><th>적용여부</th><th>이력관리</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function bindPolicyHistoryPopupEvents(container, cat){
+  container.querySelectorAll('.policy-pop-active-check').forEach(cb=>{
+    cb.addEventListener('change', async ()=>{
+      const key = policyHistoryKey(cat);
+      (settings[key]||[]).forEach(h=>{ h.pinnedAsCurrent = (h.id === cb.dataset.id); });
       await saveSettings();
-      document.getElementById('policyPreviewWrap').innerHTML = '';
-      renderPolicyHistory();
       renderPolicyDetail();
+      container.querySelector('.floating-popup-body').innerHTML = policyHistoryPopupBodyHtml(cat);
+      bindPolicyHistoryPopupEvents(container, cat);
     });
   });
-  wrap.querySelectorAll('.policy-edit-btn').forEach(btn=>{
+  container.querySelectorAll('.policy-pop-view-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
+      const histAsc = settings[policyHistoryKey(cat)] || [];
       const entry = histAsc.find(h=>h.id === btn.dataset.id);
       if(!entry) return;
-      editingPolicyHistoryId = entry.id;
-      document.getElementById('policyContent').value = entry.content || '';
-      const [ey,em,ed] = (entry.effectiveDate||'').split('-');
-      document.getElementById('pol-y').value = ey || '';
-      document.getElementById('pol-m').value = em ? Number(em) : '';
-      document.getElementById('pol-d').value = ed ? Number(ed) : '';
-      document.getElementById('savePolicyBtn').textContent = '수정 완료';
-      document.getElementById('cancelPolicyEditBtn').style.display = 'inline-block';
-      document.getElementById('policyContent').scrollIntoView({behavior:'smooth', block:'center'});
+      const effLabel = entry.effectiveDate ? `(${entry.effectiveDate.replace(/-/g,'.')}개정)` : '(적용일자 -)';
+      openDraggablePopup({ title: `내용보기 ${effLabel}`, html: renderPolicyHTML(entry.content), width: 560 });
     });
   });
-  wrap.querySelectorAll('.policy-history-del-btn').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      const key = policyHistoryKey(editingPolicyCategory);
-      settings[key] = settings[key].filter(x=>x.id!==btn.dataset.id);
-      await saveSettings();
-      document.getElementById('policyPreviewWrap').innerHTML = '';
-      renderPolicyHistory();
-      renderPolicyDetail();
-    });
-  });
-  wrap.querySelectorAll('.policy-view-btn').forEach(btn=>{
+  container.querySelectorAll('.policy-pop-diff-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const entry = histAsc.find(h=>h.id === btn.dataset.id);
-      if(!entry) return;
-      const previewWrap = document.getElementById('policyPreviewWrap');
-      previewWrap.innerHTML = `
-        <div class="settings-box" style="max-width:680px; border:2px solid var(--guide-slate);">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <span class="badge">미리보기 · 수정일 ${entry.editedDate || '-'} / 적용일자 ${entry.effectiveDate || '-'}</span>
-            <button type="button" class="del-btn" id="closePolicyPreviewBtn">닫기</button>
-          </div>
-          ${renderPolicyHTML(entry.content)}
-        </div>`;
-      document.getElementById('closePolicyPreviewBtn').addEventListener('click', ()=>{ previewWrap.innerHTML=''; });
-      previewWrap.scrollIntoView({behavior:'smooth', block:'start'});
-    });
-  });
-  wrap.querySelectorAll('.policy-diff-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
+      const histAsc = settings[policyHistoryKey(cat)] || [];
+      const hist = sortPolicyHistoryByEffective(histAsc);
       const idx = hist.findIndex(h=>h.id === btn.dataset.id);
       if(idx < 0 || idx+1 >= hist.length) return;
       const curEntry = hist[idx];
-      const prevEntry = hist[idx + 1]; // 적용일자 기준 바로 이전 버전
+      const prevEntry = hist[idx + 1];
       const diffHtml = diffLines(prevEntry.content, curEntry.content);
-      const previewWrap = document.getElementById('policyPreviewWrap');
-      previewWrap.innerHTML = `
-        <div class="settings-box" style="max-width:680px; border:2px solid var(--guide-wine);">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <span class="badge">개정 비교 · ${prevEntry.effectiveDate || '-'} (개정전) → ${curEntry.effectiveDate || '-'} (개정후)</span>
-            <button type="button" class="del-btn" id="closePolicyPreviewBtn">닫기</button>
-          </div>
-          <p class="hint" style="font-size:11px; margin:0 0 10px;"><span class="diff-removed" style="padding:1px 5px;">빨간 배경</span>은 삭제된 줄, <span class="diff-added" style="padding:1px 5px;">초록 배경</span>은 추가된 줄이에요.</p>
-          <div class="diff-view">${diffHtml}</div>
-        </div>`;
-      document.getElementById('closePolicyPreviewBtn').addEventListener('click', ()=>{ previewWrap.innerHTML=''; });
-      previewWrap.scrollIntoView({behavior:'smooth', block:'start'});
+      const html = `
+        <p class="hint" style="font-size:11px; margin:0 0 10px;"><span class="diff-removed" style="padding:1px 5px;">빨간 배경</span>은 삭제된 줄, <span class="diff-added" style="padding:1px 5px;">초록 배경</span>은 추가된 줄이에요.</p>
+        <div class="diff-view">${diffHtml}</div>`;
+      openDraggablePopup({ title: `개정전후비교 · ${prevEntry.effectiveDate || '-'} → ${curEntry.effectiveDate || '-'}`, html, width: 620 });
     });
   });
+  container.querySelectorAll('.policy-pop-del-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!confirm('정말 삭제하시겠습니까?')) return;
+      const key = policyHistoryKey(cat);
+      const entry = (settings[key]||[]).find(x=>x.id===btn.dataset.id);
+      if(entry){
+        const effLabel = entry.effectiveDate ? `(${entry.effectiveDate.replace(/-/g,'.')}개정)` : '';
+        pushToTrash('policy', cat, `${policyCategoryLabel(cat)} ${effLabel}`, entry);
+      }
+      settings[key] = (settings[key]||[]).filter(x=>x.id!==btn.dataset.id);
+      await saveSettings();
+      renderPolicyDetail();
+      container.querySelector('.floating-popup-body').innerHTML = policyHistoryPopupBodyHtml(cat);
+      bindPolicyHistoryPopupEvents(container, cat);
+    });
+  });
+}
+function openPolicyHistoryPopup(cat){
+  const el = openDraggablePopup({ title: `이력 · ${policyCategoryLabel(cat)}`, html: policyHistoryPopupBodyHtml(cat), width: 500 });
+  bindPolicyHistoryPopupEvents(el, cat);
 }
 
 function diffLines(oldText, newText){
@@ -8837,7 +9437,7 @@ document.getElementById('exportSharedBtn').addEventListener('click', ()=>{
     exportedAt: new Date().toISOString(),
     app: 'monthly-board',
     scope: 'shared', // 관리자용 백업: 회사 공통설정만 포함, 직원 개인데이터는 포함 안 함
-    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName }
+    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, filingStatus: sharedFilingStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals }
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -8875,8 +9475,11 @@ document.getElementById('importSharedFile').addEventListener('change', async (e)
     sharedAdminNames = data.shared.adminNames || {};
     sharedManageSalt = data.shared.manageSalt || '';
     sharedManageVerifier = data.shared.manageVerifier || null;
-    sharedCompanyInfo = data.shared.companyInfo || { corp:[], team:[], personal:[] };
+    sharedCompanyInfo = data.shared.companyInfo || { corp:[], team:[], teamGeneral:[], personal:[] };
     sharedCompanyName = data.shared.companyName || '';
+    sharedFilingStatus = data.shared.filingStatus || {};
+    sharedFilingHelp = data.shared.filingHelp || {};
+    sharedApprovals = data.shared.approvals || [];
     await saveSharedExclusions();
     await saveSharedWorkHourExceptions();
     await saveSharedNoticeHistory();
@@ -8886,6 +9489,9 @@ document.getElementById('importSharedFile').addEventListener('change', async (e)
     await saveSharedManagePassword();
     await saveSharedCompanyInfo();
     await saveSharedCompanyName();
+    await saveSharedFilingStatus();
+    await saveSharedFilingHelp();
+    await saveSharedApprovals();
     if(gdriveAccessToken && gdriveFileId){
       document.getElementById('sharedBackupSaveMsg').textContent = '불러오기 완료 · 드라이브에 반영 중...';
       try{ await gdrivePush(); }catch(err){ console.error('공통설정 불러오기 후 드라이브 반영 실패', err); }
@@ -8959,8 +9565,11 @@ document.getElementById('importAllFile').addEventListener('change', async (e)=>{
       sharedAdminNames = data.shared.adminNames || {};
       sharedManageSalt = data.shared.manageSalt || '';
       sharedManageVerifier = data.shared.manageVerifier || null;
-      sharedCompanyInfo = data.shared.companyInfo || { corp:[], team:[], personal:[] };
+      sharedCompanyInfo = data.shared.companyInfo || { corp:[], team:[], teamGeneral:[], personal:[] };
       sharedCompanyName = data.shared.companyName || '';
+      sharedFilingStatus = data.shared.filingStatus || {};
+      sharedFilingHelp = data.shared.filingHelp || {};
+      sharedApprovals = data.shared.approvals || [];
       await saveSharedExclusions();
       await saveSharedWorkHourExceptions();
       await saveSharedNoticeHistory();
@@ -8970,6 +9579,9 @@ document.getElementById('importAllFile').addEventListener('change', async (e)=>{
       await saveSharedManagePassword();
       await saveSharedCompanyInfo();
       await saveSharedCompanyName();
+      await saveSharedFilingStatus();
+      await saveSharedFilingHelp();
+      await saveSharedApprovals();
     }
     if(!data.profiles.find(p=>p.id===activeProfileId)){
       setActiveProfileId(data.profiles[0] ? data.profiles[0].id : null);
@@ -8987,158 +9599,83 @@ document.getElementById('importAllFile').addEventListener('change', async (e)=>{
   e.target.value = '';
 });
 
-function bulkRowHtml(rowId){
-  return `<tr data-row-id="${rowId}">
-    <td>
-      <div style="display:flex; gap:3px; align-items:center;">
-        <input type="number" class="bulk-input bulk-y" placeholder="YYYY" min="1980" max="2100" style="width:64px;">
-        <span style="font-size:11px; color:var(--ink-soft);">-</span>
-        <input type="number" class="bulk-input bulk-m" placeholder="M" min="1" max="12" style="width:42px;">
-        <span style="font-size:11px; color:var(--ink-soft);">-</span>
-        <input type="number" class="bulk-input bulk-d" placeholder="D" min="1" max="31" style="width:42px;">
-      </div>
-    </td>
-    <td>
-      <select class="bulk-select bulk-type">
-        <option value="연차">연차</option>
-        <option value="반차">반차</option>
-        <option value="반반차">반반차</option>
-        <option value="포상휴가">포상휴가</option>
-        <option value="경조사휴가">경조사휴가</option>
-        <option value="기타휴가">기타휴가</option>
-      </select>
-    </td>
-    <td>
-      <select class="bulk-select bulk-subtype">
-        <option value="오후반차_식사O">오후·식사O</option>
-        <option value="오전반차">오전</option>
-        <option value="오후반차_식사X">오후·식사X</option>
-      </select>
-    </td>
-    <td><input type="number" class="bulk-input bulk-days" step="0.5" min="0" placeholder="1"></td>
-    <td><input type="text" class="bulk-input bulk-memo" placeholder="메모"></td>
-    <td><button type="button" class="del-btn bulk-del">삭제</button></td>
-  </tr>`;
+// ===== 직원 선택 백업 · 복구 (전체 직원 일괄이 아니라 딱 한 명만) =====
+function populateOneEmployeeBackupSelect(){
+  const sel = document.getElementById('oneEmployeeBackupSelect');
+  if(!sel) return;
+  const profiles = getProfiles();
+  const prev = sel.value;
+  sel.innerHTML = profiles.map(p=>`<option value="${p.id}">${escHtml(p.name || '(이름 미등록)')}</option>`).join('');
+  if(profiles.some(p=>p.id===prev)) sel.value = prev;
 }
-
-const bulkRowsBody = document.getElementById('bulkRowsBody');
-function addBulkRow(){
-  bulkRowsBody.insertAdjacentHTML('beforeend', bulkRowHtml(genId()));
-  const rows = bulkRowsBody.querySelectorAll('tr');
-  const lastRow = rows[rows.length - 1];
-  const typeSelect = lastRow.querySelector('.bulk-type');
-  updateBulkSubtypeOptions(lastRow.querySelector('.bulk-subtype'), typeSelect.value);
-}
-for(let i=0;i<1;i++) addBulkRow();
-
-function updateBulkSubtypeOptions(selectEl, type){
-  const isHalfOrQuarter = (type === '반차' || type === '반반차');
-  if(!isHalfOrQuarter){
-    selectEl.innerHTML = '<option value="">-</option>';
-    selectEl.disabled = true;
-    return;
-  }
-  selectEl.disabled = false;
-  const opts = type === '반반차' ? QUARTER_SUBTYPE_OPTIONS : HALF_SUBTYPE_OPTIONS;
-  selectEl.innerHTML = opts.map(o=>`<option value="${o.value}">${o.text}</option>`).join('');
-}
-bulkRowsBody.addEventListener('change', (e)=>{
-  if(e.target.classList.contains('bulk-type')){
-    const tr = e.target.closest('tr');
-    updateBulkSubtypeOptions(tr.querySelector('.bulk-subtype'), e.target.value);
-  }
-});
-
-document.getElementById('addBulkRowBtn').addEventListener('click', addBulkRow);
-
-document.getElementById('bulkRangeGenerateBtn').addEventListener('click', ()=>{
-  const sy = document.getElementById('bulk-range-start-y').value;
-  const sm = document.getElementById('bulk-range-start-m').value;
-  const sd = document.getElementById('bulk-range-start-d').value;
-  const ey = document.getElementById('bulk-range-end-y').value;
-  const em = document.getElementById('bulk-range-end-m').value;
-  const ed = document.getElementById('bulk-range-end-d').value;
-  const msgEl = document.getElementById('bulkRangeMsg');
-  if(!sy || !sm || !sd || !ey || !em || !ed){
-    msgEl.textContent = '시작일과 종료일을 모두 입력해주세요.';
-    setTimeout(()=>msgEl.textContent='',2500);
-    return;
-  }
-  const start = new Date(Number(sy), Number(sm)-1, Number(sd));
-  const end = new Date(Number(ey), Number(em)-1, Number(ed));
-  if(start > end){
-    msgEl.textContent = '종료일이 시작일보다 빠를 수 없어요.';
-    setTimeout(()=>msgEl.textContent='',2500);
-    return;
-  }
-  const rangeType = document.getElementById('bulk-range-type').value;
-  let cur = start;
-  let count = 0;
-  while(cur <= end){
-    const dow = cur.getDay();
-    if(dow !== 0 && dow !== 6){
-      addBulkRow();
-      const rows = bulkRowsBody.querySelectorAll('tr');
-      const lastRow = rows[rows.length - 1];
-      lastRow.querySelector('.bulk-y').value = cur.getFullYear();
-      lastRow.querySelector('.bulk-m').value = cur.getMonth()+1;
-      lastRow.querySelector('.bulk-d').value = cur.getDate();
-      const typeSelect = lastRow.querySelector('.bulk-type');
-      typeSelect.value = rangeType;
-      updateBulkSubtypeOptions(lastRow.querySelector('.bulk-subtype'), rangeType);
-      if(SPECIAL_LEAVE_TYPES.includes(rangeType)){
-        const daysInput = lastRow.querySelector('.bulk-days');
-        if(daysInput) daysInput.value = 1;
-      }
-      count++;
+document.getElementById('exportOneBtn').addEventListener('click', ()=>{
+  const sel = document.getElementById('oneEmployeeBackupSelect');
+  const profileId = sel.value;
+  const profile = getProfiles().find(p=>p.id===profileId);
+  if(!profile){ document.getElementById('oneBackupSaveMsg').textContent = '직원을 먼저 선택해주세요.'; return; }
+  const backup = {
+    schemaVersion: SCHEMA_VERSION,
+    exportedAt: new Date().toISOString(),
+    app: 'monthly-board',
+    scope: 'one-employee', // 직원 선택 백업: 이 직원 한 명의 개인데이터만 포함 (회사 공통설정 제외)
+    profile,
+    data: {
+      settings: readProfileRaw(profileId,'settings'),
+      attendance: readProfileRaw(profileId,'attendance'),
+      expense: readProfileRaw(profileId,'expense'),
+      schedule: readProfileRaw(profileId,'schedule'),
+      clients: readProfileRaw(profileId,'clients'),
+      personalInfo: readProfileRaw(profileId,'personalInfo')
     }
-    cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate()+1);
-  }
-  msgEl.textContent = `${count}개 행 생성됨 (주말 제외) — 아래서 확인 후 일괄 저장하세요`;
-  setTimeout(()=>msgEl.textContent='',4000);
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `monthly-board-${(profile.name||'employee').replace(/\s+/g,'')}-backup-${todayStr()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  document.getElementById('oneBackupSaveMsg').textContent = `${profile.name || '(이름 미등록)'} 백업 완료`;
+  setTimeout(()=>document.getElementById('oneBackupSaveMsg').textContent='',2500);
 });
-
-bulkRowsBody.addEventListener('click', (e)=>{
-  if(e.target.classList.contains('bulk-del')){
-    e.target.closest('tr').remove();
-  }
+document.getElementById('importOneBtn').addEventListener('click', ()=>{
+  document.getElementById('importOneFile').click();
 });
-
-document.getElementById('saveBulkRowsBtn').addEventListener('click', async ()=>{
-  const rows = [...bulkRowsBody.querySelectorAll('tr')];
-  let added = 0, skipped = 0;
-  rows.forEach(tr=>{
-    const yRaw = tr.querySelector('.bulk-y').value;
-    const mRaw = tr.querySelector('.bulk-m').value;
-    const dRaw = tr.querySelector('.bulk-d').value;
-    const hasAnyInput = yRaw || mRaw || dRaw;
-    if(!yRaw || !mRaw || !dRaw){ if(hasAnyInput) skipped++; return; }
-    const y = Number(yRaw), m = Number(mRaw), d = Number(dRaw);
-    const dt = new Date(y, m-1, d);
-    const isValid = dt.getFullYear()===y && dt.getMonth()===m-1 && dt.getDate()===d;
-    if(!isValid){ skipped++; return; }
-    const date = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const type = tr.querySelector('.bulk-type').value;
-    const subtype = (type === '반차' || type === '반반차') ? tr.querySelector('.bulk-subtype').value : null;
-    const isSpecial = SPECIAL_LEAVE_TYPES.includes(type);
-    const daysRaw = tr.querySelector('.bulk-days').value;
-    const days = isSpecial ? (Number(daysRaw) || 1) : null;
-    const memo = tr.querySelector('.bulk-memo').value.trim();
-    attendance.leaveUsage.push({id:genId(), date, type, subtype, days, memo});
-    added++;
-  });
-  if(added > 0){
-    await saveAttendance();
-    bulkRowsBody.innerHTML = '';
-    for(let i=0;i<1;i++) addBulkRow();
-    renderAll();
+document.getElementById('importOneFile').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  try{
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if(!data.data){ throw new Error('직원 선택 백업 형식이 아닙니다'); }
+    const sel = document.getElementById('oneEmployeeBackupSelect');
+    const targetId = sel.value;
+    const targetProfile = getProfiles().find(p=>p.id===targetId);
+    if(!targetProfile){ document.getElementById('oneBackupSaveMsg').textContent = '복구할 직원을 먼저 선택해주세요.'; e.target.value=''; return; }
+    const srcName = data.profile ? (data.profile.name || '(이름 미등록)') : '(알 수 없음)';
+    const ok = confirm(`"${srcName}" 백업 파일의 근태·경비·개인일정 기록을 "${targetProfile.name || '(이름 미등록)'}" 직원의 데이터에 덮어씁니다. 되돌릴 수 없어요. 계속할까요?`);
+    if(!ok){ e.target.value=''; return; }
+    const d = data.data;
+    if(d.settings) localStorage.setItem(`worklog_settings__${targetId}`, JSON.stringify(d.settings));
+    if(d.attendance) localStorage.setItem(`worklog_attendance__${targetId}`, JSON.stringify(d.attendance));
+    if(d.expense) localStorage.setItem(`worklog_expense__${targetId}`, JSON.stringify(d.expense));
+    if(d.schedule) localStorage.setItem(`worklog_schedule__${targetId}`, JSON.stringify(d.schedule));
+    if(d.clients) localStorage.setItem(`worklog_clients__${targetId}`, JSON.stringify(d.clients));
+    if(d.personalInfo) localStorage.setItem(`worklog_personalinfo__${targetId}`, JSON.stringify(d.personalInfo));
+    if(gdriveAccessToken && gdriveFileId){
+      document.getElementById('oneBackupSaveMsg').textContent = '복구 완료 · 드라이브에 반영 중...';
+      try{ await gdrivePush(); }catch(err){ console.error('직원 선택 복구 후 드라이브 반영 실패', err); }
+    }
+    document.getElementById('oneBackupSaveMsg').textContent = '복구 완료 · 새로고침합니다...';
+    setTimeout(()=>{ location.reload(); }, 400);
+  }catch(err){
+    console.error(err);
+    document.getElementById('oneBackupSaveMsg').textContent = '복구 실패 (파일을 확인해주세요)';
   }
-  document.getElementById('bulkSaveMsg').textContent =
-    skipped > 0 ? `${added}건 저장, ${skipped}건은 날짜가 없거나 잘못돼서 건너뜀` : `${added}건 저장됨`;
-  setTimeout(()=>document.getElementById('bulkSaveMsg').textContent='',3000);
+  e.target.value = '';
 });
-
-
 
 document.getElementById('addEmployeeForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
@@ -9157,20 +9694,39 @@ document.getElementById('addEmployeeForm').addEventListener('submit', async (e)=
   emailInput.value = '';
 });
 
+let showTerminatedEmployees = false;
 function renderEmployeeRoster(){
+  populateOneEmployeeBackupSelect();
   const wrap = document.getElementById('employeeRosterWrap');
   if(!wrap) return;
-  const profiles = getProfiles();
-  if(!profiles.length){ wrap.innerHTML = `<div class="empty-state">등록된 직원이 없습니다.</div>`; return; }
-  wrap.innerHTML = profiles.map(p=>`
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 12px; background:var(--bg); border-radius:10px; margin-bottom:6px; flex-wrap:wrap;">
-      <span style="font-size:13px; font-weight:700;">${escHtml(p.name || '(이름 미등록)')}${p.id===activeProfileId ? ' <span class="tag tag-grant">현재 선택</span>' : ''} ${p.email ? `<span style="color:var(--ink-soft); font-size:11px; font-weight:500;">(${escHtml(p.email)})</span>` : '<span style="color:var(--coral); font-size:11px; font-weight:500;">이메일 미등록</span>'}</span>
+  const toggleBtn = document.getElementById('employeeShowTerminatedBtn');
+  if(toggleBtn){
+    toggleBtn.textContent = showTerminatedEmployees ? '🙈 퇴사자 숨기기' : '🚫 퇴사자 보기';
+  }
+  // 퇴사 여부는 각 직원 본인의 settings(재직상태)에 저장되어 있어서, 로스터를 그리려면 프로필마다 조회해야 함.
+  // 해지된 거래처와 마찬가지로, 퇴사자는 목록에서 삭제되지 않고 그대로 보존되며 관리자는 토글로 계속 조회할 수 있음.
+  const profiles = getProfiles().map(p=>{
+    const snap = readProfileRaw(p.id, 'settings') || {};
+    return { ...p, employmentStatus: snap.employmentStatus || '근무중', lastWorkDate: snap.lastWorkDate || '', resignReason: snap.resignReason || '' };
+  });
+  const visible = showTerminatedEmployees ? profiles : profiles.filter(p=>p.employmentStatus !== '퇴사');
+  if(!visible.length){ wrap.innerHTML = `<div class="empty-state">${showTerminatedEmployees ? '표시할 직원이 없습니다.' : '등록된 직원이 없습니다.'}</div>`; return; }
+  wrap.innerHTML = visible.map(p=>{
+    const terminated = p.employmentStatus === '퇴사';
+    const statusTag = terminated
+      ? `<span class="tag tag-usage">퇴사${p.lastWorkDate ? ' · '+p.lastWorkDate : ''}${p.resignReason ? ' · '+p.resignReason : ''}</span>`
+      : '';
+    return `
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 12px; background:var(--bg); border-radius:10px; margin-bottom:6px; flex-wrap:wrap; ${terminated ? 'opacity:0.7;' : ''}">
+      <span style="font-size:13px; font-weight:700;">${escHtml(p.name || '(이름 미등록)')}${p.id===activeProfileId ? ' <span class="tag tag-grant">현재 선택</span>' : ''} ${statusTag} ${p.email ? `<span style="color:var(--ink-soft); font-size:11px; font-weight:500;">(${escHtml(p.email)})</span>` : '<span style="color:var(--coral); font-size:11px; font-weight:500;">이메일 미등록</span>'}</span>
       <span style="white-space:nowrap;">
         <button type="button" class="del-btn employee-open-edit-btn" data-id="${p.id}">입력/수정</button>
         <button type="button" class="del-btn employee-open-status-btn" data-id="${p.id}">현황</button>
         <button type="button" class="del-btn employee-open-history-btn" data-id="${p.id}">수정이력</button>
+        <button type="button" class="del-btn employee-del-btn" data-id="${p.id}">삭제</button>
       </span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   wrap.querySelectorAll('.employee-open-edit-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>openEmployeeModal('edit', btn.dataset.id));
   });
@@ -9180,7 +9736,25 @@ function renderEmployeeRoster(){
   wrap.querySelectorAll('.employee-open-history-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>openEmployeeModal('history', btn.dataset.id));
   });
+  wrap.querySelectorAll('.employee-del-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.dataset.id;
+      const list = getProfiles();
+      const target = list.find(x=>x.id===id);
+      if(!target) return;
+      if(!confirm(`"${target.name || '(이름 미등록)'}" 직원을 목록에서 삭제할까요?\n(잘못 등록한 경우에만 사용하세요. 퇴사자는 삭제 대신 재직상태를 "퇴사"로 바꿔서 이력을 보존하는 걸 추천해요.)`)) return;
+      pushToTrash('employee', 'profile', `직원 ${target.name || '(이름 미등록)'}`, target);
+      const remaining = list.filter(x=>x.id!==id);
+      saveProfiles(remaining);
+      renderProfileSwitcher();
+      renderEmployeeRoster();
+    });
+  });
 }
+document.getElementById('employeeShowTerminatedBtn')?.addEventListener('click', ()=>{
+  showTerminatedEmployees = !showTerminatedEmployees;
+  renderEmployeeRoster();
+});
 
 // ===== Google Drive 연동 =====
 const GDRIVE_FILE_NAME = 'taxj-shared-data.json';
@@ -9334,7 +9908,7 @@ function gdriveBuildPayload(){
   });
   return {
     schemaVersion: SCHEMA_VERSION, syncedAt: new Date().toISOString(), profiles, data,
-    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName }
+    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, filingStatus: sharedFilingStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals }
   };
 }
 
@@ -9378,8 +9952,10 @@ async function gdriveEnsureFile(){
   return gdriveFileId;
 }
 
+// 반환값: 저장이 실제로 성공했는지 여부. gdrivePull()이 "덮어쓰기 전에 먼저 저장"할 때 이 값을 반드시 확인해서,
+// 저장이 실패했는데도 옛날 원격 데이터로 방금 입력한 내용을 덮어쓰는 사고(예: 방금 등록한 폴더링크가 사라지는 문제)를 막음.
 async function gdrivePush(){
-  if(!gdriveAccessToken || !gdriveFileId) return;
+  if(!gdriveAccessToken || !gdriveFileId) return false;
   try{
     const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${gdriveFileId}?uploadType=media`, {
       method: 'PATCH',
@@ -9387,14 +9963,16 @@ async function gdrivePush(){
       body: JSON.stringify(gdriveBuildPayload(), null, 2)
     });
     if(!res.ok){
-      if(res.status === 401){ gdriveHandleUnauthorized(); return; }
+      if(res.status === 401){ gdriveHandleUnauthorized(); return false; }
       const errData = await res.json().catch(()=>({}));
       throw new Error(errData.error ? errData.error.message : `저장 실패 (${res.status})`);
     }
     gdriveSetStatus(`연결됨 · ${new Date().toLocaleTimeString('ko-KR')} 저장됨`);
+    return true;
   }catch(e){
     console.error('Drive 저장 실패', e);
     gdriveSetStatus('저장 실패: ' + e.message);
+    return false;
   }
 }
 
@@ -9406,7 +9984,14 @@ async function gdrivePull(){
     // 안 그러면 방금 입력한 내용이 오래된 원격 데이터로 덮어써질 수 있어요.
     clearTimeout(gdriveSyncTimer);
     gdriveSyncTimer = null;
-    await gdrivePush();
+    const pushed = await gdrivePush();
+    // 저장이 실패했다면(네트워크 오류 등), 절대 불러오기를 진행하면 안 돼요.
+    // 그대로 진행하면 방금 입력한 내용이 저장되지 않은 채로 옛날 원격 데이터에 덮어써져서 사라져요.
+    // (예: 방금 등록한 거래처 폴더링크가 클릭 직후 다시 "없음"으로 바뀌어 보이는 문제)
+    if(!pushed){
+      gdriveScheduleSync(); // 나중에 다시 저장을 시도할 수 있도록 예약을 되살려둠
+      return;
+    }
   }
   try{
     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${gdriveFileId}?alt=media`, {
@@ -9501,16 +10086,57 @@ document.getElementById('addAdminEmailForm').addEventListener('submit', async (e
   nameInput.value = '';
 });
 
+// 설정 > 회사 카테고리의 "회사 정보" 폼 필드 <-> 사내정보 법인탭 "기본정보" 표 연동용 고정 라벨
+const COMPANY_BASIC_INFO_FIELDS = [
+  { field:'company-name-input', label:'회사명' },
+  { field:'company-founded-input', label:'창립일' },
+  { field:'company-ceo-input', label:'대표자' },
+  { field:'company-ssn-input', label:'주민등록번호' },
+  { field:'company-address-input', label:'주소' },
+  { field:'company-phone-input', label:'대표번호' },
+  { field:'company-fax-input', label:'팩스' },
+  { field:'company-memo-input', label:'메모' }
+];
+function findCorpInfoEntry(label){
+  return (sharedCompanyInfo.corp||[]).find(x=>(x.type||'info')==='info' && x.label===label);
+}
+// 사내정보 법인탭의 기존 항목-수정이력 시스템을 그대로 재사용 - 같은 라벨의 항목을 찾아 upsert하고,
+// 값이 바뀌면 그 항목의 history에 변경이력을 남김 (사내정보 탭에서 "이력" 버튼으로 조회 가능)
+function upsertCorpBasicInfoField(label, content){
+  if(!sharedCompanyInfo.corp) sharedCompanyInfo.corp = [];
+  const entry = findCorpInfoEntry(label);
+  if(entry){
+    const changes = diffCiEntryFields(entry, label, entry.link||'', entry.note||'', false, content);
+    entry.content = content;
+    entry.updatedAt = todayStr();
+    if(changes.length){ if(!entry.history) entry.history=[]; entry.history.unshift({date:new Date().toLocaleString('ko-KR'), changes}); }
+  } else {
+    sharedCompanyInfo.corp.push({ id: genId(), type:'info', label, link:'', note:'', content, updatedAt: todayStr(), history:[] });
+  }
+}
 function populateCompanyNameInput(){
   const el = document.getElementById('company-name-input');
   if(el) el.value = sharedCompanyName || '';
+  COMPANY_BASIC_INFO_FIELDS.forEach(({field, label})=>{
+    if(field === 'company-name-input') return; // 회사명은 sharedCompanyName을 우선으로 보여줌 (위에서 이미 채움)
+    const inputEl = document.getElementById(field);
+    if(!inputEl) return;
+    const entry = findCorpInfoEntry(label);
+    inputEl.value = entry ? (entry.content || '') : '';
+  });
 }
 document.getElementById('companyNameForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
   const val = document.getElementById('company-name-input').value.trim();
   sharedCompanyName = val;
   await saveSharedCompanyName();
-  document.getElementById('companyNameSaveMsg').textContent = '저장됨';
+  COMPANY_BASIC_INFO_FIELDS.forEach(({field, label})=>{
+    const inputEl = document.getElementById(field);
+    if(!inputEl) return;
+    upsertCorpBasicInfoField(label, inputEl.value.trim());
+  });
+  await saveSharedCompanyInfo();
+  document.getElementById('companyNameSaveMsg').textContent = '등록/수정됨';
   setTimeout(()=>{ document.getElementById('companyNameSaveMsg').textContent = ''; }, 1500);
   renderCompanyInfoCorp();
   renderCompanyInfoTeam();
@@ -9524,7 +10150,18 @@ function renderManagePwStatus(){
   document.getElementById('setManagePwForm').style.display = isSet ? 'none' : 'flex';
   document.getElementById('managePwEditBtnWrap').style.display = isSet ? 'block' : 'none';
   document.getElementById('changeManagePwForm').style.display = 'none';
+  renderMegaManagePwStatus();
 }
+// 설정 > 데이터 카테고리에서도 같은 비밀번호의 설정 여부를 보여줌 (실제 설정 폼은 거래처 설정 탭에 있는 걸 그대로 재사용)
+function renderMegaManagePwStatus(){
+  const el = document.getElementById('megaManagePwStatus');
+  if(!el) return;
+  el.textContent = sharedManageVerifier ? '✅ 비밀번호가 설정되어 있어요.' : '⚠️ 아직 설정되지 않았어요.';
+}
+document.getElementById('megaGoManagePwBtn')?.addEventListener('click', ()=>{
+  activateTab('clients-settings', true);
+  setTimeout(()=>{ document.getElementById('managePwStatus')?.scrollIntoView({behavior:'smooth', block:'center'}); }, 150);
+});
 
 document.getElementById('managePwEditBtn').addEventListener('click', ()=>{
   document.getElementById('managePwEditBtnWrap').style.display = 'none';
@@ -9773,7 +10410,9 @@ function buildSectionToc(panel){
 }
 function initSectionTocs(){
   document.querySelectorAll('.tab-panel').forEach(panel=>{
-    if(panel.id === 'tab-home' || panel.id === 'tab-loginlock') return;
+    // tab-settings는 이제 회사/직원/복지/데이터 칩으로 카테고리를 나눠서 보여주기 때문에,
+    // 스크롤용 목차(TOC)를 따로 만들면 오히려 숨겨진 카테고리의 항목까지 섞여서 헷갈림 -> 제외
+    if(panel.id === 'tab-home' || panel.id === 'tab-loginlock' || panel.id === 'tab-settings') return;
     try{ buildSectionToc(panel); }catch(e){ console.error('목차 생성 실패', panel.id, e); }
   });
 }
