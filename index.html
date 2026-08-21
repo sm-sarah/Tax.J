@@ -332,7 +332,7 @@
     .summary-cards{grid-template-columns:1fr;}
   }
 
-  .cal-grid{display:grid; grid-template-columns:minmax(0,0.85fr) repeat(5,minmax(0,1.55fr)) minmax(0,0.85fr); gap:6px;}
+  .cal-grid{display:grid; grid-template-columns:minmax(0,1.05fr) repeat(5,minmax(0,1.51fr)) minmax(0,1.05fr); gap:6px;}
   .cal-dow{font-size:11.5px; font-weight:800; color:var(--ink); text-align:center; padding-bottom:2px;}
   .cal-cell{background:var(--surface); border-radius:12px; min-height:118px; padding:8px 8px 10px; box-shadow:0 1px 2px rgba(29,30,51,0.04);}
   .calendar-panel{
@@ -345,11 +345,12 @@
   }
   .cal-legend-icon{font-size:22px; margin-right:2px; vertical-align:middle;}
   .cal-cell.weekend{background:var(--bg); border:1px solid var(--border); box-shadow:none;}
+  .cal-cell.weekend .cal-badge{font-size:10.5px; padding:2px 5px;}
   .cal-cell.empty{background:transparent; box-shadow:none; border:none;}
-  .cal-date{font-family:'IBM Plex Mono', monospace; font-weight:800; font-size:13px; color:var(--ink); margin-bottom:4px; display:flex; align-items:center; justify-content:space-between;}
+  .cal-date{font-family:'IBM Plex Mono', monospace; font-weight:800; font-size:14.5px; color:var(--ink); margin-bottom:4px; display:flex; align-items:center; justify-content:space-between;}
   .cal-date.today{color:var(--indigo);}
   .cal-badges{display:flex; flex-direction:column; gap:3px;}
-  .cal-badge{font-size:10.5px; font-weight:700; padding:2px 6px; border-radius:8px; line-height:1.4; white-space:normal; word-break:keep-all; overflow-wrap:break-word; max-width:100%;}
+  .cal-badge{font-size:12px; font-weight:700; padding:2px 6px; border-radius:8px; line-height:1.4; white-space:normal; word-break:keep-all; overflow-wrap:break-word; max-width:100%;}
   .cal-badge.leave{background:var(--coral-bg); color:var(--coral);}
   .cal-badge.annual{background:#CFEFFB; color:#0B5A78;}
   .cal-work-icon.holiday-icon{color:#DC2626; font-weight:800;}
@@ -500,6 +501,90 @@
 <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
+<div id="noticeModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:840px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:16px;">
+      <div style="font-weight:800; font-size:19px; color:var(--ink);">📢 공지사항</div>
+      <button type="button" id="noticeModalClose" class="del-btn">닫기</button>
+    </div>
+
+    <div style="font-size:12px; font-weight:800; color:var(--ink-soft); margin-bottom:8px;">중요공지</div>
+    <div id="noticeImportantWrap" style="margin-bottom:22px;"></div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+      <div style="font-size:12px; font-weight:800; color:var(--ink-soft);">공지사항 목록</div>
+      <div style="display:flex; gap:6px;">
+        <button type="button" id="noticeSearchToggleBtn" class="del-btn">🔍 검색</button>
+        <button type="button" id="noticeAddBtn" class="del-btn" style="background:var(--indigo); color:#fff;">➕ 등록</button>
+      </div>
+    </div>
+    <div id="noticeSearchPanel" style="display:none; background:var(--bg); border-radius:12px; padding:12px; margin-bottom:14px; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;">
+      <select id="notice-search-type" style="border:1.5px solid var(--border); border-radius:8px; padding:7px 10px; font-size:12.5px; background:var(--surface); font-family:'Pretendard',sans-serif;">
+        <option value="title">제목</option>
+        <option value="author">작성자</option>
+        <option value="date">날짜</option>
+      </select>
+      <input type="text" id="notice-search-text" placeholder="검색어 입력" style="border:1.5px solid var(--border); border-radius:8px; padding:7px 10px; font-size:12.5px; background:var(--surface); width:180px;">
+      <input type="date" id="notice-search-date" style="display:none; border:1.5px solid var(--border); border-radius:8px; padding:6px 10px; font-size:12.5px; background:var(--surface);">
+      <button type="button" id="noticeSearchBtn" class="submit-btn" style="width:auto; padding:7px 16px;">검색</button>
+      <button type="button" id="noticeSearchResetBtn" class="del-btn">초기화</button>
+    </div>
+
+    <div id="noticeListWrap"></div>
+  </div>
+</div>
+<div id="noticeFormModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:640px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:14px;">
+      <div id="noticeFormModalTitle" style="font-weight:800; font-size:17px; color:var(--ink);">공지 등록</div>
+      <button type="button" id="noticeFormModalClose" class="del-btn">닫기</button>
+    </div>
+    <form id="noticeModalForm">
+      <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+        <div class="field" id="noticeScopeField" style="flex:0 0 120px; margin-bottom:0;"><label>구분</label>
+          <select id="nm-scope">
+            <option value="개인">개인공지</option>
+            <option value="전체">전체공지</option>
+          </select>
+        </div>
+        <div class="field" style="flex:1 1 160px; margin-bottom:0;"><label>제목</label>
+          <input type="text" id="nm-title" placeholder="예: 8/15 사무실 휴무 안내" required>
+        </div>
+      </div>
+      <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+        <div class="field" style="flex:0 0 90px; margin-bottom:0;"><label>글자 크기</label>
+          <select id="nm-size">
+            <option value="13.5">보통</option>
+            <option value="16">크게</option>
+            <option value="20">아주 크게</option>
+          </select>
+        </div>
+        <div class="field" style="flex:0 0 90px; margin-bottom:0;"><label>색상</label>
+          <select id="nm-color">
+            <option value="">기본</option>
+            <option value="#DC2626">빨강</option>
+            <option value="#D97706">주황</option>
+            <option value="#2563EB">파랑</option>
+            <option value="#16A34A">초록</option>
+          </select>
+        </div>
+        <div class="field" style="flex:0 0 60px; margin-bottom:0; flex-direction:row; align-items:center; gap:6px; justify-content:center;">
+          <input type="checkbox" id="nm-bold" style="width:auto; margin-top:14px;">
+          <label for="nm-bold" style="margin:14px 0 0;">굵게</label>
+        </div>
+        <div class="field" id="noticeImportantField" style="display:none; flex:0 0 60px; margin-bottom:0; flex-direction:row; align-items:center; gap:6px; justify-content:center;">
+          <input type="checkbox" id="nm-important" style="width:auto; margin-top:14px;">
+          <label for="nm-important" style="margin:14px 0 0;">중요</label>
+        </div>
+      </div>
+      <textarea id="nm-content" placeholder="예: 8/15(금) 전사 워크숍으로 사무실 휴무입니다." style="width:100%; min-height:160px; font-family:'Pretendard',sans-serif; font-size:13.5px; line-height:1.7; border:1.5px solid transparent; border-radius:10px; padding:14px; background:var(--bg); color:var(--ink); resize:vertical;" required></textarea>
+      <div style="text-align:center; margin-top:10px;">
+        <button type="submit" id="noticeModalSaveBtn" class="submit-btn" style="width:auto; padding:9px 20px;">등록</button>
+      </div>
+      <div style="text-align:center;"><span class="save-msg" id="noticeModalSaveMsg"></span></div>
+    </form>
+  </div>
+</div>
 <div id="memoModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--surface); border-radius:16px; padding:16px 22px 20px; max-width:480px; width:100%; max-height:70vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4); position:relative;">
     <button type="button" id="memoModalClose" class="del-btn" style="position:absolute; top:14px; right:16px; font-size:10px; padding:3px 8px;">닫기</button>
@@ -651,13 +736,13 @@
       </span>
       <button type="button" id="mailNotifyBtn" title="관리자에게 메일로 알리기" style="width:38px; height:38px; border-radius:50%; border:none; background:var(--coral); color:#fff; font-size:17px; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 4px 10px -3px rgba(240,80,110,0.55); cursor:pointer;">📧</button>
       <button type="button" id="quickConnectBtn" class="tab-btn" title="Google 계정 연결 상태 · 클릭해서 로그인" style="background:var(--ink-soft); color:#fff; width:38px; height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; font-size:16px;">🔌</button>
+      <button type="button" id="noticeIconBtn" title="공지사항" style="background:var(--guide-slate); color:#fff; width:38px; height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; font-size:16px; border:none; cursor:pointer;">📢</button>
       <button type="button" id="trashIconBtn2" title="휴지통" style="background:var(--bg); color:var(--ink-soft); width:38px; height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; font-size:16px; border:none; cursor:pointer;">🗑️</button>
     </div>
 
     <div id="managementSubRow" style="display:none; gap:9px; align-items:stretch; justify-content:center; flex-wrap:wrap; margin-top:9px;">
       <div class="tab-group tg-mgmt">
         <button class="tab-btn" data-tab="teamcalendar">팀캘린더</button>
-        <button class="tab-btn" data-tab="admin">📢 공지사항</button>
         <button class="tab-btn" data-tab="quickguide">복리후생</button>
         <button class="tab-btn" data-tab="policy">내부규정</button>
         <button class="tab-btn" data-tab="policyedit">업데이트</button>
@@ -677,7 +762,6 @@
     <div id="staffSubRow" style="display:none; flex-direction:column; align-items:center; gap:8px; margin-top:9px;">
       <div class="tab-group tg-staff">
         <button class="tab-btn" data-tab="calendar">📅 개인캘린더</button>
-        <button class="tab-btn" data-tab="noticepost">📝 개인공지</button>
         <button class="tab-btn" data-tab="attendance">⏰ 근태</button>
         <button class="tab-btn" data-tab="expense">💳 경비</button>
         <button class="tab-btn" data-tab="settlement">🧮 정산</button>
@@ -698,14 +782,10 @@
   <section id="tab-home" class="tab-panel active">
 
     <div class="home-section-label">Company</div>
-    <div class="home-tiles six">
+    <div class="home-tiles five">
       <div class="home-tile" data-goto="teamcalendar" style="--tile-accent:var(--guide-teal);">
         <div class="home-tile-icon">🗂️</div>
         <div class="home-tile-title">팀캘린더</div>
-      </div>
-      <div class="home-tile" data-goto="admin" style="--tile-accent:var(--guide-slate);">
-        <div class="home-tile-icon">📢</div>
-        <div class="home-tile-title">공지사항</div>
       </div>
       <div class="home-tile" data-goto="quickguide" style="--tile-accent:var(--guide-mustard);">
         <div class="home-tile-icon">🎁</div>
@@ -726,14 +806,10 @@
     </div>
 
     <div class="home-section-label" style="margin-top:24px;">Staff</div>
-    <div class="home-tiles six">
+    <div class="home-tiles five">
       <div class="home-tile" data-goto="calendar" style="--tile-accent:var(--mint);">
         <div class="home-tile-icon">📅</div>
         <div class="home-tile-title">개인캘린더</div>
-      </div>
-      <div class="home-tile" data-goto="noticepost" style="--tile-accent:#0EA5E9;">
-        <div class="home-tile-icon">📝</div>
-        <div class="home-tile-title">개인공지</div>
       </div>
       <div class="home-tile" data-goto="attendance" style="--tile-accent:var(--indigo);">
         <div class="home-tile-icon">⏰</div>
@@ -784,114 +860,125 @@
 
   <!-- 근태관리 -->
   <section id="tab-attendance" class="tab-panel">
-    <div class="forms-row two">
-      <div class="mini-form">
+    <h2 class="section-title" style="justify-content:center;">근태 현황</h2>
+
+    <div class="summary-cards">
+      <div class="card card-navy">
         <div class="card-icon">🐶</div>
-        <div class="card-label" id="remainLeaveLabel">잔여 연차 (오늘 기준)</div>
-        <div class="card-value num" id="remainLeaveDisplay" style="font-size:26px;">-</div>
+        <div class="card-label" style="display:flex; align-items:center; justify-content:center; gap:4px;">
+          <span id="remainLeaveLabel">잔여 연차</span>
+          <button type="button" id="leaveScheduleInfoBtn" title="법정연차 자동부여 일정 보기" style="border:none; background:none; cursor:pointer; padding:0; font-size:12px; line-height:1;">ℹ️</button>
+        </div>
+        <div class="card-value num" id="remainLeaveDisplay">-</div>
         <div class="card-sub" id="grantUsedDisplay"></div>
-        <div style="border-top:1px solid rgba(29,30,51,0.08); margin:14px 0 10px;"></div>
-        <div class="card-icon" style="background:var(--coral-bg); color:var(--coral);">🌴</div>
+      </div>
+      <div class="card card-coral">
+        <div class="card-icon">🌴</div>
         <div class="card-label">이번달 휴가 사용</div>
         <div class="card-value num" id="monthUsedDisplay">-</div>
         <div class="card-sub" id="monthUsedDetailDisplay"></div>
-
-        <div style="border-top:1px solid rgba(29,30,51,0.08); margin:16px 0 14px;"></div>
-        <h3>휴가 추가</h3>
-        <form id="usageForm">
-          <div class="field"><label>날짜</label><input type="date" id="u-date" required min="2015-01-01" max="2099-12-31"></div>
-          <div class="field" id="endDateField" style="display:none;">
-            <label>종료일 <span style="font-weight:400; color:var(--ink-soft);">(연속 사용 시만 입력, 주말은 자동 제외)</span></label>
-            <input type="date" id="u-end-date" min="2015-01-01" max="2099-12-31">
-          </div>
-          <div class="field"><label>구분</label>
-            <select id="u-type">
-              <option value="연차">연차 (1일, 연차 차감)</option>
-              <option value="반차">반차 (0.5일, 연차 차감)</option>
-              <option value="반반차">반반차 (0.25일, 연차 차감)</option>
-              <option value="포상휴가">포상휴가 (연차 차감 없음)</option>
-              <option value="경조사휴가">경조사휴가 (연차 차감 없음)</option>
-              <option value="기타휴가">기타휴가 (연차 차감 없음)</option>
-            </select>
-          </div>
-          <div class="field" id="halfdaySubtypeField" style="display:none;">
-            <label id="subtypeFieldLabel">반차 세부유형</label>
-            <select id="u-subtype"></select>
-            <span class="hint" style="font-size:11px; color:var(--ink-soft);" id="subtypeFieldHint">점심 섭취 여부가 점심식대 근무일수 계산에 반영돼요.</span>
-          </div>
-          <div class="field" id="specialDaysField" style="display:none;">
-            <label>사용 일수</label>
-            <input type="number" id="u-days" class="num-input" step="0.5" min="0.5" value="1">
-          </div>
-          <div class="field" id="familyPresetField" style="display:none;">
-            <label>경조사 사유 (선택 시 일수 자동 입력)</label>
-            <select id="u-familypreset">
-              <option value="">직접 입력</option>
-              <option value="5">결혼(본인) · 5일</option>
-              <option value="1">결혼(자녀) · 1일</option>
-              <option value="90">출산(본인) · 90일</option>
-              <option value="20">출산(배우자) · 20일</option>
-              <option value="6">난임치료 · 6일</option>
-              <option value="5">사망(배우자·부모) · 5일</option>
-              <option value="5">사망(자녀) · 5일</option>
-              <option value="3">사망(조부모·외조부모) · 3일</option>
-              <option value="3">사망(형제자매) · 3일</option>
-            </select>
-          </div>
-          <div class="field"><label>메모</label><input type="text" id="u-memo" placeholder="예: 개인 사유"></div>
-          <button type="submit" class="submit-btn">추가</button>
-          <button type="button" id="usage-cancel" class="del-btn" style="display:none; margin-top:6px;">취소</button>
-          <span class="save-msg" id="usageSaveMsg"></span>
-        </form>
       </div>
-
-      <div class="mini-form">
-        <div class="card-icon" style="background:var(--mint-bg); color:var(--mint);">🏠</div>
+      <div class="card card-mint">
+        <div class="card-icon">🏠</div>
         <div class="card-label">이번달 재택근무</div>
         <div class="card-value num" id="monthRemoteDisplay">-</div>
         <div class="card-sub" id="monthRemoteSub">수당 없음 · 근태 확인용 기록</div>
+      </div>
+    </div>
 
-        <div style="border-top:1px solid rgba(29,30,51,0.08); margin:16px 0 14px;"></div>
-        <h3>재택근무 추가</h3>
-        <form id="remoteForm">
-          <div class="field"><label>날짜</label><input type="date" id="r-date" required min="2015-01-01" max="2099-12-31"></div>
-          <div class="field"><label>메모</label><input type="text" id="r-memo" placeholder="예: 자택 업무"></div>
-          <div class="field" style="flex-direction:row; align-items:center; gap:6px;">
-            <input type="checkbox" id="r-bonus" style="width:auto;">
-            <label for="r-bonus" style="margin:0; font-size:11.5px;">특별재택 (월 한도 미포함)</label>
-          </div>
-          <button type="submit" class="submit-btn">추가</button>
-          <button type="button" id="remote-cancel" class="del-btn" style="display:none; margin-top:6px;">취소</button>
-          <span class="save-msg" id="remoteSaveMsg"></span>
-        </form>
-
-        <div style="border-top:1px solid rgba(29,30,51,0.08); margin:16px 0 14px;"></div>
-        <h3>연차 조회 <span style="font-weight:400; color:var(--ink-soft); font-size:11px;">(특정 기준일)</span></h3>
-        <div class="field"><label>기준일</label><input type="date" id="leave-query-date" min="2015-01-01" max="2099-12-31"></div>
-        <button type="button" id="leaveQueryBtn" class="submit-btn" style="background:var(--mint);">🔍 조회</button>
-        <div id="leaveQueryResult" style="display:none; margin-top:12px; text-align:center;">
-          <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
-            <div style="background:var(--indigo-bg); color:var(--indigo-deep); border-radius:10px; padding:8px 14px;">
-              <div style="font-size:10.5px; font-weight:700;">총 연차</div>
-              <b id="leaveQueryTotal" style="font-family:'IBM Plex Mono',monospace; font-size:16px;">-</b>
-            </div>
-            <div style="background:var(--coral-bg); color:var(--coral); border-radius:10px; padding:8px 14px;">
-              <div style="font-size:10.5px; font-weight:700;">사용 연차</div>
-              <b id="leaveQueryUsed" style="font-family:'IBM Plex Mono',monospace; font-size:16px;">-</b>
-            </div>
-            <div style="background:var(--mint-bg); color:var(--mint); border-radius:10px; padding:8px 14px;">
-              <div style="font-size:10.5px; font-weight:700;">잔여 연차</div>
-              <b id="leaveQueryRemain" style="font-family:'IBM Plex Mono',monospace; font-size:16px;">-</b>
-            </div>
+    <div class="mini-form" style="max-width:520px; margin:0 auto 30px;">
+      <h3 style="text-align:center;">휴가 · 재택근무 추가</h3>
+      <form id="usageForm">
+        <div class="field">
+          <label>종류</label>
+          <select id="u-kind">
+            <option value="leave">휴가</option>
+            <option value="remote">재택근무</option>
+          </select>
+        </div>
+        <div class="field-row" style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+          <div class="field" style="flex:1 1 160px; margin-bottom:0;"><label>시작일</label><input type="date" id="u-date" required min="2015-01-01" max="2099-12-31"></div>
+          <div class="field" id="singleDayField" style="flex:0 0 auto; margin-bottom:0; display:flex; align-items:center; gap:5px; padding-bottom:9px;">
+            <input type="checkbox" id="u-single-day" checked style="width:auto;">
+            <label for="u-single-day" style="margin:0; font-size:11.5px; white-space:nowrap; font-weight:600;">당일</label>
           </div>
         </div>
-      </div>
+        <div class="field" id="endDateField" style="display:none;">
+          <label>종료일</label>
+          <input type="date" id="u-end-date" min="2015-01-01" max="2099-12-31">
+        </div>
+        <div class="field" id="leaveTypeField"><label>휴가 구분</label>
+          <select id="u-type">
+            <option value="연차">연차 (1일, 연차 차감)</option>
+            <option value="반차">반차 (0.5일, 연차 차감)</option>
+            <option value="반반차">반반차 (0.25일, 연차 차감)</option>
+            <option value="포상휴가">포상휴가 (연차 차감 없음)</option>
+            <option value="경조사휴가">경조사휴가 (연차 차감 없음)</option>
+            <option value="기타휴가">기타휴가 (연차 차감 없음)</option>
+          </select>
+        </div>
+        <div class="field" id="halfdaySubtypeField" style="display:none;">
+          <label id="subtypeFieldLabel">반차 세부유형</label>
+          <select id="u-subtype"></select>
+          <span class="hint" style="font-size:11px; color:var(--ink-soft);" id="subtypeFieldHint">점심 섭취 여부가 점심식대 근무일수 계산에 반영돼요.</span>
+        </div>
+        <div class="field" id="specialDaysField" style="display:none;">
+          <label>사용 일수</label>
+          <input type="number" id="u-days" class="num-input" step="0.5" min="0.5" value="1">
+        </div>
+        <div class="field" id="familyPresetField" style="display:none;">
+          <label>경조사 사유 (선택 시 일수 자동 입력)</label>
+          <select id="u-familypreset">
+            <option value="">직접 입력</option>
+            <option value="5">결혼(본인) · 5일</option>
+            <option value="1">결혼(자녀) · 1일</option>
+            <option value="90">출산(본인) · 90일</option>
+            <option value="20">출산(배우자) · 20일</option>
+            <option value="6">난임치료 · 6일</option>
+            <option value="5">사망(배우자·부모) · 5일</option>
+            <option value="5">사망(자녀) · 5일</option>
+            <option value="3">사망(조부모·외조부모) · 3일</option>
+            <option value="3">사망(형제자매) · 3일</option>
+          </select>
+        </div>
+        <div class="field" id="remoteBonusField" style="display:none; flex-direction:row; align-items:center; gap:6px;">
+          <input type="checkbox" id="r-bonus" style="width:auto;">
+          <label for="r-bonus" style="margin:0; font-size:11.5px;">특별재택 (월 한도 미포함)</label>
+        </div>
+        <div class="field"><label>메모</label><input type="text" id="u-memo" placeholder="예: 개인 사유"></div>
+        <button type="submit" class="submit-btn">추가</button>
+        <button type="button" id="usage-cancel" class="del-btn" style="display:none; margin-top:6px;">취소</button>
+        <span class="save-msg" id="usageSaveMsg"></span>
+      </form>
     </div>
 
     <h2 class="section-title" style="margin-top:34px; padding-top:20px; border-top:1.5px dashed var(--border);">이번달 근태 내역 <span class="badge">결재 확인용</span></h2>
     <div id="attendanceLedgerWrap" style="max-width:1000px; margin-left:auto; margin-right:auto;"></div>
 
-    <h2 class="section-title" style="margin-top:34px; padding-top:20px; border-top:1.5px dashed var(--border);">휴가 이력 <span class="badge">전체 기간, 조회월과 무관</span></h2>
+    <div style="display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:34px; padding-top:20px; border-top:1.5px dashed var(--border);">
+      <h2 class="section-title" style="margin:0;">휴가 이력 <span class="badge">전체 기간, 조회월과 무관</span></h2>
+      <button type="button" id="leaveQueryToggleBtn" class="del-btn">🔍 휴가조회</button>
+    </div>
+    <div id="leaveQueryPanel" style="display:none; max-width:360px; margin:14px auto 24px; text-align:center; background:var(--bg); border-radius:14px; padding:16px;">
+      <div class="field"><label>기준일</label><input type="date" id="leave-query-date" min="2015-01-01" max="2099-12-31"></div>
+      <button type="button" id="leaveQueryBtn" class="submit-btn" style="background:var(--mint); width:auto; padding:8px 16px;">조회</button>
+      <div id="leaveQueryResult" style="display:none; margin-top:12px; text-align:center;">
+        <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+          <div style="background:var(--indigo-bg); color:var(--indigo-deep); border-radius:10px; padding:8px 14px;">
+            <div style="font-size:10.5px; font-weight:700;">총 연차</div>
+            <b id="leaveQueryTotal" style="font-family:'IBM Plex Mono',monospace; font-size:16px;">-</b>
+          </div>
+          <div style="background:var(--coral-bg); color:var(--coral); border-radius:10px; padding:8px 14px;">
+            <div style="font-size:10.5px; font-weight:700;">사용 연차</div>
+            <b id="leaveQueryUsed" style="font-family:'IBM Plex Mono',monospace; font-size:16px;">-</b>
+          </div>
+          <div style="background:var(--mint-bg); color:var(--mint); border-radius:10px; padding:8px 14px;">
+            <div style="font-size:10.5px; font-weight:700;">잔여 연차</div>
+            <b id="leaveQueryRemain" style="font-family:'IBM Plex Mono',monospace; font-size:16px;">-</b>
+          </div>
+        </div>
+      </div>
+    </div>
     <p class="hint" style="font-size:12px; color:var(--ink-soft); margin:-6px 0 12px; text-align:center;">
       과거·미래 상관없이 저장된 휴가 사용 기록을 전부 최신순으로 보여줘요. 잘못 입력한 게 있으면 여기서 바로 삭제할 수 있어요.
     </p>
@@ -1247,54 +1334,6 @@
     </div>
   </section>
 
-  <!-- 전체현황 -->
-  <section id="tab-admin" class="tab-panel">
-    <h2 class="section-title">공지사항</h2>
-
-    <div id="allNoticeBannerWrap"></div>
-
-    <div style="font-size:12px; font-weight:800; color:var(--ink-soft); margin:22px 0 8px; text-align:left;">공지사항 목록</div>
-    <div id="noticeHistoryWrap"></div>
-    <div id="noticePreviewWrap" style="margin-top:14px;"></div>
-
-    <h2 class="section-title" style="justify-content:center; margin-top:28px; padding-top:20px; border-top:1.5px dashed var(--border);">전체 공지 작성 <span class="badge">전 직원에게 발송</span></h2>
-    <div class="settings-box" style="max-width:680px;">
-      <form id="allNoticeForm">
-        <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-          <div class="field" style="flex:1 1 160px; margin-bottom:0;"><label>제목</label>
-            <input type="text" id="all-notice-title" placeholder="예: 8/15 사무실 휴무 안내" required>
-          </div>
-          <div class="field" style="flex:0 0 90px; margin-bottom:0;"><label>글자 크기</label>
-            <select id="all-notice-size">
-              <option value="13.5">보통</option>
-              <option value="16">크게</option>
-              <option value="20">아주 크게</option>
-            </select>
-          </div>
-          <div class="field" style="flex:0 0 90px; margin-bottom:0;"><label>색상</label>
-            <select id="all-notice-color">
-              <option value="">기본</option>
-              <option value="#DC2626">빨강</option>
-              <option value="#D97706">주황</option>
-              <option value="#2563EB">파랑</option>
-              <option value="#16A34A">초록</option>
-            </select>
-          </div>
-          <div class="field" style="flex:0 0 70px; margin-bottom:0; flex-direction:row; align-items:center; gap:6px; justify-content:center;">
-            <input type="checkbox" id="all-notice-bold" style="width:auto; margin-top:14px;">
-            <label for="all-notice-bold" style="margin:14px 0 0;">굵게</label>
-          </div>
-        </div>
-        <textarea id="allNoticeContent" placeholder="예: 8/15(금) 전사 워크숍으로 사무실 휴무입니다." style="width:100%; min-height:140px; font-family:'Pretendard',sans-serif; font-size:13.5px; line-height:1.7; border:1.5px solid transparent; border-radius:10px; padding:14px; background:var(--bg); color:var(--ink); resize:vertical;"></textarea>
-        <div style="text-align:center; margin-top:10px; display:flex; gap:8px; justify-content:center; align-items:center;">
-          <button type="submit" id="saveAllNoticeBtn" class="submit-btn" style="width:auto; padding:9px 20px;">전체 공지 등록</button>
-          <button type="button" id="allNoticeCancelEditBtn" class="del-btn" style="display:none;">취소</button>
-        </div>
-        <div style="text-align:center;"><span class="save-msg" id="allNoticeSaveMsg"></span></div>
-      </form>
-    </div>
-  </section>
-
   <!-- 거래처관리: 기장거래처 현황 -->
   <section id="tab-clients-regular" class="tab-panel">
     <div style="display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:14px;">
@@ -1412,6 +1451,7 @@
         <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
           <div class="field" style="flex:1 1 140px;"><label>프로그램</label>
             <select id="cl-program">
+              <option value="없음">없음</option>
               <option value="위하고">위하고</option>
               <option value="세무사랑">세무사랑</option>
               <option value="기타">기타 (직접입력)</option>
@@ -1431,15 +1471,17 @@
         <div id="cl-memo-list"></div>
         <button type="button" id="cl-memo-add-btn" class="del-btn" style="margin:2px 0 10px;">+ 메모 추가</button>
 
-        <div style="font-size:13px; font-weight:800; color:var(--indigo-deep); text-align:center; margin-top:22px; margin-bottom:10px;">✚ 추가 정보</div>
-        <div style="background:var(--bg); border-radius:12px; padding:16px 16px 6px;">
+        <div style="text-align:center; margin-top:26px; padding-top:20px; border-top:1.5px dashed var(--border); margin-bottom:12px;"><span style="font-size:12.5px; font-weight:800; color:var(--guide-wine);">&lt;추가정보&gt;</span></div>
+        <div style="background:var(--bg); border-radius:10px; padding:14px 16px; margin-bottom:10px;">
           <div style="text-align:center; margin-bottom:10px;"><span style="display:inline-block; font-size:12px; font-weight:800; color:var(--ink); background:var(--surface); padding:4px 16px; border-radius:20px;">대표자</span></div>
           <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
             <div class="field" style="flex:1 1 130px;"><label>이름</label><input type="text" id="cl-rep-name" placeholder="예: 홍길동"></div>
             <div class="field" style="flex:1 1 130px;"><label>연락처</label><input type="text" id="cl-rep-phone" placeholder="예: 010-1234-5678"></div>
             <div class="field" style="flex:1 1 160px;"><label>이메일</label><input type="email" id="cl-rep-email" placeholder="예: ceo@client.com"></div>
           </div>
-          <div style="text-align:center; margin:18px 0 6px;"><span style="display:inline-block; font-size:12px; font-weight:800; color:var(--ink); background:var(--surface); padding:4px 16px; border-radius:20px;">실무자</span></div>
+        </div>
+        <div style="background:var(--bg); border-radius:10px; padding:14px 16px 6px;">
+          <div style="text-align:center; margin-bottom:10px;"><span style="display:inline-block; font-size:12px; font-weight:800; color:var(--ink); background:var(--surface); padding:4px 16px; border-radius:20px;">실무자</span></div>
           <div style="text-align:right; margin-bottom:10px;">
             <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-soft); font-weight:700; cursor:pointer;">
               <input type="checkbox" id="cl-contact-same-as-rep" style="width:15px; height:15px; cursor:pointer;">
@@ -1531,14 +1573,21 @@
   <section id="tab-clients-terminated" class="tab-panel">
     <div style="display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:14px;">
       <div></div>
-      <h2 class="section-title" style="justify-content:center; font-size:24px;">해지목록 <span class="badge" id="clientsTerminatedTotalBadge">0건</span></h2>
-      <div class="field" style="justify-self:end; max-width:220px; margin:0;"><input type="text" id="cl-terminated-search" placeholder="🔍 검색"></div>
+      <h2 class="section-title" style="justify-content:center; font-size:24px;">해지목록</h2>
+      <div style="justify-self:end; display:flex; gap:6px;">
+        <select id="cl-terminated-search-type" style="border:1.5px solid var(--border); border-radius:8px; padding:8px 8px; font-size:12.5px; background:var(--surface); font-family:'Pretendard',sans-serif;">
+          <option value="name">상호</option>
+          <option value="bizNo">사업자번호</option>
+          <option value="repName">대표자</option>
+        </select>
+        <div class="field" style="max-width:180px; margin:0;"><input type="text" id="cl-terminated-search" placeholder="🔍 검색"></div>
+      </div>
     </div>
 
-    <h3 style="font-size:14px; font-weight:800; color:var(--navy); text-align:center; margin:18px 0 8px;">기장</h3>
+    <div style="text-align:left; margin:20px 0 8px;"><span style="display:inline-block; font-size:15px; font-weight:800; color:var(--indigo-deep); background:var(--indigo-bg); padding:6px 16px; border-radius:20px;">기장거래처</span></div>
     <div id="clientsTerminatedRegularListWrap"></div>
 
-    <h3 style="font-size:14px; font-weight:800; color:var(--navy); text-align:center; margin:22px 0 8px;">기타</h3>
+    <div style="text-align:left; margin:24px 0 8px;"><span style="display:inline-block; font-size:15px; font-weight:800; color:var(--indigo-deep); background:var(--indigo-bg); padding:6px 16px; border-radius:20px;">기타거래처</span></div>
     <div id="clientsTerminatedOtherListWrap"></div>
   </section>
 
@@ -1582,46 +1631,6 @@
   </section>
 
 
-  <!-- 공지등록 -->
-  <section id="tab-noticepost" class="tab-panel">
-    <h2 class="section-title" style="justify-content:center;" id="noticeFormTitle">개인 공지 작성</h2>
-    <p class="hint" style="font-size:12px; color:var(--ink-soft); margin:-6px 0 16px; text-align:center;">여기서 등록하는 공지는 내 이름으로 개인 공지로 올라가요. 전 직원 대상 공지는 관리자가 Management → 업데이트에서 등록해요.</p>
-    <div class="settings-box" style="max-width:680px;">
-      <form id="noticeForm">
-        <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-          <div class="field" style="flex:1 1 160px; margin-bottom:0;"><label>제목</label>
-            <input type="text" id="notice-title" placeholder="예: 8/15 사무실 휴무 안내" required>
-          </div>
-          <div class="field" style="flex:0 0 90px; margin-bottom:0;"><label>글자 크기</label>
-            <select id="notice-size">
-              <option value="13.5">보통</option>
-              <option value="16">크게</option>
-              <option value="20">아주 크게</option>
-            </select>
-          </div>
-          <div class="field" style="flex:0 0 90px; margin-bottom:0;"><label>색상</label>
-            <select id="notice-color">
-              <option value="">기본</option>
-              <option value="#DC2626">빨강</option>
-              <option value="#D97706">주황</option>
-              <option value="#2563EB">파랑</option>
-              <option value="#16A34A">초록</option>
-            </select>
-          </div>
-          <div class="field" style="flex:0 0 70px; margin-bottom:0; flex-direction:row; align-items:center; gap:6px; justify-content:center;">
-            <input type="checkbox" id="notice-bold" style="width:auto; margin-top:14px;">
-            <label for="notice-bold" style="margin:14px 0 0;">굵게</label>
-          </div>
-        </div>
-        <textarea id="noticeContent" placeholder="예: 8/15(금) 전사 워크숍으로 사무실 휴무입니다." style="width:100%; min-height:160px; font-family:'Pretendard',sans-serif; font-size:13.5px; line-height:1.7; border:1.5px solid transparent; border-radius:10px; padding:14px; background:var(--bg); color:var(--ink); resize:vertical;"></textarea>
-        <div style="text-align:center; margin-top:10px; display:flex; gap:8px; justify-content:center; align-items:center;">
-          <button type="submit" id="saveNoticeBtn" class="submit-btn" style="width:auto; padding:9px 20px;">등록</button>
-          <button type="button" id="noticeCancelEditBtn" class="del-btn" style="display:none;">취소</button>
-        </div>
-        <div style="text-align:center;"><span class="save-msg" id="noticeSaveMsg"></span></div>
-      </form>
-    </div>
-  </section>
 
   <!-- 팀 캘린더 -->
   <section id="tab-teamcalendar" class="tab-panel">
@@ -2109,6 +2118,7 @@ async function decryptJSON(payload, key){
 // 비밀번호 변경시, 기존에 암호화되어 저장된 전 직원의 거래처 민감정보를 전부 새 키로 재암호화(그래야 비번 바꿔도 예전 데이터가 안 깨짐)
 async function reencryptAllClientSensitiveData(oldKey, newKey){
   const profiles = getProfiles();
+  let failCount = 0;
   for(const p of profiles){
     const rawClients = readProfileRaw(p.id, 'clients') || { list: [] };
     let clientsChanged = false;
@@ -2118,7 +2128,7 @@ async function reencryptAllClientSensitiveData(oldKey, newKey){
           const plain = await decryptJSON(c.sensitiveEnc, oldKey);
           c.sensitiveEnc = await encryptJSON(plain, newKey);
           clientsChanged = true;
-        }catch(err){ console.error('재암호화 실패(거래처)', p.id, c.id, err); }
+        }catch(err){ console.error('재암호화 실패(거래처)', p.id, c.id, err); failCount++; }
       }
     }
     if(clientsChanged){
@@ -2133,7 +2143,7 @@ async function reencryptAllClientSensitiveData(oldKey, newKey){
           const plain = await decryptJSON(pi.sensitiveEnc, oldKey);
           pi.sensitiveEnc = await encryptJSON(plain, newKey);
           personalChanged = true;
-        }catch(err){ console.error('재암호화 실패(개인정보)', p.id, pi.id, err); }
+        }catch(err){ console.error('재암호화 실패(개인정보)', p.id, pi.id, err); failCount++; }
       }
     }
     if(personalChanged){
@@ -2141,6 +2151,9 @@ async function reencryptAllClientSensitiveData(oldKey, newKey){
       if(p.id === activeProfileId) personalInfo = rawPersonal;
     }
   }
+  // 재암호화 실패 건수 - "예전 비밀번호로도 안 열리던" 데이터라 이번 비밀번호 변경과 무관하게 이미 문제가 있던 항목.
+  // 조용히 넘어가면 나중에 "잠금해제 했는데 왜 안보이지" 문의로 이어지니, 바꾸는 시점에 바로 알려줌
+  return { failCount };
 }
 
 const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
@@ -2243,109 +2256,245 @@ function computeForProfile(profileId, monthStr, asOfDate){
   return { att, exp, name };
 }
 
-function renderAllNoticeBanner(){
-  const wrap = document.getElementById('allNoticeBannerWrap');
-  if(!wrap) return;
-  const latest = sharedNoticeHistory.find(n=>n.scope==='전체');
-  if(!latest){ wrap.innerHTML = ''; return; }
-  const styleStr = `font-size:${latest.size||16}px; ${latest.color ? 'color:'+latest.color+';' : ''} ${latest.bold ? 'font-weight:800;' : ''}`;
-  wrap.innerHTML = `
-    <div style="background:var(--indigo); border-radius:16px; padding:18px 22px; margin-bottom:20px; box-shadow:0 8px 20px -10px rgba(91,95,239,0.5);">
-      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-        <span style="background:rgba(255,255,255,0.25); color:#fff; font-size:11px; font-weight:800; padding:3px 10px; border-radius:20px;">📢 전체공지</span>
-        <span style="color:rgba(255,255,255,0.75); font-size:11px;">${latest.savedAt} · ${escHtml(latest.authorName||'관리자')}</span>
-      </div>
-      <div style="color:#fff; font-weight:800; font-size:15px; margin-bottom:6px;">${escHtml(latest.title || '')}</div>
-      <div style="white-space:pre-wrap; line-height:1.7; color:#fff; ${styleStr}">${escHtml(latest.content || '')}</div>
-    </div>`;
+// 공지사항 작성일시는 화면 표기용(ko-KR 로케일 문자열)과, 검색·정렬용 ISO 날짜(savedAtDate)를 함께 저장함.
+// 예전 기록엔 savedAtDate가 없을 수 있어서, 그 경우 화면표기 문자열("2026. 8. 21. 오후 ...")에서 날짜만 추출해 씀.
+function noticeDateOf(n){
+  if(n.savedAtDate) return n.savedAtDate;
+  const m = /^(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\./.exec(n.savedAt||'');
+  if(m) return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+  return '';
 }
 
-function renderNoticeHistory(){
-  const wrap = document.getElementById('noticeHistoryWrap');
+// 순번: 배열 0번(가장 최근 등록)이 제일 큰 번호를 받고, 가장 오래된 게 1번이 되도록
+function noticeSeqMap(){
+  const total = sharedNoticeHistory.length;
+  const map = new Map();
+  sharedNoticeHistory.forEach((n,i)=> map.set(n.id, total - i));
+  return map;
+}
+
+function filterNotices(){
+  const type = document.getElementById('notice-search-type')?.value || 'title';
+  const text = (document.getElementById('notice-search-text')?.value || '').trim().toLowerCase();
+  const dateVal = document.getElementById('notice-search-date')?.value || '';
+  let list = [...sharedNoticeHistory];
+  if(type === 'date'){
+    if(dateVal) list = list.filter(n => noticeDateOf(n) === dateVal);
+  } else if(text){
+    if(type === 'author') list = list.filter(n => (n.authorName||'').toLowerCase().includes(text));
+    else list = list.filter(n => (n.title||'').toLowerCase().includes(text));
+  }
+  return list;
+}
+
+function noticeSearchIsActive(){
+  const type = document.getElementById('notice-search-type')?.value || 'title';
+  return type === 'date' ? !!document.getElementById('notice-search-date')?.value : !!(document.getElementById('notice-search-text')?.value || '').trim();
+}
+
+function renderNoticeImportantSection(){
+  const wrap = document.getElementById('noticeImportantWrap');
   if(!wrap) return;
-  renderAllNoticeBanner();
-  if(!sharedNoticeHistory.length){
-    wrap.innerHTML = `<div class="empty-state">저장된 공지사항이 없습니다.</div>`;
+  const importantList = sharedNoticeHistory.filter(n=>n.important);
+  if(!importantList.length){
+    wrap.innerHTML = `<div class="empty-state" style="padding:16px;">없음</div>`;
     return;
   }
-  const rows = sharedNoticeHistory.map((n)=>`<tr>
-      <td class="num">${n.savedAt}${n.editedAt ? `<br><span style="font-size:10px; color:var(--ink-soft);">(수정 ${n.editedAt})</span>` : ''}</td>
+  wrap.innerHTML = importantList.map(n=>`
+    <div class="notice-important-item" data-id="${n.id}" style="background:var(--coral-bg); border-radius:12px; padding:10px 14px; margin-bottom:8px; cursor:pointer; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+      <span style="font-size:13px;">⭐</span>
+      <span style="font-weight:800; color:var(--coral); flex:1 1 auto;">${escHtml(n.title||'(제목 없음)')}</span>
+      <span style="font-size:11px; color:var(--ink-soft);">${escHtml(n.authorName||'-')} · ${escHtml(noticeDateOf(n))}</span>
+    </div>`).join('');
+  wrap.querySelectorAll('.notice-important-item').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const n = sharedNoticeHistory.find(x=>x.id===el.dataset.id);
+      if(n) openNoticeViewPopup(n);
+    });
+  });
+}
+
+function renderNoticeListModal(){
+  renderNoticeImportantSection();
+  const wrap = document.getElementById('noticeListWrap');
+  if(!wrap) return;
+  const seqMap = noticeSeqMap();
+  const list = filterNotices();
+  if(!list.length){
+    wrap.innerHTML = `<div class="empty-state">${noticeSearchIsActive() ? '검색 결과가 없습니다.' : '저장된 공지사항이 없습니다.'}</div>`;
+    return;
+  }
+  const canSetImportant = !!isCurrentUserAdmin;
+  const rows = list.map(n=>{
+    const seq = seqMap.get(n.id) || '-';
+    return `<tr>
+      <td class="num">${seq}</td>
+      <td>${escHtml(n.title || '(제목 없음)')}</td>
       <td><span class="tag ${n.scope==='전체' ? 'tag-grant' : 'tag-usage'}">${n.scope || '개인'}</span></td>
       <td>${escHtml(n.authorName || '-')}</td>
-      <td>${escHtml(n.title || '(제목 없음)')}</td>
+      <td class="num">${n.savedAt||''}${n.editedAt ? `<br><span style="font-size:10px; color:var(--ink-soft);">(수정 ${n.editedAt})</span>` : ''}</td>
+      <td style="text-align:center;"><input type="checkbox" class="notice-important-check" data-id="${n.id}" ${n.important?'checked':''} ${canSetImportant?'':'disabled'}></td>
       <td style="white-space:nowrap;">
         <button class="del-btn notice-view-btn" data-id="${n.id}">보기</button>
         <button class="del-btn notice-edit-btn" data-id="${n.id}">수정</button>
         <button class="del-btn notice-del-btn" data-id="${n.id}">삭제</button>
       </td>
-    </tr>`);
-  renderPaginatedRows(wrap, '<tr><th>작성일시</th><th>구분</th><th>작성자</th><th>제목</th><th></th></tr>', rows, 10);
+    </tr>`;
+  });
+  renderPaginatedRows(wrap, '<tr><th>순번</th><th>제목</th><th>구분</th><th>작성자</th><th>작성일시</th><th>중요</th><th></th></tr>', rows, 10);
+  wrap.querySelectorAll('.notice-important-check').forEach(cb=>{
+    cb.addEventListener('change', async ()=>{
+      const n = sharedNoticeHistory.find(x=>x.id===cb.dataset.id);
+      if(!n) return;
+      n.important = cb.checked;
+      await saveSharedNoticeHistory();
+      renderNoticeListModal();
+    });
+  });
   wrap.querySelectorAll('.notice-view-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const n = sharedNoticeHistory.find(x=>x.id===btn.dataset.id);
-      if(!n) return;
-      const styleStr = `font-size:${n.size||13.5}px; ${n.color ? 'color:'+n.color+';' : ''} ${n.bold ? 'font-weight:800;' : ''}`;
-      document.getElementById('noticePreviewWrap').innerHTML = `
-        <div class="settings-box" style="max-width:680px;">
-          <p class="hint" style="text-align:center; margin-bottom:4px; font-weight:800; color:var(--ink);">${escHtml(n.title||'')}</p>
-          <p class="hint" style="text-align:center; margin-bottom:8px;">${n.savedAt} · ${escHtml(n.authorName||'-')} · ${n.scope||'개인'} 공지${n.editedAt ? ' · 수정됨 '+n.editedAt : ''}</p>
-          <div style="white-space:pre-wrap; line-height:1.7; padding:14px; background:var(--bg); border-radius:10px; ${styleStr}">${escHtml(n.content || '(내용 없음)')}</div>
-        </div>`;
+      if(n) openNoticeViewPopup(n);
     });
   });
   wrap.querySelectorAll('.notice-edit-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const n = sharedNoticeHistory.find(x=>x.id===btn.dataset.id);
-      if(!n) return;
-      if(n.scope === '전체'){
-        // 전체공지는 Management → 업데이트 탭에서 수정
-        document.querySelector('.tab-btn[data-tab="policyedit"]')?.click();
-        editingAllNoticeId = n.id;
-        document.getElementById('all-notice-title').value = n.title || '';
-        document.getElementById('allNoticeContent').value = n.content || '';
-        document.getElementById('all-notice-size').value = n.size || '13.5';
-        document.getElementById('all-notice-color').value = n.color || '';
-        document.getElementById('all-notice-bold').checked = !!n.bold;
-        document.getElementById('saveAllNoticeBtn').textContent = '수정 완료';
-        document.getElementById('allNoticeCancelEditBtn').style.display = 'inline-block';
-        setTimeout(()=>document.getElementById('allNoticeForm').scrollIntoView({behavior:'smooth', block:'center'}), 100);
-      } else {
-        document.querySelector('.tab-btn[data-tab="noticepost"]')?.click();
-        editingNoticeId = n.id;
-        document.getElementById('notice-title').value = n.title || '';
-        document.getElementById('noticeContent').value = n.content || '';
-        document.getElementById('notice-size').value = n.size || '13.5';
-        document.getElementById('notice-color').value = n.color || '';
-        document.getElementById('notice-bold').checked = !!n.bold;
-        document.getElementById('saveNoticeBtn').textContent = '수정 완료';
-        document.getElementById('noticeCancelEditBtn').style.display = 'inline-block';
-        setTimeout(()=>document.getElementById('noticeFormTitle').scrollIntoView({behavior:'smooth', block:'center'}), 100);
-      }
+      openNoticeFormModal(btn.dataset.id);
     });
   });
   wrap.querySelectorAll('.notice-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
+      if(!confirm('이 공지를 삭제할까요?')) return;
       sharedNoticeHistory = sharedNoticeHistory.filter(x=>x.id!==btn.dataset.id);
       await saveSharedNoticeHistory();
-      document.getElementById('noticePreviewWrap').innerHTML = '';
-      if(editingNoticeId === btn.dataset.id){
-        editingNoticeId = null;
-        document.getElementById('saveNoticeBtn').textContent = '등록';
-        document.getElementById('noticeCancelEditBtn').style.display = 'none';
-        document.getElementById('notice-title').value = '';
-        document.getElementById('noticeContent').value = '';
-      }
-      if(editingAllNoticeId === btn.dataset.id){
-        editingAllNoticeId = null;
-        document.getElementById('saveAllNoticeBtn').textContent = '전체 공지 등록';
-        document.getElementById('allNoticeCancelEditBtn').style.display = 'none';
-        document.getElementById('all-notice-title').value = '';
-        document.getElementById('allNoticeContent').value = '';
-      }
-      renderNoticeHistory();
+      renderNoticeListModal();
     });
   });
 }
+
+// 공지사항 목록 팝업이 지금 열려 있을 때만 다시 그림 (동기화로 데이터가 바뀌었을 때 갱신용)
+function renderNoticeIfOpen(){
+  if(document.getElementById('noticeModalOverlay')?.style.display === 'flex') renderNoticeListModal();
+}
+
+function openNoticeViewPopup(n){
+  document.getElementById('memoModalTitle').textContent = n.title || '공지사항';
+  const styleStr = `font-size:${n.size||13.5}px; ${n.color ? 'color:'+n.color+';' : ''} ${n.bold ? 'font-weight:800;' : ''}`;
+  document.getElementById('memoModalBody').innerHTML = `
+    <div style="text-align:center; margin-bottom:12px;"><span style="font-size:12.5px; font-weight:800; color:var(--guide-wine);">&lt;공지사항&gt;</span></div>
+    <div style="text-align:center; margin-bottom:10px; font-size:11.5px; color:var(--ink-soft);">${escHtml(n.savedAt||'')} · ${escHtml(n.authorName||'-')} · ${n.scope||'개인'} 공지${n.editedAt ? ' · 수정됨 '+escHtml(n.editedAt) : ''}${n.important ? ' · ⭐중요' : ''}</div>
+    <div style="white-space:pre-wrap; line-height:1.7; padding:14px; background:var(--bg); border-radius:10px; ${styleStr}">${escHtml(n.content || '(내용 없음)')}</div>`;
+  document.getElementById('memoModalOverlay').style.display = 'flex';
+}
+
+let editingNoticeModalId = null;
+
+function openNoticeFormModal(editId){
+  editingNoticeModalId = editId || null;
+  const isAdmin = !!isCurrentUserAdmin;
+  document.getElementById('noticeScopeField').style.display = isAdmin ? '' : 'none';
+  document.getElementById('noticeImportantField').style.display = isAdmin ? 'flex' : 'none';
+  if(editId){
+    const n = sharedNoticeHistory.find(x=>x.id===editId);
+    if(!n) return;
+    document.getElementById('noticeFormModalTitle').textContent = '공지 수정';
+    document.getElementById('nm-scope').value = n.scope || '개인';
+    document.getElementById('nm-title').value = n.title || '';
+    document.getElementById('nm-size').value = n.size || '13.5';
+    document.getElementById('nm-color').value = n.color || '';
+    document.getElementById('nm-bold').checked = !!n.bold;
+    document.getElementById('nm-important').checked = !!n.important;
+    document.getElementById('nm-content').value = n.content || '';
+    document.getElementById('noticeModalSaveBtn').textContent = '수정 완료';
+  } else {
+    document.getElementById('noticeFormModalTitle').textContent = '공지 등록';
+    document.getElementById('nm-scope').value = '개인';
+    document.getElementById('nm-title').value = '';
+    document.getElementById('nm-size').value = '13.5';
+    document.getElementById('nm-color').value = '';
+    document.getElementById('nm-bold').checked = false;
+    document.getElementById('nm-important').checked = false;
+    document.getElementById('nm-content').value = '';
+    document.getElementById('noticeModalSaveBtn').textContent = '등록';
+  }
+  document.getElementById('noticeModalSaveMsg').textContent = '';
+  document.getElementById('noticeFormModalOverlay').style.display = 'flex';
+}
+function closeNoticeFormModal(){
+  document.getElementById('noticeFormModalOverlay').style.display = 'none';
+}
+document.getElementById('noticeFormModalClose').addEventListener('click', closeNoticeFormModal);
+document.getElementById('noticeFormModalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'noticeFormModalOverlay') closeNoticeFormModal();
+});
+
+document.getElementById('noticeModalForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const isAdmin = !!isCurrentUserAdmin;
+  const title = document.getElementById('nm-title').value.trim();
+  const content = document.getElementById('nm-content').value.trim();
+  if(!title || !content) return;
+  const scope = isAdmin ? (document.getElementById('nm-scope').value || '개인') : '개인';
+  const size = document.getElementById('nm-size').value;
+  const color = document.getElementById('nm-color').value;
+  const bold = document.getElementById('nm-bold').checked;
+  const important = isAdmin ? document.getElementById('nm-important').checked : false;
+  const myProfile = currentUserEmail ? getProfiles().find(p=>(p.email||'').toLowerCase()===currentUserEmail) : null;
+  const authorName = myProfile ? (readProfileRaw(myProfile.id,'settings')?.employeeName || myProfile.name || '직원') : (settings.employeeName || (scope==='전체' ? '관리자' : '직원'));
+
+  if(editingNoticeModalId){
+    const n = sharedNoticeHistory.find(x=>x.id===editingNoticeModalId);
+    if(n){
+      n.title = title; n.content = content; n.scope = scope; n.size = size; n.color = color; n.bold = bold;
+      if(isAdmin) n.important = important;
+      n.editedAt = new Date().toLocaleString('ko-KR');
+    }
+    document.getElementById('noticeModalSaveMsg').textContent = '수정됨';
+  } else {
+    const savedAt = new Date().toLocaleString('ko-KR');
+    const savedAtDate = todayStr();
+    sharedNoticeHistory.unshift({ id: genId(), title, content, scope, authorName, savedAt, savedAtDate, size, color, bold, important });
+    document.getElementById('noticeModalSaveMsg').textContent = '등록됨';
+  }
+  await saveSharedNoticeHistory();
+  setTimeout(()=>{
+    closeNoticeFormModal();
+    renderNoticeListModal();
+  }, 400);
+});
+
+function openNoticeModal(){
+  document.getElementById('notice-search-text').value = '';
+  document.getElementById('notice-search-date').value = '';
+  document.getElementById('noticeSearchPanel').style.display = 'none';
+  renderNoticeListModal();
+  document.getElementById('noticeModalOverlay').style.display = 'flex';
+}
+function closeNoticeModal(){
+  document.getElementById('noticeModalOverlay').style.display = 'none';
+}
+document.getElementById('noticeIconBtn').addEventListener('click', openNoticeModal);
+document.getElementById('noticeModalClose').addEventListener('click', closeNoticeModal);
+document.getElementById('noticeModalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'noticeModalOverlay') closeNoticeModal();
+});
+document.getElementById('noticeAddBtn').addEventListener('click', ()=> openNoticeFormModal(null));
+document.getElementById('noticeSearchToggleBtn').addEventListener('click', ()=>{
+  const panel = document.getElementById('noticeSearchPanel');
+  panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+});
+document.getElementById('notice-search-type').addEventListener('change', ()=>{
+  const isDate = document.getElementById('notice-search-type').value === 'date';
+  document.getElementById('notice-search-text').style.display = isDate ? 'none' : '';
+  document.getElementById('notice-search-date').style.display = isDate ? '' : 'none';
+});
+document.getElementById('noticeSearchBtn').addEventListener('click', renderNoticeListModal);
+document.getElementById('notice-search-text').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); renderNoticeListModal(); } });
+document.getElementById('noticeSearchResetBtn').addEventListener('click', ()=>{
+  document.getElementById('notice-search-text').value = '';
+  document.getElementById('notice-search-date').value = '';
+  renderNoticeListModal();
+});
 
 // 직원 모달(입력/수정 · 현황 · 수정이력) 상태
 let employeeModalCurrentId = null;
@@ -2405,6 +2554,17 @@ document.getElementById('employeeModalOverlay').addEventListener('click', (e)=>{
 });
 
 
+// 팀캘린더 뱃지에 "이름)유형" 형태로 짧게 표기하기 위한 유형 축약
+// (반차는 점심 섭취 여부만, 반반차는 늦출/이석/조퇴로만 구분)
+function leaveTeamCalShortType(type, subtype){
+  if(type === '반차') return subtype === '오후반차_식사O' ? '반차_점심O' : '반차_점심X';
+  if(type === '반반차'){
+    const m = { '늦은출근':'늦출', '점심연장':'이석', '조기퇴근':'조퇴' };
+    return m[subtype] || '반반차';
+  }
+  return type;
+}
+
 function renderAdminCalendar(){
   const wrap = document.getElementById('adminCalendarWrap');
   if(!wrap) return;
@@ -2425,7 +2585,7 @@ function renderAdminCalendar(){
         const u = g.entries[0];
         const t = (u.type==='반차'||u.type==='반반차') ? leaveAbsenceTime(u.date, u.type, u.subtype) : '';
         const titleAttr = t ? ` title="${escHtml(t)}"` : '';
-        (byDate[g.startDate]=byDate[g.startDate]||[]).push(`<span class="cal-badge leave"${titleAttr}>🌴 ${escHtml(name)} · ${u.type}</span>`);
+        (byDate[g.startDate]=byDate[g.startDate]||[]).push(`<span class="cal-badge leave"${titleAttr}>🌴 ${escHtml(name)})${escHtml(leaveTeamCalShortType(u.type, u.subtype))}</span>`);
       } else {
         // 연속 휴가는 하루짜리 뱃지 두 개(시작일/복귀일)로 뚝 끊어 보여주지 않고, 그 사이 평일들을 이어지는 막대로 표시함
         // (같은 주(그리드 한 줄) 안에서만 시각적으로 이어붙임 - 주가 바뀌면(금→다음주 월) 자연스럽게 막대가 새로 시작됨)
@@ -2447,7 +2607,7 @@ function renderAdminCalendar(){
           const isSpanEnd = !connectNext;
           const radiusStyle = `border-radius:${isSpanStart?'8px':'0'} ${isSpanEnd?'8px':'0'} ${isSpanEnd?'8px':'0'} ${isSpanStart?'8px':'0'};`;
           const marginStyle = `margin-left:${connectPrev?'-9px':'0'}; margin-right:${connectNext?'-9px':'0'};`;
-          const label = isSpanStart ? `🌴 ${escHtml(name)} · ${g.type} (${g.totalDays}일)` : '';
+          const label = isSpanStart ? `🌴 ${escHtml(name)})${escHtml(leaveTeamCalShortType(g.type, g.subtype))} (${g.totalDays}일)` : '';
           (byDate[dateStr]=byDate[dateStr]||[]).push(`<span class="cal-badge leave cal-badge-span" style="display:block; text-align:${isSpanStart?'left':'center'}; ${radiusStyle} ${marginStyle} position:relative; z-index:1;">${label || '&nbsp;'}</span>`);
         });
       }
@@ -2456,7 +2616,7 @@ function renderAdminCalendar(){
       const cls = r.bonus ? 'special' : 'remote';
       const icon = r.bonus ? '🎁' : '🏠';
       const typeLabel = r.bonus ? '특별재택' : '정기재택';
-      (byDate[r.date]=byDate[r.date]||[]).push(`<span class="cal-badge ${cls}">${icon} ${typeLabel}) ${escHtml(name)}</span>`);
+      (byDate[r.date]=byDate[r.date]||[]).push(`<span class="cal-badge ${cls}">${icon} ${escHtml(name)})${typeLabel}</span>`);
     });
     (sch.events||[]).filter(e=>e.date.startsWith(monthStr) && e.shared !== false).forEach(e=>{
       const t = e.startTime ? `${e.startTime}${e.endTime?'~'+e.endTime:''}` : '';
@@ -2810,7 +2970,7 @@ function syncDateFieldsToMonth(){
   const m = document.getElementById('monthSelect').value;
   const today = todayStr();
   const defaultDate = (!m || today.startsWith(m)) ? today : m + '-01';
-  ['g-date','u-date','r-date','l-date','d-date','tx-date','sc-date','ex-date','pp-date'].forEach(id=>{
+  ['g-date','u-date','l-date','d-date','tx-date','sc-date','ex-date','pp-date'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.value = defaultDate;
   });
@@ -2832,11 +2992,7 @@ async function loadAll(){
   try{ const pi = localStorage.getItem(skey('personalInfo')); if(pi) personalInfo = JSON.parse(pi); }catch(e){ console.error('개인정보 불러오기 실패', e); }
   loadSharedData();
   normalizeState();
-  {
-    const noticeEl = document.getElementById('noticeContent');
-    if(noticeEl) noticeEl.value = sharedNoticeHistory[0] ? sharedNoticeHistory[0].content : '';
-    renderNoticeHistory();
-  }
+  renderNoticeIfOpen();
   await saveSettings();
   await saveAttendance();
   await saveExpense();
@@ -2990,6 +3146,52 @@ function computeAutoGrants(hireDateStr, asOfDateStr){
     if(y>50) break;
   }
   return candidates;
+}
+
+// "잔여 연차" 옆 안내 아이콘 팝업용 - computeAutoGrants는 조회 기준일 이후는 잘라내지만,
+// 여기서는 직원이 앞으로 언제 며칠씩 생기는지 미리 보고 싶은 거라 미래분까지 전부 계산함
+// (실제 attendance.leaveGrants에 저장하는 로직과는 무관, 순전히 화면 안내용)
+function computeGrantScheduleFull(hireDateStr){
+  if(!hireDateStr) return [];
+  const hireDate = parseDate(hireDateStr);
+  const list = [];
+  for(let m=1;m<=11;m++){
+    list.push({date: fmt(addMonths(hireDate, m)), days:1, label:`입사 ${m}개월차 개근`});
+  }
+  let y=1;
+  while(true){
+    const days = y===1 ? 15 : Math.min(15 + Math.floor((y-1)/2), 25);
+    list.push({date: fmt(addYears(hireDate, y)), days, label:`근속 ${y}년차`});
+    if(days>=25 || y>50) break;
+    y++;
+  }
+  return list;
+}
+function openLeaveScheduleModal(){
+  const name = settings.employeeName || '나';
+  const hireDate = settings.hireDate;
+  document.getElementById('memoModalTitle').textContent = `${name} · 법정연차 자동부여 일정`;
+  const body = document.getElementById('memoModalBody');
+  const subtitle = `<div style="text-align:center; margin-bottom:12px;"><span style="font-size:12.5px; font-weight:800; color:var(--guide-wine);">&lt;법정연차 안내&gt;</span></div>`;
+  if(!hireDate){
+    body.innerHTML = subtitle + `<div style="text-align:center; color:var(--ink-soft); font-size:12.5px; padding-top:6px;">입사일이 등록되어 있지 않아 자동부여 일정을 계산할 수 없어요.<br>개인설정에서 입사일을 먼저 등록해주세요.</div>`;
+    document.getElementById('memoModalOverlay').style.display = 'flex';
+    return;
+  }
+  const schedule = computeGrantScheduleFull(hireDate);
+  const todayS = todayStr();
+  const rows = schedule.map(g=>{
+    const passed = g.date <= todayS;
+    return `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:7px 0; border-top:1px solid var(--border); opacity:${passed ? 1 : 0.55};">
+      <span style="font-size:12px; color:var(--ink-soft);">${escHtml(g.label)}</span>
+      <span style="font-size:12.5px; font-weight:700; white-space:nowrap;">${escHtml(g.date)} <span style="color:${passed ? 'var(--mint)' : 'var(--indigo-deep)'};">(+${g.days})</span></span>
+    </div>`;
+  }).join('');
+  body.innerHTML = subtitle +
+    `<div style="text-align:center; font-size:11.5px; color:var(--ink-soft); margin-bottom:10px;">입사일 ${escHtml(hireDate)} 기준 · 근로기준법상 자동부여 일정이에요<br>(옅게 표시된 항목은 아직 도래하지 않았어요)</div>
+    <div style="max-height:340px; overflow-y:auto;">${rows}</div>
+    <div style="text-align:center; font-size:10.5px; color:var(--ink-soft); margin-top:10px;">최대 25일에 도달한 뒤로는 매년 25일씩 동일하게 부여돼요.</div>`;
+  document.getElementById('memoModalOverlay').style.display = 'flex';
 }
 
 async function syncAutoGrants(){
@@ -3332,7 +3534,7 @@ function renderAllLeaveHistory(){
 function renderAttendance(){
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
   const s = calcAttendanceSummary(monthStr);
-  document.getElementById('remainLeaveLabel').textContent = '잔여 연차 (오늘 기준)';
+  document.getElementById('remainLeaveLabel').textContent = `잔여 연차 (${todayStr().replace(/-/g,'.')})`;
 
   document.getElementById('remainLeaveDisplay').textContent = s.remainLeave + '일';
   document.getElementById('grantUsedDisplay').textContent = `누적 부여 ${s.totalGranted}일 · 누적 사용 ${s.totalUsed}일`;
@@ -3388,10 +3590,15 @@ function renderAttendance(){
   wrap.querySelectorAll('.attendance-edit-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const kind = btn.dataset.kind, id = btn.dataset.id;
+      const kindSelect = document.getElementById('u-kind');
+      kindSelect.disabled = true;
+      document.getElementById('u-single-day').checked = true;
       if(kind==='usage'){
         const en = attendance.leaveUsage.find(x=>x.id===id);
         if(!en) return;
         editingUsageId = id;
+        kindSelect.value = 'leave';
+        kindSelect.dispatchEvent(new Event('change'));
         document.getElementById('u-date').value = en.date;
         document.getElementById('u-end-date').value = '';
         document.getElementById('u-type').value = en.type;
@@ -3406,12 +3613,15 @@ function renderAttendance(){
         const en = attendance.remoteEntries.find(x=>x.id===id);
         if(!en) return;
         editingRemoteId = id;
-        document.getElementById('r-date').value = en.date;
-        document.getElementById('r-memo').value = en.memo || '';
+        kindSelect.value = 'remote';
+        kindSelect.dispatchEvent(new Event('change'));
+        document.getElementById('u-date').value = en.date;
+        document.getElementById('u-end-date').value = '';
+        document.getElementById('u-memo').value = en.memo || '';
         document.getElementById('r-bonus').checked = !!en.bonus;
-        document.getElementById('remoteForm').querySelector('button[type="submit"]').textContent = '수정 완료';
-        document.getElementById('remote-cancel').style.display = 'inline-block';
-        document.getElementById('remoteForm').scrollIntoView({behavior:'smooth', block:'center'});
+        document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '수정 완료';
+        document.getElementById('usage-cancel').style.display = 'inline-block';
+        document.getElementById('usageForm').scrollIntoView({behavior:'smooth', block:'center'});
       }
     });
   });
@@ -3753,7 +3963,7 @@ function renderDeadlineBanner(){
   wrap.innerHTML = `<div class="deadline-banner">📌 ${prevMonthLabel}분 지출결의서, 매월 10일 지급 기준이니 상신 잊지 마세요! (마감까지 D-${daysLeft >= 0 ? daysLeft : 0})</div>`;
 }
 
-function renderAll(){ renderAttendance(); renderExpense(); renderWorkdaysSuggestion(); renderCalendar(); renderScheduleList(); renderClients(); renderClientsRegular(); renderClientsOther(); renderClientsTerminated(); renderPersonalInfo(); renderDeadlineBanner(); renderAdminCalendar(); renderHome(); renderAllLeaveHistory(); renderNoticeHistory(); renderManualGrantList(); renderEmployeeRoster(); if(typeof twemoji !== 'undefined') twemoji.parse(document.body, {folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'}); }
+function renderAll(){ renderAttendance(); renderExpense(); renderWorkdaysSuggestion(); renderCalendar(); renderScheduleList(); renderClients(); renderClientsRegular(); renderClientsOther(); renderClientsTerminated(); renderPersonalInfo(); renderDeadlineBanner(); renderAdminCalendar(); renderHome(); renderAllLeaveHistory(); renderNoticeIfOpen(); renderManualGrantList(); renderEmployeeRoster(); if(typeof twemoji !== 'undefined') twemoji.parse(document.body, {folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'}); }
 
 function renderScheduleList(){
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
@@ -3872,13 +4082,13 @@ function updateAllSensitiveUnlockButtons(){
 // 메모 팝업 (거래처 목록 표에서 메모 칸이 너무 길어져 열이 밀리는 걸 막기 위해 별도 팝업으로 보여줌)
 function openMemoModal(title, memos){
   document.getElementById('memoModalTitle').textContent = title || '메모';
-  const subtitle = `<div style="text-align:center; margin-bottom:12px;"><span style="display:inline-block; font-size:12px; font-weight:800; color:var(--indigo-deep); background:var(--indigo-bg); padding:4px 14px; border-radius:20px;">메모</span></div>`;
+  const subtitle = `<div style="text-align:center; margin-bottom:12px;"><span style="font-size:12.5px; font-weight:800; color:var(--guide-wine);">&lt;메모&gt;</span></div>`;
   const body = document.getElementById('memoModalBody');
   if(!memos || !memos.length){
     body.innerHTML = subtitle + `<div style="text-align:center; color:var(--ink-soft); font-size:12.5px; padding-top:10px;">(메모 없음)</div>`;
   } else {
     body.innerHTML = subtitle + memos.map((m,i)=>`
-      <div style="padding:10px 0; border-top:1px solid var(--border);">
+      <div style="background:var(--bg); border-radius:10px; padding:10px 12px; margin-bottom:8px;">
         <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
           <span style="display:inline-block; font-size:10.5px; font-weight:800; color:#fff; background:var(--indigo); border-radius:50%; width:16px; height:16px; text-align:center; line-height:16px; flex-shrink:0;">${i+1}</span>
           ${m.date ? `<span style="font-size:11px; color:var(--ink-soft); font-weight:700;">${escHtml(m.date)}</span>` : ''}
@@ -3892,7 +4102,7 @@ function openMemoModal(title, memos){
 function openHistoryModal(title, history){
   document.getElementById('memoModalTitle').textContent = title || '수정이력';
   const body = document.getElementById('memoModalBody');
-  const subtitle = `<div style="text-align:center; margin-bottom:12px;"><span style="display:inline-block; font-size:12px; font-weight:800; color:var(--indigo-deep); background:var(--indigo-bg); padding:4px 14px; border-radius:20px;">수정이력</span></div>`;
+  const subtitle = `<div style="text-align:center; margin-bottom:12px;"><span style="font-size:12.5px; font-weight:800; color:var(--guide-wine);">&lt;수정이력&gt;</span></div>`;
   if(!history || !history.length){
     body.innerHTML = subtitle + `<div style="text-align:center; color:var(--ink-soft); font-size:12.5px;">(수정 이력이 없어요)</div>`;
   } else {
@@ -3908,7 +4118,7 @@ function openHistoryModal(title, history){
       } else {
         changesHtml = `<div style="font-size:12.5px;">${escHtml(h.changes||'')}</div>`;
       }
-      return `<div style="padding:10px 0; border-top:1px solid var(--border);">
+      return `<div style="background:var(--bg); border-radius:10px; padding:10px 12px; margin-bottom:8px;">
         <div style="font-size:11px; color:var(--ink-soft); font-weight:700; margin-bottom:6px;">${escHtml(h.date||'')}</div>
         ${changesHtml}
       </div>`;
@@ -3957,7 +4167,7 @@ function openClientDetailModal(c){
   html += group('실무자', contactRows);
 
   document.getElementById('memoModalBody').innerHTML = `
-    <div style="text-align:center; margin-bottom:12px;"><span style="display:inline-block; font-size:12px; font-weight:800; color:var(--indigo-deep); background:var(--indigo-bg); padding:4px 14px; border-radius:20px;">추가정보</span></div>
+    <div style="text-align:center; margin-bottom:12px;"><span style="font-size:12.5px; font-weight:800; color:var(--guide-wine);">&lt;추가정보&gt;</span></div>
     ${html}`;
   document.getElementById('memoModalOverlay').style.display = 'flex';
 }
@@ -3968,6 +4178,7 @@ document.getElementById('memoModalClose').addEventListener('click', closeMemoMod
 document.getElementById('memoModalOverlay').addEventListener('click', (e)=>{
   if(e.target.id === 'memoModalOverlay') closeMemoModal();
 });
+document.getElementById('leaveScheduleInfoBtn').addEventListener('click', openLeaveScheduleModal);
 
 // 거래처 정보 항목별 한글 라벨 - 수정이력에 "무엇이 바뀌었는지" 사람이 읽기 좋게 표시할 때 씀
 const CLIENT_FIELD_LABELS = {
@@ -4079,9 +4290,17 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
   const badge = document.getElementById(badgeId);
   const searchEl = document.getElementById(searchInputId);
   const q = (searchEl && searchEl.value || '').trim().toLowerCase();
+  const searchTypeEl = document.getElementById(searchInputId + '-type');
   let list = (clients.list||[]).filter(filterFn);
   if(q){
-    list = list.filter(c=> (c.name||'').toLowerCase().includes(q) || (c.repName||'').toLowerCase().includes(q));
+    if(searchTypeEl){
+      const type = searchTypeEl.value;
+      if(type === 'bizNo') list = list.filter(c=> (c.bizNo||'').toLowerCase().includes(q));
+      else if(type === 'repName') list = list.filter(c=> (c.repName||'').toLowerCase().includes(q));
+      else list = list.filter(c=> (c.name||'').toLowerCase().includes(q));
+    } else {
+      list = list.filter(c=> (c.name||'').toLowerCase().includes(q) || (c.repName||'').toLowerCase().includes(q));
+    }
   }
   // 법인/개인 → 그 안에서 기장대행/신고대리 순으로 묶어서 보여주되, 같은 묶음 안에서는 등록(추가한) 순서를 그대로 유지
   // (Array.sort는 안정 정렬이라 묶음 내 상대 순서가 안 바뀜 -> 새로 추가한 거래처는 자기 묶음의 맨 아래에 붙게 됨)
@@ -4251,8 +4470,6 @@ async function renderClientsOther(){
 async function renderClientsTerminated(){
   await renderClientFilteredTable('clientsTerminatedRegularListWrap','clientsTerminatedRegularBadge','cl-terminated-search', c=>c.status==='해지' && ['기장대행','신고대리'].includes(c.taxType), '해지된 정기 거래처가 없습니다.', true);
   await renderClientFilteredTable('clientsTerminatedOtherListWrap','clientsTerminatedOtherBadge','cl-terminated-search', c=>c.status==='해지' && !['기장대행','신고대리'].includes(c.taxType), '해지된 비정기 거래처가 없습니다.', true);
-  const totalBadge = document.getElementById('clientsTerminatedTotalBadge');
-  if(totalBadge) totalBadge.textContent = `${(clients.list||[]).filter(c=>c.status==='해지').length}건`;
 }
 
 // 거래처 편집폼에 값 채우기 (기장거래처/기타거래처/해지목록 표의 '수정' 버튼과, 예전 통합목록에서 공통으로 씀)
@@ -4267,7 +4484,7 @@ async function populateClientEditForm(c){
   updateFaithfulYearVisibility();
   document.getElementById('cl-bizno').value = c.bizNo || '';
   document.getElementById('cl-corpregno').value = c.corpRegNo || '';
-  const knownPrograms = ['위하고','세무사랑'];
+  const knownPrograms = ['없음','위하고','세무사랑'];
   if(c.program && !knownPrograms.includes(c.program)){
     document.getElementById('cl-program').value = '기타';
     document.getElementById('cl-program-etc').value = c.program;
@@ -4424,10 +4641,14 @@ async function renderPersonalInfo(){
     return;
   }
   const decryptedMap = {};
+  const decryptFailedSet = new Set();
   if(unlocked){
     for(const p of list){
       if(p.sensitiveEnc){
-        try{ decryptedMap[p.id] = await decryptJSON(p.sensitiveEnc, adminCryptoKey); }catch(err){ console.error('복호화 실패', p.id, err); }
+        // 복호화가 실패하는 건 거의 항상 "이 항목이 지금 관리비밀번호와 다른(예전) 키로 암호화돼있다"는 뜻이라,
+        // 그냥 조용히 잠김으로 보여주면 "분명 잠금해제 했는데 왜 안보이지"하고 혼동하기 쉬움 -> 실패 여부를 따로 기록해서 다르게 표시함
+        try{ decryptedMap[p.id] = await decryptJSON(p.sensitiveEnc, adminCryptoKey); }
+        catch(err){ console.error('복호화 실패', p.id, err); decryptFailedSet.add(p.id); }
       }
     }
   }
@@ -4449,6 +4670,8 @@ async function renderPersonalInfo(){
         piCell(s.ssn), piCell(s.hometaxId), piCell(s.hometaxPw),
         piCell(s.bankPw), piCell(s.certPw), piCell(s.yeoshinId), piCell(s.yeoshinPw)
       ].join('');
+    } else if(unlocked && decryptFailedSet.has(p.id)){
+      sensitiveCells = Array(7).fill(`<td style="color:var(--coral);" title="현재 관리비밀번호로 열리지 않는 데이터예요. 이 항목을 등록한 뒤 비밀번호가 바뀌었는데 재암호화가 안 됐을 수 있어요. 관리자에게 문의해주세요.">⚠️ 열람불가</td>`).join('');
     } else {
       sensitiveCells = Array(7).fill(`<td style="color:var(--ink-soft);">🔒 잠김</td>`).join('');
     }
@@ -4892,8 +5115,8 @@ function buildCalendarHTML(monthStr){
 let navExpanded = false;
 let activeTopGroup = null; // null | 'management' | 'staff' | 'client'
 
-const MANAGEMENT_TABS = ['admin','teamcalendar','quickguide','policy','policyedit','settings'];
-const STAFF_TABS = ['calendar','attendance','expense','settlement','noticepost','attendance-settings'];
+const MANAGEMENT_TABS = ['teamcalendar','quickguide','policy','policyedit','settings'];
+const STAFF_TABS = ['calendar','attendance','expense','settlement','attendance-settings'];
 const CLIENT_TABS = ['clients-regular','clients-other','clients-edit','clients-personal','clients-terminated','clients-settings'];
 
 function updateNavVisibility(){
@@ -4917,7 +5140,7 @@ document.getElementById('toggleManagementBtn').addEventListener('click', ()=>{
   updateSubRows();
   const currentTab = document.querySelector('.tab-panel.active')?.id.replace('tab-','');
   if(!MANAGEMENT_TABS.includes(currentTab)){
-    document.querySelector('.tab-btn[data-tab="admin"]')?.click();
+    document.querySelector('.tab-btn[data-tab="teamcalendar"]')?.click();
   }
 });
 document.getElementById('toggleStaffBtn').addEventListener('click', ()=>{
@@ -5076,13 +5299,17 @@ document.getElementById('grantCancelEditBtn').addEventListener('click', ()=>{
   document.getElementById('g-memo').value='';
 });
 
+const uKindSelect = document.getElementById('u-kind');
 const uTypeSelect = document.getElementById('u-type');
+const leaveTypeField = document.getElementById('leaveTypeField');
+const remoteBonusField = document.getElementById('remoteBonusField');
 const halfdaySubtypeField = document.getElementById('halfdaySubtypeField');
 const uSubtypeSelect = document.getElementById('u-subtype');
 const specialDaysField = document.getElementById('specialDaysField');
 const familyPresetField = document.getElementById('familyPresetField');
 const familyPresetSelect = document.getElementById('u-familypreset');
 const SPECIAL_LEAVE_TYPES = ['포상휴가','경조사휴가','기타휴가'];
+const PERIOD_ENABLED_TYPES = ['연차', '포상휴가', '경조사휴가', '기타휴가'];
 const HALF_SUBTYPE_OPTIONS = [
   { value:'오후반차_식사O', text:'오후반차 (점심 먹고 퇴근)' },
   { value:'오전반차', text:'오전반차 (14:00 출근, 점심 X)' },
@@ -5093,6 +5320,17 @@ const QUARTER_SUBTYPE_OPTIONS = [
   { value:'점심연장', text:'점심연장 (11:00~14:00 이석)' },
   { value:'조기퇴근', text:'조기퇴근 (16:00 / 하반기 15:30)' }
 ];
+// 시작일 하나만 쓸지(당일) 종료일까지 범위로 쓸지 - 종류(휴가/재택)와 휴가일 때는 세부구분에 따라 범위 지원 여부가 갈림
+function updateEndDateVisibility(){
+  const kind = uKindSelect.value;
+  const type = uTypeSelect.value;
+  const allowRange = kind === 'remote' ? true : PERIOD_ENABLED_TYPES.includes(type);
+  document.getElementById('singleDayField').style.display = allowRange ? 'flex' : 'none';
+  const singleDay = document.getElementById('u-single-day').checked;
+  const show = allowRange && !singleDay;
+  document.getElementById('endDateField').style.display = show ? 'flex' : 'none';
+  if(!show) document.getElementById('u-end-date').value = '';
+}
 function updateUsageTypeFields(){
   const type = uTypeSelect.value;
   const isHalf = type === '반차';
@@ -5109,12 +5347,25 @@ function updateUsageTypeFields(){
   const isSpecial = SPECIAL_LEAVE_TYPES.includes(type);
   specialDaysField.style.display = isSpecial ? 'flex' : 'none';
   familyPresetField.style.display = type === '경조사휴가' ? 'flex' : 'none';
-  const PERIOD_ENABLED_TYPES = ['연차', '포상휴가', '경조사휴가', '기타휴가'];
-  document.getElementById('endDateField').style.display = PERIOD_ENABLED_TYPES.includes(type) ? 'flex' : 'none';
-  if(type !== '연차') document.getElementById('u-end-date').value = '';
+  updateEndDateVisibility();
 }
+function updateUsageKindFields(){
+  const kind = uKindSelect.value;
+  leaveTypeField.style.display = kind === 'leave' ? 'flex' : 'none';
+  remoteBonusField.style.display = kind === 'remote' ? 'flex' : 'none';
+  if(kind === 'leave'){
+    updateUsageTypeFields();
+  } else {
+    halfdaySubtypeField.style.display = 'none';
+    specialDaysField.style.display = 'none';
+    familyPresetField.style.display = 'none';
+    updateEndDateVisibility();
+  }
+}
+uKindSelect.addEventListener('change', updateUsageKindFields);
 uTypeSelect.addEventListener('change', updateUsageTypeFields);
-updateUsageTypeFields();
+document.getElementById('u-single-day').addEventListener('change', updateEndDateVisibility);
+updateUsageKindFields();
 familyPresetSelect.addEventListener('change', ()=>{
   if(!familyPresetSelect.value) return;
   document.getElementById('u-days').value = familyPresetSelect.value;
@@ -5123,98 +5374,113 @@ familyPresetSelect.addEventListener('change', ()=>{
 });
 
 let editingUsageId = null;
+let editingRemoteId = null;
+
+function resetUsageFormEditState(){
+  editingUsageId = null;
+  editingRemoteId = null;
+  uKindSelect.disabled = false;
+  document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '추가';
+  document.getElementById('usage-cancel').style.display = 'none';
+  document.getElementById('u-memo').value = '';
+  document.getElementById('u-end-date').value = '';
+  document.getElementById('u-single-day').checked = true;
+  document.getElementById('r-bonus').checked = false;
+  updateEndDateVisibility();
+}
 
 document.getElementById('usageForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
+  const kind = uKindSelect.value;
   const date = document.getElementById('u-date').value;
   const endDate = document.getElementById('u-end-date').value;
-  const type = document.getElementById('u-type').value;
-  const subtype = (type === '반차' || type === '반반차') ? document.getElementById('u-subtype').value : null;
-  const isSpecial = SPECIAL_LEAVE_TYPES.includes(type);
-  const days = isSpecial ? (Number(document.getElementById('u-days').value) || 1) : null;
   const memo = document.getElementById('u-memo').value.trim();
   if(!date) return;
 
-  if(editingUsageId){
-    const en = attendance.leaveUsage.find(x=>x.id===editingUsageId);
-    if(en){ en.date=date; en.type=type; en.subtype=subtype; en.days=days; en.memo=memo; }
-    editingUsageId = null;
-    document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '추가';
-    document.getElementById('usage-cancel').style.display = 'none';
-    document.getElementById('usageSaveMsg').textContent = '수정됨';
+  if(kind === 'leave'){
+    const type = document.getElementById('u-type').value;
+    const subtype = (type === '반차' || type === '반반차') ? document.getElementById('u-subtype').value : null;
+    const isSpecial = SPECIAL_LEAVE_TYPES.includes(type);
+    const days = isSpecial ? (Number(document.getElementById('u-days').value) || 1) : null;
+
+    if(editingUsageId){
+      const en = attendance.leaveUsage.find(x=>x.id===editingUsageId);
+      if(en){ en.date=date; en.type=type; en.subtype=subtype; en.days=days; en.memo=memo; }
+      document.getElementById('usageSaveMsg').textContent = '수정됨';
+      resetUsageFormEditState();
+      await saveAttendance();
+      renderAll();
+      setTimeout(()=>document.getElementById('usageSaveMsg').textContent='',1800);
+      return;
+    }
+
+    let addedCount = 0;
+    if((type === '연차' || isSpecial) && endDate && endDate > date){
+      let cur = parseDate(date);
+      const end = parseDate(endDate);
+      while(cur <= end){
+        const dow = cur.getDay();
+        if(dow !== 0 && dow !== 6){
+          attendance.leaveUsage.push({id:genId(), date:fmt(cur), type, subtype:null, days: isSpecial ? 1 : null, memo});
+          addedCount++;
+        }
+        cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate()+1);
+      }
+    } else {
+      attendance.leaveUsage.push({id:genId(), date, type, subtype, days, memo});
+      addedCount = 1;
+    }
     await saveAttendance();
+    document.getElementById('usageSaveMsg').textContent = addedCount > 1 ? `${addedCount}일 추가됨 (주말 제외)` : '추가됨';
+    setTimeout(()=>document.getElementById('usageSaveMsg').textContent='',1800);
     document.getElementById('u-memo').value='';
     document.getElementById('u-end-date').value='';
     renderAll();
-    setTimeout(()=>document.getElementById('usageSaveMsg').textContent='',1800);
-    return;
-  }
+  } else {
+    const bonus = document.getElementById('r-bonus').checked;
 
-  let addedCount = 0;
-  if((type === '연차' || isSpecial) && endDate && endDate > date){
-    let cur = parseDate(date);
-    const end = parseDate(endDate);
-    while(cur <= end){
-      const dow = cur.getDay();
-      if(dow !== 0 && dow !== 6){
-        attendance.leaveUsage.push({id:genId(), date:fmt(cur), type, subtype:null, days: isSpecial ? 1 : null, memo});
-        addedCount++;
-      }
-      cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate()+1);
+    if(editingRemoteId){
+      const en = attendance.remoteEntries.find(x=>x.id===editingRemoteId);
+      if(en){ en.date=date; en.memo=memo; en.bonus=bonus; }
+      document.getElementById('usageSaveMsg').textContent = '수정됨';
+      resetUsageFormEditState();
+      await saveAttendance();
+      renderAll();
+      setTimeout(()=>document.getElementById('usageSaveMsg').textContent='',1800);
+      return;
     }
-  } else {
-    attendance.leaveUsage.push({id:genId(), date, type, subtype, days, memo});
-    addedCount = 1;
+
+    let addedCount = 0;
+    if(endDate && endDate > date){
+      let cur = parseDate(date);
+      const end = parseDate(endDate);
+      while(cur <= end){
+        const dow = cur.getDay();
+        if(dow !== 0 && dow !== 6){
+          attendance.remoteEntries.push({id:genId(), date:fmt(cur), memo, bonus});
+          addedCount++;
+        }
+        cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate()+1);
+      }
+    } else {
+      attendance.remoteEntries.push({id:genId(), date, memo, bonus});
+      addedCount = 1;
+    }
+    await saveAttendance();
+    document.getElementById('usageSaveMsg').textContent = addedCount > 1 ? `${addedCount}일 추가됨 (주말 제외)` : '추가됨';
+    setTimeout(()=>document.getElementById('usageSaveMsg').textContent='',1800);
+    document.getElementById('u-memo').value='';
+    document.getElementById('u-end-date').value='';
+    document.getElementById('r-bonus').checked = false;
+    renderAll();
   }
-
-  await saveAttendance();
-  document.getElementById('usageSaveMsg').textContent = addedCount > 1 ? `${addedCount}일 추가됨 (주말 제외)` : '추가됨';
-  setTimeout(()=>document.getElementById('usageSaveMsg').textContent='',1800);
-  document.getElementById('u-memo').value='';
-  document.getElementById('u-end-date').value='';
-  renderAll();
 });
 
-document.getElementById('usage-cancel').addEventListener('click', ()=>{
-  editingUsageId = null;
-  document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '추가';
-  document.getElementById('usage-cancel').style.display = 'none';
-  document.getElementById('u-memo').value='';
-  document.getElementById('u-end-date').value='';
-});
+document.getElementById('usage-cancel').addEventListener('click', resetUsageFormEditState);
 
-let editingRemoteId = null;
-
-document.getElementById('remoteForm').addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const date = document.getElementById('r-date').value;
-  const memo = document.getElementById('r-memo').value.trim();
-  const bonus = document.getElementById('r-bonus').checked;
-  if(!date) return;
-  if(editingRemoteId){
-    const en = attendance.remoteEntries.find(x=>x.id===editingRemoteId);
-    if(en){ en.date=date; en.memo=memo; en.bonus=bonus; }
-    editingRemoteId = null;
-    document.getElementById('remoteForm').querySelector('button[type="submit"]').textContent = '추가';
-    document.getElementById('remote-cancel').style.display = 'none';
-    document.getElementById('remoteSaveMsg').textContent = '수정됨';
-  } else {
-    attendance.remoteEntries.push({id:genId(), date, memo, bonus});
-    document.getElementById('remoteSaveMsg').textContent = '추가됨';
-  }
-  await saveAttendance();
-  setTimeout(()=>document.getElementById('remoteSaveMsg').textContent='',1200);
-  document.getElementById('r-memo').value='';
-  document.getElementById('r-bonus').checked = false;
-  renderAll();
-});
-
-document.getElementById('remote-cancel').addEventListener('click', ()=>{
-  editingRemoteId = null;
-  document.getElementById('remoteForm').querySelector('button[type="submit"]').textContent = '추가';
-  document.getElementById('remote-cancel').style.display = 'none';
-  document.getElementById('r-memo').value='';
-  document.getElementById('r-bonus').checked = false;
+document.getElementById('leaveQueryToggleBtn').addEventListener('click', ()=>{
+  const panel = document.getElementById('leaveQueryPanel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
 });
 
 let editingExpense = { kind: null, id: null };
@@ -6532,9 +6798,9 @@ function renderSubTagChipOptions(){
   wrap.innerHTML = options.map(key=>{
     const tag = clSubTags.find(t=>t.key===key);
     const active = !!tag;
-    return `<div class="cl-subtag-item" style="display:flex; flex-direction:column; gap:5px; min-width:130px;">
-      <button type="button" class="cl-subtag-toggle" data-key="${escHtml(key)}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:20px; border:1.5px solid ${active?'var(--indigo)':'var(--border)'}; background:${active?'var(--indigo)':'var(--surface)'}; color:${active?'#fff':'var(--ink)'};">${escHtml(key)}</button>
-      ${active ? `<input type="text" class="cl-subtag-note" data-key="${escHtml(key)}" value="${escHtml(tag.note||'')}" placeholder="예: 2025년 귀속, 2026.05.24 전환" style="font-size:11.5px; padding:6px 8px; border:1.5px solid var(--border); border-radius:8px; background:var(--surface);">` : ''}
+    return `<div class="cl-subtag-item" style="display:flex; flex-direction:column; align-items:flex-start; gap:5px;">
+      <button type="button" class="cl-subtag-toggle" data-key="${escHtml(key)}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:20px; border:1.5px solid ${active?'var(--indigo)':'var(--border)'}; background:${active?'var(--indigo)':'var(--surface)'}; color:${active?'#fff':'var(--ink)'}; white-space:nowrap;">${escHtml(key)}</button>
+      ${active ? `<input type="text" class="cl-subtag-note" data-key="${escHtml(key)}" value="${escHtml(tag.note||'')}" placeholder="예: 2025년 귀속, 2026.05.24 전환" style="width:150px; font-size:11.5px; padding:6px 8px; border:1.5px solid var(--border); border-radius:8px; background:var(--surface);">` : ''}
     </div>`;
   }).join('');
   wrap.querySelectorAll('.cl-subtag-toggle').forEach(btn=>{
@@ -6741,6 +7007,7 @@ renderContactRows();
 document.getElementById('cl-regular-search').addEventListener('input', ()=>renderClientsRegular());
 document.getElementById('cl-other-search').addEventListener('input', ()=>renderClientsOther());
 document.getElementById('cl-terminated-search').addEventListener('input', ()=>renderClientsTerminated());
+document.getElementById('cl-terminated-search-type').addEventListener('change', ()=>renderClientsTerminated());
 
 document.getElementById('personalInfoForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
@@ -6977,86 +7244,6 @@ document.getElementById('saveStdWorkHoursBtn').addEventListener('click', async (
   renderAll();
 });
 
-let editingNoticeId = null;
-
-document.getElementById('noticeForm').addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const content = document.getElementById('noticeContent').value.trim();
-  const title = document.getElementById('notice-title').value.trim();
-  if(!content || !title) return;
-  const scope = '개인';
-  const size = document.getElementById('notice-size').value;
-  const color = document.getElementById('notice-color').value;
-  const bold = document.getElementById('notice-bold').checked;
-  const myProfile = currentUserEmail ? getProfiles().find(p=>(p.email||'').toLowerCase()===currentUserEmail) : null;
-  const authorName = myProfile ? (readProfileRaw(myProfile.id,'settings')?.employeeName || myProfile.name || '직원') : (settings.employeeName || '직원');
-
-  if(editingNoticeId){
-    const n = sharedNoticeHistory.find(x=>x.id===editingNoticeId);
-    if(n){ n.title = title; n.content = content; n.scope = scope; n.size = size; n.color = color; n.bold = bold; n.editedAt = new Date().toLocaleString('ko-KR'); }
-    editingNoticeId = null;
-    document.getElementById('saveNoticeBtn').textContent = '등록';
-    document.getElementById('noticeCancelEditBtn').style.display = 'none';
-    document.getElementById('noticeSaveMsg').textContent = '수정됨';
-  } else {
-    const savedAt = new Date().toLocaleString('ko-KR');
-    sharedNoticeHistory.unshift({ id: genId(), title, content, scope, authorName, savedAt, size, color, bold });
-    document.getElementById('noticeSaveMsg').textContent = '등록됨';
-  }
-  await saveSharedNoticeHistory();
-  setTimeout(()=>document.getElementById('noticeSaveMsg').textContent='',1500);
-  document.getElementById('noticeContent').value = '';
-  document.getElementById('notice-title').value = '';
-  document.getElementById('noticePreviewWrap').innerHTML = '';
-  renderNoticeHistory();
-});
-
-document.getElementById('noticeCancelEditBtn').addEventListener('click', ()=>{
-  editingNoticeId = null;
-  document.getElementById('saveNoticeBtn').textContent = '등록';
-  document.getElementById('noticeCancelEditBtn').style.display = 'none';
-  document.getElementById('noticeContent').value = '';
-  document.getElementById('notice-title').value = '';
-});
-
-let editingAllNoticeId = null;
-
-document.getElementById('allNoticeForm').addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const content = document.getElementById('allNoticeContent').value.trim();
-  const title = document.getElementById('all-notice-title').value.trim();
-  if(!content || !title) return;
-  const size = document.getElementById('all-notice-size').value;
-  const color = document.getElementById('all-notice-color').value;
-  const bold = document.getElementById('all-notice-bold').checked;
-
-  if(editingAllNoticeId){
-    const n = sharedNoticeHistory.find(x=>x.id===editingAllNoticeId);
-    if(n){ n.title = title; n.content = content; n.size = size; n.color = color; n.bold = bold; n.editedAt = new Date().toLocaleString('ko-KR'); }
-    editingAllNoticeId = null;
-    document.getElementById('saveAllNoticeBtn').textContent = '전체 공지 등록';
-    document.getElementById('allNoticeCancelEditBtn').style.display = 'none';
-    document.getElementById('allNoticeSaveMsg').textContent = '수정됨';
-  } else {
-    const savedAt = new Date().toLocaleString('ko-KR');
-    sharedNoticeHistory.unshift({ id: genId(), title, content, scope: '전체', authorName: '관리자', savedAt, size, color, bold });
-    document.getElementById('allNoticeSaveMsg').textContent = '등록됨';
-  }
-  await saveSharedNoticeHistory();
-  setTimeout(()=>document.getElementById('allNoticeSaveMsg').textContent='',1500);
-  document.getElementById('allNoticeContent').value = '';
-  document.getElementById('all-notice-title').value = '';
-  renderNoticeHistory();
-});
-
-document.getElementById('allNoticeCancelEditBtn').addEventListener('click', ()=>{
-  editingAllNoticeId = null;
-  document.getElementById('saveAllNoticeBtn').textContent = '전체 공지 등록';
-  document.getElementById('allNoticeCancelEditBtn').style.display = 'none';
-  document.getElementById('allNoticeContent').value = '';
-  document.getElementById('all-notice-title').value = '';
-});
-
 document.getElementById('addWorkHourExceptionBtn').addEventListener('click', async ()=>{
   const sy = document.getElementById('wh-start-y').value;
   const sm = document.getElementById('wh-start-m').value;
@@ -7291,7 +7478,6 @@ function applyPermissionUI(){
     settingsLockedEl.style.display = admin ? 'none' : 'block';
     settingsContentEl.style.display = admin ? 'block' : 'none';
   }
-  const noticeTextarea = document.getElementById('noticeContent');
   const adminNoteEls = document.querySelectorAll('.admin-only-note');
   adminNoteEls.forEach(el=>{ el.style.display = admin ? 'none' : 'block'; });
   const adminMgmtWrap = document.getElementById('adminEmailMgmtWrap');
@@ -8291,7 +8477,7 @@ document.getElementById('changeManagePwForm').addEventListener('submit', async (
     const newSalt = b64FromBuf(crypto.getRandomValues(new Uint8Array(16)).buffer);
     const newKey = await deriveKeyFromPassword(newPw, newSalt);
     const newVerifier = await encryptJSON({check:'ok'}, newKey);
-    await reencryptAllClientSensitiveData(oldKey, newKey);
+    var reencryptResult = await reencryptAllClientSensitiveData(oldKey, newKey);
     sharedManageSalt = newSalt;
     sharedManageVerifier = newVerifier;
     await saveSharedManagePassword();
@@ -8308,6 +8494,9 @@ document.getElementById('changeManagePwForm').addEventListener('submit', async (
   document.getElementById('new-manage-pw-2').value = '';
   document.getElementById('new-manage-pw-confirm').value = '';
   renderManagePwStatus();
+  if(reencryptResult && reencryptResult.failCount > 0){
+    alert(`비밀번호는 변경됐지만, ${reencryptResult.failCount}건은 예전 비밀번호로도 열리지 않아 재암호화하지 못했어요.\n해당 항목은 개인정보/거래처 목록에서 "⚠️ 열람불가"로 표시돼요. 관리자에게 문의해주세요.`);
+  }
   updatePersonalInfoFormState();
   renderPersonalInfo();
 });
