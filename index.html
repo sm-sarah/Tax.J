@@ -141,8 +141,10 @@
   .card-sub{font-size:11px; color:var(--ink-soft); margin-top:4px; min-height:14px; font-weight:500;}
 
   .tabs{
-    display:flex; flex-direction:column; gap:10px; margin-bottom:26px;
+    display:flex; flex-direction:column; gap:10px; margin-bottom:46px;
     position:sticky; top:0; z-index:100;
+    background:var(--bg); padding:12px 0 8px; margin-top:-12px;
+    box-shadow:0 4px 10px -6px rgba(29,30,51,0.12);
   }
   .tab-row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
   .tab-group{
@@ -1376,7 +1378,14 @@
               <option value="간세">간세</option>
             </select>
           </div>
-          <div class="field" id="cl-faithful-year-field" style="flex:1 1 110px; display:none;"><label>귀속연도</label><input type="number" id="cl-faithful-year" class="num-input" placeholder="예: 2025"></div>
+        </div>
+        <div class="field-row" id="cl-faithful-year-field" style="display:none; flex-direction:column; gap:6px; background:var(--bg); border-radius:10px; padding:10px 12px;">
+          <label style="margin-bottom:0;">성실신고 귀속연도 <span style="font-weight:400; color:var(--ink-soft);">(해당되는 연도를 전부 추가해주세요 - 매년 바뀔 수 있어요)</span></label>
+          <div id="cl-faithful-years-list" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <input type="number" id="cl-faithful-year-input" class="num-input" placeholder="예: 2025" style="max-width:110px;">
+            <button type="button" id="cl-faithful-year-add-btn" class="del-btn">+ 연도 추가</button>
+          </div>
         </div>
         <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
           <div class="field" style="flex:1 1 160px;"><label>사업자번호</label><input type="text" id="cl-bizno" placeholder="예: 123-45-67890"></div>
@@ -3900,7 +3909,8 @@ function openClientDetailModal(c){
     </div>`;
 
   // 1) 기본정보
-  const subTypeDisplay = c.entitySubType === '성실' ? `성실${c.faithfulTaxYear ? ' ('+c.faithfulTaxYear+'귀속)' : ''}` : (c.entitySubType || '-');
+  const faithfulYearsList = (c.faithfulYears && c.faithfulYears.length) ? [...c.faithfulYears].sort().join(', ')+'년' : (c.faithfulTaxYear || '');
+  const subTypeDisplay = c.entitySubType === '성실' ? `성실${faithfulYearsList ? ' ('+faithfulYearsList+' 귀속)' : ''}` : (c.entitySubType || '-');
   let html = group('기본정보', rowHtml('프로그램', programDisplay) + rowHtml('회사코드', c.companyCode || '-') + rowHtml('사업자 상세구분', subTypeDisplay));
 
   // 2) 대표자
@@ -3969,6 +3979,11 @@ function clientTaxTypeWeight(taxType){
   return 2;
 }
 
+// 거래처명 옆 * 표시(성실/면세 등)를 눌러서 연 툴팁은, 다른 곳을 누르면 자동으로 닫힘
+document.addEventListener('click', ()=>{
+  document.getElementById('clientSubtypeTip')?.remove();
+});
+
 async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterFn, emptyMsgDefault, showTermination, showGroupNo){
   const wrap = document.getElementById(wrapId);
   if(!wrap) return;
@@ -4012,9 +4027,11 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
     const corpKey = normalizeRegNo(c.corpRegNo);
     const branchTag = (corpKey && corpRegCounts[corpKey] > 1) ? (corpRegFirstId[corpKey] === c.id ? '본점' : '지점') : '';
     const branchBadge = branchTag ? `<span style="display:inline-block; margin-left:6px; font-size:9.5px; font-weight:800; padding:1px 6px; border-radius:8px; background:rgba(255,255,255,0.6); color:${entityColor}; vertical-align:middle;">${branchTag}</span>` : '';
-    // 성실/면세/간이/간세 같은 세부구분은 법인/개인 색상·순번에 안 섞이게 별도 칩으로만 표시 (성실은 귀속연도도 같이 표시)
-    const subTypeLabel = c.entitySubType === '성실' ? `${c.faithfulTaxYear ? c.faithfulTaxYear+'귀속 ' : ''}성실` : (c.entitySubType || '');
-    const subTypeBadge = subTypeLabel ? `<span style="display:inline-block; margin-left:6px; font-size:9.5px; font-weight:800; padding:1px 6px; border-radius:8px; background:rgba(255,255,255,0.6); color:${entityColor}; vertical-align:middle;">${escHtml(subTypeLabel)}</span>` : '';
+    // 성실/면세/간이/간세 같은 세부구분은 이름 옆에 길게 안 늘어놓고, 작은 * 표시로만 두고 눌러야 보이게 함
+    const subTypeLabel = c.entitySubType === '성실'
+      ? ((c.faithfulYears && c.faithfulYears.length) ? `성실신고 귀속연도: ${[...c.faithfulYears].sort().join(', ')}년` : (c.faithfulTaxYear ? `${c.faithfulTaxYear}년 귀속 성실사업자` : '성실신고 대상'))
+      : (c.entitySubType ? `${c.entitySubType}사업자` : '');
+    const subTypeMarker = subTypeLabel ? `<span class="client-subtype-marker" data-label="${escHtml(subTypeLabel)}" title="${escHtml(subTypeLabel)}" style="position:absolute; top:1px; right:2px; cursor:pointer; font-size:14px; font-weight:900; line-height:1; color:${entityColor};">*</span>` : '';
     let groupNoCell = '';
     if(showGroupNo){
       let groupNoDisplay = '-';
@@ -4039,7 +4056,7 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
       <td class="num">${idx+1}</td>${groupNoCell}
       <td style="color:${taxColor}; font-weight:600;">${escHtml(taxTypeDisplay)}</td>
       <td style="color:${entityColor}; font-weight:600;">${escHtml(c.entityType||'-')}</td>
-      <td style="background:${nameBg}; color:${entityColor}; font-weight:800; text-align:left;">${escHtml(c.name||'')}${subTypeBadge}${branchBadge}</td>
+      <td style="background:${nameBg}; color:${entityColor}; font-weight:800; position:relative;">${escHtml(c.name||'')}${branchBadge}${subTypeMarker}</td>
       <td class="num">${escHtml(c.bizNo||'-')}</td>
       <td class="num">${escHtml(c.corpRegNo||'-')}</td>
       <td>${escHtml(c.repName||'')}</td>
@@ -4056,6 +4073,21 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
   const groupNoHeader = showGroupNo ? '<th></th>' : '';
   const terminationHeaders = showTermination ? '<th>해지일</th><th>종료월</th><th>해지사유</th>' : '';
   wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th>순번</th>${groupNoHeader}<th>수임구분</th><th>사업자구분</th><th>상호명</th><th>사업자번호</th><th>법인등록번호</th><th>대표자</th><th>기장료</th><th>계약일</th><th>수임시작일</th>${terminationHeaders}<th>상세</th><th>메모</th><th>이력</th><th>수정</th><th>삭제</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  wrap.querySelectorAll('.client-subtype-marker').forEach(marker=>{
+    marker.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const existing = document.getElementById('clientSubtypeTip');
+      const wasOnThisMarker = existing && existing.dataset.ownerLabel === marker.dataset.label && existing.previousElementSibling === marker;
+      if(existing) existing.remove();
+      if(wasOnThisMarker) return; // 같은 걸 다시 누르면 닫기만 함
+      const tip = document.createElement('div');
+      tip.id = 'clientSubtypeTip';
+      tip.dataset.ownerLabel = marker.dataset.label;
+      tip.textContent = marker.dataset.label;
+      tip.style.cssText = 'position:absolute; top:16px; right:0; background:var(--navy); color:#fff; font-size:11px; font-weight:700; padding:5px 10px; border-radius:8px; white-space:nowrap; z-index:5; box-shadow:0 4px 10px rgba(29,30,51,0.25);';
+      marker.insertAdjacentElement('afterend', tip);
+    });
+  });
   wrap.querySelectorAll('.client-detail-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const c = clients.list.find(x=>x.id===btn.dataset.id);
@@ -4147,7 +4179,8 @@ async function populateClientEditForm(c){
   document.getElementById('cl-name').value = c.name || '';
   document.getElementById('cl-entity-type').value = c.entityType || '법인';
   document.getElementById('cl-entity-subtype').value = c.entitySubType || '';
-  document.getElementById('cl-faithful-year').value = c.faithfulTaxYear || '';
+  clFaithfulYears = c.faithfulYears && c.faithfulYears.length ? [...c.faithfulYears] : (c.faithfulTaxYear ? [c.faithfulTaxYear] : []);
+  renderFaithfulYearChips();
   updateFaithfulYearVisibility();
   document.getElementById('cl-bizno').value = c.bizNo || '';
   document.getElementById('cl-corpregno').value = c.corpRegNo || '';
@@ -4319,32 +4352,50 @@ async function renderPersonalInfo(){
       }
     }
   }
+  // 항목별로 라벨(제목)을 붙여 한 줄씩 보여주는 행 하나를 만듦 - 기장거래처 표처럼 "무슨 항목인지"가 항상 같이 보이게 함
+  const piInfoRow = (label, value, extraStyle) => `
+        <div style="color:var(--ink-soft); font-weight:700; font-size:11px; padding-top:1px;">${escHtml(label)}</div>
+        <div style="font-size:12.5px; word-break:break-all; ${extraStyle||''}">${(value===undefined||value===null||value==='') ? '<span style=\"color:var(--ink-soft);\">-</span>' : escHtml(String(value))}</div>`;
   wrap.innerHTML = list.map(p=>{
-    let sensitiveBlock;
+    // 개인정보는 거래처와 별개 데이터라 법인/개인 구분을 직접 갖고 있지 않음 -> 같은 이름의 거래처를 찾아서 가져옴
+    const linkedClient = (clients.list||[]).find(x=>normalizeClientName(x.name)===normalizeClientName(p.name));
+    const entityType = linkedClient ? (linkedClient.entityType||'') : '';
+    const entityColor = entityType==='법인' ? '#0B5A78' : entityType==='개인' ? '#BE185D' : 'var(--ink-soft)';
+
+    const sensitiveLabels = ['주민번호','홈택스 ID','홈택스 PW','통장 PW','인증서 PW','여신금융협회 ID','여신금융협회 PW'];
+    let sensitiveRows;
     if(!p.sensitiveEnc){
-      sensitiveBlock = '<span style="color:var(--ink-soft); font-size:12px;">-</span>';
+      sensitiveRows = sensitiveLabels.map(l=>piInfoRow(l, '')).join('');
     } else if(unlocked && decryptedMap[p.id]){
       const s = decryptedMap[p.id];
-      sensitiveBlock = `<div style="font-size:12px; line-height:1.8;">
-        ${s.ssn ? `주민번호: ${escHtml(s.ssn)}<br>` : ''}
-        ${s.hometaxId ? `홈택스: ${escHtml(s.hometaxId)} / ${escHtml(s.hometaxPw||'')}<br>` : ''}
-        ${s.bankPw ? `통장PW: ${escHtml(s.bankPw)}<br>` : ''}
-        ${s.certPw ? `인증서PW: ${escHtml(s.certPw)}<br>` : ''}
-        ${s.yeoshinId ? `여신협회: ${escHtml(s.yeoshinId)} / ${escHtml(s.yeoshinPw||'')}` : ''}
-      </div>`;
+      sensitiveRows = [
+        piInfoRow('주민번호', s.ssn),
+        piInfoRow('홈택스 ID', s.hometaxId),
+        piInfoRow('홈택스 PW', s.hometaxPw),
+        piInfoRow('통장 PW', s.bankPw),
+        piInfoRow('인증서 PW', s.certPw),
+        piInfoRow('여신금융협회 ID', s.yeoshinId),
+        piInfoRow('여신금융협회 PW', s.yeoshinPw)
+      ].join('');
     } else {
-      sensitiveBlock = '<span style="color:var(--ink-soft); font-size:12px;">🔒 잠김</span>';
+      sensitiveRows = sensitiveLabels.map(l=>piInfoRow(l, '🔒 잠김', 'color:var(--ink-soft);')).join('');
     }
+
+    // 입력 순서(상호명 -> 대표자 -> 주민번호 -> ... -> 메모)와 동일하게, 법인/개인 구분만 맨 앞에 추가
+    const infoGrid = `<div style="display:grid; grid-template-columns:112px 1fr; row-gap:7px; column-gap:10px; align-items:start; margin-top:2px;">
+        ${piInfoRow('법인/개인', entityType, `color:${entityColor}; font-weight:800;`)}
+        ${piInfoRow('상호명', p.name, 'font-weight:800; font-size:13.5px;')}
+        ${piInfoRow('대표자', p.repName)}
+        ${sensitiveRows}
+        ${piInfoRow('메모', p.memo)}
+      </div>`;
+
     return `<div class="settings-box" style="margin-bottom:10px;">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap;">
-        <div>
-          <div style="font-weight:800; font-size:14px;">${escHtml(p.name||'')} <span style="font-weight:600; color:var(--ink-soft); font-size:12px;">${p.repName ? '· '+escHtml(p.repName) : ''}</span></div>
-          ${sensitiveBlock}
-          ${p.memo ? `<div class="hint" style="font-size:11.5px; margin-top:4px;">📝 ${escHtml(p.memo)}</div>` : ''}
-        </div>
-        <div style="white-space:nowrap;"><button class="del-btn pi-edit-btn" data-id="${p.id}">수정</button><button class="del-btn pi-del-btn" data-id="${p.id}">삭제</button></div>
+      <div style="display:flex; justify-content:flex-end; gap:6px;">
+        <button class="del-btn pi-edit-btn" data-id="${p.id}">수정</button><button class="del-btn pi-del-btn" data-id="${p.id}">삭제</button>
       </div>
-      <details style="margin-top:8px;">
+      ${infoGrid}
+      <details style="margin-top:10px;">
         <summary style="cursor:pointer; font-size:11.5px; font-weight:700; color:var(--indigo-deep);">수정이력 (${(p.history||[]).length}건)</summary>
         <div style="margin-top:6px;">${renderPersonalInfoHistory(p)}</div>
       </details>
@@ -6188,7 +6239,7 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
     name,
     entityType: document.getElementById('cl-entity-type').value,
     entitySubType: document.getElementById('cl-entity-subtype').value,
-    faithfulTaxYear: document.getElementById('cl-entity-subtype').value === '성실' ? document.getElementById('cl-faithful-year').value.trim() : '',
+    faithfulYears: document.getElementById('cl-entity-subtype').value === '성실' ? [...clFaithfulYears] : [],
     bizNo: document.getElementById('cl-bizno').value.trim(),
     corpRegNo: document.getElementById('cl-corpregno').value.trim(),
     program: programSel === '기타' ? document.getElementById('cl-program-etc').value.trim() : programSel,
@@ -6250,6 +6301,9 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
   clContactRows = [{ name:'', phone:'', email:'' }];
   clMemoRows = [];
   renderMemoRows();
+  clFaithfulYears = [];
+  renderFaithfulYearChips();
+  updateFaithfulYearVisibility();
   document.getElementById('cl-taxtype').value = '기장대행';
   document.getElementById('cl-taxtype-etc-field').style.display = 'none';
   document.getElementById('cl-status').value = '수임';
@@ -6292,6 +6346,9 @@ document.getElementById('clientNewEntryBtn').addEventListener('click', async ()=
   clContactRows = [{ name:'', phone:'', email:'' }];
   clMemoRows = [];
   renderMemoRows();
+  clFaithfulYears = [];
+  renderFaithfulYearChips();
+  updateFaithfulYearVisibility();
   document.getElementById('cl-taxtype').value = '기장대행';
   document.getElementById('cl-status').value = '수임';
   document.getElementById('cl-program').value = '위하고';
@@ -6324,6 +6381,9 @@ document.getElementById('client-cancel').addEventListener('click', ()=>{
   clContactRows = [{ name:'', phone:'', email:'' }];
   clMemoRows = [];
   renderMemoRows();
+  clFaithfulYears = [];
+  renderFaithfulYearChips();
+  updateFaithfulYearVisibility();
   document.getElementById('cl-taxtype').value = '기장대행';
   document.getElementById('cl-taxtype-etc-field').style.display = 'none';
   document.getElementById('cl-status').value = '수임';
@@ -6342,9 +6402,40 @@ document.getElementById('cl-taxtype').addEventListener('change', (e)=>{
 // 사업자구분 상세유형이 "성실"일 때만 귀속연도 입력칸을 보여줌 (성실신고 대상 여부는 해마다 바뀔 수 있어서)
 function updateFaithfulYearVisibility(){
   const isFaithful = document.getElementById('cl-entity-subtype').value === '성실';
-  document.getElementById('cl-faithful-year-field').style.display = isFaithful ? '' : 'none';
+  document.getElementById('cl-faithful-year-field').style.display = isFaithful ? 'flex' : 'none';
 }
 document.getElementById('cl-entity-subtype').addEventListener('change', updateFaithfulYearVisibility);
+
+// 성실신고 대상 귀속연도는 여러 해가 될 수 있어서 배열로 관리 (매년 새로 추가/삭제 가능)
+let clFaithfulYears = [];
+function renderFaithfulYearChips(){
+  const wrap = document.getElementById('cl-faithful-years-list');
+  if(!wrap) return;
+  if(!clFaithfulYears.length){
+    wrap.innerHTML = `<span style="font-size:11.5px; color:var(--ink-soft);">아직 추가된 연도가 없어요.</span>`;
+    return;
+  }
+  wrap.innerHTML = [...clFaithfulYears].sort().map(y=>`
+    <span style="display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:700; background:var(--amber-bg); color:#8A6200; padding:3px 6px 3px 10px; border-radius:14px;">
+      ${escHtml(y)}년
+      <button type="button" class="cl-faithful-year-remove" data-year="${escHtml(y)}" style="background:none; border:none; cursor:pointer; color:#8A6200; font-weight:900; padding:0 2px; font-size:13px; line-height:1;">×</button>
+    </span>`).join('');
+  wrap.querySelectorAll('.cl-faithful-year-remove').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      clFaithfulYears = clFaithfulYears.filter(y=>y !== btn.dataset.year);
+      renderFaithfulYearChips();
+    });
+  });
+}
+document.getElementById('cl-faithful-year-add-btn').addEventListener('click', ()=>{
+  const input = document.getElementById('cl-faithful-year-input');
+  const y = input.value.trim();
+  if(!/^\d{4}$/.test(y)){ alert('연도를 4자리 숫자로 입력해주세요. (예: 2025)'); return; }
+  if(!clFaithfulYears.includes(y)) clFaithfulYears.push(y);
+  input.value = '';
+  renderFaithfulYearChips();
+});
+renderFaithfulYearChips();
 
 function updateTaxTypeEtcVisibility(taxType){
   const field = document.getElementById('cl-taxtype-etc-field');
