@@ -183,6 +183,26 @@
   .subbox-menu{background:var(--surface); justify-content:center;}
 
   .policy-category-toggle{display:flex; gap:6px; margin-bottom:16px;}
+
+  .notice-toggle-chip{
+    display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:700; color:var(--ink-soft);
+    background:var(--bg); border:1.5px solid transparent; border-radius:20px; padding:7px 14px; cursor:pointer; user-select:none;
+    transition:background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .notice-toggle-chip input{width:0; height:0; opacity:0; position:absolute; pointer-events:none;}
+  .notice-toggle-chip:has(input:checked){background:var(--indigo-bg); color:var(--indigo-deep); border-color:var(--indigo);}
+  .notice-back-chip{
+    display:inline-flex; align-items:center; overflow:hidden; background:var(--bg); border:none; border-radius:20px;
+    cursor:pointer; padding:7px 9px; font-size:13px; color:var(--ink-soft); font-family:'Pretendard',sans-serif;
+    transition:padding 0.18s ease;
+  }
+  .notice-back-chip-label{max-width:0; opacity:0; white-space:nowrap; font-size:12px; font-weight:700; margin-left:0; transition:max-width 0.18s ease, opacity 0.12s ease, margin-left 0.18s ease;}
+  .notice-back-chip:hover{padding:7px 12px;}
+  .notice-back-chip:hover .notice-back-chip-label{max-width:60px; opacity:1; margin-left:6px;}
+  .notice-unread-dot{
+    display:inline-block; font-size:9px; font-weight:800; color:#fff; background:var(--coral);
+    border-radius:8px; padding:1px 5px; margin-right:5px; vertical-align:middle; line-height:1.3;
+  }
   .policy-locked{
     background:var(--surface); border-radius:20px; padding:48px 24px; text-align:center;
     box-shadow:0 1px 2px rgba(29,30,51,0.04), 0 10px 24px -18px rgba(29,30,51,0.14);
@@ -503,9 +523,10 @@
 <body>
 <div id="noticeModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:840px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
-    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:16px;">
-      <div style="font-weight:800; font-size:19px; color:var(--ink);">📢 공지사항</div>
-      <button type="button" id="noticeModalClose" class="del-btn">닫기</button>
+    <div style="display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px; margin-bottom:16px;">
+      <div></div>
+      <div style="text-align:center; font-weight:800; font-size:22px; color:var(--ink);">📢 공지사항</div>
+      <button type="button" id="noticeModalClose" class="del-btn" style="justify-self:end;">닫기</button>
     </div>
 
     <div style="font-size:12px; font-weight:800; color:var(--ink-soft); margin-bottom:8px;">중요공지</div>
@@ -513,7 +534,8 @@
 
     <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
       <div style="font-size:12px; font-weight:800; color:var(--ink-soft);">공지사항 목록</div>
-      <div style="display:flex; gap:6px;">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <button type="button" id="noticeSearchBackBtn" class="notice-back-chip" style="display:none;" title="돌아가기"><span>↩️</span><span class="notice-back-chip-label">돌아가기</span></button>
         <button type="button" id="noticeSearchToggleBtn" class="del-btn">🔍 검색</button>
         <button type="button" id="noticeAddBtn" class="del-btn" style="background:var(--indigo); color:#fff;">➕ 등록</button>
       </div>
@@ -551,15 +573,15 @@
           <input type="text" id="nm-title" placeholder="예: 8/15 사무실 휴무 안내" required>
         </div>
       </div>
-      <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-        <div class="field" style="flex:0 0 90px; margin-bottom:0;"><label>글자 크기</label>
+      <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; align-items:flex-end;">
+        <div class="field" style="flex:0 0 100px; margin-bottom:0;"><label>글자 크기</label>
           <select id="nm-size">
             <option value="13.5">보통</option>
             <option value="16">크게</option>
             <option value="20">아주 크게</option>
           </select>
         </div>
-        <div class="field" style="flex:0 0 90px; margin-bottom:0;"><label>색상</label>
+        <div class="field" style="flex:0 0 100px; margin-bottom:0;"><label>색상</label>
           <select id="nm-color">
             <option value="">기본</option>
             <option value="#DC2626">빨강</option>
@@ -568,13 +590,9 @@
             <option value="#16A34A">초록</option>
           </select>
         </div>
-        <div class="field" style="flex:0 0 60px; margin-bottom:0; flex-direction:row; align-items:center; gap:6px; justify-content:center;">
-          <input type="checkbox" id="nm-bold" style="width:auto; margin-top:14px;">
-          <label for="nm-bold" style="margin:14px 0 0;">굵게</label>
-        </div>
-        <div class="field" id="noticeImportantField" style="display:none; flex:0 0 60px; margin-bottom:0; flex-direction:row; align-items:center; gap:6px; justify-content:center;">
-          <input type="checkbox" id="nm-important" style="width:auto; margin-top:14px;">
-          <label for="nm-important" style="margin:14px 0 0;">중요</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <label class="notice-toggle-chip" for="nm-bold"><input type="checkbox" id="nm-bold"><span>굵게</span></label>
+          <label class="notice-toggle-chip" id="noticeImportantField" for="nm-important" style="display:none;"><input type="checkbox" id="nm-important"><span>⭐ 중요</span></label>
         </div>
       </div>
       <textarea id="nm-content" placeholder="예: 8/15(금) 전사 워크숍으로 사무실 휴무입니다." style="width:100%; min-height:160px; font-family:'Pretendard',sans-serif; font-size:13.5px; line-height:1.7; border:1.5px solid transparent; border-radius:10px; padding:14px; background:var(--bg); color:var(--ink); resize:vertical;" required></textarea>
@@ -582,6 +600,28 @@
         <button type="submit" id="noticeModalSaveBtn" class="submit-btn" style="width:auto; padding:9px 20px;">등록</button>
       </div>
       <div style="text-align:center;"><span class="save-msg" id="noticeModalSaveMsg"></span></div>
+    </form>
+  </div>
+</div>
+<div id="ciEntryFormModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:480px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:14px;">
+      <div id="ciEntryFormModalTitle" style="font-weight:800; font-size:17px; color:var(--ink);">항목 추가</div>
+      <button type="button" id="ciEntryFormModalClose" class="del-btn">닫기</button>
+    </div>
+    <form id="ciEntryModalForm">
+      <div class="field"><label>항목명</label><input type="text" id="ci-entry-label" placeholder="예: 홈택스" required></div>
+      <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
+        <div class="field" style="flex:1 1 160px;"><label>ID</label><input type="text" id="ci-entry-idval" placeholder="선택"></div>
+        <div class="field" style="flex:1 1 160px;"><label>PW</label><input type="text" id="ci-entry-pwval" placeholder="선택"></div>
+      </div>
+      <div class="field"><label>링크 <span style="font-weight:400; color:var(--ink-soft);">(선택)</span></label><input type="url" id="ci-entry-link" placeholder="예: https://..."></div>
+      <div class="field"><label>비고 <span style="font-weight:400; color:var(--ink-soft);">(선택)</span></label><textarea id="ci-entry-note" style="width:100%; min-height:70px; font-family:'Pretendard',sans-serif; font-size:13px; line-height:1.6; border:1.5px solid transparent; border-radius:10px; padding:10px 12px; background:var(--bg); color:var(--ink); resize:vertical;"></textarea></div>
+      <div style="text-align:center; margin-top:10px;">
+        <button type="submit" id="ciEntryModalSaveBtn" class="submit-btn" style="width:auto; padding:9px 20px;">저장</button>
+        <button type="button" id="ciEntryModalDeleteBtn" class="del-btn" style="display:none; margin-left:8px;">삭제</button>
+      </div>
+      <div style="text-align:center;"><span class="save-msg" id="ciEntryModalSaveMsg"></span></div>
     </form>
   </div>
 </div>
@@ -736,7 +776,7 @@
       </span>
       <button type="button" id="mailNotifyBtn" title="관리자에게 메일로 알리기" style="width:38px; height:38px; border-radius:50%; border:none; background:var(--coral); color:#fff; font-size:17px; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 4px 10px -3px rgba(240,80,110,0.55); cursor:pointer;">📧</button>
       <button type="button" id="quickConnectBtn" class="tab-btn" title="Google 계정 연결 상태 · 클릭해서 로그인" style="background:var(--ink-soft); color:#fff; width:38px; height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; font-size:16px;">🔌</button>
-      <button type="button" id="noticeIconBtn" title="공지사항" style="background:var(--guide-slate); color:#fff; width:38px; height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; font-size:16px; border:none; cursor:pointer;">📢</button>
+      <button type="button" id="noticeIconBtn" title="공지사항" style="position:relative; background:var(--guide-slate); color:#fff; width:38px; height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; font-size:16px; border:none; cursor:pointer;">📢<span id="noticeUnreadBadge" style="display:none; position:absolute; top:-2px; right:-2px; background:var(--coral); color:#fff; font-size:9px; font-weight:800; border-radius:50%; width:15px; height:15px; align-items:center; justify-content:center; line-height:1; box-shadow:0 0 0 2px var(--surface);">N</span></button>
       <button type="button" id="trashIconBtn2" title="휴지통" style="background:var(--bg); color:var(--ink-soft); width:38px; height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; font-size:16px; border:none; cursor:pointer;">🗑️</button>
     </div>
 
@@ -746,6 +786,7 @@
         <button class="tab-btn" data-tab="quickguide">복리후생</button>
         <button class="tab-btn" data-tab="policy">내부규정</button>
         <button class="tab-btn" data-tab="policyedit">업데이트</button>
+        <button class="tab-btn" data-tab="companyinfo">📇 사내정보</button>
       </div>
     </div>
 
@@ -782,7 +823,7 @@
   <section id="tab-home" class="tab-panel active">
 
     <div class="home-section-label">Company</div>
-    <div class="home-tiles five">
+    <div class="home-tiles six">
       <div class="home-tile" data-goto="teamcalendar" style="--tile-accent:var(--guide-teal);">
         <div class="home-tile-icon">🗂️</div>
         <div class="home-tile-title">팀캘린더</div>
@@ -798,6 +839,10 @@
       <div class="home-tile" data-goto="policyedit" style="--tile-accent:var(--indigo-deep);">
         <div class="home-tile-icon">✏️</div>
         <div class="home-tile-title">업데이트</div>
+      </div>
+      <div class="home-tile" data-goto="companyinfo" style="--tile-accent:#8B5CF6;">
+        <div class="home-tile-icon">📇</div>
+        <div class="home-tile-title">사내정보</div>
       </div>
       <div class="home-tile" data-goto="settings" style="--tile-accent:var(--navy);">
         <div class="home-tile-icon">⚙️</div>
@@ -1334,6 +1379,57 @@
     </div>
   </section>
 
+  <!-- 사내정보 -->
+  <section id="tab-companyinfo" class="tab-panel">
+    <h2 class="section-title" style="justify-content:center; font-size:24px;">사내정보</h2>
+    <p class="hint" style="font-size:12px; color:var(--ink-soft); text-align:center; margin-top:-6px; max-width:560px; margin-left:auto; margin-right:auto;">
+      회사 계정·장비 정보, 팀원별 업무 계정, 개인 메모를 모아두는 공간이에요. ID/PW는 암호화되어 저장돼요.
+    </p>
+
+    <div class="policy-category-toggle" id="ciCategoryToggle" style="justify-content:center;">
+      <button type="button" class="ci-cat-btn active" data-cat="corp">🏢 법인</button>
+      <button type="button" class="ci-cat-btn" data-cat="team">👥 팀</button>
+      <button type="button" class="ci-cat-btn" data-cat="personal">👤 개인</button>
+    </div>
+
+    <!-- 법인 -->
+    <div id="ciView-corp" class="ci-view">
+      <div style="display:flex; justify-content:center; margin-bottom:6px;">
+        <div id="sensitiveUnlockWrapCompanyInfo" style="display:none; text-align:center;">
+          <button type="button" id="sensitiveUnlockBtnCompanyInfo" class="del-btn"></button>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+        <button type="button" id="ciCorpDefaultsBtn" class="del-btn" style="display:none;">📋 기본값 불러오기</button>
+        <button type="button" id="ciCorpAddBtn" class="del-btn" style="display:none; background:var(--indigo); color:#fff;">➕ 항목 추가</button>
+      </div>
+      <div id="ciCorpListWrap"></div>
+    </div>
+
+    <!-- 팀 -->
+    <div id="ciView-team" class="ci-view" style="display:none;">
+      <div style="display:flex; justify-content:center; margin-bottom:6px;">
+        <div id="sensitiveUnlockWrapCompanyInfoTeam" style="display:none; text-align:center;">
+          <button type="button" id="sensitiveUnlockBtnCompanyInfoTeam" class="del-btn"></button>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+        <button type="button" id="ciTeamDefaultsBtn" class="del-btn" style="display:none;">📋 기본값 불러오기</button>
+        <button type="button" id="ciTeamAddPersonBtn" class="del-btn" style="display:none; background:var(--indigo); color:#fff;">➕ 팀원 추가</button>
+      </div>
+      <div id="ciTeamListWrap"></div>
+    </div>
+
+    <!-- 개인 -->
+    <div id="ciView-personal" class="ci-view" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+        <select id="ciPersonalOwnerSelect" style="display:none;"></select>
+        <button type="button" id="ciPersonalAddBtn" class="del-btn" style="margin-left:auto; background:var(--indigo); color:#fff;">➕ 항목 추가</button>
+      </div>
+      <div id="ciPersonalListWrap"></div>
+    </div>
+  </section>
+
   <!-- 거래처관리: 기장거래처 현황 -->
   <section id="tab-clients-regular" class="tab-panel">
     <div style="display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:14px;">
@@ -1466,6 +1562,9 @@
         <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
           <div class="field" style="flex:1 1 140px;"><label>계약일</label><input type="date" id="cl-contract-date" min="2015-01-01" max="2099-12-31"></div>
           <div class="field" style="flex:1 1 140px;"><label>수임시작일</label><input type="date" id="cl-start" min="2015-01-01" max="2099-12-31"></div>
+        </div>
+        <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
+          <div class="field" style="flex:1 1 260px;"><label>공유드라이브 폴더 링크 <span style="font-weight:400; color:var(--ink-soft);">(선택)</span></label><input type="url" id="cl-drive-folder" placeholder="예: https://drive.google.com/drive/folders/..."></div>
         </div>
         <div class="field"><label>메모 <span style="font-weight:400; color:var(--ink-soft);">(여러 건 추가할 수 있어요)</span></label></div>
         <div id="cl-memo-list"></div>
@@ -1886,8 +1985,10 @@
         <div class="settings-box" style="max-width:680px;">
           <form id="addAdminEmailForm" style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; justify-content:center;">
             <div class="field" style="flex:1 1 220px; margin-bottom:0;"><label>관리자로 추가할 이메일</label><input type="email" id="new-admin-email" placeholder="admin@gmail.com" required></div>
+            <div class="field" style="flex:1 1 160px; margin-bottom:0;"><label>이름 <span style="font-weight:400; color:var(--ink-soft);">(선택)</span></label><input type="text" id="new-admin-name" placeholder="예: 홍길동"></div>
             <button type="submit" class="submit-btn" style="width:auto; padding:8px 16px;">추가</button>
           </form>
+          <p class="hint" style="text-align:center; font-size:11.5px; margin:8px 0 0;">이름을 등록해두면, 별도 직원 프로필이 없는 관리자가 공지사항을 작성할 때도 작성자 이름이 정상적으로 표시돼요.</p>
           <div id="adminEmailListWrap" style="margin-top:12px;"></div>
         </div>
       </div>
@@ -2048,9 +2149,12 @@ let personalInfo = { list:[] }; // Client > 개인정보 탭 전용 (거래처 �
 let sharedExclusionDays = [];   // 공휴일/회식 등 제외일
 let sharedWorkHourExceptions = []; // 조기퇴근 등 근무시간 예외기간
 let sharedNoticeHistory = []; // 전 직원 공지사항 이력 [{id, content, savedAt}], 배열의 0번이 최신
+let sharedNoticeReadState = {}; // 공지사항 읽음 여부 - { [로그인이메일 또는 profile:id]: [공지id, ...] }, 계정 기준으로 기기 간 동기화됨
 let sharedAdminEmails = []; // 관리자 이메일 목록 (여러 명 가능)
+let sharedAdminNames = {}; // 관리자 이메일 -> 이름 (직원 프로필이 없는 관리자도 공지 작성자 이름이 뜨도록)
 let sharedManageSalt = ''; // PBKDF2 솔트(base64, 비밀값 아님) - 거래처 민감정보 암호화키를 관리비밀번호에서 재생성하는데 사용
 let sharedManageVerifier = null; // 관리비밀번호 검증용 - 비밀번호 자체는 절대 저장 안하고, 그 비밀번호로 암호화한 검증용 토큰만 저장
+let sharedCompanyInfo = { corp: [], team: [], personal: [] }; // 사내정보(법인/팀/개인) - corp·team의 ID/PW는 sensitiveEnc로 암호화되어 저장
 function loadSharedData(){
   try{ sharedExclusionDays = JSON.parse(localStorage.getItem('worklog_shared_exclusions') || '[]'); }catch(e){ sharedExclusionDays = []; }
   // 예전 '회식' 하나였던 사유를 '점심회식'/'저녁회식'으로 분리하면서, 기존 데이터는 기존 차감 동작과 동일하게 '점심회식'으로 이관
@@ -2068,7 +2172,13 @@ function loadSharedData(){
       }
     }catch(e){ /* 이관할 이전 데이터 없음 */ }
   }
+  try{ sharedNoticeReadState = JSON.parse(localStorage.getItem('worklog_shared_notice_read') || '{}'); }catch(e){ sharedNoticeReadState = {}; }
   try{ sharedAdminEmails = JSON.parse(localStorage.getItem('worklog_shared_admins') || '[]'); }catch(e){ sharedAdminEmails = []; }
+  try{ sharedAdminNames = JSON.parse(localStorage.getItem('worklog_shared_admin_names') || '{}'); }catch(e){ sharedAdminNames = {}; }
+  try{ sharedCompanyInfo = JSON.parse(localStorage.getItem('worklog_shared_companyinfo') || 'null') || {}; }catch(e){ sharedCompanyInfo = {}; }
+  if(!Array.isArray(sharedCompanyInfo.corp)) sharedCompanyInfo.corp = [];
+  if(!Array.isArray(sharedCompanyInfo.team)) sharedCompanyInfo.team = [];
+  if(!Array.isArray(sharedCompanyInfo.personal)) sharedCompanyInfo.personal = [];
   const prevManageVerifierRaw = JSON.stringify(sharedManageVerifier);
   try{ sharedManageSalt = localStorage.getItem('worklog_shared_managesalt') || ''; }catch(e){ sharedManageSalt = ''; }
   try{ const v = localStorage.getItem('worklog_shared_manageverifier'); sharedManageVerifier = v ? JSON.parse(v) : null; }catch(e){ sharedManageVerifier = null; }
@@ -2082,6 +2192,8 @@ async function saveSharedExclusions(){ try{ localStorage.setItem('worklog_shared
 async function saveSharedWorkHourExceptions(){ try{ localStorage.setItem('worklog_shared_workhours', JSON.stringify(sharedWorkHourExceptions)); }catch(e){ console.error('공통 근무시간 예외 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedNoticeHistory(){ try{ localStorage.setItem('worklog_shared_notice_history', JSON.stringify(sharedNoticeHistory)); }catch(e){ console.error('공지사항 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedAdminEmails(){ try{ localStorage.setItem('worklog_shared_admins', JSON.stringify(sharedAdminEmails)); }catch(e){ console.error('관리자 목록 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedAdminNames(){ try{ localStorage.setItem('worklog_shared_admin_names', JSON.stringify(sharedAdminNames)); }catch(e){ console.error('관리자 이름 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedCompanyInfo(){ try{ localStorage.setItem('worklog_shared_companyinfo', JSON.stringify(sharedCompanyInfo)); }catch(e){ console.error('사내정보 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedManagePassword(){
   try{
     localStorage.setItem('worklog_shared_managesalt', sharedManageSalt);
@@ -2265,6 +2377,38 @@ function noticeDateOf(n){
   return '';
 }
 
+// 공지사항 읽음(N 표시) 여부 - 로그인 계정(이메일) 기준으로 드라이브에 동기화되어, 기기를 바꿔도 그대로 유지됨
+// (로그인 전이라 이메일이 없으면 이 기기의 프로필 기준으로 임시 저장)
+function noticeReadAccountKey(){
+  return currentUserEmail || `profile:${activeProfileId}`;
+}
+function getReadNoticeIds(){
+  const arr = sharedNoticeReadState[noticeReadAccountKey()];
+  return new Set(Array.isArray(arr) ? arr : []);
+}
+function saveSharedNoticeReadState(){
+  try{ localStorage.setItem('worklog_shared_notice_read', JSON.stringify(sharedNoticeReadState)); }catch(e){ console.error('공지 읽음상태 저장 실패', e); }
+  gdriveScheduleSync();
+}
+function markNoticeRead(id){
+  if(!id) return;
+  const key = noticeReadAccountKey();
+  const set = getReadNoticeIds();
+  if(set.has(id)) return;
+  set.add(id);
+  sharedNoticeReadState[key] = [...set];
+  saveSharedNoticeReadState();
+}
+function unreadNoticeCount(){
+  const read = getReadNoticeIds();
+  return sharedNoticeHistory.filter(n=>!read.has(n.id)).length;
+}
+function updateNoticeUnreadBadge(){
+  const badge = document.getElementById('noticeUnreadBadge');
+  if(!badge) return;
+  badge.style.display = unreadNoticeCount() > 0 ? 'flex' : 'none';
+}
+
 // 순번: 배열 0번(가장 최근 등록)이 제일 큰 번호를 받고, 가장 오래된 게 1번이 되도록
 function noticeSeqMap(){
   const total = sharedNoticeHistory.length;
@@ -2300,12 +2444,19 @@ function renderNoticeImportantSection(){
     wrap.innerHTML = `<div class="empty-state" style="padding:16px;">없음</div>`;
     return;
   }
-  wrap.innerHTML = importantList.map(n=>`
-    <div class="notice-important-item" data-id="${n.id}" style="background:var(--coral-bg); border-radius:12px; padding:10px 14px; margin-bottom:8px; cursor:pointer; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-      <span style="font-size:13px;">⭐</span>
-      <span style="font-weight:800; color:var(--coral); flex:1 1 auto;">${escHtml(n.title||'(제목 없음)')}</span>
-      <span style="font-size:11px; color:var(--ink-soft);">${escHtml(n.authorName||'-')} · ${escHtml(noticeDateOf(n))}</span>
-    </div>`).join('');
+  const read = getReadNoticeIds();
+  wrap.innerHTML = importantList.map(n=>{
+    const contentStyle = `font-size:${n.size||13.5}px; ${n.color ? 'color:'+n.color+';' : ''} ${n.bold ? 'font-weight:800;' : ''}`;
+    const unread = !read.has(n.id);
+    return `
+    <div class="notice-important-item" data-id="${n.id}" style="border-radius:14px; overflow:hidden; margin-bottom:10px; cursor:pointer; border:1.5px solid var(--coral);">
+      <div style="background:var(--coral); color:#fff; text-align:center; padding:10px 16px; font-weight:800; font-size:15px;">
+        ${unread ? '<span class="notice-unread-dot">N</span>' : ''}⭐ ${escHtml(n.title||'(제목 없음)')}
+      </div>
+      <div style="background:var(--coral-bg); text-align:center; padding:16px; white-space:pre-wrap; line-height:1.7; ${contentStyle}">${escHtml(n.content||'(내용 없음)')}</div>
+      <div style="background:var(--surface); text-align:center; padding:6px; font-size:11px; color:var(--ink-soft);">${escHtml(n.authorName||'-')}(${n.scope==='전체'?'전체':'개인'}) · ${escHtml(noticeDateOf(n))}</div>
+    </div>`;
+  }).join('');
   wrap.querySelectorAll('.notice-important-item').forEach(el=>{
     el.addEventListener('click', ()=>{
       const n = sharedNoticeHistory.find(x=>x.id===el.dataset.id);
@@ -2325,23 +2476,27 @@ function renderNoticeListModal(){
     return;
   }
   const canSetImportant = !!isCurrentUserAdmin;
+  const read = getReadNoticeIds();
   const rows = list.map(n=>{
     const seq = seqMap.get(n.id) || '-';
+    const unread = !read.has(n.id);
     return `<tr>
-      <td class="num">${seq}</td>
-      <td>${escHtml(n.title || '(제목 없음)')}</td>
-      <td><span class="tag ${n.scope==='전체' ? 'tag-grant' : 'tag-usage'}">${n.scope || '개인'}</span></td>
-      <td>${escHtml(n.authorName || '-')}</td>
-      <td class="num">${n.savedAt||''}${n.editedAt ? `<br><span style="font-size:10px; color:var(--ink-soft);">(수정 ${n.editedAt})</span>` : ''}</td>
-      <td style="text-align:center;"><input type="checkbox" class="notice-important-check" data-id="${n.id}" ${n.important?'checked':''} ${canSetImportant?'':'disabled'}></td>
-      <td style="white-space:nowrap;">
+      <td class="num" style="text-align:center;">${seq}</td>
+      <td style="text-align:center;"><span class="tag ${n.scope==='전체' ? 'tag-grant' : 'tag-usage'}">${n.scope || '개인'}</span></td>
+      <td style="text-align:center;">${unread ? '<span class="notice-unread-dot">N</span>' : ''}${escHtml(n.title || '(제목 없음)')}</td>
+      <td style="text-align:center;">${escHtml(n.authorName || '-')}(${n.scope==='전체'?'전체':'개인'})</td>
+      <td class="num" style="text-align:center;">${escHtml(noticeDateOf(n))}${n.editedAt ? `<br><span style="font-size:10px; color:var(--ink-soft);">(수정됨)</span>` : ''}</td>
+      <td style="white-space:nowrap; text-align:center;">
+        <label style="display:inline-flex; align-items:center; gap:2px; cursor:${canSetImportant?'pointer':'default'};" title="중요표시">
+          <input type="checkbox" class="notice-important-check" data-id="${n.id}" ${n.important?'checked':''} ${canSetImportant?'':'disabled'} style="width:14px; height:14px;">⭐
+        </label>
         <button class="del-btn notice-view-btn" data-id="${n.id}">보기</button>
         <button class="del-btn notice-edit-btn" data-id="${n.id}">수정</button>
         <button class="del-btn notice-del-btn" data-id="${n.id}">삭제</button>
       </td>
     </tr>`;
   });
-  renderPaginatedRows(wrap, '<tr><th>순번</th><th>제목</th><th>구분</th><th>작성자</th><th>작성일시</th><th>중요</th><th></th></tr>', rows, 10);
+  renderPaginatedRows(wrap, '<tr style="text-align:center;"><th>순번</th><th>구분</th><th>제목</th><th>작성자</th><th>작성일시</th><th>이력 및 관리</th></tr>', rows, 10);
   wrap.querySelectorAll('.notice-important-check').forEach(cb=>{
     cb.addEventListener('change', async ()=>{
       const n = sharedNoticeHistory.find(x=>x.id===cb.dataset.id);
@@ -2374,6 +2529,7 @@ function renderNoticeListModal(){
 
 // 공지사항 목록 팝업이 지금 열려 있을 때만 다시 그림 (동기화로 데이터가 바뀌었을 때 갱신용)
 function renderNoticeIfOpen(){
+  updateNoticeUnreadBadge();
   if(document.getElementById('noticeModalOverlay')?.style.display === 'flex') renderNoticeListModal();
 }
 
@@ -2385,6 +2541,8 @@ function openNoticeViewPopup(n){
     <div style="text-align:center; margin-bottom:10px; font-size:11.5px; color:var(--ink-soft);">${escHtml(n.savedAt||'')} · ${escHtml(n.authorName||'-')} · ${n.scope||'개인'} 공지${n.editedAt ? ' · 수정됨 '+escHtml(n.editedAt) : ''}${n.important ? ' · ⭐중요' : ''}</div>
     <div style="white-space:pre-wrap; line-height:1.7; padding:14px; background:var(--bg); border-radius:10px; ${styleStr}">${escHtml(n.content || '(내용 없음)')}</div>`;
   document.getElementById('memoModalOverlay').style.display = 'flex';
+  markNoticeRead(n.id);
+  renderNoticeIfOpen();
 }
 
 let editingNoticeModalId = null;
@@ -2440,7 +2598,11 @@ document.getElementById('noticeModalForm').addEventListener('submit', async (e)=
   const bold = document.getElementById('nm-bold').checked;
   const important = isAdmin ? document.getElementById('nm-important').checked : false;
   const myProfile = currentUserEmail ? getProfiles().find(p=>(p.email||'').toLowerCase()===currentUserEmail) : null;
-  const authorName = myProfile ? (readProfileRaw(myProfile.id,'settings')?.employeeName || myProfile.name || '직원') : (settings.employeeName || (scope==='전체' ? '관리자' : '직원'));
+  // 우선순위: 내 직원 프로필 이름 > (직원 프로필이 없는 관리자라면) 관리자 목록에 등록해둔 이름 > 이 기기 개인설정 이름 > 기본값
+  const adminRegisteredName = currentUserEmail ? sharedAdminNames[currentUserEmail] : null;
+  const authorName = myProfile
+    ? (readProfileRaw(myProfile.id,'settings')?.employeeName || myProfile.name || '직원')
+    : (adminRegisteredName || settings.employeeName || (scope==='전체' ? '관리자' : '직원'));
 
   if(editingNoticeModalId){
     const n = sharedNoticeHistory.find(x=>x.id===editingNoticeModalId);
@@ -2453,13 +2615,17 @@ document.getElementById('noticeModalForm').addEventListener('submit', async (e)=
   } else {
     const savedAt = new Date().toLocaleString('ko-KR');
     const savedAtDate = todayStr();
-    sharedNoticeHistory.unshift({ id: genId(), title, content, scope, authorName, savedAt, savedAtDate, size, color, bold, important });
+    const newId = genId();
+    sharedNoticeHistory.unshift({ id: newId, title, content, scope, authorName, savedAt, savedAtDate, size, color, bold, important });
+    markNoticeRead(newId);
     document.getElementById('noticeModalSaveMsg').textContent = '등록됨';
   }
+  if(editingNoticeModalId) markNoticeRead(editingNoticeModalId);
   await saveSharedNoticeHistory();
   setTimeout(()=>{
     closeNoticeFormModal();
     renderNoticeListModal();
+    updateNoticeUnreadBadge();
   }, 400);
 });
 
@@ -2467,11 +2633,22 @@ function openNoticeModal(){
   document.getElementById('notice-search-text').value = '';
   document.getElementById('notice-search-date').value = '';
   document.getElementById('noticeSearchPanel').style.display = 'none';
+  document.getElementById('noticeSearchBackBtn').style.display = 'none';
   renderNoticeListModal();
   document.getElementById('noticeModalOverlay').style.display = 'flex';
 }
 function closeNoticeModal(){
   document.getElementById('noticeModalOverlay').style.display = 'none';
+}
+function exitNoticeSearch(){
+  document.getElementById('notice-search-text').value = '';
+  document.getElementById('notice-search-date').value = '';
+  document.getElementById('notice-search-type').value = 'title';
+  document.getElementById('notice-search-text').style.display = '';
+  document.getElementById('notice-search-date').style.display = 'none';
+  document.getElementById('noticeSearchPanel').style.display = 'none';
+  document.getElementById('noticeSearchBackBtn').style.display = 'none';
+  renderNoticeListModal();
 }
 document.getElementById('noticeIconBtn').addEventListener('click', openNoticeModal);
 document.getElementById('noticeModalClose').addEventListener('click', closeNoticeModal);
@@ -2481,8 +2658,11 @@ document.getElementById('noticeModalOverlay').addEventListener('click', (e)=>{
 document.getElementById('noticeAddBtn').addEventListener('click', ()=> openNoticeFormModal(null));
 document.getElementById('noticeSearchToggleBtn').addEventListener('click', ()=>{
   const panel = document.getElementById('noticeSearchPanel');
-  panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+  const nowOpen = panel.style.display === 'none';
+  panel.style.display = nowOpen ? 'flex' : 'none';
+  document.getElementById('noticeSearchBackBtn').style.display = nowOpen ? 'inline-flex' : 'none';
 });
+document.getElementById('noticeSearchBackBtn').addEventListener('click', exitNoticeSearch);
 document.getElementById('notice-search-type').addEventListener('change', ()=>{
   const isDate = document.getElementById('notice-search-type').value === 'date';
   document.getElementById('notice-search-text').style.display = isDate ? 'none' : '';
@@ -3963,7 +4143,7 @@ function renderDeadlineBanner(){
   wrap.innerHTML = `<div class="deadline-banner">📌 ${prevMonthLabel}분 지출결의서, 매월 10일 지급 기준이니 상신 잊지 마세요! (마감까지 D-${daysLeft >= 0 ? daysLeft : 0})</div>`;
 }
 
-function renderAll(){ renderAttendance(); renderExpense(); renderWorkdaysSuggestion(); renderCalendar(); renderScheduleList(); renderClients(); renderClientsRegular(); renderClientsOther(); renderClientsTerminated(); renderPersonalInfo(); renderDeadlineBanner(); renderAdminCalendar(); renderHome(); renderAllLeaveHistory(); renderNoticeIfOpen(); renderManualGrantList(); renderEmployeeRoster(); if(typeof twemoji !== 'undefined') twemoji.parse(document.body, {folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'}); }
+function renderAll(){ renderAttendance(); renderExpense(); renderWorkdaysSuggestion(); renderCalendar(); renderScheduleList(); renderClients(); renderClientsRegular(); renderClientsOther(); renderClientsTerminated(); renderPersonalInfo(); renderDeadlineBanner(); renderAdminCalendar(); renderHome(); renderAllLeaveHistory(); renderNoticeIfOpen(); renderManualGrantList(); renderEmployeeRoster(); renderCompanyInfoCorp(); renderCompanyInfoTeam(); renderCompanyInfoPersonal(); if(typeof twemoji !== 'undefined') twemoji.parse(document.body, {folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'}); }
 
 function renderScheduleList(){
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
@@ -4034,6 +4214,8 @@ function lockSensitiveView(){
   if(adminSensitiveUnlockTimer){ clearTimeout(adminSensitiveUnlockTimer); adminSensitiveUnlockTimer = null; }
   updatePersonalInfoFormState();
   renderPersonalInfo();
+  if(typeof renderCompanyInfoCorp === 'function') renderCompanyInfoCorp();
+  if(typeof renderCompanyInfoTeam === 'function') renderCompanyInfoTeam();
 }
 
 async function unlockSensitiveView(){
@@ -4051,6 +4233,8 @@ async function unlockSensitiveView(){
     adminSensitiveUnlockTimer = setTimeout(()=>{ lockSensitiveView(); }, 5*60*1000);
     updatePersonalInfoFormState();
     renderPersonalInfo();
+    if(typeof renderCompanyInfoCorp === 'function') renderCompanyInfoCorp();
+    if(typeof renderCompanyInfoTeam === 'function') renderCompanyInfoTeam();
   }catch(err){
     // 실패해도 잠금 상태(변수)는 원래 안 바뀌지만, 혹시 화면이 이전 상태(예: 전체조회 중)로 남아있을 수 있으니 버튼 표시를 실제 상태에 맞게 다시 그려줌
     updateAllSensitiveUnlockButtons();
@@ -4061,7 +4245,7 @@ async function unlockSensitiveView(){
 function updateAllSensitiveUnlockButtons(){
   const admin = !!gdriveAccessToken && isCurrentUserAdmin;
   const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
-  ['sensitiveUnlockBtnPersonal'].forEach(btnId=>{
+  ['sensitiveUnlockBtnPersonal','sensitiveUnlockBtnCompanyInfo','sensitiveUnlockBtnCompanyInfoTeam'].forEach(btnId=>{
     const unlockBtn = document.getElementById(btnId);
     if(!unlockBtn) return;
     if(unlocked){
@@ -4135,6 +4319,11 @@ function openClientDetailModal(c){
       <span style="color:var(--ink-soft); font-weight:700; flex-shrink:0;">${escHtml(label)}</span>
       <span style="text-align:right;">${escHtml(val)}</span>
     </div>`;
+  const rowLink = (label,url) => `
+    <div style="display:flex; justify-content:space-between; gap:10px; padding:5px 0; font-size:12.5px;">
+      <span style="color:var(--ink-soft); font-weight:700; flex-shrink:0;">${escHtml(label)}</span>
+      ${url ? `<a href="${escHtml(url)}" target="_blank" rel="noopener" style="text-align:right; color:var(--indigo); font-weight:700;">📁 폴더 열기</a>` : `<span style="text-align:right; color:var(--ink-soft);">-</span>`}
+    </div>`;
   // 밑줄 대신 옅은 배경 박스로 묶어서, 그룹 사이 여백이 "빈 공간"이 아니라 "하나의 덩어리"로 보이게 함
   const group = (t, rowsHtml) => `
     <div style="background:var(--bg); border-radius:10px; padding:10px 12px; margin-bottom:10px;">
@@ -4144,7 +4333,7 @@ function openClientDetailModal(c){
 
   // 1) 기본정보
   const subTypeDisplay = summarizeSubTags(c) || '-';
-  let html = group('기본정보', rowHtml('프로그램', programDisplay) + rowHtml('회사코드', c.companyCode || '-') + rowHtml('사업자 상세구분', subTypeDisplay));
+  let html = group('기본정보', rowHtml('프로그램', programDisplay) + rowHtml('회사코드', c.companyCode || '-') + rowHtml('사업자 상세구분', subTypeDisplay) + rowLink('공유드라이브', c.driveFolder));
 
   // 2) 대표자
   html += group('대표자', rowHtml('이름', c.repName || '-') + rowHtml('연락처', c.repPhone || '-') + rowHtml('이메일', c.repEmail || '-'));
@@ -4189,7 +4378,7 @@ const CLIENT_FIELD_LABELS = {
   taxType:'수임구분', taxTypeEtc:'수임구분 상세', fee:'기장료',
   contractDate:'계약일', start:'수임시작일', status:'진행상황',
   terminationReason:'해지사유', terminationDate:'해지일', terminationMonth:'종료월',
-  memo:'메모', subTagsSummary:'상세구분'
+  memo:'메모', subTagsSummary:'상세구분', driveFolder:'공유드라이브 폴더 링크'
 };
 // 상세구분 칩 배열을 "성실(2025년 귀속), 면세" 같은 한 줄 문장으로 요약 - 수정이력 비교와 상세정보 표시에 같이 씀
 function summarizeSubTags(c){
@@ -4353,6 +4542,9 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
       ? `<button class="del-btn client-action-btn client-history-btn" data-id="${c.id}" title="수정이력 보기">🕘</button>`
       : `<button class="del-btn client-action-btn" disabled style="opacity:0.3; cursor:default;" title="수정이력 없음">🕘</button>`;
     const detailBtn = `<button class="del-btn client-action-btn client-detail-btn" data-id="${c.id}" title="추가정보 보기">ℹ️</button>`;
+    const folderBtn = c.driveFolder
+      ? `<a class="del-btn client-action-btn" href="${escHtml(c.driveFolder)}" target="_blank" rel="noopener" title="공유드라이브 폴더 열기" style="display:inline-block; text-decoration:none;">📁</a>`
+      : `<button class="del-btn client-action-btn" disabled style="opacity:0.3; cursor:default;" title="등록된 폴더 링크 없음">📁</button>`;
     return `<tr>
       <td class="num">${idx+1}</td>${groupNoCell}
       <td style="color:${taxColor}; font-weight:600;">${escHtml(taxTypeDisplay)}</td>
@@ -4364,7 +4556,7 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
       <td class="num">${c.fee ? Number(c.fee).toLocaleString() : '-'}</td>
       <td class="num">${escHtml(c.contractDate||'-')}</td>
       <td class="num">${escHtml(c.start||'-')}</td>${terminationCells}
-      <td>${detailBtn}</td>
+      <td>${detailBtn}${folderBtn}</td>
       <td>${memoBtn}</td>
       <td>${historyBtn}</td>
       <td><button class="del-btn client-action-btn client-jump-edit-btn" data-id="${c.id}" title="수정">✏️</button></td>
@@ -4497,6 +4689,7 @@ async function populateClientEditForm(c){
   }
   updateCompanyCodeDisabled();
   document.getElementById('cl-company-code').value = c.companyCode || '';
+  document.getElementById('cl-drive-folder').value = c.driveFolder || '';
   document.getElementById('cl-rep-name').value = c.repName || '';
   document.getElementById('cl-rep-phone').value = c.repPhone || '';
   document.getElementById('cl-rep-email').value = c.repEmail || '';
@@ -4761,6 +4954,387 @@ async function renderPersonalInfo(){
     });
   });
 }
+
+// ===== 사내정보 (법인/팀/개인) =====
+// 법인·팀 항목의 ID/PW는 거래처 민감정보와 동일한 방식(sensitiveEnc, adminCryptoKey)으로 암호화되고 관리자만 조회/편집할 수 있음.
+// 개인 항목은 각자 알아서 관리하는 개인 메모 성격이라 암호화하지 않고, 본인(또는 관리자)만 볼 수 있게 화면에서만 필터링함.
+// 아래 기본값들은 실제 ID/PW/주민번호 등 진짜 민감한 값은 전혀 담지 않음(소스코드에 평문 비밀번호를 남기지 않기 위함) - 항목명·공개 링크·참고용 메모만 미리 채워둠.
+const CI_CORP_DEFAULTS = [
+  {label:'세무사랑'}, {label:'위하고'}, {label:'홈택스'},
+  {label:'카카오톡', note:'카카오비즈니스 채널'},
+  {label:'업무용 구글 계정&메일'}, {label:'택스봇'},
+  {label:'마이크로소프트(업무)'}, {label:'다우오피스'}, {label:'다우 통합설정'},
+  {label:'강남구도시관리공단'}, {label:'카카오 my'}, {label:'데스크탑 비번'},
+  {label:'회계연수원', note:'1일 통상임금 = 월급여 / 209 × 8'},
+  {label:'한국세무사회'}, {label:'한국세무사회 조세전문서점'},
+  {label:'ezPDF Editor Uno', link:'https://www.editoruno.com/#download'},
+  {label:'더빌'}, {label:'청인 한공회'}, {label:'국세청 학자금상환'}, {label:'휴넷'},
+  {label:'국세청 이메일 도메인', note:'이메일아이디@nts.go.kr'},
+  {label:'하나팩스', link:'https://www.hanafax.com/HanaFax/tHanaFax_country.asp'},
+  {label:'근태관리(Tax.J)', link:'https://sm-sarah.github.io/Tax.J/'},
+  {label:'GitHub 허브', link:'https://github.com/sm-sarah/Tax.J'},
+  {label:'파일수정허브', link:'https://github.com/sm-sarah/Tax.J/upload/main'},
+  {label:'구글 클라우드 콘솔', link:'https://console.cloud.google.com/welcome?project=taxj-504707'},
+  {label:'구글 OAuth 클라이언트 ID', note:'273460053868-nbc6qpi148vv3lkobhrqnrtn8vvk8num.apps.googleusercontent.com'},
+  {label:'대표자 생년월일'}, {label:'공동인증서 비밀번호'}, {label:'사업자번호'},
+  {label:'업무용 휴대폰번호', note:'010-8173-4799'},
+  {label:'업무용 이메일', note:'accdesk@ciacc.co.kr'},
+  {label:'회사 팩스번호', note:'02-569-8551'},
+  {label:'회사 내선번호', note:'02-569-8589 (착신 *72+번호 / 해제 *73)'},
+  {label:'회사 대표번호', note:'02-569-8550'},
+  {label:'회사 주소', note:'서울특별시 강남구 논현로79길 8, 2층 (우 06237)'},
+  {label:'사용 프로그램', note:'세무사랑, 위하고, 택스봇'},
+  {label:'와이파이', note:'네트워크명(SSID): ciacc'},
+  {label:'화장실 비번'},
+  {label:'청인 조정반 번호', note:'서울청 1-2320'},
+  {label:'네트워크 장비(Omada Controller)', note:'로그인 정보는 잠금해제 후 직접 입력해주세요'},
+];
+const CI_TEAM_DEFAULTS = [
+  { person:'회계사님', items:[
+    {label:'홈택스'}, {label:'세무관리번호'}, {label:'업무용 이메일'}, {label:'카카오톡'},
+    {label:'다우오피스'}, {label:'위하고'}, {label:'다우 통합설정'}, {label:'6자리 비번'}, {label:'휴대폰번호'}
+  ]}
+];
+
+// 공지사항 작성자 이름과 동일한 우선순위로, 로그인한 사람의 표시 이름을 구해줌(직원 프로필 이름 > 관리자 등록 이름 > 이 기기 개인설정 이름)
+function currentStaffDisplayName(){
+  const myProfile = currentUserEmail ? getProfiles().find(p=>(p.email||'').toLowerCase()===currentUserEmail) : null;
+  if(myProfile) return readProfileRaw(myProfile.id,'settings')?.employeeName || myProfile.name || '직원';
+  const adminRegisteredName = currentUserEmail ? sharedAdminNames[currentUserEmail] : null;
+  return adminRegisteredName || settings.employeeName || '직원';
+}
+
+document.querySelectorAll('.ci-cat-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.ci-cat-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const cat = btn.dataset.cat;
+    ['corp','team','personal'].forEach(c=>{
+      const v = document.getElementById('ciView-'+c);
+      if(v) v.style.display = c===cat ? '' : 'none';
+    });
+    if(cat==='corp') renderCompanyInfoCorp();
+    else if(cat==='team') renderCompanyInfoTeam();
+    else renderCompanyInfoPersonal();
+  });
+});
+
+async function renderCompanyInfoCorp(){
+  const wrap = document.getElementById('ciCorpListWrap');
+  if(!wrap) return;
+  const admin = !!gdriveAccessToken && isCurrentUserAdmin;
+  const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
+  const defaultsBtn = document.getElementById('ciCorpDefaultsBtn');
+  if(defaultsBtn) defaultsBtn.style.display = (admin && unlocked && !(sharedCompanyInfo.corp||[]).length) ? 'inline-block' : 'none';
+  const list = sharedCompanyInfo.corp || [];
+  if(!list.length){
+    wrap.innerHTML = `<div class="empty-state">${!admin ? '🔒 관리자만 조회할 수 있어요.' : (unlocked ? '등록된 항목이 없습니다. "기본값 불러오기"로 시작하거나 직접 추가해보세요.' : '🔒 먼저 위에서 잠금을 해제해주세요.')}</div>`;
+    return;
+  }
+  const decryptedMap = {}, failedSet = new Set();
+  if(unlocked){
+    for(const it of list){
+      if(it.sensitiveEnc){
+        try{ decryptedMap[it.id] = await decryptJSON(it.sensitiveEnc, adminCryptoKey); }
+        catch(e){ console.error('사내정보(법인) 복호화 실패', it.id, e); failedSet.add(it.id); }
+      }
+    }
+  }
+  const cell = (v)=> v ? escHtml(v) : '<span style="color:var(--ink-soft);">-</span>';
+  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th>항목명</th><th>ID</th><th>PW</th><th>링크</th><th>비고</th>${admin?'<th>관리</th>':''}</tr></thead><tbody>
+    ${list.map(it=>{
+      let idCell, pwCell;
+      if(!it.sensitiveEnc){ idCell = pwCell = '<span style="color:var(--ink-soft);">-</span>'; }
+      else if(unlocked && decryptedMap[it.id]){ idCell = cell(decryptedMap[it.id].idVal); pwCell = cell(decryptedMap[it.id].pwVal); }
+      else if(unlocked && failedSet.has(it.id)){ idCell = pwCell = '<span style="color:var(--coral);" title="현재 관리비밀번호로 열리지 않아요.">⚠️ 열람불가</span>'; }
+      else { idCell = pwCell = '<span style="color:var(--ink-soft);">🔒</span>'; }
+      const linkCell = it.link ? `<a href="${escHtml(it.link)}" target="_blank" rel="noopener" style="color:var(--indigo); font-weight:700;">🔗 열기</a>` : '<span style="color:var(--ink-soft);">-</span>';
+      return `<tr>
+        <td style="font-weight:700;">${escHtml(it.label||'')}</td>
+        <td>${idCell}</td><td>${pwCell}</td><td>${linkCell}</td>
+        <td style="white-space:pre-wrap; font-size:12px; color:var(--ink-soft); max-width:220px;">${escHtml(it.note||'')}</td>
+        ${admin?`<td><button class="del-btn ci-corp-edit-btn" data-id="${it.id}">수정</button></td>`:''}
+      </tr>`;
+    }).join('')}
+  </tbody></table></div>`;
+  wrap.querySelectorAll('.ci-corp-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> openCiEntryFormModal('corp', btn.dataset.id));
+  });
+}
+
+async function renderCompanyInfoTeam(){
+  const wrap = document.getElementById('ciTeamListWrap');
+  if(!wrap) return;
+  const admin = !!gdriveAccessToken && isCurrentUserAdmin;
+  const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
+  const defaultsBtn = document.getElementById('ciTeamDefaultsBtn');
+  if(defaultsBtn) defaultsBtn.style.display = (admin && unlocked && !(sharedCompanyInfo.team||[]).length) ? 'inline-block' : 'none';
+  const persons = sharedCompanyInfo.team || [];
+  if(!persons.length){
+    wrap.innerHTML = `<div class="empty-state">${!admin ? '🔒 관리자만 조회할 수 있어요.' : (unlocked ? '등록된 팀원이 없습니다. "기본값 불러오기"로 시작하거나 팀원을 추가해보세요.' : '🔒 먼저 위에서 잠금을 해제해주세요.')}</div>`;
+    return;
+  }
+  const decryptedMap = {}, failedSet = new Set();
+  if(unlocked){
+    for(const p of persons){
+      for(const it of (p.items||[])){
+        if(it.sensitiveEnc){
+          try{ decryptedMap[it.id] = await decryptJSON(it.sensitiveEnc, adminCryptoKey); }
+          catch(e){ console.error('사내정보(팀) 복호화 실패', it.id, e); failedSet.add(it.id); }
+        }
+      }
+    }
+  }
+  const cell = (v)=> v ? escHtml(v) : '<span style="color:var(--ink-soft);">-</span>';
+  wrap.innerHTML = persons.map(p=>{
+    const itemRows = (p.items||[]).map(it=>{
+      let idCell, pwCell;
+      if(!it.sensitiveEnc){ idCell = pwCell = '<span style="color:var(--ink-soft);">-</span>'; }
+      else if(unlocked && decryptedMap[it.id]){ idCell = cell(decryptedMap[it.id].idVal); pwCell = cell(decryptedMap[it.id].pwVal); }
+      else if(unlocked && failedSet.has(it.id)){ idCell = pwCell = '<span style="color:var(--coral);" title="현재 관리비밀번호로 열리지 않아요.">⚠️ 열람불가</span>'; }
+      else { idCell = pwCell = '<span style="color:var(--ink-soft);">🔒</span>'; }
+      const linkCell = it.link ? `<a href="${escHtml(it.link)}" target="_blank" rel="noopener" style="color:var(--indigo); font-weight:700;">🔗 열기</a>` : '<span style="color:var(--ink-soft);">-</span>';
+      return `<tr>
+        <td style="font-weight:700;">${escHtml(it.label||'')}</td>
+        <td>${idCell}</td><td>${pwCell}</td><td>${linkCell}</td>
+        <td style="white-space:pre-wrap; font-size:12px; color:var(--ink-soft); max-width:220px;">${escHtml(it.note||'')}</td>
+        ${admin?`<td><button class="del-btn ci-team-item-edit-btn" data-person="${escHtml(p.person)}" data-id="${it.id}">수정</button></td>`:''}
+      </tr>`;
+    }).join('');
+    return `
+    <div style="background:var(--bg); border-radius:12px; padding:14px 16px; margin-bottom:14px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
+        <span style="font-size:13px; font-weight:800; color:var(--navy);">👤 ${escHtml(p.person)}</span>
+        ${admin ? `<span style="display:flex; gap:6px;">
+          <button type="button" class="del-btn ci-team-item-add-btn" data-person="${escHtml(p.person)}">➕ 항목</button>
+          <button type="button" class="del-btn ci-team-person-del-btn" data-person="${escHtml(p.person)}">팀원 삭제</button>
+        </span>` : ''}
+      </div>
+      ${(p.items||[]).length ? `<div class="table-scroll"><table><thead><tr><th>항목명</th><th>ID</th><th>PW</th><th>링크</th><th>비고</th>${admin?'<th>관리</th>':''}</tr></thead><tbody>${itemRows}</tbody></table></div>` : `<div class="empty-state" style="padding:10px;">등록된 항목이 없습니다.</div>`}
+    </div>`;
+  }).join('');
+  wrap.querySelectorAll('.ci-team-item-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> openCiEntryFormModal('team', btn.dataset.id, btn.dataset.person));
+  });
+  wrap.querySelectorAll('.ci-team-item-add-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> openCiEntryFormModal('team', null, btn.dataset.person));
+  });
+  wrap.querySelectorAll('.ci-team-person-del-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!confirm(`"${btn.dataset.person}" 팀원과 등록된 항목을 모두 삭제할까요?`)) return;
+      sharedCompanyInfo.team = (sharedCompanyInfo.team||[]).filter(p=>p.person!==btn.dataset.person);
+      await saveSharedCompanyInfo();
+      renderCompanyInfoTeam();
+    });
+  });
+}
+
+function ciPersonalOwnerOptions(){
+  const owners = new Set((sharedCompanyInfo.personal||[]).map(x=>x.owner).filter(Boolean));
+  const me = currentStaffDisplayName();
+  if(me) owners.add(me);
+  return [...owners];
+}
+
+async function renderCompanyInfoPersonal(){
+  const wrap = document.getElementById('ciPersonalListWrap');
+  if(!wrap) return;
+  const admin = !!gdriveAccessToken && isCurrentUserAdmin;
+  const me = currentStaffDisplayName();
+  const sel = document.getElementById('ciPersonalOwnerSelect');
+  let viewOwner = me;
+  if(sel){
+    if(admin){
+      const owners = ciPersonalOwnerOptions();
+      const prev = sel.value;
+      sel.style.display = '';
+      sel.innerHTML = owners.map(o=>`<option value="${escHtml(o)}">${escHtml(o)}${o===me?' (나)':''}</option>`).join('');
+      if(owners.includes(prev)) sel.value = prev; else if(owners.includes(me)) sel.value = me;
+      viewOwner = sel.value || me;
+    } else {
+      sel.style.display = 'none';
+      viewOwner = me;
+    }
+  }
+  const list = (sharedCompanyInfo.personal||[]).filter(x=>x.owner===viewOwner);
+  if(!list.length){
+    wrap.innerHTML = `<div class="empty-state">등록된 개인 항목이 없습니다.</div>`;
+    return;
+  }
+  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th>항목명</th><th>ID</th><th>PW</th><th>링크</th><th>비고</th><th>관리</th></tr></thead><tbody>
+    ${list.map(it=>{
+      const linkCell = it.link ? `<a href="${escHtml(it.link)}" target="_blank" rel="noopener" style="color:var(--indigo); font-weight:700;">🔗 열기</a>` : '<span style="color:var(--ink-soft);">-</span>';
+      return `<tr>
+        <td style="font-weight:700;">${escHtml(it.label||'')}</td>
+        <td>${escHtml(it.idVal||'-')}</td><td>${escHtml(it.pwVal||'-')}</td><td>${linkCell}</td>
+        <td style="white-space:pre-wrap; font-size:12px; color:var(--ink-soft); max-width:220px;">${escHtml(it.note||'')}</td>
+        <td><button class="del-btn ci-personal-edit-btn" data-id="${it.id}">수정</button></td>
+      </tr>`;
+    }).join('')}
+  </tbody></table></div>`;
+  wrap.querySelectorAll('.ci-personal-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> openCiEntryFormModal('personal', btn.dataset.id, null, viewOwner));
+  });
+}
+document.getElementById('ciPersonalOwnerSelect').addEventListener('change', renderCompanyInfoPersonal);
+document.getElementById('ciPersonalAddBtn').addEventListener('click', ()=>{
+  const admin = !!gdriveAccessToken && isCurrentUserAdmin;
+  const sel = document.getElementById('ciPersonalOwnerSelect');
+  const owner = (admin && sel.value) ? sel.value : currentStaffDisplayName();
+  openCiEntryFormModal('personal', null, null, owner);
+});
+document.getElementById('ciCorpAddBtn').addEventListener('click', ()=> openCiEntryFormModal('corp', null));
+document.getElementById('ciTeamAddPersonBtn').addEventListener('click', async ()=>{
+  const name = prompt('추가할 팀원 이름을 입력해주세요.');
+  if(!name || !name.trim()) return;
+  const trimmed = name.trim();
+  if(!sharedCompanyInfo.team) sharedCompanyInfo.team = [];
+  if(sharedCompanyInfo.team.some(p=>p.person===trimmed)){ alert('이미 등록된 이름이에요.'); return; }
+  sharedCompanyInfo.team.push({ person: trimmed, items: [] });
+  await saveSharedCompanyInfo();
+  renderCompanyInfoTeam();
+});
+document.getElementById('ciCorpDefaultsBtn').addEventListener('click', async ()=>{
+  const admin = !!gdriveAccessToken && isCurrentUserAdmin;
+  const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
+  if(!unlocked) return;
+  if((sharedCompanyInfo.corp||[]).length){ alert('이미 등록된 항목이 있어서 기본값을 불러오지 않았어요.'); return; }
+  if(!confirm('기본 항목명 목록을 불러올까요? (ID/PW는 비어있는 상태로 채워지며, 보안을 위해 직접 입력해야 해요)')) return;
+  sharedCompanyInfo.corp = CI_CORP_DEFAULTS.map(d=>({ id: genId(), label:d.label, link:d.link||'', note:d.note||'', sensitiveEnc:null, updatedAt: todayStr() }));
+  await saveSharedCompanyInfo();
+  renderCompanyInfoCorp();
+});
+document.getElementById('ciTeamDefaultsBtn').addEventListener('click', async ()=>{
+  const admin = !!gdriveAccessToken && isCurrentUserAdmin;
+  const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
+  if(!unlocked) return;
+  if((sharedCompanyInfo.team||[]).length){ alert('이미 등록된 팀원이 있어서 기본값을 불러오지 않았어요.'); return; }
+  if(!confirm('기본 팀원/항목명 목록을 불러올까요? (ID/PW는 비어있는 상태로 채워지며, 보안을 위해 직접 입력해야 해요)')) return;
+  sharedCompanyInfo.team = CI_TEAM_DEFAULTS.map(p=>({
+    person: p.person,
+    items: p.items.map(d=>({ id: genId(), label:d.label, link:d.link||'', note:d.note||'', sensitiveEnc:null, updatedAt: todayStr() }))
+  }));
+  await saveSharedCompanyInfo();
+  renderCompanyInfoTeam();
+});
+
+let ciEntryEditState = null; // { category:'corp'|'team'|'personal', id, person, owner }
+function openCiEntryFormModal(category, id, person, owner){
+  const admin = !!gdriveAccessToken && isCurrentUserAdmin;
+  const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
+  if((category==='corp' || category==='team') && !unlocked){
+    alert('ID/PW를 저장·조회하려면 먼저 위에서 🔒 잠금해제를 해주세요.');
+    return;
+  }
+  ciEntryEditState = { category, id: id||null, person: person||null, owner: owner||null };
+  let entry = null;
+  if(id){
+    if(category==='corp') entry = (sharedCompanyInfo.corp||[]).find(x=>x.id===id);
+    else if(category==='team'){
+      const p = (sharedCompanyInfo.team||[]).find(x=>x.person===person);
+      entry = p ? (p.items||[]).find(x=>x.id===id) : null;
+    } else if(category==='personal'){
+      entry = (sharedCompanyInfo.personal||[]).find(x=>x.id===id);
+    }
+  }
+  document.getElementById('ciEntryFormModalTitle').textContent = entry ? '항목 수정' : '항목 추가';
+  document.getElementById('ciEntryModalDeleteBtn').style.display = entry ? 'inline-block' : 'none';
+  document.getElementById('ci-entry-label').value = entry ? (entry.label||'') : '';
+  document.getElementById('ci-entry-link').value = entry ? (entry.link||'') : '';
+  document.getElementById('ci-entry-note').value = entry ? (entry.note||'') : '';
+  document.getElementById('ci-entry-idval').value = '';
+  document.getElementById('ci-entry-pwval').value = '';
+  document.getElementById('ciEntryModalSaveMsg').textContent = '';
+  if(entry && category==='personal'){
+    document.getElementById('ci-entry-idval').value = entry.idVal || '';
+    document.getElementById('ci-entry-pwval').value = entry.pwVal || '';
+  } else if(entry && entry.sensitiveEnc && unlocked){
+    decryptJSON(entry.sensitiveEnc, adminCryptoKey).then(s=>{
+      document.getElementById('ci-entry-idval').value = s.idVal || '';
+      document.getElementById('ci-entry-pwval').value = s.pwVal || '';
+    }).catch(err=>{ console.error('사내정보 항목 복호화 실패', err); });
+  }
+  document.getElementById('ciEntryFormModalOverlay').style.display = 'flex';
+}
+function closeCiEntryFormModal(){
+  document.getElementById('ciEntryFormModalOverlay').style.display = 'none';
+  ciEntryEditState = null;
+}
+document.getElementById('ciEntryFormModalClose').addEventListener('click', closeCiEntryFormModal);
+document.getElementById('ciEntryFormModalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'ciEntryFormModalOverlay') closeCiEntryFormModal();
+});
+document.getElementById('ciEntryModalDeleteBtn').addEventListener('click', async ()=>{
+  if(!ciEntryEditState || !ciEntryEditState.id) return;
+  if(!confirm('이 항목을 삭제할까요?')) return;
+  const { category, id, person } = ciEntryEditState;
+  if(category==='corp'){
+    sharedCompanyInfo.corp = (sharedCompanyInfo.corp||[]).filter(x=>x.id!==id);
+  } else if(category==='team'){
+    const p = (sharedCompanyInfo.team||[]).find(x=>x.person===person);
+    if(p) p.items = (p.items||[]).filter(x=>x.id!==id);
+  } else if(category==='personal'){
+    sharedCompanyInfo.personal = (sharedCompanyInfo.personal||[]).filter(x=>x.id!==id);
+  }
+  await saveSharedCompanyInfo();
+  closeCiEntryFormModal();
+  if(category==='corp') renderCompanyInfoCorp();
+  else if(category==='team') renderCompanyInfoTeam();
+  else renderCompanyInfoPersonal();
+});
+document.getElementById('ciEntryModalForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  if(!ciEntryEditState) return;
+  const { category, id, person, owner } = ciEntryEditState;
+  const label = document.getElementById('ci-entry-label').value.trim();
+  const link = document.getElementById('ci-entry-link').value.trim();
+  const note = document.getElementById('ci-entry-note').value.trim();
+  const idVal = document.getElementById('ci-entry-idval').value;
+  const pwVal = document.getElementById('ci-entry-pwval').value;
+  if(!label) return;
+
+  if(category==='personal'){
+    if(id){
+      const entry = (sharedCompanyInfo.personal||[]).find(x=>x.id===id);
+      if(entry){ entry.label=label; entry.link=link; entry.note=note; entry.idVal=idVal; entry.pwVal=pwVal; entry.updatedAt = todayStr(); }
+    } else {
+      if(!sharedCompanyInfo.personal) sharedCompanyInfo.personal = [];
+      sharedCompanyInfo.personal.push({ id: genId(), owner, label, link, note, idVal, pwVal, updatedAt: todayStr() });
+    }
+  } else {
+    const admin = !!gdriveAccessToken && isCurrentUserAdmin;
+    const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
+    if(!unlocked){ alert('잠금이 풀려있지 않아 저장할 수 없어요. 다시 잠금해제 후 시도해주세요.'); return; }
+    const sensitiveEnc = (idVal || pwVal) ? await encryptJSON({idVal, pwVal}, adminCryptoKey) : null;
+    if(category==='corp'){
+      if(id){
+        const entry = (sharedCompanyInfo.corp||[]).find(x=>x.id===id);
+        if(entry){ entry.label=label; entry.link=link; entry.note=note; entry.sensitiveEnc=sensitiveEnc; entry.updatedAt = todayStr(); }
+      } else {
+        if(!sharedCompanyInfo.corp) sharedCompanyInfo.corp = [];
+        sharedCompanyInfo.corp.push({ id: genId(), label, link, note, sensitiveEnc, updatedAt: todayStr() });
+      }
+    } else if(category==='team'){
+      const p = (sharedCompanyInfo.team||[]).find(x=>x.person===person);
+      if(!p) return;
+      if(id){
+        const entry = (p.items||[]).find(x=>x.id===id);
+        if(entry){ entry.label=label; entry.link=link; entry.note=note; entry.sensitiveEnc=sensitiveEnc; entry.updatedAt = todayStr(); }
+      } else {
+        if(!p.items) p.items = [];
+        p.items.push({ id: genId(), label, link, note, sensitiveEnc, updatedAt: todayStr() });
+      }
+    }
+  }
+  await saveSharedCompanyInfo();
+  document.getElementById('ciEntryModalSaveMsg').textContent = '저장됨';
+  setTimeout(()=>{
+    closeCiEntryFormModal();
+    if(category==='corp') renderCompanyInfoCorp();
+    else if(category==='team') renderCompanyInfoTeam();
+    else renderCompanyInfoPersonal();
+  }, 350);
+});
 
 async function renderClients(){
   // 예전엔 여기서 전체 거래처 통합목록 테이블도 그렸지만, 이제 기장거래처/기타거래처/해지목록으로
@@ -5115,7 +5689,7 @@ function buildCalendarHTML(monthStr){
 let navExpanded = false;
 let activeTopGroup = null; // null | 'management' | 'staff' | 'client'
 
-const MANAGEMENT_TABS = ['teamcalendar','quickguide','policy','policyedit','settings'];
+const MANAGEMENT_TABS = ['teamcalendar','quickguide','policy','policyedit','companyinfo','settings'];
 const STAFF_TABS = ['calendar','attendance','expense','settlement','attendance-settings'];
 const CLIENT_TABS = ['clients-regular','clients-other','clients-edit','clients-personal','clients-terminated','clients-settings'];
 
@@ -6611,6 +7185,7 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
     corpRegNo: document.getElementById('cl-corpregno').value.trim(),
     program: programSel === '기타' ? document.getElementById('cl-program-etc').value.trim() : programSel,
     companyCode: document.getElementById('cl-company-code').value.trim(),
+    driveFolder: document.getElementById('cl-drive-folder').value.trim(),
     repName: document.getElementById('cl-rep-name').value.trim(),
     repPhone: document.getElementById('cl-rep-phone').value.trim(),
     repEmail: document.getElementById('cl-rep-email').value.trim(),
@@ -7486,9 +8061,13 @@ function applyPermissionUI(){
   const clientsSettingsContent = document.getElementById('clientsSettingsContent');
   if(clientsSettingsLocked) clientsSettingsLocked.style.display = admin ? 'none' : 'block';
   if(clientsSettingsContent) clientsSettingsContent.style.display = admin ? 'block' : 'none';
-  ['sensitiveUnlockWrapPersonal'].forEach(id=>{
+  ['sensitiveUnlockWrapPersonal','sensitiveUnlockWrapCompanyInfo','sensitiveUnlockWrapCompanyInfoTeam'].forEach(id=>{
     const w = document.getElementById(id);
     if(w) w.style.display = admin ? 'block' : 'none';
+  });
+  ['ciCorpDefaultsBtn','ciCorpAddBtn','ciTeamDefaultsBtn','ciTeamAddPersonBtn'].forEach(id=>{
+    const b = document.getElementById(id);
+    if(b) b.style.display = admin ? 'inline-block' : 'none';
   });
   updatePersonalInfoFormState();
   const profileSelectEl = document.getElementById('profileSelect');
@@ -7536,16 +8115,31 @@ function renderAdminEmailList(){
   const wrap = document.getElementById('adminEmailListWrap');
   if(!wrap) return;
   if(!sharedAdminEmails.length){ wrap.innerHTML = `<div class="empty-state">등록된 관리자가 없습니다.</div>`; return; }
-  wrap.innerHTML = sharedAdminEmails.map(email=>`
+  wrap.innerHTML = sharedAdminEmails.map(email=>{
+    const nm = sharedAdminNames[email];
+    return `
     <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; background:var(--bg); border-radius:8px; margin-bottom:6px; font-size:12.5px;">
-      <span>${escHtml(email)}${email.toLowerCase()===currentUserEmail ? ' <span style="color:var(--ink-soft); font-size:11px;">(나)</span>' : ''}</span>
-      <button class="del-btn admin-email-del-btn" data-email="${escHtml(email)}">삭제</button>
-    </div>`).join('');
+      <span>${nm ? `<b>${escHtml(nm)}</b> · ` : ''}${escHtml(email)}${email.toLowerCase()===currentUserEmail ? ' <span style="color:var(--ink-soft); font-size:11px;">(나)</span>' : ''}${!nm ? ' <span style="color:var(--ink-soft); font-size:11px;">(이름 미등록)</span>' : ''}</span>
+      <span style="display:flex; gap:4px;">
+        <button class="del-btn admin-email-edit-btn" data-email="${escHtml(email)}" data-name="${escHtml(nm||'')}">이름수정</button>
+        <button class="del-btn admin-email-del-btn" data-email="${escHtml(email)}">삭제</button>
+      </span>
+    </div>`;
+  }).join('');
+  wrap.querySelectorAll('.admin-email-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.getElementById('new-admin-email').value = btn.dataset.email;
+      document.getElementById('new-admin-name').value = btn.dataset.name;
+      document.getElementById('new-admin-name').focus();
+    });
+  });
   wrap.querySelectorAll('.admin-email-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       if(sharedAdminEmails.length <= 1){ alert('마지막 남은 관리자는 삭제할 수 없어요. 먼저 다른 관리자를 추가해주세요.'); return; }
       sharedAdminEmails = sharedAdminEmails.filter(e=>e!==btn.dataset.email);
+      delete sharedAdminNames[btn.dataset.email];
       await saveSharedAdminEmails();
+      await saveSharedAdminNames();
       applyPermissionUI();
     });
   });
@@ -7790,7 +8384,7 @@ document.getElementById('exportSharedBtn').addEventListener('click', ()=>{
     exportedAt: new Date().toISOString(),
     app: 'monthly-board',
     scope: 'shared', // 관리자용 백업: 회사 공통설정만 포함, 직원 개인데이터는 포함 안 함
-    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, adminEmails: sharedAdminEmails, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier }
+    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo }
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -7823,14 +8417,20 @@ document.getElementById('importSharedFile').addEventListener('change', async (e)
     sharedExclusionDays = data.shared.exclusionDays || [];
     sharedWorkHourExceptions = data.shared.workHourExceptions || [];
     sharedNoticeHistory = data.shared.noticeHistory || [];
+    sharedNoticeReadState = data.shared.noticeReadState || {};
     sharedAdminEmails = data.shared.adminEmails || [];
+    sharedAdminNames = data.shared.adminNames || {};
     sharedManageSalt = data.shared.manageSalt || '';
     sharedManageVerifier = data.shared.manageVerifier || null;
+    sharedCompanyInfo = data.shared.companyInfo || { corp:[], team:[], personal:[] };
     await saveSharedExclusions();
     await saveSharedWorkHourExceptions();
     await saveSharedNoticeHistory();
+    saveSharedNoticeReadState();
     await saveSharedAdminEmails();
+    await saveSharedAdminNames();
     await saveSharedManagePassword();
+    await saveSharedCompanyInfo();
     if(gdriveAccessToken && gdriveFileId){
       document.getElementById('sharedBackupSaveMsg').textContent = '불러오기 완료 · 드라이브에 반영 중...';
       try{ await gdrivePush(); }catch(err){ console.error('공통설정 불러오기 후 드라이브 반영 실패', err); }
@@ -7899,14 +8499,20 @@ document.getElementById('importAllFile').addEventListener('change', async (e)=>{
       sharedExclusionDays = data.shared.exclusionDays || [];
       sharedWorkHourExceptions = data.shared.workHourExceptions || [];
       sharedNoticeHistory = data.shared.noticeHistory || [];
+      sharedNoticeReadState = data.shared.noticeReadState || {};
       sharedAdminEmails = data.shared.adminEmails || [];
+      sharedAdminNames = data.shared.adminNames || {};
       sharedManageSalt = data.shared.manageSalt || '';
       sharedManageVerifier = data.shared.manageVerifier || null;
+      sharedCompanyInfo = data.shared.companyInfo || { corp:[], team:[], personal:[] };
       await saveSharedExclusions();
       await saveSharedWorkHourExceptions();
       await saveSharedNoticeHistory();
+      saveSharedNoticeReadState();
       await saveSharedAdminEmails();
+      await saveSharedAdminNames();
       await saveSharedManagePassword();
+      await saveSharedCompanyInfo();
     }
     if(!data.profiles.find(p=>p.id===activeProfileId)){
       setActiveProfileId(data.profiles[0] ? data.profiles[0].id : null);
@@ -8271,7 +8877,7 @@ function gdriveBuildPayload(){
   });
   return {
     schemaVersion: SCHEMA_VERSION, syncedAt: new Date().toISOString(), profiles, data,
-    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, adminEmails: sharedAdminEmails, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier }
+    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo }
   };
 }
 
@@ -8420,14 +9026,20 @@ document.getElementById('gdrive-client-id').addEventListener('change', (e)=>{
 document.getElementById('addAdminEmailForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
   const emailInput = document.getElementById('new-admin-email');
+  const nameInput = document.getElementById('new-admin-name');
   const email = emailInput.value.trim().toLowerCase();
+  const name = nameInput.value.trim();
   if(!email) return;
   if(!sharedAdminEmails.map(x=>x.toLowerCase()).includes(email)){
     sharedAdminEmails.push(email);
     await saveSharedAdminEmails();
-    renderAdminEmailList();
   }
+  // 이미 등록된 관리자의 이름만 새로 등록/수정하는 경우에도 이 폼으로 처리
+  if(name){ sharedAdminNames[email] = name; } else { delete sharedAdminNames[email]; }
+  await saveSharedAdminNames();
+  renderAdminEmailList();
   emailInput.value = '';
+  nameInput.value = '';
 });
 
 function renderManagePwStatus(){
