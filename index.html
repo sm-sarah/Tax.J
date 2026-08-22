@@ -211,6 +211,16 @@
     padding-bottom:4px; border-bottom:2.5px solid var(--indigo); letter-spacing:0.02em;
   }
 
+  /* 사내정보 > 법인 탭의 "기본정보"는 이제 설정 > 회사 정보에서만 등록/수정하는 회사 대표 프로필이라
+     아래 개인정보의 나열식 리스트와 달리 한눈에 딱 들어오는 임팩트 있는 카드 헤더로 보여줌 */
+  .corp-info-hero{
+    text-align:center; margin:4px 0 16px; padding:22px 20px 20px;
+    background:linear-gradient(135deg, var(--navy), var(--indigo-deep));
+    border-radius:16px; box-shadow:0 10px 24px -10px rgba(30,42,94,0.4);
+  }
+  .corp-info-hero .corp-info-name{ font-size:25px; font-weight:900; color:#fff; letter-spacing:-0.01em; }
+  .corp-info-hero .corp-info-sub{ font-size:12px; font-weight:800; color:rgba(255,255,255,0.72); margin-top:5px; letter-spacing:0.08em; }
+
   .notice-toggle-chip{
     display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:700; color:var(--ink-soft);
     background:var(--bg); border:1.5px solid transparent; border-radius:20px; padding:7px 14px; cursor:pointer; user-select:none;
@@ -2050,17 +2060,19 @@
 
     <div class="settings-group" data-settings-cat="company">
       <div class="settings-group-title">🏢 회사 정보</div>
-      <div class="settings-group-desc">등록하면 사내정보 &gt; 법인 탭의 "기본정보" 표에 그대로 연동돼요. 개별 항목의 수정이력·삭제는 사내정보 탭에서 할 수 있어요.</div>
+      <div class="settings-group-desc">등록하면 사내정보 &gt; 법인 탭의 "기본정보"에 그대로 연동돼요. 회사 프로필은 여기서만 등록/수정하면 돼요.</div>
       <div class="settings-box" style="max-width:560px;">
         <form id="companyNameForm">
+          <div class="field"><label>사업자번호</label><input type="text" id="company-bizno-input" placeholder="예: 123-45-67890"></div>
           <div class="field"><label>회사(법인)명</label><input type="text" id="company-name-input" placeholder="예: 회계법인청인"></div>
           <div class="field"><label>창립일</label><input type="date" id="company-founded-input" min="1900-01-01" max="2099-12-31"></div>
           <div class="field"><label>대표자</label><input type="text" id="company-ceo-input" placeholder="예: 홍길동"></div>
           <div class="field"><label>주민등록번호</label><input type="text" id="company-ssn-input" placeholder="000000-0000000"></div>
           <div class="field"><label>주소</label><input type="text" id="company-address-input" placeholder="예: 서울특별시 ..."></div>
+          <div class="field"><label>우편번호</label><input type="text" id="company-zipcode-input" placeholder="예: 06237"></div>
+          <div class="field"><label>조정반번호</label><input type="text" id="company-taxagent-input" placeholder="조정반번호 입력"></div>
           <div class="field"><label>대표번호</label><input type="text" id="company-phone-input" placeholder="02-0000-0000"></div>
-          <div class="field"><label>팩스</label><input type="text" id="company-fax-input" placeholder="02-0000-0000"></div>
-          <div class="field"><label>메모</label><textarea id="company-memo-input" style="width:100%; min-height:70px; font-family:'Pretendard',sans-serif; font-size:13px; border:1.5px solid transparent; border-radius:10px; padding:10px; background:var(--bg); color:var(--ink); resize:vertical;"></textarea></div>
+          <div class="field"><label>대표팩스</label><input type="text" id="company-fax-input" placeholder="02-0000-0000"></div>
           <div style="text-align:center;"><button type="submit" class="submit-btn" style="width:auto; padding:8px 16px;">등록/수정</button></div>
         </form>
         <div style="text-align:center;"><span class="save-msg" id="companyNameSaveMsg"></span></div>
@@ -3929,6 +3941,8 @@ function hideMonthPickerInput(el){
   el.style.position = 'absolute';
   el.style.top = '';
   el.style.left = '-9999px';
+  el.style.opacity = '';
+  el.style.pointerEvents = '';
 }
 // 이 input(type=month)은 폭을 auto/fit-content로 둬도 브라우저가 내부적으로 고정된 넉넉한 폭(9999년 99월 기준)을 잡아버려서,
 // 실제 값("2026년 08월")과 오른쪽 달력 아이콘 사이에 큰 빈 공백이 생김. 그래서 실제 표시될 글자 폭을 캔버스로 재서
@@ -3955,6 +3969,10 @@ function openMonthPicker(inputId, anchorEl){
     el.style.left = rect.left + 'px';
     el.style.top = rect.bottom + 'px';
   }
+  // 타이틀 아래 작은 날짜 상자가 눈에 보이지 않도록 투명하게 둔 채로 위치만 잡아둠 - 네이티브 달력 팝업은
+  // 이 input의 화면 좌표를 기준으로 뜨기 때문에, 안 보이게만 하고(opacity:0) 화면 밖으로 치우면 안 됨
+  el.style.opacity = '0';
+  el.style.pointerEvents = 'none';
   if(typeof el.showPicker === 'function'){
     try{ el.showPicker(); return; }catch(e){ /* 일부 브라우저는 showPicker를 지원 안 할 수 있어 아래로 폴백 */ }
   }
@@ -5892,6 +5910,29 @@ function bindCiRowButtons(wrap){
   });
 }
 
+// 법인 "기본정보"는 이제 설정 > 회사 정보 폼에서만 등록/수정하는 회사 대표 프로필 항목들이라
+// 정해진 순서로 크게(임팩트 있게) 보여주고 개별 수정/이력/삭제 버튼은 없앰. 이 표준 항목 외에
+// 예전 방식으로 등록돼 있던 다른 기본정보 항목이 있으면(예: 참고용 안내 항목) "기타 기본정보"로 따로 보여주고
+// 거기엔 기존처럼 수정/이력/삭제를 남겨둠
+const CORP_BASIC_INFO_ORDER = ['사업자번호','회사명','창립일','대표자','주민등록번호','주소','우편번호','조정반번호','대표번호','대표팩스'];
+function buildCorpBasicInfoTable(infoList, companyName, admin){
+  const byLabel = {};
+  infoList.forEach(it=>{ if(!byLabel[it.label]) byLabel[it.label] = it; });
+  const rows = CORP_BASIC_INFO_ORDER
+    .filter(label => byLabel[label] && (byLabel[label].content||'').trim())
+    .map(label => `<tr><td style="font-weight:700; width:130px;">${escHtml(label)}</td><td style="white-space:pre-wrap;">${escHtml(byLabel[label].content)}</td></tr>`)
+    .join('');
+  const heroHtml = `<div class="corp-info-hero">
+    <div class="corp-info-name">${escHtml(companyName || '회사명 미등록')}</div>
+    <div class="corp-info-sub">기본정보</div>
+  </div>`;
+  const tableHtml = rows
+    ? `<div class="table-scroll"><table><thead><tr><th>항목명</th><th>내용</th></tr></thead><tbody>${rows}</tbody></table></div>`
+    : `<div class="empty-state">설정 &gt; 회사 정보에서 등록해보세요.</div>`;
+  const extra = infoList.filter(it => !CORP_BASIC_INFO_ORDER.includes(it.label));
+  const extraHtml = extra.length ? buildCiInfoTable(extra, 'corp', admin, null, '기타 ') : '';
+  return heroHtml + tableHtml + extraHtml;
+}
 async function renderCompanyInfoCorp(){
   const wrap = document.getElementById('ciCorpListWrap');
   if(!wrap) return;
@@ -5901,10 +5942,6 @@ async function renderCompanyInfoCorp(){
   if(defaultsBtn) defaultsBtn.style.display = (admin && unlocked && !(sharedCompanyInfo.corp||[]).length) ? 'inline-block' : 'none';
   if(!admin){ wrap.innerHTML = `<div class="empty-state">🔒 관리자만 조회할 수 있어요.</div>`; return; }
   const list = sharedCompanyInfo.corp || [];
-  if(!list.length){
-    wrap.innerHTML = `<div class="empty-state">등록된 항목이 없습니다. "기본값 불러오기"로 시작하거나 직접 추가해보세요.</div>`;
-    return;
-  }
   const infoList = list.filter(it=>(it.type||'account')==='info');
   const acctList = list.filter(it=>(it.type||'account')==='account');
   const decryptedMap = {}, failedSet = new Set();
@@ -5917,11 +5954,11 @@ async function renderCompanyInfoCorp(){
     }
   }
   const ciPrefix = sharedCompanyName ? sharedCompanyName + '법인 ' : '';
-  const infoHtml = buildCiInfoTable(infoList, 'corp', admin, null, ciPrefix);
+  const infoHtml = buildCorpBasicInfoTable(infoList, sharedCompanyName, admin);
   const acctHtml = !acctList.length ? '' : unlocked
     ? buildCiAccountTable(acctList, 'corp', admin, unlocked, decryptedMap, failedSet, null, ciPrefix)
     : `<div style="text-align:center; margin:14px 0 10px;"><span class="section-subtitle-label">${escHtml(ciPrefix+'공용ID/PW')}</span></div><div class="empty-state" style="padding:14px;">🔒 먼저 위에서 잠금을 해제해주세요. (${acctList.length}건)</div>`;
-  wrap.innerHTML = (infoHtml + acctHtml) || `<div class="empty-state">등록된 항목이 없습니다.</div>`;
+  wrap.innerHTML = infoHtml + acctHtml;
   bindCiRowButtons(wrap);
 }
 
@@ -10567,14 +10604,16 @@ document.getElementById('addAdminEmailForm').addEventListener('submit', async (e
 
 // 설정 > 회사 카테고리의 "회사 정보" 폼 필드 <-> 사내정보 법인탭 "기본정보" 표 연동용 고정 라벨
 const COMPANY_BASIC_INFO_FIELDS = [
+  { field:'company-bizno-input', label:'사업자번호' },
   { field:'company-name-input', label:'회사명' },
   { field:'company-founded-input', label:'창립일' },
   { field:'company-ceo-input', label:'대표자' },
   { field:'company-ssn-input', label:'주민등록번호' },
   { field:'company-address-input', label:'주소' },
+  { field:'company-zipcode-input', label:'우편번호' },
+  { field:'company-taxagent-input', label:'조정반번호' },
   { field:'company-phone-input', label:'대표번호' },
-  { field:'company-fax-input', label:'팩스' },
-  { field:'company-memo-input', label:'메모' }
+  { field:'company-fax-input', label:'대표팩스' }
 ];
 function findCorpInfoEntry(label){
   return (sharedCompanyInfo.corp||[]).find(x=>(x.type||'info')==='info' && x.label===label);
@@ -10600,7 +10639,8 @@ function populateCompanyNameInput(){
     if(field === 'company-name-input') return; // 회사명은 sharedCompanyName을 우선으로 보여줌 (위에서 이미 채움)
     const inputEl = document.getElementById(field);
     if(!inputEl) return;
-    const entry = findCorpInfoEntry(label);
+    let entry = findCorpInfoEntry(label);
+    if(!entry && field==='company-fax-input') entry = findCorpInfoEntry('팩스'); // 예전 "팩스" 라벨로 저장돼 있던 데이터도 이어받아 보여줌
     inputEl.value = entry ? (entry.content || '') : '';
   });
 }
