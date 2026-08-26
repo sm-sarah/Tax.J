@@ -1913,7 +1913,7 @@
           <div class="field" style="width:100%;"><label>새 비밀번호</label><input type="password" id="new-manage-pw-2" placeholder="4자리 이상"></div>
           <div class="field" style="width:100%;"><label>새 비밀번호 확인</label><input type="password" id="new-manage-pw-confirm" placeholder="한 번 더 입력"></div>
           <div style="display:flex; gap:8px; justify-content:center;">
-            <button type="submit" class="submit-btn" style="width:auto; padding:8px 16px;">수정 완료</button>
+            <button type="submit" class="submit-btn" style="width:auto; min-width:0; display:inline-block; margin:0; padding:5px 12px; font-size:11.5px; border-radius:8px; box-shadow:none;">수정 완료</button>
             <button type="button" id="managePwCancelEditBtn" class="del-btn">취소</button>
           </div>
         </form>
@@ -2588,8 +2588,11 @@ async function decryptJSON(payload, key){
   const plainBuf = await crypto.subtle.decrypt({name:'AES-GCM', iv}, key, bufFromB64(payload.data));
   return JSON.parse(new TextDecoder().decode(plainBuf));
 }
-// 비밀번호 변경시, 기존에 암호화되어 저장된 전 직원의 거래처 민감정보를 전부 새 키로 재암호화(그래야 비번 바꿔도 예전 데이터가 안 깨짐)
-async function reencryptAllClientSensitiveData(oldKey, newKey){
+// 비밀번호 변경시, 이 비밀번호로 암호화된 모든 민감정보를 전부 새 키로 재암호화(그래야 비번 바꿔도 예전 데이터가 안 깨짐)
+// - 거래처 민감정보(사업자번호 등) + 개인정보(profile별 로컬 저장)
+// - 사내정보(법인/팀 총괄/팀원별) ID·PW(sharedCompanyInfo, 회사 공통 저장) - "거래처 정보 + 사내정보 계정정보 공용" 비밀번호이므로
+//   여기서 빠지면 사내정보 쪽 ID/PW가 이번 변경으로 전부 영구히 열람불가가 되는 심각한 문제라 반드시 같이 처리해야 함
+async function reencryptAllSensitiveData(oldKey, newKey){
   const profiles = getProfiles();
   let failCount = 0;
   for(const p of profiles){
@@ -2624,6 +2627,40 @@ async function reencryptAllClientSensitiveData(oldKey, newKey){
       if(p.id === activeProfileId) personalInfo = rawPersonal;
     }
   }
+  // 사내정보(법인 공용ID/PW) - sharedCompanyInfo.corp
+  let ciChanged = false;
+  for(const it of (sharedCompanyInfo.corp||[])){
+    if(it.sensitiveEnc){
+      try{
+        const plain = await decryptJSON(it.sensitiveEnc, oldKey);
+        it.sensitiveEnc = await encryptJSON(plain, newKey);
+        ciChanged = true;
+      }catch(err){ console.error('재암호화 실패(사내정보-법인)', it.id, err); failCount++; }
+    }
+  }
+  // 사내정보(팀 총괄 ID/PW) - sharedCompanyInfo.teamGeneral
+  for(const it of (sharedCompanyInfo.teamGeneral||[])){
+    if(it.sensitiveEnc){
+      try{
+        const plain = await decryptJSON(it.sensitiveEnc, oldKey);
+        it.sensitiveEnc = await encryptJSON(plain, newKey);
+        ciChanged = true;
+      }catch(err){ console.error('재암호화 실패(사내정보-팀총괄)', it.id, err); failCount++; }
+    }
+  }
+  // 사내정보(팀원별 ID/PW) - sharedCompanyInfo.team[].items
+  for(const person of (sharedCompanyInfo.team||[])){
+    for(const it of (person.items||[])){
+      if(it.sensitiveEnc){
+        try{
+          const plain = await decryptJSON(it.sensitiveEnc, oldKey);
+          it.sensitiveEnc = await encryptJSON(plain, newKey);
+          ciChanged = true;
+        }catch(err){ console.error('재암호화 실패(사내정보-팀원)', person.person, it.id, err); failCount++; }
+      }
+    }
+  }
+  if(ciChanged) await saveSharedCompanyInfo();
   // 재암호화 실패 건수 - "예전 비밀번호로도 안 열리던" 데이터라 이번 비밀번호 변경과 무관하게 이미 문제가 있던 항목.
   // 조용히 넘어가면 나중에 "잠금해제 했는데 왜 안보이지" 문의로 이어지니, 바꾸는 시점에 바로 알려줌
   return { failCount };
@@ -10689,7 +10726,11 @@ function renderMegaManagePwStatus(){
   if(!el) return;
   el.textContent = sharedManageVerifier ? '✅ 비밀번호가 설정되어 있어요.' : '⚠️ 아직 설정되지 않았어요.';
 }
-document.getElementById('megaGoManagePwBtn')?.addEventListener('click', ()=>{
+document.getElementById('megaGoManagePwBtn')?.addEventListener('click', (e)=>{
+  // "설정 > 데이터" 화면에서 소제목을 칩으로 눌러 이 버튼을 팝업으로 띄운 경우, 다른 탭으로 이동하면서
+  // 그 팝업창은 그대로 남아있던 문제 - 이동 전에 감싸고 있는 팝업이 있으면 같이 닫아줌
+  const overlay = e.currentTarget.closest('.settings-subsection-overlay');
+  if(overlay) overlay.style.display = 'none';
   activateTab('clients-settings', true);
   setTimeout(()=>{ document.getElementById('managePwStatus')?.scrollIntoView({behavior:'smooth', block:'center'}); }, 150);
 });
@@ -10731,7 +10772,7 @@ document.getElementById('changeManagePwForm').addEventListener('submit', async (
     const newSalt = b64FromBuf(crypto.getRandomValues(new Uint8Array(16)).buffer);
     const newKey = await deriveKeyFromPassword(newPw, newSalt);
     const newVerifier = await encryptJSON({check:'ok'}, newKey);
-    var reencryptResult = await reencryptAllClientSensitiveData(oldKey, newKey);
+    var reencryptResult = await reencryptAllSensitiveData(oldKey, newKey);
     sharedManageSalt = newSalt;
     sharedManageVerifier = newVerifier;
     await saveSharedManagePassword();
