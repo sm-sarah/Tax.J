@@ -330,6 +330,12 @@
     color:var(--ink-soft); border-radius:24px; box-shadow:0 1px 2px rgba(29,30,51,0.05);
   }
   .tab-btn.active{color:#fff; background:var(--group-accent, var(--indigo)); box-shadow:0 6px 14px -6px rgba(91,95,239,0.4);}
+  /* 공지사항/휴지통처럼 아이콘으로 여는 팝업이 열려있는 동안, 그 밑에 깔린 탭의 상단 메뉴 칩은
+     활성 색을 잠깐 꺼서 지금 진짜로 보고 있는 화면이 아니라는 걸 알려줌 (팝업 닫으면 자동 복원) */
+  body.popup-dim-nav .tab-btn.active{
+    color:var(--ink-soft) !important; background:transparent !important;
+    box-shadow:none !important; border-bottom-color:transparent !important;
+  }
   .tab-panel{display:none;}
   .tab-panel.active{display:block;}
 
@@ -524,6 +530,12 @@
   .cal-badge.schedule{background:var(--indigo-bg); color:var(--indigo-deep);}
   .cal-work-icon{font-size:10px; font-weight:700; opacity:0.55; display:inline-flex; align-items:center; gap:2px;}
   .cal-badge.special{background:var(--mint-bg); color:#0A7A55; font-weight:800;}
+  /* 결재 > 신고현황 표의 진행상태 select는 .field 밖에 있어서 스타일이 하나도 안 먹고 브라우저 기본 모양 그대로 나왔던 문제 - 같은 표의 메모 입력칸과 톤을 맞춤 */
+  .filing-status-select{
+    font-family:'Pretendard', sans-serif; font-size:12px;
+    border:1.5px solid var(--border); border-radius:6px; padding:4px 8px;
+    background:var(--surface); color:var(--ink); cursor:pointer;
+  }
   .bulk-input, .bulk-select{
     font-family:'Pretendard', sans-serif; font-size:12.5px;
     border:1.5px solid transparent; border-radius:8px; padding:6px 7px;
@@ -675,7 +687,7 @@
     <p class="hint" id="loginGateStatusMsg" style="font-size:11px; margin:14px 0 0; min-height:14px;"></p>
   </div>
 </div>
-<div id="noticeModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+<div id="noticeModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:9999; align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:840px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
     <div style="display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px; margin-bottom:16px;">
       <div></div>
@@ -1193,7 +1205,7 @@
 <!-- 크기 조절 가능한 박스라서 align-items:center로 세로 가운데 정렬해두면, 드래그로 커질 때마다 박스가 다시
      가운데로 재배치되면서 마우스 위치와 모서리가 어긋나 화면 밖으로 밀려나 보이는 문제가 있었음(리사이즈 도중
      매 프레임 재중앙정렬 vs 드래그 좌표가 서로 충돌) - 위쪽을 고정 기준점으로 두고 아래로만 커지게 바꿔서 해결 -->
-<div id="trashModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:flex-start; justify-content:center; padding:5vh 20px 20px;">
+<div id="trashModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:9999; align-items:flex-start; justify-content:center; padding:5vh 20px 20px;">
   <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:90vw; width:600px; height:min(85vh, 640px); max-height:90vh; min-width:340px; min-height:240px; overflow:auto; resize:both; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
     <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:6px;">
       <div style="font-weight:800; font-size:15px; color:var(--ink);">🗑️ 휴지통 <span class="badge" id="trashModalBadge">0건</span> <span style="font-size:10px; font-weight:600; color:var(--ink-soft);">↘ 우하단 모서리를 드래그하면 크기 조절</span></div>
@@ -1256,8 +1268,8 @@
       <div class="tab-group tg-client">
         <button class="tab-btn" data-tab="clients-regular">📗 기장거래처</button>
         <button class="tab-btn" data-tab="clients-other">📂 기타거래처</button>
-        <button class="tab-btn" data-tab="clients-edit">➕ 등록</button>
         <button class="tab-btn" data-tab="clients-terminated">🚫 해지거래처</button>
+        <button class="tab-btn" data-tab="clients-edit">➕ 거래처등록</button>
       </div>
     </div>
 
@@ -1364,17 +1376,13 @@
           <div class="home-tile-icon">📂</div>
           <div class="home-tile-title">기타거래처</div>
         </div>
-        <div class="home-tile home-tile-plain" data-goto="clients-edit" style="--tile-accent:#8B5CF6;">
-          <div class="home-tile-icon">➕</div>
-          <div class="home-tile-title">등록</div>
-        </div>
         <div class="home-tile home-tile-plain" data-goto="clients-terminated" style="--tile-accent:#8B5CF6;">
           <div class="home-tile-icon">🚫</div>
           <div class="home-tile-title">해지거래처</div>
         </div>
-        <div class="home-tile home-tile-plain" data-goto="clients-settings" style="--tile-accent:#8B5CF6;">
-          <div class="home-tile-icon">⚙️</div>
-          <div class="home-tile-title">설정</div>
+        <div class="home-tile home-tile-plain" data-goto="clients-edit" style="--tile-accent:#8B5CF6;">
+          <div class="home-tile-icon">➕</div>
+          <div class="home-tile-title">거래처등록</div>
         </div>
       </div>
     </div>
@@ -1504,13 +1512,11 @@
     <p class="hint" style="font-size:11px; margin:10px 0 0; text-align:right;" id="personalBackupTitle"></p>
     <div style="text-align:right; margin-top:6px;">
       <div class="tab-group tg-profile" style="display:inline-flex; align-items:center; gap:8px; padding:6px 12px;">
-        <div style="display:flex; align-items:center; gap:2px;">
-          <label style="font-size:13px; font-weight:800; color:var(--navy);">데이터</label>
-          <button type="button" id="exportBtn" title="백업 파일 내보내기 - 내 근태·경비·개인일정 기록을 JSON 파일로 저장해요." style="border:none; background:var(--indigo-bg); color:var(--indigo-deep); width:26px; height:26px; border-radius:50%; font-size:12px; cursor:pointer;">⬇️</button>
-        </div>
-        <button type="button" id="importBtn" title="백업 파일 불러오기 - 백업 파일(JSON)을 불러와서 이 브라우저에 복원해요." style="border:none; background:var(--mint-bg); color:var(--mint); width:26px; height:26px; border-radius:50%; font-size:12px; cursor:pointer;">⬆️</button>
+        <label style="font-size:13px; font-weight:800; color:var(--navy);">데이터</label>
+        <button type="button" id="exportBtn" title="백업 파일 내보내기 - 내 근태·경비·개인일정 기록을 JSON 파일로 저장해요." style="border:none; background:var(--indigo-bg); color:var(--indigo-deep); width:26px; height:26px; border-radius:50%; font-size:12px; cursor:pointer;">⬇️</button>
+        <button type="button" id="importBtn" title="백업 파일 불러오기 - 백업 파일(JSON)을 불러와서 이 브라우저에 복원해요." style="border:none; background:var(--indigo-bg); color:var(--indigo-deep); width:26px; height:26px; border-radius:50%; font-size:12px; cursor:pointer;">⬆️</button>
         <input type="file" id="importFile" accept="application/json" style="display:none;">
-        <button type="button" id="resetDataBtn" title="현재 선택된 근태·경비 기록만 전부 지우고 0부터 다시 시작해요. 이름·입사일은 유지돼요." style="border:none; background:var(--coral-bg); color:var(--coral); border-radius:8px; padding:0 10px; height:26px; font-size:10.5px; font-weight:800; cursor:pointer; font-family:inherit;">초기화</button>
+        <button type="button" id="resetDataBtn" title="현재 선택된 근태·경비 기록만 전부 지우고 0부터 다시 시작해요. 이름·입사일은 유지돼요." style="border:none; background:var(--indigo-bg); color:var(--indigo-deep); border-radius:8px; padding:0 10px; height:26px; font-size:10.5px; font-weight:800; cursor:pointer; font-family:inherit;">초기화</button>
         <span class="save-msg" id="backupSaveMsg" style="margin-top:0;"></span>
         <span class="save-msg" id="resetSaveMsg" style="margin-top:0;"></span>
       </div>
@@ -1721,20 +1727,28 @@
         <h2 class="section-title" style="justify-content:center; font-size:24px;">기장거래처 <span class="badge" id="clientsRegularBadge" title="지금 이 순간 기준(해지 제외) 거래처 수">0건</span></h2>
         <p class="hint" style="font-size:12px; color:var(--ink-soft); margin:4px 0 0; text-align:center;">기장대행·신고대리로 등록된 정기 거래처만 모아서 보여줘요.</p>
       </div>
-      <div style="justify-self:end; display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
-        <div style="display:flex; align-items:center; gap:6px;">
-          <label style="font-size:11px; color:var(--ink-soft); font-weight:700;">조회월</label>
-          <input type="month" id="cl-fee-month" style="font-family:'Pretendard',sans-serif; font-weight:700; color:var(--navy); font-size:12.5px; padding:6px 8px; border:1.5px solid var(--border); border-radius:8px; background:var(--surface);">
-          <span id="clFeeMonthLabel" style="font-size:11px; color:var(--ink-soft); font-weight:700;"></span>
-        </div>
+      <div style="justify-self:end;">
+        <!-- 조회월이 수임료 합계에만 쓰이는 값인데 카드 밖에 따로 떨어져 있어서 헷갈린다는 피드백 -
+             월수임료 카드 안에 함께 넣어서 "이 조회월 기준 금액"이라는 게 한눈에 보이게 함 -->
         <div class="card card-mint" style="padding:10px 16px; min-width:200px; text-align:right;">
-          <div class="card-label">월수임료</div>
+          <div class="tab-group tg-profile" style="display:inline-flex; padding:4px 8px; margin-bottom:8px;">
+            <label style="font-size:10px; font-weight:800; color:var(--navy); margin-right:2px;">조회월</label>
+            <input type="month" id="cl-fee-month" style="font-family:'Pretendard',sans-serif; font-weight:700; color:var(--navy); font-size:12px; padding:3px 5px; border:none; border-radius:7px; background:#fff;">
+          </div>
+          <div class="card-label">월수임료 <span id="clFeeMonthLabel"></span></div>
           <div class="card-value num" id="clFeeMonthTotal" style="font-size:19px;">-</div>
           <div class="card-sub" id="clFeeMonthCount"></div>
         </div>
       </div>
     </div>
-    <div class="field" style="max-width:220px; margin:14px 0 14px auto;"><input type="text" id="cl-regular-search" placeholder="🔍 검색"></div>
+    <div style="display:flex; justify-content:flex-end; gap:6px; margin:14px 0 14px;">
+      <select id="cl-regular-search-type" style="border:1.5px solid var(--border); border-radius:8px; padding:8px 8px; font-size:12.5px; background:var(--surface); font-family:'Pretendard',sans-serif;">
+        <option value="name">상호</option>
+        <option value="bizNo">사업자번호</option>
+        <option value="repName">대표자</option>
+      </select>
+      <div class="field" style="max-width:220px; margin:0;"><input type="text" id="cl-regular-search" placeholder="🔍 검색"></div>
+    </div>
     <div id="clientsRegularListWrap"></div>
   </section>
 
@@ -1746,7 +1760,14 @@
         <h2 class="section-title" style="justify-content:center; font-size:24px;">기타거래처 <span class="badge" id="clientsOtherBadge">0건</span></h2>
         <p class="hint" style="font-size:12px; color:var(--ink-soft); margin:4px 0 0; text-align:center;">기장대행·신고대리(정기)를 제외한 비정기 업무 거래처만 모아서 보여줘요.</p>
       </div>
-      <div class="field" style="justify-self:end; max-width:220px; margin:0;"><input type="text" id="cl-other-search" placeholder="🔍 검색"></div>
+      <div style="justify-self:end; display:flex; gap:6px;">
+        <select id="cl-other-search-type" style="border:1.5px solid var(--border); border-radius:8px; padding:8px 8px; font-size:12.5px; background:var(--surface); font-family:'Pretendard',sans-serif;">
+          <option value="name">상호</option>
+          <option value="bizNo">사업자번호</option>
+          <option value="repName">대표자</option>
+        </select>
+        <div class="field" style="max-width:180px; margin:0;"><input type="text" id="cl-other-search" placeholder="🔍 검색"></div>
+      </div>
     </div>
     <div id="clientsOtherListWrap" style="margin-top:14px;"></div>
   </section>
@@ -3214,10 +3235,18 @@ function syncTopRightIcons(){
   const trashEl = document.getElementById('trashIconBtn2');
   const isNoticeOpen = document.getElementById('noticeModalOverlay')?.style.display === 'flex';
   const isTrashOpen = document.getElementById('trashModalOverlay')?.style.display === 'flex';
-  const isSettingsTab = document.querySelector('.tab-panel.active')?.id === 'tab-settings';
+  // 예전엔 .tab-panel.active를 DOM에서 직접 찾았는데, activateTab() 안에서 이 함수가 호출되는 시점이
+  // "이전 탭의 active 클래스는 이미 지워졌고 새 탭엔 아직 안 붙은" 순간이라 항상 한 박자 늦게 반영되는
+  // 버그가 있었음(설정 탭을 눌러도 안 바뀌다가 공지사항을 열었다 닫으면 그제서야 보라색이 되는 현상).
+  // currentActiveTabName은 activateTab() 맨 첫 줄에서 즉시 갱신되므로 이 타이밍 문제가 없음
+  const isSettingsTab = currentActiveTabName === 'settings';
   if(noticeEl) noticeEl.style.background = isNoticeOpen ? 'var(--indigo)' : 'var(--navy)';
   if(trashEl) trashEl.style.background = isTrashOpen ? 'var(--indigo)' : 'var(--navy)';
   if(settingsEl) settingsEl.style.background = (!isNoticeOpen && !isTrashOpen && isSettingsTab) ? 'var(--indigo)' : 'var(--navy)';
+  // 공지사항/휴지통처럼 어디서든 아이콘으로 여는 팝업이 떠 있는 동안엔, 그 뒤에 깔린 화면의 상단 메뉴 칩이
+  // 계속 활성(보라/포인트 컬러) 색으로 보여서 마치 그 탭이 지금도 열려있는 것처럼 헷갈린다는 피드백이 있었음.
+  // 팝업이 열려있는 동안만 body에 클래스를 붙여서 칩을 비활성 색으로 되돌리고, 팝업이 닫히면 원래대로 복원함
+  document.body.classList.toggle('popup-dim-nav', isNoticeOpen || isTrashOpen);
 }
 function openNoticeModal(){
   document.getElementById('notice-search-text').value = '';
@@ -4150,6 +4179,10 @@ function openMonthPicker(inputId, anchorEl){
   // 이 input의 화면 좌표를 기준으로 뜨기 때문에, 안 보이게만 하고(opacity:0) 화면 밖으로 치우면 안 됨
   el.style.opacity = '0';
   el.style.pointerEvents = 'none';
+  // 위치·투명도 스타일을 바꾼 직후 곧바로 showPicker()를 부르면 브라우저가 그 변경을 아직 레이아웃에
+  // 반영하기 전이라 첫 클릭에서는 팝업이 조용히 안 뜨고 두 번째 클릭에야 뜨는 문제가 있었음 -
+  // 강제로 한 번 읽어서(reflow) 스타일 변경을 확정시킨 뒤에 호출하면 매번 첫 클릭에 바로 열림
+  void el.offsetHeight;
   if(typeof el.showPicker === 'function'){
     try{ el.showPicker(); return; }catch(e){ /* 일부 브라우저는 showPicker를 지원 안 할 수 있어 아래로 폴백 */ }
   }
@@ -4306,10 +4339,32 @@ function renderWorkdaysSuggestion(){
   const { weekdays } = calcWorkdays(monthStr);
   document.getElementById('workdaysAutoValue').textContent = weekdays + '일';
 }
+// 제외일수(노란 "−" 항목)에 실제로 뭐가 얼마나 들어갔는지 종류별로 집계 - 계산식 설명 대신 이걸 보여주면 훨씬 직관적임
+function calcWorkdaysExclusionBreakdown(monthStr){
+  const counts = {};
+  const add = (label, n) => { if(n>0) counts[label] = (counts[label]||0) + n; };
+  const monthUsage = attendance.leaveUsage.filter(u => u.date.startsWith(monthStr));
+  monthUsage.forEach(u=>{
+    if(u.type==='연차') add('연차', 1);
+    else if(u.type==='반차' && u.subtype==='오전반차') add('오전반차', 1);
+    else if(u.type==='반차' && u.subtype==='오후반차_식사X') add('오후반차(식사X)', 1);
+    else if(['포상휴가','경조사휴가','기타휴가'].includes(u.type)) add(u.type, Number(u.days)||0);
+  });
+  const monthExclusions = (sharedExclusionDays||[]).filter(x=>x.date.startsWith(monthStr));
+  monthExclusions.forEach(x=>{
+    if(x.reason==='점심회식') add('회식', 1);
+    else if(x.reason==='기타') add(x.name || '기타', 1);
+  });
+  return counts;
+}
 function openWorkdaysCalcInfoModal(){
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
   const { weekdays, noLunchDays, exclusionCount, workdays } = calcWorkdays(monthStr);
   const deduct = noLunchDays + exclusionCount;
+  const breakdown = calcWorkdaysExclusionBreakdown(monthStr);
+  const breakdownStr = Object.keys(breakdown).length
+    ? Object.entries(breakdown).map(([label,n])=>`${label} ${n}일`).join(', ')
+    : '없음';
   document.getElementById('memoModalTitle').textContent = '식대기준일수 계산법';
   const body = document.getElementById('memoModalBody');
   const subtitle = `<div style="text-align:center; margin-bottom:12px;"><span class="section-subtitle-label">${escHtml(monthStr)} 기준</span></div>`;
@@ -4323,9 +4378,7 @@ function openWorkdaysCalcInfoModal(){
       <span>식대기준일수 <span style="color:var(--mint);">${workdays}일</span></span>
     </div>
     <div style="text-align:center; font-size:11px; color:var(--ink-soft); margin-top:14px; line-height:1.7;">
-      근무가능일수 = 평일 − 공휴일<br>
-      제외일수 = 점심 미섭취 휴가(연차·오전반차·오후반차(식사X) 등) ${noLunchDays}일 + 점심회식·기타 제외일 ${exclusionCount}일<br>
-      (재택근무·반반차·오후반차(식사O)는 점심을 먹으므로 제외되지 않아요)
+      제외일수: ${escHtml(breakdownStr)}
     </div>`;
   document.getElementById('memoModalOverlay').style.display = 'flex';
 }
@@ -9041,6 +9094,9 @@ function applyDashMask(el, groups){
 }
 applyDashMask(document.getElementById('cl-bizno'), [3,2,5]);
 applyDashMask(document.getElementById('cl-corpregno'), [6,7]);
+// 사내정보 > 회사정보의 사업자번호·대표자 주민등록번호도 거래처 등록 폼과 동일하게 숫자만 입력해도 하이픈이 자동으로 채워지게
+applyDashMask(document.getElementById('company-bizno-input'), [3,2,5]);
+applyDashMask(document.getElementById('company-ssn-input'), [6,7]);
 
 
 function updateContactSameAsRep(){
@@ -9064,7 +9120,9 @@ document.getElementById('cl-contact-same-as-rep').addEventListener('change', upd
 renderContactRows();
 
 document.getElementById('cl-regular-search').addEventListener('input', ()=>renderClientsRegular());
+document.getElementById('cl-regular-search-type').addEventListener('change', ()=>renderClientsRegular());
 document.getElementById('cl-other-search').addEventListener('input', ()=>renderClientsOther());
+document.getElementById('cl-other-search-type').addEventListener('change', ()=>renderClientsOther());
 document.getElementById('cl-terminated-search').addEventListener('input', ()=>renderClientsTerminated());
 document.getElementById('cl-terminated-search-type').addEventListener('change', ()=>renderClientsTerminated());
 
@@ -11534,10 +11592,11 @@ initSettingsCategoryChips();
 initSectionTocs();
 // 뒤로가기를 눌렀을 때 이 앱 밖으로 바로 안 나가고 "홈"부터 거치도록, 최초 진입 시점을 기준선으로 남겨둠
 try{ history.replaceState({ tab: 'home' }, '', location.pathname + location.search); }catch(e){}
-// 새로고침해도 홈이 아니라 마지막으로 보고 있던 화면으로 돌아가기
+// 새로고침해도 홈이 아니라 마지막으로 보고 있던 화면으로 돌아가기 - 단, 이건 "로그인 상태가 그대로 이어지는
+// 새로고침"일 때만이고, 진짜로 다시 로그인해야 하는 경우(토큰 만료·로그아웃 후 첫 접속)엔 항상 홈부터 보여줌
 try{
   const lastTab = localStorage.getItem('worklog_last_tab');
-  if(lastTab && lastTab !== 'home'){
+  if(lastTab && lastTab !== 'home' && restoredGdriveToken){
     const lastTabBtn = document.querySelector(`.tab-btn[data-tab="${lastTab}"]`);
     if(lastTabBtn) lastTabBtn.click();
   }
