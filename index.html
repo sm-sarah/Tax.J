@@ -376,6 +376,13 @@
   }
   .field input:focus, .field select:focus{outline:none; border-color:var(--indigo); background:var(--surface);}
   .field input.num-input{font-family:'IBM Plex Mono', monospace;}
+  /* 거래처 개인정보(구분/ID/PW/비고) 행은 .field로 감싸지 않은 입력칸이라 기본 브라우저 스타일 그대로 보였음 - .field input과 동일한 스타일을 입혀서 통일 */
+  .cl-pi-row input[type="text"]{
+    font-family:'Pretendard', sans-serif; font-size:13px;
+    border:1.5px solid var(--border); border-radius:10px; padding:7px 9px;
+    background:var(--surface); color:var(--ink);
+  }
+  .cl-pi-row input[type="text"]:focus{outline:none; border-color:var(--indigo);}
   .cl-subtag-trigger-btn{
     font-family:'Pretendard', sans-serif; font-size:13.5px; text-align:left; cursor:pointer;
     border:1.5px solid var(--border); border-radius:10px; padding:8px 10px;
@@ -1825,6 +1832,13 @@
           <div class="field" style="flex:1 1 160px;"><label>사업자번호</label><input type="text" id="cl-bizno" placeholder="예: 123-45-67890"></div>
           <div class="field" style="flex:1 1 160px;"><label>법인등록번호</label><input type="text" id="cl-corpregno" placeholder="예: 110111-1234567"></div>
         </div>
+        <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
+          <div class="field" style="flex:2 1 260px;"><label>사업장 주소</label><input type="text" id="cl-biz-address" placeholder="예: 서울특별시 강남구 테헤란로 123"></div>
+          <div class="field" style="flex:1 1 140px;"><label>개업일</label><input type="date" id="cl-open-date" min="1900-01-01" max="2099-12-31"></div>
+          <div class="field" style="flex:1 1 140px;"><label>설립일</label><input type="date" id="cl-founding-date" min="1900-01-01" max="2099-12-31"></div>
+          <div class="field" style="flex:1 1 120px;"><label>업종코드</label><input type="text" id="cl-biz-type-code" placeholder="예: 741201"></div>
+          <div class="field" style="flex:1 1 140px;"><label>업종</label><input type="text" id="cl-biz-type" placeholder="예: 서비스업"></div>
+        </div>
         </div>
         <div style="background:var(--bg); border-radius:10px; padding:14px 16px 6px; margin-bottom:14px;">
         <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
@@ -1877,7 +1891,6 @@
 
         <div style="text-align:center; margin-top:26px; padding-top:20px; border-top:1.5px dashed var(--border); margin-bottom:12px;"><span class="section-subtitle-label">개인정보</span></div>
         <div id="clPersonalInfoSection" style="background:var(--bg); border-radius:10px; padding:14px 16px; margin-bottom:14px;">
-          <p class="hint" style="margin:0 0 10px; text-align:center;">아이디·비밀번호·비고(URL 입력시 자동 링크)를 항목별로 등록해요. 이미지·PDF 첨부도 가능해요.</p>
           <div id="clPersonalInfoLockNotice" style="text-align:center; padding:10px; display:none;">
             <button type="button" id="clPersonalInfoUnlockBtn" title="비밀번호 입력하고 수정" style="border:none; background:var(--pink-bg, #FCE7F3); color:var(--pink, #DB2777); width:40px; height:40px; border-radius:50%; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 7a5 5 0 113.61 4.804l-1.903 1.903A1 1 0 019 14H8v1a1 1 0 01-1 1H6v1a1 1 0 01-1 1H3a1 1 0 01-1-1v-2a1 1 0 01.293-.707L8.196 8.39A5.002 5.002 0 018 7zm5-3a.75.75 0 000 1.5A1.5 1.5 0 0114.5 7 .75.75 0 0016 7a3 3 0 00-3-3z" clip-rule="evenodd"/></svg></button>
           </div>
@@ -5245,7 +5258,11 @@ function openClientDetailModal(c){
   // 1) 기본정보
   // 공유드라이브 폴더 링크는 거래처 표의 📁 아이콘에서 바로 열 수 있어서 여기 따로 한 줄 더 두는 건 중복이라 뺐음(데이터 자체는 그대로 유지)
   const subTypeDisplay = summarizeSubTags(c) || '-';
-  let html = group('기본정보', rowHtml('프로그램', programDisplay) + rowHtml('회사코드', c.companyCode || '-') + rowHtml('사업자 상세구분', subTypeDisplay));
+  // 설립일은 법인에만 있는 개념이라 개인 거래처면 행 자체를 넣지 않음
+  const foundingRow = c.entityType !== '개인' ? rowHtml('설립일', c.foundingDate || '-') : '';
+  const bizTypeDisplay = c.bizType ? (c.bizTypeCode ? `${c.bizType} (${c.bizTypeCode})` : c.bizType) : '-';
+  let html = group('기본정보', rowHtml('프로그램', programDisplay) + rowHtml('회사코드', c.companyCode || '-') + rowHtml('사업자 상세구분', subTypeDisplay)
+    + rowHtml('사업장 주소', c.bizAddress || '-') + rowHtml('개업일', c.openDate || '-') + foundingRow + rowHtml('업종', bizTypeDisplay));
 
   // 2) 대표자
   html += group('대표자', rowHtml('이름', c.repName || '-') + rowHtml('연락처', c.repPhone || '-') + rowHtml('이메일', c.repEmail || '-'));
@@ -5287,6 +5304,7 @@ document.getElementById('lunchLimitInfoBtn').addEventListener('click', openWorkd
 // 거래처 정보 항목별 한글 라벨 - 수정이력에 "무엇이 바뀌었는지" 사람이 읽기 좋게 표시할 때 씀
 const CLIENT_FIELD_LABELS = {
   name:'상호명', entityType:'사업자구분', bizNo:'사업자번호', corpRegNo:'법인등록번호',
+  bizAddress:'사업장 주소', openDate:'개업일', foundingDate:'설립일', bizTypeCode:'업종코드', bizType:'업종',
   program:'프로그램', companyCode:'회사코드',
   repName:'대표자', repPhone:'대표자 연락처', repEmail:'대표자 이메일',
   contact:'실무담당자', phone:'담당자 연락처', email:'담당자 이메일',
@@ -5608,6 +5626,12 @@ async function populateClientEditForm(c){
   renderSubTagChipOptions();
   document.getElementById('cl-bizno').value = c.bizNo || '';
   document.getElementById('cl-corpregno').value = c.corpRegNo || '';
+  document.getElementById('cl-biz-address').value = c.bizAddress || '';
+  document.getElementById('cl-open-date').value = c.openDate || '';
+  document.getElementById('cl-founding-date').value = c.foundingDate || '';
+  document.getElementById('cl-biz-type-code').value = c.bizTypeCode || '';
+  document.getElementById('cl-biz-type').value = c.bizType || '';
+  updateFoundingDateFieldState();
   const knownPrograms = ['없음','위하고','세무사랑'];
   if(c.program && !knownPrograms.includes(c.program)){
     document.getElementById('cl-program').value = '기타';
@@ -5939,10 +5963,6 @@ function renderClPersonalInfoRows(){
         <input type="text" class="cl-pi-id" data-idx="${i}" placeholder="ID" value="${escHtml(a.idVal||'')}" style="flex:1 1 100px;">
         <input type="text" class="cl-pi-pw" data-idx="${i}" placeholder="PW" value="${escHtml(a.pwVal||'')}" style="flex:1 1 100px;">
         <input type="text" class="cl-pi-note" data-idx="${i}" placeholder="비고 (URL 입력시 자동 링크)" value="${escHtml(a.note||'')}" style="flex:1 1 180px;">
-        <label style="display:flex; align-items:center; gap:5px; font-size:11.5px; color:var(--ink-soft); flex:1 1 150px; cursor:pointer;">
-          📎 <span class="cl-pi-file-name" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml(a.file?a.file.name:'첨부(선택)')}</span>
-          <input type="file" class="cl-pi-file" data-idx="${i}" accept="image/*,.pdf" style="display:none;">
-        </label>
         <button type="button" class="del-btn cl-pi-del-btn" data-idx="${i}">삭제</button>
       </div>`).join('');
   }
@@ -5950,20 +5970,13 @@ function renderClPersonalInfoRows(){
   wrap.querySelectorAll('.cl-pi-id').forEach(el=>el.addEventListener('input', e=>{ clPersonalInfoEntries[+e.target.dataset.idx].idVal = e.target.value; }));
   wrap.querySelectorAll('.cl-pi-pw').forEach(el=>el.addEventListener('input', e=>{ clPersonalInfoEntries[+e.target.dataset.idx].pwVal = e.target.value; }));
   wrap.querySelectorAll('.cl-pi-note').forEach(el=>el.addEventListener('input', e=>{ clPersonalInfoEntries[+e.target.dataset.idx].note = e.target.value; }));
-  wrap.querySelectorAll('.cl-pi-file').forEach(el=>el.addEventListener('change', e=>{
-    const idx = +e.target.dataset.idx;
-    const f = e.target.files && e.target.files[0];
-    clPersonalInfoEntries[idx]._fileToUpload = f || null;
-    const nameEl = wrap.querySelector(`.cl-pi-row[data-idx="${idx}"] .cl-pi-file-name`);
-    if(nameEl) nameEl.textContent = f ? f.name : (clPersonalInfoEntries[idx].file ? clPersonalInfoEntries[idx].file.name : '첨부(선택)');
-  }));
   wrap.querySelectorAll('.cl-pi-del-btn').forEach(el=>el.addEventListener('click', e=>{
     clPersonalInfoEntries.splice(+e.target.dataset.idx, 1);
     renderClPersonalInfoRows();
   }));
 }
 document.getElementById('clPersonalInfoAddRowBtn')?.addEventListener('click', ()=>{
-  clPersonalInfoEntries.push({id:genId(), label:'', idVal:'', pwVal:'', note:'', file:null, _fileToUpload:null});
+  clPersonalInfoEntries.push({id:genId(), label:'', idVal:'', pwVal:'', note:''});
   renderClPersonalInfoRows();
 });
 document.getElementById('clPersonalInfoUnlockBtn')?.addEventListener('click', async ()=>{
@@ -5990,13 +6003,10 @@ async function saveClPersonalInfoForClient(client){
       return;
     }
   }
+  // 첨부 기능은 더 이상 새로 등록하지 않지만, 예전에 이미 등록된 첨부(a.file)가 있다면 지우지 않고 그대로 유지함
   const uploaded = [];
   for(const a of clPersonalInfoEntries){
-    let file = a.file || null;
-    if(a._fileToUpload){
-      try{ file = await gdriveUploadAttachment(a._fileToUpload); }
-      catch(err){ console.error('첨부파일 업로드 실패', err); alert('첨부파일 업로드에 실패했어요: ' + err.message); }
-    }
+    const file = a.file || null;
     if(a.label||a.idVal||a.pwVal||a.note||file){
       uploaded.push({ id:a.id||genId(), label:a.label||'기타', idVal:a.idVal||'', pwVal:a.pwVal||'', note:a.note||'', file });
     }
@@ -8553,6 +8563,11 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
     entitySubType: '', // 예전 단일값 필드는 더 이상 새로 쓰지 않음(과거 데이터 호환용으로만 남겨둠)
     bizNo: document.getElementById('cl-bizno').value.trim(),
     corpRegNo: document.getElementById('cl-corpregno').value.trim(),
+    bizAddress: document.getElementById('cl-biz-address').value.trim(),
+    openDate: document.getElementById('cl-open-date').value,
+    foundingDate: document.getElementById('cl-entity-type').value === '법인' ? document.getElementById('cl-founding-date').value : '',
+    bizTypeCode: document.getElementById('cl-biz-type-code').value.trim(),
+    bizType: document.getElementById('cl-biz-type').value.trim(),
     program: programSel === '기타' ? document.getElementById('cl-program-etc').value.trim() : programSel,
     companyCode: document.getElementById('cl-company-code').value.trim(),
     driveFolder: document.getElementById('cl-drive-folder').value.trim(),
@@ -8628,6 +8643,7 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
   updateCompanyCodeDisabled();
   updateContactSameAsRep();
   updateTerminationFieldsVisibility();
+  updateFoundingDateFieldState();
   if(typeof resetClPersonalInfoForNew === 'function') resetClPersonalInfoForNew();
   renderClients();
   renderClientsRegular();
@@ -8676,6 +8692,7 @@ function resetClientFormToNew(){
   updateCompanyCodeDisabled();
   updateContactSameAsRep();
   updateTerminationFieldsVisibility();
+  updateFoundingDateFieldState();
   if(typeof resetClPersonalInfoForNew === 'function') resetClPersonalInfoForNew();
 }
 document.getElementById('clientNewEntryBtn').addEventListener('click', resetClientFormToNew);
@@ -8863,12 +8880,20 @@ function renderSubTagChipOptions(){
   });
   updateSubTagTriggerLabel();
 }
+// 설립일은 법인만 있는 개념이라, 사업자구분이 개인이면 입력을 막고 값도 비워둠
+function updateFoundingDateFieldState(){
+  const isCorp = document.getElementById('cl-entity-type').value !== '개인';
+  const foundingInput = document.getElementById('cl-founding-date');
+  foundingInput.disabled = !isCorp;
+  if(!isCorp) foundingInput.value = '';
+}
 document.getElementById('cl-entity-type').addEventListener('change', ()=>{
   // 사업자구분을 바꾸면 그 구분에 없는 상세유형(예: 법인으로 바꿨는데 간이가 붙어있던 경우)은 자동으로 정리함
   const entityType = document.getElementById('cl-entity-type').value === '개인' ? '개인' : '법인';
   const allowed = CLIENT_SUBTAG_OPTIONS[entityType] || [];
   clSubTags = clSubTags.filter(t=>allowed.includes(t.key));
   renderSubTagChipOptions();
+  updateFoundingDateFieldState();
 });
 document.getElementById('cl-subtag-trigger').addEventListener('click', ()=>{
   renderSubTagChipOptions();
