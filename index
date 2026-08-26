@@ -490,7 +490,7 @@
   .table-scroll{overflow:auto; max-height:68vh; border-radius:14px; box-shadow:0 1px 2px rgba(29,30,51,0.04); background:var(--surface);}
   /* 신고현황(원천세/부가세/법인세/종소세)의 거래처 목록은 항목 수가 많지 않고, 현황을 스크롤 없이 한눈에 봐야 하는 화면이라
      다른 표들과 달리 내부 스크롤(max-height)을 두지 않고 페이지 자체 스크롤로만 늘어나게 함 */
-  #filingStatusTableWrap .table-scroll{ max-height:none; overflow:visible; }
+  #filingStatusTableWrap .table-scroll, #reviewStatusTableWrap .table-scroll{ max-height:none; overflow:visible; }
   .table-scroll table{box-shadow:none; border-radius:0; table-layout:auto; overflow:visible;}
   .table-scroll th, .table-scroll td{white-space:nowrap; padding:8px 9px; font-size:13px; text-align:center;}
   .table-scroll td.cell-memo, .table-scroll th.th-memo{white-space:normal; word-break:break-word; min-width:160px;}
@@ -615,6 +615,16 @@
   .cal-badge.special{background:var(--mint-bg); color:#0A7A55; font-weight:800;}
   /* 결재 > 신고현황 표의 진행상태 select는 .field 밖에 있어서 스타일이 하나도 안 먹고 브라우저 기본 모양 그대로 나왔던 문제 - 같은 표의 메모 입력칸과 톤을 맞춤 */
   .filing-status-select{
+    font-family:'Pretendard', sans-serif; font-size:12px;
+    border:1.5px solid var(--border); border-radius:6px; padding:4px 8px;
+    background:var(--surface); color:var(--ink); cursor:pointer;
+  }
+  /* 신고현황/검토표는 자동저장이 아니라 이 버튼을 눌러야 저장됨 - 표가 스크롤 없이 길게 늘어나므로 화면에 고정해서 어디서든 누를 수 있게 함 */
+  #filingStatusSaveBtn:hover, #reviewStatusSaveBtn:hover{ transform:scale(1.06); }
+  #filingStatusSaveBtn.is-dirty, #reviewStatusSaveBtn.is-dirty{ background:var(--coral); animation:filingSavePulse 1.4s ease-in-out infinite; }
+  @keyframes filingSavePulse{ 0%,100%{ box-shadow:0 8px 20px -6px rgba(29,30,51,0.4); } 50%{ box-shadow:0 8px 26px -4px rgba(239,90,90,0.55); } }
+  /* 검토표의 진행상태 select도 신고현황과 같은 톤으로 */
+  .review-status-select{
     font-family:'Pretendard', sans-serif; font-size:12px;
     border:1.5px solid var(--border); border-radius:6px; padding:4px 8px;
     background:var(--surface); color:var(--ink); cursor:pointer;
@@ -1266,6 +1276,7 @@
 <!-- 신고현황은 저장 버튼 없이 자동저장되는데, 표가 길어지면 위쪽의 "저장됨" 문구가 스크롤 밖으로 벗어나
      안 보일 수 있어서, 화면 하단에 항상 고정으로 뜨는 저장 확인 토스트를 별도로 둠 -->
 <div id="filingStatusSaveToast" style="opacity:0; transition:opacity 0.25s; pointer-events:none; position:fixed; left:50%; bottom:28px; transform:translateX(-50%); background:var(--navy); color:#fff; font-size:12.5px; font-weight:800; padding:9px 18px; border-radius:20px; box-shadow:0 8px 20px -6px rgba(20,24,50,0.5); z-index:9999;"></div>
+<div id="reviewStatusSaveToast" style="opacity:0; transition:opacity 0.25s; pointer-events:none; position:fixed; left:50%; bottom:28px; transform:translateX(-50%); background:var(--navy); color:#fff; font-size:12.5px; font-weight:800; padding:9px 18px; border-radius:20px; box-shadow:0 8px 20px -6px rgba(20,24,50,0.5); z-index:9999;"></div>
 <!-- 기장거래처 표의 "수임료" 헤더 옆 아이콘을 누르면 뜨는 월별 수임료 합계 조회 팝업 -->
 <div id="clFeeMonthPopup" style="display:none; position:fixed; z-index:9999; background:var(--surface); border:1.5px solid var(--border); border-radius:12px; box-shadow:0 8px 24px -4px rgba(29,30,51,0.28); padding:12px 14px; min-width:150px; text-align:right;">
   <div style="display:inline-flex; align-items:center; gap:4px; margin-bottom:8px;">
@@ -2111,16 +2122,18 @@
     <div id="approvalContent">
       <div class="policy-category-toggle" id="approvalCatToggle" style="margin-bottom:20px;">
         <button type="button" class="approval-cat-btn active" data-approval-cat="status">📋 신고현황</button>
+        <button type="button" class="approval-cat-btn" data-approval-cat="review">🔍 검토표</button>
         <button type="button" class="approval-cat-btn" data-approval-cat="doc">🖋️ 결재</button>
       </div>
 
-      <!-- 신고현황: 원천세/부가세/법인세/종소세별 검토표 -->
+      <!-- 신고현황: 원천세/부가세/법인세/종소세/결산별 진행상태 -->
       <div class="approval-panel" data-approval-cat="status">
         <div class="policy-category-toggle" id="filingTypeToggle" style="margin-bottom:14px;">
           <button type="button" class="filing-type-btn active" data-filing-type="원천세">원천세</button>
           <button type="button" class="filing-type-btn" data-filing-type="부가세">부가세</button>
           <button type="button" class="filing-type-btn" data-filing-type="법인세">법인세</button>
           <button type="button" class="filing-type-btn" data-filing-type="종소세">종소세</button>
+          <button type="button" class="filing-type-btn" data-filing-type="결산">결산</button>
         </div>
         <h2 class="section-title" style="justify-content:center; font-size:22px; margin:4px 0 14px;" id="filingStatusTitle">원천세 신고현황</h2>
         <div id="filingPeriodControls" style="display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
@@ -2132,9 +2145,42 @@
           <select id="filingPeriodSub" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
         </div>
         <div class="settings-box" style="max-width:760px;">
-          <div style="text-align:right; margin-bottom:6px;"><span class="save-msg" id="filingStatusSaveMsg" style="margin-top:0; display:inline-block;"></span></div>
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; gap:8px;">
+            <span class="hint" style="font-size:11px; margin:0;">상태나 메모를 바꾼 뒤 저장 버튼을 눌러주세요.</span>
+            <span class="save-msg" id="filingStatusSaveMsg" style="margin-top:0; display:inline-block;"></span>
+          </div>
           <div id="filingStatusTableWrap"></div>
         </div>
+        <button type="button" id="filingStatusSaveBtn" title="저장 (바뀐 내용이 있으면 버튼이 빨갛게 표시돼요)" style="position:fixed; right:26px; bottom:26px; z-index:900; width:52px; height:52px; border-radius:50%; border:none; background:var(--indigo); color:#fff; box-shadow:0 8px 20px -6px rgba(29,30,51,0.4); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        </button>
+      </div>
+
+      <!-- 검토표: 신고현황과 동일한 구성이지만 원천세/부가세만, 신고 전 단계 검토용(신고현황과는 별도 데이터) -->
+      <div class="approval-panel" data-approval-cat="review" style="display:none;">
+        <div class="policy-category-toggle" id="reviewTypeToggle" style="margin-bottom:14px;">
+          <button type="button" class="review-type-btn active" data-filing-type="원천세">원천세</button>
+          <button type="button" class="review-type-btn" data-filing-type="부가세">부가세</button>
+        </div>
+        <h2 class="section-title" style="justify-content:center; font-size:22px; margin:4px 0 14px;" id="reviewStatusTitle">원천세 검토표</h2>
+        <div id="reviewPeriodControls" style="display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
+          <div class="policy-category-toggle" id="reviewPeriodModeToggle" style="display:none; margin-bottom:0;">
+            <button type="button" class="review-period-mode-btn active" data-period-mode="월별">월별</button>
+            <button type="button" class="review-period-mode-btn" data-period-mode="반기">반기</button>
+          </div>
+          <select id="reviewPeriodYear" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
+          <select id="reviewPeriodSub" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
+        </div>
+        <div class="settings-box" style="max-width:760px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; gap:8px;">
+            <span class="hint" style="font-size:11px; margin:0;">상태나 메모를 바꾼 뒤 저장 버튼을 눌러주세요.</span>
+            <span class="save-msg" id="reviewStatusSaveMsg" style="margin-top:0; display:inline-block;"></span>
+          </div>
+          <div id="reviewStatusTableWrap"></div>
+        </div>
+        <button type="button" id="reviewStatusSaveBtn" title="저장 (바뀐 내용이 있으면 버튼이 빨갛게 표시돼요)" style="position:fixed; right:26px; bottom:26px; z-index:900; width:52px; height:52px; border-radius:50%; border:none; background:var(--indigo); color:#fff; box-shadow:0 8px 20px -6px rgba(29,30,51,0.4); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        </button>
       </div>
 
       <!-- 결재: 작은 그룹웨어 (기안/결재자/첨부/알림) -->
@@ -2685,7 +2731,8 @@ let sharedCompanyInfo = { corp: [], team: [], teamGeneral: [], personal: [] }; /
 let sharedCompanyName = ''; // 회사(법인)명 - 사내정보 섹션 제목 등에 쓰임, 관리자가 직접 입력
 let sharedTeamInfo = { note: '' }; // 설정 > 회사 > 팀정보 (세부 항목은 추후 확정 예정이라 우선 메모 필드만)
 let sharedSpecialPeriods = []; // 설정 > 복지 > 특별기간 설정: [{id, startDate, endDate, content}], 팀캘린더에 "특별기간) content" 칩으로 표시됨
-let sharedFilingStatus = {}; // 결재 > 신고현황: { [taxType]: { [period]: { [clientId]: {status, memo, updatedAt} } } }
+let sharedFilingStatus = {}; // 결재 > 신고현황: { [taxType]: { [period]: { [clientId]: {status, memo, updatedAt} } } } (세목: 원천세/부가세/법인세/종소세/결산)
+let sharedReviewStatus = {}; // 결재 > 검토표: 신고현황과 완전히 같은 구조지만 원천세/부가세만 다루고, 신고 자체 이력과는 별도 저장소로 관리(신고 전 검토 단계 - 나중에 거래처별 손익보고서에 활용 예정)
 let sharedFilingHelp = {}; // 결재 > 신고도움: { [clientId]: { items: { [itemKey]: {checked, note} } } }
 let sharedApprovals = []; // 결재 > 결재(그룹웨어): [{id, title, content, attachmentLink, drafterEmail, drafterName, approverEmail, approverName, status, comment, createdAt, decidedAt}]
 function loadSharedData(){
@@ -2717,6 +2764,7 @@ function loadSharedData(){
   try{ sharedTeamInfo = JSON.parse(localStorage.getItem('worklog_shared_teaminfo') || 'null') || { note:'' }; }catch(e){ sharedTeamInfo = { note:'' }; }
   try{ sharedSpecialPeriods = JSON.parse(localStorage.getItem('worklog_shared_specialperiods') || '[]') || []; }catch(e){ sharedSpecialPeriods = []; }
   try{ sharedFilingStatus = JSON.parse(localStorage.getItem('worklog_shared_filingstatus') || '{}') || {}; }catch(e){ sharedFilingStatus = {}; }
+  try{ sharedReviewStatus = JSON.parse(localStorage.getItem('worklog_shared_reviewstatus') || '{}') || {}; }catch(e){ sharedReviewStatus = {}; }
   try{ sharedFilingHelp = JSON.parse(localStorage.getItem('worklog_shared_filinghelp') || '{}') || {}; }catch(e){ sharedFilingHelp = {}; }
   try{ sharedApprovals = JSON.parse(localStorage.getItem('worklog_shared_approvals') || '[]') || []; }catch(e){ sharedApprovals = []; }
   const prevManageVerifierRaw = JSON.stringify(sharedManageVerifier);
@@ -2738,6 +2786,7 @@ async function saveSharedCompanyName(){ try{ localStorage.setItem('worklog_share
 async function saveSharedTeamInfo(){ try{ localStorage.setItem('worklog_shared_teaminfo', JSON.stringify(sharedTeamInfo)); }catch(e){ console.error('팀정보 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedSpecialPeriods(){ try{ localStorage.setItem('worklog_shared_specialperiods', JSON.stringify(sharedSpecialPeriods)); }catch(e){ console.error('특별기간 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedFilingStatus(){ try{ localStorage.setItem('worklog_shared_filingstatus', JSON.stringify(sharedFilingStatus)); }catch(e){ console.error('신고현황 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedReviewStatus(){ try{ localStorage.setItem('worklog_shared_reviewstatus', JSON.stringify(sharedReviewStatus)); }catch(e){ console.error('검토표 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedFilingHelp(){ try{ localStorage.setItem('worklog_shared_filinghelp', JSON.stringify(sharedFilingHelp)); }catch(e){ console.error('신고도움 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedApprovals(){ try{ localStorage.setItem('worklog_shared_approvals', JSON.stringify(sharedApprovals)); }catch(e){ console.error('결재 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedManagePassword(){
@@ -3975,7 +4024,7 @@ async function loadAll(){
   const calProxyMonthEl = document.getElementById('calMonthSelectProxy');
   if(calProxyMonthEl) calProxyMonthEl.value = monthInput.value;
   syncDateFieldsToMonth();
-  renderFilingStatusTable();
+  renderFilingStatusTable('status');
 
   await syncAutoGrants();
   renderAll();
@@ -9683,126 +9732,144 @@ function bookkeepingClientList(){
   return sortClientsCanonical((clients.list||[]).filter(CLIENT_TABLE_FILTERS[0]));
 }
 
-// ── 신고현황: 원천세/부가세/법인세/종소세별 검토표 (귀속기간 직접 지정 가능) ──
+// ── 신고현황(원천세/부가세/법인세/종소세/결산) · 검토표(원천세/부가세만, 신고 전 단계 검토용 - 나중에 손익보고서에 활용) ──
+// 두 화면은 다루는 세목만 다르고 나머지(귀속기간 선택, 표, 수동저장)는 완전히 동일해서 kind('status'|'review')로 설정만 갈라 로직을 공유함.
+// 데이터 저장소는 서로 다름(sharedFilingStatus / sharedReviewStatus) - 신고 자체 상태와 그 전 단계 검토 상태를 별도로 관리하기 위함.
 let viewingFilingType = '원천세';
-// 원천세=월별/반기 중 선택, 부가세=분기, 법인세·종소세=연1회
-let filingPeriodState = { year:null, sourceMode:'월별', month:null, half:'H1', quarter:'Q1' };
-function ensureFilingPeriodStateInit(){
-  if(filingPeriodState.year) return;
+let viewingReviewType = '원천세';
+const FILING_KINDS = {
+  status: {
+    types: ['원천세','부가세','법인세','종소세','결산'],
+    getStore: ()=>sharedFilingStatus,
+    save: ()=>saveSharedFilingStatus(),
+    // 원천세=월별/반기 중 선택, 부가세=분기, 법인세·종소세·결산=연1회
+    state: { year:null, sourceMode:'월별', month:null, half:'H1', quarter:'Q1' },
+    getViewingType: ()=>viewingFilingType,
+    setViewingType: (v)=>{ viewingFilingType = v; },
+    ids: { typeBtnClass:'filing-type-btn', modeToggle:'filingPeriodModeToggle', modeBtnClass:'filing-period-mode-btn',
+      yearSel:'filingPeriodYear', subSel:'filingPeriodSub', title:'filingStatusTitle', wrap:'filingStatusTableWrap',
+      saveMsg:'filingStatusSaveMsg', saveBtn:'filingStatusSaveBtn', saveToast:'filingStatusSaveToast',
+      selectClass:'filing-status-select', memoClass:'filing-status-memo' },
+    titleSuffix: '신고현황'
+  },
+  review: {
+    types: ['원천세','부가세'],
+    getStore: ()=>sharedReviewStatus,
+    save: ()=>saveSharedReviewStatus(),
+    state: { year:null, sourceMode:'월별', month:null, half:'H1', quarter:'Q1' },
+    getViewingType: ()=>viewingReviewType,
+    setViewingType: (v)=>{ viewingReviewType = v; },
+    ids: { typeBtnClass:'review-type-btn', modeToggle:'reviewPeriodModeToggle', modeBtnClass:'review-period-mode-btn',
+      yearSel:'reviewPeriodYear', subSel:'reviewPeriodSub', title:'reviewStatusTitle', wrap:'reviewStatusTableWrap',
+      saveMsg:'reviewStatusSaveMsg', saveBtn:'reviewStatusSaveBtn', saveToast:'reviewStatusSaveToast',
+      selectClass:'review-status-select', memoClass:'review-status-memo' },
+    titleSuffix: '검토표'
+  }
+};
+function ensureFilingPeriodStateInit(kind){
+  const st = FILING_KINDS[kind].state;
+  if(st.year) return;
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
-  filingPeriodState.year = monthStr.slice(0,4);
-  filingPeriodState.month = String(Number(monthStr.slice(5,7)));
+  st.year = monthStr.slice(0,4);
+  st.month = String(Number(monthStr.slice(5,7)));
 }
 function filingStatusClientList(taxType){
   const list = bookkeepingClientList();
   if(taxType === '법인세') return list.filter(c=>c.entityType === '법인');
   if(taxType === '종소세') return list.filter(c=>c.entityType === '개인');
-  return list; // 원천세/부가세: 법인+개인 모두
+  return list; // 원천세/부가세/결산: 법인+개인 모두
 }
-function currentFilingPeriodKey(taxType){
-  ensureFilingPeriodStateInit();
-  const y = filingPeriodState.year;
-  if(taxType === '원천세') return filingPeriodState.sourceMode === '반기' ? `${y}-${filingPeriodState.half}` : `${y}-${String(filingPeriodState.month).padStart(2,'0')}`;
-  if(taxType === '부가세') return `${y}-${filingPeriodState.quarter}`;
-  return `${y}`; // 법인세/종소세: 연 1회
+function currentFilingPeriodKey(kind, taxType){
+  ensureFilingPeriodStateInit(kind);
+  const st = FILING_KINDS[kind].state;
+  const y = st.year;
+  if(taxType === '원천세') return st.sourceMode === '반기' ? `${y}-${st.half}` : `${y}-${String(st.month).padStart(2,'0')}`;
+  if(taxType === '부가세') return `${y}-${st.quarter}`;
+  return `${y}`; // 법인세/종소세/결산: 연 1회
 }
-function currentFilingPeriodLabel(taxType){
-  ensureFilingPeriodStateInit();
-  const y = filingPeriodState.year;
-  if(taxType === '원천세') return filingPeriodState.sourceMode === '반기' ? `${y}년 ${filingPeriodState.half==='H1' ? '상반기' : '하반기'}` : `${y}년 ${Number(filingPeriodState.month)}월`;
-  if(taxType === '부가세') return `${y}년 ${filingPeriodState.quarter.replace('Q','')}분기`;
+function currentFilingPeriodLabel(kind, taxType){
+  ensureFilingPeriodStateInit(kind);
+  const st = FILING_KINDS[kind].state;
+  const y = st.year;
+  if(taxType === '원천세') return st.sourceMode === '반기' ? `${y}년 ${st.half==='H1' ? '상반기' : '하반기'}` : `${y}년 ${Number(st.month)}월`;
+  if(taxType === '부가세') return `${y}년 ${st.quarter.replace('Q','')}분기`;
   return `${y}년 귀속`;
 }
-// 신고현황 상단의 귀속기간 지정 컨트롤(연도/월·반기·분기)을 세목에 맞게 다시 그림
-function renderFilingPeriodControls(){
-  ensureFilingPeriodStateInit();
-  const taxType = viewingFilingType;
-  const modeToggle = document.getElementById('filingPeriodModeToggle');
-  const yearSel = document.getElementById('filingPeriodYear');
-  const subSel = document.getElementById('filingPeriodSub');
+// 신고현황/검토표 상단의 귀속기간 지정 컨트롤(연도/월·반기·분기)을 세목에 맞게 다시 그림
+function renderFilingPeriodControls(kind){
+  ensureFilingPeriodStateInit(kind);
+  const cfg = FILING_KINDS[kind];
+  const st = cfg.state;
+  const taxType = cfg.getViewingType();
+  const modeToggle = document.getElementById(cfg.ids.modeToggle);
+  const yearSel = document.getElementById(cfg.ids.yearSel);
+  const subSel = document.getElementById(cfg.ids.subSel);
   if(!yearSel || !subSel) return;
   modeToggle.style.display = (taxType === '원천세') ? 'inline-flex' : 'none';
   if(taxType === '원천세'){
-    modeToggle.querySelectorAll('.filing-period-mode-btn').forEach(b=>b.classList.toggle('active', b.dataset.periodMode === filingPeriodState.sourceMode));
+    modeToggle.querySelectorAll('.'+cfg.ids.modeBtnClass).forEach(b=>b.classList.toggle('active', b.dataset.periodMode === st.sourceMode));
   }
   const nowY = Number(todayStr().slice(0,4));
   const years = new Set();
   for(let y = nowY+1; y >= nowY-4; y--) years.add(String(y));
   // 최근 6개년 범위 밖이라도, 실제로 입력해둔 기록이 있는 연도는 계속 조회할 수 있게 목록에 포함시킴
-  Object.keys(sharedFilingStatus[taxType] || {}).forEach(period=>{
+  Object.keys(cfg.getStore()[taxType] || {}).forEach(period=>{
     const y = period.slice(0,4);
     if(/^\d{4}$/.test(y)) years.add(y);
   });
-  if(filingPeriodState.year) years.add(filingPeriodState.year); // 지금 보고 있는 연도도 항상 포함
+  if(st.year) years.add(st.year); // 지금 보고 있는 연도도 항상 포함
   const sortedYears = Array.from(years).sort((a,b)=> Number(b) - Number(a));
-  yearSel.innerHTML = sortedYears.map(y=>`<option value="${y}" ${y===filingPeriodState.year?'selected':''}>${y}년 귀속</option>`).join('');
-  if(taxType === '법인세' || taxType === '종소세'){
+  yearSel.innerHTML = sortedYears.map(y=>`<option value="${y}" ${y===st.year?'selected':''}>${y}년 귀속</option>`).join('');
+  if(taxType === '법인세' || taxType === '종소세' || taxType === '결산'){
     subSel.style.display = 'none';
-  } else if(taxType === '원천세' && filingPeriodState.sourceMode === '반기'){
+  } else if(taxType === '원천세' && st.sourceMode === '반기'){
     subSel.style.display = '';
-    subSel.innerHTML = `<option value="H1" ${filingPeriodState.half==='H1'?'selected':''}>상반기</option><option value="H2" ${filingPeriodState.half==='H2'?'selected':''}>하반기</option>`;
+    subSel.innerHTML = `<option value="H1" ${st.half==='H1'?'selected':''}>상반기</option><option value="H2" ${st.half==='H2'?'selected':''}>하반기</option>`;
   } else if(taxType === '원천세'){
     subSel.style.display = '';
-    subSel.innerHTML = Array.from({length:12},(_,i)=>i+1).map(m=>`<option value="${m}" ${String(m)===String(filingPeriodState.month)?'selected':''}>${m}월</option>`).join('');
+    subSel.innerHTML = Array.from({length:12},(_,i)=>i+1).map(m=>`<option value="${m}" ${String(m)===String(st.month)?'selected':''}>${m}월</option>`).join('');
   } else if(taxType === '부가세'){
     subSel.style.display = '';
-    subSel.innerHTML = ['Q1','Q2','Q3','Q4'].map(q=>`<option value="${q}" ${q===filingPeriodState.quarter?'selected':''}>${q.replace('Q','')}분기</option>`).join('');
+    subSel.innerHTML = ['Q1','Q2','Q3','Q4'].map(q=>`<option value="${q}" ${q===st.quarter?'selected':''}>${q.replace('Q','')}분기</option>`).join('');
   }
 }
-document.getElementById('filingPeriodYear')?.addEventListener('change', (e)=>{
-  filingPeriodState.year = e.target.value;
-  renderFilingStatusTable();
-});
-document.getElementById('filingPeriodSub')?.addEventListener('change', (e)=>{
-  const taxType = viewingFilingType;
-  if(taxType === '원천세' && filingPeriodState.sourceMode === '반기') filingPeriodState.half = e.target.value;
-  else if(taxType === '원천세') filingPeriodState.month = e.target.value;
-  else if(taxType === '부가세') filingPeriodState.quarter = e.target.value;
-  renderFilingStatusTable();
-});
-document.querySelectorAll('.filing-period-mode-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.filing-period-mode-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    filingPeriodState.sourceMode = btn.dataset.periodMode;
-    renderFilingPeriodControls();
-    renderFilingStatusTable();
-  });
-});
-// 세목 짧은 이름 -> 화면 상단 큰 제목에 쓸 정식 명칭 (원천세·법인세는 이미 정식명칭이라 그대로 둠)
-const FILING_TYPE_FULL_NAME = { 원천세:'원천세', 부가세:'부가가치세', 법인세:'법인세', 종소세:'종합소득세' };
-// 신고현황은 저장 버튼 없이 상태를 바꾸거나 메모를 입력하면 바로 자동저장되는 구조인데, 목록이 길어져서
-// 표 내부 스크롤 없이 페이지 전체로 늘어나다보니(스크롤 없이 한눈에 보이게 한 개선의 부작용) 표 맨 위에만
-// 뜨던 "저장됨" 문구가 화면 아래쪽에서 작업할 땐 안 보여서 "저장이 되고 있는지" 알 수 없었음 -
-// 화면 위치와 상관없이 항상 보이는 토스트를 화면 하단에 띄워서 저장 여부를 확실히 알려줌
-function flashFilingStatusSaveMsg(){
-  const msgEl = document.getElementById('filingStatusSaveMsg');
+// 세목 짧은 이름 -> 화면 상단 큰 제목에 쓸 정식 명칭 (원천세·법인세·결산은 이미 정식명칭이라 그대로 둠)
+const FILING_TYPE_FULL_NAME = { 원천세:'원천세', 부가세:'부가가치세', 법인세:'법인세', 종소세:'종합소득세', 결산:'결산' };
+// 신고현황/검토표는 상태를 바꾸거나 메모를 입력해도 바로 저장되지 않고, 화면 우측 하단에 고정된 저장 버튼을
+// 눌러야 저장됨(자동저장이었을 땐 언제 저장됐는지 알기 어렵다는 의견이 있어서 수동저장으로 바꿈).
+// 버튼은 표가 아무리 길어져도(내부 스크롤 없이 페이지 전체로 늘어남) 항상 화면에 고정돼 있고,
+// 바뀐 내용이 있으면 빨간색으로 표시돼서 저장이 필요하다는 걸 알려줌. 누르면 이 토스트로 저장됐다는 걸 알려줌.
+function flashFilingStatusSaveMsg(kind){
+  const cfg = FILING_KINDS[kind];
+  const msgEl = document.getElementById(cfg.ids.saveMsg);
   if(msgEl){
     msgEl.textContent = '저장됨';
-    clearTimeout(flashFilingStatusSaveMsg._t);
-    flashFilingStatusSaveMsg._t = setTimeout(()=>{ msgEl.textContent = ''; }, 1500);
+    clearTimeout(msgEl._flashT);
+    msgEl._flashT = setTimeout(()=>{ msgEl.textContent = ''; }, 1500);
   }
-  const toast = document.getElementById('filingStatusSaveToast');
+  const toast = document.getElementById(cfg.ids.saveToast);
   if(toast){
     toast.textContent = '✓ 저장됨';
     toast.style.opacity = '1';
-    clearTimeout(flashFilingStatusSaveMsg._toastT);
-    flashFilingStatusSaveMsg._toastT = setTimeout(()=>{ toast.style.opacity = '0'; }, 1400);
+    clearTimeout(toast._flashT);
+    toast._flashT = setTimeout(()=>{ toast.style.opacity = '0'; }, 1400);
   }
 }
-function renderFilingStatusTable(){
-  const taxType = viewingFilingType;
-  renderFilingPeriodControls();
-  const period = currentFilingPeriodKey(taxType);
-  const titleEl = document.getElementById('filingStatusTitle');
-  if(titleEl) titleEl.textContent = `${FILING_TYPE_FULL_NAME[taxType] || taxType} 신고현황`;
+function renderFilingStatusTable(kind){
+  const cfg = FILING_KINDS[kind];
+  const taxType = cfg.getViewingType();
+  renderFilingPeriodControls(kind);
+  const period = currentFilingPeriodKey(kind, taxType);
+  const titleEl = document.getElementById(cfg.ids.title);
+  if(titleEl) titleEl.textContent = `${FILING_TYPE_FULL_NAME[taxType] || taxType} ${cfg.titleSuffix}`;
   const list = filingStatusClientList(taxType);
-  const wrap = document.getElementById('filingStatusTableWrap');
+  const wrap = document.getElementById(cfg.ids.wrap);
   if(!wrap) return;
   if(!list.length){ wrap.innerHTML = `<div class="empty-state">해당하는 거래처가 없습니다.</div>`; return; }
-  sharedFilingStatus[taxType] = sharedFilingStatus[taxType] || {};
-  sharedFilingStatus[taxType][period] = sharedFilingStatus[taxType][period] || {};
-  const periodData = sharedFilingStatus[taxType][period];
+  const store = cfg.getStore();
+  store[taxType] = store[taxType] || {};
+  store[taxType][period] = store[taxType][period] || {};
+  const periodData = store[taxType][period];
   const rows = list.map((c, idx)=>{
     const entry = periodData[c.id] || { status:'미확인', memo:'' };
     // 이름 칸 색·배경은 기장거래처 표(순번·상호명)와 같은 규칙(법인/개인 구분)을 그대로 가져옴
@@ -9811,42 +9878,72 @@ function renderFilingStatusTable(){
     return `<tr>
       <td class="num cvb">${idx+1}</td>
       <td class="cvb" style="color:${entityColor}; font-weight:800; background:${nameBg};">${escHtml(c.name)}</td>
-      <td class="cvb"><select class="filing-status-select" data-client-id="${c.id}">
+      <td class="cvb"><select class="${cfg.ids.selectClass}" data-client-id="${c.id}">
         <option value="미확인" ${entry.status==='미확인'?'selected':''}>미확인</option>
         <option value="검토중" ${entry.status==='검토중'?'selected':''}>검토중</option>
         <option value="신고완료" ${entry.status==='신고완료'?'selected':''}>신고완료</option>
       </select></td>
-      <td><input type="text" class="filing-status-memo" data-client-id="${c.id}" value="${escHtml(entry.memo||'')}" placeholder="메모" style="width:100%; border:1.5px solid var(--border); border-radius:6px; padding:4px 8px; font-family:'Pretendard',sans-serif; font-size:12px; text-align:center;"></td>
+      <td><input type="text" class="${cfg.ids.memoClass}" data-client-id="${c.id}" value="${escHtml(entry.memo||'')}" placeholder="메모" style="width:100%; border:1.5px solid var(--border); border-radius:6px; padding:4px 8px; font-family:'Pretendard',sans-serif; font-size:12px; text-align:center;"></td>
     </tr>`;
   }).join('');
   wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th class="cvb">#</th><th class="cvb">거래처</th><th class="cvb">진행상태</th><th>메모</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-  wrap.querySelectorAll('.filing-status-select').forEach(sel=>{
-    sel.addEventListener('change', async ()=>{
+  wrap.querySelectorAll('.'+cfg.ids.selectClass).forEach(sel=>{
+    sel.addEventListener('change', ()=>{
       const cid = sel.dataset.clientId;
       periodData[cid] = periodData[cid] || { status:'미확인', memo:'' };
       periodData[cid].status = sel.value;
       periodData[cid].updatedAt = new Date().toLocaleString('ko-KR');
-      await saveSharedFilingStatus();
-      flashFilingStatusSaveMsg();
+      setFilingStatusDirty(kind, true);
     });
   });
-  let filingMemoTimer = null;
-  wrap.querySelectorAll('.filing-status-memo').forEach(inp=>{
+  wrap.querySelectorAll('.'+cfg.ids.memoClass).forEach(inp=>{
     inp.addEventListener('input', ()=>{
       const cid = inp.dataset.clientId;
       periodData[cid] = periodData[cid] || { status:'미확인', memo:'' };
       periodData[cid].memo = inp.value;
-      clearTimeout(filingMemoTimer);
-      filingMemoTimer = setTimeout(async ()=>{ await saveSharedFilingStatus(); flashFilingStatusSaveMsg(); }, 500);
+      setFilingStatusDirty(kind, true);
     });
   });
 }
-document.querySelectorAll('.filing-type-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.filing-type-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    viewingFilingType = btn.dataset.filingType;
-    renderFilingStatusTable();
+// 저장 버튼에 바뀐 내용이 있는지(빨간색 표시) 반영 - 조회 중인 세목·기간과 상관없이 해당 화면 전체에 저장 안 된 변경이 있으면 켜짐
+function setFilingStatusDirty(kind, isDirty){
+  const btn = document.getElementById(FILING_KINDS[kind].ids.saveBtn);
+  if(btn) btn.classList.toggle('is-dirty', !!isDirty);
+}
+Object.keys(FILING_KINDS).forEach(kind=>{
+  const cfg = FILING_KINDS[kind];
+  document.getElementById(cfg.ids.yearSel)?.addEventListener('change', (e)=>{
+    cfg.state.year = e.target.value;
+    renderFilingStatusTable(kind);
+  });
+  document.getElementById(cfg.ids.subSel)?.addEventListener('change', (e)=>{
+    const taxType = cfg.getViewingType();
+    if(taxType === '원천세' && cfg.state.sourceMode === '반기') cfg.state.half = e.target.value;
+    else if(taxType === '원천세') cfg.state.month = e.target.value;
+    else if(taxType === '부가세') cfg.state.quarter = e.target.value;
+    renderFilingStatusTable(kind);
+  });
+  document.querySelectorAll('.'+cfg.ids.modeBtnClass).forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.'+cfg.ids.modeBtnClass).forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      cfg.state.sourceMode = btn.dataset.periodMode;
+      renderFilingPeriodControls(kind);
+      renderFilingStatusTable(kind);
+    });
+  });
+  document.getElementById(cfg.ids.saveBtn)?.addEventListener('click', async ()=>{
+    await cfg.save();
+    flashFilingStatusSaveMsg(kind);
+    setFilingStatusDirty(kind, false);
+  });
+  document.querySelectorAll('.'+cfg.ids.typeBtnClass).forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.'+cfg.ids.typeBtnClass).forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      cfg.setViewingType(btn.dataset.filingType);
+      renderFilingStatusTable(kind);
+    });
   });
 });
 
@@ -9921,7 +10018,8 @@ document.querySelectorAll('.approval-cat-btn').forEach(btn=>{
     document.querySelectorAll('#approvalContent > .approval-panel[data-approval-cat]').forEach(p=>{
       p.style.display = (p.dataset.approvalCat === cat) ? 'block' : 'none';
     });
-    if(cat === 'status') renderFilingStatusTable();
+    if(cat === 'status') renderFilingStatusTable('status');
+    else if(cat === 'review') renderFilingStatusTable('review');
     else if(cat === 'help'){ populateFilingHelpClientSelect(); renderFilingHelpChecklist(); }
     else if(cat === 'doc'){ populateApproverSelect(); renderApprovalInbox(); renderApprovalMine(); renderApprovalAll(); updateApprovalNotifyBtn(); }
   });
@@ -10624,7 +10722,7 @@ document.getElementById('exportSharedBtn').addEventListener('click', ()=>{
     exportedAt: new Date().toISOString(),
     app: 'monthly-board',
     scope: 'shared', // 관리자용 백업: 회사 공통설정만 포함, 직원 개인데이터는 포함 안 함
-    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals }
+    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals }
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -10667,6 +10765,7 @@ document.getElementById('importSharedFile').addEventListener('change', async (e)
     sharedTeamInfo = data.shared.teamInfo || { note:'' };
     sharedSpecialPeriods = data.shared.specialPeriods || [];
     sharedFilingStatus = data.shared.filingStatus || {};
+    sharedReviewStatus = data.shared.reviewStatus || {};
     sharedFilingHelp = data.shared.filingHelp || {};
     sharedApprovals = data.shared.approvals || [];
     await saveSharedExclusions();
@@ -10681,6 +10780,7 @@ document.getElementById('importSharedFile').addEventListener('change', async (e)
     await saveSharedTeamInfo();
     await saveSharedSpecialPeriods();
     await saveSharedFilingStatus();
+    await saveSharedReviewStatus();
     await saveSharedFilingHelp();
     await saveSharedApprovals();
     if(gdriveAccessToken && gdriveFileId){
@@ -10761,6 +10861,7 @@ document.getElementById('importAllFile').addEventListener('change', async (e)=>{
       sharedTeamInfo = data.shared.teamInfo || { note:'' };
       sharedSpecialPeriods = data.shared.specialPeriods || [];
       sharedFilingStatus = data.shared.filingStatus || {};
+      sharedReviewStatus = data.shared.reviewStatus || {};
       sharedFilingHelp = data.shared.filingHelp || {};
       sharedApprovals = data.shared.approvals || [];
       await saveSharedExclusions();
@@ -10775,6 +10876,7 @@ document.getElementById('importAllFile').addEventListener('change', async (e)=>{
       await saveSharedTeamInfo();
       await saveSharedSpecialPeriods();
       await saveSharedFilingStatus();
+      await saveSharedReviewStatus();
       await saveSharedFilingHelp();
       await saveSharedApprovals();
     }
@@ -11120,7 +11222,7 @@ function gdriveBuildPayload(){
   });
   return {
     schemaVersion: SCHEMA_VERSION, syncedAt: new Date().toISOString(), profiles, data,
-    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals }
+    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals }
   };
 }
 
@@ -11240,6 +11342,11 @@ async function gdrivePull(){
       if(remote.shared.companyName !== undefined) localStorage.setItem('worklog_shared_companyname', remote.shared.companyName);
       if(remote.shared.teamInfo !== undefined) localStorage.setItem('worklog_shared_teaminfo', JSON.stringify(remote.shared.teamInfo));
       if(remote.shared.specialPeriods !== undefined) localStorage.setItem('worklog_shared_specialperiods', JSON.stringify(remote.shared.specialPeriods));
+      // 결재 탭 데이터(신고현황/검토표/신고도움/결재)는 그동안 여기서 안 받아와서, 다른 기기에서 저장한 내용이 이 기기엔 안 뜨는 문제가 있었음 - 같이 받아오게 함
+      if(remote.shared.filingStatus !== undefined) localStorage.setItem('worklog_shared_filingstatus', JSON.stringify(remote.shared.filingStatus));
+      if(remote.shared.reviewStatus !== undefined) localStorage.setItem('worklog_shared_reviewstatus', JSON.stringify(remote.shared.reviewStatus));
+      if(remote.shared.filingHelp !== undefined) localStorage.setItem('worklog_shared_filinghelp', JSON.stringify(remote.shared.filingHelp));
+      if(remote.shared.approvals !== undefined) localStorage.setItem('worklog_shared_approvals', JSON.stringify(remote.shared.approvals));
     }
     if(!getActiveProfileId() || !remote.profiles.find(p=>p.id===getActiveProfileId())){
       if(remote.profiles.length) setActiveProfileId(remote.profiles[0].id);
