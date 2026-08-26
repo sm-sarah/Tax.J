@@ -908,16 +908,27 @@
     <div id="clSubtagHistoryWrap"></div>
   </div>
 </div>
+<!-- 민감정보 비밀번호 입력 팝업 - 브라우저 기본 prompt()는 위치를 못 정해서 화면 위쪽에 붙어 뜨고 앱의 다른 팝업들과 생김새도 달라서, 화면 가운데 뜨는 커스텀 팝업으로 대체함 -->
+<div id="pwPromptModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:22px; max-width:340px; width:100%; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div id="pwPromptModalMsg" style="font-size:13.5px; font-weight:700; color:var(--ink); margin-bottom:12px; text-align:center;"></div>
+    <input type="password" id="pwPromptModalInput" style="width:100%; box-sizing:border-box; margin-bottom:14px;">
+    <div style="display:flex; gap:8px; justify-content:center;">
+      <button type="button" id="pwPromptModalCancel" class="del-btn">취소</button>
+      <button type="button" id="pwPromptModalOk" class="submit-btn" style="width:auto; padding:7px 18px;">확인</button>
+    </div>
+  </div>
+</div>
 <!-- 개인정보 기타 ID/PW 팝업 (구분은 직접입력, 여러 개 등록 가능) -->
 <div id="personalInfoEtcModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--surface); border-radius:16px; padding:16px 22px 20px; max-width:480px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4); position:relative;">
     <button type="button" id="personalInfoEtcModalClose" class="del-btn" style="position:absolute; top:14px; right:16px; font-size:10px; padding:3px 8px;">닫기</button>
     <div style="text-align:center; margin-bottom:18px; padding:2px 46px 0;">
       <div id="personalInfoEtcModalTitle" style="font-weight:800; font-size:19px; color:var(--ink);"></div>
-      <div style="font-size:12px; font-weight:700; color:var(--ink-soft); margin-top:2px;">개인정보</div>
+      <span class="section-subtitle-label" style="margin-top:4px;">개인정보</span>
     </div>
     <div id="personalInfoEtcLockNotice" style="text-align:center; padding:12px; margin:6px 0 14px; display:none;">
-      <button type="button" id="personalInfoEtcUnlockBtn" title="비밀번호 입력하고 열기" style="border:none; background:var(--coral-bg); color:var(--coral); width:40px; height:40px; border-radius:50%; font-size:17px; cursor:pointer;">🔑</button>
+      <button type="button" id="personalInfoEtcUnlockBtn" title="비밀번호 입력하고 열기" style="border:none; background:var(--amber-bg); color:var(--amber); width:40px; height:40px; border-radius:50%; font-size:17px; cursor:pointer;">🔑</button>
     </div>
     <div id="personalInfoEtcListWrap"></div>
     <div id="personalInfoEtcAddRow" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; padding-top:10px; border-top:1.5px dashed var(--border);">
@@ -4999,9 +5010,39 @@ function lockSensitiveView(){
   if(typeof renderCompanyInfoTeam === 'function') renderCompanyInfoTeam();
 }
 
+// 브라우저 기본 prompt() 대신 쓰는 화면 가운데 비밀번호 입력 팝업 - Promise로 감싸서
+// prompt()와 똑같이 "await로 결과를 기다리고, 취소하면 null" 방식으로 쓸 수 있게 함
+let _pwPromptResolve = null;
+function showPasswordPromptModal(message){
+  return new Promise(resolve=>{
+    _pwPromptResolve = resolve;
+    document.getElementById('pwPromptModalMsg').textContent = message;
+    const input = document.getElementById('pwPromptModalInput');
+    input.value = '';
+    document.getElementById('pwPromptModalOverlay').style.display = 'flex';
+    setTimeout(()=>input.focus(), 50);
+  });
+}
+function closePwPromptModal(result){
+  document.getElementById('pwPromptModalOverlay').style.display = 'none';
+  if(_pwPromptResolve){ const r = _pwPromptResolve; _pwPromptResolve = null; r(result); }
+}
+document.getElementById('pwPromptModalOk').addEventListener('click', ()=>{
+  closePwPromptModal(document.getElementById('pwPromptModalInput').value);
+});
+document.getElementById('pwPromptModalCancel').addEventListener('click', ()=>{
+  closePwPromptModal(null);
+});
+document.getElementById('pwPromptModalInput').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter'){ closePwPromptModal(document.getElementById('pwPromptModalInput').value); }
+});
+document.getElementById('pwPromptModalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'pwPromptModalOverlay') closePwPromptModal(null);
+});
+
 async function unlockSensitiveView(){
   if(!sharedManageVerifier){ alert('아직 관리비밀번호가 설정되지 않았어요.\n\nClient 탭 상단의 ⚙️ (거래처 설정)에서 먼저 설정해주세요.\n※ 관리자 계정으로 로그인한 상태여야 보여요. 관리자가 아니라면 통합설정 > 관리자 권한 관리에서 먼저 관리자로 등록해주세요.'); return; }
-  const pw = prompt('민감정보 전체조회 비밀번호를 입력해주세요.');
+  const pw = await showPasswordPromptModal('정보조회 비밀번호를 입력해 주세요.');
   if(pw === null) return;
   try{
     const key = await deriveKeyFromPassword(pw, sharedManageSalt);
@@ -5336,10 +5377,13 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
       ? `<button class="del-btn client-action-btn client-history-btn" data-id="${c.id}" title="수정이력 보기">🕘</button>`
       : `<button class="del-btn client-action-btn" disabled style="opacity:0.3; cursor:default;" title="수정이력 없음">🕘</button>`;
     const detailBtn = `<button class="del-btn client-action-btn client-detail-btn" data-id="${c.id}" title="추가정보 보기">ℹ️</button>`;
-    // 노란 폴더 그림(📁) 자체가 이미 눈에 띄는 색이라, 굳이 배경까지 amber로 덧칠하지 않고 다른 아이콘 버튼들과 같은 톤으로 통일함
+    // 📁 이모지를 twemoji가 외부 CDN 이미지로 바꿔치기하는 과정에서, 네트워크 상황에 따라 잠깐 노란 이모지로
+    // 보이다가 로딩 실패 시 글자색(파란기)으로 바뀌어 보이는 문제가 있어서 - 항상 똑같이 노란 폴더로 보이도록
+    // 네트워크 의존 없는 인라인 SVG로 직접 그림 (twemoji.parse 대상도 아니라서 나중에 다시 바뀔 일도 없음)
+    const folderSvg = `<svg width="15" height="15" viewBox="0 0 24 24" style="vertical-align:-3px;"><path fill="#FDB813" d="M2 6.5C2 5.67 2.67 5 3.5 5h5.17c.35 0 .68.14.93.39L10.7 6.5H20.5c.83 0 1.5.67 1.5 1.5v10c0 .83-.67 1.5-1.5 1.5h-17C2.67 19.5 2 18.83 2 18V6.5z"/></svg>`;
     const folderBtn = c.driveFolder
-      ? `<a class="del-btn client-action-btn" href="${escHtml(c.driveFolder)}" target="_blank" rel="noopener" title="공유드라이브 폴더 열기" style="display:inline-block; text-decoration:none;">📁</a>`
-      : `<button class="del-btn client-action-btn" disabled style="opacity:0.3; cursor:default;" title="등록된 폴더 링크 없음">📁</button>`;
+      ? `<a class="del-btn client-action-btn" href="${escHtml(c.driveFolder)}" target="_blank" rel="noopener" title="공유드라이브 폴더 열기" style="display:inline-block; text-decoration:none;">${folderSvg}</a>`
+      : `<button class="del-btn client-action-btn" disabled style="opacity:0.3; cursor:default;" title="등록된 폴더 링크 없음">${folderSvg}</button>`;
     const personalKeyBtn = `<button class="del-btn client-action-btn client-personal-key-btn" data-id="${c.id}" title="개인정보(ID/PW) 보기">🔑</button>`;
     return `<tr>
       <td class="num">${idx+1}</td>${groupNoCell}
