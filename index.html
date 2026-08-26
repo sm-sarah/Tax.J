@@ -11222,6 +11222,11 @@ if(typeof twemoji !== 'undefined') twemoji.parse(document.body, {folder:'svg', e
 // 자동으로 가장 높은 z-index를 부여하는 방식으로 처리함 - 새 팝업 여는 코드를 추가할 때도 따로 신경 안 써도 됨.
 (function initOverlayStacking(){
   let topZ = 9999;
+  // bringToFront가 z-index를 넣기 위해 el.style를 건드리는 것 자체가 "style 속성 변경" 뮤테이션이라,
+  // 아무 필터 없이는 옵저버가 그 변경에 또 반응해서 bringToFront를 다시 부르고 -> 그게 또 뮤테이션을 만들고
+  // -> 다시 반응하고... 하는 식으로 끝없이 반복되며 화면이 멈추는 버그가 있었음(즐겨찾기 등 팝업을 열 때마다 발생).
+  // 직전에 "우리 스스로 세팅한 z-index"를 기억해뒀다가, 그 값 그대로인 뮤테이션은 무시해서 루프를 끊음.
+  const lastSetZ = new WeakMap();
   function isOverlayEl(el){
     if(!(el instanceof Element)) return false;
     if(el.id && /overlay$/i.test(el.id)) return true;
@@ -11230,11 +11235,15 @@ if(typeof twemoji !== 'undefined') twemoji.parse(document.body, {folder:'svg', e
   }
   function bringToFront(el){
     topZ += 1;
+    lastSetZ.set(el, String(topZ));
     el.style.zIndex = String(topZ);
   }
   const mo = new MutationObserver(mutations=>{
     mutations.forEach(m=>{
       if(m.type === 'attributes' && isOverlayEl(m.target)){
+        if(m.attributeName === 'style' && lastSetZ.has(m.target) && lastSetZ.get(m.target) === m.target.style.zIndex){
+          return; // 방금 이 코드가 직접 바꾼 z-index 변화 - 다시 반응하지 않음(무한루프 방지)
+        }
         const visible = m.target.style.display && m.target.style.display !== 'none';
         if(visible) bringToFront(m.target);
       } else if(m.type === 'childList'){
