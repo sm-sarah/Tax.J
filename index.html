@@ -37,7 +37,35 @@
     font-family:'Pretendard','Noto Sans KR',sans-serif;
     padding:26px 18px 64px;
   }
-  .app{max-width:1480px; margin:0 auto;}
+  /* 앱 전체를 배경(연한 라벤더)과 구분되는 큰 테두리 하나로 감싸서, 사이드바·상단 요소부터
+     각 화면의 입력/조회 레이아웃까지 전부 이 하나의 프레임 안에서 보이게 함 */
+  .app{
+    max-width:1480px; margin:24px auto; background:var(--surface);
+    border-radius:26px; padding:26px 32px 40px;
+    box-shadow:0 1px 2px rgba(29,30,51,0.05), 0 30px 60px -30px rgba(29,30,51,0.28);
+  }
+  @media (max-width:640px){ .app{ margin:10px auto; padding:16px 14px 28px; border-radius:18px; } }
+  /* 넓은 화면(900px~)에서는 상단 nav 대신 왼쪽에 항상 고정된 사이드바 하나로 전체 화면을 이동함.
+     사이드바에 들어갈 홈 아이콘·유틸리티 아이콘·Company/Staff/Client 메뉴는 기존 요소를 복제하지 않고
+     JS에서 실제 DOM 노드를 그대로 옮겨서(relocateSidebarNodes) 이벤트 바인딩이 그대로 유지되게 함.
+     모바일(900px 미만)은 예전 그대로 상단 nav를 씀 */
+  .app-shell{ display:block; }
+  .app-sidebar{
+    display:none; flex-direction:column; gap:20px;
+    flex:0 0 220px; width:220px;
+  }
+  .app-main{ min-width:0; }
+  @media (min-width:900px){
+    nav.tabs{ display:none !important; }
+    .app-shell{ display:flex; align-items:flex-start; gap:30px; }
+    .app-sidebar{
+      display:flex !important; position:sticky; top:20px;
+      padding-right:22px; border-right:1.5px solid var(--border);
+    }
+    .app-main{ flex:1 1 auto; }
+  }
+  .app-sidebar #navHomeGroup{ align-self:flex-start; }
+  .app-sidebar #navUtilityGroup{ flex-wrap:wrap; border-radius:16px; }
   .num{font-family:'IBM Plex Mono', monospace; font-weight:700; letter-spacing:-0.02em;}
 
   .masthead{
@@ -52,7 +80,12 @@
   .month-picker{display:flex; flex-direction:row; align-items:center; gap:6px;}
   .tab-inline-divider{width:1px; height:20px; background:rgba(91,95,239,0.25); margin:0 2px;}
 
-  .tab-btn-home{font-size:14px; display:flex; align-items:center; justify-content:center; background:#DADEEE; color:var(--navy);}
+  /* 사이드바로 옮겨졌을 때도(#navExpandedRow1 밖) 원형 아이콘 모양이 그대로 유지되도록, 위치에 의존하던
+     원형·크기·그림자 스타일을 이 클래스 자체에 직접 둠 */
+  .tab-btn-home{
+    font-size:14px; display:flex; align-items:center; justify-content:center; background:#DADEEE; color:var(--navy);
+    border-radius:50%; width:42px; height:42px; padding:0; box-shadow:0 2px 6px -1px rgba(29,30,51,0.12);
+  }
   .tab-btn-home.active{background:var(--navy); color:#fff; box-shadow:0 6px 14px -6px rgba(30,42,94,0.5);}
 
   /* 최상위 nav(홈/Company/Staff/Client 등)는 하단 서브칩과 확실히 구분되도록, 다른 아이콘 버튼들과 동일한 원형 아이콘 전용 스타일로 통일 */
@@ -82,11 +115,13 @@
   .home-dashboard-layout{ display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap; }
   .home-menu-col{ flex:0 0 auto; }
   .home-dashboard-col{ flex:1 1 420px; min-width:280px; }
-  .home-dashboard-title{ font-size:26px; font-weight:800; letter-spacing:-0.02em; color:var(--ink); margin:0 0 14px; }
-  .home-dashboard-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-  @media (max-width:640px){ .home-dashboard-grid{ grid-template-columns:1fr; } }
+  .home-dashboard-title{ font-size:26px; font-weight:800; letter-spacing:-0.02em; color:var(--ink); margin:0 0 14px; text-align:center; }
+  /* 카드 4개 아래로 화면 하단까지 빈 공간이 크게 남는다는 피드백이 있어서, grid-auto-rows로 두 줄이
+     세로 공간을 나눠 채우게 하고 최소 높이를 넉넉히 잡아 세로 활용폭을 늘림 */
+  .home-dashboard-grid{ display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:1fr; gap:16px; min-height:min(62vh, 620px); }
+  @media (max-width:640px){ .home-dashboard-grid{ grid-template-columns:1fr; min-height:0; } }
   .home-dash-card{
-    background:var(--surface); border-radius:16px; padding:14px 16px; min-height:150px;
+    background:var(--surface); border-radius:16px; padding:18px 20px; min-height:150px;
     box-shadow:0 1px 2px rgba(29,30,51,0.04), 0 8px 20px -14px rgba(29,30,51,0.2);
     display:flex; flex-direction:column; gap:8px;
   }
@@ -107,6 +142,14 @@
   }
   .home-dash-list-row:last-child{ border-bottom:none; }
   .home-dash-list-row-title{ color:var(--ink); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* 팀캘린더 카드 안의 오늘 일정 항목은 (결재·공지 카드와 달리) 눌러도 따로 열리는 상세가 없고 카드 전체가
+     이미 팀캘린더로 이동하는 링크라서, 리스트 항목 자체는 클릭 가능한 느낌을 주지 않는 정적인 줄로 둠 */
+  .home-dash-info-row{
+    display:flex; align-items:center; gap:6px; padding:3px 0; font-size:12px; color:var(--ink);
+    border-bottom:1px solid var(--border);
+  }
+  .home-dash-info-row:last-child{ border-bottom:none; }
+  .home-dash-info-row span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .home-dash-stat-row{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; padding:3px 0; }
   .home-dash-stat-label{ font-size:11.5px; color:var(--ink-soft); font-weight:600; }
   .home-dash-stat-value{ font-size:15px; color:var(--ink); font-weight:800; }
@@ -120,7 +163,7 @@
   .home-section-label.home-section-label-icon{ font-size:14px; padding:6px 12px; }
   .home-tiles{display:flex; flex-direction:column; gap:8px; flex:1 1 auto; justify-content:center;}
   /* Company/Staff/Client 하위메뉴 목록은 위아래 여백이 넓어서 칩 전체 높이만 불필요하게 늘어났음 - 항목 사이 간격을 없애고, 각 줄 자체의 위아래 패딩도 줄임 */
-  #homeFavoritesTiles, #homeTilesCompany, #homeTilesStaff, #homeTilesClient{ gap:0; }
+  #homeTilesCompany, #homeTilesStaff, #homeTilesClient{ gap:0; }
   .home-tile{
     background:var(--surface); border-radius:14px; padding:11px 16px;
     cursor:pointer; border-left:4px solid var(--tile-accent, var(--indigo));
@@ -389,7 +432,7 @@
     display:flex; flex-direction:column; align-items:flex-start; gap:2px;
     margin:6px 0 8px 20px; padding-left:14px; border-left:2px solid var(--border);
   }
-  .approval-subtype-branch .filing-type-btn, .approval-subtype-branch .review-type-btn{
+  .approval-subtype-branch .filing-type-btn, .approval-subtype-branch .review-type-btn, .approval-subtype-branch .approval-doc-btn{
     background:none; border:none; box-shadow:none; padding:4px 2px; border-radius:0;
     font-family:'Pretendard', sans-serif; font-size:12.5px; font-weight:700;
     color:var(--ink-soft); text-decoration:underline; text-underline-offset:3px; cursor:pointer;
@@ -397,9 +440,26 @@
   /* .active 상태에도 background·padding·box-shadow를 명시적으로 다시 지워줘야 함 - 예전 칩 스타일 규칙인
      .policy-category-toggle button.active{background:...}가 선택자 우선순위상 밑줄 스타일보다 세게 먹혀서,
      활성 세목에만 예전 칩 배경이 그대로 씌워져 보이는 문제가 있었음 */
-  .approval-subtype-branch .filing-type-btn.active, .approval-subtype-branch .review-type-btn.active{
+  .approval-subtype-branch .filing-type-btn.active, .approval-subtype-branch .review-type-btn.active, .approval-subtype-branch .approval-doc-btn.active{
     background:none; box-shadow:none; padding:4px 2px; border-radius:0; color:var(--indigo-deep);
   }
+  /* 신고현황/검토표/결재(상위 카테고리)도 칩 스타일 대신, 홈 사이드바 소메뉴(.home-tile-plain)와 같은
+     점 불릿 + 밑줄(border-bottom) 스타일의 플랫 리스트로 통일함. 결재 탭 레이아웃도 왼쪽 나무형 메뉴 +
+     오른쪽 내용이 같은 높이에서 시작하도록 좌우 flex 배치로 바꿈(전에는 내용이 아래로 처져 보였음) */
+  .approval-content-flex{ display:flex; align-items:flex-start; gap:30px; flex-wrap:wrap; }
+  .approval-nav-tree{ flex:0 0 220px; }
+  .approval-nav-tree .approval-nav-branch{ align-items:stretch; width:100%; }
+  .approval-panels-col{ flex:1 1 420px; min-width:280px; }
+  #approvalCatToggle .approval-cat-btn{
+    background:none; border:none; box-shadow:none; border-radius:0; width:100%; text-align:left;
+    padding:8px 6px 8px 17px; position:relative; font-family:'Pretendard',sans-serif;
+    font-weight:700; font-size:14px; color:var(--ink); border-bottom:1px solid var(--border); cursor:pointer;
+  }
+  #approvalCatToggle .approval-cat-btn::before{
+    content:''; position:absolute; left:0; top:50%; transform:translateY(-50%);
+    width:6px; height:6px; border-radius:50%; background:var(--indigo);
+  }
+  #approvalCatToggle .approval-cat-btn.active{ background:none; box-shadow:none; color:var(--indigo-deep); }
   /* 백업복구의 회사공통/전체직원/직원선택 3칩은 흰 배경 위에서 눈에 잘 안 띄어서 - 안 눌린 상태도 옅은 배경+테두리로
      칩처럼 보이게 하고, 눌린 상태는 indigo로 뚜렷하게 구분함. 3개 폭도 맞춰서 나란히 균일하게 보이도록 함 */
   .backup-scope-btn{ background:var(--bg) !important; color:var(--ink-soft) !important; border:1.5px solid var(--border) !important; min-width:88px; text-align:center; }
@@ -1372,15 +1432,15 @@
     <div id="navCollapsedRow" style="display:flex; gap:9px; align-items:stretch; justify-content:center; flex-wrap:wrap;"></div>
 
     <div id="navExpandedRow1" style="display:none; gap:9px; align-items:stretch; justify-content:center; flex-wrap:wrap;">
-      <div class="nav-icon-group">
+      <div class="nav-icon-group" id="navHomeGroup">
         <button class="tab-btn tab-btn-home" data-tab="home" title="홈"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9"/></svg></button>
       </div>
-      <div class="nav-icon-group">
+      <div class="nav-icon-group" id="navToggleGroup">
         <button type="button" id="toggleManagementBtn" class="tab-btn tg-mgmt-btn" title="Company">🏢</button>
         <button type="button" id="toggleStaffBtn" class="tab-btn tg-staff-btn" title="Staff">🙋</button>
         <button type="button" id="toggleClientBtn" class="tab-btn tg-client-btn" title="Client">👥</button>
       </div>
-      <div class="nav-icon-group">
+      <div class="nav-icon-group" id="navUtilityGroup">
         <button type="button" id="mailNotifyBtn" title="관리자에게 메일로 알리기" style="width:38px; height:38px; border-radius:50%; border:none; background:var(--navy); color:#fff; font-size:17px; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 4px 10px -3px rgba(29,30,51,0.45); cursor:pointer;">📧</button>
         <button type="button" id="quickConnectBtn" class="tab-btn" title="Google 계정 연결 상태 · 클릭해서 로그인" style="background:var(--navy); color:#fff; width:38px; height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; font-size:16px; box-shadow:0 4px 10px -3px rgba(29,30,51,0.45);">🔌</button>
         <button type="button" id="noticeIconBtn" title="공지사항" style="position:relative; background:var(--navy); color:#fff; width:38px; height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; font-size:16px; border:none; cursor:pointer; box-shadow:0 4px 10px -3px rgba(29,30,51,0.45);">📢<span id="noticeUnreadBadge" style="display:none; position:absolute; top:-2px; right:-2px; background:var(--coral); color:#fff; font-size:9px; font-weight:800; border-radius:50%; width:15px; height:15px; align-items:center; justify-content:center; line-height:1; box-shadow:0 0 0 2px var(--surface);">N<sup id="noticeUnreadCountSup" style="display:none; position:absolute; top:-5px; right:-6px; background:var(--navy); color:#fff; font-size:7px; font-weight:800; border-radius:50%; min-width:11px; height:11px; padding:0 2px; align-items:center; justify-content:center; line-height:11px; box-shadow:0 0 0 2px var(--surface);"></sup></span></button>
@@ -1394,7 +1454,7 @@
         <button class="tab-btn" data-tab="teamcalendar">🗂️ 팀캘린더</button>
         <button class="tab-btn" data-tab="companyinfo">📇 사내정보</button>
         <span style="position:relative; display:inline-block;">
-          <button class="tab-btn" data-tab="approval">🖋️ 결재</button>
+          <button class="tab-btn" data-tab="approval">🖋️ 업무</button>
           <span id="approvalPendingBadge" style="display:none; position:absolute; top:-5px; right:-5px; background:var(--coral); color:#fff; font-size:9px; font-weight:800; border-radius:50%; min-width:15px; height:15px; padding:0 3px; align-items:center; justify-content:center; line-height:1; box-shadow:0 0 0 2px var(--surface);">N</span>
         </span>
         <button class="tab-btn" data-tab="quickguide">🎁 복리후생</button>
@@ -1429,6 +1489,12 @@
     </div>
   </nav>
 
+  <!-- 넓은 화면(900px~)용 고정 사이드바. 안의 홈 아이콘·유틸리티 아이콘·메뉴 목록은 위 nav와 홈 화면에
+       원래 있던 실제 엘리먼트를 relocateSidebarNodes()가 그대로 옮겨오는 자리라서 처음엔 비어있음 -->
+  <div class="app-shell">
+    <aside class="app-sidebar" id="appSidebar"></aside>
+    <div class="app-main">
+
   <!-- 설정 아이콘 클릭 시 컴패니/스태프 선택 팝업 - nav(backdrop-filter로 새 컨테이닝 블록 생김) 밖에 둬서 position:fixed가 화면 기준으로 정확히 중앙에 뜨게 함 -->
   <div id="megaSettingsChooserOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
     <div style="background:var(--surface); border-radius:16px; padding:24px 26px; max-width:360px; width:100%; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4); text-align:center;">
@@ -1443,28 +1509,11 @@
     </div>
   </div>
 
-  <!-- 홈 즐겨찾기(바로가기) 추가 팝업 -->
-  <div id="homeFavPickerOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
-    <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:360px; width:100%; max-height:80vh; overflow:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px;">
-        <div style="font-weight:800; font-size:15px; color:var(--ink);">⭐ 즐겨찾기</div>
-        <button type="button" id="homeFavPickerClose" class="del-btn">닫기</button>
-      </div>
-      <p class="hint" style="font-size:11px; margin:0 0 10px;">홈 화면에 바로가기로 추가할 메뉴를 눌러주세요.</p>
-      <div id="homeFavPickerList" style="display:flex; flex-direction:column; gap:6px;"></div>
-    </div>
-  </div>
-
   <!-- 홈 -->
   <section id="tab-home" class="tab-panel active">
     <div class="home-dashboard-layout">
       <!-- 기존 바로가기 메뉴 전체를 왼쪽 사이드바로 묶음 -->
       <div class="home-menu-col">
-        <div class="home-section-row" id="homeFavoritesRow">
-          <div class="home-section-label home-section-label-icon">⭐ 즐겨찾기</div>
-          <div class="home-tiles" id="homeFavoritesTiles"></div>
-        </div>
-
         <div class="home-section-row">
           <div class="home-section-label">🏢 Company</div>
           <div class="home-tiles" id="homeTilesCompany">
@@ -1478,7 +1527,7 @@
             </div>
             <div class="home-tile home-tile-plain" data-goto="approval" style="--tile-accent:#0EA5A5;">
               <div class="home-tile-icon">🖋️</div>
-              <div class="home-tile-title">결재</div>
+              <div class="home-tile-title">업무</div>
             </div>
             <div class="home-tile home-tile-plain" data-goto="quickguide" style="--tile-accent:var(--guide-mustard);">
               <div class="home-tile-icon">🎁</div>
@@ -2210,7 +2259,8 @@
       <div class="policy-locked-icon">🔒</div>
       <div class="policy-locked-text">Google 계정으로 로그인해야 볼 수 있어요.<br>홈 화면의 로그인 버튼을 눌러주세요.</div>
     </div>
-    <div id="approvalContent">
+    <div id="approvalContent" class="approval-content-flex">
+      <div class="approval-nav-tree">
       <div class="policy-category-toggle" id="approvalCatToggle" style="flex-direction:column; align-items:flex-start; gap:4px; margin-bottom:20px;">
         <div class="approval-nav-branch">
           <button type="button" class="approval-cat-btn active" data-approval-cat="status">📋 신고현황</button>
@@ -2231,9 +2281,17 @@
         </div>
         <div class="approval-nav-branch">
           <button type="button" class="approval-cat-btn" data-approval-cat="doc">🖋️ 결재</button>
+          <div class="approval-subtype-branch" id="approvalDocToggle" style="display:none;">
+            <button type="button" class="approval-doc-btn active" data-approval-doc="new">✏️ 기안하기</button>
+            <button type="button" class="approval-doc-btn" data-approval-doc="inbox">📥 결재함<span id="approvalInboxCount" style="display:none;"></span></button>
+            <button type="button" class="approval-doc-btn" data-approval-doc="mine">📤 기안함</button>
+            <button type="button" class="approval-doc-btn" data-approval-doc="all">📚 전체이력</button>
+          </div>
         </div>
       </div>
+      </div>
 
+      <div class="approval-panels-col">
       <!-- 신고현황: 원천세/부가세/법인세/종소세/결산별 진행상태 (세목 선택 칩은 위 approvalCatToggle 트리 안,
            신고현황 밑에 가지로 붙어있음 - #filingTypeToggle) -->
       <div class="approval-panel" data-approval-cat="status">
@@ -2287,12 +2345,6 @@
         <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
           <button type="button" id="approvalNotifyToggleBtn" class="del-btn" title="내가 결재자로 지정된 새 문서가 오면 이 브라우저에서 알림을 받아요.">🔕 알림 받기</button>
         </div>
-        <div class="policy-category-toggle" id="approvalDocToggle" style="margin-bottom:14px;">
-          <button type="button" class="approval-doc-btn active" data-approval-doc="new">✏️ 기안하기</button>
-          <button type="button" class="approval-doc-btn" data-approval-doc="inbox">📥 결재함<span id="approvalInboxCount" style="display:none;"></span></button>
-          <button type="button" class="approval-doc-btn" data-approval-doc="mine">📤 기안함</button>
-          <button type="button" class="approval-doc-btn" data-approval-doc="all">📚 전체이력</button>
-        </div>
 
         <div class="approval-doc-panel" data-approval-doc="new">
           <div class="settings-box" style="max-width:560px;">
@@ -2323,6 +2375,7 @@
           <p class="hint" style="text-align:center;">회사 전체 결재 이력이에요.</p>
           <div id="approvalAllWrap"></div>
         </div>
+      </div>
       </div>
     </div>
   </section>
@@ -2706,6 +2759,9 @@
       <button type="button" id="loginLockConnectBtn" class="submit-btn" style="width:auto; padding:10px 22px;">🔗 Google 계정으로 로그인</button>
     </div>
   </section>
+
+    </div>
+  </div>
 </div>
 
 <div id="printArea"></div>
@@ -7445,12 +7501,54 @@ document.querySelectorAll('#dashApprovalToggle .home-dash-toggle-btn').forEach(b
   });
 });
 
+// 팀캘린더 전체 미니 달력을 그대로 옮기는 대신, renderAdminCalendar()가 한 달치를 그릴 때 쓰는 것과
+// 똑같은 데이터(휴가/재택/개인일정/공휴일·특별기간)를 오늘 하루치만 걸러서 요약 리스트로 보여줌
+function computeTodayTeamAgenda(){
+  const todayS = todayStr();
+  const items = [];
+  const holidayEntry = (sharedExclusionDays||[]).find(x=>x.date===todayS && x.reason==='공휴일');
+  if(holidayEntry){
+    const info = exclusionBadgeInfo(holidayEntry);
+    items.push({ icon: info.icon || '🎌', text: `오늘은 ${info.label || '공휴일'}` });
+  }
+  (sharedExclusionDays||[]).filter(x=>x.date===todayS && x.reason!=='공휴일').forEach(x=>{
+    const info = exclusionBadgeInfo(x);
+    items.push({ icon: info.icon || '📌', text: info.label || x.reason });
+  });
+  getProfiles().forEach(p=>{
+    const s = readProfileRaw(p.id,'settings') || {};
+    const att = readProfileRaw(p.id,'attendance') || { leaveUsage:[], remoteEntries:[] };
+    const sch = readProfileRaw(p.id,'schedule') || { events:[] };
+    const name = s.employeeName || p.name || '(미등록)';
+    (att.leaveUsage||[]).filter(u=>u.date===todayS).forEach(u=>{
+      items.push({ icon:'🌴', text:`${name} · ${leaveTeamCalShortType(u.type, u.subtype)}` });
+    });
+    (att.remoteEntries||[]).filter(r=>r.date===todayS).forEach(r=>{
+      items.push({ icon: r.bonus ? '🎁' : '🏠', text:`${name} · ${r.bonus ? '특별재택' : '정기재택'}` });
+    });
+    (sch.events||[]).filter(e=>e.date===todayS && e.shared !== false).forEach(e=>{
+      items.push({ icon:'🗓️', text:`${name} · ${e.type || '일정'}` });
+    });
+  });
+  return items;
+}
 function renderDashboardCalendarPreview(){
   const body = document.getElementById('dashCalendarBody');
   if(!body) return;
   const weekday = ['일','월','화','수','목','금','토'][new Date().getDay()];
   const [y,m,d] = todayStr().split('-');
-  body.innerHTML = `<div style="font-size:19px; font-weight:800; color:var(--ink);">${y}.${m}.${d} <span style="font-size:13px; font-weight:700; color:var(--ink-soft);">(${weekday})</span></div><div class="hint" style="margin:6px 0 0; font-size:11px;">팀 전체 일정은 팀캘린더에서 확인해요.</div>`;
+  const headerHtml = `<div style="font-size:15.5px; font-weight:800; color:var(--ink); margin-bottom:6px;">${y}.${m}.${d} <span style="font-size:11.5px; font-weight:700; color:var(--ink-soft);">(${weekday})</span></div>`;
+  const items = (typeof getProfiles === 'function') ? computeTodayTeamAgenda() : [];
+  if(!items.length){
+    body.innerHTML = headerHtml + `<div class="hint" style="margin:0; font-size:11.5px;">오늘 등록된 팀 일정이 없어요.</div>`;
+    return;
+  }
+  const MAX = 4;
+  const shown = items.slice(0, MAX);
+  const restCount = items.length - shown.length;
+  body.innerHTML = headerHtml
+    + shown.map(it=>`<div class="home-dash-info-row">${it.icon} <span>${escHtml(it.text)}</span></div>`).join('')
+    + (restCount > 0 ? `<div class="hint" style="margin:4px 0 0; font-size:10.5px; text-align:right;">+${restCount}건 더 (팀캘린더에서 확인)</div>` : '');
 }
 
 // 결재함 = 나에게 승인 대기중인 문서(status==='대기'), 완료함 = 내가 기안했거나 결재자인 문서 중 이미 승인/반려된 것
@@ -7521,101 +7619,38 @@ function renderHomeDashboard(){
   renderDashboardImportantNotices();
 }
 
-const HOME_FAV_STORAGE_KEY = 'worklog_home_favorites';
-function getHomeFavorites(){
-  try{ return JSON.parse(localStorage.getItem(HOME_FAV_STORAGE_KEY) || '[]'); }catch(e){ return []; }
-}
-function saveHomeFavorites(arr){
-  try{ localStorage.setItem(HOME_FAV_STORAGE_KEY, JSON.stringify(arr)); }catch(e){}
-}
-function collectHomeMenuSource(){
-  return Array.from(document.querySelectorAll('#homeTilesCompany .home-tile, #homeTilesStaff .home-tile, #homeTilesClient .home-tile'));
-}
-const HOME_FAV_MAX = 5;
-function renderHomeFavorites(){
-  const favWrap = document.getElementById('homeFavoritesTiles');
-  if(!favWrap) return;
-  const favs = getHomeFavorites();
-  const source = collectHomeMenuSource();
-  favWrap.innerHTML = '';
-  let filledCount = 0;
-  favs.forEach(goto=>{
-    const src = source.find(el=>el.dataset.goto === goto);
-    if(!src) return; // 메뉴 구조가 바뀌어 더 이상 없는 항목이면 건너뜀
-    filledCount++;
-    const tile = document.createElement('div');
-    tile.className = 'home-tile home-tile-plain home-fav-tile';
-    const accent = src.style.getPropertyValue('--tile-accent');
-    if(accent) tile.style.setProperty('--tile-accent', accent);
-    tile.dataset.goto = goto;
-    tile.innerHTML = '<div class="home-tile-icon">'+(src.querySelector('.home-tile-icon')?.innerHTML || '')+'</div>'
-      + '<div class="home-tile-title">'+(src.querySelector('.home-tile-title')?.textContent || '')+'</div>'
-      + '<button type="button" class="home-fav-remove" title="즐겨찾기에서 제거">✕</button>';
-    tile.addEventListener('click', ()=>{
-      const target = document.querySelector(`.tab-btn[data-tab="${goto}"]`);
-      if(target) target.click();
-    });
-    tile.querySelector('.home-fav-remove').addEventListener('click', (e)=>{
-      e.stopPropagation();
-      saveHomeFavorites(getHomeFavorites().filter(g=>g!==goto));
-      renderHomeFavorites();
-    });
-    favWrap.appendChild(tile);
-  });
-  // 채워지지 않은 나머지 자리는 "즐겨찾기 추가"라는 별도 목록 항목이 아니라, 흐린 + 표시의 빈 슬롯으로 채움 -
-  // 즐겨찾기는 최대 5개까지만 두고, 어느 빈 슬롯을 눌러도 즐겨찾기 선택 팝업이 뜸
-  for(let i=filledCount; i<HOME_FAV_MAX; i++){
-    const slot = document.createElement('div');
-    slot.className = 'home-fav-slot-empty';
-    slot.textContent = '+';
-    slot.title = '즐겨찾기 추가';
-    slot.addEventListener('click', openHomeFavPicker);
-    favWrap.appendChild(slot);
-  }
-  if(window.twemoji) twemoji.parse(favWrap, {folder:'svg', ext:'.svg'});
-}
-function openHomeFavPicker(){
-  const listWrap = document.getElementById('homeFavPickerList');
-  const favs = getHomeFavorites();
-  const source = collectHomeMenuSource();
-  if(favs.length >= HOME_FAV_MAX){
-    listWrap.innerHTML = '<p class="hint" style="text-align:center; margin:6px 0;">즐겨찾기는 최대 5개까지만 추가할 수 있어요.<br>먼저 기존 즐겨찾기를 빼고 다시 추가해주세요.</p>';
-    if(window.twemoji) twemoji.parse(listWrap, {folder:'svg', ext:'.svg'});
-    document.getElementById('homeFavPickerOverlay').style.display = 'flex';
-    return;
-  }
-  const available = source.filter(el=>!favs.includes(el.dataset.goto));
-  listWrap.innerHTML = '';
-  if(!available.length){
-    listWrap.innerHTML = '<p class="hint" style="text-align:center; margin:6px 0;">추가할 수 있는 메뉴가 없어요. (전체 메뉴가 이미 즐겨찾기에 있어요)</p>';
-  } else {
-    available.forEach(el=>{
-      const item = document.createElement('div');
-      item.className = 'home-fav-picker-item';
-      const accent = el.style.getPropertyValue('--tile-accent');
-      if(accent) item.style.setProperty('--tile-accent', accent);
-      item.innerHTML = '<div class="home-tile-icon">'+(el.querySelector('.home-tile-icon')?.innerHTML || '')+'</div>'
-        + '<div class="home-tile-title">'+(el.querySelector('.home-tile-title')?.textContent || '')+'</div>';
-      item.addEventListener('click', ()=>{
-        const cur = getHomeFavorites();
-        if(!cur.includes(el.dataset.goto)) cur.push(el.dataset.goto);
-        saveHomeFavorites(cur);
-        document.getElementById('homeFavPickerOverlay').style.display = 'none';
-        renderHomeFavorites();
-      });
-      listWrap.appendChild(item);
-    });
-  }
-  if(window.twemoji) twemoji.parse(listWrap, {folder:'svg', ext:'.svg'});
-  document.getElementById('homeFavPickerOverlay').style.display = 'flex';
-}
-document.getElementById('homeFavPickerClose').addEventListener('click', ()=>{
-  document.getElementById('homeFavPickerOverlay').style.display = 'none';
-});
 function renderHome(){
-  renderHomeFavorites();
+  // 즐겨찾기 기능은 제거됨 - 홈 화면은 이제 대시보드(renderHomeDashboard)가 대신함.
 }
 renderHome();
+
+// ── 넓은 화면(900px~) 전용 고정 사이드바: 홈 아이콘·유틸리티 아이콘(메일~휴지통)·Company/Staff/Client
+// 메뉴를 복제하지 않고, 원래 nav.tabs/홈 화면에 있던 실제 엘리먼트를 그대로 옮겨서 이벤트 바인딩을 유지함.
+// 좁은 화면(모바일)에서는 원래 있던 자리로 다시 돌려놔서 기존 모바일 화면을 그대로 유지함.
+const APP_SIDEBAR_MQ = window.matchMedia('(min-width:900px)');
+function relocateSidebarNodes(){
+  const isWide = APP_SIDEBAR_MQ.matches;
+  const sidebar = document.getElementById('appSidebar');
+  const homeGroup = document.getElementById('navHomeGroup');
+  const toggleGroup = document.getElementById('navToggleGroup');
+  const utilityGroup = document.getElementById('navUtilityGroup');
+  const navExpandedRow1 = document.getElementById('navExpandedRow1');
+  const homeMenuCol = document.querySelector('.home-menu-col');
+  const homeDashboardLayout = document.querySelector('.home-dashboard-layout');
+  const homeDashboardCol = document.querySelector('.home-dashboard-col');
+  if(!sidebar || !homeGroup || !toggleGroup || !utilityGroup || !navExpandedRow1) return;
+  if(isWide){
+    sidebar.appendChild(homeGroup);
+    sidebar.appendChild(utilityGroup);
+    if(homeMenuCol) sidebar.appendChild(homeMenuCol);
+  } else {
+    navExpandedRow1.insertBefore(homeGroup, toggleGroup);
+    navExpandedRow1.appendChild(utilityGroup);
+    if(homeMenuCol && homeDashboardLayout && homeDashboardCol) homeDashboardLayout.insertBefore(homeMenuCol, homeDashboardCol);
+  }
+}
+relocateSidebarNodes();
+APP_SIDEBAR_MQ.addEventListener ? APP_SIDEBAR_MQ.addEventListener('change', relocateSidebarNodes) : APP_SIDEBAR_MQ.addListener(relocateSidebarNodes);
 
 document.getElementById('monthSelect').addEventListener('change', ()=>{
   const teamCalEl = document.getElementById('teamCalMonthSelect');
@@ -10213,14 +10248,16 @@ document.querySelectorAll('.approval-cat-btn').forEach(btn=>{
     document.querySelectorAll('.approval-cat-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     const cat = btn.dataset.approvalCat;
-    document.querySelectorAll('#approvalContent > .approval-panel[data-approval-cat]').forEach(p=>{
+    document.querySelectorAll('.approval-panels-col > .approval-panel[data-approval-cat]').forEach(p=>{
       p.style.display = (p.dataset.approvalCat === cat) ? 'block' : 'none';
     });
     // 세목 가지(원천세 등)는 이제 해당 상위 카테고리 칩 바로 밑에 붙어있으므로, 그 카테고리가 활성일 때만 펼쳐 보이게 함
     const filingBranch = document.getElementById('filingTypeToggle');
     const reviewBranch = document.getElementById('reviewTypeToggle');
+    const docBranch = document.getElementById('approvalDocToggle');
     if(filingBranch) filingBranch.style.display = (cat === 'status') ? 'flex' : 'none';
     if(reviewBranch) reviewBranch.style.display = (cat === 'review') ? 'flex' : 'none';
+    if(docBranch) docBranch.style.display = (cat === 'doc') ? 'flex' : 'none';
     if(cat === 'status') renderFilingStatusTable('status');
     else if(cat === 'review') renderFilingStatusTable('review');
     else if(cat === 'help'){ populateFilingHelpClientSelect(); renderFilingHelpChecklist(); }
