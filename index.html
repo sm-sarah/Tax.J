@@ -346,12 +346,23 @@
     color:var(--ink-soft); border-radius:20px; box-shadow:0 1px 2px rgba(29,30,51,0.05);
   }
   .policy-category-toggle button.active{color:#fff; background:var(--guide-slate);}
-  /* 신고현황 하위의 원천세/부가세/법인세/종소세 칩이 상위 신고현황/결재 칩과 완전히 같은 스타일이라
-     하위메뉴로 안 보이고 나란히 노출된 것처럼 보인다는 피드백 - 옅은 배경 트랙 안에 작은 세그먼트 형태로 넣어서
-     "신고현황 아래 딸린 하위 선택"이라는 게 한눈에 구분되게 함 */
-  #filingTypeToggle{ background:var(--bg); border-radius:14px; padding:5px; gap:3px; display:inline-flex; }
-  #filingTypeToggle button{ font-size:12px; padding:6px 16px; box-shadow:none; background:transparent; }
-  #filingTypeToggle button.active{ background:var(--surface); color:var(--indigo-deep); box-shadow:0 1px 3px rgba(29,30,51,0.12); }
+  /* 신고현황 하위의 원천세/부가세/법인세/종소세 칩이 상위 신고현황/검토표/결재 칩과 완전히 같은 스타일이라
+     하위메뉴로 안 보이고 나란히 노출된 것처럼 보인다는 피드백이 계속 있었음 - 상위 3개 카테고리는 세로로
+     쌓은 칩으로 두고, 활성 카테고리 아래에서만 왼쪽 세로선을 따라 가지처럼 뻗어나가는 밑줄 텍스트 목록으로
+     바꿔서(칩 스타일 완전히 제거) "상위 카테고리 / 그 아래 딸린 세목"이라는 위계가 마인드맵처럼 한눈에 보이게 함 */
+  .approval-nav-branch{ display:flex; flex-direction:column; align-items:flex-start; }
+  .approval-subtype-branch{
+    display:flex; flex-direction:column; align-items:flex-start; gap:2px;
+    margin:6px 0 8px 20px; padding-left:14px; border-left:2px solid var(--border);
+  }
+  .approval-subtype-branch .filing-type-btn, .approval-subtype-branch .review-type-btn{
+    background:none; border:none; box-shadow:none; padding:4px 2px;
+    font-family:'Pretendard', sans-serif; font-size:12.5px; font-weight:700;
+    color:var(--ink-soft); text-decoration:underline; text-underline-offset:3px; cursor:pointer;
+  }
+  .approval-subtype-branch .filing-type-btn.active, .approval-subtype-branch .review-type-btn.active{
+    color:var(--indigo-deep);
+  }
   /* 백업복구의 회사공통/전체직원/직원선택 3칩은 흰 배경 위에서 눈에 잘 안 띄어서 - 안 눌린 상태도 옅은 배경+테두리로
      칩처럼 보이게 하고, 눌린 상태는 indigo로 뚜렷하게 구분함. 3개 폭도 맞춰서 나란히 균일하게 보이도록 함 */
   .backup-scope-btn{ background:var(--bg) !important; color:var(--ink-soft) !important; border:1.5px solid var(--border) !important; min-width:88px; text-align:center; }
@@ -1911,15 +1922,17 @@
           </div>
         </div>
         <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
-          <div class="field" style="flex:2 1 200px;"><label>상호명</label><input type="text" id="cl-name" required placeholder="예: (주)청인상사"></div>
-          <div class="field" style="flex:1 1 110px;"><label>사업자 구분</label>
+          <div class="field" style="flex:2 1 200px;"><label style="display:flex; align-items:center; min-height:20px;">상호명</label><input type="text" id="cl-name" required placeholder="예: (주)청인상사"></div>
+          <div class="field" style="flex:1 1 110px;"><label style="display:flex; align-items:center; min-height:20px;">사업자 구분</label>
             <select id="cl-entity-type">
               <option value="법인">법인</option>
               <option value="개인">개인</option>
             </select>
           </div>
+          <!-- "이력" 칩 버튼이 라벨 안에 같이 들어있어서 이 라벨만 다른 두 라벨(상호명/사업자 구분)보다 높이가 커지고,
+               그만큼 아래 "선택 안 함" 버튼이 옆의 입력칸들보다 아래로 처져 보였음 - 세 라벨 모두 같은 min-height로 맞춤 -->
           <div class="field" style="flex:1 1 160px;">
-            <label style="display:flex; align-items:center; gap:6px;">상세구분
+            <label style="display:flex; align-items:center; gap:6px; min-height:20px;">상세구분
               <button type="button" id="clSubtagHistoryChip" class="del-btn" style="padding:2px 8px; font-size:10.5px; font-weight:700;" title="상세구분 이력 조회">🕐 이력</button>
             </label>
             <button type="button" id="cl-subtag-trigger" class="cl-subtag-trigger-btn">선택 안 함</button>
@@ -2124,21 +2137,32 @@
       <div class="policy-locked-text">Google 계정으로 로그인해야 볼 수 있어요.<br>홈 화면의 로그인 버튼을 눌러주세요.</div>
     </div>
     <div id="approvalContent">
-      <div class="policy-category-toggle" id="approvalCatToggle" style="margin-bottom:20px;">
-        <button type="button" class="approval-cat-btn active" data-approval-cat="status">📋 신고현황</button>
-        <button type="button" class="approval-cat-btn" data-approval-cat="review">🔍 검토표</button>
-        <button type="button" class="approval-cat-btn" data-approval-cat="doc">🖋️ 결재</button>
+      <div class="policy-category-toggle" id="approvalCatToggle" style="flex-direction:column; align-items:flex-start; gap:4px; margin-bottom:20px;">
+        <div class="approval-nav-branch">
+          <button type="button" class="approval-cat-btn active" data-approval-cat="status">📋 신고현황</button>
+          <div class="approval-subtype-branch" id="filingTypeToggle">
+            <button type="button" class="filing-type-btn active" data-filing-type="원천세">원천세</button>
+            <button type="button" class="filing-type-btn" data-filing-type="부가세">부가세</button>
+            <button type="button" class="filing-type-btn" data-filing-type="법인세">법인세</button>
+            <button type="button" class="filing-type-btn" data-filing-type="종소세">종소세</button>
+            <button type="button" class="filing-type-btn" data-filing-type="결산">결산</button>
+          </div>
+        </div>
+        <div class="approval-nav-branch">
+          <button type="button" class="approval-cat-btn" data-approval-cat="review">🔍 검토표</button>
+          <div class="approval-subtype-branch" id="reviewTypeToggle" style="display:none;">
+            <button type="button" class="review-type-btn active" data-filing-type="원천세">원천세</button>
+            <button type="button" class="review-type-btn" data-filing-type="부가세">부가세</button>
+          </div>
+        </div>
+        <div class="approval-nav-branch">
+          <button type="button" class="approval-cat-btn" data-approval-cat="doc">🖋️ 결재</button>
+        </div>
       </div>
 
-      <!-- 신고현황: 원천세/부가세/법인세/종소세/결산별 진행상태 -->
+      <!-- 신고현황: 원천세/부가세/법인세/종소세/결산별 진행상태 (세목 선택 칩은 위 approvalCatToggle 트리 안,
+           신고현황 밑에 가지로 붙어있음 - #filingTypeToggle) -->
       <div class="approval-panel" data-approval-cat="status">
-        <div class="policy-category-toggle" id="filingTypeToggle" style="margin-bottom:14px;">
-          <button type="button" class="filing-type-btn active" data-filing-type="원천세">원천세</button>
-          <button type="button" class="filing-type-btn" data-filing-type="부가세">부가세</button>
-          <button type="button" class="filing-type-btn" data-filing-type="법인세">법인세</button>
-          <button type="button" class="filing-type-btn" data-filing-type="종소세">종소세</button>
-          <button type="button" class="filing-type-btn" data-filing-type="결산">결산</button>
-        </div>
         <h2 class="section-title" style="justify-content:center; font-size:22px; margin:4px 0 14px;" id="filingStatusTitle">원천세 신고현황</h2>
         <div id="filingPeriodControls" style="display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
           <div class="policy-category-toggle" id="filingPeriodModeToggle" style="display:none; margin-bottom:0;">
@@ -2160,12 +2184,9 @@
         </button>
       </div>
 
-      <!-- 검토표: 신고현황과 동일한 구성이지만 원천세/부가세만, 신고 전 단계 검토용(신고현황과는 별도 데이터) -->
+      <!-- 검토표: 신고현황과 동일한 구성이지만 원천세/부가세만, 신고 전 단계 검토용(신고현황과는 별도 데이터).
+           세목 선택 칩은 위 approvalCatToggle 트리 안, 검토표 밑에 가지로 붙어있음 - #reviewTypeToggle -->
       <div class="approval-panel" data-approval-cat="review" style="display:none;">
-        <div class="policy-category-toggle" id="reviewTypeToggle" style="margin-bottom:14px;">
-          <button type="button" class="review-type-btn active" data-filing-type="원천세">원천세</button>
-          <button type="button" class="review-type-btn" data-filing-type="부가세">부가세</button>
-        </div>
         <h2 class="section-title" style="justify-content:center; font-size:22px; margin:4px 0 14px;" id="reviewStatusTitle">원천세 검토표</h2>
         <div id="reviewPeriodControls" style="display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
           <div class="policy-category-toggle" id="reviewPeriodModeToggle" style="display:none; margin-bottom:0;">
@@ -10020,6 +10041,11 @@ document.querySelectorAll('.approval-cat-btn').forEach(btn=>{
     document.querySelectorAll('#approvalContent > .approval-panel[data-approval-cat]').forEach(p=>{
       p.style.display = (p.dataset.approvalCat === cat) ? 'block' : 'none';
     });
+    // 세목 가지(원천세 등)는 이제 해당 상위 카테고리 칩 바로 밑에 붙어있으므로, 그 카테고리가 활성일 때만 펼쳐 보이게 함
+    const filingBranch = document.getElementById('filingTypeToggle');
+    const reviewBranch = document.getElementById('reviewTypeToggle');
+    if(filingBranch) filingBranch.style.display = (cat === 'status') ? 'flex' : 'none';
+    if(reviewBranch) reviewBranch.style.display = (cat === 'review') ? 'flex' : 'none';
     if(cat === 'status') renderFilingStatusTable('status');
     else if(cat === 'review') renderFilingStatusTable('review');
     else if(cat === 'help'){ populateFilingHelpClientSelect(); renderFilingHelpChecklist(); }
