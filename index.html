@@ -79,14 +79,23 @@
   .app-top-icon-bar{
     display:flex; align-items:center; gap:8px; flex-wrap:wrap;
     max-width:1800px; margin:0 auto; padding:14px 18px 0;
-    position:sticky; top:0; z-index:500;
+    position:sticky; top:0; z-index:500; min-height:46px; /* position:sticky도 absolute 자식의 위치 기준이 됨 - Tax.J 브랜드를 가운데 절대좌표로 띄울 기준 높이 확보 */
   }
   #navUtilityGroup{
     display:inline-flex; flex-direction:row; align-items:center; gap:8px;
     background:none; padding:0; border-radius:0;
   }
-  /* 홈 아이콘만 줄 오른쪽 끝으로 분리 - 유틸리티 아이콘 묶음과는 별개로 오른쪽 위 구석에 배치 */
+  /* 홈 아이콘 묶음만 줄 오른쪽 끝으로 분리 - 유틸리티 아이콘 묶음과는 별개로 오른쪽 위 구석에 배치.
+     로그인 아이콘(quickConnectBtn)도 relocateSidebarNodes()가 이 묶음 맨 앞(홈 아이콘 바로 왼쪽)으로 옮겨옴 */
   #appTopIconBar #navHomeGroup{ margin-left:auto; }
+  /* Tax.J 브랜드(로고+이름) - 좌우 아이콘 묶음 폭이 서로 달라도 항상 줄 정가운데에 오도록 절대좌표로 띄움.
+     로그인 화면의 로고를 재사용하되, 배경 없이 이름 글자와 나란히 붙는 작은 가로형 로고타입으로 축소 */
+  #appTopBrand{
+    position:absolute; left:50%; top:50%; transform:translate(-50%, -50%);
+    display:flex; align-items:center; gap:8px; white-space:nowrap; pointer-events:none;
+  }
+  #appTopBrand span{ font-size:21px; font-weight:800; letter-spacing:-0.02em; color:var(--navy); }
+  @media (max-width:700px){ #appTopBrand{ position:static; transform:none; order:-1; width:100%; justify-content:center; margin-bottom:6px; } }
   .num{font-family:'IBM Plex Mono', monospace; font-weight:700; letter-spacing:-0.02em;}
 
   .masthead{
@@ -201,19 +210,24 @@
   .home-tile-icon{font-size:17px; width:24px; height:24px; line-height:24px; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-bottom:0;}
   .home-tile-title{font-weight:700; font-size:13.5px; color:var(--ink); margin-bottom:0;}
   /* Company/Staff/Client 하위메뉴는 아이콘·칩 느낌 대신 메뉴명 텍스트 위주의 차분한 스타일로 - 즐겨찾기 칩(.home-tile)과는 구분 */
+  /* 메뉴명 왼쪽 점 불릿 대신, 마우스를 올렸을 때만 살짝 나타나는 얇은 컬러 바로 바꿔서 더 정돈되고
+     고급스러운 느낌을 줌 - 평소엔 점 없이 깔끔한 텍스트 목록으로만 보이다가 hover 시에만 포인트 컬러가 드러남 */
   .home-tile.home-tile-plain{
-    background:transparent; border-left:none; border-radius:0; padding:6px 6px;
-    box-shadow:none; border-bottom:1px solid var(--border);
+    background:transparent; border-left:none; border-radius:6px; padding:6px 6px 6px 13px;
+    box-shadow:none; border-bottom:1px solid var(--border); position:relative;
+    transition:background 0.15s, padding-left 0.15s;
+  }
+  .home-tile.home-tile-plain::before{
+    content:''; position:absolute; left:1px; top:50%; transform:translateY(-50%);
+    width:3px; height:0; border-radius:3px; background:var(--tile-accent, var(--indigo));
+    transition:height 0.15s;
   }
   .home-tile.home-tile-plain:last-child{ border-bottom:none; }
-  .home-tile.home-tile-plain:hover{ transform:none; box-shadow:none; background:rgba(29,30,51,0.035); }
+  .home-tile.home-tile-plain:hover{ transform:none; box-shadow:none; background:rgba(29,30,51,0.045); padding-left:17px; }
+  .home-tile.home-tile-plain:hover::before{ height:60%; }
   .home-tile.home-tile-plain .home-tile-icon{ display:none; }
   .home-tile.home-tile-plain .home-tile-title{
-    font-weight:700; font-size:14px; letter-spacing:0.01em; color:var(--ink); position:relative; padding-left:15px;
-  }
-  .home-tile.home-tile-plain .home-tile-title::before{
-    content:''; position:absolute; left:0; top:50%; transform:translateY(-50%);
-    width:6px; height:6px; border-radius:50%; background:var(--tile-accent, var(--indigo));
+    font-weight:700; font-size:14px; letter-spacing:0.01em; color:var(--ink);
   }
   /* 즐겨찾기 줄만 예전 카드형(.home-tile) 스타일이라 패딩·그림자·둥근모서리가 커서 바로 아래 Company/Staff/Client의
      납작한 리스트(.home-tile-plain)와 여백 차이가 두드러졌음 - 즐겨찾기도 같은 납작한 리스트 스타일로 통일함 */
@@ -234,9 +248,8 @@
   /* 설정 하위칩(직원등록/직원현황 등)은 눌렀을 때 팝업이 뜨는 단순 메뉴라서, 홈 화면 목록만큼
      줄 사이 여백·구분선·점 불릿을 크게 둘 필요가 없음 - 줄 간격 없이 촘촘하게, 구분선도 없앰 */
   .settings-subsection-chip-row{ gap:0; }
-  .settings-subsection-chip-row .home-tile.home-tile-plain{ padding:5px 6px; border-bottom:none; }
-  .settings-subsection-chip-row .home-tile.home-tile-plain .home-tile-title{ padding-left:12px; }
-  .settings-subsection-chip-row .home-tile.home-tile-plain .home-tile-title::before{ width:5px; height:5px; }
+  .settings-subsection-chip-row .home-tile.home-tile-plain{ padding:5px 6px 5px 12px; border-bottom:none; }
+  .settings-subsection-chip-row .home-tile.home-tile-plain:hover{ padding-left:15px; }
   .home-fav-picker-item{
     display:flex; align-items:center; gap:0; padding:6px 6px; cursor:pointer;
     border-bottom:1px solid var(--border);
@@ -325,7 +338,9 @@
   .card-sub{font-size:11px; color:var(--ink-soft); margin-top:4px; min-height:14px; font-weight:500;}
   /* 근태현황 카드(연차/휴가/재택근무) 전용 - 아이콘을 왼쪽에 세로로 걸치는 기본 카드 레이아웃 대신,
      라벨(굵게, 크게) - 아이콘+일수 - 부연설명 순으로 가운데 정렬해 쌓음. 카드 오른쪽에 남는 여백이 많아서 이 구성이 더 잘 어울림 */
-  .card.card-hero{ display:block; text-align:center; }
+  /* 근태현황(3칸, card-sub 문구 있음) 카드가 경비정산(5칸, card-sub 없음) 카드보다 내용이 많아 배경 칩 높이가
+     서로 달라 보였음 - 두 그룹 모두 같은 최소 높이를 갖게 해서 칩 세로 폭을 맞춤 */
+  .card.card-hero{ display:block; text-align:center; min-height:118px; }
   .card.card-hero .card-label{ grid-column:auto; grid-row:auto; font-size:14px; font-weight:800; color:var(--ink); margin-bottom:8px; }
   .card.card-hero .card-icon-value{ display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:2px; }
   .card.card-hero .card-icon{ grid-column:auto; grid-row:auto; width:32px; height:32px; font-size:16px; margin-bottom:0; }
@@ -1402,13 +1417,6 @@
     </div>
   </div>
 </div>
-<!-- 캘린더 상단 📅 아이콘용 연/월 선택 팝업 - 예전엔 브라우저 기본 달력 팝업(input[type=month].showPicker())을 그대로 썼는데,
-     그 안에 브라우저가 자체적으로 넣어주는 "지우기(X)" 버튼이 삭제 버튼처럼 보인다는 문의가 있어서, 자체 제작한
-     연도/월 드롭다운으로 대체함(개인캘린더·팀캘린더 공용, 열릴 때마다 대상 input을 바꿔가며 재사용) -->
-<div id="calMonthPickerPopup" style="display:none; position:fixed; z-index:9999; background:var(--surface); border:1.5px solid var(--border); border-radius:12px; box-shadow:0 8px 24px -4px rgba(29,30,51,0.28); padding:8px; gap:6px;">
-  <select id="calMonthPickerYearSel" class="settings-ctrl" style="width:84px;"></select>
-  <select id="calMonthPickerMonthSel" class="settings-ctrl" style="width:64px;"></select>
-</div>
 <!-- 신고현황은 저장 버튼 없이 자동저장되는데, 표가 길어지면 위쪽의 "저장됨" 문구가 스크롤 밖으로 벗어나
      안 보일 수 있어서, 화면 하단에 항상 고정으로 뜨는 저장 확인 토스트를 별도로 둠 -->
 <div id="filingStatusSaveToast" style="opacity:0; transition:opacity 0.25s; pointer-events:none; position:fixed; left:50%; bottom:28px; transform:translateX(-50%); background:var(--navy); color:#fff; font-size:12.5px; font-weight:800; padding:9px 18px; border-radius:20px; box-shadow:0 8px 20px -6px rgba(20,24,50,0.5); z-index:9999;"></div>
@@ -1445,8 +1453,15 @@
   </div>
 </div>
 <!-- 홈~휴지통 아이콘 줄 - 카드(.app) 안 사이드바에 있던 걸 카드 밖으로 옮겨서 배경과 분리시킴.
-     내용물(홈 아이콘 그룹, 메일~휴지통 아이콘 그룹)은 relocateSidebarNodes()가 실제 노드를 그대로 옮겨 채움 -->
-<div id="appTopIconBar" class="app-top-icon-bar"></div>
+     내용물(홈 아이콘 그룹, 메일~휴지통 아이콘 그룹)은 relocateSidebarNodes()가 실제 노드를 그대로 옮겨 채움.
+     Tax.J 브랜드(로고+이름)는 예전엔 홈 탭 안에서만 보이는 배너였는데, 이제 이 줄 가운데에 항상 고정으로
+     떠 있게 함 - 부연설명 문구·로그인 버튼은 아이콘 줄의 메뉴/로그인 아이콘과 중복돼서 뺐음 -->
+<div id="appTopIconBar" class="app-top-icon-bar">
+  <div id="appTopBrand">
+    <img src="data:image/jpeg;base64,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" alt="Tax.J" style="height:28px; width:auto; display:block; mix-blend-mode:multiply;">
+    <span>Tax.J</span>
+  </div>
+</div>
 <div class="app">
 
   <nav class="tabs">
@@ -1516,16 +1531,6 @@
     <aside class="app-sidebar" id="appSidebar"></aside>
     <div class="app-main">
 
-  <!-- Dashboard와 같은 가운데정렬 기준(.app-main 폭) 안에 있어야 진짜 가운데로 보임 - 사이드바를 뺀
-       전체 카드(.app) 기준으로 가운데 정렬돼 있으면 사이드바 폭만큼 시각적으로 오른쪽에 치우쳐 보였음 -->
-  <div id="landingHeader" style="margin-bottom:20px;">
-    <div style="display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;">
-      <div style="font-size:38px; font-weight:800; letter-spacing:-0.02em; color:var(--ink);">Tax.J</div>
-      <button type="button" id="landingConnectBtn" style="background:none; border:none; color:var(--indigo-deep); padding:6px 4px; font-size:13px; font-weight:700; font-family:'Pretendard',sans-serif; cursor:pointer; display:inline-flex; align-items:center; gap:4px; margin-top:6px;">🔑 로그인</button>
-    </div>
-    <p class="hint" style="font-size:12.5px; color:var(--ink-soft); margin:8px 0 0; text-align:center;">아래 메뉴를 눌러 원하는 화면으로 이동하세요.</p>
-  </div>
-
   <!-- 설정 아이콘 클릭 시 컴패니/스태프 선택 팝업 - nav(backdrop-filter로 새 컨테이닝 블록 생김) 밖에 둬서 position:fixed가 화면 기준으로 정확히 중앙에 뜨게 함 -->
   <div id="megaSettingsChooserOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
     <div style="background:var(--surface); border-radius:16px; padding:24px 26px; max-width:360px; width:100%; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4); text-align:center;">
@@ -1545,6 +1550,29 @@
     <div class="home-dashboard-layout">
       <!-- 기존 바로가기 메뉴 전체를 왼쪽 사이드바로 묶음 -->
       <div class="home-menu-col">
+        <!-- Client(거래처 관련 메뉴)를 가장 많이 쓸 것 같아서 맨 위로 올림 -->
+        <div class="home-section-row">
+          <div class="home-section-label">🤝 Client</div>
+          <div class="home-tiles" id="homeTilesClient">
+            <div class="home-tile home-tile-plain" data-goto="clients-regular" style="--tile-accent:var(--coral);">
+              <div class="home-tile-icon">📗</div>
+              <div class="home-tile-title">기장거래처</div>
+            </div>
+            <div class="home-tile home-tile-plain" data-goto="clients-other" style="--tile-accent:var(--amber);">
+              <div class="home-tile-icon">📂</div>
+              <div class="home-tile-title">기타거래처</div>
+            </div>
+            <div class="home-tile home-tile-plain" data-goto="clients-terminated" style="--tile-accent:var(--guide-slate);">
+              <div class="home-tile-icon">🚫</div>
+              <div class="home-tile-title">해지거래처</div>
+            </div>
+            <div class="home-tile home-tile-plain" data-goto="clients-edit" style="--tile-accent:var(--navy);">
+              <div class="home-tile-icon">🆕</div>
+              <div class="home-tile-title">거래처등록</div>
+            </div>
+          </div>
+        </div>
+
         <div class="home-section-row">
           <div class="home-section-label">🏢 Company</div>
           <div class="home-tiles" id="homeTilesCompany">
@@ -1581,28 +1609,6 @@
             <div class="home-tile home-tile-plain" data-goto="attendance" style="--tile-accent:var(--indigo);">
               <div class="home-tile-icon">⏰</div>
               <div class="home-tile-title">근태 및 경비</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="home-section-row">
-          <div class="home-section-label">🤝 Client</div>
-          <div class="home-tiles" id="homeTilesClient">
-            <div class="home-tile home-tile-plain" data-goto="clients-regular" style="--tile-accent:var(--coral);">
-              <div class="home-tile-icon">📗</div>
-              <div class="home-tile-title">기장거래처</div>
-            </div>
-            <div class="home-tile home-tile-plain" data-goto="clients-other" style="--tile-accent:var(--amber);">
-              <div class="home-tile-icon">📂</div>
-              <div class="home-tile-title">기타거래처</div>
-            </div>
-            <div class="home-tile home-tile-plain" data-goto="clients-terminated" style="--tile-accent:var(--guide-slate);">
-              <div class="home-tile-icon">🚫</div>
-              <div class="home-tile-title">해지거래처</div>
-            </div>
-            <div class="home-tile home-tile-plain" data-goto="clients-edit" style="--tile-accent:var(--navy);">
-              <div class="home-tile-icon">🆕</div>
-              <div class="home-tile-title">거래처등록</div>
             </div>
           </div>
         </div>
@@ -1774,7 +1780,7 @@
           <div class="card-value num" id="etcExpenseTotalDisplay">0원</div>
         </div>
       </div>
-      <div class="card card-hero" style="border-top-color:#64748B;">
+      <div class="card card-hero" style="--accent:#64748B; border-top-color:var(--accent);">
         <div class="card-label" style="display:flex; align-items:center; justify-content:center; gap:4px;">
           <span>차액정산</span>
           <button type="button" class="expense-history-icon-btn" data-kinds="prepaid" data-title="차액정산 이력" title="차액정산 이력" style="border:none; background:none; cursor:pointer; padding:0; font-size:11px; line-height:1;">🕐</button>
@@ -4456,63 +4462,27 @@ function sizeMonthPickerInputToContent(el){
   const textWidth = ctx.measureText(displayText).width;
   el.style.width = Math.max(100, Math.ceil(textWidth * 1.08 + 38)) + 'px'; // *1.08: 폰트 렌더링 오차 여유, +38: 달력 아이콘 폭 + 좌우 여백
 }
-function calMonthPickerYearList(){
-  const nowY = Number(todayStr().slice(0,4));
-  const years = [];
-  for(let y = nowY+1; y >= nowY-6; y--) years.push(y);
-  return years;
-}
-function openMonthPicker(inputId, anchorEl){
+// 자체 제작한 연/월 드롭다운 팝업 대신, 다시 브라우저 기본 달력 팝업(input[type=month].showPicker())으로 되돌림 -
+// 아이콘을 누르면 타이틀 자리 근처로 화면 밖에 숨겨뒀던 보조 input을 잠깐 옮겨서 showPicker를 호출하고,
+// 값을 고르거나 포커스를 벗어나면(change/blur) hideMonthPickerInput이 다시 화면 밖으로 돌려놓음
+function openNativeMonthPicker(inputId, anchorEl){
   const input = document.getElementById(inputId);
-  const popup = document.getElementById('calMonthPickerPopup');
-  if(!input || !popup) return;
-  const [curY, curM] = (input.value || todayStr().slice(0,7)).split('-');
-  const yearSel = document.getElementById('calMonthPickerYearSel');
-  const monthSel = document.getElementById('calMonthPickerMonthSel');
-  yearSel.innerHTML = calMonthPickerYearList().map(y=>`<option value="${y}" ${String(y)===curY?'selected':''}>${y}년</option>`).join('');
-  monthSel.innerHTML = Array.from({length:12}, (_,i)=>String(i+1).padStart(2,'0'))
-    .map(mm=>`<option value="${mm}" ${mm===curM?'selected':''}>${Number(mm)}월</option>`).join('');
-  popup.dataset.targetInput = inputId;
+  if(!input) return;
   if(anchorEl){
     const rect = anchorEl.getBoundingClientRect();
-    popup.style.left = rect.left + 'px';
-    popup.style.top = (rect.bottom + 6) + 'px';
+    input.style.position = 'fixed';
+    input.style.left = rect.left + 'px';
+    input.style.top = (rect.bottom + 6) + 'px';
+    input.style.opacity = '0';
+    input.style.pointerEvents = 'none';
   }
-  popup.style.display = 'flex';
+  try{ input.showPicker(); }catch(err){ input.focus(); }
 }
-// 연도나 월을 고르면 바로 적용 - 기존 change 이벤트 흐름(상단 #monthSelect 동기화, 화면 다시 그리기 등)을
-// 그대로 재사용하기 위해 값만 채워넣고 change 이벤트를 발생시킴(아래쪽에 이미 있는 change 리스너가 나머지를 처리함)
-function applyCustomMonthPicker(){
-  const popup = document.getElementById('calMonthPickerPopup');
-  const inputId = popup && popup.dataset.targetInput;
-  const input = inputId && document.getElementById(inputId);
-  if(!input) return;
-  const y = document.getElementById('calMonthPickerYearSel').value;
-  const m = document.getElementById('calMonthPickerMonthSel').value;
-  if(!y || !m) return;
-  input.value = `${y}-${m}`;
-  input.dispatchEvent(new Event('change', { bubbles:true }));
-  // 연도만 먼저 바꾸고 이어서 월도 고를 수 있도록, 값을 바꿀 때마다 바로 반영은 하되 팝업은 계속 열어둠 -
-  // 팝업을 닫는 건 아래 바깥 클릭 리스너가 담당함
-}
-document.getElementById('calMonthPickerYearSel')?.addEventListener('change', applyCustomMonthPicker);
-document.getElementById('calMonthPickerMonthSel')?.addEventListener('change', applyCustomMonthPicker);
-document.addEventListener('click', (e)=>{
-  const popup = document.getElementById('calMonthPickerPopup');
-  if(!popup || popup.style.display === 'none') return;
-  if(popup.contains(e.target)) return;
-  popup.style.display = 'none';
-});
-// 예전엔 큰 월 타이틀 글자를 눌러도 달력 아이콘과 똑같이 월 선택 팝업이 열렸는데, 그러다보니 타이틀에
-// (클릭 가능하다는) 마우스오버 배경 블록까지 씌워지면서 아이콘과 기능이 겹쳐 보여 혼란스러웠음 -
-// 월 선택은 📅 아이콘 하나로만 열리게 하고, 타이틀 글자 자체는 클릭 대상에서 뺌(아래 cal-title-big 커서/호버 스타일도 함께 제거)
 // 보조 month input이 화면에 잠깐 떠 있는 동안(position:fixed) 스크롤하면 타이틀과 따로 놀며 붕 떠 보이는 문제 방지 -
 // 스크롤이 시작되면 바로 화면 밖으로 되돌림 (그 사이에 값을 고르는 중이었다면 change 이벤트가 먼저 처리된 뒤라 문제 없음)
 window.addEventListener('scroll', ()=>{
   hideMonthPickerInput(document.getElementById('calMonthSelectProxy'));
   hideMonthPickerInput(document.getElementById('teamCalMonthSelect'));
-  const calMonthPopup = document.getElementById('calMonthPickerPopup');
-  if(calMonthPopup) calMonthPopup.style.display = 'none';
 }, { passive:true, capture:true });
 // 상단 네비(.tabs)가 position:sticky로 화면 위에 항상 떠있기 때문에, 거래처 표의 sticky 헤더도 top:0이 아니라
 // 이 네비 높이만큼 아래로 내려서 붙어야 서로 겹쳐 가려지지 않음 - 네비 실제 높이를 재서 CSS 변수로 넘겨줌
@@ -4534,9 +4504,9 @@ function updateTeamCalHeader(){
   // 헤더를 다시 그릴 때마다 보조 month input을 화면 밖으로 강제로 되돌려서, change/blur를 놓쳐 작은 상자가 남아있는 문제를 방지함
   hideMonthPickerInput(document.getElementById('teamCalMonthSelect'));
 }
-// 캘린더 헤더의 좌우 화살표를 없애고 📅 아이콘 하나로 통일 - 한달씩 넘기지 않고 아이콘 클릭시 바로 월/연도 선택 팝업(openMonthPicker)이 뜸
-document.getElementById('calMonthPickerBtn')?.addEventListener('click', (e)=>{ e.stopPropagation(); openMonthPicker('calMonthSelectProxy', document.getElementById('calMonthTitleBig')); });
-document.getElementById('teamCalMonthPickerBtn')?.addEventListener('click', (e)=>{ e.stopPropagation(); openMonthPicker('teamCalMonthSelect', document.getElementById('teamCalMonthTitleBig')); });
+// 캘린더 헤더의 좌우 화살표를 없애고 📅 아이콘 하나로 통일 - 한달씩 넘기지 않고 아이콘 클릭시 바로 브라우저 기본 달력 팝업이 뜸
+document.getElementById('calMonthPickerBtn')?.addEventListener('click', (e)=>{ e.stopPropagation(); openNativeMonthPicker('calMonthSelectProxy', document.getElementById('calMonthTitleBig')); });
+document.getElementById('teamCalMonthPickerBtn')?.addEventListener('click', (e)=>{ e.stopPropagation(); openNativeMonthPicker('teamCalMonthSelect', document.getElementById('teamCalMonthTitleBig')); });
 
 // 개인일정+휴가+재택근무 통합 등록 팝업 - 근태 탭의 "휴가·재택근무 추가"와 캘린더 탭의 "일정 추가"를 이 팝업 하나로 통합
 function updateCalRegisterTypeFields(){
@@ -5997,10 +5967,13 @@ function openClFeeMonthPopup(anchorEl){
   const popup = document.getElementById('clFeeMonthPopup');
   if(!popup) return;
   renderClientFeeMonthSummary();
-  const rect = anchorEl.getBoundingClientRect();
-  popup.style.left = Math.max(8, rect.right - 170) + 'px';
-  popup.style.top = (rect.bottom + 6) + 'px';
   popup.style.display = 'block';
+  const rect = anchorEl.getBoundingClientRect();
+  // 예전엔 팝업 오른쪽 끝을 아이콘에 맞춰서 아이콘 기준 왼쪽으로 넓게 펼쳐지다보니 앞쪽 열(사업자번호 등)을
+  // 가려버렸음 - 아이콘 왼쪽 끝에 맞춰 오른쪽으로 펼쳐지게 바꿔서 표 앞쪽을 가리지 않게 함
+  const popupWidth = popup.offsetWidth || 170;
+  popup.style.left = Math.min(rect.left, window.innerWidth - popupWidth - 8) + 'px';
+  popup.style.top = (rect.bottom + 6) + 'px';
 }
 document.addEventListener('click', (e)=>{
   const popup = document.getElementById('clFeeMonthPopup');
@@ -7369,7 +7342,8 @@ const STAFF_TABS = ['calendar','attendance'];
 const CLIENT_TABS = ['clients-regular','clients-other','clients-edit','clients-terminated','clients-settings'];
 
 function updateNavVisibility(){
-  document.getElementById('landingHeader').style.display = navExpanded ? 'none' : 'block';
+  // Tax.J 브랜드 타이틀은 이제 카드 밖 상단 아이콘 줄에 항상 떠 있어서, 예전처럼 홈 탭에서만
+  // 보였다가 다른 탭에서 숨는 방식이 아니라 모든 탭에서 항상 보임(그래서 여기서 더 이상 표시 여부를 건드리지 않음)
   document.getElementById('navCollapsedRow').style.display = navExpanded ? 'none' : 'flex';
   document.getElementById('navExpandedRow1').style.display = navExpanded ? 'flex' : 'none';
   updateSubRows();
@@ -7686,6 +7660,10 @@ function relocateSidebarNodes(){
   // ⚙️ 설정 아이콘 대신 사이드바의 "⚙️ Settings" 목록(회사/직원/설정/데이터)으로 들어가므로,
   // 유틸리티 아이콘 묶음 안에서 이 버튼만 숨김(묶음 자체는 그대로 옮겨지므로 DOM은 유지되고 안 보이기만 함)
   if(settingsBtn) settingsBtn.style.display = 'none';
+  // 로그인 상태 아이콘(🔌 quickConnectBtn)은 메일~휴지통 묶음 대신, 훨씬 자주 보게 될 홈 아이콘 바로
+  // 왼쪽으로 옮겨서 한 묶음으로 보이게 함(로그인 여부가 다른 유틸리티 기능들보다 눈에 잘 띄는 자리가 어울림)
+  const quickConnectBtn = document.getElementById('quickConnectBtn');
+  if(quickConnectBtn) homeGroup.insertBefore(quickConnectBtn, homeGroup.firstChild);
   if(homeMenuCol) sidebar.appendChild(homeMenuCol);
 }
 relocateSidebarNodes();
@@ -11488,12 +11466,6 @@ function showAppLoginGate(){
 
 function updateQuickConnectBtn(){
   const connected = !!gdriveAccessToken;
-  const landingBtn = document.getElementById('landingConnectBtn');
-  if(landingBtn){
-    landingBtn.style.color = connected ? '#16A34A' : 'var(--indigo-deep)';
-    landingBtn.textContent = connected ? '✅ 연결' : '🔑 로그인';
-    landingBtn.title = connected ? '클릭해서 로그아웃' : 'Google 계정 연결 안 됨 · 클릭해서 로그인';
-  }
   const quickBtn = document.getElementById('quickConnectBtn');
   if(quickBtn){
     quickBtn.style.background = connected ? '#16A34A' : 'var(--indigo)';
@@ -12078,18 +12050,6 @@ document.getElementById('loginGateConnectBtn').addEventListener('click', ()=>{
   } else {
     gdriveConnect(false);
   }
-});
-document.getElementById('landingConnectBtn').addEventListener('click', ()=>{
-  if(gdriveAccessToken){
-    gdriveLogout();
-    return;
-  }
-  const mainField = document.getElementById('gdrive-client-id');
-  if(!mainField.value.trim()){
-    alert('아직 Google OAuth 클라이언트 ID가 없어요. 관리자에게 문의해주세요.');
-    return;
-  }
-  gdriveConnect(false);
 });
 document.getElementById('gdriveConnectBtnLocked').addEventListener('click', ()=>{
   const mainField = document.getElementById('gdrive-client-id');
