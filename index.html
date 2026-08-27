@@ -74,8 +74,42 @@
      실제 가장 긴 메뉴명(예: "근태 및 경비") 기준으로만 넓어지고, 나머지 줄의 여백은 그만큼만 남게 함 */
   .home-section-row{
     display:flex; flex-direction:column; gap:6px;
-    width:fit-content; max-width:100%; margin:0 auto 12px;
+    width:fit-content; max-width:100%; margin:0 0 12px;
   }
+  /* 홈 화면을 대시보드 레이아웃으로 바꾸면서, 기존 즐겨찾기/Company/Staff/Client 메뉴는 왼쪽 사이드바로
+     붙이고 오른쪽에 4분할 미리보기 카드를 새로 둠. 화면이 좁아지면(모바일) 왼쪽 메뉴가 위로, 대시보드가
+     아래로 자연스럽게 쌓이도록 flex-wrap을 씀 */
+  .home-dashboard-layout{ display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap; }
+  .home-menu-col{ flex:0 0 auto; }
+  .home-dashboard-col{ flex:1 1 420px; min-width:280px; }
+  .home-dashboard-title{ font-size:26px; font-weight:800; letter-spacing:-0.02em; color:var(--ink); margin:0 0 14px; }
+  .home-dashboard-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:640px){ .home-dashboard-grid{ grid-template-columns:1fr; } }
+  .home-dash-card{
+    background:var(--surface); border-radius:16px; padding:14px 16px; min-height:150px;
+    box-shadow:0 1px 2px rgba(29,30,51,0.04), 0 8px 20px -14px rgba(29,30,51,0.2);
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .home-dash-card[data-goto]{ cursor:pointer; transition:transform 0.15s, box-shadow 0.15s; }
+  .home-dash-card[data-goto]:hover{ transform:translateY(-2px); box-shadow:0 3px 8px rgba(29,30,51,0.06), 0 12px 24px -14px rgba(29,30,51,0.26); }
+  .home-dash-card-title{ display:flex; align-items:center; justify-content:space-between; gap:8px; font-weight:800; font-size:13.5px; color:var(--ink); }
+  .home-dash-card-link{ font-size:11px; font-weight:700; color:var(--indigo); white-space:nowrap; }
+  .home-dash-card-body{ flex:1; font-size:12.5px; color:var(--ink-soft); }
+  .home-dash-toggle{ display:inline-flex; background:var(--bg); border-radius:10px; padding:2px; gap:2px; }
+  .home-dash-toggle-btn{
+    font-family:'Pretendard', sans-serif; font-size:10.5px; font-weight:700; border:none; cursor:pointer;
+    background:transparent; color:var(--ink-soft); padding:4px 8px; border-radius:8px;
+  }
+  .home-dash-toggle-btn.active{ background:var(--surface); color:var(--indigo-deep); box-shadow:0 1px 3px rgba(29,30,51,0.12); }
+  .home-dash-list-row{
+    display:flex; align-items:center; justify-content:space-between; gap:8px; padding:5px 0;
+    border-bottom:1px solid var(--border); cursor:pointer; font-size:12px;
+  }
+  .home-dash-list-row:last-child{ border-bottom:none; }
+  .home-dash-list-row-title{ color:var(--ink); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .home-dash-stat-row{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; padding:3px 0; }
+  .home-dash-stat-label{ font-size:11.5px; color:var(--ink-soft); font-weight:600; }
+  .home-dash-stat-value{ font-size:15px; color:var(--ink); font-weight:800; }
   .home-section-label{
     align-self:flex-start; display:inline-flex; align-items:center; justify-content:center;
     font-weight:800; font-size:12.5px; color:#fff; letter-spacing:0.06em;
@@ -356,12 +390,15 @@
     margin:6px 0 8px 20px; padding-left:14px; border-left:2px solid var(--border);
   }
   .approval-subtype-branch .filing-type-btn, .approval-subtype-branch .review-type-btn{
-    background:none; border:none; box-shadow:none; padding:4px 2px;
+    background:none; border:none; box-shadow:none; padding:4px 2px; border-radius:0;
     font-family:'Pretendard', sans-serif; font-size:12.5px; font-weight:700;
     color:var(--ink-soft); text-decoration:underline; text-underline-offset:3px; cursor:pointer;
   }
+  /* .active 상태에도 background·padding·box-shadow를 명시적으로 다시 지워줘야 함 - 예전 칩 스타일 규칙인
+     .policy-category-toggle button.active{background:...}가 선택자 우선순위상 밑줄 스타일보다 세게 먹혀서,
+     활성 세목에만 예전 칩 배경이 그대로 씌워져 보이는 문제가 있었음 */
   .approval-subtype-branch .filing-type-btn.active, .approval-subtype-branch .review-type-btn.active{
-    color:var(--indigo-deep);
+    background:none; box-shadow:none; padding:4px 2px; border-radius:0; color:var(--indigo-deep);
   }
   /* 백업복구의 회사공통/전체직원/직원선택 3칩은 흰 배경 위에서 눈에 잘 안 띄어서 - 안 눌린 상태도 옅은 배경+테두리로
      칩처럼 보이게 하고, 눌린 상태는 indigo로 뚜렷하게 구분함. 3개 폭도 맞춰서 나란히 균일하게 보이도록 함 */
@@ -1420,70 +1457,107 @@
 
   <!-- 홈 -->
   <section id="tab-home" class="tab-panel active">
+    <div class="home-dashboard-layout">
+      <!-- 기존 바로가기 메뉴 전체를 왼쪽 사이드바로 묶음 -->
+      <div class="home-menu-col">
+        <div class="home-section-row" id="homeFavoritesRow">
+          <div class="home-section-label home-section-label-icon">⭐ 즐겨찾기</div>
+          <div class="home-tiles" id="homeFavoritesTiles"></div>
+        </div>
 
-    <div class="home-section-row" id="homeFavoritesRow">
-      <div class="home-section-label home-section-label-icon">⭐ 즐겨찾기</div>
-      <div class="home-tiles" id="homeFavoritesTiles"></div>
-    </div>
+        <div class="home-section-row">
+          <div class="home-section-label">🏢 Company</div>
+          <div class="home-tiles" id="homeTilesCompany">
+            <div class="home-tile home-tile-plain" data-goto="teamcalendar" style="--tile-accent:var(--guide-teal);">
+              <div class="home-tile-icon">🗂️</div>
+              <div class="home-tile-title">팀캘린더</div>
+            </div>
+            <div class="home-tile home-tile-plain" data-goto="companyinfo" style="--tile-accent:#8B5CF6;">
+              <div class="home-tile-icon">📇</div>
+              <div class="home-tile-title">사내정보</div>
+            </div>
+            <div class="home-tile home-tile-plain" data-goto="approval" style="--tile-accent:#0EA5A5;">
+              <div class="home-tile-icon">🖋️</div>
+              <div class="home-tile-title">결재</div>
+            </div>
+            <div class="home-tile home-tile-plain" data-goto="quickguide" style="--tile-accent:var(--guide-mustard);">
+              <div class="home-tile-icon">🎁</div>
+              <div class="home-tile-title">복리후생</div>
+            </div>
+            <div class="home-tile home-tile-plain" data-goto="policy" style="--tile-accent:var(--guide-wine);">
+              <div class="home-tile-icon">📘</div>
+              <div class="home-tile-title">내부규정</div>
+            </div>
+          </div>
+        </div>
 
-    <div class="home-section-row">
-      <div class="home-section-label">Company</div>
-      <div class="home-tiles" id="homeTilesCompany">
-        <div class="home-tile home-tile-plain" data-goto="teamcalendar" style="--tile-accent:var(--guide-teal);">
-          <div class="home-tile-icon">🗂️</div>
-          <div class="home-tile-title">팀캘린더</div>
+        <div class="home-section-row">
+          <div class="home-section-label">🧑‍💼 Staff</div>
+          <div class="home-tiles" id="homeTilesStaff">
+            <div class="home-tile home-tile-plain" data-goto="calendar" style="--tile-accent:var(--mint);">
+              <div class="home-tile-icon">📅</div>
+              <div class="home-tile-title">개인캘린더</div>
+            </div>
+            <div class="home-tile home-tile-plain" data-goto="attendance" style="--tile-accent:var(--indigo);">
+              <div class="home-tile-icon">⏰</div>
+              <div class="home-tile-title">근태 및 경비</div>
+            </div>
+          </div>
         </div>
-        <div class="home-tile home-tile-plain" data-goto="companyinfo" style="--tile-accent:#8B5CF6;">
-          <div class="home-tile-icon">📇</div>
-          <div class="home-tile-title">사내정보</div>
-        </div>
-        <div class="home-tile home-tile-plain" data-goto="approval" style="--tile-accent:#0EA5A5;">
-          <div class="home-tile-icon">🖋️</div>
-          <div class="home-tile-title">결재</div>
-        </div>
-        <div class="home-tile home-tile-plain" data-goto="quickguide" style="--tile-accent:var(--guide-mustard);">
-          <div class="home-tile-icon">🎁</div>
-          <div class="home-tile-title">복리후생</div>
-        </div>
-        <div class="home-tile home-tile-plain" data-goto="policy" style="--tile-accent:var(--guide-wine);">
-          <div class="home-tile-icon">📘</div>
-          <div class="home-tile-title">내부규정</div>
+
+        <div class="home-section-row">
+          <div class="home-section-label">🤝 Client</div>
+          <div class="home-tiles" id="homeTilesClient">
+            <div class="home-tile home-tile-plain" data-goto="clients-regular" style="--tile-accent:var(--coral);">
+              <div class="home-tile-icon">📗</div>
+              <div class="home-tile-title">기장거래처</div>
+            </div>
+            <div class="home-tile home-tile-plain" data-goto="clients-other" style="--tile-accent:var(--amber);">
+              <div class="home-tile-icon">📂</div>
+              <div class="home-tile-title">기타거래처</div>
+            </div>
+            <div class="home-tile home-tile-plain" data-goto="clients-terminated" style="--tile-accent:var(--guide-slate);">
+              <div class="home-tile-icon">🚫</div>
+              <div class="home-tile-title">해지거래처</div>
+            </div>
+            <div class="home-tile home-tile-plain" data-goto="clients-edit" style="--tile-accent:var(--navy);">
+              <div class="home-tile-icon">🆕</div>
+              <div class="home-tile-title">거래처등록</div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="home-section-row">
-      <div class="home-section-label">Staff</div>
-      <div class="home-tiles" id="homeTilesStaff">
-        <div class="home-tile home-tile-plain" data-goto="calendar" style="--tile-accent:var(--mint);">
-          <div class="home-tile-icon">📅</div>
-          <div class="home-tile-title">개인캘린더</div>
-        </div>
-        <div class="home-tile home-tile-plain" data-goto="attendance" style="--tile-accent:var(--indigo);">
-          <div class="home-tile-icon">⏰</div>
-          <div class="home-tile-title">근태 및 경비</div>
-        </div>
-      </div>
-    </div>
+      <!-- 오른쪽 대시보드: 팀캘린더/결재/근태현황/공지사항을 4분할 미리보기 카드로 보여줌.
+           각 카드는 실제 데이터를 그대로 가져다 쓰는 "미리보기"이고, 자세한 내용은 클릭해서 해당 화면으로 이동해서 봄 -->
+      <div class="home-dashboard-col">
+        <h2 class="home-dashboard-title">Dashboard</h2>
+        <div class="home-dashboard-grid">
+          <div class="home-dash-card" data-goto="teamcalendar">
+            <div class="home-dash-card-title"><span>🗓️ 팀캘린더</span><span class="home-dash-card-link">바로가기 →</span></div>
+            <div class="home-dash-card-body" id="dashCalendarBody">-</div>
+          </div>
 
-    <div class="home-section-row">
-      <div class="home-section-label">Client</div>
-      <div class="home-tiles" id="homeTilesClient">
-        <div class="home-tile home-tile-plain" data-goto="clients-regular" style="--tile-accent:var(--coral);">
-          <div class="home-tile-icon">📗</div>
-          <div class="home-tile-title">기장거래처</div>
-        </div>
-        <div class="home-tile home-tile-plain" data-goto="clients-other" style="--tile-accent:var(--amber);">
-          <div class="home-tile-icon">📂</div>
-          <div class="home-tile-title">기타거래처</div>
-        </div>
-        <div class="home-tile home-tile-plain" data-goto="clients-terminated" style="--tile-accent:var(--guide-slate);">
-          <div class="home-tile-icon">🚫</div>
-          <div class="home-tile-title">해지거래처</div>
-        </div>
-        <div class="home-tile home-tile-plain" data-goto="clients-edit" style="--tile-accent:var(--navy);">
-          <div class="home-tile-icon">🆕</div>
-          <div class="home-tile-title">거래처등록</div>
+          <div class="home-dash-card">
+            <div class="home-dash-card-title">
+              <span>🖋️ 결재</span>
+              <div class="home-dash-toggle" id="dashApprovalToggle">
+                <button type="button" class="home-dash-toggle-btn active" data-dash-approval-mode="inbox">결재함</button>
+                <button type="button" class="home-dash-toggle-btn" data-dash-approval-mode="done">완료함</button>
+              </div>
+            </div>
+            <div class="home-dash-card-body" id="dashApprovalBody">-</div>
+          </div>
+
+          <div class="home-dash-card" data-goto="attendance">
+            <div class="home-dash-card-title"><span>⏰ 근태현황</span><span class="home-dash-card-link">바로가기 →</span></div>
+            <div class="home-dash-card-body" id="dashAttendanceBody">-</div>
+          </div>
+
+          <div class="home-dash-card" id="dashNoticeCard">
+            <div class="home-dash-card-title"><span>📢 공지사항 <span style="font-size:10px; font-weight:700; color:var(--coral);">(중요공지)</span></span><span class="home-dash-card-link">더보기 →</span></div>
+            <div class="home-dash-card-body" id="dashNoticeBody">-</div>
+          </div>
         </div>
       </div>
     </div>
@@ -7288,6 +7362,8 @@ function activateTab(tabName, pushHistory){
   if(tabName === 'home'){
     navExpanded = false;
     activeTopGroup = null;
+    // 홈으로 들어올 때마다 대시보드 미리보기 카드(팀캘린더/결재/근태현황/공지사항)를 최신 데이터로 다시 그림
+    if(typeof renderHomeDashboard === 'function') renderHomeDashboard();
   } else {
     navExpanded = true;
     if(MANAGEMENT_TABS.includes(tabName)) activeTopGroup = 'management';
@@ -7345,6 +7421,105 @@ document.querySelectorAll('.home-tile').forEach(tile=>{
     if(target) target.click();
   });
 });
+
+// ── 홈 화면 대시보드(팀캘린더/결재/근태현황/공지사항 미리보기 4분할 카드) ──
+// 각 카드는 실제 데이터를 새로 계산하지 않고, 해당 탭에서 이미 쓰는 데이터·함수를 그대로 가져다 요약만 보여줌.
+// 클릭하면 해당 탭(또는 공지사항 팝업)으로 이동해서 자세히 볼 수 있음.
+document.querySelectorAll('.home-dash-card[data-goto]').forEach(card=>{
+  card.addEventListener('click', (e)=>{
+    if(e.target.closest('.home-dash-toggle') || e.target.closest('.home-dash-list-row')) return;
+    const target = document.querySelector(`.tab-btn[data-tab="${card.dataset.goto}"]`);
+    if(target) target.click();
+  });
+});
+document.getElementById('dashNoticeCard')?.addEventListener('click', (e)=>{
+  if(e.target.closest('.home-dash-list-row')) return;
+  if(typeof openNoticeModal === 'function') openNoticeModal();
+});
+document.querySelectorAll('#dashApprovalToggle .home-dash-toggle-btn').forEach(btn=>{
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    document.querySelectorAll('#dashApprovalToggle .home-dash-toggle-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderDashboardApprovalPreview(btn.dataset.dashApprovalMode);
+  });
+});
+
+function renderDashboardCalendarPreview(){
+  const body = document.getElementById('dashCalendarBody');
+  if(!body) return;
+  const weekday = ['일','월','화','수','목','금','토'][new Date().getDay()];
+  const [y,m,d] = todayStr().split('-');
+  body.innerHTML = `<div style="font-size:19px; font-weight:800; color:var(--ink);">${y}.${m}.${d} <span style="font-size:13px; font-weight:700; color:var(--ink-soft);">(${weekday})</span></div><div class="hint" style="margin:6px 0 0; font-size:11px;">팀 전체 일정은 팀캘린더에서 확인해요.</div>`;
+}
+
+// 결재함 = 나에게 승인 대기중인 문서(status==='대기'), 완료함 = 내가 기안했거나 결재자인 문서 중 이미 승인/반려된 것
+function renderDashboardApprovalPreview(mode){
+  const body = document.getElementById('dashApprovalBody');
+  if(!body) return;
+  const myEmail = (currentUserEmail||'').toLowerCase();
+  const list = mode === 'done'
+    ? (sharedApprovals||[]).filter(a=>a.status!=='대기' && ((a.approverEmail||'').toLowerCase()===myEmail || (a.drafterEmail||'').toLowerCase()===myEmail))
+    : (sharedApprovals||[]).filter(a=>(a.approverEmail||'').toLowerCase()===myEmail && a.status==='대기');
+  if(!list.length){
+    body.innerHTML = `<div class="hint" style="margin:0; font-size:11.5px;">${mode==='done' ? '완료된 결재가 없어요.' : '결재 대기 문서가 없어요.'}</div>`;
+    return;
+  }
+  body.innerHTML = list.slice(0,4).map(a=>`
+    <div class="home-dash-list-row" data-approval-id="${a.id}">
+      <span class="home-dash-list-row-title">${escHtml(a.title||'(제목 없음)')}</span>
+      ${typeof approvalStatusTagHtml === 'function' ? approvalStatusTagHtml(a.status) : escHtml(a.status||'')}
+    </div>`).join('');
+  body.querySelectorAll('.home-dash-list-row').forEach(row=>{
+    row.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      document.querySelector('.tab-btn[data-tab="approval"]')?.click();
+      document.querySelector('.approval-cat-btn[data-approval-cat="doc"]')?.click();
+      if(typeof openApprovalDetailModal === 'function') openApprovalDetailModal(row.dataset.approvalId);
+    });
+  });
+}
+
+// 근태관리 탭에서 이미 계산해둔 이번달 근무가능일수·잔여 연차 값을 그대로 옮겨와 보여줌 (따로 다시 계산하지 않음)
+function renderDashboardAttendancePreview(){
+  const body = document.getElementById('dashAttendanceBody');
+  if(!body) return;
+  const workdays = document.getElementById('workdaysAutoValue')?.textContent || '-';
+  const remainLeave = document.getElementById('remainLeaveDisplay')?.textContent || '-';
+  body.innerHTML = `
+    <div class="home-dash-stat-row"><span class="home-dash-stat-label">이번달 근무가능일수</span><span class="home-dash-stat-value">${escHtml(workdays)}</span></div>
+    <div class="home-dash-stat-row"><span class="home-dash-stat-label">잔여 연차</span><span class="home-dash-stat-value">${escHtml(remainLeave)}</span></div>`;
+}
+
+function renderDashboardImportantNotices(){
+  const body = document.getElementById('dashNoticeBody');
+  if(!body) return;
+  const importantList = (sharedNoticeHistory||[]).filter(n=>n.important);
+  if(!importantList.length){
+    body.innerHTML = `<div class="hint" style="margin:0; font-size:11.5px;">중요공지가 없어요.</div>`;
+    return;
+  }
+  const read = typeof getReadNoticeIds === 'function' ? getReadNoticeIds() : new Set();
+  body.innerHTML = importantList.slice(0,2).map(n=>`
+    <div class="home-dash-list-row" data-notice-id="${n.id}">
+      <span class="home-dash-list-row-title">${!read.has(n.id) ? '<span class="notice-unread-dot">N</span>' : ''}${escHtml(n.title||'(제목 없음)')}</span>
+    </div>`).join('');
+  body.querySelectorAll('.home-dash-list-row').forEach(row=>{
+    row.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const n = (sharedNoticeHistory||[]).find(x=>x.id===row.dataset.noticeId);
+      if(n && typeof openNoticeViewPopup === 'function') openNoticeViewPopup(n);
+    });
+  });
+}
+
+function renderHomeDashboard(){
+  renderDashboardCalendarPreview();
+  const activeMode = document.querySelector('#dashApprovalToggle .home-dash-toggle-btn.active')?.dataset.dashApprovalMode || 'inbox';
+  renderDashboardApprovalPreview(activeMode);
+  renderDashboardAttendancePreview();
+  renderDashboardImportantNotices();
+}
 
 const HOME_FAV_STORAGE_KEY = 'worklog_home_favorites';
 function getHomeFavorites(){
