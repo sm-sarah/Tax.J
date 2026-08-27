@@ -72,10 +72,15 @@
     }
     .app-main{ flex-basis:100%; }
   }
-  /* 홈 아이콘과 메일~휴지통 아이콘을 세로로 따로 쌓으니 아래 Company 등 목록과 정렬선이 안 맞고
-     붕 떠 보인다는 피드백이 있어서, 한 줄(row)로 묶어 목록의 왼쪽 시작선에 맞춤 */
-  #appSidebarTopRow{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-  .app-sidebar #navUtilityGroup{
+  /* 홈~휴지통 아이콘 줄을 사이드바(카드 배경 .app 안쪽) 흐름에서 아예 빼내서, 카드 밖 페이지 배경 위에
+     독립된 줄로 둠 - 카드와 같은 가운데정렬 폭(max-width)을 써서 화면 크기가 달라져도 카드의 왼쪽 시작선과
+     항상 나란히 맞음. 스크롤해도 화면 맨 위에 계속 붙어있도록 sticky로 고정함 */
+  .app-top-icon-bar{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    max-width:1480px; margin:0 auto; padding:14px 18px 0;
+    position:sticky; top:0; z-index:500;
+  }
+  #navUtilityGroup{
     display:inline-flex; flex-direction:row; align-items:center; gap:8px;
     background:none; padding:0; border-radius:0;
   }
@@ -98,11 +103,13 @@
      이 파일 뒤쪽에서 다시 선언되는데, 클래스 우선순위가 같으면 나중 규칙이 이겨서 홈 버튼이 흰 배경 알약으로
      덮어써지는 문제가 있었음 - .tab-btn과 겹치는 클래스를 selector에 같이 명시해서(.tab-btn.tab-btn-home)
      우선순위를 확실히 더 높여 순서와 무관하게 항상 이 스타일이 이기게 함 */
+  /* 메일~휴지통 아이콘이 전부 진한 navy 원형(강조형)인데 홈 아이콘만 옅은 색이라 튀어 보여서,
+     기본 상태도 같은 navy 원형으로 통일함 - 지금 홈 탭에 들어와 있을 때만 indigo로 바뀌어 구분됨 */
   .tab-btn.tab-btn-home{
-    font-size:14px; display:flex; align-items:center; justify-content:center; background:#DADEEE; color:var(--navy);
-    border-radius:50%; width:42px; height:42px; padding:0; box-shadow:0 2px 6px -1px rgba(29,30,51,0.12);
+    font-size:14px; display:flex; align-items:center; justify-content:center; background:var(--navy); color:#fff;
+    border-radius:50%; width:42px; height:42px; padding:0; box-shadow:0 4px 10px -3px rgba(29,30,51,0.45);
   }
-  .tab-btn.tab-btn-home.active{background:var(--navy); color:#fff; box-shadow:0 6px 14px -6px rgba(30,42,94,0.5);}
+  .tab-btn.tab-btn-home.active{background:var(--indigo); color:#fff; box-shadow:0 6px 14px -6px rgba(91,95,239,0.5);}
 
   /* 최상위 nav(홈/Company/Staff/Client 등)는 하단 서브칩과 확실히 구분되도록, 다른 아이콘 버튼들과 동일한 원형 아이콘 전용 스타일로 통일 */
   #navExpandedRow1 .tab-btn{
@@ -1434,6 +1441,9 @@
     </div>
   </div>
 </div>
+<!-- 홈~휴지통 아이콘 줄 - 카드(.app) 안 사이드바에 있던 걸 카드 밖으로 옮겨서 배경과 분리시킴.
+     내용물(홈 아이콘 그룹, 메일~휴지통 아이콘 그룹)은 relocateSidebarNodes()가 실제 노드를 그대로 옮겨 채움 -->
+<div id="appTopIconBar" class="app-top-icon-bar"></div>
 <div class="app">
 
   <div id="landingHeader" style="margin-bottom:20px;">
@@ -7681,21 +7691,16 @@ renderHome();
 // 이벤트 바인딩이 그대로 유지되게 함
 function relocateSidebarNodes(){
   const sidebar = document.getElementById('appSidebar');
+  const topBar = document.getElementById('appTopIconBar');
   const homeGroup = document.getElementById('navHomeGroup');
   const utilityGroup = document.getElementById('navUtilityGroup');
   const homeMenuCol = document.querySelector('.home-menu-col');
   const settingsBtn = document.getElementById('megaSettingsIconBtn');
-  if(!sidebar || !homeGroup || !utilityGroup) return;
-  // 홈 아이콘 + 메일~휴지통 아이콘을 세로로 따로 쌓지 않고 한 줄로 묶어서, 아래 Company 등 목록의
-  // 왼쪽 시작선과 정렬이 맞게 함 (래퍼는 순수 레이아웃용이라 처음 한 번만 만들고 재사용함)
-  let topRow = document.getElementById('appSidebarTopRow');
-  if(!topRow){
-    topRow = document.createElement('div');
-    topRow.id = 'appSidebarTopRow';
-    sidebar.appendChild(topRow);
-  }
-  topRow.appendChild(homeGroup);
-  topRow.appendChild(utilityGroup);
+  if(!sidebar || !topBar || !homeGroup || !utilityGroup) return;
+  // 홈 아이콘 + 메일~휴지통 아이콘은 사이드바(카드 안) 대신 카드 밖 #appTopIconBar로 옮겨서,
+  // 카드 배경과 분리된 독립된 줄로 보이게 함
+  topBar.appendChild(homeGroup);
+  topBar.appendChild(utilityGroup);
   // ⚙️ 설정 아이콘 대신 사이드바의 "⚙️ Settings" 목록(회사/직원/설정/데이터)으로 들어가므로,
   // 유틸리티 아이콘 묶음 안에서 이 버튼만 숨김(묶음 자체는 그대로 옮겨지므로 DOM은 유지되고 안 보이기만 함)
   if(settingsBtn) settingsBtn.style.display = 'none';
