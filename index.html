@@ -12,8 +12,9 @@
     --bg:#F3F4FB;
     --surface:#FFFFFF;
     /* 큰 테두리(.app) 안의 내용 박스(.settings-box 등)도 흰색이라 프레임과 경계가 안 보이던 문제 -
-       프레임은 흰색도 아니고 페이지 배경(--bg)도 아닌, 그 사이의 옅은 회색으로 따로 둠 */
-    --frame-bg:#EEF0F5;
+       프레임은 흰색도 아니고 페이지 배경(--bg)도 아닌, 그 사이의 색으로 따로 둠. 무채색 회색은 칙칙해
+       보인다는 의견이 있어서, 같은 밝기의 아주 옅은 하늘색 톤으로 바꿈 */
+    --frame-bg:#EAF3FB;
     --ink:#1D1E33;
     --ink-soft:#75789A;
     --border:rgba(29,30,51,0.14);
@@ -79,7 +80,7 @@
   .app-top-icon-bar{
     display:flex; align-items:center; gap:8px; flex-wrap:wrap;
     max-width:1800px; margin:0 auto; padding:14px 18px 12px;
-    position:sticky; top:0; z-index:500; min-height:52px; /* position:sticky도 absolute 자식의 위치 기준이 됨 - Tax.J 브랜드를 가운데 절대좌표로 띄울 기준 높이 확보 */
+    position:sticky; top:0; z-index:500; min-height:64px; /* position:sticky도 absolute 자식의 위치 기준이 됨 - Tax.J 브랜드를 가운데 절대좌표로 띄울 기준 높이 확보. 브랜드 글자 크기를 키운 만큼 줄 높이도 같이 넉넉하게 늘림 */
     /* 배경을 투명하게 두면 스크롤할 때 그 밑을 지나가는 흰 표/카드 내용이 그대로 비쳐서 로고·아이콘 뒷배경이
        흰색이 됐다 라벤더가 됐다 계속 바뀌어 보였음(로고의 배경 제거 처리도 이 배경색을 기준으로 한 것이라 흔들림) -
        페이지 배경과 같은 톤의 반투명 색 + 블러로 항상 일정한 배경 위에 고정되어 보이게 함 */
@@ -96,9 +97,10 @@
      로그인 화면의 로고를 재사용하되, 배경 없이 이름 글자와 나란히 붙는 작은 가로형 로고타입으로 축소 */
   #appTopBrand{
     position:absolute; left:50%; top:50%; transform:translate(-50%, -50%);
-    display:flex; align-items:center; gap:8px; white-space:nowrap; pointer-events:none;
+    display:flex; align-items:center; gap:10px; white-space:nowrap; pointer-events:none;
   }
-  #appTopBrand span{ font-size:28px; font-weight:800; letter-spacing:-0.02em; color:var(--navy); }
+  /* 로고는 크지 않아도 되니 그대로 두고, "Tax.J" 글자를 화면에서 비중 있게 보이도록 큼직하게 키움 */
+  #appTopBrand span{ font-size:42px; font-weight:800; letter-spacing:-0.02em; color:var(--navy); }
   #appTopBrand img{ height:34px !important; }
   @media (max-width:700px){ #appTopBrand{ position:static; transform:none; order:-1; width:100%; justify-content:center; margin-bottom:6px; } }
   .num{font-family:'IBM Plex Mono', monospace; font-weight:700; letter-spacing:-0.02em;}
@@ -7622,14 +7624,15 @@ document.querySelectorAll('.home-submenu-item[data-companyinfo-cat-goto]').forEa
     document.querySelector(`.ci-cat-btn[data-cat="${item.dataset.companyinfoCatGoto}"]`)?.click();
   });
 });
-// 사이드바에서 설정 탭 안의 세부 항목(회사정보/직원현황/근무시간 등)으로 바로 이동 - 설정 탭 안의 각 항목은
-// initSettingsCategoryChips()가 이미 작은 칩으로 접어두고 누르면 팝업으로 열리는 방식이라(스크롤 방식이 아님),
-// 사이드바에서도 같은 결과가 나오도록 설정 탭 + 해당 카테고리로 이동한 뒤 그 칩을 그대로 대신 눌러줌
+// 사이드바에서 설정 탭 안의 세부 항목(회사정보/직원현황/근무시간 등)으로 바로 이동 - 설정 탭 본문은
+// 이제 칩/팝업으로 접지 않고 원래 폼을 그대로 펼쳐서 보여주므로, 해당 카테고리로 이동한 뒤 그 항목 위치로 스크롤만 해줌
 document.querySelectorAll('.home-submenu-item[data-settings-anchor-goto]').forEach(item=>{
   item.addEventListener('click', ()=>{
     activateTab('settings', true);
     document.querySelector(`.settings-cat-btn[data-settings-cat="${item.dataset.settingsAnchorGoto}"]`)?.click();
-    document.querySelector(`.home-tile[data-subsection-id="${item.dataset.settingsTargetId}"]`)?.click();
+    requestAnimationFrame(()=>{
+      document.getElementById(item.dataset.settingsTargetId)?.scrollIntoView({behavior:'smooth', block:'start'});
+    });
   });
 });
 
@@ -12463,7 +12466,8 @@ renderClientsTerminated();
 applyPermissionUI();
 updateNavVisibility();
 updateQuickConnectBtn();
-initSettingsCategoryChips();
+// initSettingsCategoryChips(); // 이제 설정 하위 항목은 왼쪽 사이드바 아코디언에서 바로 보이므로,
+// 본문에서까지 칩/팝업으로 한 번 더 접어 보여주지 않고 원래 폼 내용을 그대로 펼쳐서 보여줌
 initSectionTocs();
 // 뒤로가기를 눌렀을 때 이 앱 밖으로 바로 안 나가고 "홈"부터 거치도록, 최초 진입 시점을 기준선으로 남겨둠
 try{ history.replaceState({ tab: 'home' }, '', location.pathname + location.search); }catch(e){}
