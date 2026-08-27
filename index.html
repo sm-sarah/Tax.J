@@ -11,6 +11,9 @@
   :root{
     --bg:#F3F4FB;
     --surface:#FFFFFF;
+    /* 큰 테두리(.app) 안의 내용 박스(.settings-box 등)도 흰색이라 프레임과 경계가 안 보이던 문제 -
+       프레임은 흰색도 아니고 페이지 배경(--bg)도 아닌, 그 사이의 옅은 회색으로 따로 둠 */
+    --frame-bg:#EEF0F5;
     --ink:#1D1E33;
     --ink-soft:#75789A;
     --border:rgba(29,30,51,0.14);
@@ -43,7 +46,7 @@
      최소 높이를 넉넉히 고정해둠 - 내용이 이보다 짧아도 흰 배경 자체는 항상 같은 크기로 유지되고,
      내용이 더 길면 자연스럽게 그만큼 더 늘어남(min-height라 넘치는 내용을 자르지 않음) */
   .app{
-    max-width:1480px; margin:24px auto; background:var(--surface);
+    max-width:1480px; margin:24px auto; background:var(--frame-bg);
     border-radius:26px; padding:26px 32px 40px; min-height:calc(100vh - 48px);
     box-shadow:0 1px 2px rgba(29,30,51,0.05), 0 30px 60px -30px rgba(29,30,51,0.28);
   }
@@ -56,7 +59,7 @@
   .app-shell{ display:flex; align-items:flex-start; gap:30px; flex-wrap:wrap; }
   .app-sidebar{
     display:flex !important; flex-direction:column; gap:20px;
-    flex:0 0 220px; width:220px;
+    flex:0 0 240px; width:240px;
     position:sticky; top:20px;
     padding-right:22px; border-right:1.5px solid var(--border);
   }
@@ -69,10 +72,11 @@
     }
     .app-main{ flex-basis:100%; }
   }
-  /* 사이드바 안에서는 상단 아이콘들(홈/메일~휴지통)을 가로 한 줄이 아니라 한 줄에 하나씩 세로로 쌓음 */
-  .app-sidebar #navHomeGroup{ align-self:center; }
+  /* 홈 아이콘과 메일~휴지통 아이콘을 세로로 따로 쌓으니 아래 Company 등 목록과 정렬선이 안 맞고
+     붕 떠 보인다는 피드백이 있어서, 한 줄(row)로 묶어 목록의 왼쪽 시작선에 맞춤 */
+  #appSidebarTopRow{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .app-sidebar #navUtilityGroup{
-    flex-direction:column; align-items:center; gap:10px;
+    display:inline-flex; flex-direction:row; align-items:center; gap:8px;
     background:none; padding:0; border-radius:0;
   }
   .num{font-family:'IBM Plex Mono', monospace; font-weight:700; letter-spacing:-0.02em;}
@@ -90,12 +94,15 @@
   .tab-inline-divider{width:1px; height:20px; background:rgba(91,95,239,0.25); margin:0 2px;}
 
   /* 사이드바로 옮겨졌을 때도(#navExpandedRow1 밖) 원형 아이콘 모양이 그대로 유지되도록, 위치에 의존하던
-     원형·크기·그림자 스타일을 이 클래스 자체에 직접 둠 */
-  .tab-btn-home{
+     원형·크기·그림자 스타일을 이 클래스 자체에 직접 둠. 아래 공용 .tab-btn 규칙(흰 배경·둥근 알약 모양)이
+     이 파일 뒤쪽에서 다시 선언되는데, 클래스 우선순위가 같으면 나중 규칙이 이겨서 홈 버튼이 흰 배경 알약으로
+     덮어써지는 문제가 있었음 - .tab-btn과 겹치는 클래스를 selector에 같이 명시해서(.tab-btn.tab-btn-home)
+     우선순위를 확실히 더 높여 순서와 무관하게 항상 이 스타일이 이기게 함 */
+  .tab-btn.tab-btn-home{
     font-size:14px; display:flex; align-items:center; justify-content:center; background:#DADEEE; color:var(--navy);
     border-radius:50%; width:42px; height:42px; padding:0; box-shadow:0 2px 6px -1px rgba(29,30,51,0.12);
   }
-  .tab-btn-home.active{background:var(--navy); color:#fff; box-shadow:0 6px 14px -6px rgba(30,42,94,0.5);}
+  .tab-btn.tab-btn-home.active{background:var(--navy); color:#fff; box-shadow:0 6px 14px -6px rgba(30,42,94,0.5);}
 
   /* 최상위 nav(홈/Company/Staff/Client 등)는 하단 서브칩과 확실히 구분되도록, 다른 아이콘 버튼들과 동일한 원형 아이콘 전용 스타일로 통일 */
   #navExpandedRow1 .tab-btn{
@@ -7679,8 +7686,16 @@ function relocateSidebarNodes(){
   const homeMenuCol = document.querySelector('.home-menu-col');
   const settingsBtn = document.getElementById('megaSettingsIconBtn');
   if(!sidebar || !homeGroup || !utilityGroup) return;
-  sidebar.appendChild(homeGroup);
-  sidebar.appendChild(utilityGroup);
+  // 홈 아이콘 + 메일~휴지통 아이콘을 세로로 따로 쌓지 않고 한 줄로 묶어서, 아래 Company 등 목록의
+  // 왼쪽 시작선과 정렬이 맞게 함 (래퍼는 순수 레이아웃용이라 처음 한 번만 만들고 재사용함)
+  let topRow = document.getElementById('appSidebarTopRow');
+  if(!topRow){
+    topRow = document.createElement('div');
+    topRow.id = 'appSidebarTopRow';
+    sidebar.appendChild(topRow);
+  }
+  topRow.appendChild(homeGroup);
+  topRow.appendChild(utilityGroup);
   // ⚙️ 설정 아이콘 대신 사이드바의 "⚙️ Settings" 목록(회사/직원/설정/데이터)으로 들어가므로,
   // 유틸리티 아이콘 묶음 안에서 이 버튼만 숨김(묶음 자체는 그대로 옮겨지므로 DOM은 유지되고 안 보이기만 함)
   if(settingsBtn) settingsBtn.style.display = 'none';
