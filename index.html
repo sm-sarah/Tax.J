@@ -39,33 +39,42 @@
   }
   /* 앱 전체를 배경(연한 라벤더)과 구분되는 큰 테두리 하나로 감싸서, 사이드바·상단 요소부터
      각 화면의 입력/조회 레이아웃까지 전부 이 하나의 프레임 안에서 보이게 함 */
+  /* 탭마다(팀캘린더 vs 근태 등) 흰 배경 크기가 들쭉날쭉하다는 피드백이 있어서, 화면 높이 기준으로
+     최소 높이를 넉넉히 고정해둠 - 내용이 이보다 짧아도 흰 배경 자체는 항상 같은 크기로 유지되고,
+     내용이 더 길면 자연스럽게 그만큼 더 늘어남(min-height라 넘치는 내용을 자르지 않음) */
   .app{
     max-width:1480px; margin:24px auto; background:var(--surface);
-    border-radius:26px; padding:26px 32px 40px;
+    border-radius:26px; padding:26px 32px 40px; min-height:calc(100vh - 48px);
     box-shadow:0 1px 2px rgba(29,30,51,0.05), 0 30px 60px -30px rgba(29,30,51,0.28);
   }
-  @media (max-width:640px){ .app{ margin:10px auto; padding:16px 14px 28px; border-radius:18px; } }
-  /* 넓은 화면(900px~)에서는 상단 nav 대신 왼쪽에 항상 고정된 사이드바 하나로 전체 화면을 이동함.
-     사이드바에 들어갈 홈 아이콘·유틸리티 아이콘·Company/Staff/Client 메뉴는 기존 요소를 복제하지 않고
-     JS에서 실제 DOM 노드를 그대로 옮겨서(relocateSidebarNodes) 이벤트 바인딩이 그대로 유지되게 함.
-     모바일(900px 미만)은 예전 그대로 상단 nav를 씀 */
-  .app-shell{ display:block; }
+  @media (max-width:640px){ .app{ margin:10px auto; padding:16px 14px 28px; border-radius:18px; min-height:calc(100vh - 20px); } }
+  /* 상단 nav 대신 왼쪽에 항상 고정된 사이드바 하나로 전체 화면을 이동함 - 모바일도 동일한 형식.
+     사이드바에 들어갈 홈 아이콘·유틸리티 아이콘·Company/Staff/Client/Settings 메뉴는 기존 요소를
+     복제하지 않고 JS에서 실제 DOM 노드를 그대로 옮겨서(relocateSidebarNodes) 이벤트 바인딩이 그대로 유지되게 함.
+     화면이 좁아지면(모바일) 사이드바가 왼쪽에 나란히 있지 않고 위쪽에 통째로 쌓이는 형태로 바뀜 */
+  nav.tabs{ display:none !important; }
+  .app-shell{ display:flex; align-items:flex-start; gap:30px; flex-wrap:wrap; }
   .app-sidebar{
-    display:none; flex-direction:column; gap:20px;
+    display:flex !important; flex-direction:column; gap:20px;
     flex:0 0 220px; width:220px;
+    position:sticky; top:20px;
+    padding-right:22px; border-right:1.5px solid var(--border);
   }
-  .app-main{ min-width:0; }
-  @media (min-width:900px){
-    nav.tabs{ display:none !important; }
-    .app-shell{ display:flex; align-items:flex-start; gap:30px; }
+  .app-main{ flex:1 1 300px; min-width:0; }
+  @media (max-width:700px){
+    .app-shell{ flex-direction:column; gap:18px; }
     .app-sidebar{
-      display:flex !important; position:sticky; top:20px;
-      padding-right:22px; border-right:1.5px solid var(--border);
+      width:100%; flex-basis:auto; position:static;
+      border-right:none; padding-right:0; border-bottom:1.5px solid var(--border); padding-bottom:16px;
     }
-    .app-main{ flex:1 1 auto; }
+    .app-main{ flex-basis:100%; }
   }
-  .app-sidebar #navHomeGroup{ align-self:flex-start; }
-  .app-sidebar #navUtilityGroup{ flex-wrap:wrap; border-radius:16px; }
+  /* 사이드바 안에서는 상단 아이콘들(홈/메일~휴지통)을 가로 한 줄이 아니라 한 줄에 하나씩 세로로 쌓음 */
+  .app-sidebar #navHomeGroup{ align-self:center; }
+  .app-sidebar #navUtilityGroup{
+    flex-direction:column; align-items:center; gap:10px;
+    background:none; padding:0; border-radius:0;
+  }
   .num{font-family:'IBM Plex Mono', monospace; font-weight:700; letter-spacing:-0.02em;}
 
   .masthead{
@@ -163,7 +172,7 @@
   .home-section-label.home-section-label-icon{ font-size:14px; padding:6px 12px; }
   .home-tiles{display:flex; flex-direction:column; gap:8px; flex:1 1 auto; justify-content:center;}
   /* Company/Staff/Client 하위메뉴 목록은 위아래 여백이 넓어서 칩 전체 높이만 불필요하게 늘어났음 - 항목 사이 간격을 없애고, 각 줄 자체의 위아래 패딩도 줄임 */
-  #homeTilesCompany, #homeTilesStaff, #homeTilesClient{ gap:0; }
+  #homeTilesCompany, #homeTilesStaff, #homeTilesClient, #homeTilesSetting{ gap:0; }
   .home-tile{
     background:var(--surface); border-radius:14px; padding:11px 16px;
     cursor:pointer; border-left:4px solid var(--tile-accent, var(--indigo));
@@ -1572,6 +1581,30 @@
             <div class="home-tile home-tile-plain" data-goto="clients-edit" style="--tile-accent:var(--navy);">
               <div class="home-tile-icon">🆕</div>
               <div class="home-tile-title">거래처등록</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 예전엔 ⚙️ 설정 아이콘 하나로 설정 탭에 들어가서 회사/직원/설정/데이터 칩을 골랐는데,
+             Company/Staff/Client와 같은 목록형 메뉴로 여기 사이드바에도 바로 노출함 -->
+        <div class="home-section-row">
+          <div class="home-section-label">⚙️ Settings</div>
+          <div class="home-tiles" id="homeTilesSetting">
+            <div class="home-tile home-tile-plain" data-settings-cat-goto="company" style="--tile-accent:var(--indigo);">
+              <div class="home-tile-icon">🏢</div>
+              <div class="home-tile-title">회사</div>
+            </div>
+            <div class="home-tile home-tile-plain" data-settings-cat-goto="employee" style="--tile-accent:var(--mint);">
+              <div class="home-tile-icon">👤</div>
+              <div class="home-tile-title">직원</div>
+            </div>
+            <div class="home-tile home-tile-plain" data-settings-cat-goto="welfare" style="--tile-accent:var(--guide-mustard);">
+              <div class="home-tile-icon">⚙️</div>
+              <div class="home-tile-title">설정</div>
+            </div>
+            <div class="home-tile home-tile-plain" data-settings-cat-goto="data" style="--tile-accent:var(--guide-slate);">
+              <div class="home-tile-icon">💾</div>
+              <div class="home-tile-title">데이터</div>
             </div>
           </div>
         </div>
@@ -7478,6 +7511,15 @@ document.querySelectorAll('.home-tile').forEach(tile=>{
   });
 });
 
+// 사이드바의 "⚙️ Setting" 목록(회사/직원/설정/데이터)은 일반 메뉴처럼 탭 하나로 바로 안 가고,
+// 설정 탭으로 이동한 뒤 그 안의 회사/직원/설정/데이터 카테고리 칩까지 자동으로 눌러줌
+document.querySelectorAll('.home-tile[data-settings-cat-goto]').forEach(tile=>{
+  tile.addEventListener('click', ()=>{
+    activateTab('settings', true);
+    document.querySelector(`.settings-cat-btn[data-settings-cat="${tile.dataset.settingsCatGoto}"]`)?.click();
+  });
+});
+
 // ── 홈 화면 대시보드(팀캘린더/결재/근태현황/공지사항 미리보기 4분할 카드) ──
 // 각 카드는 실제 데이터를 새로 계산하지 않고, 해당 탭에서 이미 쓰는 데이터·함수를 그대로 가져다 요약만 보여줌.
 // 클릭하면 해당 탭(또는 공지사항 팝업)으로 이동해서 자세히 볼 수 있음.
@@ -7627,30 +7669,24 @@ renderHome();
 // ── 넓은 화면(900px~) 전용 고정 사이드바: 홈 아이콘·유틸리티 아이콘(메일~휴지통)·Company/Staff/Client
 // 메뉴를 복제하지 않고, 원래 nav.tabs/홈 화면에 있던 실제 엘리먼트를 그대로 옮겨서 이벤트 바인딩을 유지함.
 // 좁은 화면(모바일)에서는 원래 있던 자리로 다시 돌려놔서 기존 모바일 화면을 그대로 유지함.
-const APP_SIDEBAR_MQ = window.matchMedia('(min-width:900px)');
+// 사이드바 형식은 이제 화면 크기와 상관없이(모바일 포함) 항상 동일하게 적용됨 - 홈 아이콘·유틸리티
+// 아이콘·Company/Staff/Client/Settings 메뉴를 기존 요소를 복제하지 않고 실제 DOM 노드 그대로 옮겨서
+// 이벤트 바인딩이 그대로 유지되게 함
 function relocateSidebarNodes(){
-  const isWide = APP_SIDEBAR_MQ.matches;
   const sidebar = document.getElementById('appSidebar');
   const homeGroup = document.getElementById('navHomeGroup');
-  const toggleGroup = document.getElementById('navToggleGroup');
   const utilityGroup = document.getElementById('navUtilityGroup');
-  const navExpandedRow1 = document.getElementById('navExpandedRow1');
   const homeMenuCol = document.querySelector('.home-menu-col');
-  const homeDashboardLayout = document.querySelector('.home-dashboard-layout');
-  const homeDashboardCol = document.querySelector('.home-dashboard-col');
-  if(!sidebar || !homeGroup || !toggleGroup || !utilityGroup || !navExpandedRow1) return;
-  if(isWide){
-    sidebar.appendChild(homeGroup);
-    sidebar.appendChild(utilityGroup);
-    if(homeMenuCol) sidebar.appendChild(homeMenuCol);
-  } else {
-    navExpandedRow1.insertBefore(homeGroup, toggleGroup);
-    navExpandedRow1.appendChild(utilityGroup);
-    if(homeMenuCol && homeDashboardLayout && homeDashboardCol) homeDashboardLayout.insertBefore(homeMenuCol, homeDashboardCol);
-  }
+  const settingsBtn = document.getElementById('megaSettingsIconBtn');
+  if(!sidebar || !homeGroup || !utilityGroup) return;
+  sidebar.appendChild(homeGroup);
+  sidebar.appendChild(utilityGroup);
+  // ⚙️ 설정 아이콘 대신 사이드바의 "⚙️ Settings" 목록(회사/직원/설정/데이터)으로 들어가므로,
+  // 유틸리티 아이콘 묶음 안에서 이 버튼만 숨김(묶음 자체는 그대로 옮겨지므로 DOM은 유지되고 안 보이기만 함)
+  if(settingsBtn) settingsBtn.style.display = 'none';
+  if(homeMenuCol) sidebar.appendChild(homeMenuCol);
 }
 relocateSidebarNodes();
-APP_SIDEBAR_MQ.addEventListener ? APP_SIDEBAR_MQ.addEventListener('change', relocateSidebarNodes) : APP_SIDEBAR_MQ.addListener(relocateSidebarNodes);
 
 document.getElementById('monthSelect').addEventListener('change', ()=>{
   const teamCalEl = document.getElementById('teamCalMonthSelect');
