@@ -733,6 +733,10 @@
   /* Client 등록/수정 폼 하단 버튼(거래처 추가·수정완료/취소/신규등록/수정/확인)들의 크기·폰트·모서리를 통일 - .submit-btn과 .del-btn 기본 크기가 서로 달라서 생기던 불일치를 없앰 */
   .client-form-btn{min-width:0; display:inline-block; margin:0; padding:6px 14px !important; font-size:11.5px !important; font-weight:800 !important; border-radius:8px !important; box-shadow:none !important;}
   .client-action-btn{padding:3px 7px; font-size:13px;}
+  /* 상세/폴더/개인정보 아이콘 3개가 나란히 붙는 칸 - 예전엔 button과 a 태그가 섞여있고 하나만 배경칩(분홍)이 있어서
+     칩 크기가 서로 달라 보였음. 셋 다 배경 없는 단순 아이콘으로 통일하고 크기를 고정박스로 맞춤 */
+  .client-icon-plain{background:transparent; width:22px; height:22px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:8px;}
+  .client-icon-plain:hover{background:var(--coral-bg); color:var(--coral);}
   .more-toggle-btn{background:var(--indigo-bg); border:none; color:var(--indigo-deep); border-radius:8px; padding:7px 16px; font-size:12px; cursor:pointer; font-weight:800;}
   .more-toggle-btn:hover{background:var(--indigo); color:#fff;}
   .del-btn:hover{background:var(--coral-bg); color:var(--coral);}
@@ -2526,10 +2530,44 @@
         </div>
       </div>
 
-      <!-- 검토표: 신고현황과 동일한 구성이지만 원천세/부가세만, 신고 전 단계 검토용(신고현황과는 별도 데이터).
+      <!-- 검토표: 부가세는 신고현황과 동일한 상태/메모 표(#reviewLegacyBox), 원천세는 거래처별 원천세 검토표
+           원본 엑셀(급여검증/납부세액검증/제출기한) 구조를 그대로 옮긴 전용 화면(#reviewIncomeTaxBox) -
            세목 선택 칩은 위 approvalCatToggle 트리 안, 검토표 밑에 가지로 붙어있음 - #reviewTypeToggle -->
       <div class="approval-panel" data-approval-cat="review" style="display:none;">
         <h2 class="section-title" style="justify-content:center; font-size:22px; margin:4px 0 14px;" id="reviewStatusTitle">원천세 검토표</h2>
+
+        <!-- 원천세 검토표: 거래처를 먼저 고르면(엑셀에서 거래처마다 시트가 따로였던 것과 같은 방식) 그 거래처의
+             12개월치 검토표가 쭉 나옴 -->
+        <div id="reviewIncomeTaxBox" style="display:none;">
+          <div style="display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+            <input type="text" id="reviewItClientSearch" placeholder="거래처 검색" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 10px; font-family:'Pretendard',sans-serif; font-size:12.5px; width:140px;">
+            <select id="reviewItClientSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700; max-width:220px;"></select>
+            <select id="reviewItYearSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
+          </div>
+
+          <div id="reviewItClientMeta" style="display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; font-size:12px; color:var(--ink-soft);"></div>
+
+          <div class="policy-category-toggle" id="reviewItSectionToggle" style="margin-bottom:14px;">
+            <button type="button" class="review-it-section-btn active" data-it-section="income">급여검증</button>
+            <button type="button" class="review-it-section-btn" data-it-section="tax">납부세액검증</button>
+            <button type="button" class="review-it-section-btn" data-it-section="deadline">제출기한</button>
+          </div>
+
+          <div style="display:flex; align-items:center; justify-content:flex-end; gap:8px; max-width:1160px; margin:0 auto 6px;">
+            <span class="hint" style="font-size:11px; margin:0;">숫자를 입력한 뒤 저장 버튼을 눌러주세요.</span>
+            <span class="save-msg" id="reviewItSaveMsg" style="margin-top:0; display:inline-block;"></span>
+            <button type="button" id="reviewItSaveBtn" title="저장 (바뀐 내용이 있으면 버튼이 빨갛게 표시돼요)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:none; background:var(--indigo); color:#fff; box-shadow:0 4px 10px -3px rgba(29,30,51,0.35); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            </button>
+          </div>
+
+          <div id="reviewItIncomeWrap" class="table-scroll" style="max-width:1160px; margin:0 auto;"></div>
+          <div id="reviewItTaxWrap" class="table-scroll" style="max-width:1160px; margin:0 auto; display:none;"></div>
+          <div id="reviewItDeadlineWrap" style="max-width:1160px; margin:0 auto; display:none;"></div>
+        </div>
+
+        <!-- 부가세 검토표: 기존 신고현황과 같은 상태/메모 표 -->
+        <div id="reviewLegacyBox">
         <div id="reviewPeriodControls" style="display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
           <div class="policy-category-toggle" id="reviewPeriodModeToggle" style="display:none; margin-bottom:0;">
             <button type="button" class="review-period-mode-btn active" data-period-mode="월별">월별</button>
@@ -2549,6 +2587,7 @@
             </div>
           </div>
           <div id="reviewStatusTableWrap"></div>
+        </div>
         </div>
       </div>
 
@@ -2876,10 +2915,10 @@
           <label>Google OAuth 클라이언트 ID</label>
           <input type="text" id="gdrive-client-id" placeholder="xxxxxxxx.apps.googleusercontent.com">
         </div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center; margin-top:6px;">
-          <button type="button" id="gdriveConnectBtn" class="submit-btn" style="width:auto; padding:9px 16px;">🔗 Google 계정으로 연결</button>
-          <button type="button" id="gdriveSyncBtn" class="submit-btn" style="width:auto; padding:9px 16px; background:var(--mint);" disabled>🔄 지금 동기화</button>
-          <span class="save-msg" id="gdriveStatusMsg" style="margin-top:0;">연결 안 됨</span>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center; margin-top:6px;">
+          <button type="button" id="gdriveConnectBtn" class="submit-btn" style="width:auto; min-width:0; margin:0; padding:7px 13px; font-size:12px;">🔗 Google 계정으로 연결</button>
+          <button type="button" id="gdriveSyncBtn" class="submit-btn" style="width:auto; min-width:0; margin:0; padding:7px 13px; font-size:12px; background:var(--mint);" disabled>🔄 지금 동기화</button>
+          <span class="save-msg" id="gdriveStatusMsg" style="margin-top:0; font-size:10.5px;">연결 안 됨</span>
         </div>
       </div>
 
@@ -5987,17 +6026,17 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
     const historyBtn = (c.editHistory && c.editHistory.length)
       ? `<button class="del-btn client-action-btn client-history-btn" data-id="${c.id}" title="수정이력 보기">🕘</button>`
       : `<button class="del-btn client-action-btn" disabled style="opacity:0.3; cursor:default;" title="수정이력 없음">🕘</button>`;
-    const detailBtn = `<button class="del-btn client-action-btn client-detail-btn" data-id="${c.id}" title="추가정보 보기">ℹ️</button>`;
+    const detailBtn = `<button class="del-btn client-action-btn client-detail-btn client-icon-plain" data-id="${c.id}" title="추가정보 보기">ℹ️</button>`;
     // 📁 이모지를 twemoji가 외부 CDN 이미지로 바꿔치기하는 과정에서, 네트워크 상황에 따라 잠깐 노란 이모지로
     // 보이다가 로딩 실패 시 글자색(파란기)으로 바뀌어 보이는 문제가 있어서 - 항상 똑같이 노란 폴더로 보이도록
     // 네트워크 의존 없는 인라인 SVG로 직접 그림 (twemoji.parse 대상도 아니라서 나중에 다시 바뀔 일도 없음)
     const folderSvg = `<svg width="15" height="15" viewBox="0 0 24 24" style="vertical-align:-3px;"><path fill="#FDB813" d="M2 6.5C2 5.67 2.67 5 3.5 5h5.17c.35 0 .68.14.93.39L10.7 6.5H20.5c.83 0 1.5.67 1.5 1.5v10c0 .83-.67 1.5-1.5 1.5h-17C2.67 19.5 2 18.83 2 18V6.5z"/></svg>`;
     const folderBtn = c.driveFolder
-      ? `<a class="del-btn client-action-btn" href="${escHtml(c.driveFolder)}" target="_blank" rel="noopener" title="공유드라이브 폴더 열기" style="display:inline-block; text-decoration:none;">${folderSvg}</a>`
-      : `<button class="del-btn client-action-btn" disabled style="opacity:0.3; cursor:default;" title="등록된 폴더 링크 없음">${folderSvg}</button>`;
+      ? `<a class="del-btn client-action-btn client-icon-plain" href="${escHtml(c.driveFolder)}" target="_blank" rel="noopener" title="공유드라이브 폴더 열기" style="text-decoration:none;">${folderSvg}</a>`
+      : `<button class="del-btn client-action-btn client-icon-plain" disabled style="opacity:0.3; cursor:default;" title="등록된 폴더 링크 없음">${folderSvg}</button>`;
     // 열쇠 아이콘은 폴더 아이콘과 색이 겹쳐 헷갈리지 않도록 분홍색으로 구분함 - 이모지는 색을 못 바꿔서 인라인 SVG로 그림
     const keySvg = `<svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style="vertical-align:-2px;"><path fill-rule="evenodd" d="M8 7a5 5 0 113.61 4.804l-1.903 1.903A1 1 0 019 14H8v1a1 1 0 01-1 1H6v1a1 1 0 01-1 1H3a1 1 0 01-1-1v-2a1 1 0 01.293-.707L8.196 8.39A5.002 5.002 0 018 7zm5-3a.75.75 0 000 1.5A1.5 1.5 0 0114.5 7 .75.75 0 0016 7a3 3 0 00-3-3z" clip-rule="evenodd"/></svg>`;
-    const personalKeyBtn = `<button class="del-btn client-action-btn client-personal-key-btn" data-id="${c.id}" title="개인정보(ID/PW) 보기" style="background:var(--pink-bg, #FCE7F3); color:var(--pink, #DB2777);">${keySvg}</button>`;
+    const personalKeyBtn = `<button class="del-btn client-action-btn client-personal-key-btn client-icon-plain" data-id="${c.id}" title="개인정보(ID/PW) 보기" style="color:var(--pink, #DB2777);">${keySvg}</button>`;
     return `<tr>
       <td class="num cvb">${idx+1}</td>${groupNoCell}
       <td class="cvb" style="color:${taxColor}; font-weight:600;">${escHtml(taxTypeDisplay)}</td>
