@@ -166,8 +166,17 @@
   .home-menu-col{ flex:0 0 auto; }
   .home-dashboard-col{ flex:1 1 420px; min-width:280px; }
   /* "Dashboard" 글자가 위쪽 Tax.J 로고와 굵기·자간이 비슷해서 로고의 축소판처럼 보인다는 피드백 -
-     로고는 크고 진한 브랜드 글자로, 이 제목은 작고 여백 있는 라벨(eyebrow) 스타일로 확실히 갈라놓음 */
-  .home-dashboard-title{ font-size:12.5px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:var(--ink-soft); margin:0 0 18px; text-align:center; }
+     로고는 크고 진한 브랜드 글자로, 이 제목은 작고 여백 있는 라벨(eyebrow) 스타일로 확실히 갈라놓음.
+     다만 너무 밋밋하다는 의견이 있어서, 색을 진하게(indigo-deep)·글자를 더 굵게 하고 밑에 작은 강조
+     밑줄을 하나 둬서 라벨이면서도 존재감이 있게 함 */
+  .home-dashboard-title{
+    font-size:12.5px; font-weight:800; letter-spacing:0.2em; text-transform:uppercase; color:var(--indigo-deep);
+    margin:0 0 20px; text-align:center; position:relative; padding-bottom:10px;
+  }
+  .home-dashboard-title::after{
+    content:''; position:absolute; left:50%; bottom:0; transform:translateX(-50%);
+    width:28px; height:3px; border-radius:2px; background:var(--indigo);
+  }
   /* 카드 4개 아래로 화면 하단까지 빈 공간이 크게 남는다는 피드백이 있어서, grid-auto-rows로 두 줄이
      세로 공간을 나눠 채우게 하고 최소 높이를 넉넉히 잡아 세로 활용폭을 늘림 */
   .home-dashboard-grid{ display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:1fr; gap:16px; min-height:min(62vh, 620px); }
@@ -176,6 +185,12 @@
     background:var(--surface); border-radius:16px; padding:18px 20px; min-height:150px;
     box-shadow:0 1px 2px rgba(29,30,51,0.04), 0 8px 20px -14px rgba(29,30,51,0.2);
     display:flex; flex-direction:column; gap:8px;
+    /* 팀캘린더/근태현황 카드 안에 실제 화면을 그대로 축소해 넣은 미리보기(cloneForDashboardPreview)가
+       원본 크기(예: 1200px)로 렌더링된 뒤 transform:scale()로 "그림만" 줄어드는 방식이라, grid item의
+       기본 최소폭(min-width:auto)이 그 원본 크기를 그대로 반영해버려 이 칸만 크게 벌어지고 결재/공지사항
+       칸은 좁게 눌리는 문제가 있었음 - min-width:0으로 grid의 auto-min 계산에서 내부 콘텐츠 크기를
+       무시하게 하면 4칸이 다시 똑같은 폭(1fr)으로 나란히 맞춰짐 */
+    min-width:0; overflow:hidden;
   }
   .home-dash-card[data-goto]{ cursor:pointer; transition:transform 0.15s, box-shadow 0.15s; }
   .home-dash-card[data-goto]:hover{ transform:translateY(-2px); box-shadow:0 3px 8px rgba(29,30,51,0.06), 0 12px 24px -14px rgba(29,30,51,0.26); }
@@ -7604,6 +7619,10 @@ function activateTab(tabName, pushHistory){
   if(pushHistory){
     try{ history.pushState({ tab: tabName }, '', location.pathname + location.search); }catch(e){}
   }
+  // 이전 화면에서 아래로 스크롤한 상태로 사이드바의 다른 메뉴를 클릭하면, 화면 내용은 바뀌었는데
+  // 스크롤 위치는 그대로 남아있어서 새 메뉴의 내용이 중간부터(심지어 그 화면엔 없는 위치까지) 보이는
+  // 문제가 있었음 - 탭이 바뀔 때마다 항상 맨 위에서부터 보이도록 스크롤을 초기화함
+  window.scrollTo(0, 0);
 }
 
 window.addEventListener('popstate', (e)=>{
@@ -7690,7 +7709,10 @@ document.querySelectorAll('.home-submenu-item[data-settings-anchor-goto]').forEa
     requestAnimationFrame(()=>{
       const group = document.querySelector(`.settings-group[data-settings-cat="${item.dataset.settingsAnchorGoto}"]`);
       const btn = group?.querySelector(`.settings-subsection-btn[data-subsection-id="${item.dataset.settingsTargetId}"]`);
-      if(btn){ btn.click(); btn.scrollIntoView({behavior:'smooth', block:'nearest'}); }
+      // 이 버튼은 화면에서 숨겨져 있어서(display:none) scrollIntoView가 제대로 동작하지 않아 예전
+      // 스크롤 위치가 그대로 남는 문제가 있었음 - activateTab()이 이미 맨 위로 스크롤을 초기화해주므로
+      // 버튼 클릭(=어느 소메뉴를 보여줄지 결정)만 하고 스크롤은 따로 건드리지 않음
+      if(btn) btn.click();
     });
   });
 });
