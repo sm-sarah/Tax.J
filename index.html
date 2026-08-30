@@ -1217,6 +1217,20 @@
     </div>
   </div>
 </div>
+<div id="reviewSeedImportModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:640px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px;">
+      <div style="font-weight:800; font-size:17px; color:var(--ink);">📥 엑셀 데이터 불러오기</div>
+      <button type="button" id="reviewSeedImportModalClose" class="del-btn">닫기</button>
+    </div>
+    <p class="hint" style="margin:0 0 12px;">엑셀 거래처명과 매칭될 거래처를 확인/수정한 뒤 적용해주세요. 이미 숫자가 입력된 월·항목은 덮어쓰지 않고 빈 칸만 채워요.</p>
+    <div id="reviewSeedImportListWrap"></div>
+    <div style="text-align:center; margin-top:14px;">
+      <button type="button" id="reviewSeedImportApplyBtn" class="submit-btn" style="width:auto; padding:9px 20px;">선택한 거래처에 적용</button>
+    </div>
+    <div style="text-align:center;"><span class="save-msg" id="reviewSeedImportMsg"></span></div>
+  </div>
+</div>
 <div id="ciEntryFormModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:480px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
     <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:14px;">
@@ -2507,6 +2521,7 @@
           <div class="policy-category-toggle" id="filingPeriodModeToggle" style="display:none; margin-bottom:0;">
             <button type="button" class="filing-period-mode-btn active" data-period-mode="월별">월별</button>
             <button type="button" class="filing-period-mode-btn" data-period-mode="반기">반기</button>
+            <button type="button" class="filing-period-mode-btn" data-period-mode="연간">연간(지급명세서)</button>
           </div>
           <select id="filingPeriodYear" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
           <select id="filingPeriodSub" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
@@ -2538,6 +2553,7 @@
             <input type="text" id="reviewItClientSearch" placeholder="거래처 검색" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 10px; font-family:'Pretendard',sans-serif; font-size:12.5px; width:140px;">
             <select id="reviewItClientSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700; max-width:220px;"></select>
             <select id="reviewItYearSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
+            <button type="button" id="reviewSeedImportBtn" class="del-btn" title="원천세_2026.xlsx에서 뽑아둔 1~7월 실제 숫자를 거래처명이 맞는 곳에 채워넣어요(이미 입력된 칸은 안 건드림)">📥 엑셀 데이터 불러오기</button>
           </div>
 
           <div id="reviewItClientMeta" style="display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; font-size:12px; color:var(--ink-soft);"></div>
@@ -10519,7 +10535,7 @@ function currentFilingPeriodKey(kind, taxType){
   ensureFilingPeriodStateInit(kind);
   const st = FILING_KINDS[kind].state;
   const y = st.year;
-  if(taxType === '원천세') return st.sourceMode === '반기' ? `${y}-${st.half}` : `${y}-${String(st.month).padStart(2,'0')}`;
+  if(taxType === '원천세') return st.sourceMode === '연간' ? `${y}` : st.sourceMode === '반기' ? `${y}-${st.half}` : `${y}-${String(st.month).padStart(2,'0')}`;
   if(taxType === '부가세') return `${y}-${st.quarter}`;
   return `${y}`; // 법인세/종소세/결산: 연 1회
 }
@@ -10527,7 +10543,7 @@ function currentFilingPeriodLabel(kind, taxType){
   ensureFilingPeriodStateInit(kind);
   const st = FILING_KINDS[kind].state;
   const y = st.year;
-  if(taxType === '원천세') return st.sourceMode === '반기' ? `${y}년 ${st.half==='H1' ? '상반기' : '하반기'}` : `${y}년 ${Number(st.month)}월`;
+  if(taxType === '원천세') return st.sourceMode === '연간' ? `${y}년 (지급명세서)` : st.sourceMode === '반기' ? `${y}년 ${st.half==='H1' ? '상반기' : '하반기'}` : `${y}년 ${Number(st.month)}월`;
   if(taxType === '부가세') return `${y}년 ${st.quarter.replace('Q','')}분기`;
   return `${y}년 귀속`;
 }
@@ -10556,7 +10572,7 @@ function renderFilingPeriodControls(kind){
   if(st.year) years.add(st.year); // 지금 보고 있는 연도도 항상 포함
   const sortedYears = Array.from(years).sort((a,b)=> Number(b) - Number(a));
   yearSel.innerHTML = sortedYears.map(y=>`<option value="${y}" ${y===st.year?'selected':''}>${y}년 귀속</option>`).join('');
-  if(taxType === '법인세' || taxType === '종소세' || taxType === '결산'){
+  if(taxType === '법인세' || taxType === '종소세' || taxType === '결산' || (taxType === '원천세' && st.sourceMode === '연간')){
     subSel.style.display = 'none';
   } else if(taxType === '원천세' && st.sourceMode === '반기'){
     subSel.style.display = '';
@@ -10591,6 +10607,30 @@ function flashFilingStatusSaveMsg(kind){
     toast._flashT = setTimeout(()=>{ toast.style.opacity = '0'; }, 1400);
   }
 }
+// 신고현황(원천세) 세목 세분화 - 엑셀 '신고현황' 시트의 매월제출/반기제출/연1회(지급명세서) 항목을 그대로 옮김.
+// 신고구분(월별/반기/연간)에 따라 해당하는 세부항목만 표에 열로 추가되고, 값은 해당없음/미확인/완료 3단계로 관리함.
+// 기존 "진행상태(미확인/검토중/신고완료)"는 원천세 신고 자체의 전체 진행상황으로 그대로 유지하고, 세부항목은 그 옆에 별도로 관리.
+const FILING_STATUS_SUBITEMS = {
+  월별: [
+    { key:'사업간이', label:'사업(간이)' },
+    { key:'기타간이', label:'기타(간이)' },
+    { key:'일용지급', label:'일용(지급)' },
+    { key:'일용근확', label:'일용(근확)' },
+    { key:'특고', label:'특고(월보수액)' },
+    { key:'학자금상환', label:'학자금상환' },
+    { key:'기타매월', label:'기타' },
+  ],
+  반기: [
+    { key:'근로간이', label:'근로(간이)' },
+  ],
+  연간: [
+    { key:'근로연간', label:'근로' },
+    { key:'사업연간', label:'사업' },
+    { key:'기타연간', label:'기타(간이외)' },
+    { key:'퇴직연간', label:'퇴직' },
+    { key:'이자배당연간', label:'이자/배당' },
+  ],
+};
 function renderFilingStatusTable(kind){
   const cfg = FILING_KINDS[kind];
   const taxType = cfg.getViewingType();
@@ -10606,14 +10646,27 @@ function renderFilingStatusTable(kind){
   store[taxType] = store[taxType] || {};
   store[taxType][period] = store[taxType][period] || {};
   const periodData = store[taxType][period];
+  // 세부항목 열은 신고현황(status) 화면의 원천세에서만, 신고구분(월별/반기/연간)에 맞는 항목만 보여줌
+  const subitems = (kind === 'status' && taxType === '원천세') ? (FILING_STATUS_SUBITEMS[cfg.state.sourceMode] || []) : [];
+  const subitemHeaderCells = subitems.map(it=>`<th class="cvb" style="white-space:nowrap; font-size:11px;">${escHtml(it.label)}</th>`).join('');
   const rows = list.map((c, idx)=>{
     const entry = periodData[c.id] || { status:'미확인', memo:'' };
+    entry.items = entry.items || {};
     // 이름 칸 색·배경은 기장거래처 표(순번·상호명)와 같은 규칙(법인/개인 구분)을 그대로 가져옴
     const entityColor = c.entityType === '법인' ? '#0B5A78' : c.entityType === '개인' ? '#BE185D' : 'inherit';
     const nameBg = c.entityType === '법인' ? '#DCEEF5' : c.entityType === '개인' ? '#FCE9F1' : 'transparent';
+    const subitemCells = subitems.map(it=>{
+      const v = entry.items[it.key] || '해당없음';
+      return `<td class="cvb"><select class="filing-status-subitem-select" data-client-id="${c.id}" data-item-key="${it.key}" style="font-size:11px; border:1.5px solid var(--border); border-radius:6px; padding:2px 3px;">
+        <option value="해당없음" ${v==='해당없음'?'selected':''}>해당없음</option>
+        <option value="미확인" ${v==='미확인'?'selected':''}>미확인</option>
+        <option value="완료" ${v==='완료'?'selected':''}>완료</option>
+      </select></td>`;
+    }).join('');
     return `<tr>
       <td class="num cvb">${idx+1}</td>
       <td class="cvb" style="color:${entityColor}; font-weight:800; background:${nameBg};">${escHtml(c.name)}</td>
+      ${subitemCells}
       <td class="cvb"><select class="${cfg.ids.selectClass}" data-client-id="${c.id}">
         <option value="미확인" ${entry.status==='미확인'?'selected':''}>미확인</option>
         <option value="검토중" ${entry.status==='검토중'?'selected':''}>검토중</option>
@@ -10622,7 +10675,16 @@ function renderFilingStatusTable(kind){
       <td><input type="text" class="${cfg.ids.memoClass}" data-client-id="${c.id}" value="${escHtml(entry.memo||'')}" placeholder="메모" style="width:100%; border:1.5px solid var(--border); border-radius:6px; padding:4px 8px; font-family:'Pretendard',sans-serif; font-size:12px; text-align:center;"></td>
     </tr>`;
   }).join('');
-  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th class="cvb">#</th><th class="cvb">거래처</th><th class="cvb">진행상태</th><th>메모</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th class="cvb">#</th><th class="cvb">거래처</th>${subitemHeaderCells}<th class="cvb">진행상태</th><th>메모</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  wrap.querySelectorAll('.filing-status-subitem-select').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const cid = sel.dataset.clientId;
+      periodData[cid] = periodData[cid] || { status:'미확인', memo:'' };
+      periodData[cid].items = periodData[cid].items || {};
+      periodData[cid].items[sel.dataset.itemKey] = sel.value;
+      setFilingStatusDirty(kind, true);
+    });
+  });
   wrap.querySelectorAll('.'+cfg.ids.selectClass).forEach(sel=>{
     sel.addEventListener('change', ()=>{
       const cid = sel.dataset.clientId;
@@ -10725,6 +10787,11 @@ const REVIEW_TAX_GROUPS = [
   { key:'이자', label:'이자소득' },
   { key:'환급잔액', label:'환급잔액' },
 ];
+// 검토표(원천세) 초기 시드 데이터: 원천세_2026.xlsx의 12개 거래처 탭(왓츠랩·나우이엔지는 익월/당월 두 탭을 귀속월 기준으로 합산)에서
+// 1~7월 실제 숫자를 추출해 둔 값. 이 파일 안에는 사용자가 실제 등록한 거래처ID가 없어서(거래처 데이터는 로컬/구글드라이브에만 있음)
+// 회사명으로 매칭해야 함 - names 배열에 매칭 후보 이름을 여러 개 넣어둠. "검토표 > 엑셀 데이터 불러오기" 버튼(아래 reviewSeedImport* 함수들)이
+// 이름이 맞는 거래처를 찾아 확인 화면을 보여준 뒤, 빈 칸(아직 값이 없는 월/항목)에만 채워 넣음(이미 입력된 값은 덮어쓰지 않음).
+const REVIEW_SEED_2026 = JSON.parse('{"리빙":{"names":["주식회사 리빙디자인공감","리빙디자인공감","리빙"],"meta":{"payCycle":"반기","sameMonth":true},"months":{"1":{"income":{"근로과세":15350000.0,"근로제출비과세":200000.0,"근로미제출비과세":200000.0,"일용":6660910.0},"incomeReported":null,"tax":{"간이":{"tax":508390.0,"local":50820.0},"일용":{"tax":25110.0,"local":2440.0}},"taxReported":null},"2":{"income":{"근로과세":14951266.0,"근로제출비과세":200000.0,"근로미제출비과세":200000.0,"연말":150394064.0,"일용":6960000.0},"incomeReported":null,"tax":{"간이":{"tax":428480.0,"local":42820.0},"일용":{"tax":19980.0,"local":1980.0},"연말":{"tax":-1786080.0,"local":-178360.0}},"taxReported":null},"3":{"income":{"근로과세":15734750.0,"근로제출비과세":200000.0,"근로미제출비과세":200000.0,"일용":5200810.0},"incomeReported":null,"tax":{"간이":{"tax":496380.0,"local":49610.0},"일용":{"tax":14580.0,"local":1450.0}},"taxReported":null},"4":{"income":{"근로과세":16899112.0,"근로제출비과세":200000.0,"근로미제출비과세":200000.0,"일용":15034800.0},"incomeReported":null,"tax":{"간이":{"tax":636380.0,"local":63620.0},"일용":{"tax":124900.0,"local":12420.0}},"taxReported":null},"5":{"income":{"근로과세":15001266.0,"근로제출비과세":200000.0,"근로미제출비과세":200000.0,"중도과세":13257970.0,"일용":4420000.0,"퇴직":11347140.0},"incomeReported":null,"tax":{"간이":{"tax":351260.0,"local":35100.0},"중도":{"tax":-176700.0,"local":-17650.0},"일용":{"tax":21060.0,"local":2090.0},"퇴직":{"tax":72330.0,"local":7230.0}},"taxReported":null},"6":{"income":{"근로과세":15200000.0,"근로제출비과세":400000.0,"근로미제출비과세":200000.0,"일용":4020000.0},"incomeReported":311832088.0,"tax":{"간이":{"tax":443610.0,"local":44340.0},"일용":{"tax":29970.0,"local":2990.0}},"taxReported":1209650.0},"7":{"income":{"근로과세":16250000.0,"근로제출비과세":400000.0,"근로미제출비과세":200000.0,"일용":6200000.0},"incomeReported":null,"tax":{"간이":{"tax":568780.0,"local":56870.0},"일용":{"tax":54000.0,"local":5380.0}},"taxReported":null}}},"나빌레라":{"names":["협동조합 나빌레라","나빌레라"],"meta":{"payCycle":"매월","sameMonth":true},"months":{"1":{"income":{"근로과세":2750000.0},"incomeReported":2750000.0,"tax":{},"taxReported":0.0},"2":{"income":{"근로과세":4350000.0,"연말":18465235.0},"incomeReported":22815235.0,"tax":{"간이":{"tax":43970.0,"local":4390.0},"연말":{"tax":-11990.0,"local":-1190.0}},"taxReported":31980.0},"3":{"income":{"근로과세":3547680.0,"사업":600000.0,"기타간이대상":2245980.0},"incomeReported":6393660.0,"tax":{"간이":{"tax":15940.0,"local":1590.0},"사업":{"tax":18000.0,"local":1800.0},"기타간이대상":{"tax":179660.0,"local":17960.0}},"taxReported":213600.0},"4":{"income":{"근로과세":3396920.0,"사업":1147000.0,"기타간이대상":380000.0},"incomeReported":4923920.0,"tax":{"간이":{"tax":12840.0,"local":1280.0},"사업":{"tax":34410.0,"local":3410.0}},"taxReported":47250.0},"5":{"income":{"근로과세":3681840.0,"사업":3699000.0,"기타간이대상":4920000.0},"incomeReported":12300840.0,"tax":{"간이":{"tax":18880.0,"local":1880.0},"사업":{"tax":110970.0,"local":11090.0},"기타간이대상":{"tax":377600.0,"local":37760.0}},"taxReported":507450.0},"6":{"income":{"근로과세":3465120.0},"incomeReported":3465120.0,"tax":{"간이":{"tax":14290.0,"local":1420.0}},"taxReported":14290.0},"7":{"income":{"근로과세":2916369.0,"중도과세":12207929.0,"사업":2700000.0,"기타간이대상":120000.0},"incomeReported":17944298.0,"tax":{"중도":{"tax":-105920.0,"local":-10560.0},"사업":{"tax":81000.0,"local":8100.0}},"taxReported":-24920.0}}},"프린웍스산업":{"names":["주식회사 프린웍스산업","프린웍스산업"],"meta":{"payCycle":"매월","sameMonth":true},"months":{"1":{"income":{"근로과세":8667000.0,"일용":300000.0},"incomeReported":8967000.0,"tax":{"간이":{"tax":273030.0,"local":27290.0}},"taxReported":273030.0},"2":{"income":{"근로과세":8667000.0,"중도과세":8334000.0,"연말":81336000.0},"incomeReported":98337000.0,"tax":{"간이":{"tax":121680.0,"local":12160.0},"중도":{"tax":-151350.0,"local":-15130.0},"연말":{"tax":-1737060.0,"local":-173610.0}},"taxReported":-1766730.0},"3":{"income":{"근로과세":4500000.0},"incomeReported":4500000.0,"tax":{"간이":{"tax":121680.0,"local":12160.0}},"taxReported":-1645050.0},"4":{"income":{"근로과세":4500000.0},"incomeReported":4500000.0,"tax":{"간이":{"tax":121680.0,"local":12160.0}},"taxReported":-1523370.0},"5":{"income":{"근로과세":4500000.0},"incomeReported":4500000.0,"tax":{"간이":{"tax":121680.0,"local":12160.0}},"taxReported":-1401690.0},"6":{"income":{"근로과세":4500000.0},"incomeReported":4500000.0,"tax":{"간이":{"tax":121680.0,"local":12160.0}},"taxReported":-1280010.0},"7":{"income":{"근로과세":4500000.0},"incomeReported":null,"tax":{"간이":{"tax":121680.0,"local":12160.0}},"taxReported":-1158330.0}}},"프린웍스청양":{"names":["주식회사 프린웍스산업 청양공장","프린웍스산업 청양공장","프린웍스 청양","프린웍스청양"],"meta":{"payCycle":"매월","sameMonth":true},"months":{"1":{"income":{},"incomeReported":null,"tax":{},"taxReported":null},"2":{"income":{},"incomeReported":null,"tax":{},"taxReported":null},"3":{"income":{},"incomeReported":null,"tax":{},"taxReported":null},"4":{"income":{"근로과세":3500000.0},"incomeReported":3500000.0,"tax":{"간이":{"tax":101770.0,"local":10170.0}},"taxReported":101770.0},"5":{"income":{"근로과세":3500000.0},"incomeReported":3500000.0,"tax":{"간이":{"tax":101770.0,"local":10170.0}},"taxReported":101770.0},"6":{"income":{"근로과세":3500000.0},"incomeReported":3500000.0,"tax":{"간이":{"tax":101770.0,"local":10170.0}},"taxReported":101770.0},"7":{"income":{"근로과세":3500000.0},"incomeReported":3500000.0,"tax":{"간이":{"tax":101770.0,"local":10170.0}},"taxReported":101770.0}}},"비앤피랩":{"names":["비앤피랩"],"meta":{"payCycle":"반기","sameMonth":true},"months":{"1":{"income":{"근로과세":3300000.0,"사업":15000000.0,"기타간이대상":6780000.0},"incomeReported":null,"tax":{"간이":{"tax":82520.0,"local":8250.0},"사업":{"tax":450000.0,"local":45000.0},"기타간이대상":{"tax":542400.0,"local":54240.0}},"taxReported":null},"2":{"income":{"근로과세":3300000.0,"연말":38200000.0,"사업":29154000.0,"기타간이대상":1690000.0},"incomeReported":null,"tax":{"간이":{"tax":46720.0,"local":4670.0},"연말":{"tax":-937790.0,"local":-93730.0},"사업":{"tax":874620.0,"local":87460.0},"기타간이대상":{"tax":135200.0,"local":13520.0}},"taxReported":null},"3":{"income":{"근로과세":3700000.0,"사업":2679080.0,"기타간이대상":7300000.0},"incomeReported":null,"tax":{"간이":{"tax":78110.0,"local":7810.0},"사업":{"tax":80370.0,"local":8030.0},"기타간이대상":{"tax":584000.0,"local":58400.0}},"taxReported":null},"4":{"income":{"근로과세":3700000.0,"사업":2321000.0,"기타간이대상":11170000.0},"incomeReported":null,"tax":{"간이":{"tax":78110.0,"local":7810.0},"사업":{"tax":69630.0,"local":6960.0},"기타간이대상":{"tax":893600.0,"local":89360.0}},"taxReported":null},"5":{"income":{"근로과세":7034000.0,"사업":2746000.0,"기타간이대상":8540000.0},"incomeReported":null,"tax":{"간이":{"tax":183320.0,"local":18330.0},"사업":{"tax":82380.0,"local":8230.0},"기타간이대상":{"tax":683200.0,"local":68320.0}},"taxReported":null},"6":{"income":{"근로과세":7034000.0,"기타간이대상":5190000.0},"incomeReported":158838080.0,"tax":{"간이":{"tax":183320.0,"local":18330.0},"기타간이대상":{"tax":415200.0,"local":41520.0}},"taxReported":4524910.0},"7":{"income":{"근로과세":7034000.0},"incomeReported":null,"tax":{"간이":{"tax":183320.0,"local":18330.0}},"taxReported":null}}},"태하":{"names":["태하기술사사무소","태하"],"meta":{"payCycle":"매월","sameMonth":true},"months":{"1":{"income":{"근로과세":600000.0},"incomeReported":600000.0,"tax":{},"taxReported":-167600.0},"2":{"income":{"근로과세":600000.0,"연말":7200000.0},"incomeReported":7800000.0,"tax":{},"taxReported":-167600.0},"3":{"income":{"근로과세":600000.0},"incomeReported":600000.0,"tax":{},"taxReported":-167600.0},"4":{"income":{"근로과세":600000.0},"incomeReported":600000.0,"tax":{},"taxReported":-167600.0},"5":{"income":{"근로과세":600000.0},"incomeReported":600000.0,"tax":{},"taxReported":-167600.0},"6":{"income":{"근로과세":600000.0},"incomeReported":600000.0,"tax":{},"taxReported":-167600.0},"7":{"income":{"근로과세":600000.0},"incomeReported":600000.0,"tax":{},"taxReported":-167600.0}}},"세성":{"names":["세성실업","세성"],"meta":{"payCycle":"매월","sameMonth":true},"months":{"1":{"income":{"근로과세":3050000.0,"근로제출비과세":200000.0,"일용":700000.0},"incomeReported":3950000.0,"tax":{"간이":{"tax":25010.0,"local":2500.0}},"taxReported":25010.0},"2":{"income":{"근로과세":3050000.0,"근로제출비과세":200000.0,"중도과세":2000000.0,"연말":26200000.0},"incomeReported":31450000.0,"tax":{"간이":{"tax":25010.0,"local":2500.0},"연말":{"tax":-300120.0,"local":-30000.0}},"taxReported":-275110.0},"3":{"income":{"근로과세":2050000.0,"근로제출비과세":200000.0,"일용":2100000.0},"incomeReported":4350000.0,"tax":{"간이":{"tax":25010.0,"local":2500.0},"일용":{"tax":9450.0,"local":910.0}},"taxReported":-240650.0},"4":{"income":{"근로과세":2050000.0,"근로제출비과세":200000.0,"일용":1400000.0},"incomeReported":3650000.0,"tax":{"간이":{"tax":25010.0,"local":2500.0}},"taxReported":-215640.0},"5":{"income":{"근로과세":2050000.0,"근로제출비과세":200000.0},"incomeReported":2250000.0,"tax":{"간이":{"tax":25010.0,"local":2500.0}},"taxReported":-190630.0},"6":{"income":{"근로과세":2050000.0,"근로제출비과세":200000.0,"일용":2800000.0},"incomeReported":5050000.0,"tax":{"간이":{"tax":25010.0,"local":2500.0},"일용":{"tax":18900.0,"local":1820.0}},"taxReported":-146720.0},"7":{"income":{"근로과세":2050000.0,"근로제출비과세":200000.0,"일용":1400000.0},"incomeReported":3650000.0,"tax":{"간이":{"tax":25010.0,"local":2500.0}},"taxReported":-121710.0}}},"와이인":{"names":["와이인"],"meta":{"payCycle":"매월","sameMonth":true},"months":{"1":{"income":{"근로과세":6750800.0,"근로제출비과세":400000.0,"사업":3407700.0},"incomeReported":10558500.0,"tax":{"간이":{"tax":222650.0,"local":22250.0},"사업":{"tax":102230.0,"local":10200.0}},"taxReported":324880.0},"2":{"income":{"근로과세":8059800.0,"근로제출비과세":600000.0,"연말":40751150.0,"사업":1031000.0},"incomeReported":50441950.0,"tax":{"간이":{"tax":139700.0,"local":13970.0},"연말":{"tax":-854860.0,"local":-85450.0},"사업":{"tax":30920.0,"local":3080.0}},"taxReported":-684240.0},"3":{"income":{"근로과세":8542950.0,"근로제출비과세":900000.0,"중도과세":1548800.0},"incomeReported":10991750.0,"tax":{"간이":{"tax":123870.0,"local":12380.0}},"taxReported":-560370.0},"4":{"income":{"근로과세":7857800.0,"근로제출비과세":500000.0},"incomeReported":8357800.0,"tax":{"간이":{"tax":123870.0,"local":12380.0}},"taxReported":-436500.0},"5":{"income":{"근로과세":8632700.0,"근로제출비과세":700000.0},"incomeReported":9332700.0,"tax":{"간이":{"tax":144170.0,"local":14410.0}},"taxReported":-292330.0},"6":{"income":{"근로과세":8439400.0,"근로제출비과세":700000.0},"incomeReported":9139400.0,"tax":{"간이":{"tax":136660.0,"local":13650.0}},"taxReported":-155670.0},"7":{"income":{"근로과세":7787100.0,"근로제출비과세":500000.0,"사업":252950.0},"incomeReported":8540050.0,"tax":{"간이":{"tax":213360.0,"local":21330.0},"사업":{"tax":7580.0,"local":750.0}},"taxReported":65270.0}}},"엽떡":{"names":["불닭발땡초동대문엽기떡볶이 분당수내점","불닭발땡초동대문엽기떡볶이","엽떡"],"meta":{"payCycle":"매월","sameMonth":true},"months":{"1":{"income":{"근로과세":7545180.0,"근로제출비과세":729050.0,"중도과세":1303230.0,"중도제출비과세":200000.0,"사업":2948000.0,"일용":650000.0},"incomeReported":13375460.0,"tax":{"간이":{"tax":105290.0,"local":10520.0},"사업":{"tax":88440.0,"local":8840.0}},"taxReported":193730.0},"2":{"income":{"근로과세":7300000.0,"근로제출비과세":600000.0,"연말":18300000.0,"사업":3148000.0,"일용":1593750.0},"incomeReported":31041750.0,"tax":{"간이":{"tax":148220.0,"local":14810.0},"일용":{"tax":9240.0,"local":910.0},"연말":{"tax":-310020.0,"local":-30990.0},"사업":{"tax":94440.0,"local":9440.0}},"taxReported":-58120.0},"3":{"income":{"근로과세":7600000.0,"근로제출비과세":600000.0,"사업":3204000.0,"일용":1636750.0},"incomeReported":13040750.0,"tax":{"간이":{"tax":174310.0,"local":17430.0},"사업":{"tax":96120.0,"local":9610.0}},"taxReported":212310.0},"4":{"income":{"근로과세":7700000.0,"근로제출비과세":600000.0,"사업":3260000.0,"일용":1093250.0},"incomeReported":12653250.0,"tax":{"간이":{"tax":181170.0,"local":18110.0},"사업":{"tax":97800.0,"local":9780.0}},"taxReported":278970.0},"5":{"income":{"근로과세":11182310.0,"근로제출비과세":780645.0,"사업":2220000.0,"일용":3181000.0},"incomeReported":17363955.0,"tax":{"간이":{"tax":343220.0,"local":34310.0},"사업":{"tax":66600.0,"local":6660.0}},"taxReported":409820.0},"6":{"income":{"근로과세":10060000.0,"근로제출비과세":800000.0,"사업":1700000.0,"일용":3687000.0},"incomeReported":16247000.0,"tax":{"간이":{"tax":201610.0,"local":20150.0},"사업":{"tax":51000.0,"local":5100.0}},"taxReported":252610.0},"7":{"income":{"근로과세":9800000.0,"근로제출비과세":800000.0,"사업":1700000.0,"일용":2134000.0},"incomeReported":14434000.0,"tax":{"간이":{"tax":179360.0,"local":17920.0},"사업":{"tax":51000.0,"local":5100.0}},"taxReported":230360.0}}},"코넥트":{"names":["주)코넥트 스튜디오","코넥트 스튜디오","코넥트"],"meta":{"payCycle":"반기","sameMonth":true},"months":{"1":{"income":{},"incomeReported":null,"tax":{},"taxReported":null},"2":{"income":{},"incomeReported":null,"tax":{},"taxReported":null},"3":{"income":{},"incomeReported":null,"tax":{},"taxReported":null},"4":{"income":{},"incomeReported":null,"tax":{},"taxReported":null},"5":{"income":{},"incomeReported":null,"tax":{},"taxReported":null},"6":{"income":{},"incomeReported":null,"tax":{},"taxReported":null},"7":{"income":{"근로과세":2156880.0},"incomeReported":null,"tax":{"간이":{"tax":24340.0,"local":2430.0}},"taxReported":null}}},"왓츠랩":{"names":["주식회사 왓츠랩","왓츠랩"],"meta":{"payCycle":"매월","sameMonth":false},"months":{"1":{"income":{"근로과세":26490000.0,"근로제출비과세":3040000.0,"연말":301337902.0},"incomeReported":330867902,"tax":{"간이":{"tax":477990.0,"local":47750.0},"연말":{"tax":-2500780.0,"local":-249730.0}},"taxReported":-2022790.0},"2":{"income":{"근로과세":26490000.0,"근로제출비과세":2990000.0},"incomeReported":29480000.0,"tax":{"간이":{"tax":469660.0,"local":46920.0}},"taxReported":-1553130.0},"3":{"income":{"근로과세":36430000.0,"근로제출비과세":3160000.0},"incomeReported":39590000.0,"tax":{"간이":{"tax":1035300.0,"local":103470.0}},"taxReported":-517830.0},"4":{"income":{"근로과세":28370000.0,"근로제출비과세":3090000.0,"기타간이대상":1800000.0},"incomeReported":31460000.0,"tax":{"간이":{"tax":515440.0,"local":51490.0},"기타간이대상":{"tax":144000.0,"local":14400.0}},"taxReported":-232220.0},"5":{"income":{"근로과세":28370000.0,"근로제출비과세":3040000.0},"incomeReported":31410000.0,"tax":{"간이":{"tax":515440.0,"local":51490.0}},"taxReported":515440.0},"6":{"income":{"근로과세":28370000.0,"근로제출비과세":3190000.0,"기타간이대상":6720000.0},"incomeReported":38280000.0,"tax":{"간이":{"tax":515440.0,"local":51490.0},"기타간이대상":{"tax":537600.0,"local":53760.0}},"taxReported":1053040.0},"7":{"income":{"근로과세":29560000.0,"근로제출비과세":2980000.0,"기타간이대상":3070000.0},"incomeReported":35610000.0,"tax":{"간이":{"tax":531000.0,"local":53040.0},"기타간이대상":{"tax":245600.0,"local":24560.0}},"taxReported":776600.0}}},"나우이엔지":{"names":["주식회사 나우이엔지","나우이엔지"],"meta":{"payCycle":"매월","sameMonth":false},"months":{"1":{"income":{"근로과세":99509556.0,"중도과세":23104862.0,"연말":1022491006.0,"퇴직":55772757.0},"incomeReported":1200878181,"tax":{"간이":{"tax":3309770.0,"local":330910.0},"연말":{"tax":-15431300.0,"local":-1541900.0},"퇴직":{"tax":100820.0,"local":10080.0}},"taxReported":null},"2":{"income":{"근로과세":85958125.0,"중도과세":2041467.0,"퇴직":12431292.0},"incomeReported":100430884.0,"tax":{"간이":{"tax":4037740.0,"local":403710.0}},"taxReported":-1200910.0},"3":{"income":{"근로과세":79994622.0},"incomeReported":79994622.0,"tax":{"간이":{"tax":3409100.0,"local":340830.0}},"taxReported":-797200.0},"4":{"income":{"근로과세":82833332.0,"사업":5000000.0},"incomeReported":87833332.0,"tax":{"간이":{"tax":3427030.0,"local":342620.0},"사업":{"tax":150000.0,"local":15000.0}},"taxReported":-4880240.0},"5":{"income":{"근로과세":86634555.0},"incomeReported":86634555.0,"tax":{"간이":{"tax":3829610.0,"local":382880.0}},"taxReported":-113750.0},"6":{"income":{"근로과세":95333332.0,"사업":5000000.0},"incomeReported":100333332.0,"tax":{"간이":{"tax":5495410.0,"local":549450.0},"사업":{"tax":150000.0,"local":15000.0}},"taxReported":150000.0},"7":{"income":{"근로과세":96543662.0,"사업":5000000.0},"incomeReported":101543662.0,"tax":{"간이":{"tax":5639790.0,"local":563890.0},"사업":{"tax":150000.0,"local":15000.0}},"taxReported":150000.0}}}}');
 let viewingReviewItSection = 'income'; // income | tax | deadline
 function reviewItMonthData(clientId, year, month){
   sharedReviewFigures[clientId] = sharedReviewFigures[clientId] || {};
@@ -11015,6 +11082,96 @@ document.getElementById('reviewItSaveBtn')?.addEventListener('click', async ()=>
   const msgEl = document.getElementById('reviewItSaveMsg');
   if(msgEl){ msgEl.textContent = '저장됨'; clearTimeout(msgEl._flashT); msgEl._flashT = setTimeout(()=>{ msgEl.textContent=''; }, 1500); }
   setReviewItDirty(false);
+});
+
+// ── 검토표(원천세) 엑셀 데이터 일괄 불러오기: REVIEW_SEED_2026(회사명 기준)을 지금 등록된 거래처(ID 기준)에 이름으로 매칭해서 채워 넣음 ──
+function reviewSeedNormalizeName(s){
+  return String(s||'').replace(/주식회사|㈜|\(주\)|주\)|협동조합|기술사사무소|스튜디오|실업/g, '').replace(/\s+/g, '').trim();
+}
+function reviewSeedAutoMatchClientId(names){
+  const list = bookkeepingClientList();
+  // 1차: 정확히 같은 이름(공백·"주식회사" 등 제거 후)부터 찾음 - 본점/지점처럼 이름이 서로를 포함하는 거래처가
+  // 섞여있을 때(예: 프린웍스산업 / 프린웍스산업 청양공장) 부분일치만으로는 엉뚱한 쪽에 매칭될 수 있어서임.
+  for(const cand of names){
+    const nc = reviewSeedNormalizeName(cand);
+    if(!nc) continue;
+    const exact = list.find(c=>reviewSeedNormalizeName(c.name) === nc);
+    if(exact) return exact.id;
+  }
+  // 2차: 정확히 일치하는 게 없으면 부분일치로 느슨하게 찾음(등록된 이름이 후보와 살짝 다를 수 있어서)
+  for(const cand of names){
+    const nc = reviewSeedNormalizeName(cand);
+    if(!nc) continue;
+    const hit = list.find(c=>{
+      const nn = reviewSeedNormalizeName(c.name);
+      return nn && (nn.includes(nc) || nc.includes(nn));
+    });
+    if(hit) return hit.id;
+  }
+  return '';
+}
+function openReviewSeedImportModal(){
+  const wrap = document.getElementById('reviewSeedImportListWrap');
+  const list = bookkeepingClientList();
+  if(!wrap) return;
+  const optionsHtml = `<option value="">(건너뛰기)</option>` + list.map(c=>`<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
+  wrap.innerHTML = Object.keys(REVIEW_SEED_2026).map(key=>{
+    const seed = REVIEW_SEED_2026[key];
+    const matchedId = reviewSeedAutoMatchClientId(seed.names);
+    return `<div style="display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--border);">
+      <span style="flex:0 0 90px; font-weight:800; font-size:12.5px;">${escHtml(key)}</span>
+      <span style="flex:1; font-size:11px; color:var(--ink-soft);">${escHtml(seed.names[0])}</span>
+      <select class="review-seed-match-select" data-seed-key="${key}" style="border:1.5px solid var(--border); border-radius:8px; padding:5px 6px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12px; max-width:180px;">${optionsHtml}</select>
+    </div>`;
+  }).join('');
+  wrap.querySelectorAll('.review-seed-match-select').forEach(sel=>{
+    const key = sel.dataset.seedKey;
+    const matchedId = reviewSeedAutoMatchClientId(REVIEW_SEED_2026[key].names);
+    if(matchedId) sel.value = matchedId;
+  });
+  const msgEl = document.getElementById('reviewSeedImportMsg');
+  if(msgEl) msgEl.textContent = '';
+  const overlay = document.getElementById('reviewSeedImportModalOverlay');
+  if(overlay){ overlay.style.display = 'flex'; }
+}
+function applyReviewSeedImport(){
+  const wrap = document.getElementById('reviewSeedImportListWrap');
+  if(!wrap) return;
+  let filledCount = 0, clientCount = 0;
+  wrap.querySelectorAll('.review-seed-match-select').forEach(sel=>{
+    const clientId = sel.value;
+    if(!clientId) return;
+    const seed = REVIEW_SEED_2026[sel.dataset.seedKey];
+    if(!seed) return;
+    clientCount++;
+    if(!sharedReviewMeta[clientId]) sharedReviewMeta[clientId] = { sameMonth: seed.meta.sameMonth, payCycle: seed.meta.payCycle };
+    Object.keys(seed.months).forEach(monthKey=>{
+      const src = seed.months[monthKey];
+      const data = reviewItMonthData(clientId, 2026, Number(monthKey));
+      REVIEW_INCOME_FIELDS.forEach(f=>{
+        if(data.income[f.key] == null && src.income[f.key] != null){ data.income[f.key] = src.income[f.key]; filledCount++; }
+      });
+      REVIEW_TAX_GROUPS.forEach(g=>{
+        if(!data.tax[g.key] && src.tax[g.key]){ data.tax[g.key] = { tax: src.tax[g.key].tax||0, local: src.tax[g.key].local||0 }; filledCount++; }
+      });
+      if(data.incomeReported == null && src.incomeReported != null){ data.incomeReported = src.incomeReported; filledCount++; }
+      if(data.taxReported == null && src.taxReported != null){ data.taxReported = src.taxReported; filledCount++; }
+    });
+  });
+  saveSharedReviewFigures();
+  saveSharedReviewMeta();
+  const msgEl = document.getElementById('reviewSeedImportMsg');
+  if(msgEl) msgEl.textContent = `${clientCount}개 거래처, ${filledCount}칸 채웠어요.`;
+  populateReviewItYearSelect(document.getElementById('reviewItClientSelect')?.value || '');
+  renderReviewItAll();
+}
+document.getElementById('reviewSeedImportBtn')?.addEventListener('click', openReviewSeedImportModal);
+document.getElementById('reviewSeedImportModalClose')?.addEventListener('click', ()=>{
+  const overlay = document.getElementById('reviewSeedImportModalOverlay');
+  if(overlay) overlay.style.display = 'none';
+});
+document.getElementById('reviewSeedImportApplyBtn')?.addEventListener('click', ()=>{
+  applyReviewSeedImport();
 });
 
 // ── 신고도움: 기장거래처별 신고 전 체크리스트 (거래처는 항상 기장거래처 순번순, 검색 가능) ──
