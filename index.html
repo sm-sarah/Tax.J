@@ -164,6 +164,10 @@
      아래로 자연스럽게 쌓이도록 flex-wrap을 씀 */
   .home-dashboard-layout{ display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap; }
   .home-menu-col{ flex:0 0 auto; }
+  /* 사이드바 전체 펼치기/접기 버튼 - 메뉴 목록 맨 위, 오른쪽 정렬로 작게 둠 */
+  .home-menu-expand-all-row{ display:flex; justify-content:flex-end; margin:0 0 8px; }
+  .home-menu-expand-all-btn{ background:none; border:none; cursor:pointer; font-size:11px; font-weight:700; color:var(--ink-soft); padding:2px 4px; display:inline-flex; align-items:center; gap:3px; }
+  .home-menu-expand-all-btn:hover{ color:var(--indigo); }
   .home-dashboard-col{ flex:1 1 420px; min-width:280px; }
   /* "Dashboard" 글자가 위쪽 Tax.J 로고와 굵기·자간이 비슷해서 로고의 축소판처럼 보인다는 피드백 -
      로고는 크고 진한 브랜드 글자로, 이 제목은 작고 여백 있는 라벨(eyebrow) 스타일로 확실히 갈라놓음.
@@ -760,7 +764,10 @@
   /* 설정 탭의 (회사/직원/설정/데이터) 대분류 제목+설명은 이제 왼쪽 사이드바 목록과 완전히 중복돼서
      화면에서는 숨김 - 요소 자체는 남겨둬서 다른 로직(칩 분류 등)이 그대로 동작함 */
   #tab-settings .settings-group-title, #tab-settings .settings-group-desc{ display:none; }
-  .settings-sub-title{font-size:12px; font-weight:800; color:var(--indigo); margin:24px 0 12px; padding-top:20px; border-top:1.5px dashed var(--border); display:flex; align-items:center; justify-content:center; gap:6px; text-transform:uppercase; letter-spacing:0.04em;}
+  /* 설정 소메뉴가 사이드바 목록화로 각자 독립된 화면이 된 뒤로는, 위에 뭔가 이어붙던 시절의 여백(margin-top)과
+     점선 구분선(border-top)이 화면 맨 위에 불필요한 빈 공간으로만 남아있었음 - 없애고, 대신 제목 자체를
+     좀 더 크고 눈에 띄게 키워서(12px->15px) 소메뉴 화면 첫 요소로도 그 자체로 제목처럼 보이게 함 */
+  .settings-sub-title{font-size:15px; font-weight:800; color:var(--indigo-deep); margin:0 0 16px; padding:0 0 10px; border-top:none; border-bottom:2px solid var(--indigo-bg); display:flex; align-items:center; justify-content:center; gap:7px; text-transform:uppercase; letter-spacing:0.05em;}
   .settings-group-title + .settings-group-desc + .settings-sub-title{margin-top:0; padding-top:0; border-top:none;}
   /* 대분류 제목 대신 이제 소메뉴 토글(.settings-subsection-toggle)도 화면에서 숨기므로, 각 카드 안에서
      보이는 맨 첫 요소가 바로 소제목(.settings-sub-title)이 됨 - 위에 아무것도 없는데 점선 테두리가 떠 있으면
@@ -858,8 +865,8 @@
     background:var(--surface); color:var(--ink); cursor:pointer;
   }
   /* 신고현황/검토표는 자동저장이 아니라 이 버튼을 눌러야 저장됨 - 표가 스크롤 없이 길게 늘어나므로 화면에 고정해서 어디서든 누를 수 있게 함 */
-  #filingStatusSaveBtn:hover, #reviewStatusSaveBtn:hover{ transform:scale(1.06); }
-  #filingStatusSaveBtn.is-dirty, #reviewStatusSaveBtn.is-dirty{ background:var(--coral); animation:filingSavePulse 1.4s ease-in-out infinite; }
+  #filingStatusSaveBtn:hover, #reviewStatusSaveBtn:hover, #reviewItSaveBtn:hover{ transform:scale(1.06); }
+  #filingStatusSaveBtn.is-dirty, #reviewStatusSaveBtn.is-dirty, #reviewItSaveBtn.is-dirty{ background:var(--coral); animation:filingSavePulse 1.4s ease-in-out infinite; }
   @keyframes filingSavePulse{ 0%,100%{ box-shadow:0 8px 20px -6px rgba(29,30,51,0.4); } 50%{ box-shadow:0 8px 26px -4px rgba(239,90,90,0.55); } }
   /* 검토표의 진행상태 select도 신고현황과 같은 톤으로 */
   .review-status-select{
@@ -1642,6 +1649,9 @@
     <div class="home-dashboard-layout">
       <!-- 기존 바로가기 메뉴 전체를 왼쪽 사이드바로 묶음 -->
       <div class="home-menu-col">
+        <div class="home-menu-expand-all-row">
+          <button type="button" id="homeMenuExpandAllBtn" class="home-menu-expand-all-btn">▾ 전체 펼치기</button>
+        </div>
         <!-- Client(거래처 관련 메뉴)를 가장 많이 쓸 것 같아서 맨 위로 올림 -->
         <div class="home-section-row">
           <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Client</div>
@@ -2126,37 +2136,22 @@
       <button type="button" class="ci-cat-btn" data-cat="team">👥 팀</button>
     </div>
 
+    <!-- 사내정보는 조회 전용 화면임 - 등록/수정/삭제(+잠금해제)는 전부 설정 > 회사 > 회사정보/팀정보로 옮겨졌고,
+         여기는 그 화면에서 관리한 내용을 그대로 보여주기만 함(showControls=false로 렌더링) -->
+    <p class="hint" style="font-size:12px; color:var(--ink-soft); text-align:center; margin:0 0 14px;">
+      조회 전용 화면이에요. 등록·수정·삭제는 설정 &gt; 회사 &gt; 회사정보/팀정보에서 해주세요.
+    </p>
+
     <!-- 법인 -->
     <div id="ciView-corp" class="ci-view">
-      <div style="display:flex; justify-content:center; margin-bottom:6px;">
-        <div id="sensitiveUnlockWrapCompanyInfo" style="display:none; text-align:center;">
-          <button type="button" id="sensitiveUnlockBtnCompanyInfo" class="del-btn"></button>
-        </div>
-      </div>
-      <div style="display:flex; justify-content:flex-end; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
-        <button type="button" id="ciCorpDefaultsBtn" class="del-btn" style="display:none;">📋 기본값 불러오기</button>
-        <button type="button" id="ciCorpAddBtn" class="del-btn" style="display:none; background:var(--indigo); color:#fff;">➕ 항목 추가</button>
-      </div>
-      <div id="ciCorpListWrap"></div>
+      <div id="ciCorpListWrapView"></div>
     </div>
 
     <!-- 팀 -->
     <div id="ciView-team" class="ci-view" style="display:none;">
-      <div style="display:flex; justify-content:center; margin-bottom:6px;">
-        <div id="sensitiveUnlockWrapCompanyInfoTeam" style="display:none; text-align:center;">
-          <button type="button" id="sensitiveUnlockBtnCompanyInfoTeam" class="del-btn"></button>
-        </div>
-      </div>
-      <div style="display:flex; justify-content:flex-end; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
-        <button type="button" id="ciTeamGeneralAddBtn" class="del-btn" style="display:none; background:var(--indigo); color:#fff;">➕ 팀 총괄 항목 추가</button>
-      </div>
-      <div id="ciTeamGeneralListWrap" style="margin-bottom:18px;"></div>
+      <div id="ciTeamGeneralListWrapView" style="margin-bottom:18px;"></div>
       <div style="text-align:center; margin:10px 0 6px;"><span style="font-size:12px; font-weight:800; color:var(--ink-soft); letter-spacing:0.02em;">👥 팀원별 정보</span></div>
-      <div style="display:flex; justify-content:flex-end; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
-        <button type="button" id="ciTeamDefaultsBtn" class="del-btn" style="display:none;">📋 기본값 불러오기</button>
-        <button type="button" id="ciTeamAddPersonBtn" class="del-btn" style="display:none; background:var(--indigo); color:#fff;">➕ 팀원 추가</button>
-      </div>
-      <div id="ciTeamListWrap"></div>
+      <div id="ciTeamListWrapView"></div>
     </div>
   </section>
 
@@ -2397,7 +2392,7 @@
       <div class="policy-locked-text">관리자만 접근할 수 있어요.<br>거래처 민감정보 비밀번호는 회사 전체에 영향을 주는 설정이라 관리자 계정으로 로그인해야 볼 수 있어요.</div>
     </div>
     <div id="clientsSettingsContent" style="display:none;">
-      <div class="settings-sub-title" style="margin-top:22px; text-align:center;">🔐 거래처 민감정보 관리비밀번호</div>
+      <div class="settings-sub-title" style="text-align:center;">🔐 거래처 민감정보 관리비밀번호</div>
       <div class="settings-box" style="max-width:680px;">
         <div id="managePwStatus" class="hint" style="text-align:center; margin-bottom:12px;"></div>
 
@@ -2538,7 +2533,7 @@
 
         <!-- 원천세 검토표: 거래처를 먼저 고르면(엑셀에서 거래처마다 시트가 따로였던 것과 같은 방식) 그 거래처의
              12개월치 검토표가 쭉 나옴 -->
-        <div id="reviewIncomeTaxBox" style="display:none;">
+        <div id="reviewIncomeTaxBox">
           <div style="display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
             <input type="text" id="reviewItClientSearch" placeholder="거래처 검색" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 10px; font-family:'Pretendard',sans-serif; font-size:12.5px; width:140px;">
             <select id="reviewItClientSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700; max-width:220px;"></select>
@@ -2567,7 +2562,7 @@
         </div>
 
         <!-- 부가세 검토표: 기존 신고현황과 같은 상태/메모 표 -->
-        <div id="reviewLegacyBox">
+        <div id="reviewLegacyBox" style="display:none;">
         <div id="reviewPeriodControls" style="display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
           <div class="policy-category-toggle" id="reviewPeriodModeToggle" style="display:none; margin-bottom:0;">
             <button type="button" class="review-period-mode-btn active" data-period-mode="월별">월별</button>
@@ -2708,14 +2703,54 @@
         <div style="text-align:center;"><span class="save-msg" id="companyNameSaveMsg"></span></div>
       </div>
 
-      <div class="settings-sub-title" id="ssTitle-teamInfo" style="margin-top:26px; scroll-margin-top:112px;">👥 팀정보</div>
-      <p class="hint" style="text-align:center;">팀 소개 등 팀 관련 정보를 등록해요. (세부 항목은 필요하신 내용을 알려주시면 추가할게요)</p>
+      <!-- 법인 공용ID/PW도 여기서 등록·수정·삭제함 - 사내정보 > 법인 탭은 조회 전용이라 이 화면에서 관리한
+           내용이 그대로 반영되어 보임 (데이터 저장소는 사내정보 때와 동일한 sharedCompanyInfo.corp) -->
+      <div style="text-align:center; margin:22px 0 6px;"><span class="section-subtitle-label">법인 ID/PW 관리</span></div>
+      <div class="settings-box" style="max-width:680px;">
+        <div style="display:flex; justify-content:center; margin-bottom:6px;">
+          <div id="sensitiveUnlockWrapCompanyInfo" style="display:none; text-align:center;">
+            <button type="button" id="sensitiveUnlockBtnCompanyInfo" class="del-btn"></button>
+          </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+          <button type="button" id="ciCorpDefaultsBtn" class="del-btn" style="display:none;">📋 기본값 불러오기</button>
+          <button type="button" id="ciCorpAddBtn" class="del-btn" style="display:none; background:var(--indigo); color:#fff;">➕ 항목 추가</button>
+        </div>
+        <div id="ciCorpListWrap"></div>
+      </div>
+
+      <div class="settings-sub-title" id="ssTitle-teamInfo" style="scroll-margin-top:112px;">👥 팀정보</div>
+      <p class="hint" style="text-align:center;">팀의 기본정보를 등록해요.</p>
       <div class="settings-box" style="max-width:560px;">
         <form id="teamInfoForm">
+          <div class="field"><label>팀명</label><input type="text" id="team-info-name" placeholder="예: Team J"></div>
+          <div class="field"><label>담당회계사</label><input type="text" id="team-info-accountant" placeholder="예: 홍길동"></div>
+          <div class="field"><label>세무관리번호</label><input type="text" id="team-info-taxmgmtno" placeholder="세무관리번호 입력"></div>
           <div class="field"><label>팀 소개 / 메모</label><textarea id="team-info-note" rows="4" placeholder="예: 회계법인 청인 Team J 소개" style="width:100%; resize:vertical; border:1.5px solid var(--border); border-radius:8px; padding:8px 10px; font-family:inherit; font-size:13px;"></textarea></div>
           <div style="text-align:center;"><button type="submit" class="submit-btn" style="width:auto; padding:8px 16px;">등록/수정</button></div>
         </form>
         <div style="text-align:center;"><span class="save-msg" id="teamInfoSaveMsg"></span></div>
+      </div>
+
+      <!-- 팀 관련 ID/PW(팀 총괄 공용계정 + 팀원별 개인계정)는 여기서 등록·수정·삭제함 - 사내정보 > 팀 탭은 조회 전용이라
+           이 화면에서 관리한 내용이 그대로 반영되어 보임 (데이터 저장소는 사내정보 때와 동일한 sharedCompanyInfo) -->
+      <div style="text-align:center; margin:22px 0 6px;"><span class="section-subtitle-label">팀 ID/PW 관리</span></div>
+      <div class="settings-box" style="max-width:680px;">
+        <div style="display:flex; justify-content:center; margin-bottom:6px;">
+          <div id="sensitiveUnlockWrapCompanyInfoTeam" style="display:none; text-align:center;">
+            <button type="button" id="sensitiveUnlockBtnCompanyInfoTeam" class="del-btn"></button>
+          </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+          <button type="button" id="ciTeamGeneralAddBtn" class="del-btn" style="display:none; background:var(--indigo); color:#fff;">➕ 팀 총괄 항목 추가</button>
+        </div>
+        <div id="ciTeamGeneralListWrap" style="margin-bottom:18px;"></div>
+        <div style="text-align:center; margin:10px 0 6px;"><span style="font-size:12px; font-weight:800; color:var(--ink-soft); letter-spacing:0.02em;">👥 팀원별 정보</span></div>
+        <div style="display:flex; justify-content:flex-end; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
+          <button type="button" id="ciTeamDefaultsBtn" class="del-btn" style="display:none;">📋 기본값 불러오기</button>
+          <button type="button" id="ciTeamAddPersonBtn" class="del-btn" style="display:none; background:var(--indigo); color:#fff;">➕ 팀원 추가</button>
+        </div>
+        <div id="ciTeamListWrap"></div>
       </div>
     </div>
 
@@ -2736,7 +2771,7 @@
         </form>
       </div>
 
-      <div class="settings-sub-title" id="ssTitle-staffStatus" style="margin-top:26px; scroll-margin-top:112px;">📋 직원현황 <span class="badge">이름 옆 메뉴로 현황·수정·이력 확인</span></div>
+      <div class="settings-sub-title" id="ssTitle-staffStatus" style="scroll-margin-top:112px;">📋 직원현황 <span class="badge">이름 옆 메뉴로 현황·수정·이력 확인</span></div>
       <div class="settings-box" style="max-width:680px;">
         <div style="text-align:center; margin-bottom:10px;">
           <button type="button" id="employeeShowTerminatedBtn" class="del-btn">🚫 퇴사자 보기</button>
@@ -2804,7 +2839,7 @@
         </div>
       </div>
 
-      <div class="settings-sub-title" id="ssTitle-lunch" style="margin-top:26px; scroll-margin-top:112px;">🍚 점심식대 <span class="badge">근무일수 × 1일 기준</span></div>
+      <div class="settings-sub-title" id="ssTitle-lunch" style="scroll-margin-top:112px;">🍚 점심식대 <span class="badge">근무일수 × 1일 기준</span></div>
 
       <p class="hint" style="text-align:center;">
         적용 시작일 기준으로 이력을 관리합니다.<br>월 한도는 고정금액이 아니라 <b>근무일수 × 1일 기준 금액</b>으로 매달 유동적으로 계산됩니다.
@@ -2832,7 +2867,7 @@
       <div class="settings-sub-title-inline">한도 변동이력</div>
       <div id="lunchLimitHistoryWrap"></div>
 
-      <div class="settings-sub-title" id="ssTitle-exclusionDays" style="margin-top:26px; scroll-margin-top:112px;">📅 제외일수 <span class="badge">공휴일·회식 등</span></div>
+      <div class="settings-sub-title" id="ssTitle-exclusionDays" style="scroll-margin-top:112px;">📅 제외일수 <span class="badge">공휴일·회식 등</span></div>
       <p class="hint">전 직원 공통으로 반영돼요. 점심회식·공휴일·기타는 식대계산 근무일수에서 빠지고, 저녁회식은 일정 공유용이라 식대계산에는 영향 없어요.</p>
       <div class="mini-form compact" style="max-width:600px; margin:0 auto;">
         <form id="exclusionForm" style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; margin-bottom:0; justify-content:center;">
@@ -2856,7 +2891,7 @@
       </div>
       <div id="exclusionListWrap" style="max-width:600px; margin:12px auto 0;"></div>
 
-      <div class="settings-sub-title" id="ssTitle-staffLeave" style="margin-top:26px; scroll-margin-top:112px;">🌴 직원휴가 <span class="badge">관리자 전용</span></div>
+      <div class="settings-sub-title" id="ssTitle-staffLeave" style="scroll-margin-top:112px;">🌴 직원휴가 <span class="badge">관리자 전용</span></div>
       <p class="hint">입사일 등록 시 법정휴가는 자동으로 부여돼요. 여기는 회사 기준과 다를 때 수동으로 더하거나 빼서 맞추는 용도예요.</p>
       <div class="mini-form compact" style="max-width:600px; margin:0 auto;">
         <form id="grantForm" style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; margin-bottom:0; justify-content:center;">
@@ -2876,7 +2911,7 @@
       </div>
       <div id="manualGrantListWrap" style="max-width:600px; margin:12px auto 0;"></div>
 
-      <div class="settings-sub-title" id="ssTitle-specialPeriod" style="margin-top:26px; scroll-margin-top:112px;">🗓️ 특별기간 <span class="badge">팀캘린더에 기간 칩으로 표시</span></div>
+      <div class="settings-sub-title" id="ssTitle-specialPeriod" style="scroll-margin-top:112px;">🗓️ 특별기간 <span class="badge">팀캘린더에 기간 칩으로 표시</span></div>
       <p class="hint" style="text-align:center;">
         기간과 내용을 등록하면, 팀캘린더에 그 기간 내내 "특별기간) 내용" 칩으로 이어져서 표시돼요.<br>(예: 신고 성수기, 워크숍 기간 등을 팀원들에게 안내할 때)
       </p>
@@ -2939,7 +2974,7 @@
         </div>
       </div>
 
-      <div class="settings-sub-title" id="ssTitle-password" style="margin-top:26px; scroll-margin-top:112px;">🔐 비밀번호 설정 <span class="badge">거래처 정보 + 사내정보 계정정보 공용</span></div>
+      <div class="settings-sub-title" id="ssTitle-password" style="scroll-margin-top:112px;">🔐 비밀번호 설정 <span class="badge">거래처 정보 + 사내정보 계정정보 공용</span></div>
       <p class="hint" style="text-align:center;">
         거래처 민감정보(사업자번호 등)와 사내정보의 계정 ID/PW를 열람할 때 공통으로 쓰이는 비밀번호예요.<br>
         실제 설정·변경은 사내정보 잠금해제와 같은 곳에서 이뤄지니, 아래 버튼으로 바로 이동해서 설정하세요.
@@ -2951,7 +2986,7 @@
         </div>
       </div>
 
-      <div class="settings-sub-title" id="ssTitle-backup" style="margin-top:26px; scroll-margin-top:112px;">💾 백업복구 <span class="badge">관리자 전용</span></div>
+      <div class="settings-sub-title" id="ssTitle-backup" style="scroll-margin-top:112px;">💾 백업복구 <span class="badge">관리자 전용</span></div>
       <p class="hint" style="text-align:center;">
         아래에서 범위를 고른 뒤 백업·복구하세요.
       </p>
@@ -3138,12 +3173,14 @@ let sharedManageSalt = ''; // PBKDF2 솔트(base64, 비밀값 아님) - 거래�
 let sharedManageVerifier = null; // 관리비밀번호 검증용 - 비밀번호 자체는 절대 저장 안하고, 그 비밀번호로 암호화한 검증용 토큰만 저장
 let sharedCompanyInfo = { corp: [], team: [], teamGeneral: [], personal: [] }; // 사내정보(법인/팀) - corp·team·teamGeneral의 ID/PW는 sensitiveEnc로 암호화되어 저장. teamGeneral은 특정 팀원이 아닌 "팀 총괄" 기본정보
 let sharedCompanyName = ''; // 회사(법인)명 - 사내정보 섹션 제목 등에 쓰임, 관리자가 직접 입력
-let sharedTeamInfo = { note: '' }; // 설정 > 회사 > 팀정보 (세부 항목은 추후 확정 예정이라 우선 메모 필드만)
+let sharedTeamInfo = { teamName: '', accountant: '', taxMgmtNo: '', note: '' }; // 설정 > 회사 > 팀정보
 let sharedSpecialPeriods = []; // 설정 > 복지 > 특별기간 설정: [{id, startDate, endDate, content}], 팀캘린더에 "특별기간) content" 칩으로 표시됨
 let sharedFilingStatus = {}; // 결재 > 신고현황: { [taxType]: { [period]: { [clientId]: {status, memo, updatedAt} } } } (세목: 원천세/부가세/법인세/종소세/결산)
 let sharedReviewStatus = {}; // 결재 > 검토표: 신고현황과 완전히 같은 구조지만 원천세/부가세만 다루고, 신고 자체 이력과는 별도 저장소로 관리(신고 전 검토 단계 - 나중에 거래처별 손익보고서에 활용 예정)
 let sharedFilingHelp = {}; // 결재 > 신고도움: { [clientId]: { items: { [itemKey]: {checked, note} } } }
 let sharedApprovals = []; // 결재 > 결재(그룹웨어): [{id, title, content, attachmentLink, drafterEmail, drafterName, approverEmail, approverName, status, comment, createdAt, decidedAt}]
+let sharedReviewFigures = {}; // 검토표(원천세) 거래처별 월별 실제 숫자: { [clientId]: { [year]: { [month]: { income:{[fieldKey]:num}, incomeReported:num, tax:{[groupKey]:{tax:num, local:num}}, taxReported:{tax:num, local:num} } } } }
+let sharedReviewMeta = {}; // 검토표(원천세) 거래처별 설정: { [clientId]: { sameMonth:true/false(귀속=지급 동일 여부), payCycle:'매월'|'반기' } } - 원본 엑셀 '2026 총괄' 시트의 귀속/지급, 신고구분 값과 동일
 function loadSharedData(){
   try{ sharedExclusionDays = JSON.parse(localStorage.getItem('worklog_shared_exclusions') || '[]'); }catch(e){ sharedExclusionDays = []; }
   // 예전 '회식' 하나였던 사유를 '점심회식'/'저녁회식'으로 분리하면서, 기존 데이터는 기존 차감 동작과 동일하게 '점심회식'으로 이관
@@ -3176,6 +3213,8 @@ function loadSharedData(){
   try{ sharedReviewStatus = JSON.parse(localStorage.getItem('worklog_shared_reviewstatus') || '{}') || {}; }catch(e){ sharedReviewStatus = {}; }
   try{ sharedFilingHelp = JSON.parse(localStorage.getItem('worklog_shared_filinghelp') || '{}') || {}; }catch(e){ sharedFilingHelp = {}; }
   try{ sharedApprovals = JSON.parse(localStorage.getItem('worklog_shared_approvals') || '[]') || []; }catch(e){ sharedApprovals = []; }
+  try{ sharedReviewFigures = JSON.parse(localStorage.getItem('worklog_shared_reviewfigures') || '{}') || {}; }catch(e){ sharedReviewFigures = {}; }
+  try{ sharedReviewMeta = JSON.parse(localStorage.getItem('worklog_shared_reviewmeta') || '{}') || {}; }catch(e){ sharedReviewMeta = {}; }
   const prevManageVerifierRaw = JSON.stringify(sharedManageVerifier);
   try{ sharedManageSalt = localStorage.getItem('worklog_shared_managesalt') || ''; }catch(e){ sharedManageSalt = ''; }
   try{ const v = localStorage.getItem('worklog_shared_manageverifier'); sharedManageVerifier = v ? JSON.parse(v) : null; }catch(e){ sharedManageVerifier = null; }
@@ -3198,6 +3237,8 @@ async function saveSharedFilingStatus(){ try{ localStorage.setItem('worklog_shar
 async function saveSharedReviewStatus(){ try{ localStorage.setItem('worklog_shared_reviewstatus', JSON.stringify(sharedReviewStatus)); }catch(e){ console.error('검토표 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedFilingHelp(){ try{ localStorage.setItem('worklog_shared_filinghelp', JSON.stringify(sharedFilingHelp)); }catch(e){ console.error('신고도움 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedApprovals(){ try{ localStorage.setItem('worklog_shared_approvals', JSON.stringify(sharedApprovals)); }catch(e){ console.error('결재 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedReviewFigures(){ try{ localStorage.setItem('worklog_shared_reviewfigures', JSON.stringify(sharedReviewFigures)); }catch(e){ console.error('검토표(원천세) 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedReviewMeta(){ try{ localStorage.setItem('worklog_shared_reviewmeta', JSON.stringify(sharedReviewMeta)); }catch(e){ console.error('검토표(원천세) 거래처 설정 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedManagePassword(){
   try{
     localStorage.setItem('worklog_shared_managesalt', sharedManageSalt);
@@ -6655,14 +6696,16 @@ document.querySelectorAll('.ci-cat-btn').forEach(btn=>{
       const v = document.getElementById('ciView-'+c);
       if(v) v.style.display = c===cat ? '' : 'none';
     });
-    if(cat==='corp') renderCompanyInfoCorp();
-    else if(cat==='team') renderCompanyInfoTeam();
+    if(cat==='corp') renderCompanyInfoCorpView();
+    else if(cat==='team') renderCompanyInfoTeamView();
   });
 });
 
 // 관리 버튼(수정/이력/삭제) - 사내정보 3종(법인/팀/개인) 목록에서 공통으로 씀
-function ciRowButtons(admin, category, id, person, hasHistory){
-  if(!admin) return '';
+// showControls=false면(=조회 전용 화면) admin이어도 버튼을 아예 렌더링하지 않음 - 등록/수정/삭제는
+// 이제 설정 > 회사 > 회사정보/팀정보에서만 하고, 사내정보 탭은 순수 조회 화면으로만 씀
+function ciRowButtons(admin, category, id, person, hasHistory, showControls){
+  if(!admin || showControls===false) return '';
   const personAttr = person ? ` data-person="${escHtml(person)}"` : '';
   return `<td style="white-space:nowrap;">
     <button class="del-btn ci-edit-btn" data-cat="${category}" data-id="${id}"${personAttr}>수정</button>
@@ -6671,20 +6714,22 @@ function ciRowButtons(admin, category, id, person, hasHistory){
   </td>`;
 }
 // "기본정보"(항목/내용/메모) - ID/PW가 필요없는 일반 정보(주소·번호 등)용, 잠금해제 없이도 조회 가능
-function buildCiInfoTable(list, category, admin, person, titlePrefix){
+function buildCiInfoTable(list, category, admin, person, titlePrefix, showControls){
   if(!list.length) return '';
+  const withControls = admin && showControls!==false;
   const rows = list.map(it=>`<tr>
     <td style="font-weight:700;">${escHtml(it.label||'')}</td>
     <td style="white-space:pre-wrap; max-width:260px;">${escHtml(it.content||'-')}</td>
     <td style="white-space:pre-wrap; font-size:12px; color:var(--ink-soft); max-width:220px;">${escHtml(it.note||'')}</td>
-    ${ciRowButtons(admin, category, it.id, person, it.history&&it.history.length)}
+    ${ciRowButtons(admin, category, it.id, person, it.history&&it.history.length, showControls)}
   </tr>`).join('');
   return `<div style="text-align:center; margin:14px 0 10px;"><span class="section-subtitle-label">${escHtml((titlePrefix||'')+'기본정보')}</span></div>
-  <div class="table-scroll"><table><thead><tr><th>항목명</th><th>내용</th><th>메모</th>${admin?'<th>관리</th>':''}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  <div class="table-scroll"><table><thead><tr><th>항목명</th><th>내용</th><th>메모</th>${withControls?'<th>관리</th>':''}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 // "공용ID/PW"(법인/팀용, 암호화 저장) - 잠금해제 상태에서만 복호화해서 보여줌
-function buildCiAccountTable(list, category, admin, unlocked, decryptedMap, failedSet, person, titlePrefix){
+function buildCiAccountTable(list, category, admin, unlocked, decryptedMap, failedSet, person, titlePrefix, showControls){
   if(!list.length) return '';
+  const withControls = admin && showControls!==false;
   const cell = (v)=> v ? escHtml(v) : '<span style="color:var(--ink-soft);">-</span>';
   const rows = list.map(it=>{
     let idCell, pwCell;
@@ -6697,11 +6742,11 @@ function buildCiAccountTable(list, category, admin, unlocked, decryptedMap, fail
       <td style="font-weight:700;">${escHtml(it.label||'')}</td>
       <td>${idCell}</td><td>${pwCell}</td><td>${linkCell}</td>
       <td style="white-space:pre-wrap; font-size:12px; color:var(--ink-soft); max-width:220px;">${escHtml(it.note||'')}</td>
-      ${ciRowButtons(admin, category, it.id, person, it.history&&it.history.length)}
+      ${ciRowButtons(admin, category, it.id, person, it.history&&it.history.length, showControls)}
     </tr>`;
   }).join('');
   return `<div style="text-align:center; margin:14px 0 10px;"><span class="section-subtitle-label">${escHtml((titlePrefix||'')+'공용ID/PW')}</span></div>
-  <div class="table-scroll"><table><thead><tr><th>항목명</th><th>ID</th><th>PW</th><th>링크</th><th>메모</th>${admin?'<th>관리</th>':''}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  <div class="table-scroll"><table><thead><tr><th>항목명</th><th>ID</th><th>PW</th><th>링크</th><th>메모</th>${withControls?'<th>관리</th>':''}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 // "공용ID/PW"(개인용, 평문 저장) - 사내정보 > 개인 탭 전용
 function buildCiPersonalAccountTable(list){
@@ -6744,7 +6789,7 @@ function bindCiRowButtons(wrap){
 // 예전 방식으로 등록돼 있던 다른 기본정보 항목이 있으면(예: 참고용 안내 항목) "기타 기본정보"로 따로 보여주고
 // 거기엔 기존처럼 수정/이력/삭제를 남겨둠
 const CORP_BASIC_INFO_ORDER = ['사업자번호','법인등록번호','회사명','창립일','대표자','주민등록번호','주소','우편번호','조정반번호','대표번호','대표팩스'];
-function buildCorpBasicInfoTable(infoList, companyName, admin){
+function buildCorpBasicInfoTable(infoList, companyName, admin, showControls){
   const byLabel = {};
   infoList.forEach(it=>{ if(!byLabel[it.label]) byLabel[it.label] = it; });
   const rows = CORP_BASIC_INFO_ORDER
@@ -6758,16 +6803,22 @@ function buildCorpBasicInfoTable(infoList, companyName, admin){
     ? `<div class="table-scroll"><table><thead><tr><th>항목명</th><th>내용</th></tr></thead><tbody>${rows}</tbody></table></div>`
     : `<div class="empty-state">설정 &gt; 회사 정보에서 등록해보세요.</div>`;
   const extra = infoList.filter(it => !CORP_BASIC_INFO_ORDER.includes(it.label));
-  const extraHtml = extra.length ? buildCiInfoTable(extra, 'corp', admin, null, '기타 ') : '';
+  const extraHtml = extra.length ? buildCiInfoTable(extra, 'corp', admin, null, '기타 ', showControls) : '';
   return nameChipHtml + infoTitleHtml + tableHtml + extraHtml;
 }
-async function renderCompanyInfoCorp(){
-  const wrap = document.getElementById('ciCorpListWrap');
+// wrapId/showControls 둘 다 생략하면 기존과 완전히 같은 동작(설정 > 회사정보의 편집 가능한 화면).
+// 사내정보 탭의 조회 전용 화면은 renderCompanyInfoCorpView()가 다른 wrapId+showControls:false로 이 함수를 재사용함
+async function renderCompanyInfoCorp(wrapId, showControls){
+  wrapId = wrapId || 'ciCorpListWrap';
+  if(showControls===undefined) showControls = true;
+  const wrap = document.getElementById(wrapId);
   if(!wrap) return;
   const admin = !!gdriveAccessToken && isCurrentUserAdmin;
   const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
-  const defaultsBtn = document.getElementById('ciCorpDefaultsBtn');
-  if(defaultsBtn) defaultsBtn.style.display = (admin && unlocked && !(sharedCompanyInfo.corp||[]).length) ? 'inline-block' : 'none';
+  if(showControls){
+    const defaultsBtn = document.getElementById('ciCorpDefaultsBtn');
+    if(defaultsBtn) defaultsBtn.style.display = (admin && unlocked && !(sharedCompanyInfo.corp||[]).length) ? 'inline-block' : 'none';
+  }
   if(!admin){ wrap.innerHTML = `<div class="empty-state">🔒 관리자만 조회할 수 있어요.</div>`; return; }
   const list = sharedCompanyInfo.corp || [];
   const infoList = list.filter(it=>(it.type||'account')==='info');
@@ -6782,27 +6833,35 @@ async function renderCompanyInfoCorp(){
     }
   }
   // 공용ID/PW 소제목엔 이제 회사명을 다시 붙이지 않음 - 위 보라색 칩에서 이미 한 번 강조했음
-  const infoHtml = buildCorpBasicInfoTable(infoList, sharedCompanyName, admin);
+  const infoHtml = buildCorpBasicInfoTable(infoList, sharedCompanyName, admin, showControls);
+  const lockedMsg = showControls ? '🔒 먼저 위에서 잠금을 해제해주세요.' : '🔒 잠겨있어요. 설정 &gt; 회사 &gt; 회사정보에서 잠금해제 후 조회할 수 있어요.';
   const acctHtml = !acctList.length ? '' : unlocked
-    ? buildCiAccountTable(acctList, 'corp', admin, unlocked, decryptedMap, failedSet, null, '')
-    : `<div style="text-align:center; margin:14px 0 10px;"><span class="section-subtitle-label">공용ID/PW</span></div><div class="empty-state" style="padding:14px;">🔒 먼저 위에서 잠금을 해제해주세요. (${acctList.length}건)</div>`;
+    ? buildCiAccountTable(acctList, 'corp', admin, unlocked, decryptedMap, failedSet, null, '', showControls)
+    : `<div style="text-align:center; margin:14px 0 10px;"><span class="section-subtitle-label">공용ID/PW</span></div><div class="empty-state" style="padding:14px;">${lockedMsg} (${acctList.length}건)</div>`;
   wrap.innerHTML = infoHtml + acctHtml;
   bindCiRowButtons(wrap);
 }
+// 사내정보 탭 > 법인 - 조회 전용
+function renderCompanyInfoCorpView(){ return renderCompanyInfoCorp('ciCorpListWrapView', false); }
 
 // 팀 총괄 기본정보 - 특정 팀원이 아닌 팀 전체에 해당하는 항목(예: 팀 공용 메일함, 팀 공유 계정 등)
-async function renderCompanyInfoTeamGeneral(){
-  const wrap = document.getElementById('ciTeamGeneralListWrap');
+async function renderCompanyInfoTeamGeneral(wrapId, showControls){
+  wrapId = wrapId || 'ciTeamGeneralListWrap';
+  if(showControls===undefined) showControls = true;
+  const wrap = document.getElementById(wrapId);
   if(!wrap) return;
   const admin = !!gdriveAccessToken && isCurrentUserAdmin;
   const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
-  const addBtn = document.getElementById('ciTeamGeneralAddBtn');
-  if(addBtn) addBtn.style.display = admin ? 'inline-block' : 'none';
+  if(showControls){
+    const addBtn = document.getElementById('ciTeamGeneralAddBtn');
+    if(addBtn) addBtn.style.display = admin ? 'inline-block' : 'none';
+  }
   if(!admin){ wrap.innerHTML = ''; return; }
   const list = sharedCompanyInfo.teamGeneral || [];
   const ciTeamPrefix = sharedCompanyName ? sharedCompanyName + '팀 ' : '';
   if(!list.length){
-    wrap.innerHTML = `<div style="text-align:center; margin:14px 0 10px;"><span class="section-subtitle-label">${escHtml(ciTeamPrefix+'기본정보')}</span></div><div class="empty-state">등록된 팀 총괄 항목이 없습니다. "➕ 팀 총괄 항목 추가"로 등록해보세요.</div>`;
+    const emptyHint = showControls ? '등록된 팀 총괄 항목이 없습니다. "➕ 팀 총괄 항목 추가"로 등록해보세요.' : '등록된 팀 총괄 항목이 없습니다.';
+    wrap.innerHTML = `<div style="text-align:center; margin:14px 0 10px;"><span class="section-subtitle-label">${escHtml(ciTeamPrefix+'기본정보')}</span></div><div class="empty-state">${emptyHint}</div>`;
     return;
   }
   const infoList = list.filter(it=>(it.type||'account')==='info');
@@ -6816,26 +6875,33 @@ async function renderCompanyInfoTeamGeneral(){
       }
     }
   }
-  const infoHtml = buildCiInfoTable(infoList, 'teamGeneral', admin, null, ciTeamPrefix);
+  const infoHtml = buildCiInfoTable(infoList, 'teamGeneral', admin, null, ciTeamPrefix, showControls);
+  const lockedMsg = showControls ? '🔒 먼저 위에서 잠금을 해제해주세요.' : '🔒 잠겨있어요. 설정 &gt; 회사 &gt; 팀정보에서 잠금해제 후 조회할 수 있어요.';
   const acctHtml = !acctList.length ? '' : unlocked
-    ? buildCiAccountTable(acctList, 'teamGeneral', admin, unlocked, decryptedMap, failedSet, null, ciTeamPrefix)
-    : `<div style="text-align:center; margin:14px 0 10px;"><span class="section-subtitle-label">${escHtml(ciTeamPrefix+'공용ID/PW')}</span></div><div class="empty-state" style="padding:14px;">🔒 먼저 위에서 잠금을 해제해주세요. (${acctList.length}건)</div>`;
+    ? buildCiAccountTable(acctList, 'teamGeneral', admin, unlocked, decryptedMap, failedSet, null, ciTeamPrefix, showControls)
+    : `<div style="text-align:center; margin:14px 0 10px;"><span class="section-subtitle-label">${escHtml(ciTeamPrefix+'공용ID/PW')}</span></div><div class="empty-state" style="padding:14px;">${lockedMsg} (${acctList.length}건)</div>`;
   wrap.innerHTML = (infoHtml + acctHtml) || `<div class="empty-state">등록된 항목이 없습니다.</div>`;
   bindCiRowButtons(wrap);
 }
 
-async function renderCompanyInfoTeam(){
-  renderCompanyInfoTeamGeneral();
-  const wrap = document.getElementById('ciTeamListWrap');
+async function renderCompanyInfoTeam(wrapId, generalWrapId, showControls){
+  wrapId = wrapId || 'ciTeamListWrap';
+  generalWrapId = generalWrapId || 'ciTeamGeneralListWrap';
+  if(showControls===undefined) showControls = true;
+  renderCompanyInfoTeamGeneral(generalWrapId, showControls);
+  const wrap = document.getElementById(wrapId);
   if(!wrap) return;
   const admin = !!gdriveAccessToken && isCurrentUserAdmin;
   const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
-  const defaultsBtn = document.getElementById('ciTeamDefaultsBtn');
-  if(defaultsBtn) defaultsBtn.style.display = (admin && unlocked && !(sharedCompanyInfo.team||[]).length) ? 'inline-block' : 'none';
+  if(showControls){
+    const defaultsBtn = document.getElementById('ciTeamDefaultsBtn');
+    if(defaultsBtn) defaultsBtn.style.display = (admin && unlocked && !(sharedCompanyInfo.team||[]).length) ? 'inline-block' : 'none';
+  }
   if(!admin){ wrap.innerHTML = `<div class="empty-state">🔒 관리자만 조회할 수 있어요.</div>`; return; }
   const persons = sharedCompanyInfo.team || [];
   if(!persons.length){
-    wrap.innerHTML = `<div class="empty-state">등록된 팀원이 없습니다. "기본값 불러오기"로 시작하거나 팀원을 추가해보세요.</div>`;
+    const emptyHint = showControls ? '등록된 팀원이 없습니다. "기본값 불러오기"로 시작하거나 팀원을 추가해보세요.' : '등록된 팀원이 없습니다.';
+    wrap.innerHTML = `<div class="empty-state">${emptyHint}</div>`;
     return;
   }
   const decryptedMap = {}, failedSet = new Set();
@@ -6850,21 +6916,22 @@ async function renderCompanyInfoTeam(){
     }
   }
   const ciTeamPrefix = sharedCompanyName ? sharedCompanyName + '팀 ' : '';
+  const lockedMsg = showControls ? '🔒 먼저 위에서 잠금을 해제해주세요.' : '🔒 잠겨있어요. 설정 &gt; 회사 &gt; 팀정보에서 잠금해제 후 조회할 수 있어요.';
   wrap.innerHTML = persons.map(p=>{
     const items = p.items||[];
     const infoList = items.filter(it=>(it.type||'account')==='info');
     const acctList = items.filter(it=>(it.type||'account')==='account');
-    const infoHtml = buildCiInfoTable(infoList, 'team', admin, p.person, ciTeamPrefix);
+    const infoHtml = buildCiInfoTable(infoList, 'team', admin, p.person, ciTeamPrefix, showControls);
     const acctHtml = !acctList.length ? '' : unlocked
-      ? buildCiAccountTable(acctList, 'team', admin, unlocked, decryptedMap, failedSet, p.person, ciTeamPrefix)
-      : `<div style="text-align:center; margin:14px 0 10px;"><span class="section-subtitle-label">${escHtml(ciTeamPrefix+'공용ID/PW')}</span></div><div class="empty-state" style="padding:14px;">🔒 먼저 위에서 잠금을 해제해주세요. (${acctList.length}건)</div>`;
+      ? buildCiAccountTable(acctList, 'team', admin, unlocked, decryptedMap, failedSet, p.person, ciTeamPrefix, showControls)
+      : `<div style="text-align:center; margin:14px 0 10px;"><span class="section-subtitle-label">${escHtml(ciTeamPrefix+'공용ID/PW')}</span></div><div class="empty-state" style="padding:14px;">${lockedMsg} (${acctList.length}건)</div>`;
     const bodyHtml = (infoHtml + acctHtml) || `<div class="empty-state" style="padding:10px;">등록된 항목이 없습니다.</div>`;
     const titleLabel = p.title ? `${escHtml(p.person)} <span style="font-weight:600; color:var(--ink-soft); font-size:12px;">(${escHtml(p.title)})</span>` : escHtml(p.person);
     return `
     <div style="background:var(--bg); border-radius:12px; padding:14px 16px; margin-bottom:14px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
         <span style="font-size:13px; font-weight:800; color:var(--navy);">👤 ${titleLabel}</span>
-        ${admin ? `<span style="display:flex; gap:6px;">
+        ${(admin && showControls) ? `<span style="display:flex; gap:6px;">
           <button type="button" class="del-btn ci-team-item-add-btn" data-person="${escHtml(p.person)}">➕ 항목</button>
           <button type="button" class="del-btn ci-team-person-edit-btn" data-person="${escHtml(p.person)}">수정</button>
           <button type="button" class="del-btn ci-team-person-del-btn" data-person="${escHtml(p.person)}">팀원 삭제</button>
@@ -6889,6 +6956,8 @@ async function renderCompanyInfoTeam(){
     btn.addEventListener('click', ()=> openCiTeamPersonModal(btn.dataset.person));
   });
 }
+// 사내정보 탭 > 팀 - 조회 전용
+function renderCompanyInfoTeamView(){ return renderCompanyInfoTeam('ciTeamListWrapView', 'ciTeamGeneralListWrapView', false); }
 
 // 팀원 추가/수정(이름/직책) 팝업
 const CI_TEAM_TITLE_PRESETS = ['회계사','매니저'];
@@ -7685,6 +7754,9 @@ document.querySelectorAll('.home-tile').forEach(tile=>{
     if(e.target.closest('.home-tile-expand-btn')) return; // 펼치기 화살표는 탭 이동 없이 펼치기/접기만 함
     const target = document.querySelector(`.tab-btn[data-tab="${tile.dataset.goto}"]`);
     if(target) target.click();
+    // 하위메뉴가 있는 항목(예: 내부규정)은 화살표를 따로 안 눌러도, 메뉴 이름 자체를 눌렀을 때 같이 펼쳐지고
+    // 다시 누르면 접히게 함 - 화살표 클릭과 완전히 같은 토글 로직을 그대로 재사용(중복 코드 없이 버튼을 대신 눌러줌)
+    tile.querySelector('.home-tile-expand-btn[data-expand-target]')?.click();
   });
 });
 
@@ -7710,6 +7782,22 @@ document.querySelectorAll('.home-tile-expand-btn[data-expand-target]').forEach(b
     btn.textContent = willOpen ? '▾' : '▸';
   });
 });
+// 사이드바 메뉴 전체 펼치기/접기 - 화살표가 있는 항목을 한 번에 다 펼치거나(중첩된 세목까지 전부) 다 접음
+document.getElementById('homeMenuExpandAllBtn')?.addEventListener('click', function(){
+  const btns = Array.from(document.querySelectorAll('.home-tile-expand-btn[data-expand-target]'));
+  const willOpenAll = btns.some(btn=>{
+    const target = document.getElementById(btn.dataset.expandTarget);
+    return target && target.style.display === 'none';
+  });
+  btns.forEach(btn=>{
+    const target = document.getElementById(btn.dataset.expandTarget);
+    if(!target) return;
+    target.style.display = willOpenAll ? 'block' : 'none';
+    btn.classList.toggle('is-open', willOpenAll);
+    btn.textContent = willOpenAll ? '▾' : '▸';
+  });
+  this.textContent = willOpenAll ? '▴ 전체 접기' : '▾ 전체 펼치기';
+});
 // 사이드바에서 신고현황/검토표/결재로 바로 이동 - 업무 탭으로 이동한 뒤 해당 카테고리 칩까지 자동으로 눌러줌
 // (결재 밑의 기안/기안함/결재함/반려함/완료함/전체이력도 신고현황 밑 세목과 같은 방식으로, 해당 결재 하위탭 버튼을 원격으로 눌러줌)
 document.querySelectorAll('.home-submenu-item[data-approval-cat-goto], .home-submenu-leaf[data-approval-cat-goto]').forEach(item=>{
@@ -7723,6 +7811,8 @@ document.querySelectorAll('.home-submenu-item[data-approval-cat-goto], .home-sub
     if(item.dataset.approvalDocGoto){
       document.querySelector(`#approvalDocToggle .approval-doc-btn[data-approval-doc="${item.dataset.approvalDocGoto}"]`)?.click();
     }
+    // 신고현황/결재처럼 그 밑에 세목·문서함 목록이 한 단계 더 있는 항목은, 이름을 눌렀을 때도 화살표를 누른 것처럼 같이 펼쳐지고 다시 누르면 접히게 함
+    item.querySelector('.home-tile-expand-btn[data-expand-target]')?.click();
   });
 });
 // 사이드바에서 사내정보 > 법인/팀으로 바로 이동
@@ -10588,9 +10678,343 @@ Object.keys(FILING_KINDS).forEach(kind=>{
       document.querySelectorAll('.'+cfg.ids.typeBtnClass).forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
       cfg.setViewingType(btn.dataset.filingType);
-      renderFilingStatusTable(kind);
+      if(kind === 'review') renderReviewPanel();
+      else renderFilingStatusTable(kind);
     });
   });
+});
+// 검토표 안에서 원천세/부가세에 따라 완전히 다른 화면(#reviewIncomeTaxBox 거래처 우선 화면 / #reviewLegacyBox 기존 상태·메모 표)을 보여줌
+function renderReviewPanel(){
+  const isIncomeTax = viewingReviewType === '원천세';
+  const incomeBox = document.getElementById('reviewIncomeTaxBox');
+  const legacyBox = document.getElementById('reviewLegacyBox');
+  if(incomeBox) incomeBox.style.display = isIncomeTax ? '' : 'none';
+  if(legacyBox) legacyBox.style.display = isIncomeTax ? 'none' : '';
+  if(isIncomeTax) populateReviewItClientSelect();
+  else renderFilingStatusTable('review');
+}
+
+// ── 검토표(원천세): 거래처를 먼저 고르면(엑셀에서 거래처마다 시트가 따로였던 것과 동일한 방식) 그 거래처의 12개월치 검토표가 나옴.
+// 원본 엑셀 '양식' 시트의 급여검증/납부세액검증 표 구조와 수식을 그대로 옮김. 국세납부서/지방세납부서 교차검증표(양식 시트 38~53행)는
+// 여러 표를 넘나드는 참조가 많아 이번엔 옮기지 않음. 제출기한은 정확한 영업일(공휴일 조정) 계산까지는 하지 않고 "월" 단위까지만 자동계산함.
+const REVIEW_INCOME_FIELDS = [
+  { key:'근로과세', label:'근로소득(과세)' },
+  { key:'근로제출비과세', label:'근로소득(제출비과세)', excludeFromTotal:true },
+  { key:'근로미제출비과세', label:'근로소득(미제출비과세)' },
+  { key:'중도과세', label:'근로-중도(과세)' },
+  { key:'중도제출비과세', label:'근로-중도(제출비과세)', excludeFromTotal:true },
+  { key:'중도미제출비과세', label:'근로-중도(미제출비과세)' },
+  { key:'연말', label:'근로-연말정산' },
+  { key:'사업', label:'사업소득' },
+  { key:'기타간이미대상', label:'기타소득(간이미대상)' },
+  { key:'기타간이대상', label:'기타소득(간이대상)' },
+  { key:'일용', label:'일용소득' },
+  { key:'퇴직', label:'퇴직소득' },
+  { key:'이자', label:'이자소득' },
+];
+// 납부세액검증의 "원천세합계"는 10개 유형의 소득세 칸만 더함(지방소득세는 국세인 원천세 합계에 안 들어감) - 원본 엑셀 수식 그대로
+const REVIEW_TAX_GROUPS = [
+  { key:'간이', label:'근로-간이' },
+  { key:'중도', label:'근로-중도' },
+  { key:'일용', label:'근로-일용' },
+  { key:'연말', label:'근로-연말' },
+  { key:'사업', label:'사업소득' },
+  { key:'기타간이미대상', label:'기타소득(간이미대상)' },
+  { key:'기타간이대상', label:'기타소득(간이대상)' },
+  { key:'퇴직', label:'퇴직소득' },
+  { key:'이자', label:'이자소득' },
+  { key:'환급잔액', label:'환급잔액' },
+];
+let viewingReviewItSection = 'income'; // income | tax | deadline
+function reviewItMonthData(clientId, year, month){
+  sharedReviewFigures[clientId] = sharedReviewFigures[clientId] || {};
+  sharedReviewFigures[clientId][year] = sharedReviewFigures[clientId][year] || {};
+  const key = String(month);
+  if(!sharedReviewFigures[clientId][year][key]) sharedReviewFigures[clientId][year][key] = { income:{}, incomeReported:null, tax:{}, taxReported:null };
+  return sharedReviewFigures[clientId][year][key];
+}
+function reviewItMeta(clientId){
+  sharedReviewMeta[clientId] = sharedReviewMeta[clientId] || { sameMonth:true, payCycle:'매월' };
+  return sharedReviewMeta[clientId];
+}
+// 총지급액(P) = 전체 합 - 제출비과세 - 즉, 제출비과세 항목은 총지급액 계산에서 아예 빠짐(원본 수식 =SUM(B:O)-(D+G)와 동일 결과)
+function reviewItIncomeTotal(monthData){
+  return REVIEW_INCOME_FIELDS.reduce((sum,f)=> sum + (f.excludeFromTotal ? 0 : (Number(monthData.income[f.key])||0)), 0);
+}
+function reviewItTaxTotal(monthData){
+  return REVIEW_TAX_GROUPS.reduce((sum,g)=> sum + (Number((monthData.tax[g.key]||{}).tax)||0), 0);
+}
+// 매월 신고면 그달이 곧 신고월, 반기 신고면 6월/12월에만 그 반기 누적분을 신고서와 대조함
+function reviewItIsPeriodEnd(month, payCycle){
+  return payCycle === '반기' ? (month === 6 || month === 12) : true;
+}
+function reviewItPeriodMonths(month, payCycle){
+  if(payCycle !== '반기') return [month];
+  return month <= 6 ? [1,2,3,4,5,6] : [7,8,9,10,11,12];
+}
+function reviewItIncomeCheckMark(clientId, year, month, meta){
+  if(!reviewItIsPeriodEnd(month, meta.payCycle)) return '<span style="color:var(--ink-soft);">-</span>';
+  const data = reviewItMonthData(clientId, year, month);
+  if(data.incomeReported == null || data.incomeReported === '') return '';
+  const periodTotal = reviewItPeriodMonths(month, meta.payCycle).reduce((s,m)=> s + reviewItIncomeTotal(reviewItMonthData(clientId, year, m)), 0);
+  return Number(data.incomeReported) === periodTotal ? '✅' : '❌';
+}
+function reviewItTaxCheckMark(clientId, year, month, meta){
+  if(!reviewItIsPeriodEnd(month, meta.payCycle)) return '<span style="color:var(--ink-soft);">-</span>';
+  const data = reviewItMonthData(clientId, year, month);
+  if(data.taxReported == null || data.taxReported === '') return '';
+  const periodTotal = reviewItPeriodMonths(month, meta.payCycle).reduce((s,m)=> s + reviewItTaxTotal(reviewItMonthData(clientId, year, m)), 0);
+  return Number(data.taxReported) === periodTotal ? '✅' : '❌';
+}
+function refreshReviewItIncomeRow(clientId, year, month){
+  const row = document.getElementById('reviewItIncomeWrap')?.querySelector(`tr[data-month="${month}"]`);
+  if(!row) return;
+  const meta = reviewItMeta(clientId);
+  const data = reviewItMonthData(clientId, year, month);
+  const totalCell = row.querySelector('.review-it-income-total-cell');
+  if(totalCell) totalCell.textContent = reviewItIncomeTotal(data).toLocaleString();
+  const checkCell = row.querySelector('.review-it-income-check-cell');
+  if(checkCell) checkCell.innerHTML = reviewItIncomeCheckMark(clientId, year, month, meta);
+}
+function refreshReviewItTaxRow(clientId, year, month){
+  const row = document.getElementById('reviewItTaxWrap')?.querySelector(`tr[data-month="${month}"]`);
+  if(!row) return;
+  const meta = reviewItMeta(clientId);
+  const data = reviewItMonthData(clientId, year, month);
+  const totalCell = row.querySelector('.review-it-tax-total-cell');
+  if(totalCell) totalCell.textContent = reviewItTaxTotal(data).toLocaleString();
+  const checkCell = row.querySelector('.review-it-tax-check-cell');
+  if(checkCell) checkCell.innerHTML = reviewItTaxCheckMark(clientId, year, month, meta);
+}
+function setReviewItDirty(isDirty){
+  const btn = document.getElementById('reviewItSaveBtn');
+  if(btn) btn.classList.toggle('is-dirty', !!isDirty);
+}
+function renderReviewItIncomeTable(clientId, year){
+  const wrap = document.getElementById('reviewItIncomeWrap');
+  if(!wrap) return;
+  const meta = reviewItMeta(clientId);
+  const rows = Array.from({length:12}, (_,i)=>i+1).map(month=>{
+    const data = reviewItMonthData(clientId, year, month);
+    const isEnd = reviewItIsPeriodEnd(month, meta.payCycle);
+    const fieldCells = REVIEW_INCOME_FIELDS.map(f=>{
+      const v = data.income[f.key];
+      return `<td><input type="number" class="review-it-income-input" data-month="${month}" data-key="${f.key}" value="${v!=null?v:''}" style="width:76px; border:1.5px solid var(--border); border-radius:6px; padding:3px 5px; font-family:'IBM Plex Mono',monospace; font-size:11px; text-align:right;"${f.excludeFromTotal?' title="총지급액 계산에서 제외됨"':''}></td>`;
+    }).join('');
+    const reportedCell = isEnd
+      ? `<td><input type="number" class="review-it-income-reported-input" data-month="${month}" value="${data.incomeReported!=null?data.incomeReported:''}" style="width:92px; border:1.5px solid var(--border); border-radius:6px; padding:3px 5px; font-family:'IBM Plex Mono',monospace; font-size:11px; text-align:right; background:#FFFBEA;"></td>`
+      : `<td style="text-align:center; color:var(--ink-soft);">-</td>`;
+    return `<tr data-month="${month}">
+      <td class="num cvb" style="font-weight:700;">${month}월</td>
+      ${fieldCells}
+      <td class="num cvb review-it-income-total-cell" style="font-weight:800; background:var(--indigo-bg);">${reviewItIncomeTotal(data).toLocaleString()}</td>
+      ${reportedCell}
+      <td class="review-it-income-check-cell" style="text-align:center; font-size:14px;">${reviewItIncomeCheckMark(clientId, year, month, meta)}</td>
+    </tr>`;
+  }).join('');
+  const headerCells = REVIEW_INCOME_FIELDS.map(f=>`<th class="cvb" style="white-space:nowrap;">${escHtml(f.label)}</th>`).join('');
+  wrap.innerHTML = `<table><thead><tr><th class="cvb">귀속월</th>${headerCells}<th class="cvb">총지급액<br>(계산)</th><th class="cvb">총지급액<br>(신고서)</th><th class="cvb">검증</th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.querySelectorAll('.review-it-income-input').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const month = Number(inp.dataset.month);
+      const data = reviewItMonthData(clientId, year, month);
+      data.income[inp.dataset.key] = inp.value === '' ? undefined : Number(inp.value);
+      setReviewItDirty(true);
+      refreshReviewItIncomeRow(clientId, year, month);
+      if(meta.payCycle === '반기'){
+        const endMonth = month <= 6 ? 6 : 12;
+        if(endMonth !== month) refreshReviewItIncomeRow(clientId, year, endMonth);
+      }
+    });
+  });
+  wrap.querySelectorAll('.review-it-income-reported-input').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const month = Number(inp.dataset.month);
+      reviewItMonthData(clientId, year, month).incomeReported = inp.value === '' ? null : Number(inp.value);
+      setReviewItDirty(true);
+      refreshReviewItIncomeRow(clientId, year, month);
+    });
+  });
+}
+function renderReviewItTaxTable(clientId, year){
+  const wrap = document.getElementById('reviewItTaxWrap');
+  if(!wrap) return;
+  const meta = reviewItMeta(clientId);
+  const rows = Array.from({length:12}, (_,i)=>i+1).map(month=>{
+    const data = reviewItMonthData(clientId, year, month);
+    const isEnd = reviewItIsPeriodEnd(month, meta.payCycle);
+    const groupCells = REVIEW_TAX_GROUPS.map(g=>{
+      const cur = data.tax[g.key] || {};
+      return `<td><input type="number" class="review-it-tax-input" data-month="${month}" data-group="${g.key}" data-sub="tax" value="${cur.tax!=null?cur.tax:''}" style="width:64px; border:1.5px solid var(--border); border-radius:6px; padding:3px 4px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-align:right;"></td><td><input type="number" class="review-it-tax-input" data-month="${month}" data-group="${g.key}" data-sub="local" value="${cur.local!=null?cur.local:''}" style="width:64px; border:1.5px solid var(--border); border-radius:6px; padding:3px 4px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-align:right; background:#FAFAFC;"></td>`;
+    }).join('');
+    const reportedCell = isEnd
+      ? `<td><input type="number" class="review-it-tax-reported-input" data-month="${month}" value="${data.taxReported!=null?data.taxReported:''}" style="width:92px; border:1.5px solid var(--border); border-radius:6px; padding:3px 5px; font-family:'IBM Plex Mono',monospace; font-size:11px; text-align:right; background:#FFFBEA;"></td>`
+      : `<td style="text-align:center; color:var(--ink-soft);">-</td>`;
+    return `<tr data-month="${month}">
+      <td class="num cvb" style="font-weight:700;">${month}월</td>
+      ${groupCells}
+      <td class="num cvb review-it-tax-total-cell" style="font-weight:800; background:var(--indigo-bg);">${reviewItTaxTotal(data).toLocaleString()}</td>
+      ${reportedCell}
+      <td class="review-it-tax-check-cell" style="text-align:center; font-size:14px;">${reviewItTaxCheckMark(clientId, year, month, meta)}</td>
+    </tr>`;
+  }).join('');
+  const headerCells = REVIEW_TAX_GROUPS.map(g=>`<th class="cvb" colspan="2" style="white-space:nowrap;">${escHtml(g.label)}</th>`).join('');
+  const subHeaderCells = REVIEW_TAX_GROUPS.map(()=>`<th class="cvb" style="font-size:10px;">소득세</th><th class="cvb" style="font-size:10px; color:var(--ink-soft);">지방세</th>`).join('');
+  wrap.innerHTML = `<table><thead><tr><th class="cvb" rowspan="2">귀속월</th>${headerCells}<th class="cvb" rowspan="2">원천세합계<br>(계산)</th><th class="cvb" rowspan="2">징수세액<br>(신고서)</th><th class="cvb" rowspan="2">검증</th></tr><tr>${subHeaderCells}</tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.querySelectorAll('.review-it-tax-input').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const month = Number(inp.dataset.month);
+      const data = reviewItMonthData(clientId, year, month);
+      data.tax[inp.dataset.group] = data.tax[inp.dataset.group] || {};
+      data.tax[inp.dataset.group][inp.dataset.sub] = inp.value === '' ? undefined : Number(inp.value);
+      setReviewItDirty(true);
+      refreshReviewItTaxRow(clientId, year, month);
+      if(meta.payCycle === '반기'){
+        const endMonth = month <= 6 ? 6 : 12;
+        if(endMonth !== month) refreshReviewItTaxRow(clientId, year, endMonth);
+      }
+    });
+  });
+  wrap.querySelectorAll('.review-it-tax-reported-input').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const month = Number(inp.dataset.month);
+      reviewItMonthData(clientId, year, month).taxReported = inp.value === '' ? null : Number(inp.value);
+      setReviewItDirty(true);
+      refreshReviewItTaxRow(clientId, year, month);
+    });
+  });
+}
+// 간이·지급명세서 제출기한: "지급월의 다음 달"까지만 자동계산(영업일·공휴일 조정은 신고 직전 국세청 달력으로 재확인 필요)
+function reviewItDeadlineInfo(month, sameMonth){
+  const payMonth = sameMonth ? month : (month % 12) + 1;
+  const dueMonth = (payMonth % 12) + 1;
+  return { payMonth, dueMonth };
+}
+function renderReviewItDeadlineTable(clientId, year){
+  const wrap = document.getElementById('reviewItDeadlineWrap');
+  if(!wrap) return;
+  const meta = reviewItMeta(clientId);
+  const rows = Array.from({length:12}, (_,i)=>i+1).map(month=>{
+    const { payMonth, dueMonth } = reviewItDeadlineInfo(month, meta.sameMonth);
+    return `<tr><td class="num cvb">${month}월</td><td class="num cvb">${payMonth}월</td><td class="num cvb" style="font-weight:800; color:var(--indigo-deep);">${dueMonth}월</td></tr>`;
+  }).join('');
+  wrap.innerHTML = `<p class="hint" style="text-align:center; margin-bottom:10px;">간이지급명세서·일용근로소득지급명세서 등은 "지급월의 다음 달"에 제출해요. 정확한 영업일(공휴일 조정)까지는 반영하지 않았으니, 신고 직전엔 국세청 달력으로 한 번 더 확인해주세요.</p>
+    <table style="max-width:420px; margin:0 auto;"><thead><tr><th class="cvb">귀속월</th><th class="cvb">지급월</th><th class="cvb">제출기한(월)</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function populateReviewItClientSelect(){
+  const sel = document.getElementById('reviewItClientSelect');
+  if(!sel) return;
+  const q = (document.getElementById('reviewItClientSearch')?.value || '').trim().toLowerCase();
+  let list = bookkeepingClientList();
+  if(q) list = list.filter(c=>(c.name||'').toLowerCase().includes(q));
+  const prevVal = sel.value;
+  if(!list.length){ sel.innerHTML = `<option value="">${q ? '검색 결과 없음' : '거래처 없음'}</option>`; renderReviewItAll(); return; }
+  sel.innerHTML = list.map((c,idx)=>`<option value="${c.id}">${idx+1}. ${escHtml(c.name)}</option>`).join('');
+  if(list.some(c=>c.id===prevVal)) sel.value = prevVal;
+  renderReviewItAll();
+}
+function populateReviewItYearSelect(clientId){
+  const sel = document.getElementById('reviewItYearSelect');
+  if(!sel) return;
+  const prevVal = sel.value;
+  const nowY = Number(todayStr().slice(0,4));
+  const years = new Set();
+  for(let y = nowY+1; y >= nowY-2; y--) years.add(String(y));
+  Object.keys(sharedReviewFigures[clientId] || {}).forEach(y=>years.add(y));
+  const sortedYears = Array.from(years).sort((a,b)=>Number(b)-Number(a));
+  sel.innerHTML = sortedYears.map(y=>`<option value="${y}">${y}년</option>`).join('');
+  sel.value = sortedYears.includes(prevVal) ? prevVal : String(nowY);
+}
+function renderReviewItClientMeta(clientId){
+  const box = document.getElementById('reviewItClientMeta');
+  if(!box) return;
+  if(!clientId){ box.innerHTML = ''; return; }
+  const meta = reviewItMeta(clientId);
+  box.innerHTML = `
+    <span style="display:inline-flex; align-items:center; gap:6px;">
+      <span style="font-weight:700;">귀속/지급</span>
+      <span class="policy-category-toggle" id="reviewItSameToggle" style="margin-bottom:0;">
+        <button type="button" class="review-it-same-btn ${meta.sameMonth ? 'active' : ''}" data-same="1">동일</button>
+        <button type="button" class="review-it-same-btn ${!meta.sameMonth ? 'active' : ''}" data-same="0">다름</button>
+      </span>
+    </span>
+    <span style="display:inline-flex; align-items:center; gap:6px;">
+      <span style="font-weight:700;">신고구분</span>
+      <span class="policy-category-toggle" id="reviewItCycleToggle" style="margin-bottom:0;">
+        <button type="button" class="review-it-cycle-btn ${meta.payCycle==='매월' ? 'active' : ''}" data-cycle="매월">매월</button>
+        <button type="button" class="review-it-cycle-btn ${meta.payCycle==='반기' ? 'active' : ''}" data-cycle="반기">반기</button>
+      </span>
+    </span>`;
+  box.querySelectorAll('.review-it-same-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      box.querySelectorAll('.review-it-same-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      reviewItMeta(clientId).sameMonth = btn.dataset.same === '1';
+      setReviewItDirty(true);
+      renderReviewItSection(clientId, Number(document.getElementById('reviewItYearSelect').value));
+    });
+  });
+  box.querySelectorAll('.review-it-cycle-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      box.querySelectorAll('.review-it-cycle-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      reviewItMeta(clientId).payCycle = btn.dataset.cycle;
+      setReviewItDirty(true);
+      renderReviewItSection(clientId, Number(document.getElementById('reviewItYearSelect').value));
+    });
+  });
+}
+function renderReviewItSection(clientId, year){
+  if(!clientId){
+    ['reviewItIncomeWrap','reviewItTaxWrap','reviewItDeadlineWrap'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.innerHTML = `<div class="empty-state">거래처를 선택해주세요.</div>`;
+    });
+    return;
+  }
+  if(viewingReviewItSection === 'income') renderReviewItIncomeTable(clientId, year);
+  else if(viewingReviewItSection === 'tax') renderReviewItTaxTable(clientId, year);
+  else renderReviewItDeadlineTable(clientId, year);
+}
+function renderReviewItAll(){
+  const titleEl = document.getElementById('reviewStatusTitle');
+  if(titleEl) titleEl.textContent = '원천세 검토표';
+  const sel = document.getElementById('reviewItClientSelect');
+  const clientId = sel ? sel.value : '';
+  populateReviewItYearSelect(clientId);
+  renderReviewItClientMeta(clientId);
+  const year = Number(document.getElementById('reviewItYearSelect')?.value) || Number(todayStr().slice(0,4));
+  renderReviewItSection(clientId, year);
+}
+document.querySelectorAll('.review-it-section-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.review-it-section-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    viewingReviewItSection = btn.dataset.itSection;
+    const wraps = { income:'reviewItIncomeWrap', tax:'reviewItTaxWrap', deadline:'reviewItDeadlineWrap' };
+    Object.keys(wraps).forEach(k=>{
+      const el = document.getElementById(wraps[k]);
+      if(el) el.style.display = (k === viewingReviewItSection) ? '' : 'none';
+    });
+    const sel = document.getElementById('reviewItClientSelect');
+    const clientId = sel ? sel.value : '';
+    const year = Number(document.getElementById('reviewItYearSelect')?.value) || Number(todayStr().slice(0,4));
+    renderReviewItSection(clientId, year);
+  });
+});
+document.getElementById('reviewItClientSearch')?.addEventListener('input', populateReviewItClientSelect);
+document.getElementById('reviewItClientSelect')?.addEventListener('change', renderReviewItAll);
+document.getElementById('reviewItYearSelect')?.addEventListener('change', ()=>{
+  const sel = document.getElementById('reviewItClientSelect');
+  const clientId = sel ? sel.value : '';
+  renderReviewItSection(clientId, Number(document.getElementById('reviewItYearSelect').value));
+});
+document.getElementById('reviewItSaveBtn')?.addEventListener('click', async ()=>{
+  await saveSharedReviewFigures();
+  await saveSharedReviewMeta();
+  const msgEl = document.getElementById('reviewItSaveMsg');
+  if(msgEl){ msgEl.textContent = '저장됨'; clearTimeout(msgEl._flashT); msgEl._flashT = setTimeout(()=>{ msgEl.textContent=''; }, 1500); }
+  setReviewItDirty(false);
 });
 
 // ── 신고도움: 기장거래처별 신고 전 체크리스트 (거래처는 항상 기장거래처 순번순, 검색 가능) ──
@@ -10672,7 +11096,7 @@ document.querySelectorAll('.approval-cat-btn').forEach(btn=>{
     if(reviewBranch) reviewBranch.style.display = (cat === 'review') ? 'flex' : 'none';
     if(docBranch) docBranch.style.display = (cat === 'doc') ? 'flex' : 'none';
     if(cat === 'status') renderFilingStatusTable('status');
-    else if(cat === 'review') renderFilingStatusTable('review');
+    else if(cat === 'review') renderReviewPanel();
     else if(cat === 'help'){ populateFilingHelpClientSelect(); renderFilingHelpChecklist(); }
     else if(cat === 'doc'){ populateApproverSelect(); renderApprovalInbox(); renderApprovalMine(); renderApprovalRejected(); renderApprovalDone(); renderApprovalAll(); renderApprovalAllBadges(); updateApprovalNotifyBtn(); }
   });
@@ -11463,7 +11887,7 @@ document.getElementById('exportSharedBtn').addEventListener('click', ()=>{
     exportedAt: new Date().toISOString(),
     app: 'monthly-board',
     scope: 'shared', // 관리자용 백업: 회사 공통설정만 포함, 직원 개인데이터는 포함 안 함
-    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals }
+    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta }
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -11510,6 +11934,8 @@ document.getElementById('importSharedFile').addEventListener('change', async (e)
     sharedReviewStatus = data.shared.reviewStatus || {};
     sharedFilingHelp = data.shared.filingHelp || {};
     sharedApprovals = data.shared.approvals || [];
+    sharedReviewFigures = data.shared.reviewFigures || {};
+    sharedReviewMeta = data.shared.reviewMeta || {};
     await saveSharedExclusions();
     await saveSharedWorkHourExceptions();
     await saveSharedNoticeHistory();
@@ -11525,6 +11951,8 @@ document.getElementById('importSharedFile').addEventListener('change', async (e)
     await saveSharedReviewStatus();
     await saveSharedFilingHelp();
     await saveSharedApprovals();
+    await saveSharedReviewFigures();
+    await saveSharedReviewMeta();
     if(gdriveAccessToken && gdriveFileId){
       document.getElementById('sharedBackupSaveMsg').textContent = '불러오기 완료 · 드라이브에 반영 중...';
       try{ await gdrivePush(); }catch(err){ console.error('공통설정 불러오기 후 드라이브 반영 실패', err); }
@@ -11965,7 +12393,7 @@ function gdriveBuildPayload(){
   });
   return {
     schemaVersion: SCHEMA_VERSION, syncedAt: new Date().toISOString(), profiles, data,
-    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals }
+    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta }
   };
 }
 
@@ -12090,6 +12518,8 @@ async function gdrivePull(){
       if(remote.shared.reviewStatus !== undefined) localStorage.setItem('worklog_shared_reviewstatus', JSON.stringify(remote.shared.reviewStatus));
       if(remote.shared.filingHelp !== undefined) localStorage.setItem('worklog_shared_filinghelp', JSON.stringify(remote.shared.filingHelp));
       if(remote.shared.approvals !== undefined) localStorage.setItem('worklog_shared_approvals', JSON.stringify(remote.shared.approvals));
+      if(remote.shared.reviewFigures !== undefined) localStorage.setItem('worklog_shared_reviewfigures', JSON.stringify(remote.shared.reviewFigures));
+      if(remote.shared.reviewMeta !== undefined) localStorage.setItem('worklog_shared_reviewmeta', JSON.stringify(remote.shared.reviewMeta));
     }
     if(!getActiveProfileId() || !remote.profiles.find(p=>p.id===getActiveProfileId())){
       if(remote.profiles.length) setActiveProfileId(remote.profiles[0].id);
@@ -12245,12 +12675,23 @@ document.getElementById('companyNameDeleteBtn')?.addEventListener('click', async
 });
 // 팀정보 (설정 > 회사 > 팀정보) - 세부 항목은 추후 확정 예정, 우선 메모 프레임만
 function populateTeamInfoInput(){
-  const el = document.getElementById('team-info-note');
-  if(el) el.value = (sharedTeamInfo && sharedTeamInfo.note) || '';
+  const nameEl = document.getElementById('team-info-name');
+  const accountantEl = document.getElementById('team-info-accountant');
+  const taxMgmtNoEl = document.getElementById('team-info-taxmgmtno');
+  const noteEl = document.getElementById('team-info-note');
+  if(nameEl) nameEl.value = (sharedTeamInfo && sharedTeamInfo.teamName) || '';
+  if(accountantEl) accountantEl.value = (sharedTeamInfo && sharedTeamInfo.accountant) || '';
+  if(taxMgmtNoEl) taxMgmtNoEl.value = (sharedTeamInfo && sharedTeamInfo.taxMgmtNo) || '';
+  if(noteEl) noteEl.value = (sharedTeamInfo && sharedTeamInfo.note) || '';
 }
 document.getElementById('teamInfoForm')?.addEventListener('submit', async (e)=>{
   e.preventDefault();
-  sharedTeamInfo = { note: document.getElementById('team-info-note').value.trim() };
+  sharedTeamInfo = {
+    teamName: document.getElementById('team-info-name').value.trim(),
+    accountant: document.getElementById('team-info-accountant').value.trim(),
+    taxMgmtNo: document.getElementById('team-info-taxmgmtno').value.trim(),
+    note: document.getElementById('team-info-note').value.trim()
+  };
   await saveSharedTeamInfo();
   document.getElementById('teamInfoSaveMsg').textContent = '저장됨';
   setTimeout(()=>{ document.getElementById('teamInfoSaveMsg').textContent = ''; }, 1500);
