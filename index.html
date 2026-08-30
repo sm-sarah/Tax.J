@@ -2719,9 +2719,11 @@
         <div style="text-align:center;"><span class="save-msg" id="companyNameSaveMsg"></span></div>
       </div>
 
-      <!-- 법인 공용ID/PW도 여기서 등록·수정·삭제함 - 사내정보 > 법인 탭은 조회 전용이라 이 화면에서 관리한
-           내용이 그대로 반영되어 보임 (데이터 저장소는 사내정보 때와 동일한 sharedCompanyInfo.corp) -->
-      <div style="text-align:center; margin:22px 0 6px;"><span class="section-subtitle-label">법인 ID/PW 관리</span></div>
+      <!-- 회사 공용 ID/PW - 여러 서비스별 계정을 하나씩 등록하던 예전 방식 대신, 회사가 다 같이 쓰는 로그인 계정
+           딱 한 쌍만 등록·수정하고 바뀔 때마다 이력이 남게 함(사내정보 > 법인 탭은 조회 전용이라 여기서 관리한
+           내용이 그대로 보임). 데이터 저장소는 예전과 같은 sharedCompanyInfo.corp이고, label이 "공용ID/PW"인
+           항목 하나만 이 화면에서 씀 - 예전에 등록해뒀던 서비스별 계정들은 지우지 않고 데이터에 남아있음 -->
+      <div style="text-align:center; margin:22px 0 6px;"><span class="section-subtitle-label">회사 공용 ID/PW</span></div>
       <div class="settings-box" style="max-width:680px;">
         <div style="display:flex; justify-content:center; margin-bottom:6px;">
           <div id="sensitiveUnlockWrapCompanyInfo" style="display:none; text-align:center;">
@@ -2729,8 +2731,7 @@
           </div>
         </div>
         <div style="display:flex; justify-content:flex-end; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
-          <button type="button" id="ciCorpDefaultsBtn" class="del-btn" style="display:none;">📋 기본값 불러오기</button>
-          <button type="button" id="ciCorpAddBtn" class="del-btn" style="display:none; background:var(--indigo); color:#fff;">➕ 항목 추가</button>
+          <button type="button" id="ciCorpAddBtn" class="del-btn" style="display:none; background:var(--indigo); color:#fff;">➕ 회사 ID/PW 등록</button>
         </div>
         <div id="ciCorpListWrap"></div>
       </div>
@@ -6805,6 +6806,9 @@ function bindCiRowButtons(wrap){
 // 예전 방식으로 등록돼 있던 다른 기본정보 항목이 있으면(예: 참고용 안내 항목) "기타 기본정보"로 따로 보여주고
 // 거기엔 기존처럼 수정/이력/삭제를 남겨둠
 const CORP_BASIC_INFO_ORDER = ['사업자번호','법인등록번호','회사명','창립일','대표자','주민등록번호','주소','우편번호','조정반번호','대표번호','대표팩스'];
+// 예전엔 세무사랑/홈택스/카카오톡 등 서비스별로 ID/PW를 여러 건 등록했는데, 이제는 회사가 다 같이 쓰는
+// 로그인 계정 한 쌍만 이 라벨로 등록·관리함(예전 항목들은 데이터에는 남아있지만 화면엔 이 라벨인 것만 보여줌)
+const CORP_SHARED_ACCOUNT_LABEL = '공용ID/PW';
 function buildCorpBasicInfoTable(infoList, companyName, admin, showControls){
   const byLabel = {};
   infoList.forEach(it=>{ if(!byLabel[it.label]) byLabel[it.label] = it; });
@@ -6831,14 +6835,16 @@ async function renderCompanyInfoCorp(wrapId, showControls){
   if(!wrap) return;
   const admin = !!gdriveAccessToken && isCurrentUserAdmin;
   const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
-  if(showControls){
-    const defaultsBtn = document.getElementById('ciCorpDefaultsBtn');
-    if(defaultsBtn) defaultsBtn.style.display = (admin && unlocked && !(sharedCompanyInfo.corp||[]).length) ? 'inline-block' : 'none';
-  }
   if(!admin){ wrap.innerHTML = `<div class="empty-state">🔒 관리자만 조회할 수 있어요.</div>`; return; }
   const list = sharedCompanyInfo.corp || [];
   const infoList = list.filter(it=>(it.type||'account')==='info');
-  const acctList = list.filter(it=>(it.type||'account')==='account');
+  // 회사 공용 ID/PW는 여러 서비스 계정을 등록하던 예전 방식 대신 label이 "공용ID/PW"인 항목 하나만 씀 -
+  // 예전에 등록해뒀던 다른 서비스별 계정들은 데이터에는 남아있지만 이 화면에서는 더 이상 보여주지 않음
+  const acctList = list.filter(it=>(it.type||'account')==='account' && it.label===CORP_SHARED_ACCOUNT_LABEL);
+  if(showControls){
+    const addBtn = document.getElementById('ciCorpAddBtn');
+    if(addBtn) addBtn.style.display = (admin && unlocked && !acctList.length) ? 'inline-block' : 'none';
+  }
   const decryptedMap = {}, failedSet = new Set();
   if(unlocked){
     for(const it of acctList){
@@ -6853,7 +6859,7 @@ async function renderCompanyInfoCorp(wrapId, showControls){
   const lockedMsg = showControls ? '🔒 먼저 위에서 잠금을 해제해주세요.' : '🔒 잠겨있어요. 설정 &gt; 회사 &gt; 회사정보에서 잠금해제 후 조회할 수 있어요.';
   const acctHtml = !acctList.length ? '' : unlocked
     ? buildCiAccountTable(acctList, 'corp', admin, unlocked, decryptedMap, failedSet, null, '', showControls)
-    : `<div style="text-align:center; margin:14px 0 10px;"><span class="section-subtitle-label">공용ID/PW</span></div><div class="empty-state" style="padding:14px;">${lockedMsg} (${acctList.length}건)</div>`;
+    : `<div style="text-align:center; margin:14px 0 10px;"><span class="section-subtitle-label">공용ID/PW</span></div><div class="empty-state" style="padding:14px;">${lockedMsg}</div>`;
   wrap.innerHTML = infoHtml + acctHtml;
   bindCiRowButtons(wrap);
 }
@@ -7045,7 +7051,7 @@ async function renderCompanyInfoPersonal(){
   });
   bindCiRowButtons(wrap);
 }
-document.getElementById('ciCorpAddBtn').addEventListener('click', ()=> openCiEntryFormModal('corp', null));
+document.getElementById('ciCorpAddBtn').addEventListener('click', openCorpAccountModal);
 document.getElementById('ciTeamAddPersonBtn').addEventListener('click', ()=> openCiTeamPersonModal(null));
 document.getElementById('ciTeamGeneralAddBtn').addEventListener('click', ()=> openCiEntryFormModal('teamGeneral', null));
 document.getElementById('ciTeamPersonModalClose').addEventListener('click', closeCiTeamPersonModal);
@@ -7073,16 +7079,6 @@ document.getElementById('ciTeamPersonModalForm').addEventListener('submit', asyn
   await saveSharedCompanyInfo();
   document.getElementById('ciTeamPersonModalSaveMsg').textContent = '저장됨';
   setTimeout(()=>{ closeCiTeamPersonModal(); renderCompanyInfoTeam(); }, 400);
-});
-document.getElementById('ciCorpDefaultsBtn').addEventListener('click', async ()=>{
-  const admin = !!gdriveAccessToken && isCurrentUserAdmin;
-  const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
-  if(!unlocked) return;
-  if((sharedCompanyInfo.corp||[]).length){ alert('이미 등록된 항목이 있어서 기본값을 불러오지 않았어요.'); return; }
-  if(!confirm('기본 항목명 목록을 불러올까요? (ID/PW는 비어있는 상태로 채워지며, 보안을 위해 직접 입력해야 해요)')) return;
-  sharedCompanyInfo.corp = CI_CORP_DEFAULTS.map(d=>({ id: genId(), label:d.label, type:d.type||'account', content:d.content||'', link:d.link||'', note:d.note||'', sensitiveEnc:null, updatedAt: todayStr() }));
-  await saveSharedCompanyInfo();
-  renderCompanyInfoCorp();
 });
 document.getElementById('ciTeamDefaultsBtn').addEventListener('click', async ()=>{
   const admin = !!gdriveAccessToken && isCurrentUserAdmin;
@@ -7132,6 +7128,7 @@ function openCiEntryFormModal(category, id, person, owner){
   document.getElementById('ciEntryFormModalTitle').textContent = entry ? '항목 수정' : '항목 추가';
   document.getElementById('ciEntryModalDeleteBtn').style.display = entry ? 'inline-block' : 'none';
   document.getElementById('ci-entry-label').value = entry ? (entry.label||'') : '';
+  document.getElementById('ci-entry-label').readOnly = false;
   document.getElementById('ci-entry-content').value = entry ? (entry.content||'') : '';
   document.getElementById('ci-entry-link').value = entry ? (entry.link||'') : '';
   document.getElementById('ci-entry-note').value = entry ? (entry.note||'') : '';
@@ -7153,6 +7150,21 @@ function openCiEntryFormModal(category, id, person, owner){
     }).catch(err=>{ console.error('사내정보 항목 복호화 실패', err); });
   }
   document.getElementById('ciEntryFormModalOverlay').style.display = 'flex';
+}
+// 회사 공용 ID/PW 전용 진입점 - 여러 서비스 계정을 각각 등록하던 예전 방식(ciCorpAddBtn이 openCiEntryFormModal을
+// 직접 열던 방식) 대신, 라벨이 고정된 "공용ID/PW" 항목 하나만 등록/수정하도록 openCiEntryFormModal을 감싸서 씀
+function openCorpAccountModal(){
+  const admin = !!gdriveAccessToken && isCurrentUserAdmin;
+  const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
+  if(!unlocked){ alert('ID/PW를 저장·조회하려면 먼저 위에서 🔒 잠금해제를 해주세요.'); return; }
+  const entry = (sharedCompanyInfo.corp||[]).find(x=>(x.type||'account')==='account' && x.label===CORP_SHARED_ACCOUNT_LABEL);
+  openCiEntryFormModal('corp', entry ? entry.id : null);
+  document.getElementById('ci-entry-type-account').checked = true;
+  document.getElementById('ci-entry-type-info').checked = false;
+  updateCiEntryTypeFields();
+  document.getElementById('ci-entry-label').value = CORP_SHARED_ACCOUNT_LABEL;
+  document.getElementById('ci-entry-label').readOnly = true;
+  document.getElementById('ciEntryFormModalTitle').textContent = entry ? '회사 ID/PW 수정' : '회사 ID/PW 등록';
 }
 function closeCiEntryFormModal(){
   document.getElementById('ciEntryFormModalOverlay').style.display = 'none';
@@ -11720,7 +11732,7 @@ function applyPermissionUI(){
     const w = document.getElementById(id);
     if(w) w.style.display = admin ? 'block' : 'none';
   });
-  ['ciCorpDefaultsBtn','ciCorpAddBtn','ciTeamDefaultsBtn','ciTeamAddPersonBtn','ciTeamGeneralAddBtn'].forEach(id=>{
+  ['ciCorpAddBtn','ciTeamDefaultsBtn','ciTeamAddPersonBtn','ciTeamGeneralAddBtn'].forEach(id=>{
     const b = document.getElementById(id);
     if(b) b.style.display = admin ? 'inline-block' : 'none';
   });
