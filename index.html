@@ -470,8 +470,8 @@
      맨 위에 눈에 띄게 보여주고(그 아래 표에는 다시 나오지 않음),
      "기본정보"·"공용ID/PW"는 같은 소제목 스타일(.section-subtitle-label)로 통일해서 구획만 나눔 */
   .corp-info-name-chip{
-    display:inline-block; background:var(--indigo-bg); color:var(--indigo-deep); font-weight:900; font-size:25px;
-    letter-spacing:-0.01em; padding:6px 22px; border-radius:14px;
+    display:inline-block; background:var(--indigo); color:#fff; font-weight:900; font-size:27px;
+    letter-spacing:-0.01em; padding:10px 28px; border-radius:16px; box-shadow:0 4px 14px rgba(91,95,239,0.28);
   }
 
   /* 사내정보(법인/팀)는 거래처 목록처럼 데이터가 쭉 나열되는 화면이 아니라 항목 수가 적은 정보성 화면이라
@@ -6818,13 +6818,13 @@ function buildCorpBasicInfoTable(infoList, companyName, admin, showControls){
     .map(label => `<tr><td class="cvb" style="font-weight:700; width:130px; text-align:center; background:var(--bg);">${escHtml(label)}</td><td style="white-space:pre-wrap;">${escHtml(byLabel[label].content)}</td></tr>`)
     .join('');
   const nameChipHtml = `<div style="text-align:center; margin:4px 0 20px;"><span class="corp-info-name-chip">${escHtml(companyName || '회사명 미등록')}</span></div>`;
-  const infoTitleHtml = `<div style="text-align:center; margin:0 0 10px;"><span class="section-subtitle-label">기본정보</span></div>`;
+  // 표 헤더 자체를 "기본정보"로 써서 구획을 나타내므로, 표 위에 별도의 "기본정보" 소제목은 더 이상 안 붙임(중복이라 삭제)
   const tableHtml = rows
-    ? `<div class="table-scroll"><table><thead><tr><th class="cvb" style="text-align:center;">항목명</th><th style="text-align:center;">내용</th></tr></thead><tbody>${rows}</tbody></table></div>`
+    ? `<div class="table-scroll"><table><thead><tr><th class="cvb" style="text-align:center;">항목명</th><th style="text-align:center;">기본정보</th></tr></thead><tbody>${rows}</tbody></table></div>`
     : `<div class="empty-state">설정 &gt; 회사 정보에서 등록해보세요.</div>`;
   const extra = infoList.filter(it => !CORP_BASIC_INFO_ORDER.includes(it.label));
   const extraHtml = extra.length ? buildCiInfoTable(extra, 'corp', admin, null, '기타 ', showControls) : '';
-  return nameChipHtml + infoTitleHtml + tableHtml + extraHtml;
+  return nameChipHtml + tableHtml + extraHtml;
 }
 // wrapId/showControls 둘 다 생략하면 기존과 완전히 같은 동작(설정 > 회사정보의 편집 가능한 화면).
 // 사내정보 탭의 조회 전용 화면은 renderCompanyInfoCorpView()가 다른 wrapId+showControls:false로 이 함수를 재사용함
@@ -6854,8 +6854,10 @@ async function renderCompanyInfoCorp(wrapId, showControls){
       }
     }
   }
-  // 공용ID/PW 소제목엔 이제 회사명을 다시 붙이지 않음 - 위 보라색 칩에서 이미 한 번 강조했음
-  const infoHtml = buildCorpBasicInfoTable(infoList, sharedCompanyName, admin, showControls);
+  // 설정 > 회사정보 화면(showControls:true)에는 이미 위에 회사 기본정보 등록 폼(companyNameForm)이 따로 있어서
+  // 여기서 또 그 내용을 표로 중복해서 보여줄 필요가 없음 - "회사 공용 ID/PW" 카드에는 ID/PW 등록 기능만 넣음.
+  // 기본정보 표는 사내정보 탭의 조회 전용 화면(showControls:false)에서만 보여줌
+  const infoHtml = showControls ? '' : buildCorpBasicInfoTable(infoList, sharedCompanyName, admin, showControls);
   const lockedMsg = showControls ? '🔒 먼저 위에서 잠금을 해제해주세요.' : '🔒 잠겨있어요. 설정 &gt; 회사 &gt; 회사정보에서 잠금해제 후 조회할 수 있어요.';
   const acctHtml = !acctList.length ? '' : unlocked
     ? buildCiAccountTable(acctList, 'corp', admin, unlocked, decryptedMap, failedSet, null, '', showControls)
