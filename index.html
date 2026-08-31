@@ -4147,6 +4147,14 @@ function leaveTeamCalShortType(type, subtype){
   return type;
 }
 
+// 당겨쓰기(advance) 표시용 아이콘 - 예전엔 🔜(SOON) 이모지를 그대로 썼는데, 이 이모지 자체가 작은 사각형
+// 안에 "SOON"이라는 글자가 그려져 있는 그림이라 캘린더 배지처럼 작은 글씨 크기에서는 글자가 뭉개져서
+// 뭘 나타내는 아이콘인지 전혀 안 보이는 문제가 있었음 - 그 대신 아주 작은 크기에서도 또렷한 단순한
+// "앞으로 당겨온다"는 느낌의 이중 화살표(≫) 모양을 직접 그려서 씀. currentColor를 써서 배지 색(휴가=코럴,
+// 재택=민트 등)에 자동으로 맞춰짐
+function advIconTag(){
+  return `<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; flex:none;" title="당겨씀(당겨쓰기)"><path d="M4 5l7 7-7 7"/><path d="M13 5l7 7-7 7"/></svg>`;
+}
 function renderAdminCalendar(){
   updateTeamCalHeader();
   const wrap = document.getElementById('adminCalendarWrap');
@@ -4168,7 +4176,7 @@ function renderAdminCalendar(){
         const u = g.entries[0];
         const t = (u.type==='반차'||u.type==='반반차') ? leaveAbsenceTime(u.date, u.type, u.subtype) : '';
         const titleAttr = t ? ` title="${escHtml(t)}"` : '';
-        const advSuffix = u.advance ? ' 🔜' : '';
+        const advSuffix = u.advance ? ' ' + advIconTag() : '';
         (byDate[g.startDate]=byDate[g.startDate]||[]).push(`<span class="cal-badge leave"${titleAttr}>🌴 ${escHtml(name)}) ${escHtml(leaveTeamCalShortType(u.type, u.subtype))}${advSuffix}</span>`);
       } else {
         // 연속 휴가는 하루짜리 뱃지 두 개(시작일/복귀일)로 뚝 끊어 보여주지 않고, 그 사이 평일들을 이어지는 막대로 표시함
@@ -4200,7 +4208,7 @@ function renderAdminCalendar(){
       const cls = r.bonus ? 'special' : 'remote';
       const icon = r.bonus ? '🎁' : '🏠';
       const typeLabel = r.bonus ? '특별재택' : '정기재택';
-      const advSuffix = r.advance ? ' 🔜' : '';
+      const advSuffix = r.advance ? ' ' + advIconTag() : '';
       (byDate[r.date]=byDate[r.date]||[]).push(`<span class="cal-badge ${cls}">${icon} ${escHtml(name)}) ${typeLabel}${advSuffix}</span>`);
     });
     (sch.events||[]).filter(e=>e.date.startsWith(monthStr) && e.shared !== false).forEach(e=>{
@@ -5472,13 +5480,13 @@ function renderAttendance(){
       } else {
         const subLabel = en.subtype ? ` (${subtypeLabel[en.subtype] || en.subtype})` : '';
         const t = (en.type==='반차'||en.type==='반반차') ? leaveAbsenceTime(en.date, en.type, en.subtype) : '';
-        const advTag = en.advance ? ' <span style="color:var(--indigo-deep); font-weight:800;">🔜당겨씀</span>' : '';
+        const advTag = en.advance ? ` <span style="color:var(--indigo-deep); font-weight:800; display:inline-flex; align-items:center; gap:2px;">${advIconTag()}당겨씀</span>` : '';
         tag = `<span class="tag tag-usage">사용 · ${en.type}${subLabel}${t ? ' '+t : ''}${advTag}</span>`;
         detail = `-${en.type==='연차'?1:en.type==='반차'?0.5:0.25}일`;
       }
     }
     else {
-      const advTag = en.advance ? ` <span style="color:var(--indigo-deep); font-weight:800;">🔜${remoteCreditMonthOf(en)} 한도차감</span>` : '';
+      const advTag = en.advance ? ` <span style="color:var(--indigo-deep); font-weight:800; display:inline-flex; align-items:center; gap:2px;">${advIconTag()}${remoteCreditMonthOf(en)} 한도차감</span>` : '';
       tag = `<span class="tag ${en.bonus ? 'tag-remote-special' : 'tag-remote'}">${en.bonus ? '특별재택' : '정기재택'}${advTag}</span>`;
       detail = '-';
     }
@@ -5824,12 +5832,12 @@ function renderCalendar(){
         else label = `${u.type}(${u.days}일)`;
       }
       const titleAttr = timeLabel ? ` title="${escHtml(timeLabel)}"` : '';
-      const advSuffix = g.entries[0].advance ? ' 🔜' : '';
+      const advSuffix = g.entries[0].advance ? ' ' + advIconTag() : '';
       badges += `<span class="cal-badge leave"${titleAttr}>🌴 ${label}${advSuffix}</span>`;
     });
     if(remoteByDate[dateStr]){
       const rInfo = remoteByDate[dateStr];
-      const rAdvSuffix = rInfo.advance ? ' 🔜' : '';
+      const rAdvSuffix = rInfo.advance ? ' ' + advIconTag() : '';
       badges += rInfo.bonus ? `<span class="cal-badge special">🎁 특별재택${rAdvSuffix}</span>` : `<span class="cal-badge remote">🏠 정기재택${rAdvSuffix}</span>`;
     }
     let holidayIcon = '';
