@@ -231,9 +231,29 @@
   }
   .home-dash-info-row:last-child{ border-bottom:none; }
   .home-dash-info-row span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .home-dash-today-badges.cal-badges{ gap:5px; }
+  .home-dash-today-badges .cal-badge{ display:block; }
   .home-dash-stat-row{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; padding:3px 0; }
   .home-dash-stat-label{ font-size:11.5px; color:var(--ink-soft); font-weight:600; }
   .home-dash-stat-value{ font-size:15px; color:var(--ink); font-weight:800; }
+  /* 출퇴근 카드가 다른 3개 카드보다 내용이 적어 아래쪽이 많이 비어보인다는 피드백에 맞춰, 출근→퇴근 시각
+     흐름 + 이번 주 누적 근무시간 진행률바 + 근무상태 배지를 더해 공간을 자연스럽게 채우는 "재밌는 스타일"로 구성함 */
+  .home-dash-clock-flow{ display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:4px; }
+  .home-dash-clock-flow-item{ text-align:center; }
+  .home-dash-clock-flow-label{ font-size:10.5px; color:var(--ink-soft); font-weight:700; margin-bottom:2px; }
+  .home-dash-clock-flow-time{ font-size:20px; font-weight:900; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; letter-spacing:-0.02em; }
+  .home-dash-clock-flow-time.filled{ color:var(--navy); }
+  .home-dash-clock-flow-arrow{ font-size:16px; color:var(--indigo); font-weight:900; }
+  .home-dash-clock-mood{ text-align:center; font-size:11.5px; font-weight:700; color:var(--indigo-deep); margin-bottom:10px; }
+  .home-dash-week-bar-wrap{ margin:0 auto 12px; max-width:280px; }
+  .home-dash-week-bar-labels{ display:flex; justify-content:space-between; font-size:10px; font-weight:700; color:var(--ink-soft); margin-bottom:4px; }
+  .home-dash-week-bar-track{ height:9px; border-radius:6px; background:var(--bg); overflow:hidden; position:relative; }
+  .home-dash-week-bar-fill{ height:100%; border-radius:6px; background:linear-gradient(90deg, var(--indigo), var(--navy)); transition:width 0.4s ease; }
+  .home-dash-status-row{ display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:10px; }
+  .home-dash-status-select{
+    font-family:'Pretendard', sans-serif; font-size:11px; font-weight:700; color:var(--ink); background:var(--bg);
+    border:none; border-radius:20px; padding:5px 10px; cursor:pointer;
+  }
   .home-section-label{
     align-self:flex-start; display:inline-flex; align-items:center; justify-content:center; gap:6px;
     font-weight:800; font-size:12.5px; color:#fff; letter-spacing:0.06em;
@@ -836,6 +856,10 @@
   .cal-header-nav{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; margin-bottom:16px; gap:8px; }
   /* 옆의 큰 연월 글자와 나란히 있으면 흰 배경칩이 붕 뜬 것처럼 보여서, 평소엔 배경 없이 아이콘만 두고 hover할 때만 살짝 배경이 보이게 함 */
   .cal-nav-btn{ border:none; background:transparent; color:var(--indigo); font-size:20px; font-weight:900; width:32px; height:32px; border-radius:10px; cursor:pointer; box-shadow:none; display:flex; align-items:center; justify-content:center; transition:background 0.12s, transform 0.12s; flex-shrink:0; }
+  /* 연월 타이틀 바로 옆 달력 아이콘 버튼은 클릭 영역(32px) 자체가 아이콘(18px)보다 커서, 부모의 flex gap과
+     버튼 자체 여백이 겹쳐 텍스트와 아이콘 사이가 유독 벌어져 보였음 - 클릭 영역은 그대로 두고 음수 마진으로
+     시각적으로만 타이틀에 바짝 붙여서 "연월 + 아이콘"이 한 덩어리처럼 보이게 함 */
+  .cal-header-nav .cal-nav-btn{ margin-left:-14px; }
   .cal-nav-btn:hover{ background:var(--indigo-bg); transform:scale(1.06); }
   .cal-nav-btn svg{ display:block; }
   .cal-title-big{ font-size:23px; font-weight:900; color:var(--navy); letter-spacing:-0.01em; text-align:center; }
@@ -1213,6 +1237,10 @@
           <input type="checkbox" id="r-bonus" style="width:auto;">
           <label for="r-bonus" style="margin:0; font-size:11.5px;">특별재택 (월 한도 미포함)</label>
         </div>
+        <div class="field" id="advanceField" style="display:none; flex-direction:row; align-items:center; gap:6px; background:var(--indigo-bg); border-radius:8px; padding:8px 10px;">
+          <input type="checkbox" id="u-advance" style="width:auto;">
+          <label for="u-advance" id="advanceFieldLabel" style="margin:0; font-size:11.5px; color:var(--indigo-deep); font-weight:700;">당겨쓰기</label>
+        </div>
         <div class="field"><label>메모</label><input type="text" id="u-memo" placeholder="예: 개인 사유"></div>
         <div style="text-align:center;">
           <button type="submit" class="submit-btn" style="width:auto; padding:9px 20px;">추가</button>
@@ -1441,6 +1469,42 @@
       <span id="memoModalTitle" style="display:inline-block; font-weight:800; font-size:19px; color:var(--ink);"></span>
     </div>
     <div id="memoModalBody" style="font-size:13px; color:var(--ink); line-height:1.6;"></div>
+  </div>
+</div>
+<!-- 원천세 신고대상: 거래처 × 월 그리드의 한 칸을 눌렀을 때 뜨는 편집 팝업 -->
+<div id="filingTargetEditModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:400px; width:100%; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="text-align:center; margin-bottom:14px;">
+      <div id="filingTargetEditTitle" style="font-weight:800; font-size:16px; color:var(--ink);"></div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:12px; font-size:12.5px;">
+      <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+        <span style="font-weight:700; color:var(--ink-soft);">신고대상 여부</span>
+        <span class="policy-category-toggle" id="filingTargetApplicableToggle" style="margin-bottom:0;">
+          <button type="button" class="ft-applicable-btn" data-applicable="0">대상 아님</button>
+          <button type="button" class="ft-applicable-btn" data-applicable="1">대상</button>
+        </span>
+      </div>
+      <div id="filingTargetDetailFields" style="display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+          <span style="font-weight:700; color:var(--ink-soft);">신고구분</span>
+          <span class="policy-category-toggle" id="filingTargetCycleToggle" style="margin-bottom:0;">
+            <button type="button" class="ft-cycle-btn" data-cycle="매월">매월</button>
+            <button type="button" class="ft-cycle-btn" data-cycle="반기">반기</button>
+          </span>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:center; gap:14px;">
+          <label style="display:flex; align-items:center; gap:5px; font-weight:600; cursor:pointer;"><input type="checkbox" id="ft-samemonth" style="width:auto;"> 당월귀속·당월지급</label>
+          <label style="display:flex; align-items:center; gap:5px; font-weight:600; cursor:pointer;"><input type="checkbox" id="ft-nextmonth" style="width:auto;"> 당월귀속·익월지급</label>
+        </div>
+        <div class="hint" style="font-size:10.5px; text-align:center; margin:0;">두 지급시기가 그 달에 동시에 있으면 둘 다 체크하세요 - 신고현황에 각각 별도로 나와요.</div>
+      </div>
+    </div>
+    <div style="text-align:center; margin-top:16px; display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
+      <button type="button" id="filingTargetApplyRestBtn" class="del-btn" title="지금 설정한 내용을 이 해의 남은 달에도 똑같이 적용해요">이후 달에도 동일 적용</button>
+      <button type="button" id="filingTargetEditSaveBtn" class="submit-btn" style="width:auto; padding:8px 18px;">저장</button>
+      <button type="button" id="filingTargetEditCloseBtn" class="del-btn">닫기</button>
+    </div>
   </div>
 </div>
 <div id="employeeModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
@@ -1727,6 +1791,16 @@
                 <div class="home-submenu-leaf" data-approval-cat-goto="status" data-filing-type-goto="법인세">법인세</div>
                 <div class="home-submenu-leaf" data-approval-cat-goto="status" data-filing-type-goto="종소세">종소세</div>
                 <div class="home-submenu-leaf" data-approval-cat-goto="status" data-filing-type-goto="결산">결산</div>
+              </div>
+              <div class="home-submenu-item" data-approval-cat-goto="target"><span>신고대상</span></div>
+              <div class="home-submenu-item" data-approval-cat-goto="submit">
+                <span style="flex:1;">제출현황</span>
+                <button type="button" class="home-tile-expand-btn" data-expand-target="homeWorkSubmitSubmenu" title="구분 펼치기/접기">▸</button>
+              </div>
+              <div class="home-submenu-sub" id="homeWorkSubmitSubmenu" style="display:none;">
+                <div class="home-submenu-leaf" data-approval-cat-goto="submit" data-submit-type-goto="월별">매월</div>
+                <div class="home-submenu-leaf" data-approval-cat-goto="submit" data-submit-type-goto="반기">반기</div>
+                <div class="home-submenu-leaf" data-approval-cat-goto="submit" data-submit-type-goto="연간">연간</div>
               </div>
               <div class="home-submenu-item" data-approval-cat-goto="review"><span>검토표</span></div>
               <div class="home-submenu-item" data-approval-cat-goto="doc">
@@ -2025,7 +2099,9 @@
   <section id="tab-quickguide" class="tab-panel">
     <div style="position:relative; max-width:540px; margin:0 auto;">
       <h2 class="section-title">Quick Guide</h2>
-      <span style="position:absolute; top:0; right:0; font-size:10.5px; font-weight:700; color:var(--ink-soft);">2026.07.01 지침</span>
+      <!-- 지침 날짜 라벨을 타이틀 줄 맨 위가 아니라, 카드(표)들이 시작되기 바로 직전인 이 헤더 영역의
+           하단 우측에 붙여서 더 가까이 붙어 보이게 함 -->
+      <span style="position:absolute; bottom:0; right:0; font-size:10.5px; font-weight:700; color:var(--ink-soft);">2026.07.01 지침</span>
     </div>
     <div class="policy-locked" id="quickGuideLocked" style="display:none;">
       <div class="policy-locked-icon">🔒</div>
@@ -2501,6 +2577,17 @@
           </div>
         </div>
         <div class="approval-nav-branch">
+          <button type="button" class="approval-cat-btn" data-approval-cat="target">🎯 신고대상</button>
+        </div>
+        <div class="approval-nav-branch">
+          <button type="button" class="approval-cat-btn" data-approval-cat="submit">📮 제출현황</button>
+          <div class="approval-subtype-branch" id="submitTypeToggle" style="display:none;">
+            <button type="button" class="submit-type-btn active" data-submit-type="월별">매월</button>
+            <button type="button" class="submit-type-btn" data-submit-type="반기">반기</button>
+            <button type="button" class="submit-type-btn" data-submit-type="연간">연간</button>
+          </div>
+        </div>
+        <div class="approval-nav-branch">
           <button type="button" class="approval-cat-btn" data-approval-cat="review">🔍 검토표</button>
           <div class="approval-subtype-branch" id="reviewTypeToggle" style="display:none;">
             <button type="button" class="review-type-btn active" data-filing-type="원천세">원천세</button>
@@ -2540,12 +2627,47 @@
             <span class="hint" style="font-size:11px; margin:0;">상태나 메모를 바꾼 뒤 저장 버튼을 눌러주세요.</span>
             <div style="display:flex; align-items:center; gap:8px;">
               <span class="save-msg" id="filingStatusSaveMsg" style="margin-top:0; display:inline-block;"></span>
-              <button type="button" id="filingStatusSaveBtn" title="저장 (바뀐 내용이 있으면 버튼이 빨갛게 표시돼요)" style="flex-shrink:0; width:34px; height:34px; border-radius:50%; border:none; background:var(--indigo); color:#fff; box-shadow:0 4px 10px -3px rgba(29,30,51,0.35); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              <button type="button" id="filingStatusSaveBtn" title="저장 (바뀐 내용이 있으면 버튼이 빨갛게 표시돼요)" style="flex-shrink:0; width:24px; height:24px; border-radius:50%; border:none; background:var(--indigo); color:#fff; box-shadow:0 4px 10px -3px rgba(29,30,51,0.35); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
               </button>
             </div>
           </div>
           <div id="filingStatusTableWrap"></div>
+        </div>
+      </div>
+
+      <!-- 신고대상(원천세): 거래처 × 월 그리드로, 매월 어느 거래처가 원천세 신고대상인지/매월인지 반기인지/
+           당월지급·익월지급 중 무엇이 그 달에 있는지 미리 지정해두는 화면. 여기서 지정한 내용을 신고현황(원천세)이
+           그대로 읽어서 대상 거래처만 보여주고, 지급시기별로 줄을 나눔 -->
+      <div class="approval-panel" data-approval-cat="target" style="display:none;">
+        <h2 class="section-title" style="justify-content:center; font-size:22px; margin:4px 0 14px;">원천세 신고대상</h2>
+        <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:14px;">
+          <select id="filingTargetYear" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
+          <span class="hint" style="font-size:11px; margin:0;">칸을 눌러서 그 달의 신고대상 여부·신고구분·지급시기를 설정하세요.</span>
+        </div>
+        <div id="filingTargetTableWrap" class="table-scroll"></div>
+      </div>
+
+      <!-- 제출현황(원천세): 원래 신고현황 화면 안에 월별/반기/연간 모드로 같이 있던 매월제출·반기제출·연간지급명세서
+           체크리스트를 별도 메뉴로 분리함 - 데이터 저장소(sharedFilingStatus['원천세'])는 그대로라 기존에 입력해둔
+           내용이 그대로 이어짐 -->
+      <div class="approval-panel" data-approval-cat="submit" style="display:none;">
+        <h2 class="section-title" style="justify-content:center; font-size:22px; margin:4px 0 14px;" id="submitStatusTitle">원천세 제출현황 · 매월</h2>
+        <div id="submitPeriodControls" style="display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
+          <select id="submitPeriodYear" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
+          <select id="submitPeriodSub" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
+        </div>
+        <div class="settings-box" style="max-width:1060px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; gap:8px; flex-wrap:wrap;">
+            <span class="hint" style="font-size:11px; margin:0;">상태를 바꾼 뒤 저장 버튼을 눌러주세요.</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="save-msg" id="submitStatusSaveMsg" style="margin-top:0; display:inline-block;"></span>
+              <button type="button" id="submitStatusSaveBtn" title="저장 (바뀐 내용이 있으면 버튼이 빨갛게 표시돼요)" style="flex-shrink:0; width:24px; height:24px; border-radius:50%; border:none; background:var(--indigo); color:#fff; box-shadow:0 4px 10px -3px rgba(29,30,51,0.35); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              </button>
+            </div>
+          </div>
+          <div id="submitStatusTableWrap"></div>
         </div>
       </div>
 
@@ -2928,7 +3050,7 @@
               <option value="subtract">차감 (−)</option>
             </select>
           </div>
-          <div class="field" style="flex:1 1 100px; margin-bottom:0;"><label>일수</label><input type="number" id="g-days" class="num-input" step="0.5" min="0" value="1"></div>
+          <div class="field" style="flex:1 1 140px; margin-bottom:0;"><label>일수</label><input type="number" id="g-days" class="num-input" step="0.5" min="0" value="1"></div>
           <div class="field" style="flex:1 1 140px; margin-bottom:0;"><label>메모</label><input type="text" id="g-memo" placeholder="예: 회사 기준 보정"></div>
           <button type="submit" class="submit-btn" id="grantSubmitBtn" style="width:auto; flex:0 0 auto;">추가</button>
           <button type="button" id="grantCancelEditBtn" class="del-btn" style="display:none; flex:0 0 auto;">취소</button>
@@ -3007,8 +3129,13 @@
       </p>
       <div class="settings-box" style="max-width:480px;">
         <div id="megaManagePwStatus" class="hint" style="text-align:center; margin-bottom:10px;"></div>
-        <div style="text-align:center;">
+        <!-- 아직 비밀번호가 없을 때만 설정 화면으로 안내하는 버튼 - 이미 설정돼 있으면 숨기고 아래 수정/초기화 두 칩만 보여줌 -->
+        <div id="megaGoManagePwBtnWrap" style="text-align:center;">
           <button type="button" id="megaGoManagePwBtn" class="submit-btn" style="width:auto; padding:9px 16px;">🔐 비밀번호 설정/변경하러 가기</button>
+        </div>
+        <div id="megaManagePwActionBtnWrap" style="display:none; text-align:center;">
+          <button type="button" id="megaManagePwEditBtn" class="del-btn">수정</button>
+          <button type="button" id="megaManagePwResetBtn" class="del-btn" style="background:var(--coral-bg); color:var(--coral);" title="현재 비밀번호를 잊었거나 수정이 자꾸 오류날 때">초기화</button>
         </div>
       </div>
 
@@ -3028,8 +3155,8 @@
           직원 개개인의 근태·경비 기록은 포함되지 않아요 (그건 각 직원이 본인 설정에서 관리해요).
         </p>
         <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center;">
-          <button type="button" id="exportSharedBtn" class="submit-btn" style="width:auto; padding:9px 16px;">⬆️ 공통설정 내보내기</button>
-          <button type="button" id="importSharedBtn" class="submit-btn" style="width:auto; padding:9px 16px; background:var(--mint);">⬇️ 공통설정 불러오기</button>
+          <button type="button" id="exportSharedBtn" class="submit-btn" style="width:auto; padding:7px 13px; font-size:12px;">⬆️ 공통설정 내보내기</button>
+          <button type="button" id="importSharedBtn" class="submit-btn" style="width:auto; padding:7px 13px; font-size:12px; background:var(--mint);">⬇️ 공통설정 불러오기</button>
           <input type="file" id="importSharedFile" accept="application/json" style="display:none;">
           <span class="save-msg" id="sharedBackupSaveMsg" style="margin-top:0;"></span>
         </div>
@@ -3041,8 +3168,8 @@
           이 브라우저가 이미 구글 드라이브와 동기화되어 있다면 모든 직원 데이터를 가지고 있으니, 여기서 회사 전체 백업본을 만들 수 있어요. 복구 시에는 <b>모든 직원 데이터가 파일 내용으로 통째로 교체</b>되니 신중하게 사용해주세요.
         </p>
         <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center;">
-          <button type="button" id="exportAllBtn" class="submit-btn" style="width:auto; padding:9px 16px;">⬆️ 전 직원 일괄 백업</button>
-          <button type="button" id="importAllBtn" class="submit-btn" style="width:auto; padding:9px 16px; background:var(--coral);">⬇️ 전 직원 일괄 복구</button>
+          <button type="button" id="exportAllBtn" class="submit-btn" style="width:auto; padding:7px 13px; font-size:12px;">⬆️ 전 직원 일괄 백업</button>
+          <button type="button" id="importAllBtn" class="submit-btn" style="width:auto; padding:7px 13px; font-size:12px; background:var(--coral);">⬇️ 전 직원 일괄 복구</button>
           <input type="file" id="importAllFile" accept="application/json" style="display:none;">
           <span class="save-msg" id="allBackupSaveMsg" style="margin-top:0;"></span>
         </div>
@@ -3053,9 +3180,9 @@
           전 직원이 아니라 <b>한 명만 골라서</b> 그 직원의 근태·경비·개인일정 기록만 백업·복구해요. 회사 공통설정과 다른 직원 데이터는 건드리지 않아요.
         </p>
         <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center;">
-          <select id="oneEmployeeBackupSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:8px 10px; background:var(--surface); font-family:'Pretendard',sans-serif;"></select>
-          <button type="button" id="exportOneBtn" class="submit-btn" style="width:auto; padding:9px 16px;">⬆️ 선택 직원 백업</button>
-          <button type="button" id="importOneBtn" class="submit-btn" style="width:auto; padding:9px 16px; background:var(--coral);">⬇️ 선택 직원으로 복구</button>
+          <select id="oneEmployeeBackupSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12px;"></select>
+          <button type="button" id="exportOneBtn" class="submit-btn" style="width:auto; padding:7px 13px; font-size:12px;">⬆️ 선택 직원 백업</button>
+          <button type="button" id="importOneBtn" class="submit-btn" style="width:auto; padding:7px 13px; font-size:12px; background:var(--coral);">⬇️ 선택 직원으로 복구</button>
           <input type="file" id="importOneFile" accept="application/json" style="display:none;">
           <span class="save-msg" id="oneBackupSaveMsg" style="margin-top:0;"></span>
         </div>
@@ -3207,6 +3334,17 @@ let sharedFilingHelp = {}; // 결재 > 신고도움: { [clientId]: { items: { [i
 let sharedApprovals = []; // 결재 > 결재(그룹웨어): [{id, title, content, attachmentLink, drafterEmail, drafterName, approverEmail, approverName, status, comment, createdAt, decidedAt}]
 let sharedReviewFigures = {}; // 검토표(원천세) 거래처별 월별 실제 숫자: { [clientId]: { [year]: { [month]: { income:{[fieldKey]:num}, incomeReported:num, tax:{[groupKey]:{tax:num, local:num}}, taxReported:{tax:num, local:num} } } } }
 let sharedReviewMeta = {}; // 검토표(원천세) 거래처별 설정: { [clientId]: { sameMonth:true/false(귀속=지급 동일 여부), payCycle:'매월'|'반기' } } - 원본 엑셀 '2026 총괄' 시트의 귀속/지급, 신고구분 값과 동일
+// 결재 > 신고대상(원천세): 거래처별·월별로 그 달에 원천세 신고 대상인지, 대상이면 매월/반기 중 어느 신고구분인지,
+// 그리고 그 달에 당월귀속당월지급/당월귀속익월지급 중 무엇이 실제로 발생하는지(둘 다 동시에 있을 수 있음)를 관리함.
+// 이 값에 따라 신고현황 화면에 그 거래처가 뜨는지, 뜬다면 지급시기별로 몇 줄이 뜨는지가 결정됨.
+// { [clientId]: { [period 'YYYY-MM']: { applicable:bool, cycle:'매월'|'반기', sameMonthPay:bool, nextMonthPay:bool } } }
+let sharedFilingTargets = {};
+// 결재 > 신고현황(원천세, 신고대상 기반 새 화면) 전용 저장소 - 기존 sharedFilingStatus['원천세']는 그대로 두고
+// (제출현황 화면으로 옮겨간 매월/반기/연간 체크리스트가 계속 그 값을 씀) 완전히 새로운 저장소를 따로 둬서,
+// 이미 저장돼 있던 원천세 신고현황 데이터 모양(status/memo/items)과 절대 섞이지 않게 함.
+// { [period 'YYYY-MM']: { [clientId]: { sameMonth:{national,local,memo}, nextMonth:{national,local,memo} } } }
+// sameMonth=당월귀속당월지급분, nextMonth=당월귀속익월지급분 - 한 거래처가 그 달에 두 지급유형을 동시에 가지면 둘 다 채워짐
+let sharedIncomeTaxFilingStatus = {};
 function loadSharedData(){
   try{ sharedExclusionDays = JSON.parse(localStorage.getItem('worklog_shared_exclusions') || '[]'); }catch(e){ sharedExclusionDays = []; }
   // 예전 '회식' 하나였던 사유를 '점심회식'/'저녁회식'으로 분리하면서, 기존 데이터는 기존 차감 동작과 동일하게 '점심회식'으로 이관
@@ -3241,6 +3379,8 @@ function loadSharedData(){
   try{ sharedApprovals = JSON.parse(localStorage.getItem('worklog_shared_approvals') || '[]') || []; }catch(e){ sharedApprovals = []; }
   try{ sharedReviewFigures = JSON.parse(localStorage.getItem('worklog_shared_reviewfigures') || '{}') || {}; }catch(e){ sharedReviewFigures = {}; }
   try{ sharedReviewMeta = JSON.parse(localStorage.getItem('worklog_shared_reviewmeta') || '{}') || {}; }catch(e){ sharedReviewMeta = {}; }
+  try{ sharedFilingTargets = JSON.parse(localStorage.getItem('worklog_shared_filingtargets') || '{}') || {}; }catch(e){ sharedFilingTargets = {}; }
+  try{ sharedIncomeTaxFilingStatus = JSON.parse(localStorage.getItem('worklog_shared_itfilingstatus') || '{}') || {}; }catch(e){ sharedIncomeTaxFilingStatus = {}; }
   const prevManageVerifierRaw = JSON.stringify(sharedManageVerifier);
   try{ sharedManageSalt = localStorage.getItem('worklog_shared_managesalt') || ''; }catch(e){ sharedManageSalt = ''; }
   try{ const v = localStorage.getItem('worklog_shared_manageverifier'); sharedManageVerifier = v ? JSON.parse(v) : null; }catch(e){ sharedManageVerifier = null; }
@@ -3265,6 +3405,8 @@ async function saveSharedFilingHelp(){ try{ localStorage.setItem('worklog_shared
 async function saveSharedApprovals(){ try{ localStorage.setItem('worklog_shared_approvals', JSON.stringify(sharedApprovals)); }catch(e){ console.error('결재 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedReviewFigures(){ try{ localStorage.setItem('worklog_shared_reviewfigures', JSON.stringify(sharedReviewFigures)); }catch(e){ console.error('검토표(원천세) 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedReviewMeta(){ try{ localStorage.setItem('worklog_shared_reviewmeta', JSON.stringify(sharedReviewMeta)); }catch(e){ console.error('검토표(원천세) 거래처 설정 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedFilingTargets(){ try{ localStorage.setItem('worklog_shared_filingtargets', JSON.stringify(sharedFilingTargets)); }catch(e){ console.error('신고대상(원천세) 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedIncomeTaxFilingStatus(){ try{ localStorage.setItem('worklog_shared_itfilingstatus', JSON.stringify(sharedIncomeTaxFilingStatus)); }catch(e){ console.error('원천세 신고현황 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedManagePassword(){
   try{
     localStorage.setItem('worklog_shared_managesalt', sharedManageSalt);
@@ -3991,7 +4133,8 @@ function renderAdminCalendar(){
         const u = g.entries[0];
         const t = (u.type==='반차'||u.type==='반반차') ? leaveAbsenceTime(u.date, u.type, u.subtype) : '';
         const titleAttr = t ? ` title="${escHtml(t)}"` : '';
-        (byDate[g.startDate]=byDate[g.startDate]||[]).push(`<span class="cal-badge leave"${titleAttr}>🌴 ${escHtml(name)}) ${escHtml(leaveTeamCalShortType(u.type, u.subtype))}</span>`);
+        const advSuffix = u.advance ? ' 🔜' : '';
+        (byDate[g.startDate]=byDate[g.startDate]||[]).push(`<span class="cal-badge leave"${titleAttr}>🌴 ${escHtml(name)}) ${escHtml(leaveTeamCalShortType(u.type, u.subtype))}${advSuffix}</span>`);
       } else {
         // 연속 휴가는 하루짜리 뱃지 두 개(시작일/복귀일)로 뚝 끊어 보여주지 않고, 그 사이 평일들을 이어지는 막대로 표시함
         // (같은 주(그리드 한 줄) 안에서만 시각적으로 이어붙임 - 주가 바뀌면(금→다음주 월) 자연스럽게 막대가 새로 시작됨)
@@ -4022,7 +4165,8 @@ function renderAdminCalendar(){
       const cls = r.bonus ? 'special' : 'remote';
       const icon = r.bonus ? '🎁' : '🏠';
       const typeLabel = r.bonus ? '특별재택' : '정기재택';
-      (byDate[r.date]=byDate[r.date]||[]).push(`<span class="cal-badge ${cls}">${icon} ${escHtml(name)}) ${typeLabel}</span>`);
+      const advSuffix = r.advance ? ' 🔜' : '';
+      (byDate[r.date]=byDate[r.date]||[]).push(`<span class="cal-badge ${cls}">${icon} ${escHtml(name)}) ${typeLabel}${advSuffix}</span>`);
     });
     (sch.events||[]).filter(e=>e.date.startsWith(monthStr) && e.shared !== false).forEach(e=>{
       const t = e.startTime ? `${e.startTime}${e.endTime?'~'+e.endTime:''}` : '';
@@ -4542,16 +4686,17 @@ function leaveAsOfDate(){
   return todayStr();
 }
 
+// 연차/반차/반반차 등 연차를 차감하는 항목인지, 며칠 차감되는지 - 여러 곳(잔여연차 계산, 당겨쓰기 검증)에서 공용으로 씀
+function leaveDeductDays(u){
+  if(u.type==='연차') return 1;
+  if(u.type==='반차') return 0.5;
+  if(u.type==='반반차') return 0.25;
+  return 0; // 포상휴가/경조사휴가/기타휴가는 연차 차감 없음
+}
 function calcLeaveAsOf(dateStr){
   const cutoff = dateStr || todayStr();
   const totalGranted = getEffectiveGrantsAsOf(cutoff).reduce((s,g)=>s+Number(g.days||0), 0);
-  const deductOf = (u) => {
-    if(u.type==='연차') return 1;
-    if(u.type==='반차') return 0.5;
-    if(u.type==='반반차') return 0.25;
-    return 0;
-  };
-  const totalUsed = attendance.leaveUsage.filter(u => u.date <= cutoff).reduce((s,u)=>s+deductOf(u), 0);
+  const totalUsed = attendance.leaveUsage.filter(u => u.date <= cutoff).reduce((s,u)=>s+leaveDeductDays(u), 0);
   return { asOfDate: cutoff, totalGranted, totalUsed, remainLeave: totalGranted - totalUsed };
 }
 
@@ -4567,6 +4712,43 @@ function getEffectiveGrantsAsOf(cutoff){
   return [...manualGrants, ...candidates];
 }
 
+// ── 당겨쓰기(선차감) ────────────────────────────────────────────────────────────────
+// 팀 내부 제도: 재택근무는 다음 달 이후 한도를 미리 당겨써도 한도 자체가 없고(무제한 당겨쓰기),
+// 휴가(연차/반차/반반차)는 아직 발생하지 않은 다음 연차에서 최대 5일까지만 미리 당겨써서 쓸 수 있음.
+const LEAVE_ADVANCE_MAX_DAYS = 5;
+// 지정한 날짜(dateStr) 기준으로 extraDays만큼 더 사용했을 때 잔여 연차가 얼마가 되는지 미리 계산(당겨쓰기 등록 전 검증용).
+// getEffectiveGrantsAsOf가 아직 발생하지 않은 미래의 자동부여(법정휴가)분까지 미리 계산해주기 때문에, 당겨쓰기로
+// 등록한 휴가가 실제로 그 다음 자동부여분에서 자연스럽게 차감된 것처럼 반영됨 - 그 달이 지나 실제로 부여되고 나면
+// calcAttendanceSummary/calcLeaveAsOf가 같은 방식으로 계산해서 "다음 달 잔여 연차"에도 그대로 반영됨.
+// excludeId를 주면 그 항목 자신은 기존 사용량 계산에서 제외함(수정 시 자기 자신을 이중으로 빼지 않기 위함).
+function projectRemainLeaveAfter(dateStr, extraDays, excludeId){
+  const totalGranted = getEffectiveGrantsAsOf(dateStr).reduce((s,g)=>s+Number(g.days||0), 0);
+  const totalUsed = attendance.leaveUsage.filter(u => u.date <= dateStr && u.id !== excludeId).reduce((s,u)=>s+leaveDeductDays(u), 0);
+  return totalGranted - totalUsed - extraDays;
+}
+// 정기재택은 "월 2회" 한도가 매달 새로 리셋되는 방식이라(누적 연차와 다름), 당겨쓰기 항목은 실제 사용일(date)과
+// 별개로 "어느 달 한도에서 차감할지"(creditMonth)를 따로 들고 있어야 다음 달(들)의 남은 재택 횟수에 반영됨.
+// 한도가 없으므로 이미 꽉 찬 달은 건너뛰고, 아직 여유가 있는 가장 가까운 미래 달을 찾아 그 달에 배정함.
+function nextAvailableRemoteCreditMonth(fromMonthStr){
+  let [y,m] = fromMonthStr.split('-').map(Number);
+  for(let i=0;i<240;i++){ // 최대 20년치까지 탐색(사실상 무한 루프 방지용 안전장치)
+    const monthStr = `${y}-${String(m).padStart(2,'0')}`;
+    const usedInMonth = (attendance.remoteEntries||[]).filter(r => !r.bonus && remoteCreditMonthOf(r) === monthStr).length;
+    if(usedInMonth < 2) return monthStr;
+    m++; if(m>12){ m=1; y++; }
+  }
+  return fromMonthStr;
+}
+// 재택 항목이 실제로 어느 달 한도에서 차감되는지 - 당겨쓰기가 아니면 사용일이 속한 달 그대로, 당겨쓰기면 등록 시
+// 미리 배정해 둔 creditMonth를 따름(옛날 데이터처럼 creditMonth가 없으면 안전하게 사용일 기준 달로 대체)
+function remoteCreditMonthOf(r){
+  return r.creditMonth || (r.date ? r.date.slice(0,7) : '');
+}
+function monthAfter(dateStr){
+  let [y,m] = dateStr.slice(0,7).split('-').map(Number);
+  m++; if(m>12){ m=1; y++; }
+  return `${y}-${String(m).padStart(2,'0')}`;
+}
 function computeAutoGrants(hireDateStr, asOfDateStr){
   if(!hireDateStr) return [];
   const hireDate = parseDate(hireDateStr);
@@ -4940,23 +5122,22 @@ function openWorkdaysCalcInfoModal(){
 function calcAttendanceSummary(monthStr){
   const cutoff = todayStr();
   const totalGranted = attendance.leaveGrants.filter(g => g.date <= cutoff).reduce((s,g)=>s+Number(g.days||0), 0);
-  const deductOf = (u) => {
-    if(u.type==='연차') return 1;
-    if(u.type==='반차') return 0.5;
-    if(u.type==='반반차') return 0.25;
-    return 0; // 포상휴가/경조사휴가/기타휴가는 연차 차감 없음
-  };
-  const totalUsed = attendance.leaveUsage.filter(u => u.date <= cutoff).reduce((s,u)=>s+deductOf(u), 0);
+  const totalUsed = attendance.leaveUsage.filter(u => u.date <= cutoff).reduce((s,u)=>s+leaveDeductDays(u), 0);
   const remainLeave = totalGranted - totalUsed;
 
   const monthUsage = attendance.leaveUsage.filter(u => u.date.startsWith(monthStr));
-  const monthUsedDays = monthUsage.reduce((s,u)=>s+deductOf(u), 0);
+  const monthUsedDays = monthUsage.reduce((s,u)=>s+leaveDeductDays(u), 0);
   const monthSpecialDays = monthUsage
     .filter(u => ['포상휴가','경조사휴가','기타휴가'].includes(u.type))
     .reduce((s,u)=>s+(Number(u.days)||0), 0);
+  // 재택 이력(달력·이력표)은 항상 실제 사용일(date) 기준으로 그 달에 보여줌 - "몇 월 한도에서 차감됐는지"와
+  // "실제로 언제 재택을 썼는지"는 다를 수 있어서(당겨쓰기), 한도 계산은 아래 monthRemoteQuotaUsed로 따로 셈
   const monthRemote = attendance.remoteEntries.filter(r => r.date.startsWith(monthStr));
+  // 정기재택 월 한도(2회)에서 실제로 차감되는 개수 - 당겨쓰기 항목은 실제 사용일이 아니라 미리 배정된
+  // creditMonth 기준으로 그 달 한도에서 빠짐(특별재택은 한도가 없어 애초에 집계 대상이 아님)
+  const monthRemoteQuotaUsed = attendance.remoteEntries.filter(r => !r.bonus && remoteCreditMonthOf(r) === monthStr).length;
 
-  return { remainLeave, totalGranted, totalUsed, monthUsedDays, monthSpecialDays, monthUsage, monthRemote, asOfDate: cutoff };
+  return { remainLeave, totalGranted, totalUsed, monthUsedDays, monthSpecialDays, monthUsage, monthRemote, monthRemoteQuotaUsed, asOfDate: cutoff };
 }
 
 function getLunchLimitFor(monthStr){
@@ -5204,6 +5385,7 @@ function renderAllLeaveHistory(){
       if(en.subtype) document.getElementById('u-subtype').value = en.subtype;
       if(en.days) document.getElementById('u-days').value = en.days;
       document.getElementById('u-memo').value = en.memo || '';
+      document.getElementById('u-advance').checked = !!en.advance;
       document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '수정 완료';
       document.getElementById('usage-cancel').style.display = 'inline-block';
       document.getElementById('leaveHistoryModalOverlay').style.display = 'none';
@@ -5228,8 +5410,10 @@ function renderAttendance(){
   const regularRemote = s.monthRemote.filter(r => !r.bonus);
   const bonusRemote = s.monthRemote.filter(r => r.bonus);
   document.getElementById('monthRemoteDisplay').textContent = s.monthRemote.length + '일';
+  // "자율 사용 X/2회"는 실제로 그 달에 쓴 개수가 아니라, 그 달 한도에서 차감된 개수(당겨쓰기 포함) 기준으로 보여줌
+  const advanceNote = s.monthRemoteQuotaUsed > regularRemote.length ? ` (당겨씀 ${s.monthRemoteQuotaUsed - regularRemote.length}회 포함)` : '';
   document.getElementById('monthRemoteSub').textContent =
-    `자율 사용 ${regularRemote.length}/2회` + (bonusRemote.length > 0 ? ` · 특별재택 ${bonusRemote.length}회 (한도 외)` : '');
+    `자율 사용 ${s.monthRemoteQuotaUsed}/2회${advanceNote}` + (bonusRemote.length > 0 ? ` · 특별재택 ${bonusRemote.length}회 (한도 외)` : '');
 
   const wrap = document.getElementById('attendanceLedgerWrap');
   const monthGrants = attendance.leaveGrants.filter(g=>g.date.startsWith(monthStr)).map(g=>({...g, kind:'grant'}));
@@ -5253,11 +5437,16 @@ function renderAttendance(){
       } else {
         const subLabel = en.subtype ? ` (${subtypeLabel[en.subtype] || en.subtype})` : '';
         const t = (en.type==='반차'||en.type==='반반차') ? leaveAbsenceTime(en.date, en.type, en.subtype) : '';
-        tag = `<span class="tag tag-usage">사용 · ${en.type}${subLabel}${t ? ' '+t : ''}</span>`;
+        const advTag = en.advance ? ' <span style="color:var(--indigo-deep); font-weight:800;">🔜당겨씀</span>' : '';
+        tag = `<span class="tag tag-usage">사용 · ${en.type}${subLabel}${t ? ' '+t : ''}${advTag}</span>`;
         detail = `-${en.type==='연차'?1:en.type==='반차'?0.5:0.25}일`;
       }
     }
-    else { tag = `<span class="tag ${en.bonus ? 'tag-remote-special' : 'tag-remote'}">${en.bonus ? '특별재택' : '정기재택'}</span>`; detail = '-'; }
+    else {
+      const advTag = en.advance ? ` <span style="color:var(--indigo-deep); font-weight:800;">🔜${remoteCreditMonthOf(en)} 한도차감</span>` : '';
+      tag = `<span class="tag ${en.bonus ? 'tag-remote-special' : 'tag-remote'}">${en.bonus ? '특별재택' : '정기재택'}${advTag}</span>`;
+      detail = '-';
+    }
     const editBtn = (en.kind==='usage' || en.kind==='remote') ? `<button class="del-btn attendance-edit-btn" data-kind="${en.kind}" data-id="${en.id}">수정</button>` : '';
     return `<tr>
       <td class="num">${en.date}</td>
@@ -5287,6 +5476,7 @@ function renderAttendance(){
         if(en.subtype) document.getElementById('u-subtype').value = en.subtype;
         if(en.days) document.getElementById('u-days').value = en.days;
         document.getElementById('u-memo').value = en.memo || '';
+        document.getElementById('u-advance').checked = !!en.advance;
         document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '수정 완료';
         document.getElementById('usage-cancel').style.display = 'inline-block';
         document.getElementById('calAttendanceHistoryModalOverlay').style.display = 'none';
@@ -5301,6 +5491,8 @@ function renderAttendance(){
         document.getElementById('u-end-date').value = '';
         document.getElementById('u-memo').value = en.memo || '';
         document.getElementById('r-bonus').checked = !!en.bonus;
+        document.getElementById('r-bonus').dispatchEvent(new Event('change'));
+        document.getElementById('u-advance').checked = !!en.advance;
         document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '수정 완료';
         document.getElementById('usage-cancel').style.display = 'inline-block';
         document.getElementById('calAttendanceHistoryModalOverlay').style.display = 'none';
@@ -5557,7 +5749,7 @@ function renderCalendar(){
     }
   });
   const remoteByDate = {};
-  attendance.remoteEntries.filter(r=>r.date.startsWith(monthStr)).forEach(r=>{ remoteByDate[r.date] = r.bonus ? 'bonus' : true; });
+  attendance.remoteEntries.filter(r=>r.date.startsWith(monthStr)).forEach(r=>{ remoteByDate[r.date] = { bonus: !!r.bonus, advance: !!r.advance }; });
   const exclusionByDate = {};
   (sharedExclusionDays||[]).filter(x=>x.date.startsWith(monthStr)).forEach(x=>{
     (exclusionByDate[x.date] = exclusionByDate[x.date]||[]).push(x);
@@ -5597,9 +5789,14 @@ function renderCalendar(){
         else label = `${u.type}(${u.days}일)`;
       }
       const titleAttr = timeLabel ? ` title="${escHtml(timeLabel)}"` : '';
-      badges += `<span class="cal-badge leave"${titleAttr}>🌴 ${label}</span>`;
+      const advSuffix = g.entries[0].advance ? ' 🔜' : '';
+      badges += `<span class="cal-badge leave"${titleAttr}>🌴 ${label}${advSuffix}</span>`;
     });
-    if(remoteByDate[dateStr]) badges += remoteByDate[dateStr]==='bonus' ? `<span class="cal-badge special">🎁 특별재택</span>` : `<span class="cal-badge remote">🏠 정기재택</span>`;
+    if(remoteByDate[dateStr]){
+      const rInfo = remoteByDate[dateStr];
+      const rAdvSuffix = rInfo.advance ? ' 🔜' : '';
+      badges += rInfo.bonus ? `<span class="cal-badge special">🎁 특별재택${rAdvSuffix}</span>` : `<span class="cal-badge remote">🏠 정기재택${rAdvSuffix}</span>`;
+    }
     let holidayIcon = '';
     (exclusionByDate[dateStr]||[]).forEach(x=>{
       if(x.reason==='공휴일'){
@@ -7466,7 +7663,7 @@ function buildCalendarHTML(monthStr){
     }
   });
   const remoteByDate = {};
-  attendance.remoteEntries.filter(r=>r.date.startsWith(monthStr)).forEach(r=>{ remoteByDate[r.date] = r.bonus ? 'bonus' : true; });
+  attendance.remoteEntries.filter(r=>r.date.startsWith(monthStr)).forEach(r=>{ remoteByDate[r.date] = { bonus: !!r.bonus, advance: !!r.advance }; });
   const exclusionByDate = {};
   (sharedExclusionDays||[]).filter(x=>x.date.startsWith(monthStr)).forEach(x=>{
     (exclusionByDate[x.date] = exclusionByDate[x.date]||[]).push(x);
@@ -7857,6 +8054,9 @@ document.querySelectorAll('.home-submenu-item[data-approval-cat-goto], .home-sub
     if(item.dataset.approvalDocGoto){
       document.querySelector(`#approvalDocToggle .approval-doc-btn[data-approval-doc="${item.dataset.approvalDocGoto}"]`)?.click();
     }
+    if(item.dataset.submitTypeGoto){
+      document.querySelector(`#submitTypeToggle .submit-type-btn[data-submit-type="${item.dataset.submitTypeGoto}"]`)?.click();
+    }
     // 신고현황/결재처럼 그 밑에 세목·문서함 목록이 한 단계 더 있는 항목은, 이름을 눌렀을 때도 화살표를 누른 것처럼 같이 펼쳐지고 다시 누르면 접히게 함
     item.querySelector('.home-tile-expand-btn[data-expand-target]')?.click();
   });
@@ -7938,42 +8138,32 @@ function computeTodayTeamAgenda(){
   });
   return items;
 }
-// 팀캘린더 카드 - 텍스트 요약 대신, 팀캘린더 탭에 이미 그려져 있는 실제 달력(.calendar-panel, renderAdminCalendar()가
-// 채움)을 그대로 복제해서 작게 축소한 진짜 미리보기로 보여줌(근태현황 카드와 같은 cloneForDashboardPreview 방식).
-// renderAll()이 항상 renderAdminCalendar()를 먼저 호출해두기 때문에, 팀캘린더 탭을 한 번도 안 열어봤어도
-// #adminCalendarWrap 안에는 이미 이번 달 달력이 그려져 있음 - 혹시라도 비어있으면 안전하게 텍스트 요약으로 대체
+// 팀캘린더 카드 - 예전엔 팀캘린더 탭에 이미 그려져 있는 실제 달력(.calendar-panel) 한 달치 전체를 그대로
+// 복제(cloneForDashboardPreview)해서 축소해 보여줬는데, 매번 42칸짜리 큰 DOM을 통째로 복제하고
+// scrollWidth/Height를 측정해 transform:scale까지 계산하는 과정이 대시보드 로딩을 눈에 띄게 느리게 만든다는
+// 피드백이 있었음 - "팀캘린더는 오늘만 달력으로 보여줘도 된다"는 제안대로, 이미 렌더링된 달력에서 "오늘" 칸
+// 하나(.cal-date.today가 들어있는 .cal-cell)만 가볍게 찾아 그 안의 배지만 그대로 옮겨와 보여주는 방식으로 바꿈.
+// 전체 달을 복제/축소하지 않으니 DOM 부담과 레이아웃 계산이 훨씬 줄어들면서도, 오늘 표시되는 내용은
+// renderAdminCalendar()가 이미 계산해 둔 "진짜" 데이터를 그대로 재사용함.
 function renderDashboardCalendarPreview(){
   const body = document.getElementById('dashCalendarBody');
   if(!body) return;
-  const sourcePanel = document.querySelector('#tab-teamcalendar .calendar-panel');
+  const todayS = todayStr();
+  const weekday = ['일','월','화','수','목','금','토'][new Date().getDay()];
+  const [y,m,d] = todayS.split('-');
+  const headerHtml = `<div style="font-size:15.5px; font-weight:800; color:var(--ink); margin-bottom:8px;">${y}.${m}.${d} <span style="font-size:11.5px; font-weight:700; color:var(--ink-soft);">(${weekday}) · 오늘</span></div>`;
   const calWrap = document.getElementById('adminCalendarWrap');
-  if(sourcePanel && calWrap && calWrap.children.length){
-    body.innerHTML = '';
-    const inner = document.createElement('div');
-    inner.className = 'home-dash-mini-preview';
-    // .cal-grid도 그리드라 컨테이너 폭에 맞춰 다시 늘어나 버리므로, 실제 데스크톱 폭(1200px 안팎)으로
-    // 고정해서 복제한 뒤 이 전체를 축소함
-    const clone = cloneForDashboardPreview(sourcePanel, 1200);
-    inner.appendChild(clone);
-    const wrap = document.createElement('div');
-    wrap.className = 'home-dash-mini-preview-wrap';
-    wrap.appendChild(inner);
-    body.appendChild(wrap);
-    const fitPreview = ()=>{
-      const naturalWidth = inner.scrollWidth;
-      const naturalHeight = inner.scrollHeight;
-      if(!naturalWidth || !naturalHeight) return;
-      const availWidth = wrap.clientWidth || naturalWidth;
-      const scale = Math.min(1, availWidth / naturalWidth);
-      inner.style.transform = `scale(${scale})`;
-      wrap.style.height = (naturalHeight * scale) + 'px';
-    };
-    requestAnimationFrame(fitPreview);
+  const monthSel = document.getElementById('monthSelect');
+  const isViewingCurrentMonth = !monthSel || !monthSel.value || monthSel.value === todayS.slice(0,7);
+  const todayCell = (calWrap && isViewingCurrentMonth) ? calWrap.querySelector('.cal-date.today')?.closest('.cal-cell') : null;
+  if(todayCell){
+    const badgesHtml = todayCell.querySelector('.cal-badges')?.innerHTML.trim() || '';
+    body.innerHTML = headerHtml + (badgesHtml
+      ? `<div class="cal-badges home-dash-today-badges">${badgesHtml}</div>`
+      : `<div class="hint" style="margin:0; font-size:11.5px;">오늘 등록된 팀 일정이 없어요.</div>`);
     return;
   }
-  const weekday = ['일','월','화','수','목','금','토'][new Date().getDay()];
-  const [y,m,d] = todayStr().split('-');
-  const headerHtml = `<div style="font-size:15.5px; font-weight:800; color:var(--ink); margin-bottom:6px;">${y}.${m}.${d} <span style="font-size:11.5px; font-weight:700; color:var(--ink-soft);">(${weekday})</span></div>`;
+  // 아직 팀캘린더가 이번 달 기준으로 렌더링되지 않은 드문 경우엔, 프로필 데이터에서 오늘자 항목만 직접 뽑아 보여줌
   const items = (typeof getProfiles === 'function') ? computeTodayTeamAgenda() : [];
   if(!items.length){
     body.innerHTML = headerHtml + `<div class="hint" style="margin:0; font-size:11.5px;">오늘 등록된 팀 일정이 없어요.</div>`;
@@ -7993,17 +8183,54 @@ function todayClockEntry(create){
   const d = todayStr();
   attendance.clockLog = attendance.clockLog || [];
   let entry = attendance.clockLog.find(e=>e.date===d);
-  if(!entry && create){ entry = { date:d, checkIn:'', checkOut:'' }; attendance.clockLog.push(entry); }
+  if(!entry && create){ entry = { date:d, checkIn:'', checkOut:'', status:'사무실' }; attendance.clockLog.push(entry); }
   return entry;
 }
 function nowHHMM(){
   const now = new Date();
   return `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 }
+// 근무상태 배지(사무실/재택/외근/반차) - 어디까지나 대시보드에서 눈에 잘 띄게 보여주기 위한 표시용 토글이고,
+// 실제 재택근무·휴가 신청/집계는 기존 근태관리 탭의 재택근무·휴가 등록 화면에서 그대로 관리함(이 값과 무관).
+const DASH_CLOCK_STATUS_OPTS = [
+  { key:'사무실', icon:'🏢' }, { key:'재택', icon:'🏠' }, { key:'외근', icon:'🚗' }, { key:'반차', icon:'🌓' },
+];
+function clockMinutesForEntry(entry){
+  if(!entry || !entry.checkIn || !entry.checkOut) return 0;
+  const [ih,im] = entry.checkIn.split(':').map(Number);
+  const [oh,om] = entry.checkOut.split(':').map(Number);
+  const mins = (oh*60+om) - (ih*60+im);
+  return mins > 0 ? mins : 0;
+}
+// 오늘이 속한 주(월~금) 날짜 목록 - 이번 주 누적 근무시간 진행률바 계산용
+function weekdayDatesOf(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  const dow = d.getDay();
+  const mondayOffset = dow===0 ? -6 : 1-dow;
+  const monday = new Date(d); monday.setDate(d.getDate()+mondayOffset);
+  return Array.from({length:5}, (_,i)=>{ const dd = new Date(monday); dd.setDate(monday.getDate()+i); return fmt(dd); });
+}
+function weeklyClockSummary(){
+  const todayS = todayStr();
+  const weekDates = weekdayDatesOf(todayS);
+  const targetMinutes = 40*60; // 주 40시간(주5일×8시간) 기준 - 실제 급여/근태 정산은 근태관리 탭 수치를 따름, 여기는 재미로 보는 진행률
+  let doneMinutes = 0;
+  weekDates.forEach(ds=>{
+    doneMinutes += clockMinutesForEntry((attendance.clockLog||[]).find(x=>x.date===ds));
+  });
+  return { doneMinutes, targetMinutes, pct: Math.max(0, Math.min(100, Math.round(doneMinutes/targetMinutes*100))) };
+}
+function clockMoodMessage(entry, pct){
+  if(!entry || !entry.checkIn) return '오늘도 화이팅! 출근 도장을 찍어보세요 💪';
+  if(entry.checkIn && !entry.checkOut) return pct >= 100 ? '이번 주 목표 시간 달성! 이제 슬슬 퇴근 준비 🎉' : '근무 중이에요 · 오늘도 수고 많으세요 ☕';
+  return pct >= 100 ? '이번 주 목표 시간 달성! 🎉' : '오늘 근무 완료! 고생하셨어요 🙌';
+}
 function renderDashboardClockCard(){
   const body = document.getElementById('dashClockBody');
   if(!body) return;
-  const entry = todayClockEntry(false) || { checkIn:'', checkOut:'' };
+  const entry = todayClockEntry(false) || { checkIn:'', checkOut:'', status:'사무실' };
+  const week = weeklyClockSummary();
+  const weekHours = (week.doneMinutes/60).toFixed(1).replace(/\.0$/,'');
   let actionsHtml = '';
   if(!entry.checkIn){
     actionsHtml = `<button type="button" id="dashClockInBtn" class="submit-btn home-dash-toggle" style="width:auto; padding:8px 20px;">🟢 출근 도장 찍기</button>`;
@@ -8014,13 +8241,31 @@ function renderDashboardClockCard(){
     actionsHtml = `<span style="font-size:12px; font-weight:800; color:var(--indigo-deep);">✅ 오늘 근무 완료</span>
       <button type="button" id="dashClockResetOutBtn" class="del-btn home-dash-toggle" title="퇴근 기록 취소" style="font-size:11px;">↩️ 되돌리기</button>`;
   }
-  body.innerHTML = `<div class="home-dash-toggle" style="text-align:center;">
-    <div style="display:flex; justify-content:center; gap:22px; margin-bottom:10px;">
-      <div><div style="font-size:10.5px; color:var(--ink-soft); font-weight:700;">출근</div><div style="font-size:18px; font-weight:900; color:${entry.checkIn?'var(--navy)':'var(--ink-soft)'};">${entry.checkIn || '--:--'}</div></div>
-      <div><div style="font-size:10.5px; color:var(--ink-soft); font-weight:700;">퇴근</div><div style="font-size:18px; font-weight:900; color:${entry.checkOut?'var(--navy)':'var(--ink-soft)'};">${entry.checkOut || '--:--'}</div></div>
+  const statusOptsHtml = DASH_CLOCK_STATUS_OPTS.map(o=>`<option value="${o.key}" ${entry.status===o.key?'selected':''}>${o.icon} ${o.key}</option>`).join('');
+  // 아래 컨테이너는 위→아래로 쌓이는 세로 레이아웃이어야 하는데, .home-dash-toggle 클래스가 inline-flex(가로
+  // 정렬)라 상태배지·시간·문구·진행률바·버튼 5개 블록이 한 줄에 옆으로 눌려 겹쳐 보이는 문제가 있었음 -
+  // 이 카드 전용 래퍼는 그 클래스를 쓰지 않고 순수 블록(세로 스택)으로 둠
+  body.innerHTML = `<div style="text-align:center;">
+    <div class="home-dash-status-row" onclick="event.stopPropagation();">
+      <select id="dashClockStatusSelect" class="home-dash-status-select">${statusOptsHtml}</select>
+    </div>
+    <div class="home-dash-clock-flow">
+      <div class="home-dash-clock-flow-item"><div class="home-dash-clock-flow-label">출근</div><div class="home-dash-clock-flow-time ${entry.checkIn?'filled':''}">${entry.checkIn || '--:--'}</div></div>
+      <div class="home-dash-clock-flow-arrow">→</div>
+      <div class="home-dash-clock-flow-item"><div class="home-dash-clock-flow-label">퇴근</div><div class="home-dash-clock-flow-time ${entry.checkOut?'filled':''}">${entry.checkOut || '--:--'}</div></div>
+    </div>
+    <div class="home-dash-clock-mood">${clockMoodMessage(entry, week.pct)}</div>
+    <div class="home-dash-week-bar-wrap">
+      <div class="home-dash-week-bar-labels"><span>이번 주 누적</span><span>${weekHours}h / 40h</span></div>
+      <div class="home-dash-week-bar-track"><div class="home-dash-week-bar-fill" style="width:${week.pct}%;"></div></div>
     </div>
     <div style="display:flex; justify-content:center; align-items:center; gap:8px; flex-wrap:wrap;">${actionsHtml}</div>
   </div>`;
+  document.getElementById('dashClockStatusSelect')?.addEventListener('change', async (e)=>{
+    e.stopPropagation();
+    todayClockEntry(true).status = e.target.value;
+    await saveAttendance();
+  });
   document.getElementById('dashClockInBtn')?.addEventListener('click', async (e)=>{
     e.stopPropagation();
     todayClockEntry(true).checkIn = nowHHMM();
@@ -8328,6 +8573,8 @@ const familyPresetField = document.getElementById('familyPresetField');
 const familyPresetSelect = document.getElementById('u-familypreset');
 const SPECIAL_LEAVE_TYPES = ['포상휴가','경조사휴가','기타휴가'];
 const PERIOD_ENABLED_TYPES = ['연차', '포상휴가', '경조사휴가', '기타휴가'];
+// 당겨쓰기(선차감) 대상 - 연차를 실제로 차감하는 유형(연차/반차/반반차)에서만 의미가 있음(포상·경조사·기타는 연차 차감이 없어서 당겨쓸 게 없음)
+const DEDUCTING_LEAVE_TYPES = ['연차','반차','반반차'];
 const HALF_SUBTYPE_OPTIONS = [
   { value:'오후반차_식사O', text:'오후반차 (점심 먹고 퇴근)' },
   { value:'오전반차', text:'오전반차 (14:00 출근, 점심 X)' },
@@ -8365,7 +8612,25 @@ function updateUsageTypeFields(){
   const isSpecial = SPECIAL_LEAVE_TYPES.includes(type);
   specialDaysField.style.display = isSpecial ? 'flex' : 'none';
   familyPresetField.style.display = type === '경조사휴가' ? 'flex' : 'none';
+  updateAdvanceFieldVisibility();
   updateEndDateVisibility();
+}
+// 당겨쓰기 체크박스는 종류(휴가/재택)와 세부유형에 따라 보이거나 숨겨지고, 라벨 문구도 그에 맞게 바뀜
+function updateAdvanceFieldVisibility(){
+  const kind = uKindSelect.value;
+  const advanceField = document.getElementById('advanceField');
+  const advanceLabel = document.getElementById('advanceFieldLabel');
+  if(kind === 'leave'){
+    const show = DEDUCTING_LEAVE_TYPES.includes(uTypeSelect.value);
+    advanceField.style.display = show ? 'flex' : 'none';
+    advanceLabel.textContent = `당겨쓰기 (아직 발생하지 않은 다음 연차에서 미리 차감, 최대 ${LEAVE_ADVANCE_MAX_DAYS}일)`;
+    if(!show) document.getElementById('u-advance').checked = false;
+  } else {
+    const bonus = document.getElementById('r-bonus').checked;
+    advanceField.style.display = bonus ? 'none' : 'flex';
+    advanceLabel.textContent = '당겨쓰기 (다음 달 이후 재택 한도에서 미리 차감, 한도 없음)';
+    if(bonus) document.getElementById('u-advance').checked = false;
+  }
 }
 function updateUsageKindFields(){
   const kind = uKindSelect.value;
@@ -8377,11 +8642,13 @@ function updateUsageKindFields(){
     halfdaySubtypeField.style.display = 'none';
     specialDaysField.style.display = 'none';
     familyPresetField.style.display = 'none';
+    updateAdvanceFieldVisibility();
     updateEndDateVisibility();
   }
 }
 uKindSelect.addEventListener('change', updateUsageKindFields);
 uTypeSelect.addEventListener('change', updateUsageTypeFields);
+document.getElementById('r-bonus').addEventListener('change', updateAdvanceFieldVisibility);
 document.getElementById('u-single-day').addEventListener('change', updateEndDateVisibility);
 updateUsageKindFields();
 familyPresetSelect.addEventListener('change', ()=>{
@@ -8404,6 +8671,8 @@ function resetUsageFormEditState(){
   document.getElementById('u-end-date').value = '';
   document.getElementById('u-single-day').checked = true;
   document.getElementById('r-bonus').checked = false;
+  document.getElementById('u-advance').checked = false;
+  updateAdvanceFieldVisibility();
   updateEndDateVisibility();
 }
 
@@ -8413,6 +8682,7 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
   const date = document.getElementById('u-date').value;
   const endDate = document.getElementById('u-end-date').value;
   const memo = document.getElementById('u-memo').value.trim();
+  const advanceChecked = document.getElementById('u-advance').checked;
   if(!date) return;
 
   if(kind === 'leave'){
@@ -8420,10 +8690,38 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
     const subtype = (type === '반차' || type === '반반차') ? document.getElementById('u-subtype').value : null;
     const isSpecial = SPECIAL_LEAVE_TYPES.includes(type);
     const days = isSpecial ? (Number(document.getElementById('u-days').value) || 1) : null;
+    const useAdvance = DEDUCTING_LEAVE_TYPES.includes(type) && advanceChecked;
+
+    // 범위(연차 여러 날)로 등록할 땐 등록될 날짜를 먼저 다 정해서, 당겨쓰기 검증(잔여 연차 확인)을 그 범위
+    // 전체 차감분을 합산해 한번에 확인함 - 하루씩 따로 확인하면 뒤쪽 날짜로 갈수록 앞선 날짜에서 이미 써버린
+    // 만큼을 반영 못 해서 실제보다 넉넉하게 잘못 통과시켜버림
+    let dates = [date];
+    if((type === '연차' || isSpecial) && endDate && endDate > date){
+      dates = [];
+      let cur = parseDate(date);
+      const end = parseDate(endDate);
+      while(cur <= end){
+        if(cur.getDay() !== 0 && cur.getDay() !== 6) dates.push(fmt(cur));
+        cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate()+1);
+      }
+    }
+    const perDayDeduct = isSpecial ? 0 : leaveDeductDays({type});
+    if(perDayDeduct > 0 && dates.length){
+      const lastDate = dates[dates.length-1];
+      const projected = projectRemainLeaveAfter(lastDate, perDayDeduct * dates.length, editingUsageId || null);
+      if(!useAdvance && projected < 0){
+        alert(`잔여 연차가 부족해요. (등록 시 예상 잔여: ${projected}일)\n다음 연차에서 미리 당겨쓰려면 "당겨쓰기"를 체크해주세요.`);
+        return;
+      }
+      if(useAdvance && projected < -LEAVE_ADVANCE_MAX_DAYS){
+        alert(`당겨쓰기는 최대 ${LEAVE_ADVANCE_MAX_DAYS}일까지만 가능해요. (등록 시 예상 잔여: ${projected}일)`);
+        return;
+      }
+    }
 
     if(editingUsageId){
       const en = attendance.leaveUsage.find(x=>x.id===editingUsageId);
-      if(en){ en.date=date; en.type=type; en.subtype=subtype; en.days=days; en.memo=memo; }
+      if(en){ en.date=date; en.type=type; en.subtype=subtype; en.days=days; en.memo=memo; en.advance = useAdvance || undefined; }
       document.getElementById('usageSaveMsg').textContent = '수정됨';
       resetUsageFormEditState();
       closeCalRegisterModal();
@@ -8434,19 +8732,13 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
     }
 
     let addedCount = 0;
-    if((type === '연차' || isSpecial) && endDate && endDate > date){
-      let cur = parseDate(date);
-      const end = parseDate(endDate);
-      while(cur <= end){
-        const dow = cur.getDay();
-        if(dow !== 0 && dow !== 6){
-          attendance.leaveUsage.push({id:genId(), date:fmt(cur), type, subtype:null, days: isSpecial ? 1 : null, memo});
-          addedCount++;
-        }
-        cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate()+1);
-      }
+    if(dates.length > 1){
+      dates.forEach(ds=>{
+        attendance.leaveUsage.push({id:genId(), date:ds, type, subtype:null, days: isSpecial ? 1 : null, memo, advance: useAdvance || undefined});
+        addedCount++;
+      });
     } else {
-      attendance.leaveUsage.push({id:genId(), date, type, subtype, days, memo});
+      attendance.leaveUsage.push({id:genId(), date, type, subtype, days, memo, advance: useAdvance || undefined});
       addedCount = 1;
     }
     await saveAttendance();
@@ -8457,10 +8749,15 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
     renderAll();
   } else {
     const bonus = document.getElementById('r-bonus').checked;
+    const useAdvance = !bonus && advanceChecked;
 
     if(editingRemoteId){
       const en = attendance.remoteEntries.find(x=>x.id===editingRemoteId);
-      if(en){ en.date=date; en.memo=memo; en.bonus=bonus; }
+      if(en){
+        en.date=date; en.memo=memo; en.bonus=bonus;
+        if(useAdvance){ en.advance = true; en.creditMonth = nextAvailableRemoteCreditMonth(monthAfter(date)); }
+        else { en.advance = undefined; en.creditMonth = undefined; }
+      }
       document.getElementById('usageSaveMsg').textContent = '수정됨';
       resetUsageFormEditState();
       closeCalRegisterModal();
@@ -8471,20 +8768,25 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
     }
 
     let addedCount = 0;
+    const pushRemoteEntry = (ds)=>{
+      const entry = { id:genId(), date:ds, memo, bonus };
+      // 당겨쓰기는 실제 사용일과 무관하게 "아직 여유가 남은 가장 가까운 미래 달"의 재택 한도에서 차감되도록
+      // creditMonth를 미리 배정함(한도가 없으니 계속 다음 달로 넘어가며 찾음) - 범위로 여러 날 등록하면 먼저
+      // push된 항목이 반영된 상태에서 다음 항목의 배정 달을 다시 찾으므로, 여러 건이 자동으로 순서대로 배분됨
+      if(useAdvance){ entry.advance = true; entry.creditMonth = nextAvailableRemoteCreditMonth(monthAfter(ds)); }
+      attendance.remoteEntries.push(entry);
+      addedCount++;
+    };
     if(endDate && endDate > date){
       let cur = parseDate(date);
       const end = parseDate(endDate);
       while(cur <= end){
         const dow = cur.getDay();
-        if(dow !== 0 && dow !== 6){
-          attendance.remoteEntries.push({id:genId(), date:fmt(cur), memo, bonus});
-          addedCount++;
-        }
+        if(dow !== 0 && dow !== 6) pushRemoteEntry(fmt(cur));
         cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate()+1);
       }
     } else {
-      attendance.remoteEntries.push({id:genId(), date, memo, bonus});
-      addedCount = 1;
+      pushRemoteEntry(date);
     }
     await saveAttendance();
     document.getElementById('usageSaveMsg').textContent = addedCount > 1 ? `${addedCount}일 추가됨 (주말 제외)` : '추가됨';
@@ -8492,6 +8794,7 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
     document.getElementById('u-memo').value='';
     document.getElementById('u-end-date').value='';
     document.getElementById('r-bonus').checked = false;
+    document.getElementById('u-advance').checked = false;
     renderAll();
   }
 });
@@ -10614,10 +10917,10 @@ function renderFilingPeriodControls(kind){
   const yearSel = document.getElementById(cfg.ids.yearSel);
   const subSel = document.getElementById(cfg.ids.subSel);
   if(!yearSel || !subSel) return;
-  modeToggle.style.display = (taxType === '원천세') ? 'inline-flex' : 'none';
-  if(taxType === '원천세'){
-    modeToggle.querySelectorAll('.'+cfg.ids.modeBtnClass).forEach(b=>b.classList.toggle('active', b.dataset.periodMode === st.sourceMode));
-  }
+  // 원천세 신고현황(status)은 신고대상 화면에서 지정한 정보로 항상 "그 달"만 보여주므로 월별/반기/연간
+  // 모드 전환이 더는 필요 없음(매월/반기/연간 체크리스트는 "제출현황" 메뉴로 옮겨감) - 그래서 모드 토글 자체를
+  // 항상 숨기고 sourceMode는 기본값 '월별'로 고정해서 씀
+  modeToggle.style.display = 'none';
   const nowY = Number(todayStr().slice(0,4));
   const years = new Set();
   for(let y = nowY+1; y >= nowY-4; y--) years.add(String(y));
@@ -10691,6 +10994,10 @@ const FILING_STATUS_SUBITEMS = {
 function renderFilingStatusTable(kind){
   const cfg = FILING_KINDS[kind];
   const taxType = cfg.getViewingType();
+  // 원천세 신고현황(status)은 신고대상 기반의 완전히 새로운 화면(당월지급/익월지급 분리, 원천세/지방세 각각
+  // 신고일 입력)이라 기존 공용 렌더러를 쓰지 않고 별도 함수로 분기함. 검토표(review)의 원천세는 애초에
+  // 이 함수 자체를 안 타므로(renderReviewPanel에서 reviewIncomeTaxBox로 처리) 여기선 안 건드림
+  if(kind === 'status' && taxType === '원천세'){ renderIncomeTaxFilingStatusTable(); return; }
   renderFilingPeriodControls(kind);
   const period = currentFilingPeriodKey(kind, taxType);
   const titleEl = document.getElementById(cfg.ids.title);
@@ -10788,7 +11095,9 @@ Object.keys(FILING_KINDS).forEach(kind=>{
     });
   });
   document.getElementById(cfg.ids.saveBtn)?.addEventListener('click', async ()=>{
-    await cfg.save();
+    // 원천세 신고현황만 저장소가 다름(sharedIncomeTaxFilingStatus) - 그 외엔 기존과 동일하게 cfg.save() 사용
+    if(kind === 'status' && cfg.getViewingType() === '원천세') await saveSharedIncomeTaxFilingStatus();
+    else await cfg.save();
     flashFilingStatusSaveMsg(kind);
     setFilingStatusDirty(kind, false);
   });
@@ -10802,6 +11111,345 @@ Object.keys(FILING_KINDS).forEach(kind=>{
     });
   });
 });
+
+// ══════════════════════════════════════════════════════════
+// 🎯 신고대상(원천세): 거래처 × 월 그리드로 그 달의 신고대상 여부·신고구분(매월/반기)·지급시기(당월/익월)를 미리 지정
+// ══════════════════════════════════════════════════════════
+function filingTargetEntry(clientId, period){
+  sharedFilingTargets[clientId] = sharedFilingTargets[clientId] || {};
+  if(!sharedFilingTargets[clientId][period]){
+    sharedFilingTargets[clientId][period] = { applicable:false, cycle:'매월', sameMonthPay:true, nextMonthPay:false };
+  }
+  return sharedFilingTargets[clientId][period];
+}
+let filingTargetYear = null;
+function populateFilingTargetYearSelect(){
+  const sel = document.getElementById('filingTargetYear');
+  if(!sel) return;
+  const nowY = Number(todayStr().slice(0,4));
+  const years = new Set();
+  for(let y=nowY+1; y>=nowY-3; y--) years.add(String(y));
+  Object.values(sharedFilingTargets).forEach(byPeriod=>{
+    Object.keys(byPeriod||{}).forEach(p=>{ const y=p.slice(0,4); if(/^\d{4}$/.test(y)) years.add(y); });
+  });
+  if(filingTargetYear) years.add(filingTargetYear);
+  const sorted = Array.from(years).sort((a,b)=>Number(b)-Number(a));
+  const prevVal = sel.value;
+  sel.innerHTML = sorted.map(y=>`<option value="${y}">${y}년</option>`).join('');
+  filingTargetYear = sorted.includes(prevVal) ? prevVal : (sorted.includes(String(nowY)) ? String(nowY) : sorted[0]);
+  sel.value = filingTargetYear;
+}
+function filingTargetCellLabel(entry){
+  if(!entry || !entry.applicable) return '-';
+  const timing = [];
+  if(entry.sameMonthPay) timing.push('당월');
+  if(entry.nextMonthPay) timing.push('익월');
+  return `${entry.cycle}${timing.length ? '·'+timing.join('+') : ''}`;
+}
+function renderFilingTargetTable(){
+  populateFilingTargetYearSelect();
+  const wrap = document.getElementById('filingTargetTableWrap');
+  if(!wrap) return;
+  const year = filingTargetYear;
+  const list = bookkeepingClientList();
+  if(!list.length){ wrap.innerHTML = `<div class="empty-state">거래처가 없습니다.</div>`; return; }
+  const monthHeaderCells = Array.from({length:12},(_,i)=>i+1).map(m=>`<th class="cvb">${m}월</th>`).join('');
+  const rows = list.map((c, idx)=>{
+    const entityColor = c.entityType === '법인' ? '#0B5A78' : c.entityType === '개인' ? '#BE185D' : 'inherit';
+    const nameBg = c.entityType === '법인' ? '#DCEEF5' : c.entityType === '개인' ? '#FCE9F1' : 'transparent';
+    const monthCells = Array.from({length:12},(_,i)=>i+1).map(m=>{
+      const period = `${year}-${String(m).padStart(2,'0')}`;
+      const entry = (sharedFilingTargets[c.id]||{})[period];
+      const label = filingTargetCellLabel(entry);
+      const isOn = entry && entry.applicable;
+      return `<td class="cvb"><button type="button" class="filing-target-cell-btn" data-client-id="${c.id}" data-period="${period}" style="width:100%; border:1.5px solid ${isOn?'var(--indigo)':'var(--border)'}; border-radius:6px; padding:4px 2px; background:${isOn?'var(--indigo-bg)':'transparent'}; color:${isOn?'var(--indigo-deep)':'var(--ink-soft)'}; font-size:10.5px; font-weight:700; cursor:pointer;">${escHtml(label)}</button></td>`;
+    }).join('');
+    return `<tr><td class="num cvb">${idx+1}</td><td class="cvb" style="color:${entityColor}; font-weight:800; background:${nameBg}; white-space:nowrap;">${escHtml(c.name)}</td>${monthCells}</tr>`;
+  }).join('');
+  wrap.innerHTML = `<table><thead><tr><th class="cvb">#</th><th class="cvb">거래처</th>${monthHeaderCells}</tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.querySelectorAll('.filing-target-cell-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> openFilingTargetEditModal(btn.dataset.clientId, btn.dataset.period));
+  });
+}
+document.getElementById('filingTargetYear')?.addEventListener('change', (e)=>{
+  filingTargetYear = e.target.value;
+  renderFilingTargetTable();
+});
+// 신고대상 편집 팝업 - 저장을 눌러야 실제로 sharedFilingTargets에 저장(saveSharedFilingTargets)되고 화면이 갱신됨
+let filingTargetEditCtx = { clientId:null, period:null };
+function syncFilingTargetModalUI(entry){
+  document.querySelectorAll('#filingTargetApplicableToggle .ft-applicable-btn').forEach(b=>{
+    b.classList.toggle('active', (b.dataset.applicable === '1') === !!entry.applicable);
+  });
+  document.getElementById('filingTargetDetailFields').style.display = entry.applicable ? 'flex' : 'none';
+  document.querySelectorAll('#filingTargetCycleToggle .ft-cycle-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.cycle === entry.cycle);
+  });
+  document.getElementById('ft-samemonth').checked = !!entry.sameMonthPay;
+  document.getElementById('ft-nextmonth').checked = !!entry.nextMonthPay;
+}
+function openFilingTargetEditModal(clientId, period){
+  filingTargetEditCtx = { clientId, period };
+  const client = (clients.list||[]).find(c=>c.id===clientId);
+  const [y,m] = period.split('-');
+  document.getElementById('filingTargetEditTitle').textContent = `${client ? client.name : ''} · ${y}년 ${Number(m)}월`;
+  syncFilingTargetModalUI(filingTargetEntry(clientId, period));
+  document.getElementById('filingTargetEditModalOverlay').style.display = 'flex';
+}
+document.querySelectorAll('#filingTargetApplicableToggle .ft-applicable-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const { clientId, period } = filingTargetEditCtx;
+    if(!clientId) return;
+    const entry = filingTargetEntry(clientId, period);
+    entry.applicable = btn.dataset.applicable === '1';
+    if(entry.applicable && !entry.sameMonthPay && !entry.nextMonthPay) entry.sameMonthPay = true;
+    syncFilingTargetModalUI(entry);
+  });
+});
+document.querySelectorAll('#filingTargetCycleToggle .ft-cycle-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const { clientId, period } = filingTargetEditCtx;
+    if(!clientId) return;
+    const entry = filingTargetEntry(clientId, period);
+    entry.cycle = btn.dataset.cycle;
+    syncFilingTargetModalUI(entry);
+  });
+});
+// 당월지급/익월지급은 최소 하나는 켜져 있어야 함(신고대상인데 지급시기가 아예 없으면 신고현황에 아무 줄도 안 나오게 되므로)
+document.getElementById('ft-samemonth')?.addEventListener('change', (e)=>{
+  const { clientId, period } = filingTargetEditCtx;
+  if(!clientId) return;
+  const entry = filingTargetEntry(clientId, period);
+  entry.sameMonthPay = e.target.checked;
+  if(!entry.sameMonthPay && !entry.nextMonthPay){ entry.sameMonthPay = true; e.target.checked = true; alert('당월지급/익월지급 중 최소 하나는 선택돼 있어야 해요.'); }
+});
+document.getElementById('ft-nextmonth')?.addEventListener('change', (e)=>{
+  const { clientId, period } = filingTargetEditCtx;
+  if(!clientId) return;
+  const entry = filingTargetEntry(clientId, period);
+  entry.nextMonthPay = e.target.checked;
+  if(!entry.sameMonthPay && !entry.nextMonthPay){ entry.nextMonthPay = true; e.target.checked = true; alert('당월지급/익월지급 중 최소 하나는 선택돼 있어야 해요.'); }
+});
+document.getElementById('filingTargetApplyRestBtn')?.addEventListener('click', ()=>{
+  const { clientId, period } = filingTargetEditCtx;
+  if(!clientId) return;
+  const entry = { ...filingTargetEntry(clientId, period) };
+  const [y,m] = period.split('-').map(Number);
+  for(let mm=m+1; mm<=12; mm++){
+    sharedFilingTargets[clientId][`${y}-${String(mm).padStart(2,'0')}`] = { ...entry };
+  }
+  alert(`${m}월 설정을 ${y}년 12월까지 동일하게 적용했어요. (저장 버튼을 눌러야 최종 저장돼요)`);
+});
+document.getElementById('filingTargetEditSaveBtn')?.addEventListener('click', async ()=>{
+  await saveSharedFilingTargets();
+  document.getElementById('filingTargetEditModalOverlay').style.display = 'none';
+  renderFilingTargetTable();
+});
+document.getElementById('filingTargetEditCloseBtn')?.addEventListener('click', ()=>{
+  document.getElementById('filingTargetEditModalOverlay').style.display = 'none';
+  renderFilingTargetTable();
+});
+
+// ══════════════════════════════════════════════════════════
+// 📋 신고현황(원천세) - 신고대상에서 지정한 거래처만, 지급시기(당월/익월)별로 줄을 나눠 원천세·지방세 신고일을 각각 관리
+// ══════════════════════════════════════════════════════════
+function incomeTaxFilingEntry(period, clientId){
+  sharedIncomeTaxFilingStatus[period] = sharedIncomeTaxFilingStatus[period] || {};
+  const e = sharedIncomeTaxFilingStatus[period][clientId] = sharedIncomeTaxFilingStatus[period][clientId] || {};
+  e.sameMonth = e.sameMonth || { national:null, local:null, memo:'' };
+  e.nextMonth = e.nextMonth || { national:null, local:null, memo:'' };
+  return e;
+}
+function incomeTaxStatusBadgeHtml(t){
+  const bothDone = t.national && t.local;
+  const noneDone = !t.national && !t.local;
+  if(bothDone) return `<span class="tag" style="background:var(--mint-bg); color:var(--mint);">신고완료</span>`;
+  if(noneDone) return `<span class="tag" style="background:var(--bg); color:var(--ink-soft);">미신고</span>`;
+  return `<span class="tag" style="background:var(--coral-bg); color:var(--coral);">⚠️ 한쪽만 신고</span>`;
+}
+function renderIncomeTaxFilingStatusTable(){
+  renderFilingPeriodControls('status');
+  const period = currentFilingPeriodKey('status', '원천세'); // sourceMode가 항상 '월별'로 고정돼 있어 'YYYY-MM' 형식
+  const titleEl = document.getElementById('filingStatusTitle');
+  if(titleEl) titleEl.textContent = '원천세 신고현황';
+  const wrap = document.getElementById('filingStatusTableWrap');
+  if(!wrap) return;
+  const list = bookkeepingClientList().filter(c=>{
+    const t = (sharedFilingTargets[c.id]||{})[period];
+    return t && t.applicable && (t.sameMonthPay || t.nextMonthPay);
+  });
+  if(!list.length){
+    wrap.innerHTML = `<div class="empty-state">이 달에 원천세 신고대상으로 지정된 거래처가 없어요.<br>먼저 "신고대상" 메뉴에서 대상 거래처를 지정해주세요.</div>`;
+    return;
+  }
+  const rowsHtml = [];
+  list.forEach(c=>{
+    const target = sharedFilingTargets[c.id][period];
+    const entry = incomeTaxFilingEntry(period, c.id);
+    const entityColor = c.entityType === '법인' ? '#0B5A78' : c.entityType === '개인' ? '#BE185D' : 'inherit';
+    const nameBg = c.entityType === '법인' ? '#DCEEF5' : c.entityType === '개인' ? '#FCE9F1' : 'transparent';
+    const timings = [];
+    if(target.sameMonthPay) timings.push('sameMonth');
+    if(target.nextMonthPay) timings.push('nextMonth');
+    timings.forEach(timingKey=>{
+      const t = entry[timingKey];
+      const timingLabel = timingKey === 'sameMonth' ? '당월귀속·당월지급' : '당월귀속·익월지급';
+      rowsHtml.push(`<tr data-client-id="${c.id}" data-timing="${timingKey}">
+        <td class="cvb" style="color:${entityColor}; font-weight:800; background:${nameBg}; white-space:nowrap;">${escHtml(c.name)} <span style="font-size:10px; color:var(--ink-soft); font-weight:600;">(${target.cycle})</span></td>
+        <td class="cvb" style="white-space:nowrap; font-size:11.5px;">${timingLabel}</td>
+        <td class="cvb"><input type="date" class="it-filing-date-input" data-client-id="${c.id}" data-timing="${timingKey}" data-field="national" value="${t.national||''}" style="border:1.5px solid var(--border); border-radius:6px; padding:3px 4px; font-size:11.5px;"></td>
+        <td class="cvb"><input type="date" class="it-filing-date-input" data-client-id="${c.id}" data-timing="${timingKey}" data-field="local" value="${t.local||''}" style="border:1.5px solid var(--border); border-radius:6px; padding:3px 4px; font-size:11.5px;"></td>
+        <td class="cvb it-filing-status-cell">${incomeTaxStatusBadgeHtml(t)}</td>
+        <td><input type="text" class="it-filing-memo-input" data-client-id="${c.id}" data-timing="${timingKey}" value="${escHtml(t.memo||'')}" placeholder="메모" style="width:100%; border:1.5px solid var(--border); border-radius:6px; padding:4px 8px; font-family:'Pretendard',sans-serif; font-size:12px; text-align:center;"></td>
+      </tr>`);
+    });
+  });
+  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th class="cvb">거래처</th><th class="cvb">지급구분</th><th class="cvb">원천세 신고일</th><th class="cvb">지방세 신고일</th><th class="cvb">상태</th><th>메모</th></tr></thead><tbody>${rowsHtml.join('')}</tbody></table></div>`;
+  wrap.querySelectorAll('.it-filing-date-input').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const entry = incomeTaxFilingEntry(period, inp.dataset.clientId);
+      entry[inp.dataset.timing][inp.dataset.field] = inp.value || null;
+      setFilingStatusDirty('status', true);
+      const row = inp.closest('tr');
+      const cell = row?.querySelector('.it-filing-status-cell');
+      if(cell) cell.innerHTML = incomeTaxStatusBadgeHtml(entry[inp.dataset.timing]);
+    });
+  });
+  wrap.querySelectorAll('.it-filing-memo-input').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const entry = incomeTaxFilingEntry(period, inp.dataset.clientId);
+      entry[inp.dataset.timing].memo = inp.value;
+      setFilingStatusDirty('status', true);
+    });
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// 📮 제출현황(원천세): 매월/반기/연간 제출 체크리스트 - 원래 신고현황 화면 안에 있던 것을 별도 메뉴로 분리함.
+// 데이터 저장소(sharedFilingStatus['원천세'])는 그대로라 기존에 입력해둔 내용이 그대로 이어짐
+// ══════════════════════════════════════════════════════════
+let submitState = { year:null, sourceMode:'월별', month:null, half:'H1' };
+function ensureSubmitStateInit(){
+  if(submitState.year) return;
+  const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
+  submitState.year = monthStr.slice(0,4);
+  submitState.month = String(Number(monthStr.slice(5,7)));
+}
+function submitPeriodKey(){
+  ensureSubmitStateInit();
+  const y = submitState.year;
+  return submitState.sourceMode === '연간' ? `${y}` : submitState.sourceMode === '반기' ? `${y}-${submitState.half}` : `${y}-${String(submitState.month).padStart(2,'0')}`;
+}
+function renderSubmitPeriodControls(){
+  ensureSubmitStateInit();
+  const yearSel = document.getElementById('submitPeriodYear');
+  const subSel = document.getElementById('submitPeriodSub');
+  if(!yearSel || !subSel) return;
+  const nowY = Number(todayStr().slice(0,4));
+  const years = new Set();
+  for(let y=nowY+1; y>=nowY-4; y--) years.add(String(y));
+  Object.keys(sharedFilingStatus['원천세'] || {}).forEach(period=>{
+    const y = period.slice(0,4);
+    if(/^\d{4}$/.test(y)) years.add(y);
+  });
+  years.add(submitState.year);
+  const sortedYears = Array.from(years).sort((a,b)=>Number(b)-Number(a));
+  yearSel.innerHTML = sortedYears.map(y=>`<option value="${y}" ${y===submitState.year?'selected':''}>${y}년 귀속</option>`).join('');
+  if(submitState.sourceMode === '연간'){
+    subSel.style.display = 'none';
+  } else if(submitState.sourceMode === '반기'){
+    subSel.style.display = '';
+    subSel.innerHTML = `<option value="H1" ${submitState.half==='H1'?'selected':''}>상반기</option><option value="H2" ${submitState.half==='H2'?'selected':''}>하반기</option>`;
+  } else {
+    subSel.style.display = '';
+    subSel.innerHTML = Array.from({length:12},(_,i)=>i+1).map(m=>`<option value="${m}" ${String(m)===String(submitState.month)?'selected':''}>${m}월</option>`).join('');
+  }
+}
+function renderSubmitStatusTable(){
+  renderSubmitPeriodControls();
+  const period = submitPeriodKey();
+  const titleEl = document.getElementById('submitStatusTitle');
+  if(titleEl) titleEl.textContent = `원천세 제출현황 · ${submitState.sourceMode}`;
+  const list = bookkeepingClientList();
+  const wrap = document.getElementById('submitStatusTableWrap');
+  if(!wrap) return;
+  if(!list.length){ wrap.innerHTML = `<div class="empty-state">해당하는 거래처가 없습니다.</div>`; return; }
+  sharedFilingStatus['원천세'] = sharedFilingStatus['원천세'] || {};
+  sharedFilingStatus['원천세'][period] = sharedFilingStatus['원천세'][period] || {};
+  const periodData = sharedFilingStatus['원천세'][period];
+  const subitems = FILING_STATUS_SUBITEMS[submitState.sourceMode] || [];
+  const subitemHeaderCells = subitems.map(it=>`<th class="cvb" style="white-space:nowrap; font-size:11px;">${escHtml(it.label)}</th>`).join('');
+  const rows = list.map((c, idx)=>{
+    const entry = periodData[c.id] || { status:'미확인', memo:'' };
+    entry.items = entry.items || {};
+    const entityColor = c.entityType === '법인' ? '#0B5A78' : c.entityType === '개인' ? '#BE185D' : 'inherit';
+    const nameBg = c.entityType === '법인' ? '#DCEEF5' : c.entityType === '개인' ? '#FCE9F1' : 'transparent';
+    const subitemCells = subitems.map(it=>{
+      const v = entry.items[it.key] || '해당없음';
+      return `<td class="cvb"><select class="submit-status-subitem-select" data-client-id="${c.id}" data-item-key="${it.key}" style="font-size:11px; border:1.5px solid var(--border); border-radius:6px; padding:2px 3px;">
+        <option value="해당없음" ${v==='해당없음'?'selected':''}>해당없음</option>
+        <option value="미확인" ${v==='미확인'?'selected':''}>미확인</option>
+        <option value="완료" ${v==='완료'?'selected':''}>완료</option>
+      </select></td>`;
+    }).join('');
+    return `<tr>
+      <td class="num cvb">${idx+1}</td>
+      <td class="cvb" style="color:${entityColor}; font-weight:800; background:${nameBg};">${escHtml(c.name)}</td>
+      ${subitemCells}
+      <td class="cvb"><select class="submit-status-select" data-client-id="${c.id}">
+        <option value="미확인" ${entry.status==='미확인'?'selected':''}>미확인</option>
+        <option value="검토중" ${entry.status==='검토중'?'selected':''}>검토중</option>
+        <option value="신고완료" ${entry.status==='신고완료'?'selected':''}>신고완료</option>
+      </select></td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th class="cvb">#</th><th class="cvb">거래처</th>${subitemHeaderCells}<th class="cvb">진행상태</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  wrap.querySelectorAll('.submit-status-subitem-select').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const cid = sel.dataset.clientId;
+      periodData[cid] = periodData[cid] || { status:'미확인', memo:'' };
+      periodData[cid].items = periodData[cid].items || {};
+      periodData[cid].items[sel.dataset.itemKey] = sel.value;
+      setSubmitStatusDirty(true);
+    });
+  });
+  wrap.querySelectorAll('.submit-status-select').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const cid = sel.dataset.clientId;
+      periodData[cid] = periodData[cid] || { status:'미확인', memo:'' };
+      periodData[cid].status = sel.value;
+      periodData[cid].updatedAt = new Date().toLocaleString('ko-KR');
+      setSubmitStatusDirty(true);
+    });
+  });
+}
+function setSubmitStatusDirty(isDirty){
+  document.getElementById('submitStatusSaveBtn')?.classList.toggle('is-dirty', !!isDirty);
+}
+document.getElementById('submitPeriodYear')?.addEventListener('change', (e)=>{
+  submitState.year = e.target.value;
+  renderSubmitStatusTable();
+});
+document.getElementById('submitPeriodSub')?.addEventListener('change', (e)=>{
+  if(submitState.sourceMode === '반기') submitState.half = e.target.value;
+  else submitState.month = e.target.value;
+  renderSubmitStatusTable();
+});
+document.querySelectorAll('#submitTypeToggle .submit-type-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#submitTypeToggle .submit-type-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    submitState.sourceMode = btn.dataset.submitType;
+    renderSubmitStatusTable();
+  });
+});
+document.getElementById('submitStatusSaveBtn')?.addEventListener('click', async ()=>{
+  await saveSharedFilingStatus();
+  const msgEl = document.getElementById('submitStatusSaveMsg');
+  if(msgEl){ msgEl.textContent = '저장됨'; clearTimeout(msgEl._flashT); msgEl._flashT = setTimeout(()=>{ msgEl.textContent=''; }, 1500); }
+  setSubmitStatusDirty(false);
+});
+
 // 검토표 안에서 원천세/부가세에 따라 완전히 다른 화면(#reviewIncomeTaxBox 거래처 우선 화면 / #reviewLegacyBox 기존 상태·메모 표)을 보여줌
 function renderReviewPanel(){
   const isIncomeTax = viewingReviewType === '원천세';
@@ -10914,6 +11562,32 @@ function setReviewItDirty(isDirty){
   const btn = document.getElementById('reviewItSaveBtn');
   if(btn) btn.classList.toggle('is-dirty', !!isDirty);
 }
+// 검토표 숫자 입력칸: 네이티브 number input의 스핀버튼(위아래 화살표)이 필요없다고 해서
+// type="text" + inputmode="numeric"으로 바꾸고, 입력 중/완료 후 모두 천단위 콤마가 항상 보이도록
+// 직접 포맷팅함. 콤마가 늘거나 줄어도 커서가 안 튀도록 "커서 앞의 숫자(콤마 제외) 개수"를 기준으로
+// 포맷 후 커서 위치를 다시 계산해서 복원함.
+function formatMoneyInputLive(inp){
+  const caret = inp.selectionStart == null ? inp.value.length : inp.selectionStart;
+  const digitsBeforeCaret = inp.value.slice(0, caret).replace(/[^0-9-]/g,'').length;
+  const raw = inp.value.replace(/[^0-9-]/g,'');
+  const neg = raw.startsWith('-');
+  let digits = raw.replace(/-/g,'').replace(/^0+(?=\d)/,'');
+  const formatted = (neg?'-':'') + digits.replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  inp.value = formatted;
+  let pos = 0, count = 0;
+  while(pos < formatted.length && count < digitsBeforeCaret){
+    if(/[0-9-]/.test(formatted[pos])) count++;
+    pos++;
+  }
+  try{ inp.setSelectionRange(pos, pos); }catch(e){}
+}
+function moneyParse(str){
+  if(str == null) return undefined;
+  const s = String(str).replace(/[^0-9-]/g,'');
+  if(s === '' || s === '-') return undefined;
+  const n = Number(s);
+  return isNaN(n) ? undefined : n;
+}
 function renderReviewItIncomeTable(clientId, year){
   const wrap = document.getElementById('reviewItIncomeWrap');
   if(!wrap) return;
@@ -10923,10 +11597,10 @@ function renderReviewItIncomeTable(clientId, year){
     const isEnd = reviewItIsPeriodEnd(month, meta.payCycle);
     const fieldCells = REVIEW_INCOME_FIELDS.map(f=>{
       const v = data.income[f.key];
-      return `<td><input type="number" class="review-it-income-input" data-month="${month}" data-key="${f.key}" value="${v!=null?v:''}" style="width:76px; border:1.5px solid var(--border); border-radius:6px; padding:3px 5px; font-family:'IBM Plex Mono',monospace; font-size:11px; text-align:right;"${f.excludeFromTotal?' title="총지급액 계산에서 제외됨"':''}></td>`;
+      return `<td><input type="text" inputmode="numeric" class="review-it-income-input" data-month="${month}" data-key="${f.key}" value="${v!=null?Number(v).toLocaleString():''}" style="width:76px; border:1.5px solid var(--border); border-radius:6px; padding:3px 5px; font-family:'IBM Plex Mono',monospace; font-size:11px; text-align:right;"${f.excludeFromTotal?' title="총지급액 계산에서 제외됨"':''}></td>`;
     }).join('');
     const reportedCell = isEnd
-      ? `<td><input type="number" class="review-it-income-reported-input" data-month="${month}" value="${data.incomeReported!=null?data.incomeReported:''}" style="width:92px; border:1.5px solid var(--border); border-radius:6px; padding:3px 5px; font-family:'IBM Plex Mono',monospace; font-size:11px; text-align:right; background:#FFFBEA;"></td>`
+      ? `<td><input type="text" inputmode="numeric" class="review-it-income-reported-input" data-month="${month}" value="${data.incomeReported!=null?Number(data.incomeReported).toLocaleString():''}" style="width:92px; border:1.5px solid var(--border); border-radius:6px; padding:3px 5px; font-family:'IBM Plex Mono',monospace; font-size:11px; text-align:right; background:#FFFBEA;"></td>`
       : `<td style="text-align:center; color:var(--ink-soft);">-</td>`;
     return `<tr data-month="${month}">
       <td class="num cvb" style="font-weight:700;">${month}월</td>
@@ -10940,9 +11614,10 @@ function renderReviewItIncomeTable(clientId, year){
   wrap.innerHTML = `<table><thead><tr><th class="cvb">귀속월</th>${headerCells}<th class="cvb">총지급액<br>(계산)</th><th class="cvb">총지급액<br>(신고서)</th><th class="cvb">검증</th></tr></thead><tbody>${rows}</tbody></table>`;
   wrap.querySelectorAll('.review-it-income-input').forEach(inp=>{
     inp.addEventListener('input', ()=>{
+      formatMoneyInputLive(inp);
       const month = Number(inp.dataset.month);
       const data = reviewItMonthData(clientId, year, month);
-      data.income[inp.dataset.key] = inp.value === '' ? undefined : Number(inp.value);
+      data.income[inp.dataset.key] = moneyParse(inp.value);
       setReviewItDirty(true);
       refreshReviewItIncomeRow(clientId, year, month);
       if(meta.payCycle === '반기'){
@@ -10953,8 +11628,10 @@ function renderReviewItIncomeTable(clientId, year){
   });
   wrap.querySelectorAll('.review-it-income-reported-input').forEach(inp=>{
     inp.addEventListener('input', ()=>{
+      formatMoneyInputLive(inp);
       const month = Number(inp.dataset.month);
-      reviewItMonthData(clientId, year, month).incomeReported = inp.value === '' ? null : Number(inp.value);
+      const parsed = moneyParse(inp.value);
+      reviewItMonthData(clientId, year, month).incomeReported = parsed === undefined ? null : parsed;
       setReviewItDirty(true);
       refreshReviewItIncomeRow(clientId, year, month);
     });
@@ -10969,10 +11646,10 @@ function renderReviewItTaxTable(clientId, year){
     const isEnd = reviewItIsPeriodEnd(month, meta.payCycle);
     const groupCells = REVIEW_TAX_GROUPS.map(g=>{
       const cur = data.tax[g.key] || {};
-      return `<td><input type="number" class="review-it-tax-input" data-month="${month}" data-group="${g.key}" data-sub="tax" value="${cur.tax!=null?cur.tax:''}" style="width:64px; border:1.5px solid var(--border); border-radius:6px; padding:3px 4px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-align:right;"></td><td><input type="number" class="review-it-tax-input" data-month="${month}" data-group="${g.key}" data-sub="local" value="${cur.local!=null?cur.local:''}" style="width:64px; border:1.5px solid var(--border); border-radius:6px; padding:3px 4px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-align:right; background:#FAFAFC;"></td>`;
+      return `<td><input type="text" inputmode="numeric" class="review-it-tax-input" data-month="${month}" data-group="${g.key}" data-sub="tax" value="${cur.tax!=null?Number(cur.tax).toLocaleString():''}" style="width:64px; border:1.5px solid var(--border); border-radius:6px; padding:3px 4px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-align:right;"></td><td><input type="text" inputmode="numeric" class="review-it-tax-input" data-month="${month}" data-group="${g.key}" data-sub="local" value="${cur.local!=null?Number(cur.local).toLocaleString():''}" style="width:64px; border:1.5px solid var(--border); border-radius:6px; padding:3px 4px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-align:right; background:#FAFAFC;"></td>`;
     }).join('');
     const reportedCell = isEnd
-      ? `<td><input type="number" class="review-it-tax-reported-input" data-month="${month}" value="${data.taxReported!=null?data.taxReported:''}" style="width:92px; border:1.5px solid var(--border); border-radius:6px; padding:3px 5px; font-family:'IBM Plex Mono',monospace; font-size:11px; text-align:right; background:#FFFBEA;"></td>`
+      ? `<td><input type="text" inputmode="numeric" class="review-it-tax-reported-input" data-month="${month}" value="${data.taxReported!=null?Number(data.taxReported).toLocaleString():''}" style="width:92px; border:1.5px solid var(--border); border-radius:6px; padding:3px 5px; font-family:'IBM Plex Mono',monospace; font-size:11px; text-align:right; background:#FFFBEA;"></td>`
       : `<td style="text-align:center; color:var(--ink-soft);">-</td>`;
     return `<tr data-month="${month}">
       <td class="num cvb" style="font-weight:700;">${month}월</td>
@@ -10987,10 +11664,11 @@ function renderReviewItTaxTable(clientId, year){
   wrap.innerHTML = `<table><thead><tr><th class="cvb" rowspan="2">귀속월</th>${headerCells}<th class="cvb" rowspan="2">원천세합계<br>(계산)</th><th class="cvb" rowspan="2">징수세액<br>(신고서)</th><th class="cvb" rowspan="2">검증</th></tr><tr>${subHeaderCells}</tr></thead><tbody>${rows}</tbody></table>`;
   wrap.querySelectorAll('.review-it-tax-input').forEach(inp=>{
     inp.addEventListener('input', ()=>{
+      formatMoneyInputLive(inp);
       const month = Number(inp.dataset.month);
       const data = reviewItMonthData(clientId, year, month);
       data.tax[inp.dataset.group] = data.tax[inp.dataset.group] || {};
-      data.tax[inp.dataset.group][inp.dataset.sub] = inp.value === '' ? undefined : Number(inp.value);
+      data.tax[inp.dataset.group][inp.dataset.sub] = moneyParse(inp.value);
       setReviewItDirty(true);
       refreshReviewItTaxRow(clientId, year, month);
       if(meta.payCycle === '반기'){
@@ -11001,8 +11679,10 @@ function renderReviewItTaxTable(clientId, year){
   });
   wrap.querySelectorAll('.review-it-tax-reported-input').forEach(inp=>{
     inp.addEventListener('input', ()=>{
+      formatMoneyInputLive(inp);
       const month = Number(inp.dataset.month);
-      reviewItMonthData(clientId, year, month).taxReported = inp.value === '' ? null : Number(inp.value);
+      const parsed = moneyParse(inp.value);
+      reviewItMonthData(clientId, year, month).taxReported = parsed === undefined ? null : parsed;
       setReviewItDirty(true);
       refreshReviewItTaxRow(clientId, year, month);
     });
@@ -11306,10 +11986,14 @@ document.querySelectorAll('.approval-cat-btn').forEach(btn=>{
     const filingBranch = document.getElementById('filingTypeToggle');
     const reviewBranch = document.getElementById('reviewTypeToggle');
     const docBranch = document.getElementById('approvalDocToggle');
+    const submitBranch = document.getElementById('submitTypeToggle');
     if(filingBranch) filingBranch.style.display = (cat === 'status') ? 'flex' : 'none';
     if(reviewBranch) reviewBranch.style.display = (cat === 'review') ? 'flex' : 'none';
     if(docBranch) docBranch.style.display = (cat === 'doc') ? 'flex' : 'none';
+    if(submitBranch) submitBranch.style.display = (cat === 'submit') ? 'flex' : 'none';
     if(cat === 'status') renderFilingStatusTable('status');
+    else if(cat === 'target') renderFilingTargetTable();
+    else if(cat === 'submit') renderSubmitStatusTable();
     else if(cat === 'review') renderReviewPanel();
     else if(cat === 'help'){ populateFilingHelpClientSelect(); renderFilingHelpChecklist(); }
     else if(cat === 'doc'){ populateApproverSelect(); renderApprovalInbox(); renderApprovalMine(); renderApprovalRejected(); renderApprovalDone(); renderApprovalAll(); renderApprovalAllBadges(); updateApprovalNotifyBtn(); }
@@ -12101,7 +12785,7 @@ document.getElementById('exportSharedBtn').addEventListener('click', ()=>{
     exportedAt: new Date().toISOString(),
     app: 'monthly-board',
     scope: 'shared', // 관리자용 백업: 회사 공통설정만 포함, 직원 개인데이터는 포함 안 함
-    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta }
+    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta, filingTargets: sharedFilingTargets, itFilingStatus: sharedIncomeTaxFilingStatus }
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -12150,6 +12834,8 @@ document.getElementById('importSharedFile').addEventListener('change', async (e)
     sharedApprovals = data.shared.approvals || [];
     sharedReviewFigures = data.shared.reviewFigures || {};
     sharedReviewMeta = data.shared.reviewMeta || {};
+    sharedFilingTargets = data.shared.filingTargets || {};
+    sharedIncomeTaxFilingStatus = data.shared.itFilingStatus || {};
     await saveSharedExclusions();
     await saveSharedWorkHourExceptions();
     await saveSharedNoticeHistory();
@@ -12167,6 +12853,8 @@ document.getElementById('importSharedFile').addEventListener('change', async (e)
     await saveSharedApprovals();
     await saveSharedReviewFigures();
     await saveSharedReviewMeta();
+    await saveSharedFilingTargets();
+    await saveSharedIncomeTaxFilingStatus();
     if(gdriveAccessToken && gdriveFileId){
       document.getElementById('sharedBackupSaveMsg').textContent = '불러오기 완료 · 드라이브에 반영 중...';
       try{ await gdrivePush(); }catch(err){ console.error('공통설정 불러오기 후 드라이브 반영 실패', err); }
@@ -12607,7 +13295,7 @@ function gdriveBuildPayload(){
   });
   return {
     schemaVersion: SCHEMA_VERSION, syncedAt: new Date().toISOString(), profiles, data,
-    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta }
+    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta, filingTargets: sharedFilingTargets, itFilingStatus: sharedIncomeTaxFilingStatus }
   };
 }
 
@@ -12734,6 +13422,8 @@ async function gdrivePull(){
       if(remote.shared.approvals !== undefined) localStorage.setItem('worklog_shared_approvals', JSON.stringify(remote.shared.approvals));
       if(remote.shared.reviewFigures !== undefined) localStorage.setItem('worklog_shared_reviewfigures', JSON.stringify(remote.shared.reviewFigures));
       if(remote.shared.reviewMeta !== undefined) localStorage.setItem('worklog_shared_reviewmeta', JSON.stringify(remote.shared.reviewMeta));
+      if(remote.shared.filingTargets !== undefined) localStorage.setItem('worklog_shared_filingtargets', JSON.stringify(remote.shared.filingTargets));
+      if(remote.shared.itFilingStatus !== undefined) localStorage.setItem('worklog_shared_itfilingstatus', JSON.stringify(remote.shared.itFilingStatus));
     }
     if(!getActiveProfileId() || !remote.profiles.find(p=>p.id===getActiveProfileId())){
       if(remote.profiles.length) setActiveProfileId(remote.profiles[0].id);
@@ -12926,16 +13616,28 @@ function renderManagePwStatus(){
 function renderMegaManagePwStatus(){
   const el = document.getElementById('megaManagePwStatus');
   if(!el) return;
-  el.textContent = sharedManageVerifier ? '✅ 비밀번호가 설정되어 있어요.' : '⚠️ 아직 설정되지 않았어요.';
+  const isSet = !!sharedManageVerifier;
+  el.textContent = isSet ? '✅ 비밀번호가 설정되어 있어요.' : '⚠️ 아직 설정되지 않았어요.';
+  // 아직 설정 전이면 "설정하러 가기" 버튼만, 이미 설정돼 있으면 수정/초기화 두 칩만 보이게 함
+  document.getElementById('megaGoManagePwBtnWrap').style.display = isSet ? 'none' : 'block';
+  document.getElementById('megaManagePwActionBtnWrap').style.display = isSet ? 'block' : 'none';
 }
-document.getElementById('megaGoManagePwBtn')?.addEventListener('click', (e)=>{
+// 설정 > 데이터 > 비밀번호 설정의 바로가기 버튼들 - 실제 폼은 거래처 설정 탭(사내정보 잠금해제 쪽)에 있는 걸
+// 그대로 재사용하므로, 그 탭으로 이동 + 스크롤한 뒤 realBtnId로 넘어온 진짜 버튼(수정/초기화)을 대신 눌러줌
+function goToManagePwSection(triggerBtn, realBtnId){
   // "설정 > 데이터" 화면에서 소제목을 칩으로 눌러 이 버튼을 팝업으로 띄운 경우, 다른 탭으로 이동하면서
   // 그 팝업창은 그대로 남아있던 문제 - 이동 전에 감싸고 있는 팝업이 있으면 같이 닫아줌
-  const overlay = e.currentTarget.closest('.settings-subsection-overlay');
+  const overlay = triggerBtn.closest('.settings-subsection-overlay');
   if(overlay) overlay.style.display = 'none';
   activateTab('clients-settings', true);
-  setTimeout(()=>{ document.getElementById('managePwStatus')?.scrollIntoView({behavior:'smooth', block:'center'}); }, 150);
-});
+  setTimeout(()=>{
+    document.getElementById('managePwStatus')?.scrollIntoView({behavior:'smooth', block:'center'});
+    if(realBtnId) document.getElementById(realBtnId)?.click();
+  }, 150);
+}
+document.getElementById('megaGoManagePwBtn')?.addEventListener('click', (e)=> goToManagePwSection(e.currentTarget, null));
+document.getElementById('megaManagePwEditBtn')?.addEventListener('click', (e)=> goToManagePwSection(e.currentTarget, 'managePwEditBtn'));
+document.getElementById('megaManagePwResetBtn')?.addEventListener('click', (e)=> goToManagePwSection(e.currentTarget, 'managePwResetBtn'));
 
 document.getElementById('managePwEditBtn').addEventListener('click', ()=>{
   document.getElementById('managePwEditBtnWrap').style.display = 'none';
