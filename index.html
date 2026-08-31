@@ -260,9 +260,31 @@
   .home-dash-mascot.state-done svg{ animation:mascotPop .5s cubic-bezier(.34,1.56,.64,1); }
   @keyframes mascotPop{ 0%{ transform:scale(0.6) rotate(-6deg); opacity:0; } 60%{ transform:scale(1.08) rotate(3deg); } 100%{ transform:scale(1) rotate(0); opacity:1; } }
   /* 버튼 안의 커스텀 아이콘(체크/되돌리기/출근/퇴근) - 기본 이모지 대신 브랜드 컬러에 맞춘 손그림 아이콘 */
-  .home-dash-icon-btn{ display:inline-flex; align-items:center; gap:5px; }
+  .home-dash-icon-btn{ display:inline-flex; align-items:center; gap:6px; }
   .home-dash-icon-btn svg{ flex:none; }
-  .home-dash-done-tag{ display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:800; color:var(--indigo-deep); }
+  /* 출근/퇴근 도장 버튼 - 예전엔 하나는 진하게 꽉 찬 submit-btn, 하나는 옅은 pastel del-btn이라 크기·구성이
+     서로 달라 보였음. 이제 둘 다 완전히 같은 모양(둥근 알약 칩, 같은 패딩·폰트·그림자)을 쓰고 색만 의미에 맞게
+     바꿔서(출근=시작하는 초록, 퇴근=마무리하는 코럴) 한 세트처럼 보이게 함 */
+  .home-dash-clock-action-btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    padding:10px 22px; border:none; border-radius:999px; font-family:'Pretendard', sans-serif;
+    font-size:13px; font-weight:800; color:#fff; cursor:pointer;
+    box-shadow:0 4px 12px rgba(29,30,51,0.16); transition:transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .home-dash-clock-action-btn:hover{ transform:translateY(-1px); box-shadow:0 6px 14px rgba(29,30,51,0.2); }
+  .home-dash-clock-action-btn.action-start{ background:linear-gradient(135deg, #34C98E, #1E9E6C); }
+  .home-dash-clock-action-btn.action-stop{ background:linear-gradient(135deg, #F0637F, #DC4364); }
+  /* 되돌리기 버튼 - 출근 취소든 퇴근 취소든 항상 같은 회색 알약 칩 모양으로 통일 */
+  .home-dash-undo-btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:5px;
+    padding:10px 16px; border:none; border-radius:999px; background:var(--bg); color:var(--ink-soft);
+    font-family:'Pretendard', sans-serif; font-size:12px; font-weight:700; cursor:pointer; transition:background 0.15s ease, color 0.15s ease;
+  }
+  .home-dash-undo-btn:hover{ background:var(--indigo-bg); color:var(--indigo-deep); }
+  .home-dash-done-tag{
+    display:inline-flex; align-items:center; gap:6px; padding:10px 18px; border-radius:999px;
+    background:var(--indigo-bg); font-size:13px; font-weight:800; color:var(--indigo-deep);
+  }
   .home-dash-done-tag .home-dash-check-badge{
     display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%;
     background:var(--indigo-deep); color:#fff; flex:none;
@@ -8260,47 +8282,59 @@ function dashClockState(entry){
 // Team J 마스코트 - 이미지가 아니라 이 카드만을 위해 직접 그린 손그림풍 SVG 캐릭터(제이).
 // 이모지 아이콘 대신 브랜드 컬러(인디고/민트/앰버)로 상태별 포즈를 구분해 "우리 앱만의 캐릭터" 느낌을 줌.
 function dashMascotSvg(state){
-  const body = state==='working' ? 'var(--mint)' : state==='done' ? 'var(--amber)' : 'var(--indigo)';
-  const ink = '#232345';
+  // 예전엔 머리(원)+몸통(타원)을 따로 겹쳐서 목 부분이 잘록해 보이고, 색도 대시보드 다른 곳과 똑같은
+  // 진한 원색(인디고/민트/앰버)을 그대로 써서 어색했음 - 이제 머리와 몸을 하나의 알약(캡슐) 모양으로
+  // 이어 그려서 이음새가 안 보이게 하고, 색도 이 캐릭터만을 위한 더 부드러운 톤으로 새로 골랐음
+  const PALETTE = {
+    idle:    { body:'#7C86EE', soft:'#EEF0FD' }, // 은은한 페리윙클
+    working: { body:'#3FB999', soft:'#E7F7F1' }, // 차분한 세이지그린
+    done:    { body:'#F2A254', soft:'#FDF1E3' }, // 따뜻한 살구빛 골드
+  };
+  const pal = PALETTE[state] || PALETTE.idle;
+  const body = pal.body;
+  const ink = '#2E2E45';
   const face = state==='done'
-    ? `<path d="M37,30 Q42,25 47,30" stroke="${ink}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
-       <path d="M53,30 Q58,25 63,30" stroke="${ink}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
-       <path d="M40,40 Q50,50 60,40 Q50,47 40,40 Z" fill="${ink}"/>`
-    : `<circle cx="42" cy="31" r="3.4" fill="${ink}"/><circle cx="43.1" cy="29.7" r="1" fill="#fff"/>
-       <circle cx="58" cy="31" r="3.4" fill="${ink}"/><circle cx="59.1" cy="29.7" r="1" fill="#fff"/>
+    ? `<path d="M36,38 Q41,33 46,38" stroke="${ink}" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+       <path d="M54,38 Q59,33 64,38" stroke="${ink}" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+       <path d="M39,48 Q50,58 61,48 Q50,55 39,48 Z" fill="${ink}"/>`
+    : `<ellipse cx="39" cy="39" rx="4.6" ry="5.6" fill="${ink}"/><circle cx="40.4" cy="37" r="1.3" fill="#fff"/>
+       <ellipse cx="61" cy="39" rx="4.6" ry="5.6" fill="${ink}"/><circle cx="62.4" cy="37" r="1.3" fill="#fff"/>
        ${state==='working'
-         ? `<path d="M45,42 Q50,45 55,42" stroke="${ink}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`
-         : `<path d="M40,39 Q50,48 60,39" stroke="${ink}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`}`;
-  const cheeks = `<ellipse cx="34" cy="39" rx="4" ry="2.4" fill="var(--coral-bg)"/><ellipse cx="66" cy="39" rx="4" ry="2.4" fill="var(--coral-bg)"/>`;
-  const belly = `<ellipse cx="50" cy="73" rx="15" ry="17" fill="#fff" opacity="0.92"/>
-    <text x="50" y="79" font-size="17" font-weight="900" fill="${body}" text-anchor="middle" font-family="'Pretendard',sans-serif">J</text>`;
-  const headBody = `<ellipse cx="50" cy="71" rx="27" ry="23" fill="${body}"/><circle cx="50" cy="33" r="19" fill="${body}"/>`;
+         ? `<path d="M44,50 Q50,53.5 56,50" stroke="${ink}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`
+         : `<path d="M38,47 Q50,58 62,47" stroke="${ink}" stroke-width="2.8" fill="none" stroke-linecap="round"/>`}`;
+  const cheeks = `<ellipse cx="29" cy="47" rx="4.6" ry="2.8" fill="#FBD4CE" opacity="0.85"/><ellipse cx="71" cy="47" rx="4.6" ry="2.8" fill="#FBD4CE" opacity="0.85"/>`;
+  const belly = `<ellipse cx="50" cy="68" rx="16" ry="18.5" fill="${pal.soft}"/>
+    <text x="50" y="74" font-size="18" font-weight="900" fill="${body}" text-anchor="middle" font-family="'Pretendard',sans-serif">J</text>`;
+  // 위아래로 완전히 둥근 알약(캡슐) 한 덩어리 - 목 부분 없이 하나의 매끈한 실루엣
+  const bodyShape = `<rect x="19" y="6" width="62" height="88" rx="31" fill="${body}"/>`;
   let extra = '';
   if(state==='idle'){
     // 두 팔을 번쩍 든 "화이팅" 포즈 + 손 끝의 작은 반짝임
-    extra = `<path d="M26,60 Q13,42 9,23" stroke="${body}" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="9" cy="21" r="5" fill="${body}"/>
-      <path d="M74,60 Q87,42 91,23" stroke="${body}" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="91" cy="21" r="5" fill="${body}"/>
-      <path d="M2,14 L5,10 L8,14 L5,18 Z" fill="var(--amber)"/><path d="M92,14 L95,10 L98,14 L95,18 Z" fill="var(--amber)"/>`;
+    extra = `<path d="M24,52 Q11,36 7,18" stroke="${body}" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="7" cy="16" r="5" fill="${body}"/>
+      <path d="M76,52 Q89,36 93,18" stroke="${body}" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="93" cy="16" r="5" fill="${body}"/>
+      <path d="M0,9 L3,5 L6,9 L3,13 Z" fill="#F2A254"/><path d="M94,9 L97,5 L100,9 L97,13 Z" fill="#F2A254"/>`;
   } else if(state==='working'){
-    // 작은 책상 + 노트북, 한 팔은 타이핑
-    extra = `<rect x="30" y="87" width="40" height="5" rx="2" fill="#D8D6F5"/>
-      <rect x="39" y="66" width="22" height="14" rx="2" fill="#4640D6"/><rect x="41" y="68" width="18" height="9" rx="1" fill="#9AA0F5"/>
-      <rect x="38" y="80" width="24" height="4" rx="1" fill="#B9B6EA"/>
-      <path d="M27,63 Q34,74 41,80" stroke="${body}" stroke-width="7" fill="none" stroke-linecap="round"/>
-      <path d="M73,63 Q78,72 75,83" stroke="${body}" stroke-width="7" fill="none" stroke-linecap="round"/>`;
+    // 작은 책상 + 노트북, 한 팔은 타이핑 - 책상/노트북은 몸통 색과 무관하게 항상 같은 라벤더그레이 톤을 써서
+    // 몸통이나 배지(belly) 색과 섞이지 않고 또렷하게 보이게 함
+    extra = `<rect x="30" y="85" width="40" height="5" rx="2" fill="#C9C6EE"/>
+      <rect x="39" y="63" width="22" height="14" rx="2" fill="#4C4FA8"/><rect x="41" y="65" width="18" height="9" rx="1" fill="#A9AEF2"/>
+      <rect x="38" y="77" width="24" height="4" rx="1" fill="#B0ACE6"/>
+      <path d="M25,58 Q32,70 41,77" stroke="${body}" stroke-width="7" fill="none" stroke-linecap="round"/>
+      <path d="M75,58 Q80,68 76,80" stroke="${body}" stroke-width="7" fill="none" stroke-linecap="round"/>`;
   } else {
     // 파티모자 + 두 팔 번쩍 + 색종이 조각(컨페티) 흩날리는 완료 축하 포즈
-    extra = `<path d="M50,4 L41,19 L59,19 Z" fill="var(--amber)"/><circle cx="50" cy="3" r="3" fill="#fff"/>
-      <path d="M26,60 Q13,42 9,23" stroke="${body}" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="9" cy="21" r="5" fill="${body}"/>
-      <path d="M74,60 Q87,42 91,23" stroke="${body}" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="91" cy="21" r="5" fill="${body}"/>
-      <rect x="2" y="30" width="5" height="5" fill="var(--coral)" transform="rotate(18 4 32)"/>
-      <rect x="93" y="30" width="5" height="5" fill="var(--mint)" transform="rotate(-18 96 32)"/>
-      <rect x="14" y="8" width="4" height="4" fill="var(--indigo)" transform="rotate(30 16 10)"/>
-      <rect x="82" y="8" width="4" height="4" fill="var(--coral)" transform="rotate(-30 84 10)"/>`;
+    extra = `<path d="M50,-4 L41,11 L59,11 Z" fill="#E88A3A"/><circle cx="50" cy="-5" r="3" fill="#fff"/>
+      <path d="M24,52 Q11,36 7,18" stroke="${body}" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="7" cy="16" r="5" fill="${body}"/>
+      <path d="M76,52 Q89,36 93,18" stroke="${body}" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="93" cy="16" r="5" fill="${body}"/>
+      <rect x="0" y="26" width="5" height="5" fill="#F0637F" transform="rotate(18 2 28)"/>
+      <rect x="95" y="26" width="5" height="5" fill="#3FB999" transform="rotate(-18 97 28)"/>
+      <rect x="12" y="4" width="4" height="4" fill="#7C86EE" transform="rotate(30 14 6)"/>
+      <rect x="84" y="4" width="4" height="4" fill="#F0637F" transform="rotate(-30 86 6)"/>`;
   }
-  // 몸통(headBody)을 먼저 그리고 팔·책상·파티모자(extra)는 그 위에 겹쳐 그려야, working 포즈의 책상이
-  // 몸통 뒤로 완전히 가려지는 문제 없이 배 앞으로 자연스럽게 걸쳐 보임
-  return `<svg viewBox="0 0 100 100" width="76" height="76" aria-hidden="true">${headBody}${belly}${cheeks}${face}${extra}</svg>`;
+  // 몸통(bodyShape)을 먼저 그리고 팔·책상·파티모자(extra)는 그 위에 겹쳐 그려야, working 포즈의 책상이
+  // 몸통 뒤로 완전히 가려지는 문제 없이 배 앞으로 자연스럽게 걸쳐 보임. viewBox의 y를 -6부터 시작해서
+  // 파티모자 끝이 위로 살짝 튀어나와도 잘리지 않게 여유를 둠
+  return `<svg viewBox="0 -6 100 106" width="76" height="81" aria-hidden="true">${bodyShape}${belly}${cheeks}${face}${extra}</svg>`;
 }
 // 버튼/상태태그용 커스텀 아이콘 - ✅↩️🟢🔴 같은 기본 이모지 대신 브랜드 컬러의 손그림 아이콘으로 통일
 function dashIconSvg(type){
@@ -8320,13 +8354,13 @@ function renderDashboardClockCard(){
   const clockState = dashClockState(entry);
   let actionsHtml = '';
   if(!entry.checkIn){
-    actionsHtml = `<button type="button" id="dashClockInBtn" class="submit-btn home-dash-toggle home-dash-icon-btn" style="width:auto; padding:8px 20px;">${dashIconSvg('in')} 출근 도장 찍기</button>`;
+    actionsHtml = `<button type="button" id="dashClockInBtn" class="home-dash-icon-btn home-dash-clock-action-btn action-start">${dashIconSvg('in')} 출근 도장 찍기</button>`;
   } else if(!entry.checkOut){
-    actionsHtml = `<button type="button" id="dashClockOutBtn" class="del-btn home-dash-toggle home-dash-icon-btn" style="padding:8px 20px; background:var(--coral-bg); color:var(--coral);">${dashIconSvg('out')} 퇴근 도장 찍기</button>
-      <button type="button" id="dashClockResetInBtn" class="del-btn home-dash-toggle home-dash-icon-btn" title="출근 기록 취소">${dashIconSvg('undo')}</button>`;
+    actionsHtml = `<button type="button" id="dashClockOutBtn" class="home-dash-icon-btn home-dash-clock-action-btn action-stop">${dashIconSvg('out')} 퇴근 도장 찍기</button>
+      <button type="button" id="dashClockResetInBtn" class="home-dash-icon-btn home-dash-undo-btn" title="출근 기록 취소">${dashIconSvg('undo')} 되돌리기</button>`;
   } else {
     actionsHtml = `<span class="home-dash-done-tag"><span class="home-dash-check-badge">${dashIconSvg('check')}</span>오늘 근무 완료</span>
-      <button type="button" id="dashClockResetOutBtn" class="del-btn home-dash-toggle home-dash-icon-btn" title="퇴근 기록 취소" style="font-size:11px;">${dashIconSvg('undo')} 되돌리기</button>`;
+      <button type="button" id="dashClockResetOutBtn" class="home-dash-icon-btn home-dash-undo-btn" title="퇴근 기록 취소">${dashIconSvg('undo')} 되돌리기</button>`;
   }
   const statusOptsHtml = DASH_CLOCK_STATUS_OPTS.map(o=>`<option value="${o.key}" ${entry.status===o.key?'selected':''}>${o.icon} ${o.key}</option>`).join('');
   // 아래 컨테이너는 위→아래로 쌓이는 세로 레이아웃이어야 하는데, .home-dash-toggle 클래스가 inline-flex(가로
