@@ -5864,7 +5864,20 @@ function renderDeadlineBanner(){
   wrap.innerHTML = `<div class="deadline-banner">📌 ${prevMonthLabel}분 지출결의서, 매월 10일 지급 기준이니 상신 잊지 마세요! (마감까지 D-${daysLeft >= 0 ? daysLeft : 0})</div>`;
 }
 
-function renderAll(){ renderAttendance(); renderExpense(); renderWorkdaysSuggestion(); renderCalendar(); renderScheduleList(); renderClients(); renderClientsRegular(); renderClientsOther(); renderClientsTerminated(); renderPersonalInfo(); renderDeadlineBanner(); renderAdminCalendar(); renderHome(); renderAllLeaveHistory(); renderNoticeIfOpen(); renderManualGrantList(); renderEmployeeRoster(); renderCompanyInfoCorp(); renderCompanyInfoTeam(); renderApprovalBadge(); if(typeof twemoji !== 'undefined') twemoji.parse(document.body, {folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'}); }
+// renderAll()은 로그인 직후~데이터 동기화 과정에서 짧은 시간 안에 여러 번 연달아 호출되는데, 그때마다
+// twemoji.parse(document.body, ...)가 문서 전체(숨겨진 다른 탭까지 포함)를 매번 다시 훑고 CDN에서
+// 이모지 이미지를 다시 요청하다 보니 그게 "대시보드 로딩이 너무 길다"고 느껴질 만큼 화면을 붙잡고 있었음 -
+// 실제로 눈에 보이는 결과물은 똑같이 유지하면서, 짧은 시간 안에 몰리는 호출은 한 번으로 묶어서 마지막
+// 호출 후 딱 한 번만 전체 스캔하도록 함
+let _twemojiParseTimer = null;
+function scheduleTwemojiParse(){
+  if(typeof twemoji === 'undefined') return;
+  clearTimeout(_twemojiParseTimer);
+  _twemojiParseTimer = setTimeout(()=>{
+    twemoji.parse(document.body, {folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'});
+  }, 150);
+}
+function renderAll(){ renderAttendance(); renderExpense(); renderWorkdaysSuggestion(); renderCalendar(); renderScheduleList(); renderClients(); renderClientsRegular(); renderClientsOther(); renderClientsTerminated(); renderPersonalInfo(); renderDeadlineBanner(); renderAdminCalendar(); renderHome(); renderAllLeaveHistory(); renderNoticeIfOpen(); renderManualGrantList(); renderEmployeeRoster(); renderCompanyInfoCorp(); renderCompanyInfoTeam(); renderApprovalBadge(); scheduleTwemojiParse(); }
 
 function renderScheduleList(){
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
@@ -8450,6 +8463,11 @@ function renderHomeDashboard(){
 
 function renderHome(){
   // 즐겨찾기 기능은 제거됨 - 홈 화면은 이제 대시보드(renderHomeDashboard)가 대신함.
+  // 대시보드 카드는 예전엔 activateTab('home')을 탈 때만 그려졌는데, 새로고침/로그인 직후에는
+  // 마지막 탭이 홈이었을 경우(가장 흔한 경우) 그 activateTab('home')이 아예 호출되지 않아서
+  // 카드 4개가 계속 초기값 "-"로 멈춰 있는 문제가 있었음 - renderAll()이 항상 부르는 이 함수 안에서
+  // 같이 그려주면 새로고침 직후에도 바로 채워짐(activateTab에서 또 한번 부르는 건 비용이 작아 무해함).
+  if(typeof renderHomeDashboard === 'function') renderHomeDashboard();
 }
 renderHome();
 
@@ -14050,7 +14068,7 @@ try{
     if(lastTabBtn) lastTabBtn.click();
   }
 }catch(e){}
-if(typeof twemoji !== 'undefined') twemoji.parse(document.body, {folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'});
+scheduleTwemojiParse();
 
 // ===== 팝업 겹침 처리: 나중에 연 팝업이 항상 이전 팝업보다 위로 오게 함 =====
 // 팝업이 워낙 많고(...Overlay 아이디로 끝나는 정적 팝업 + 설정 소메뉴처럼 JS로 그때그때 만들어지는 동적 팝업)
