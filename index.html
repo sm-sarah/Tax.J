@@ -13593,6 +13593,13 @@ async function gdrivePush(){
   }
 }
 
+// 방금 받아온 드라이브 파일 내용을 그대로 기억해뒀다가, 다음 불러오기 때 완전히 같으면(팀원 누구도
+// 그 사이에 아무것도 안 바꿨으면) 화면을 다시 그리지 않고 조용히 넘어가기 위한 스냅샷.
+// 창에 포커스가 돌아올 때마다/3분마다 자동으로 불러오는데, 그때마다 매번 renderAll()로 전체 화면을
+// 통째로 다시 그리면 실제로는 아무것도 안 바뀌었어도 홈·기장거래처처럼 그릴 게 많은 화면에서
+// 눈에 띄게 깜빡였음(마치 새로고침되는 것처럼 보인다는 피드백) - 받아온 내용이 그대로면 다시 그릴
+// 이유가 없으므로 건너뜀
+let lastGdrivePulledSnapshot = null;
 async function gdrivePull(){
   if(!gdriveAccessToken || !gdriveFileId) return;
   if(gdriveSuspendPull) return; // 관리비밀번호 저장 등 민감한 로컬 변경이 진행 중 - 지금은 불러오기를 건너뜀
@@ -13623,6 +13630,9 @@ async function gdrivePull(){
     }
     const remote = await res.json();
     if(!remote || !remote.profiles) return;
+    const remoteSnapshot = JSON.stringify(remote);
+    if(remoteSnapshot === lastGdrivePulledSnapshot) return; // 지난번 받아온 것과 완전히 동일 - 다시 그릴 필요 없음
+    lastGdrivePulledSnapshot = remoteSnapshot;
     saveProfiles(remote.profiles);
     Object.keys(remote.data || {}).forEach(pid=>{
       const d = remote.data[pid];
