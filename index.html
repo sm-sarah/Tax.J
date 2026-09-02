@@ -14343,9 +14343,12 @@ try{ history.replaceState({ tab: 'home' }, '', location.pathname + location.sear
 // 새로고침"일 때만이고, 진짜로 다시 로그인해야 하는 경우(토큰 만료·로그아웃 후 첫 접속)엔 항상 홈부터 보여줌
 try{
   const lastTab = localStorage.getItem('worklog_last_tab');
-  if(lastTab && lastTab !== 'home' && restoredGdriveToken){
-    const lastTabBtn = document.querySelector(`.tab-btn[data-tab="${lastTab}"]`);
-    if(lastTabBtn) lastTabBtn.click();
+  // 예전엔 그 탭에 해당하는 .tab-btn을 찾아서 클릭을 흉내내는 방식이었는데, "설정"처럼 처음부터
+  // .tab-btn이 없는 탭(원형 아이콘 버튼으로 따로 열림)은 버튼을 못 찾아서 복원이 안 되고 그냥 홈(대시보드)에
+  // 머무는 문제가 있었음 - 버튼 클릭도 결국 activateTab을 부르는 것뿐이라, 버튼 유무와 상관없이 바로
+  // activateTab을 호출해서 복원함
+  if(lastTab && lastTab !== 'home' && restoredGdriveToken && document.getElementById('tab-'+lastTab)){
+    activateTab(lastTab, true);
   }
 }catch(e){}
 scheduleTwemojiParse();
