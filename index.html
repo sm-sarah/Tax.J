@@ -559,7 +559,9 @@
     border:1px solid var(--border); padding:9px 18px; font-size:13px; text-align:center;
   }
   .corp-info-doc-table td.corp-info-doc-label{ font-weight:700; color:var(--navy); background:var(--navy-bg); }
-  .corp-info-doc-table td.corp-info-doc-value{ white-space:pre-wrap; }
+  /* 예전엔 사업자번호처럼 숫자로만 된 값에만 .num(모노스페이스+볼드)을 따로 붙여서, 같은 표 안에서도
+     행마다 글씨체·굵기가 들쭉날쭉해 보이는 문제가 있었음 - 값 칸은 전부 이 서체·굵기 하나로 통일함 */
+  .corp-info-doc-table td.corp-info-doc-value{ white-space:pre-wrap; font-weight:600; color:var(--ink); }
 
   /* 사내정보(법인/팀)는 거래처 목록처럼 데이터가 쭉 나열되는 화면이 아니라 항목 수가 적은 정보성 화면이라
      페이지 전체 폭을 다 쓰지 않고 적당히 좁은 폭으로 가운데 정렬함 */
@@ -1865,46 +1867,63 @@
               <div class="home-submenu-item" data-companyinfo-cat-goto="corp"><span>법인</span></div>
               <div class="home-submenu-item" data-companyinfo-cat-goto="team"><span>팀</span></div>
             </div>
+            <!-- 예전엔 "업무" 밑에 신고현황(세목별로 더 펼쳐짐)/신고대상/제출현황/검토표/결재가 나란히 있었는데,
+                 세목(원천세 등)을 고르면 그 세목 안에서 신고대상·신고현황·검토표 중 실제로 있는 것만 보이는
+                 구조가 낫다는 의견으로 "세무신고" 밑에 세목을 먼저 두고 그 아래로 펼치게 바꿈. 제출현황·결재는
+                 특정 세목에 매인 게 아니라서 세무신고와 같은 레벨의 독립된 메뉴로 뺐음(내용 구성은 그대로,
+                 사이드바 위치만 옮김) -->
             <div class="home-tile home-tile-plain" data-goto="approval" style="--tile-accent:#0EA5A5;">
-              <div class="home-tile-icon">🖋️</div>
-              <div class="home-tile-title">업무</div>
+              <div class="home-tile-icon">🧾</div>
+              <div class="home-tile-title">세무신고</div>
               <button type="button" class="home-tile-expand-btn" data-expand-target="homeWorkSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
             </div>
             <div class="home-submenu" id="homeWorkSubmenu" style="display:none;">
-              <div class="home-submenu-item" data-approval-cat-goto="status">
-                <span style="flex:1;">신고현황</span>
-                <button type="button" class="home-tile-expand-btn" data-expand-target="homeWorkFilingSubmenu" title="세목 펼치기/접기">▸</button>
+              <!-- 원천세: 신고대상/신고현황/검토표 셋 다 있는 유일한 세목이라 세 갈래로 펼쳐짐 -->
+              <div class="home-submenu-item" data-approval-cat-goto="target">
+                <span style="flex:1;">원천세</span>
+                <button type="button" class="home-tile-expand-btn" data-expand-target="homeWorkWithholdingSubmenu" title="세부 메뉴 펼치기/접기">▸</button>
               </div>
-              <div class="home-submenu-sub" id="homeWorkFilingSubmenu" style="display:none;">
-                <div class="home-submenu-leaf" data-approval-cat-goto="status" data-filing-type-goto="원천세">원천세</div>
-                <div class="home-submenu-leaf" data-approval-cat-goto="status" data-filing-type-goto="부가세">부가세</div>
-                <div class="home-submenu-leaf" data-approval-cat-goto="status" data-filing-type-goto="법인세">법인세</div>
-                <div class="home-submenu-leaf" data-approval-cat-goto="status" data-filing-type-goto="종소세">종소세</div>
-                <div class="home-submenu-leaf" data-approval-cat-goto="status" data-filing-type-goto="결산">결산</div>
+              <div class="home-submenu-sub" id="homeWorkWithholdingSubmenu" style="display:none;">
+                <div class="home-submenu-leaf" data-approval-cat-goto="target">신고대상</div>
+                <div class="home-submenu-leaf" data-approval-cat-goto="status" data-filing-type-goto="원천세">신고현황</div>
+                <div class="home-submenu-leaf" data-approval-cat-goto="review" data-review-type-goto="원천세">검토표</div>
               </div>
-              <div class="home-submenu-item" data-approval-cat-goto="target"><span>신고대상</span></div>
-              <div class="home-submenu-item" data-approval-cat-goto="submit">
-                <span style="flex:1;">제출현황</span>
-                <button type="button" class="home-tile-expand-btn" data-expand-target="homeWorkSubmitSubmenu" title="구분 펼치기/접기">▸</button>
+              <!-- 부가세: 신고대상은 없고 신고현황·검토표 둘만 있음 -->
+              <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="부가세">
+                <span style="flex:1;">부가세</span>
+                <button type="button" class="home-tile-expand-btn" data-expand-target="homeWorkVatSubmenu" title="세부 메뉴 펼치기/접기">▸</button>
               </div>
-              <div class="home-submenu-sub" id="homeWorkSubmitSubmenu" style="display:none;">
-                <div class="home-submenu-leaf" data-approval-cat-goto="submit" data-submit-type-goto="월별">매월</div>
-                <div class="home-submenu-leaf" data-approval-cat-goto="submit" data-submit-type-goto="반기">반기</div>
-                <div class="home-submenu-leaf" data-approval-cat-goto="submit" data-submit-type-goto="연간">연간</div>
+              <div class="home-submenu-sub" id="homeWorkVatSubmenu" style="display:none;">
+                <div class="home-submenu-leaf" data-approval-cat-goto="status" data-filing-type-goto="부가세">신고현황</div>
+                <div class="home-submenu-leaf" data-approval-cat-goto="review" data-review-type-goto="부가세">검토표</div>
               </div>
-              <div class="home-submenu-item" data-approval-cat-goto="review"><span>검토표</span></div>
-              <div class="home-submenu-item" data-approval-cat-goto="doc">
-                <span style="flex:1;">결재</span>
-                <button type="button" class="home-tile-expand-btn" data-expand-target="homeWorkDocSubmenu" title="결재 목록 펼치기/접기">▸</button>
-              </div>
-              <div class="home-submenu-sub" id="homeWorkDocSubmenu" style="display:none;">
-                <div class="home-submenu-leaf" data-approval-cat-goto="doc" data-approval-doc-goto="new">기안</div>
-                <div class="home-submenu-leaf" data-approval-cat-goto="doc" data-approval-doc-goto="mine">기안함</div>
-                <div class="home-submenu-leaf" data-approval-cat-goto="doc" data-approval-doc-goto="inbox">결재함</div>
-                <div class="home-submenu-leaf" data-approval-cat-goto="doc" data-approval-doc-goto="rejected">반려함</div>
-                <div class="home-submenu-leaf" data-approval-cat-goto="doc" data-approval-doc-goto="done">완료함</div>
-                <div class="home-submenu-leaf" data-approval-cat-goto="doc" data-approval-doc-goto="all">전체이력</div>
-              </div>
+              <!-- 법인세/종소세/결산: 아직 신고현황만 있어서 펼칠 하위메뉴 없이 바로 이동함 -->
+              <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="법인세"><span>법인세</span></div>
+              <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="종소세"><span>종소세</span></div>
+              <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="결산"><span>결산</span></div>
+            </div>
+            <div class="home-tile home-tile-plain" data-goto="approval" style="--tile-accent:#0EA5A5;">
+              <div class="home-tile-icon">📮</div>
+              <div class="home-tile-title">제출현황</div>
+              <button type="button" class="home-tile-expand-btn" data-expand-target="homeWorkSubmitSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
+            </div>
+            <div class="home-submenu" id="homeWorkSubmitSubmenu" style="display:none;">
+              <div class="home-submenu-item" data-approval-cat-goto="submit" data-submit-type-goto="월별"><span>매월</span></div>
+              <div class="home-submenu-item" data-approval-cat-goto="submit" data-submit-type-goto="반기"><span>반기</span></div>
+              <div class="home-submenu-item" data-approval-cat-goto="submit" data-submit-type-goto="연간"><span>연간</span></div>
+            </div>
+            <div class="home-tile home-tile-plain" data-goto="approval" style="--tile-accent:#0EA5A5;">
+              <div class="home-tile-icon">🖋️</div>
+              <div class="home-tile-title">결재</div>
+              <button type="button" class="home-tile-expand-btn" data-expand-target="homeWorkDocSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
+            </div>
+            <div class="home-submenu" id="homeWorkDocSubmenu" style="display:none;">
+              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="new"><span>기안</span></div>
+              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="mine"><span>기안함</span></div>
+              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="inbox"><span>결재함</span></div>
+              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="rejected"><span>반려함</span></div>
+              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="done"><span>완료함</span></div>
+              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="all"><span>전체이력</span></div>
             </div>
             <div class="home-tile home-tile-plain" data-goto="quickguide" style="--tile-accent:var(--guide-mustard);">
               <div class="home-tile-icon">🎁</div>
@@ -2331,11 +2350,12 @@
 
     <!-- 팀 -->
     <div id="ciView-team" class="ci-view" style="display:none;">
-      <div style="text-align:center; margin:6px 0 14px;"><span class="section-subtitle-label" id="ciTeamSectionTitleView">팀 관리</span></div>
-      <div id="ciTeamExtNoView" style="text-align:center; margin:0 0 14px; font-size:13px; color:var(--ink-soft);"></div>
-      <div style="text-align:center; margin:0 0 6px;"><span style="font-size:12px; font-weight:800; color:var(--ink-soft); letter-spacing:0.02em;">🔑 팀 공용 정보</span></div>
+      <!-- 법인 기본정보(CORPORATE PROFILE)와 같은 톤의 등록증 스타일 - 팀명을 큰 제목으로 놓고 그 아래
+           담당회계사·세무관리번호·내선번호를 표로 보여줌(buildTeamBasicInfoTable, renderCompanyInfoTeamView에서 채움) -->
+      <div id="ciTeamBasicInfoDocWrap"></div>
+      <div style="text-align:center; margin:22px 0 6px;"><span style="font-size:12px; font-weight:800; color:var(--ink-soft); letter-spacing:0.02em;">🔑 공용정보</span></div>
       <div id="ciTeamGeneralListWrapView" style="margin-bottom:18px;"></div>
-      <div style="text-align:center; margin:10px 0 6px;"><span style="font-size:12px; font-weight:800; color:var(--ink-soft); letter-spacing:0.02em;">👥 팀원별 정보</span></div>
+      <div style="text-align:center; margin:10px 0 6px;"><span style="font-size:12px; font-weight:800; color:var(--ink-soft); letter-spacing:0.02em;">👥 팀원별정보</span></div>
       <div id="ciTeamListWrapView"></div>
     </div>
   </section>
@@ -2439,6 +2459,7 @@
                 <option value="기타">기타</option>
               </select>
             </div>
+            <div class="field" id="cl-termination-reason-etc-field" style="flex:1 1 160px; display:none;"><label>해지사유 상세</label><input type="text" id="cl-termination-reason-etc" placeholder="예: 세무사 변경"></div>
             <div class="field" style="flex:1 1 140px;"><label>해지일</label><input type="date" id="cl-termination-date" min="2015-01-01" max="2099-12-31"></div>
             <div class="field" style="flex:1 1 140px;"><label>종료월</label><input type="month" id="cl-termination-month"></div>
           </div>
@@ -6414,10 +6435,16 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
       }
       groupNoCell = `<td class="num cvb" style="color:${entityColor};">${escHtml(groupNoDisplay)}</td>`;
     }
+    // 해지사유가 "기타"이고 상세 내용(terminationReasonEtc)까지 입력해뒀으면, 그 칸에 마우스를 올렸을 때
+    // 브라우저 기본 title 툴팁으로 상세 내용이 뜨게 함 - 점선 밑줄로 "올려보면 더 있다"는 걸 표시해둠
+    const terminationReasonHasDetail = c.terminationReason === '기타' && (c.terminationReasonEtc||'').trim();
+    const terminationReasonCell = terminationReasonHasDetail
+      ? `<td class="cvb" title="${escHtml(c.terminationReasonEtc)}" style="text-decoration:underline dotted; text-underline-offset:3px; cursor:help;">${escHtml(c.terminationReason||'-')}</td>`
+      : `<td class="cvb">${escHtml(c.terminationReason||'-')}</td>`;
     const terminationCells = showTermination ? `
       <td class="num cvb">${escHtml(c.terminationDate||'-')}</td>
       <td class="num cvb">${escHtml(c.terminationMonth||'-')}</td>
-      <td class="cvb">${escHtml(c.terminationReason||'-')}</td>` : '';
+      ${terminationReasonCell}` : '';
     const memoBtn = c.memo
       ? `<button class="del-btn client-action-btn client-memo-btn" data-id="${c.id}" title="메모 보기">📝</button>`
       : `<button class="del-btn client-action-btn" disabled style="opacity:0.3; cursor:default;" title="메모 없음">📝</button>`;
@@ -6637,9 +6664,11 @@ async function populateClientEditForm(c){
   document.getElementById('cl-start').value = c.start || '';
   document.getElementById('cl-status').value = (c.status === '진행중' ? '수임' : c.status) || '수임';
   document.getElementById('cl-termination-reason').value = c.terminationReason || '폐업';
+  document.getElementById('cl-termination-reason-etc').value = c.terminationReasonEtc || '';
   document.getElementById('cl-termination-date').value = c.terminationDate || '';
   document.getElementById('cl-termination-month').value = c.terminationMonth || '';
   updateTerminationFieldsVisibility();
+  updateTerminationReasonEtcVisibility();
   clMemoRows = (c.memos && c.memos.length)
     ? c.memos.map(m=>({ id: m.id||genId(), text: m.text||'', date: m.date||'' }))
     : (c.memo ? [{ id: genId(), text: c.memo, date: '' }] : []);
@@ -7152,9 +7181,6 @@ function bindCiRowButtons(wrap){
 // 예전 방식으로 등록돼 있던 다른 기본정보 항목이 있으면(예: 참고용 안내 항목) "기타 기본정보"로 따로 보여주고
 // 거기엔 기존처럼 수정/이력/삭제를 남겨둠
 const CORP_BASIC_INFO_ORDER = ['사업자번호','법인등록번호','회사명','창립일','대표자','주민등록번호','주소','우편번호','조정반번호','대표번호','대표팩스'];
-// 사업자번호·법인등록번호처럼 숫자/기호로만 이뤄진 항목은 표 안에서 모노스페이스 서체(.num)로 보여줘서
-// 등록증에 찍힌 번호 같은 느낌을 살림 - 대표자명·주소처럼 문장형 값은 그대로 일반 서체로 둠
-const CORP_BASIC_INFO_NUMERIC_LABELS = ['사업자번호','법인등록번호','주민등록번호','우편번호','조정반번호','대표번호','대표팩스'];
 // 사업자번호는 "2958703076"처럼 숫자만 저장돼 있어도, 실제 사업자등록증 표기(3자리-2자리-5자리)에 맞춰
 // 화면에서만 대시를 넣어 보여줌 - 저장된 원본 값은 그대로 두고 표시할 때만 가공함.
 // 이미 대시가 섞여 있거나 자릿수가 10자리가 아니면(오입력 등) 손대지 않고 원본 그대로 보여줌
@@ -7163,6 +7189,17 @@ function formatBizRegNo(raw){
   if(digits.length !== 10 || digits !== (raw||'').trim()) return raw;
   return `${digits.slice(0,3)}-${digits.slice(3,5)}-${digits.slice(5)}`;
 }
+// 회사/팀 "기본정보"를 등록증처럼 큰 제목 + 표로 보여주는 공통 틀 - rows는 [라벨, 값] 쌍의 배열.
+// 예전엔 사업자번호처럼 숫자로만 된 값에만 모노스페이스+볼드(.num)를 따로 입혀서 같은 표 안에서도
+// 행마다 글씨체가 들쭉날쭉해 보였는데, 이제 값 칸은 전부 .corp-info-doc-value 서체 하나로 통일해서 씀
+function buildProfileDocHtml(title, eyebrow, rows, emptyMessage){
+  const headerHtml = `<div class="corp-info-doc-header"><div class="corp-info-doc-name">${escHtml(title)}</div><div class="corp-info-doc-eyebrow">${escHtml(eyebrow)}</div></div>`;
+  const rowsHtml = rows.map(([label, value])=>`<tr><td class="corp-info-doc-label">${escHtml(label)}</td><td class="corp-info-doc-value">${escHtml(value)}</td></tr>`).join('');
+  const tableHtml = rowsHtml
+    ? `<table class="corp-info-doc-table"><tbody>${rowsHtml}</tbody></table>`
+    : `<div class="empty-state">${escHtml(emptyMessage||'등록된 정보가 없습니다.')}</div>`;
+  return `<div class="corp-info-doc">${headerHtml}${tableHtml}</div>`;
+}
 function buildCorpBasicInfoTable(infoList, companyName, admin, showControls){
   const byLabel = {};
   infoList.forEach(it=>{ if(!byLabel[it.label]) byLabel[it.label] = it; });
@@ -7170,22 +7207,26 @@ function buildCorpBasicInfoTable(infoList, companyName, admin, showControls){
     .filter(label => label !== '회사명') // 회사명은 위 제목에 이미 보여주므로 표에는 다시 넣지 않음
     .filter(label => byLabel[label] && (byLabel[label].content||'').trim())
     .map(label => {
-      const valueClass = CORP_BASIC_INFO_NUMERIC_LABELS.includes(label) ? 'corp-info-doc-value num' : 'corp-info-doc-value';
       const rawValue = byLabel[label].content;
       const displayValue = label === '사업자번호' ? formatBizRegNo(rawValue) : rawValue;
-      return `<tr><td class="corp-info-doc-label">${escHtml(label)}</td><td class="${valueClass}">${escHtml(displayValue)}</td></tr>`;
-    })
-    .join('');
-  // 제목(회사명)과 표를 .corp-info-doc 하나로 감싸서 둘의 가운데 축이 항상 일치하게 함 -
-  // 표 자체(.corp-info-doc-table)도 width:auto라 내용 길이만큼만 넓어짐
-  const headerHtml = `<div class="corp-info-doc-header"><div class="corp-info-doc-name">${escHtml(companyName || '회사명 미등록')}</div><div class="corp-info-doc-eyebrow">CORPORATE PROFILE</div></div>`;
-  const tableHtml = rows
-    ? `<table class="corp-info-doc-table"><tbody>${rows}</tbody></table>`
-    : `<div class="empty-state">설정 &gt; 회사 정보에서 등록해보세요.</div>`;
-  const docHtml = `<div class="corp-info-doc">${headerHtml}${tableHtml}</div>`;
+      return [label, displayValue];
+    });
+  const docHtml = buildProfileDocHtml(companyName || '회사명 미등록', 'CORPORATE PROFILE', rows, '설정 > 회사 정보에서 등록해보세요.');
   const extra = infoList.filter(it => !CORP_BASIC_INFO_ORDER.includes(it.label));
   const extraHtml = extra.length ? buildCiInfoTable(extra, 'corp', admin, null, '기타 ', showControls) : '';
   return docHtml + extraHtml;
+}
+// 팀 "기본정보" - 설정 > 회사 > 팀정보에서 등록한 팀명·담당회계사·세무관리번호·내선번호를 법인 기본정보와
+// 똑같은 등록증 스타일로 보여줌(회사정보처럼 통일된 톤). 세무관리 비밀번호는 비밀번호 값이라 조회 전용
+// 화면에 평문으로 그냥 얹지 않음(필요하면 설정 > 팀정보에서 직접 확인)
+function buildTeamBasicInfoTable(teamInfo){
+  const rows = [
+    ['담당회계사', (teamInfo && teamInfo.accountant) || ''],
+    ['세무관리번호', (teamInfo && teamInfo.taxMgmtNo) || ''],
+    ['내선번호', (teamInfo && teamInfo.extNo) || '']
+  ].filter(([,v])=>v.trim());
+  const title = (teamInfo && teamInfo.teamName) || '팀명 미등록';
+  return buildProfileDocHtml(title, 'TEAM PROFILE', rows, '설정 > 팀정보에서 등록해보세요.');
 }
 // wrapId/showControls 둘 다 생략하면 기존과 완전히 같은 동작(설정 > 회사정보의 편집 가능한 화면).
 // 사내정보 탭의 조회 전용 화면은 renderCompanyInfoCorpView()가 다른 wrapId+showControls:false로 이 함수를 재사용함
@@ -7361,7 +7402,11 @@ async function renderCompanyInfoTeam(wrapId, generalWrapId, showControls){
   wrap.querySelectorAll('.ci-inline-unlock-btn').forEach(btn=> btn.addEventListener('click', unlockSensitiveView));
 }
 // 사내정보 탭 > 팀 - 조회 전용
-function renderCompanyInfoTeamView(){ return renderCompanyInfoTeam('ciTeamListWrapView', 'ciTeamGeneralListWrapView', false); }
+function renderCompanyInfoTeamView(){
+  const docWrap = document.getElementById('ciTeamBasicInfoDocWrap');
+  if(docWrap) docWrap.innerHTML = buildTeamBasicInfoTable(sharedTeamInfo);
+  return renderCompanyInfoTeam('ciTeamListWrapView', 'ciTeamGeneralListWrapView', false);
+}
 
 const CI_TEAM_TITLE_PRESETS = ['회계사','매니저'];
 let ciTeamPersonEditState = null; // 수정 중인 원래 person 이름(추가일 땐 null)
@@ -8251,6 +8296,10 @@ document.querySelectorAll('.home-submenu-item[data-approval-cat-goto], .home-sub
     document.querySelector(`.approval-cat-btn[data-approval-cat="${item.dataset.approvalCatGoto}"]`)?.click();
     if(item.dataset.filingTypeGoto){
       document.querySelector(`#filingTypeToggle .filing-type-btn[data-filing-type="${item.dataset.filingTypeGoto}"]`)?.click();
+    }
+    // 검토표는 신고현황과 세목 칩이 따로 있어서(#reviewTypeToggle, 원천세·부가세만 있음) 별도 data 속성으로 구분함
+    if(item.dataset.reviewTypeGoto){
+      document.querySelector(`#reviewTypeToggle .review-type-btn[data-filing-type="${item.dataset.reviewTypeGoto}"]`)?.click();
     }
     if(item.dataset.approvalDocGoto){
       document.querySelector(`#approvalDocToggle .approval-doc-btn[data-approval-doc="${item.dataset.approvalDocGoto}"]`)?.click();
@@ -10239,6 +10288,7 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
     start: document.getElementById('cl-start').value,
     status: document.getElementById('cl-status').value,
     terminationReason: document.getElementById('cl-status').value === '해지' ? document.getElementById('cl-termination-reason').value : '',
+    terminationReasonEtc: (document.getElementById('cl-status').value === '해지' && document.getElementById('cl-termination-reason').value === '기타') ? document.getElementById('cl-termination-reason-etc').value.trim() : '',
     terminationDate: document.getElementById('cl-status').value === '해지' ? document.getElementById('cl-termination-date').value : '',
     terminationMonth: document.getElementById('cl-status').value === '해지' ? document.getElementById('cl-termination-month').value : '',
     memos: clMemoRows
@@ -10295,6 +10345,7 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
   updateCompanyCodeDisabled();
   updateContactSameAsRep();
   updateTerminationFieldsVisibility();
+  updateTerminationReasonEtcVisibility();
   updateFoundingDateFieldState();
   if(typeof resetClPersonalInfoForNew === 'function') resetClPersonalInfoForNew();
   renderClients();
@@ -10344,6 +10395,7 @@ function resetClientFormToNew(){
   updateCompanyCodeDisabled();
   updateContactSameAsRep();
   updateTerminationFieldsVisibility();
+  updateTerminationReasonEtcVisibility();
   updateFoundingDateFieldState();
   if(typeof resetClPersonalInfoForNew === 'function') resetClPersonalInfoForNew();
 }
@@ -10385,6 +10437,7 @@ document.getElementById('client-cancel').addEventListener('click', ()=>{
   updateCompanyCodeDisabled();
   updateContactSameAsRep();
   updateTerminationFieldsVisibility();
+  updateTerminationReasonEtcVisibility();
 });
 
 document.getElementById('cl-taxtype').addEventListener('change', (e)=>{
@@ -10605,6 +10658,14 @@ function updateTerminationFieldsVisibility(){
   document.getElementById('cl-termination-fields').style.display = document.getElementById('cl-status').value === '해지' ? '' : 'none';
 }
 document.getElementById('cl-status').addEventListener('change', updateTerminationFieldsVisibility);
+
+// 해지사유가 "기타"일 때만 상세 내용을 직접 입력하는 칸을 보여줌(수임구분/프로그램 "기타"와 같은 패턴) -
+// 이 값은 목록에서 "해지사유" 칸에 마우스를 올리면 툴팁으로 조회됨(clTerminationCellTitle)
+function updateTerminationReasonEtcVisibility(){
+  const field = document.getElementById('cl-termination-reason-etc-field');
+  if(field) field.style.display = document.getElementById('cl-termination-reason').value === '기타' ? '' : 'none';
+}
+document.getElementById('cl-termination-reason')?.addEventListener('change', updateTerminationReasonEtcVisibility);
 
 // 프로그램 "위하고" 선택시 회사코드 비활성화(위하고는 회사코드 개념이 없음), "기타" 선택시 직접입력란 노출
 function updateCompanyCodeDisabled(){
@@ -13944,20 +14005,13 @@ function populateTeamInfoInput(){
   if(extNoEl) extNoEl.value = (sharedTeamInfo && sharedTeamInfo.extNo) || '';
   updateCiTeamSectionHeading();
 }
-// 설정 > 팀정보와 사내정보 > 팀 탭 양쪽의 "OO 관리" 제목을 위에서 등록한 팀명으로 갱신함 - 팀명을 등록하지
-// 않았으면 그냥 "팀 관리"로 보여줌. 사내정보(조회) 쪽엔 내선번호도 이 안에서 같이 갱신함 - 내선번호는
-// 별도 잠금 없이 누구나 봐도 되는 정보라 ID/PW 목록과 달리 항상 그대로 노출함
+// 설정 > 팀정보 화면의 "OO 관리" 제목을 위에서 등록한 팀명으로 갱신함 - 팀명을 등록하지 않았으면 그냥
+// "팀 관리"로 보여줌. 사내정보(조회) 쪽 제목·내선번호는 이제 별도 span이 아니라 법인 기본정보와 같은
+// 등록증 스타일(buildTeamBasicInfoTable)로 그리므로, 그 탭에 들어갈 때마다 renderCompanyInfoTeamView()가 다시 그림
 function updateCiTeamSectionHeading(){
   const title = ((sharedTeamInfo && sharedTeamInfo.teamName) || '팀') + ' 관리';
   const settingsEl = document.getElementById('ciTeamSectionTitle');
-  const viewEl = document.getElementById('ciTeamSectionTitleView');
   if(settingsEl) settingsEl.textContent = title;
-  if(viewEl) viewEl.textContent = title;
-  const extNoViewEl = document.getElementById('ciTeamExtNoView');
-  if(extNoViewEl){
-    const extNo = (sharedTeamInfo && sharedTeamInfo.extNo) || '';
-    extNoViewEl.innerHTML = extNo ? `☎️ 내선번호 <span style="color:var(--ink); font-weight:800;">${escHtml(extNo)}</span>` : '';
-  }
 }
 document.getElementById('teamInfoForm')?.addEventListener('submit', async (e)=>{
   e.preventDefault();
