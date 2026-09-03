@@ -2976,16 +2976,11 @@
            방식). 기본정보(주소·번호 등) 입력 기능은 없고 ID/PW 등록만 함 - 회사 기본정보는 위 회사정보 폼에서
            따로 관리됨. 바뀔 때마다 이력이 남고, 사내정보 > 법인 탭은 조회 전용이라 여기서 관리한 내용이 그대로
            보임(데이터 저장소는 sharedCompanyInfo.corp) -->
-      <div style="text-align:center; margin:22px 0 6px;"><span class="section-subtitle-label">회사 공용 ID/PW</span></div>
+      <div style="text-align:center; margin:22px 0 6px;"><span class="section-subtitle-label">공용 ID/PW</span></div>
       <div class="settings-box" style="max-width:680px;">
-        <div style="display:flex; justify-content:center; margin-bottom:6px;">
-          <div id="sensitiveUnlockWrapCompanyInfo" style="display:none; text-align:center;">
-            <button type="button" id="sensitiveUnlockBtnCompanyInfo" class="del-btn"></button>
-          </div>
-        </div>
         <div style="display:flex; justify-content:flex-end; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
           <button type="button" id="ciCorpResetBtn" class="del-btn" style="display:none; background:var(--coral-bg); color:var(--coral);" title="등록된 회사 ID/PW를 전부 지우고 처음부터 다시 등록해요">🗑️ 초기화</button>
-          <button type="button" id="ciCorpAddBtn" class="del-btn" style="display:none; background:var(--indigo); color:#fff;">➕ 회사 ID/PW 등록</button>
+          <button type="button" id="ciCorpAddBtn" class="del-btn" style="display:none; background:var(--indigo); color:#fff;">➕ 등록</button>
         </div>
         <div id="ciCorpListWrap"></div>
       </div>
@@ -2997,7 +2992,7 @@
           <div class="field"><label>팀명</label><input type="text" id="team-info-name" placeholder="예: Team J"></div>
           <div class="field"><label>담당회계사</label><input type="text" id="team-info-accountant" placeholder="예: 홍길동"></div>
           <div class="field"><label>세무관리번호</label><input type="text" id="team-info-taxmgmtno" placeholder="세무관리번호 입력"></div>
-          <div class="field"><label>세무관리 비밀번호</label><input type="password" id="team-info-taxmgmtpw" placeholder="세무관리 비밀번호 입력"></div>
+          <div class="field"><label>세무관리 비밀번호</label><input type="text" id="team-info-taxmgmtpw" placeholder="세무관리 비밀번호 입력"></div>
           <div class="field"><label>내선번호</label><input type="text" id="team-info-extno" placeholder="예: 02-369-8551 착신 (*72+번호) / 해제 (*73)"></div>
           <!-- 아직 아무것도 등록 안 했을 땐 "등록" 버튼 하나만, 이미 등록돼 있으면 "수정" + "초기화" 두 개로
                바뀜(updateTeamInfoButtons) - 회사정보 쪽 "초기화"(ciCorpResetBtn)와 같은 패턴 -->
@@ -3018,11 +3013,6 @@
            바로 등록버튼의 "팀원" 대상 선택에서 골라 저장할 수 있어서 그 버튼(과 "기본값 불러오기")은 없앰 -->
       <div style="text-align:center; margin:22px 0 6px;"><span class="section-subtitle-label" id="ciTeamSectionTitle">팀 관리</span></div>
       <div class="settings-box" style="max-width:680px;">
-        <div style="display:flex; justify-content:center; margin-bottom:6px;">
-          <div id="sensitiveUnlockWrapCompanyInfoTeam" style="display:none; text-align:center;">
-            <button type="button" id="sensitiveUnlockBtnCompanyInfoTeam" class="del-btn"></button>
-          </div>
-        </div>
         <div style="display:flex; justify-content:flex-end; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
           <button type="button" id="ciTeamGeneralAddBtn" class="del-btn" style="display:none; background:var(--indigo); color:#fff;">➕ 등록</button>
         </div>
@@ -6153,7 +6143,7 @@ async function unlockSensitiveView(){
 function updateAllSensitiveUnlockButtons(){
   const admin = !!gdriveAccessToken && isCurrentUserAdmin;
   const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
-  ['sensitiveUnlockBtnPersonal','sensitiveUnlockBtnCompanyInfo','sensitiveUnlockBtnCompanyInfoTeam'].forEach(btnId=>{
+  ['sensitiveUnlockBtnPersonal'].forEach(btnId=>{
     const unlockBtn = document.getElementById(btnId);
     if(!unlockBtn) return;
     // 글자 없이 아이콘만 - 설명은 title(마우스 올리면 뜨는 툴팁)로 대신함(사내정보 조회 화면의
@@ -7272,24 +7262,16 @@ function buildCorpBasicInfoTable(infoList, companyName, admin, showControls){
   return docHtml + extraHtml;
 }
 // 팀 "기본정보" - 설정 > 회사 > 팀정보에서 등록한 팀명·담당회계사·세무관리번호·세무관리 비밀번호·내선번호를
-// 법인 기본정보와 똑같은 등록증 스타일로 보여줌(회사정보처럼 통일된 톤). 세무관리 비밀번호는 비밀번호 값이라
-// 평문으로 바로 얹지 않고 🔒 아이콘으로만 보여주다가 눌러서 관리비밀번호 확인 후에만 보이게 함(사내정보/회사정보/
-// 팀정보는 기본적으로 암호화하지 않되, 비밀번호류만 이렇게 조회 시 확인을 거치게 하는 방식과 결을 맞춤)
+// 법인 기본정보와 똑같은 등록증 스타일로 보여줌(회사정보처럼 통일된 톤). 세무관리 비밀번호는 굳이 가릴
+// 정보가 아니라는 요청으로 다른 항목들과 마찬가지로 그냥 평문으로 보여줌(입력할 때도 team-info-taxmgmtpw가
+// type="text"라 마스킹 없이 그대로 입력함)
 function buildTeamBasicInfoTable(teamInfo){
   const rows = [
     ['담당회계사', (teamInfo && teamInfo.accountant) || ''],
-    ['세무관리번호', (teamInfo && teamInfo.taxMgmtNo) || '']
+    ['세무관리번호', (teamInfo && teamInfo.taxMgmtNo) || ''],
+    ['세무관리 비밀번호', (teamInfo && teamInfo.taxMgmtPw) || ''],
+    ['내선번호', (teamInfo && teamInfo.extNo) || '']
   ].filter(([,v])=>v.trim());
-  const pw = (teamInfo && teamInfo.taxMgmtPw) || '';
-  if(pw.trim()){
-    const revealed = !!(adminSensitiveUnlocked && adminCryptoKey);
-    const valueHtml = revealed
-      ? escHtml(pw)
-      : `<button type="button" class="ci-teampw-reveal-btn" title="눌러서 비밀번호 확인 (5분간 조회 가능)" style="background:none; border:none; cursor:pointer; font-size:13px; font-weight:700; color:var(--ink-soft);">🔒 확인하기</button>`;
-    rows.push(['세무관리 비밀번호', {html: valueHtml}]);
-  }
-  const extNo = (teamInfo && teamInfo.extNo) || '';
-  if(extNo.trim()) rows.push(['내선번호', extNo]);
   const title = (teamInfo && teamInfo.teamName) || '팀명 미등록';
   return buildProfileDocHtml(title, 'TEAM PROFILE', rows, '설정 > 팀정보에서 등록해보세요.');
 }
@@ -7418,11 +7400,7 @@ async function renderCompanyInfoTeam(wrapId, generalWrapId, showControls){
 // 사내정보 탭 > 팀 - 조회 전용
 function renderCompanyInfoTeamView(){
   const docWrap = document.getElementById('ciTeamBasicInfoDocWrap');
-  if(docWrap){
-    docWrap.innerHTML = buildTeamBasicInfoTable(sharedTeamInfo);
-    // unlockSensitiveView 자체가 성공하면 이 함수를 다시 불러줘서 화면을 갱신하므로, 여기선 그냥 호출만 함
-    docWrap.querySelectorAll('.ci-teampw-reveal-btn').forEach(btn=> btn.addEventListener('click', unlockSensitiveView));
-  }
+  if(docWrap) docWrap.innerHTML = buildTeamBasicInfoTable(sharedTeamInfo);
   return renderCompanyInfoTeam('ciTeamListWrapView', 'ciTeamGeneralListWrapView', false);
 }
 
@@ -12831,7 +12809,7 @@ function applyPermissionUI(){
   const clientsSettingsContent = document.getElementById('clientsSettingsContent');
   if(clientsSettingsLocked) clientsSettingsLocked.style.display = admin ? 'none' : 'block';
   if(clientsSettingsContent) clientsSettingsContent.style.display = admin ? 'block' : 'none';
-  ['sensitiveUnlockWrapPersonal','sensitiveUnlockWrapCompanyInfo','sensitiveUnlockWrapCompanyInfoTeam'].forEach(id=>{
+  ['sensitiveUnlockWrapPersonal'].forEach(id=>{
     const w = document.getElementById(id);
     if(w) w.style.display = admin ? 'block' : 'none';
   });
@@ -14341,6 +14319,21 @@ const restoredGdriveToken = getValidStoredGdriveToken();
 if(restoredGdriveToken){
   gdriveAccessToken = restoredGdriveToken;
   afterGdriveConnected();
+} else {
+  // 저장된 토큰이 아예 없거나 만료된 경우(구글 액세스 토큰은 보통 1시간 정도만 살아있어서, 그 이상 켜뒀다가
+  // 새로고침하면 항상 여기로 옴) - 예전엔 이때 무조건 로그인 게이트(설정 탭이면 "관리자만 접근할 수 있어요" +
+  // 클라이언트 ID 입력칸)가 뜨고 사람이 직접 "Google 계정으로 연결"을 눌러야만 했는데, 이 브라우저에서 이미
+  // 이 앱에 로그인을 승인해준 적이 있다면 굳이 다시 누르지 않아도 조용히(팝업 없이) 재연결이 될 수 있음
+  // (gdriveConnect(true)가 이미 401 재연결 때 쓰던 방식과 동일 - prompt:'' 로 요청). Google 로그인
+  // 스크립트가 비동기로 로딩되므로, 아직 준비 안 됐으면 짧게 재시도함(최대 약 5초, 그래도 안 되면 포기하고
+  // 평소처럼 로그인 게이트를 보여줌)
+  let silentReconnectTries = 0;
+  const trySilentReconnect = ()=>{
+    if(typeof google !== 'undefined' && google.accounts && google.accounts.oauth2){ gdriveConnect(true); return; }
+    if(++silentReconnectTries > 25) return;
+    setTimeout(trySilentReconnect, 200);
+  };
+  trySilentReconnect();
 }
 
 window.addEventListener('focus', ()=>{ if(gdriveAccessToken && gdriveFileId) gdrivePull(); });
