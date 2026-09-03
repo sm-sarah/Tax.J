@@ -1368,6 +1368,14 @@
           <input type="checkbox" id="ci-entry-type-account" style="width:auto;"> 🔑 ID/PW로 등록 <span style="font-weight:400;">(체크 해제하면 자유 형식으로 내용만 입력)</span>
         </label>
       </div>
+      <!-- 기본은 암호화 안 함(등록/조회 다 바로 됨) - PW·통장비밀번호·주민번호처럼 진짜 가려야 하는 항목만
+           선택적으로 체크해서 암호화함. 체크된 항목은 목록에서 🔒 아이콘으로만 보이다가 눌러야 비밀번호
+           확인 후 내용이 보임(개별 암호화 방식으로, 예전처럼 ID/PW 전체를 통째로 암호화하던 방식에서 바뀜) -->
+      <div id="ci-entry-encrypt-row" style="display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:14px;">
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12.5px; font-weight:700; color:var(--ink-soft);">
+          <input type="checkbox" id="ci-entry-encrypt" style="width:auto;"> 🔒 암호화 <span style="font-weight:400;">(체크하면 조회 시 비밀번호 확인이 필요해요)</span>
+        </label>
+      </div>
       <div class="field"><label>항목명</label><input type="text" id="ci-entry-label" placeholder="예: 홈택스" required></div>
       <div id="ci-entry-content-field" class="field"><label>내용</label><input type="text" id="ci-entry-content" placeholder="예: 서울특별시 강남구 논현로79길 8"></div>
       <div id="ci-entry-account-fields" style="display:none;">
@@ -2991,7 +2999,12 @@
           <div class="field"><label>세무관리번호</label><input type="text" id="team-info-taxmgmtno" placeholder="세무관리번호 입력"></div>
           <div class="field"><label>세무관리 비밀번호</label><input type="password" id="team-info-taxmgmtpw" placeholder="세무관리 비밀번호 입력"></div>
           <div class="field"><label>내선번호</label><input type="text" id="team-info-extno" placeholder="예: 02-369-8551 착신 (*72+번호) / 해제 (*73)"></div>
-          <div style="text-align:center;"><button type="submit" class="submit-btn" style="width:auto; padding:8px 16px;">등록/수정</button></div>
+          <!-- 아직 아무것도 등록 안 했을 땐 "등록" 버튼 하나만, 이미 등록돼 있으면 "수정" + "초기화" 두 개로
+               바뀜(updateTeamInfoButtons) - 회사정보 쪽 "초기화"(ciCorpResetBtn)와 같은 패턴 -->
+          <div style="text-align:center; display:flex; gap:6px; justify-content:center;">
+            <button type="submit" class="submit-btn" id="teamInfoSubmitBtn" style="width:auto; padding:8px 16px;">등록</button>
+            <button type="button" id="teamInfoResetBtn" class="del-btn" style="display:none; background:var(--coral-bg); color:var(--coral);" title="등록된 팀정보를 전부 지우고 처음부터 다시 등록해요">🗑️ 초기화</button>
+          </div>
         </form>
         <div style="text-align:center;"><span class="save-msg" id="teamInfoSaveMsg"></span></div>
       </div>
@@ -3011,7 +3024,7 @@
           </div>
         </div>
         <div style="display:flex; justify-content:flex-end; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
-          <button type="button" id="ciTeamGeneralAddBtn" class="del-btn" style="display:none; background:var(--indigo); color:#fff;">➕ 항목 등록</button>
+          <button type="button" id="ciTeamGeneralAddBtn" class="del-btn" style="display:none; background:var(--indigo); color:#fff;">➕ 등록</button>
         </div>
         <div style="text-align:center; margin:0 0 6px;"><span style="font-size:12px; font-weight:800; color:var(--ink-soft); letter-spacing:0.02em;">🔑 팀 공용 정보</span></div>
         <div id="ciTeamGeneralListWrap" style="margin-bottom:18px;"></div>
@@ -6067,6 +6080,7 @@ function lockSensitiveView(){
   adminSensitiveUnlocked = false;
   adminSensitiveUnlockUntil = null;
   adminCryptoKey = null; // 메모리에서도 키 완전 삭제
+  if(typeof ciRevealedValues !== 'undefined') ciRevealedValues = {}; // 항목별로 잠깐 열어뒀던 값도 다시 잠글 때 같이 지움
   if(adminSensitiveUnlockTimer){ clearTimeout(adminSensitiveUnlockTimer); adminSensitiveUnlockTimer = null; }
   updatePersonalInfoFormState();
   updateAllSensitiveUnlockButtons();
@@ -7093,42 +7107,78 @@ function ciRowButtons(admin, category, id, person, hasHistory, showControls){
     <button class="del-btn ci-del-btn" data-cat="${category}" data-id="${id}"${personAttr}>삭제</button>
   </td>`;
 }
-// "기본정보"(항목/내용/메모) - ID/PW가 필요없는 일반 정보(주소·번호 등)용, 잠금해제 없이도 조회 가능
+// 항목별 선택 암호화 - corp/teamGeneral/team 항목은 이제 기본적으로 암호화하지 않고 평문으로 바로 등록/조회되며,
+// 등록 시 "🔒 암호화"를 체크한 항목만 sensitiveEnc로 암호화되어 저장됨. 암호화된 항목은 목록에 값 대신 🔒
+// 아이콘만 보이다가, 그 아이콘을 누르면(비밀번호 확인 후) 그 항목만 즉시 복호화해서 보여줌(섹션 전체를
+// 한 번에 잠금해제하던 예전 방식과 달리, 항목별로 따로 잠겨있음). 복호화 결과는 새로고침하면 사라지는
+// 메모리 캐시(ciRevealedValues)에만 잠깐 담아둠 - 저장되지 않음
+let ciRevealedValues = {};
+function findCiItemById(id){
+  let it = (sharedCompanyInfo.corp||[]).find(x=>x.id===id);
+  if(it) return it;
+  it = (sharedCompanyInfo.teamGeneral||[]).find(x=>x.id===id);
+  if(it) return it;
+  for(const p of (sharedCompanyInfo.team||[])){
+    it = (p.items||[]).find(x=>x.id===id);
+    if(it) return it;
+  }
+  return null;
+}
+async function revealCiEncryptedItem(id){
+  const it = findCiItemById(id);
+  if(!it || !it.sensitiveEnc) return;
+  if(!adminCryptoKey){
+    await unlockSensitiveView();
+    if(!adminCryptoKey) return; // 취소했거나 비밀번호가 틀림 - unlockSensitiveView가 이미 안내함
+  }
+  try{
+    ciRevealedValues[id] = await decryptJSON(it.sensitiveEnc, adminCryptoKey);
+  }catch(e){
+    console.error('사내정보 항목 복호화 실패', id, e);
+    alert('현재 비밀번호로 열리지 않아요. (다른 기기에서 관리비밀번호가 바뀌었을 수 있어요)');
+    return;
+  }
+  renderCompanyInfoCorp(); renderCompanyInfoCorpView();
+  renderCompanyInfoTeam(); renderCompanyInfoTeamView();
+}
+function ciRevealBtnHtml(id){
+  return `<button type="button" class="ci-reveal-btn" data-reveal-id="${id}" title="눌러서 확인 (5분간 조회 가능)" style="background:none; border:none; cursor:pointer; font-size:14px; color:var(--ink-soft);">🔒</button>`;
+}
+// wrap 안의 🔒 아이콘 클릭을 revealCiEncryptedItem에 연결 - bindCiRowButtons와 같은 자리에서 같이 불러 씀
+function bindCiRevealButtons(wrap){
+  wrap.querySelectorAll('.ci-reveal-btn').forEach(btn=> btn.addEventListener('click', ()=> revealCiEncryptedItem(btn.dataset.revealId)));
+}
+// "기본정보"(항목/내용/메모) - ID/PW가 필요없는 일반 정보(주소·번호 등)용. 암호화 체크한 항목만 🔒로 가려짐
 function buildCiInfoTable(list, category, admin, person, titlePrefix, showControls){
   if(!list.length) return '';
   const withControls = admin && showControls!==false;
-  const rows = list.map(it=>`<tr>
+  const rows = list.map(it=>{
+    let contentCell;
+    if(!it.sensitiveEnc) contentCell = escHtml(it.content||'-');
+    else if(ciRevealedValues[it.id]) contentCell = escHtml(ciRevealedValues[it.id].content||'-');
+    else contentCell = ciRevealBtnHtml(it.id);
+    return `<tr>
     <td style="font-weight:700;">${escHtml(it.label||'')}</td>
-    <td style="white-space:pre-wrap; max-width:260px;">${escHtml(it.content||'-')}</td>
+    <td style="white-space:pre-wrap; max-width:260px;">${contentCell}</td>
     <td style="white-space:pre-wrap; font-size:12px; color:var(--ink-soft); max-width:220px;">${escHtml(it.note||'')}</td>
     ${ciRowButtons(admin, category, it.id, person, it.history&&it.history.length, showControls)}
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
   return `<div style="text-align:center; margin:14px 0 10px;"><span class="section-subtitle-label">${escHtml((titlePrefix||'')+'기본정보')}</span></div>
   <div class="table-scroll"><table><thead><tr><th>항목명</th><th>내용</th><th>메모</th>${withControls?'<th>관리</th>':''}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
-// 사내정보(조회 전용) 화면에서 잠겨있을 때 보여주는 블록 - 예전엔 제목 아래에 "설정 > 회사 > OO정보에서
-// 잠금해제 후 조회하세요"라는 안내문을 따로 보여줘서 화면을 옮겨야만 잠금해제가 됐는데, 그러면 번거롭다는
-// 의견이 있었음 - 안내문 대신 제목 옆에 작은 자물쇠 아이콘만 붙여서, 그 자리에서 바로 눌러 잠금해제하고
-// 들어갈 수 있게 함(클릭 시 unlockSensitiveView 호출은 각 렌더 함수에서 위임 바인딩함)
-function ciLockedTitleHtml(titleText){
-  return `<div style="text-align:center; margin:14px 0 10px; display:flex; align-items:center; justify-content:center; gap:6px;">
-    <span class="section-subtitle-label">${escHtml(titleText)}</span>
-    <button type="button" class="ci-inline-unlock-btn" title="눌러서 잠금해제 (5분간 조회 가능)" style="background:none; border:none; cursor:pointer; font-size:14px; padding:0 2px; line-height:1; color:var(--ink-soft);">🔒</button>
-  </div>`;
-}
-// "공용ID/PW"(법인/팀용, 암호화 저장) - 잠금해제 상태에서만 복호화해서 보여줌
+// "공용ID/PW"(법인/팀용) - 항목별로 "🔒 암호화"를 체크한 것만 잠겨서 아이콘으로 보이고, 나머지는 평문으로 바로 보임
 // hideTitle: 이 표 바로 위에 이미 같은 뜻의 제목(예: "회사 공용 ID/PW" 섹션 제목)이 있어서 또 붙이면
 // 제목이 두 번 겹쳐 보이는 화면(설정 > 회사정보의 회사 ID/PW 목록)에서만 true로 넘겨서 표 자체의 제목을 생략함
-function buildCiAccountTable(list, category, admin, unlocked, decryptedMap, failedSet, person, titlePrefix, showControls, hideTitle){
+function buildCiAccountTable(list, category, admin, person, titlePrefix, showControls, hideTitle){
   if(!list.length) return '';
   const withControls = admin && showControls!==false;
   const cell = (v)=> v ? escHtml(v) : '<span style="color:var(--ink-soft);">-</span>';
   const rows = list.map(it=>{
     let idCell, pwCell;
-    if(!it.sensitiveEnc){ idCell = pwCell = '<span style="color:var(--ink-soft);">-</span>'; }
-    else if(unlocked && decryptedMap[it.id]){ idCell = cell(decryptedMap[it.id].idVal); pwCell = cell(decryptedMap[it.id].pwVal); }
-    else if(unlocked && failedSet.has(it.id)){ idCell = pwCell = '<span style="color:var(--coral);" title="현재 관리비밀번호로 열리지 않아요.">⚠️ 열람불가</span>'; }
-    else { idCell = pwCell = '<span style="color:var(--ink-soft);">🔒</span>'; }
+    if(!it.sensitiveEnc){ idCell = cell(it.idVal); pwCell = cell(it.pwVal); }
+    else if(ciRevealedValues[it.id]){ idCell = cell(ciRevealedValues[it.id].idVal); pwCell = cell(ciRevealedValues[it.id].pwVal); }
+    else { idCell = pwCell = ciRevealBtnHtml(it.id); }
     const linkCell = it.link ? `<a href="${escHtml(it.link)}" target="_blank" rel="noopener" style="color:var(--indigo); font-weight:700;">🔗 열기</a>` : '<span style="color:var(--ink-soft);">-</span>';
     return `<tr>
       <td style="font-weight:700;">${escHtml(it.label||'')}</td>
@@ -7194,7 +7244,12 @@ function formatBizRegNo(raw){
 // 행마다 글씨체가 들쭉날쭉해 보였는데, 이제 값 칸은 전부 .corp-info-doc-value 서체 하나로 통일해서 씀
 function buildProfileDocHtml(title, eyebrow, rows, emptyMessage){
   const headerHtml = `<div class="corp-info-doc-header"><div class="corp-info-doc-name">${escHtml(title)}</div><div class="corp-info-doc-eyebrow">${escHtml(eyebrow)}</div></div>`;
-  const rowsHtml = rows.map(([label, value])=>`<tr><td class="corp-info-doc-label">${escHtml(label)}</td><td class="corp-info-doc-value">${escHtml(value)}</td></tr>`).join('');
+  // value가 보통은 문자열이지만, 세무관리 비밀번호처럼 잠금 아이콘 버튼을 대신 넣어야 하는 행은
+  // {html:'...'}로 넘겨서 이스케이프 없이 그대로 그려줌(그 외엔 항상 escHtml로 이스케이프)
+  const rowsHtml = rows.map(([label, value])=>{
+    const valueHtml = (value && typeof value === 'object' && 'html' in value) ? value.html : escHtml(value);
+    return `<tr><td class="corp-info-doc-label">${escHtml(label)}</td><td class="corp-info-doc-value">${valueHtml}</td></tr>`;
+  }).join('');
   const tableHtml = rowsHtml
     ? `<table class="corp-info-doc-table"><tbody>${rowsHtml}</tbody></table>`
     : `<div class="empty-state">${escHtml(emptyMessage||'등록된 정보가 없습니다.')}</div>`;
@@ -7216,15 +7271,25 @@ function buildCorpBasicInfoTable(infoList, companyName, admin, showControls){
   const extraHtml = extra.length ? buildCiInfoTable(extra, 'corp', admin, null, '기타 ', showControls) : '';
   return docHtml + extraHtml;
 }
-// 팀 "기본정보" - 설정 > 회사 > 팀정보에서 등록한 팀명·담당회계사·세무관리번호·내선번호를 법인 기본정보와
-// 똑같은 등록증 스타일로 보여줌(회사정보처럼 통일된 톤). 세무관리 비밀번호는 비밀번호 값이라 조회 전용
-// 화면에 평문으로 그냥 얹지 않음(필요하면 설정 > 팀정보에서 직접 확인)
+// 팀 "기본정보" - 설정 > 회사 > 팀정보에서 등록한 팀명·담당회계사·세무관리번호·세무관리 비밀번호·내선번호를
+// 법인 기본정보와 똑같은 등록증 스타일로 보여줌(회사정보처럼 통일된 톤). 세무관리 비밀번호는 비밀번호 값이라
+// 평문으로 바로 얹지 않고 🔒 아이콘으로만 보여주다가 눌러서 관리비밀번호 확인 후에만 보이게 함(사내정보/회사정보/
+// 팀정보는 기본적으로 암호화하지 않되, 비밀번호류만 이렇게 조회 시 확인을 거치게 하는 방식과 결을 맞춤)
 function buildTeamBasicInfoTable(teamInfo){
   const rows = [
     ['담당회계사', (teamInfo && teamInfo.accountant) || ''],
-    ['세무관리번호', (teamInfo && teamInfo.taxMgmtNo) || ''],
-    ['내선번호', (teamInfo && teamInfo.extNo) || '']
+    ['세무관리번호', (teamInfo && teamInfo.taxMgmtNo) || '']
   ].filter(([,v])=>v.trim());
+  const pw = (teamInfo && teamInfo.taxMgmtPw) || '';
+  if(pw.trim()){
+    const revealed = !!(adminSensitiveUnlocked && adminCryptoKey);
+    const valueHtml = revealed
+      ? escHtml(pw)
+      : `<button type="button" class="ci-teampw-reveal-btn" title="눌러서 비밀번호 확인 (5분간 조회 가능)" style="background:none; border:none; cursor:pointer; font-size:13px; font-weight:700; color:var(--ink-soft);">🔒 확인하기</button>`;
+    rows.push(['세무관리 비밀번호', {html: valueHtml}]);
+  }
+  const extNo = (teamInfo && teamInfo.extNo) || '';
+  if(extNo.trim()) rows.push(['내선번호', extNo]);
   const title = (teamInfo && teamInfo.teamName) || '팀명 미등록';
   return buildProfileDocHtml(title, 'TEAM PROFILE', rows, '설정 > 팀정보에서 등록해보세요.');
 }
@@ -7236,7 +7301,6 @@ async function renderCompanyInfoCorp(wrapId, showControls){
   const wrap = document.getElementById(wrapId);
   if(!wrap) return;
   const admin = !!gdriveAccessToken && isCurrentUserAdmin;
-  const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
   if(!admin){ wrap.innerHTML = `<div class="empty-state">🔒 관리자만 조회할 수 있어요.</div>`; return; }
   const list = sharedCompanyInfo.corp || [];
   const infoList = list.filter(it=>(it.type||'account')==='info');
@@ -7250,34 +7314,18 @@ async function renderCompanyInfoCorp(wrapId, showControls){
     const resetBtn = document.getElementById('ciCorpResetBtn');
     if(resetBtn) resetBtn.style.display = (admin && acctList.length) ? 'inline-block' : 'none';
   }
-  const decryptedMap = {}, failedSet = new Set();
-  if(unlocked){
-    for(const it of acctList){
-      if(it.sensitiveEnc){
-        try{ decryptedMap[it.id] = await decryptJSON(it.sensitiveEnc, adminCryptoKey); }
-        catch(e){ console.error('사내정보(법인) 복호화 실패', it.id, e); failedSet.add(it.id); }
-      }
-    }
-  }
   // 설정 > 회사정보 화면(showControls:true)에는 이미 위에 회사 기본정보 등록 폼(companyNameForm)이 따로 있어서
   // 여기서 또 그 내용을 표로 중복해서 보여줄 필요가 없음 - "회사 공용 ID/PW" 카드에는 ID/PW 등록 기능만 넣음.
   // 기본정보 표는 사내정보 탭의 조회 전용 화면(showControls:false)에서만 보여줌
   const infoHtml = showControls ? '' : buildCorpBasicInfoTable(infoList, sharedCompanyName, admin, showControls);
-  // 설정 > 회사정보 화면(showControls:true)에는 이미 위에 "🔒 잠금해제" 버튼이 따로 있어서 짧은 안내문이면
-  // 충분하고, 조회 전용인 사내정보 탭(showControls:false)에는 그 버튼이 없어서 예전엔 "설정 > 회사 >
-  // 회사정보에서 잠금해제 후 조회하세요"라는 긴 안내문을 보여줬는데, 화면을 옮겨야 해서 번거로웠음 -
-  // 제목 옆 자물쇠 아이콘을 눌러 그 자리에서 바로 잠금해제할 수 있게 바꿈(ciLockedTitleHtml)
-  // 설정 > 회사정보 화면(showControls:true)에는 바로 위에 "회사 공용 ID/PW"라는 섹션 제목이 이미 있어서,
-  // 표 자체에 또 "공용ID/PW" 제목을 붙이면 제목이 겹쳐 보임 - 여기서만 표 제목을 생략함(조회 전용인
-  // 사내정보 탭에는 이 섹션 제목이 없으므로 거기선 그대로 보여줌)
-  const acctHtml = !acctList.length ? '' : unlocked
-    ? buildCiAccountTable(acctList, 'corp', admin, unlocked, decryptedMap, failedSet, null, '', showControls, showControls)
-    : (showControls
-      ? `<div class="empty-state" style="padding:14px;">🔒 먼저 위에서 잠금을 해제해주세요.</div>`
-      : ciLockedTitleHtml('공용 ID/PW'));
+  // 이제 섹션 전체를 잠그지 않고 바로 보여줌 - 항목별로 "🔒 암호화"를 체크한 것만 buildCiAccountTable
+  // 안에서 개별적으로 아이콘 처리됨. 설정 > 회사정보 화면(showControls:true)에는 바로 위에 "회사 공용
+  // ID/PW"라는 섹션 제목이 이미 있어서, 표 자체에 또 "공용ID/PW" 제목을 붙이면 제목이 겹쳐 보임 -
+  // 여기서만 표 제목을 생략함(조회 전용인 사내정보 탭에는 이 섹션 제목이 없으므로 거기선 그대로 보여줌)
+  const acctHtml = buildCiAccountTable(acctList, 'corp', admin, null, '', showControls, showControls);
   wrap.innerHTML = infoHtml + acctHtml;
   bindCiRowButtons(wrap);
-  wrap.querySelectorAll('.ci-inline-unlock-btn').forEach(btn=> btn.addEventListener('click', unlockSensitiveView));
+  bindCiRevealButtons(wrap);
 }
 // 사내정보 탭 > 법인 - 조회 전용
 function renderCompanyInfoCorpView(){ return renderCompanyInfoCorp('ciCorpListWrapView', false); }
@@ -7289,7 +7337,6 @@ async function renderCompanyInfoTeamGeneral(wrapId, showControls){
   const wrap = document.getElementById(wrapId);
   if(!wrap) return;
   const admin = !!gdriveAccessToken && isCurrentUserAdmin;
-  const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
   if(showControls){
     const addBtn = document.getElementById('ciTeamGeneralAddBtn');
     if(addBtn) addBtn.style.display = admin ? 'inline-block' : 'none';
@@ -7299,33 +7346,18 @@ async function renderCompanyInfoTeamGeneral(wrapId, showControls){
   // 예전엔 표 제목 앞에 "회사명+팀 " 접두어를 붙였는데(예: "회계법인청인팀 공용ID/PW"), 이제 이 목록 바로
   // 위에 "🔑 공용 ID/PW" 소제목이 항상 붙어있어서 접두어 없이 짧게 씀
   if(!list.length){
-    const emptyHint = showControls ? '등록된 항목이 없습니다. "➕ 항목 등록"으로 등록해보세요.' : '등록된 항목이 없습니다.';
+    const emptyHint = showControls ? '등록된 항목이 없습니다. "➕ 등록"으로 등록해보세요.' : '등록된 항목이 없습니다.';
     wrap.innerHTML = `<div class="empty-state">${emptyHint}</div>`;
     return;
   }
   const infoList = list.filter(it=>(it.type||'account')==='info');
   const acctList = list.filter(it=>(it.type||'account')==='account');
-  const decryptedMap = {}, failedSet = new Set();
-  if(unlocked){
-    for(const it of acctList){
-      if(it.sensitiveEnc){
-        try{ decryptedMap[it.id] = await decryptJSON(it.sensitiveEnc, adminCryptoKey); }
-        catch(e){ console.error('사내정보(팀 총괄) 복호화 실패', it.id, e); failedSet.add(it.id); }
-      }
-    }
-  }
   const infoHtml = buildCiInfoTable(infoList, 'teamGeneral', admin, null, '', showControls);
-  // 조회 전용 사내정보 탭(showControls:false)은 안내문 대신 제목 옆 자물쇠 아이콘으로 그 자리에서 바로
-  // 잠금해제할 수 있게 함(corp 쪽과 같은 방식) - 설정 > 팀정보 화면은 기존처럼 짧은 안내문을 그대로 둠.
   // 표 자체의 "공용 ID/PW" 제목은 바로 위 소제목과 겹쳐서 항상 생략함(hideTitle:true)
-  const acctHtml = !acctList.length ? '' : unlocked
-    ? buildCiAccountTable(acctList, 'teamGeneral', admin, unlocked, decryptedMap, failedSet, null, '', showControls, true)
-    : (showControls
-      ? `<div class="empty-state" style="padding:14px;">🔒 먼저 위에서 잠금을 해제해주세요. (${acctList.length}건)</div>`
-      : ciLockedTitleHtml('팀 공용 정보'));
+  const acctHtml = buildCiAccountTable(acctList, 'teamGeneral', admin, null, '', showControls, true);
   wrap.innerHTML = (infoHtml + acctHtml) || `<div class="empty-state">등록된 항목이 없습니다.</div>`;
   bindCiRowButtons(wrap);
-  wrap.querySelectorAll('.ci-inline-unlock-btn').forEach(btn=> btn.addEventListener('click', unlockSensitiveView));
+  bindCiRevealButtons(wrap);
 }
 
 // 직원정보(설정 > 회사 > 직원정보)에 등록된 직원 중 재직중인 사람만 뽑아옴 - 팀원별 항목의 "팀원" 대상 목록은
@@ -7346,7 +7378,6 @@ async function renderCompanyInfoTeam(wrapId, generalWrapId, showControls){
   const wrap = document.getElementById(wrapId);
   if(!wrap) return;
   const admin = !!gdriveAccessToken && isCurrentUserAdmin;
-  const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
   if(!admin){ wrap.innerHTML = `<div class="empty-state">🔒 관리자만 조회할 수 있어요.</div>`; return; }
   // 팀원별 카드는 sharedCompanyInfo.team에 직접 등록된 사람이 아니라, 직원정보에 등록된 재직중 직원을
   // 그대로 씀 - 이름이 같은 sharedCompanyInfo.team 항목이 있으면 그 items를 이어서 보여주고, 없으면
@@ -7361,17 +7392,6 @@ async function renderCompanyInfoTeam(wrapId, generalWrapId, showControls){
     const existing = (sharedCompanyInfo.team||[]).find(p=>p.person===emp.name);
     return { person: emp.name, title: emp.position || (existing ? existing.title : ''), items: existing ? (existing.items||[]) : [] };
   });
-  const decryptedMap = {}, failedSet = new Set();
-  if(unlocked){
-    for(const p of persons){
-      for(const it of (p.items||[])){
-        if((it.type||'account')==='account' && it.sensitiveEnc){
-          try{ decryptedMap[it.id] = await decryptJSON(it.sensitiveEnc, adminCryptoKey); }
-          catch(e){ console.error('사내정보(팀) 복호화 실패', it.id, e); failedSet.add(it.id); }
-        }
-      }
-    }
-  }
   // 팀원 카드마다 이름이 이미 카드 제목으로 나와있고, 그 카드들 전체를 감싸는 "팀원별 정보" 소제목도
   // 따로 있어서, 카드 안쪽 표에는 회사명 접두어도 "공용"이라는 말도 붙이지 않음(개인별 항목이라 "공용"은
   // 맞지 않는 표현이기도 함)
@@ -7380,14 +7400,8 @@ async function renderCompanyInfoTeam(wrapId, generalWrapId, showControls){
     const infoList = items.filter(it=>(it.type||'account')==='info');
     const acctList = items.filter(it=>(it.type||'account')==='account');
     const infoHtml = buildCiInfoTable(infoList, 'team', admin, p.person, '', showControls);
-    // 조회 전용 사내정보 탭(showControls:false)은 안내문 대신 제목 옆 자물쇠 아이콘으로 그 자리에서 바로
-    // 잠금해제할 수 있게 함(corp·팀 총괄과 같은 방식) - 설정 > 팀정보 화면은 기존처럼 짧은 안내문을 그대로 둠.
     // 표 자체의 제목은 카드 제목(팀원 이름)과 겹쳐서 항상 생략함(hideTitle:true)
-    const acctHtml = !acctList.length ? '' : unlocked
-      ? buildCiAccountTable(acctList, 'team', admin, unlocked, decryptedMap, failedSet, p.person, '', showControls, true)
-      : (showControls
-        ? `<div class="empty-state" style="padding:14px;">🔒 먼저 위에서 잠금을 해제해주세요. (${acctList.length}건)</div>`
-        : ciLockedTitleHtml('ID/PW'));
+    const acctHtml = buildCiAccountTable(acctList, 'team', admin, p.person, '', showControls, true);
     const bodyHtml = (infoHtml + acctHtml) || `<div class="empty-state" style="padding:10px;">등록된 항목이 없습니다.</div>`;
     const titleLabel = p.title ? `${escHtml(p.person)} <span style="font-weight:600; color:var(--ink-soft); font-size:12px;">(${escHtml(p.title)})</span>` : escHtml(p.person);
     return `
@@ -7399,12 +7413,16 @@ async function renderCompanyInfoTeam(wrapId, generalWrapId, showControls){
     </div>`;
   }).join('');
   bindCiRowButtons(wrap);
-  wrap.querySelectorAll('.ci-inline-unlock-btn').forEach(btn=> btn.addEventListener('click', unlockSensitiveView));
+  bindCiRevealButtons(wrap);
 }
 // 사내정보 탭 > 팀 - 조회 전용
 function renderCompanyInfoTeamView(){
   const docWrap = document.getElementById('ciTeamBasicInfoDocWrap');
-  if(docWrap) docWrap.innerHTML = buildTeamBasicInfoTable(sharedTeamInfo);
+  if(docWrap){
+    docWrap.innerHTML = buildTeamBasicInfoTable(sharedTeamInfo);
+    // unlockSensitiveView 자체가 성공하면 이 함수를 다시 불러줘서 화면을 갱신하므로, 여기선 그냥 호출만 함
+    docWrap.querySelectorAll('.ci-teampw-reveal-btn').forEach(btn=> btn.addEventListener('click', unlockSensitiveView));
+  }
   return renderCompanyInfoTeam('ciTeamListWrapView', 'ciTeamGeneralListWrapView', false);
 }
 
@@ -7538,9 +7556,7 @@ function populateCiEntryTargetPersonSelect(selected){
   if(selected) sel.value = selected;
 }
 
-function openCiEntryFormModal(category, id, person, owner){
-  const admin = !!gdriveAccessToken && isCurrentUserAdmin;
-  const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
+async function openCiEntryFormModal(category, id, person, owner){
   let entry = null;
   if(id){
     if(category==='corp') entry = (sharedCompanyInfo.corp||[]).find(x=>x.id===id);
@@ -7557,11 +7573,11 @@ function openCiEntryFormModal(category, id, person, owner){
   // 있게 함 - 새로 등록할 때는 이 계열들은 기본으로 ID/PW를 켜둠(가장 많이 쓰는 용도라서)
   const isTeamOnly = (category==='corp' || category==='team' || category==='teamGeneral');
   const type = entry ? (entry.type || 'account') : (isTeamOnly ? 'account' : 'info');
-  // ID/PW가 필요한(암호화된) 항목만 잠금해제가 필요함 - 기본정보(주소·번호 등) 항목은 비밀번호 없이도 등록/조회 가능.
-  // 개인정보(personal)는 평문으로 각자 저장하는 항목이라 이 잠금과 무관함
-  if(type==='account' && category!=='personal' && !unlocked){
-    alert('ID/PW를 저장·조회하려면 먼저 위에서 🔒 잠금해제를 해주세요.');
-    return;
+  // 이제 corp/teamGeneral/team도 기본적으로 암호화하지 않아서 잠금해제 없이 바로 등록/조회할 수 있음.
+  // 예전에 등록해둔(sensitiveEnc가 이미 있는) 항목을 수정하려는 경우에만, 원래 값을 보여주기 위해
+  // 그 자리에서 비밀번호 확인을 한 번 거침(취소하면 그 항목 값만 빈 칸으로 열림 - 등록 자체는 막지 않음)
+  if(entry && entry.sensitiveEnc && !adminCryptoKey){
+    await unlockSensitiveView();
   }
   ciEntryEditState = { category, id: id||null, person: person||null, owner: owner||null, origIdVal:'', origPwVal:'' };
   document.getElementById('ciEntryFormModalTitle').textContent = entry ? '항목 수정' : '항목 추가';
@@ -7571,8 +7587,11 @@ function openCiEntryFormModal(category, id, person, owner){
   document.getElementById('ci-entry-content').value = entry ? (entry.content||'') : '';
   document.getElementById('ci-entry-link').value = entry ? (entry.link||'') : '';
   document.getElementById('ci-entry-note').value = entry ? (entry.note||'') : '';
-  document.getElementById('ci-entry-idval').value = '';
-  document.getElementById('ci-entry-pwval').value = '';
+  document.getElementById('ci-entry-idval').value = entry ? (entry.idVal||'') : '';
+  document.getElementById('ci-entry-pwval').value = entry ? (entry.pwVal||'') : '';
+  document.getElementById('ci-entry-encrypt').checked = !!(entry && entry.sensitiveEnc);
+  // 개인정보(personal)는 각자 알아서 관리하는 개인 메모라 항상 평문이고 이 암호화 옵션과 무관함
+  document.getElementById('ci-entry-encrypt-row').style.display = category==='personal' ? 'none' : '';
   document.getElementById('ciEntryModalSaveMsg').textContent = '';
   document.getElementById('ci-entry-type-toggle-row').style.display = '';
   document.getElementById('ci-entry-type-account').checked = (type==='account');
@@ -7589,16 +7608,16 @@ function openCiEntryFormModal(category, id, person, owner){
     document.getElementById('ci-entry-target-person').checked = !!person;
     updateCiEntryTargetFields();
   }
-  if(entry && type==='account' && category==='personal'){
-    document.getElementById('ci-entry-idval').value = entry.idVal || '';
-    document.getElementById('ci-entry-pwval').value = entry.pwVal || '';
-    if(ciEntryEditState){ ciEntryEditState.origIdVal = entry.idVal || ''; ciEntryEditState.origPwVal = entry.pwVal || ''; }
-  } else if(entry && type==='account' && entry.sensitiveEnc && unlocked){
-    decryptJSON(entry.sensitiveEnc, adminCryptoKey).then(s=>{
+  if(entry && entry.sensitiveEnc && adminCryptoKey){
+    try{
+      const s = await decryptJSON(entry.sensitiveEnc, adminCryptoKey);
       document.getElementById('ci-entry-idval').value = s.idVal || '';
       document.getElementById('ci-entry-pwval').value = s.pwVal || '';
+      document.getElementById('ci-entry-content').value = s.content || '';
       if(ciEntryEditState){ ciEntryEditState.origIdVal = s.idVal || ''; ciEntryEditState.origPwVal = s.pwVal || ''; }
-    }).catch(err=>{ console.error('사내정보 항목 복호화 실패', err); });
+    }catch(err){ console.error('사내정보 항목 복호화 실패', err); }
+  } else if(entry){
+    if(ciEntryEditState){ ciEntryEditState.origIdVal = entry.idVal || ''; ciEntryEditState.origPwVal = entry.pwVal || ''; }
   }
   document.getElementById('ciEntryFormModalOverlay').style.display = 'flex';
 }
@@ -7613,6 +7632,7 @@ document.getElementById('ciEntryFormModalOverlay').addEventListener('click', (e)
 // 사내정보 항목 삭제 - 팝업(수정) 안의 삭제 버튼과, 목록 행의 삭제 버튼 둘 다에서 재사용
 async function deleteCiEntry(category, id, person){
   if(!confirm('이 항목을 삭제할까요?')) return;
+  delete ciRevealedValues[id];
   if(category==='corp'){
     sharedCompanyInfo.corp = (sharedCompanyInfo.corp||[]).filter(x=>x.id!==id);
   } else if(category==='teamGeneral'){
@@ -7672,33 +7692,43 @@ document.getElementById('ciEntryModalForm').addEventListener('submit', async (e)
       sharedCompanyInfo.personal.push({ id: genId(), owner, type, label, link, note, content, idVal, pwVal, updatedAt: todayStr(), history:[] });
     }
   } else {
-    const admin = !!gdriveAccessToken && isCurrentUserAdmin;
-    const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
-    if(type==='account' && !unlocked){ alert('잠금이 풀려있지 않아 저장할 수 없어요. 다시 잠금해제 후 시도해주세요.'); return; }
-    const sensitiveEnc = type==='account' && (idVal || pwVal) ? await encryptJSON({idVal, pwVal}, adminCryptoKey) : null;
+    // 이제 corp/teamGeneral/team은 기본적으로 암호화하지 않음 - "🔒 암호화"를 체크한 항목만 sensitiveEnc로
+    // 암호화해서 저장하고(그 대신 평문 idVal/pwVal/content는 비워둠), 체크하지 않은 항목은 그냥 평문
+    // idVal/pwVal(ID/PW) 또는 content(자유 내용)로 저장함
+    const wantEncrypt = document.getElementById('ci-entry-encrypt').checked;
+    let sensitiveEnc = null, savedIdVal = idVal, savedPwVal = pwVal, savedContent = content;
+    if(wantEncrypt && ((type==='account' && (idVal||pwVal)) || (type==='info' && content))){
+      if(!adminCryptoKey){
+        await unlockSensitiveView();
+        if(!adminCryptoKey){ alert('비밀번호 확인이 되지 않아 암호화할 수 없어요. 암호화 없이 저장하려면 "🔒 암호화" 체크를 해제한 뒤 다시 시도해주세요.'); return; }
+      }
+      sensitiveEnc = type==='account' ? await encryptJSON({idVal, pwVal}, adminCryptoKey) : await encryptJSON({content}, adminCryptoKey);
+      savedIdVal = ''; savedPwVal = ''; savedContent = '';
+    }
+    delete ciRevealedValues[id]; // 방금 새로 입력/수정한 값과 어긋나지 않도록, 예전에 열어봤던 캐시가 있으면 지움
     if(category==='corp'){
       if(id){
         const entry = (sharedCompanyInfo.corp||[]).find(x=>x.id===id);
         if(entry){
           const changes = diffCiEntryFields(entry, label, link, note, credChanged, content);
-          entry.type=type; entry.label=label; entry.link=link; entry.note=note; entry.content=content; entry.sensitiveEnc=sensitiveEnc; entry.updatedAt = todayStr();
+          entry.type=type; entry.label=label; entry.link=link; entry.note=note; entry.content=savedContent; entry.idVal=savedIdVal; entry.pwVal=savedPwVal; entry.sensitiveEnc=sensitiveEnc; entry.updatedAt = todayStr();
           if(changes.length){ if(!entry.history) entry.history=[]; entry.history.unshift({date:new Date().toLocaleString('ko-KR'), changes}); }
         }
       } else {
         if(!sharedCompanyInfo.corp) sharedCompanyInfo.corp = [];
-        sharedCompanyInfo.corp.push({ id: genId(), type, label, link, note, content, sensitiveEnc, updatedAt: todayStr(), history:[] });
+        sharedCompanyInfo.corp.push({ id: genId(), type, label, link, note, content:savedContent, idVal:savedIdVal, pwVal:savedPwVal, sensitiveEnc, updatedAt: todayStr(), history:[] });
       }
     } else if(category==='teamGeneral'){
       if(id){
         const entry = (sharedCompanyInfo.teamGeneral||[]).find(x=>x.id===id);
         if(entry){
           const changes = diffCiEntryFields(entry, label, link, note, credChanged, content);
-          entry.type=type; entry.label=label; entry.link=link; entry.note=note; entry.content=content; entry.sensitiveEnc=sensitiveEnc; entry.updatedAt = todayStr();
+          entry.type=type; entry.label=label; entry.link=link; entry.note=note; entry.content=savedContent; entry.idVal=savedIdVal; entry.pwVal=savedPwVal; entry.sensitiveEnc=sensitiveEnc; entry.updatedAt = todayStr();
           if(changes.length){ if(!entry.history) entry.history=[]; entry.history.unshift({date:new Date().toLocaleString('ko-KR'), changes}); }
         }
       } else {
         if(!sharedCompanyInfo.teamGeneral) sharedCompanyInfo.teamGeneral = [];
-        sharedCompanyInfo.teamGeneral.push({ id: genId(), type, label, link, note, content, sensitiveEnc, updatedAt: todayStr(), history:[] });
+        sharedCompanyInfo.teamGeneral.push({ id: genId(), type, label, link, note, content:savedContent, idVal:savedIdVal, pwVal:savedPwVal, sensitiveEnc, updatedAt: todayStr(), history:[] });
       }
     } else if(category==='team'){
       if(!sharedCompanyInfo.team) sharedCompanyInfo.team = [];
@@ -7714,12 +7744,12 @@ document.getElementById('ciEntryModalForm').addEventListener('submit', async (e)
         const entry = (p.items||[]).find(x=>x.id===id);
         if(entry){
           const changes = diffCiEntryFields(entry, label, link, note, credChanged, content);
-          entry.type=type; entry.label=label; entry.link=link; entry.note=note; entry.content=content; entry.sensitiveEnc=sensitiveEnc; entry.updatedAt = todayStr();
+          entry.type=type; entry.label=label; entry.link=link; entry.note=note; entry.content=savedContent; entry.idVal=savedIdVal; entry.pwVal=savedPwVal; entry.sensitiveEnc=sensitiveEnc; entry.updatedAt = todayStr();
           if(changes.length){ if(!entry.history) entry.history=[]; entry.history.unshift({date:new Date().toLocaleString('ko-KR'), changes}); }
         }
       } else {
         if(!p.items) p.items = [];
-        p.items.push({ id: genId(), type, label, link, note, content, sensitiveEnc, updatedAt: todayStr(), history:[] });
+        p.items.push({ id: genId(), type, label, link, note, content:savedContent, idVal:savedIdVal, pwVal:savedPwVal, sensitiveEnc, updatedAt: todayStr(), history:[] });
       }
     }
   }
@@ -14004,6 +14034,7 @@ function populateTeamInfoInput(){
   if(taxMgmtPwEl) taxMgmtPwEl.value = (sharedTeamInfo && sharedTeamInfo.taxMgmtPw) || '';
   if(extNoEl) extNoEl.value = (sharedTeamInfo && sharedTeamInfo.extNo) || '';
   updateCiTeamSectionHeading();
+  updateTeamInfoButtons();
 }
 // 설정 > 팀정보 화면의 "OO 관리" 제목을 위에서 등록한 팀명으로 갱신함 - 팀명을 등록하지 않았으면 그냥
 // "팀 관리"로 보여줌. 사내정보(조회) 쪽 제목·내선번호는 이제 별도 span이 아니라 법인 기본정보와 같은
@@ -14012,6 +14043,15 @@ function updateCiTeamSectionHeading(){
   const title = ((sharedTeamInfo && sharedTeamInfo.teamName) || '팀') + ' 관리';
   const settingsEl = document.getElementById('ciTeamSectionTitle');
   if(settingsEl) settingsEl.textContent = title;
+}
+// 팀정보를 아직 하나도 등록 안 했으면 "등록" 버튼만, 이미 등록돼 있으면(다섯 항목 중 하나라도 값이 있으면)
+// 버튼을 "수정"으로 바꾸고 옆에 "초기화" 버튼도 같이 보여줌(회사 공용 ID/PW의 초기화 버튼과 같은 패턴)
+function updateTeamInfoButtons(){
+  const submitBtn = document.getElementById('teamInfoSubmitBtn');
+  const resetBtn = document.getElementById('teamInfoResetBtn');
+  const hasData = !!(sharedTeamInfo && (sharedTeamInfo.teamName || sharedTeamInfo.accountant || sharedTeamInfo.taxMgmtNo || sharedTeamInfo.taxMgmtPw || sharedTeamInfo.extNo));
+  if(submitBtn) submitBtn.textContent = hasData ? '수정' : '등록';
+  if(resetBtn) resetBtn.style.display = hasData ? 'inline-block' : 'none';
 }
 document.getElementById('teamInfoForm')?.addEventListener('submit', async (e)=>{
   e.preventDefault();
@@ -14024,7 +14064,16 @@ document.getElementById('teamInfoForm')?.addEventListener('submit', async (e)=>{
   };
   await saveSharedTeamInfo();
   updateCiTeamSectionHeading();
+  updateTeamInfoButtons();
   document.getElementById('teamInfoSaveMsg').textContent = '저장됨';
+  setTimeout(()=>{ document.getElementById('teamInfoSaveMsg').textContent = ''; }, 1500);
+});
+document.getElementById('teamInfoResetBtn')?.addEventListener('click', async ()=>{
+  if(!confirm('등록된 팀정보를 전부 지우고 처음부터 다시 등록할까요?')) return;
+  sharedTeamInfo = { teamName:'', accountant:'', taxMgmtNo:'', taxMgmtPw:'', extNo:'' };
+  await saveSharedTeamInfo();
+  populateTeamInfoInput();
+  document.getElementById('teamInfoSaveMsg').textContent = '초기화됨';
   setTimeout(()=>{ document.getElementById('teamInfoSaveMsg').textContent = ''; }, 1500);
 });
 
