@@ -1116,7 +1116,7 @@
     #printArea, #printArea *{visibility:visible;}
     #printArea{display:block; position:absolute; left:0; top:0; width:100%;}
     body{background:#fff;}
-    @page{ margin:4mm; }
+    @page{ margin:15mm; }
   }
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -1315,6 +1315,10 @@
         <div class="field" id="remoteBonusField" style="display:none; flex-direction:row; align-items:center; gap:6px;">
           <input type="checkbox" id="r-bonus" style="width:auto;">
           <label for="r-bonus" style="margin:0; font-size:11.5px;">특별재택 (월 한도 미포함)</label>
+        </div>
+        <div class="field" id="remoteNoLunchField" style="display:none; flex-direction:row; align-items:center; gap:6px; background:var(--amber-bg); border-radius:8px; padding:8px 10px;">
+          <input type="checkbox" id="r-nolunch" style="width:auto;">
+          <label for="r-nolunch" style="margin:0; font-size:11.5px; color:#8A6D1E; font-weight:700;">이 날은 식대기준일수에서 제외 (점심식대 계산에서 빠짐)</label>
         </div>
         <div class="field" id="advanceField" style="display:none; flex-direction:row; align-items:center; gap:6px; background:var(--indigo-bg); border-radius:8px; padding:8px 10px;">
           <input type="checkbox" id="u-advance" style="width:auto;">
@@ -2235,7 +2239,7 @@
           <li><b>상반기 (1~7월)</b> · 09:30~17:30</li>
           <li><b>하반기 (8~12월)</b> · 09:30~17:00</li>
           <li><b>점심시간</b> · 11:30~13:00</li>
-          <li><b>정기재택</b> · 월 2회, 원하는 날짜에 자율 사용</li>
+          <li><b>정기재택</b> · 월 6회, 원하는 날짜에 자율 사용 (2026.09.01부터, 등록 시 선택한 날은 식대기준일수에서 제외)</li>
         </ul>
         <div class="guide-tip">💡 Tip: 하반기엔 30분 조기퇴근! 저녁이 있는 삶을 즐기세요.</div>
       </div>
@@ -2773,9 +2777,13 @@
            그대로 읽어서 대상 거래처만 보여주고, 지급시기별로 줄을 나눔 -->
       <div class="approval-panel" data-approval-cat="target" style="display:none;">
         <h2 class="section-title" style="justify-content:center; font-size:22px; margin:4px 0 14px;">원천세 신고대상</h2>
-        <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:14px;">
+        <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
           <select id="filingTargetYear" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
           <span class="hint" style="font-size:11px; margin:0;">칸을 눌러서 그 달의 신고대상 여부·신고구분·지급시기를 설정하세요.</span>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+          <button type="button" id="filingTargetBulkFromJanBtn" class="del-btn" style="background:var(--indigo-bg); color:var(--indigo-deep);" title="선택한 해의 1월 설정을, 그 값이 있는 거래처마다 2~12월까지 그대로 채워요">📋 1월 설정을 전체 거래처·연간 일괄적용</button>
+          <button type="button" id="filingTargetBulkFromPrevYearBtn" class="del-btn" style="background:var(--mint-bg); color:#0A7A55;" title="전년도 12월 설정을, 그 값이 있는 거래처마다 선택한 해 1~12월 전체에 그대로 복사해요 (새해 시작할 때 유용해요)">⬆️ 전년도 12월 설정 그대로 복사</button>
         </div>
         <div id="filingTargetTableWrap" class="table-scroll"></div>
       </div>
@@ -3344,8 +3352,8 @@ const DEFAULT_POLICY_TEXT = `1. 근무 시간 및 운영
 상반기 | 1~7월 | 09:30~17:30 | 11:30~13:00 (1.5H)
 하반기 | 8~12월 | 09:30~17:00 | 11:30~13:00 (1.5H)
 
-2. 재택근무 제도 (2026.07.01 시행)
-- 월 2회, 원하는 날짜에 재택근무 가능
+2. 재택근무 제도 (2026.09.01 개정)
+- 월 6회, 원하는 날짜에 재택근무 가능 (등록 시 "식대기준일수 제외" 체크로 건별 선택)
 - 별도 그룹웨어 결재 불필요, 출근 전까지 담당 회계사에게 구두로 전달 후 승인
 - 천재지변 등 특수 사유 시 회계사 재량으로 추가 허용 가능
 
@@ -4876,6 +4884,13 @@ function getEffectiveGrantsAsOf(cutoff){
 // 팀 내부 제도: 재택근무는 다음 달 이후 한도를 미리 당겨써도 한도 자체가 없고(무제한 당겨쓰기),
 // 휴가(연차/반차/반반차)는 아직 발생하지 않은 다음 연차에서 최대 5일까지만 미리 당겨써서 쓸 수 있음.
 const LEAVE_ADVANCE_MAX_DAYS = 5;
+// 정기재택 월 한도 - 2026.09.01부터 월 2회 → 월 6회로 늘어남 (여전히 "자율 사용"이라 한도를 실제로 막지는
+// 않고, 화면에 "X/6회"로 보여주는 표시용 기준값으로만 씀)
+const REGULAR_REMOTE_MONTHLY_QUOTA = 6;
+// 2026.09.01부터, 정기재택 중 일부는 식대기준일수(점심식대한도 계산)에서 빠질 수 있음 - 처음엔 "6회 중
+// 4회는 자동으로 고정 차감"으로 만들었는데, 매달 몇 회를 쓸지가 유동적이라 자동 계산 대신 재택 등록할 때
+// "이 날은 식대기준일수에서 제외" 체크박스(remoteEntries[].noLunch)로 건별로 직접 선택하는 방식으로 바꿈
+// - calcWorkdays()에서 그 달 noLunch:true인 정기재택 건수만큼 그대로 차감함(별도 상한 없음)
 // 지정한 날짜(dateStr) 기준으로 extraDays만큼 더 사용했을 때 잔여 연차가 얼마가 되는지 미리 계산(당겨쓰기 등록 전 검증용).
 // getEffectiveGrantsAsOf가 아직 발생하지 않은 미래의 자동부여(법정휴가)분까지 미리 계산해주기 때문에, 당겨쓰기로
 // 등록한 휴가가 실제로 그 다음 자동부여분에서 자연스럽게 차감된 것처럼 반영됨 - 그 달이 지나 실제로 부여되고 나면
@@ -4886,7 +4901,7 @@ function projectRemainLeaveAfter(dateStr, extraDays, excludeId){
   const totalUsed = attendance.leaveUsage.filter(u => u.date <= dateStr && u.id !== excludeId).reduce((s,u)=>s+leaveDeductDays(u), 0);
   return totalGranted - totalUsed - extraDays;
 }
-// 정기재택은 "월 2회" 한도가 매달 새로 리셋되는 방식이라(누적 연차와 다름), 당겨쓰기 항목은 실제 사용일(date)과
+// 정기재택은 "월 6회" 한도가 매달 새로 리셋되는 방식이라(누적 연차와 다름), 당겨쓰기 항목은 실제 사용일(date)과
 // 별개로 "어느 달 한도에서 차감할지"(creditMonth)를 따로 들고 있어야 다음 달(들)의 남은 재택 횟수에 반영됨.
 // 한도가 없으므로 이미 꽉 찬 달은 건너뛰고, 아직 여유가 있는 가장 가까운 미래 달을 찾아 그 달에 배정함.
 function nextAvailableRemoteCreditMonth(fromMonthStr){
@@ -5222,11 +5237,15 @@ function calcWorkdays(monthStr){
   const holidayCount = monthExclusions.filter(x=>x.reason==='공휴일' && isWeekday(x.date)).length;
   // 점심회식·기타는 점심을 회사가 제공/대체하므로 근무일수(식대계산)에서 제외, 저녁회식은 식대계산과 무관(일정 공유용)
   const otherExclusionCount = monthExclusions.filter(x=>x.reason==='점심회식' || x.reason==='기타').length;
+  // 2026.09.01부터: 재택 등록할 때 "이 날은 식대기준일수에서 제외" 체크(noLunch)를 한 건만 실제 날짜
+  // 기준으로 세서 차감함(당겨쓰기로 다른 달 한도를 미리 썼어도, 실제 근무는 이 달에 안 한 거니 이 달
+  // 식대기준일수에서 빠지는 게 맞음) - 몇 회를 쓰든 자동으로 정해지지 않고 등록할 때 건별로 직접 선택함
+  const remoteNoLunchDays = attendance.remoteEntries.filter(r => !r.bonus && r.noLunch && r.date.startsWith(monthStr)).length;
   const weekdays = Math.max(0, rawWeekdays - holidayCount); // '근무가능일수' = 주말·공휴일 제외
   const exclusionCount = otherExclusionCount; // '차감일수'에는 공휴일·저녁회식을 포함하지 않음
-  const workdays = Math.max(0, weekdays - noLunchDays - exclusionCount); // 식대계산 기준일수 (점심회식 등도 차감된 값)
-  const actualWorkDays = Math.max(0, weekdays - noLunchDays); // 실 근무일 (점심회식은 결근이 아니므로 차감하지 않음)
-  return { weekdays, rawWeekdays, holidayCount, noLunchDays, exclusionCount, workdays, actualWorkDays };
+  const workdays = Math.max(0, weekdays - noLunchDays - exclusionCount - remoteNoLunchDays); // 식대계산 기준일수 (점심회식·정기재택 4일 등도 차감된 값)
+  const actualWorkDays = Math.max(0, weekdays - noLunchDays); // 실 근무일 (점심회식·재택은 결근이 아니므로 차감하지 않음)
+  return { weekdays, rawWeekdays, holidayCount, noLunchDays, exclusionCount, remoteNoLunchDays, workdays, actualWorkDays };
 }
 function renderWorkdaysSuggestion(){
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
@@ -5251,12 +5270,14 @@ function calcWorkdaysExclusionBreakdown(monthStr){
     if(x.reason==='점심회식') add('회식', 1);
     else if(x.reason==='기타') add(x.name || '기타', 1);
   });
+  const monthRemoteNoLunchDays = attendance.remoteEntries.filter(r => !r.bonus && r.noLunch && r.date.startsWith(monthStr)).length;
+  add('정기재택(식대미포함)', monthRemoteNoLunchDays);
   return counts;
 }
 function openWorkdaysCalcInfoModal(){
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
-  const { weekdays, noLunchDays, exclusionCount, workdays } = calcWorkdays(monthStr);
-  const deduct = noLunchDays + exclusionCount;
+  const { weekdays, noLunchDays, exclusionCount, remoteNoLunchDays, workdays } = calcWorkdays(monthStr);
+  const deduct = noLunchDays + exclusionCount + remoteNoLunchDays;
   const breakdown = calcWorkdaysExclusionBreakdown(monthStr);
   const breakdownStr = Object.keys(breakdown).length
     ? Object.entries(breakdown).map(([label,n])=>`${label} ${n}일`).join(', ')
@@ -5293,7 +5314,7 @@ function calcAttendanceSummary(monthStr){
   // 재택 이력(달력·이력표)은 항상 실제 사용일(date) 기준으로 그 달에 보여줌 - "몇 월 한도에서 차감됐는지"와
   // "실제로 언제 재택을 썼는지"는 다를 수 있어서(당겨쓰기), 한도 계산은 아래 monthRemoteQuotaUsed로 따로 셈
   const monthRemote = attendance.remoteEntries.filter(r => r.date.startsWith(monthStr));
-  // 정기재택 월 한도(2회)에서 실제로 차감되는 개수 - 당겨쓰기 항목은 실제 사용일이 아니라 미리 배정된
+  // 정기재택 월 한도(월 6회)에서 실제로 차감되는 개수 - 당겨쓰기 항목은 실제 사용일이 아니라 미리 배정된
   // creditMonth 기준으로 그 달 한도에서 빠짐(특별재택은 한도가 없어 애초에 집계 대상이 아님)
   const monthRemoteQuotaUsed = attendance.remoteEntries.filter(r => !r.bonus && remoteCreditMonthOf(r) === monthStr).length;
 
@@ -5326,7 +5347,8 @@ function calcExpenseSummary(monthStr){
   const prepaidMonth = (expense.prepaidEntries||[]).filter(e => e.date.startsWith(monthStr));
   const prepaidTotal = prepaidMonth.reduce((s,e)=>s+Number(e.amount||0),0);
   return {
-    workdays, weekdays: wd.weekdays, deductedDays: wd.noLunchDays + wd.exclusionCount,
+    workdays, weekdays: wd.weekdays, deductedDays: wd.noLunchDays + wd.exclusionCount + wd.remoteNoLunchDays,
+    remoteNoLunchDays: wd.remoteNoLunchDays,
     dailyAmount, monthlyLimit, lunchSpend, naverPay, lunchOver, dinnerTotal,
     lunchMonth, dinnerMonth, otherExpenseMonth, otherExpenseTotal, taxiMonth, taxiTotal,
     prepaidMonth, prepaidTotal
@@ -5570,10 +5592,10 @@ function renderAttendance(){
   const regularRemote = s.monthRemote.filter(r => !r.bonus);
   const bonusRemote = s.monthRemote.filter(r => r.bonus);
   document.getElementById('monthRemoteDisplay').textContent = s.monthRemote.length + '일';
-  // "자율 사용 X/2회"는 실제로 그 달에 쓴 개수가 아니라, 그 달 한도에서 차감된 개수(당겨쓰기 포함) 기준으로 보여줌
+  // "자율 사용 X/N회"는 실제로 그 달에 쓴 개수가 아니라, 그 달 한도에서 차감된 개수(당겨쓰기 포함) 기준으로 보여줌
   const advanceNote = s.monthRemoteQuotaUsed > regularRemote.length ? ` (당겨씀 ${s.monthRemoteQuotaUsed - regularRemote.length}회 포함)` : '';
   document.getElementById('monthRemoteSub').textContent =
-    `자율 사용 ${s.monthRemoteQuotaUsed}/2회${advanceNote}` + (bonusRemote.length > 0 ? ` · 특별재택 ${bonusRemote.length}회 (한도 외)` : '');
+    `자율 사용 ${s.monthRemoteQuotaUsed}/${REGULAR_REMOTE_MONTHLY_QUOTA}회${advanceNote}` + (bonusRemote.length > 0 ? ` · 특별재택 ${bonusRemote.length}회 (한도 외)` : '');
 
   const wrap = document.getElementById('attendanceLedgerWrap');
   const monthGrants = attendance.leaveGrants.filter(g=>g.date.startsWith(monthStr)).map(g=>({...g, kind:'grant'}));
@@ -5604,7 +5626,8 @@ function renderAttendance(){
     }
     else {
       const advTag = en.advance ? ` <span style="color:var(--indigo-deep); font-weight:800; display:inline-flex; align-items:center; gap:2px;">${advIconTag()}${remoteCreditMonthOf(en)} 한도차감</span>` : '';
-      tag = `<span class="tag ${en.bonus ? 'tag-remote-special' : 'tag-remote'}">${en.bonus ? '특별재택' : '정기재택'}${advTag}</span>`;
+      const noLunchTag = en.noLunch ? ` <span style="color:#8A6D1E; font-weight:800;">🍱 식대제외</span>` : '';
+      tag = `<span class="tag ${en.bonus ? 'tag-remote-special' : 'tag-remote'}">${en.bonus ? '특별재택' : '정기재택'}${advTag}${noLunchTag}</span>`;
       detail = '-';
     }
     const editBtn = (en.kind==='usage' || en.kind==='remote') ? `<button class="del-btn attendance-edit-btn" data-kind="${en.kind}" data-id="${en.id}">수정</button>` : '';
@@ -5652,6 +5675,7 @@ function renderAttendance(){
         document.getElementById('u-memo').value = en.memo || '';
         document.getElementById('r-bonus').checked = !!en.bonus;
         document.getElementById('r-bonus').dispatchEvent(new Event('change'));
+        document.getElementById('r-nolunch').checked = !!en.noLunch;
         document.getElementById('u-advance').checked = !!en.advance;
         document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '수정 완료';
         document.getElementById('usage-cancel').style.display = 'inline-block';
@@ -7827,6 +7851,7 @@ function buildExpenseReportHTML(monthStr){
     ['포상·경조사·기타', bSpecial, '일'],
     ['점심회식', bLunchParty, '일'],
     ['기타', bEtc, '일'],
+    ['정기재택(식대미포함)', s.remoteNoLunchDays, '일'],
   ].filter(([label, val]) => val > 0);
   const breakdownChipsHtml = breakdownChipData.map(([label, val, unit]) =>
     `<span style="display:inline-flex; align-items:center; gap:4px; background:var(--bg); border:1px solid #E4E7F0; border-radius:8px; padding:3px 9px; margin:0 4px 4px 0; font-size:9.5px; font-weight:700; color:var(--ink-soft);">${label} <b style="color:var(--ink); font-family:'IBM Plex Mono',monospace;">${val}${unit}</b></span>`
@@ -8974,6 +8999,7 @@ const uKindSelect = document.getElementById('u-kind');
 const uTypeSelect = document.getElementById('u-type');
 const leaveTypeField = document.getElementById('leaveTypeField');
 const remoteBonusField = document.getElementById('remoteBonusField');
+const remoteNoLunchField = document.getElementById('remoteNoLunchField');
 const halfdaySubtypeField = document.getElementById('halfdaySubtypeField');
 const uSubtypeSelect = document.getElementById('u-subtype');
 const specialDaysField = document.getElementById('specialDaysField');
@@ -9038,12 +9064,16 @@ function updateAdvanceFieldVisibility(){
     advanceField.style.display = bonus ? 'none' : 'flex';
     advanceLabel.textContent = '당겨쓰기 (다음 달 이후 재택 한도에서 미리 차감, 한도 없음)';
     if(bonus) document.getElementById('u-advance').checked = false;
+    // 식대기준일수 제외 체크는 정기재택에만 의미가 있음(특별재택은 애초에 한도 밖이라 이 계산과 무관)
+    remoteNoLunchField.style.display = bonus ? 'none' : 'flex';
+    if(bonus) document.getElementById('r-nolunch').checked = false;
   }
 }
 function updateUsageKindFields(){
   const kind = uKindSelect.value;
   leaveTypeField.style.display = kind === 'leave' ? 'flex' : 'none';
   remoteBonusField.style.display = kind === 'remote' ? 'flex' : 'none';
+  if(kind === 'leave') remoteNoLunchField.style.display = 'none';
   if(kind === 'leave'){
     updateUsageTypeFields();
   } else {
@@ -9079,6 +9109,7 @@ function resetUsageFormEditState(){
   document.getElementById('u-end-date').value = '';
   document.getElementById('u-single-day').checked = true;
   document.getElementById('r-bonus').checked = false;
+  document.getElementById('r-nolunch').checked = false;
   document.getElementById('u-advance').checked = false;
   updateAdvanceFieldVisibility();
   updateEndDateVisibility();
@@ -9157,12 +9188,13 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
     renderAll();
   } else {
     const bonus = document.getElementById('r-bonus').checked;
+    const noLunch = !bonus && document.getElementById('r-nolunch').checked;
     const useAdvance = !bonus && advanceChecked;
 
     if(editingRemoteId){
       const en = attendance.remoteEntries.find(x=>x.id===editingRemoteId);
       if(en){
-        en.date=date; en.memo=memo; en.bonus=bonus;
+        en.date=date; en.memo=memo; en.bonus=bonus; en.noLunch = noLunch || undefined;
         if(useAdvance){ en.advance = true; en.creditMonth = nextAvailableRemoteCreditMonth(monthAfter(date)); }
         else { en.advance = undefined; en.creditMonth = undefined; }
       }
@@ -9177,7 +9209,7 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
 
     let addedCount = 0;
     const pushRemoteEntry = (ds)=>{
-      const entry = { id:genId(), date:ds, memo, bonus };
+      const entry = { id:genId(), date:ds, memo, bonus, noLunch: noLunch || undefined };
       // 당겨쓰기는 실제 사용일과 무관하게 "아직 여유가 남은 가장 가까운 미래 달"의 재택 한도에서 차감되도록
       // creditMonth를 미리 배정함(한도가 없으니 계속 다음 달로 넘어가며 찾음) - 범위로 여러 날 등록하면 먼저
       // push된 항목이 반영된 상태에서 다음 항목의 배정 달을 다시 찾으므로, 여러 건이 자동으로 순서대로 배분됨
@@ -9202,6 +9234,7 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
     document.getElementById('u-memo').value='';
     document.getElementById('u-end-date').value='';
     document.getElementById('r-bonus').checked = false;
+    document.getElementById('r-nolunch').checked = false;
     document.getElementById('u-advance').checked = false;
     renderAll();
   }
@@ -11671,6 +11704,49 @@ document.getElementById('filingTargetEditSaveBtn')?.addEventListener('click', as
   document.getElementById('filingTargetEditModalOverlay').style.display = 'none';
   renderFilingTargetTable();
 });
+// 매달 거래처마다 칸을 일일이 눌러 채우는 게 번거롭다는 의견으로, 그리드 전체에 한 번에 적용하는 두 버튼을 추가함.
+// 기존 "이후 달에도 동일 적용"(팝업 안, 거래처 1곳·그 달 이후만)과 달리 이 둘은 전체 거래처에 한 번에 적용됨
+document.getElementById('filingTargetBulkFromJanBtn')?.addEventListener('click', async ()=>{
+  const year = filingTargetYear;
+  if(!year) return;
+  const list = bookkeepingClientList();
+  let applied = 0;
+  list.forEach(c=>{
+    const jan = (sharedFilingTargets[c.id]||{})[`${year}-01`];
+    if(!jan || !jan.applicable) return; // 1월에 신고대상으로 설정해둔 거래처만 복사 대상
+    sharedFilingTargets[c.id] = sharedFilingTargets[c.id] || {};
+    for(let mm=2; mm<=12; mm++){
+      sharedFilingTargets[c.id][`${year}-${String(mm).padStart(2,'0')}`] = { ...jan };
+    }
+    applied++;
+  });
+  if(!applied){ alert(`${year}년 1월에 신고대상으로 설정된 거래처가 없어요. 1월 칸부터 먼저 설정해주세요.`); return; }
+  if(!confirm(`${year}년 1월 설정이 있는 거래처 ${applied}곳의 2~12월을 1월과 동일하게 덮어써요. 계속할까요?\n(이미 다르게 입력해둔 달이 있어도 전부 1월 설정으로 바뀌어요)`)) return;
+  await saveSharedFilingTargets();
+  renderFilingTargetTable();
+  alert(`${applied}곳의 ${year}년 전체 달을 1월 설정으로 일괄 적용했어요.`);
+});
+document.getElementById('filingTargetBulkFromPrevYearBtn')?.addEventListener('click', async ()=>{
+  const year = filingTargetYear;
+  if(!year) return;
+  const prevYear = String(Number(year) - 1);
+  const list = bookkeepingClientList();
+  let applied = 0;
+  list.forEach(c=>{
+    const prevDec = (sharedFilingTargets[c.id]||{})[`${prevYear}-12`];
+    if(!prevDec || !prevDec.applicable) return; // 전년도 12월에 신고대상이었던 거래처만 복사 대상
+    sharedFilingTargets[c.id] = sharedFilingTargets[c.id] || {};
+    for(let mm=1; mm<=12; mm++){
+      sharedFilingTargets[c.id][`${year}-${String(mm).padStart(2,'0')}`] = { ...prevDec };
+    }
+    applied++;
+  });
+  if(!applied){ alert(`${prevYear}년 12월에 신고대상으로 설정된 거래처가 없어요.`); return; }
+  if(!confirm(`${prevYear}년 12월 설정이 있는 거래처 ${applied}곳의 ${year}년 1~12월 전체를 그 설정으로 덮어써요. 계속할까요?\n(이미 다르게 입력해둔 달이 있어도 전부 바뀌어요)`)) return;
+  await saveSharedFilingTargets();
+  renderFilingTargetTable();
+  alert(`${applied}곳의 ${year}년 전체를 전년도 12월 설정으로 일괄 적용했어요.`);
+});
 document.getElementById('filingTargetEditCloseBtn')?.addEventListener('click', ()=>{
   document.getElementById('filingTargetEditModalOverlay').style.display = 'none';
   renderFilingTargetTable();
@@ -11956,7 +12032,7 @@ const REVIEW_INCOME_FIELDS = [
   { key:'기타간이대상', label:'기타소득(간이대상)' },
   { key:'일용', label:'일용소득' },
   { key:'퇴직', label:'퇴직소득' },
-  { key:'이자', label:'이자소득' },
+  { key:'이자', label:'이자배당소득' },
 ];
 // 납부세액검증의 "원천세합계"는 10개 유형의 소득세 칸만 더함(지방소득세는 국세인 원천세 합계에 안 들어감) - 원본 엑셀 수식 그대로
 const REVIEW_TAX_GROUPS = [
@@ -11968,7 +12044,7 @@ const REVIEW_TAX_GROUPS = [
   { key:'기타간이미대상', label:'기타소득(간이미대상)' },
   { key:'기타간이대상', label:'기타소득(간이대상)' },
   { key:'퇴직', label:'퇴직소득' },
-  { key:'이자', label:'이자소득' },
+  { key:'이자', label:'이자배당소득' },
   { key:'환급잔액', label:'환급잔액' },
 ];
 // 검토표(원천세) 초기 시드 데이터: 원천세_2026.xlsx의 12개 거래처 탭(왓츠랩·나우이엔지는 익월/당월 두 탭을 귀속월 기준으로 합산)에서
@@ -14506,8 +14582,12 @@ function buildSectionToc(panel){
 function initSectionTocs(){
   document.querySelectorAll('.tab-panel').forEach(panel=>{
     // tab-settings는 이제 회사/직원/복지/데이터 칩으로 카테고리를 나눠서 보여주기 때문에,
-    // 스크롤용 목차(TOC)를 따로 만들면 오히려 숨겨진 카테고리의 항목까지 섞여서 헷갈림 -> 제외
-    if(panel.id === 'tab-home' || panel.id === 'tab-loginlock' || panel.id === 'tab-settings') return;
+    // 스크롤용 목차(TOC)를 따로 만들면 오히려 숨겨진 카테고리의 항목까지 섞여서 헷갈림 -> 제외.
+    // tab-approval(업무: 신고현황/신고대상/제출현황/검토표/결재)도 마찬가지 이유로 제외 - 세목/카테고리별로
+    // 칩을 눌러 하나씩만 보여주는 방식인데, 겉보기엔 "쭉 이어진 한 화면"이 아닌데도 그 안의 h2.section-title이
+    // 전부 DOM에 남아있어서 목차가 만들어져버림(예: "원천세 신고대상" 화면 위에 갑자기 다른 세목 바로가기가 뜨는 문제).
+    // 이동은 이미 왼쪽 사이드바로 충분히 되니 여기선 만들지 않음
+    if(panel.id === 'tab-home' || panel.id === 'tab-loginlock' || panel.id === 'tab-settings' || panel.id === 'tab-approval') return;
     try{ buildSectionToc(panel); }catch(e){ console.error('목차 생성 실패', panel.id, e); }
   });
 }
