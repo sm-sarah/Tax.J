@@ -2799,7 +2799,7 @@
            체크리스트를 별도 메뉴로 분리함 - 데이터 저장소(sharedFilingStatus['원천세'])는 그대로라 기존에 입력해둔
            내용이 그대로 이어짐 -->
       <div class="approval-panel" data-approval-cat="submit" style="display:none;">
-        <h2 class="section-title" style="justify-content:center; font-size:22px; margin:4px 0 14px;" id="submitStatusTitle">원천세 제출현황 · 매월</h2>
+        <h2 class="section-title" style="justify-content:center; font-size:22px; margin:4px 0 14px;" id="submitStatusTitle">지급명세서 제출현황</h2>
         <div id="submitPeriodControls" style="display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
           <select id="submitPeriodYear" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
           <select id="submitPeriodSub" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
@@ -8564,9 +8564,9 @@ function dashClockState(entry){
 // Team J 마스코트 - 이미지가 아니라 이 카드만을 위해 직접 그린 손그림풍 SVG 캐릭터(제이).
 // 이모지 아이콘 대신 브랜드 컬러(인디고/민트/앰버)로 상태별 포즈를 구분해 "우리 앱만의 캐릭터" 느낌을 줌.
 function dashMascotSvg(state){
-  // 예전엔 머리(원)+몸통(타원)을 따로 겹쳐서 목 부분이 잘록해 보이고, 색도 대시보드 다른 곳과 똑같은
-  // 진한 원색(인디고/민트/앰버)을 그대로 써서 어색했음 - 이제 머리와 몸을 하나의 알약(캡슐) 모양으로
-  // 이어 그려서 이음새가 안 보이게 하고, 색도 이 캐릭터만을 위한 더 부드러운 톤으로 새로 골랐음
+  // 원래는 사람 모양의 알약(캡슐) 캐릭터였는데, "비숑 강아지로 바꿔달라"는 요청으로 비숑 프리제 느낌
+  // (하얗고 폭신한 곱슬 털, 늘어진 둥근 귀, 까만 코)의 강아지 캐릭터로 새로 그림. 팔·책상·파티모자·컨페티
+  // 같은 상태별 연출은 그대로 유지하고, 팔/목줄 색으로만 상태(대기/근무중/완료)를 구분함
   const PALETTE = {
     idle:    { body:'#7C86EE', soft:'#EEF0FD' }, // 은은한 페리윙클
     working: { body:'#3FB999', soft:'#E7F7F1' }, // 차분한 세이지그린
@@ -8575,36 +8575,54 @@ function dashMascotSvg(state){
   const pal = PALETTE[state] || PALETTE.idle;
   const body = pal.body;
   const ink = '#2E2E45';
+  const fur = '#FFFBF3';       // 비숑 특유의 새하얀 털
+  const furShade = '#EFE8D8';  // 귀 안쪽 등에 쓰는 살짝 그늘진 크림톤
+  // 눈·코는 원래 캐릭터와 같은 위치 감각을 유지하되, 위쪽에 털뭉치가 생긴 만큼 살짝 아래로 내림
   const face = state==='done'
-    ? `<path d="M36,38 Q41,33 46,38" stroke="${ink}" stroke-width="2.8" fill="none" stroke-linecap="round"/>
-       <path d="M54,38 Q59,33 64,38" stroke="${ink}" stroke-width="2.8" fill="none" stroke-linecap="round"/>
-       <path d="M39,48 Q50,58 61,48 Q50,55 39,48 Z" fill="${ink}"/>`
-    : `<ellipse cx="39" cy="39" rx="4.6" ry="5.6" fill="${ink}"/><circle cx="40.4" cy="37" r="1.3" fill="#fff"/>
-       <ellipse cx="61" cy="39" rx="4.6" ry="5.6" fill="${ink}"/><circle cx="62.4" cy="37" r="1.3" fill="#fff"/>
+    ? `<ellipse cx="38" cy="45" rx="4.6" ry="5.6" fill="${ink}"/><circle cx="39.4" cy="43" r="1.3" fill="#fff"/>
+       <ellipse cx="62" cy="45" rx="4.6" ry="5.6" fill="${ink}"/><circle cx="63.4" cy="43" r="1.3" fill="#fff"/>
+       <ellipse cx="50" cy="55" rx="5" ry="3.8" fill="${ink}"/>
+       <path d="M40,61 Q50,70 60,61" stroke="${ink}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+       <path d="M46,62.5 Q50,73 54,62.5 Z" fill="#F2789F"/>`
+    : `<ellipse cx="38" cy="45" rx="4.6" ry="5.6" fill="${ink}"/><circle cx="39.4" cy="43" r="1.3" fill="#fff"/>
+       <ellipse cx="62" cy="45" rx="4.6" ry="5.6" fill="${ink}"/><circle cx="63.4" cy="43" r="1.3" fill="#fff"/>
+       <ellipse cx="50" cy="55" rx="5" ry="3.8" fill="${ink}"/>
        ${state==='working'
-         ? `<path d="M44,50 Q50,53.5 56,50" stroke="${ink}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`
-         : `<path d="M38,47 Q50,58 62,47" stroke="${ink}" stroke-width="2.8" fill="none" stroke-linecap="round"/>`}`;
-  const cheeks = `<ellipse cx="29" cy="47" rx="4.6" ry="2.8" fill="#FBD4CE" opacity="0.85"/><ellipse cx="71" cy="47" rx="4.6" ry="2.8" fill="#FBD4CE" opacity="0.85"/>`;
-  const belly = `<ellipse cx="50" cy="68" rx="16" ry="18.5" fill="${pal.soft}"/>
-    <text x="50" y="74" font-size="18" font-weight="900" fill="${body}" text-anchor="middle" font-family="'Pretendard',sans-serif">J</text>`;
-  // 위아래로 완전히 둥근 알약(캡슐) 한 덩어리 - 목 부분 없이 하나의 매끈한 실루엣
-  const bodyShape = `<rect x="19" y="6" width="62" height="88" rx="31" fill="${body}"/>`;
+         ? `<path d="M44,61 Q50,64 56,61" stroke="${ink}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`
+         : `<path d="M42,60 Q50,67 58,60" stroke="${ink}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`}`;
+  const cheeks = `<ellipse cx="27" cy="52" rx="4.6" ry="2.8" fill="#FBD4CE" opacity="0.85"/><ellipse cx="73" cy="52" rx="4.6" ry="2.8" fill="#FBD4CE" opacity="0.85"/>`;
+  // 축 늘어진 둥근 귀 - 머리 캡슐보다 먼저 그려서, 캡슐과 겹치는 안쪽 부분은 가려지고 바깥으로
+  // 튀어나온 부분만 자연스럽게 늘어진 귀처럼 보이게 함
+  const ears = `<ellipse cx="13" cy="42" rx="11" ry="18" fill="${furShade}" transform="rotate(-10 13 42)"/>
+    <ellipse cx="87" cy="42" rx="11" ry="18" fill="${furShade}" transform="rotate(10 87 42)"/>`;
+  // 위아래로 둥근 알약(캡슐) 몸통 - 비숑의 뽀글뽀글한 털 실루엣을 표현하려고 캡슐 위쪽 둘레를 따라
+  // 크기가 다른 원(털뭉치)을 여러 개 겹쳐 그려서 매끈한 대신 몽글몽글한 윤곽으로 만듦
+  const bodyShape = `<rect x="19" y="6" width="62" height="88" rx="31" fill="${fur}"/>
+    <circle cx="19.5" cy="31.6" r="8" fill="${fur}"/><circle cx="26.3" cy="17.1" r="9" fill="${fur}"/>
+    <circle cx="39.4" cy="7.9" r="10" fill="${fur}"/><circle cx="50" cy="6" r="11" fill="${fur}"/>
+    <circle cx="60.6" cy="7.9" r="10" fill="${fur}"/><circle cx="73.7" cy="17.1" r="9" fill="${fur}"/>
+    <circle cx="80.5" cy="31.6" r="8" fill="${fur}"/>
+    <circle cx="17" cy="52" r="6.5" fill="${fur}"/><circle cx="83" cy="52" r="6.5" fill="${fur}"/>`;
+  // 목줄 + 매달린 이름표 - 예전 배지(belly) 자리를 대신해서, 목줄은 상태색으로 칠하고 이름표에 그대로 "J"를 담음
+  const collar = `<rect x="28" y="58" width="44" height="7" rx="3.5" fill="${body}"/>
+    <circle cx="50" cy="75" r="11" fill="${pal.soft}" stroke="${body}" stroke-width="1.6"/>
+    <text x="50" y="80" font-size="14" font-weight="900" fill="${body}" text-anchor="middle" font-family="'Pretendard',sans-serif">J</text>`;
   let extra = '';
   if(state==='idle'){
-    // 두 팔을 번쩍 든 "화이팅" 포즈 + 손 끝의 작은 반짝임
+    // 두 팔(앞발)을 번쩍 든 "화이팅" 포즈 + 손 끝의 작은 반짝임
     extra = `<path d="M24,52 Q11,36 7,18" stroke="${body}" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="7" cy="16" r="5" fill="${body}"/>
       <path d="M76,52 Q89,36 93,18" stroke="${body}" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="93" cy="16" r="5" fill="${body}"/>
       <path d="M0,9 L3,5 L6,9 L3,13 Z" fill="#F2A254"/><path d="M94,9 L97,5 L100,9 L97,13 Z" fill="#F2A254"/>`;
   } else if(state==='working'){
-    // 작은 책상 + 노트북, 한 팔은 타이핑 - 책상/노트북은 몸통 색과 무관하게 항상 같은 라벤더그레이 톤을 써서
-    // 몸통이나 배지(belly) 색과 섞이지 않고 또렷하게 보이게 함
+    // 작은 책상 + 노트북, 한 팔(앞발)은 타이핑 - 책상/노트북은 몸통 색과 무관하게 항상 같은 라벤더그레이 톤을 써서
+    // 몸통이나 이름표 색과 섞이지 않고 또렷하게 보이게 함
     extra = `<rect x="30" y="85" width="40" height="5" rx="2" fill="#C9C6EE"/>
       <rect x="39" y="63" width="22" height="14" rx="2" fill="#4C4FA8"/><rect x="41" y="65" width="18" height="9" rx="1" fill="#A9AEF2"/>
       <rect x="38" y="77" width="24" height="4" rx="1" fill="#B0ACE6"/>
       <path d="M25,58 Q32,70 41,77" stroke="${body}" stroke-width="7" fill="none" stroke-linecap="round"/>
       <path d="M75,58 Q80,68 76,80" stroke="${body}" stroke-width="7" fill="none" stroke-linecap="round"/>`;
   } else {
-    // 파티모자 + 두 팔 번쩍 + 색종이 조각(컨페티) 흩날리는 완료 축하 포즈
+    // 파티모자 + 두 팔(앞발) 번쩍 + 색종이 조각(컨페티) 흩날리는 완료 축하 포즈
     extra = `<path d="M50,-4 L41,11 L59,11 Z" fill="#DB4E80"/><circle cx="50" cy="-5" r="3" fill="#fff"/>
       <path d="M24,52 Q11,36 7,18" stroke="${body}" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="7" cy="16" r="5" fill="${body}"/>
       <path d="M76,52 Q89,36 93,18" stroke="${body}" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="93" cy="16" r="5" fill="${body}"/>
@@ -8613,10 +8631,10 @@ function dashMascotSvg(state){
       <rect x="12" y="4" width="4" height="4" fill="#7C86EE" transform="rotate(30 14 6)"/>
       <rect x="84" y="4" width="4" height="4" fill="#F0637F" transform="rotate(-30 86 6)"/>`;
   }
-  // 몸통(bodyShape)을 먼저 그리고 팔·책상·파티모자(extra)는 그 위에 겹쳐 그려야, working 포즈의 책상이
-  // 몸통 뒤로 완전히 가려지는 문제 없이 배 앞으로 자연스럽게 걸쳐 보임. viewBox의 y를 -6부터 시작해서
-  // 파티모자 끝이 위로 살짝 튀어나와도 잘리지 않게 여유를 둠
-  return `<svg viewBox="0 -6 100 106" width="76" height="81" aria-hidden="true">${bodyShape}${belly}${cheeks}${face}${extra}</svg>`;
+  // 귀 → 몸통(털뭉치 포함) → 목줄/이름표 → 볼터치 → 얼굴 순으로 그리고, 팔·책상·파티모자(extra)는
+  // 맨 위에 겹쳐 그려야 working 포즈의 책상이 몸통 뒤로 완전히 가려지지 않고 배 앞에 자연스럽게 걸쳐 보임.
+  // viewBox의 y를 -6부터 시작해서 파티모자 끝이 위로 살짝 튀어나와도 잘리지 않게 여유를 둠
+  return `<svg viewBox="0 -6 100 106" width="76" height="81" aria-hidden="true">${ears}${bodyShape}${collar}${cheeks}${face}${extra}</svg>`;
 }
 // 버튼/상태태그용 커스텀 아이콘 - ✅↩️🟢🔴 같은 기본 이모지 대신 브랜드 컬러의 손그림 아이콘으로 통일
 function dashIconSvg(type){
@@ -11457,6 +11475,9 @@ const FILING_STATUS_SUBITEMS = {
     { key:'이자배당연간', label:'이자/배당' },
   ],
 };
+// 결산은 다른 세목과 달리 "신고" 자체가 없는 결산작업 진행 체크용이라, 완료 상태 이름(결산완료)과
+// 전용 항목(결산월 1차/2차 - 어디 달까지 결산했는지, 완료일)이 따로 필요함. 이 상수 하나로 그 차이를 관리함
+const SETTLEMENT_MONTH_LABEL = ['결산월(1차)', '결산월(2차)'];
 function renderFilingStatusTable(kind){
   const cfg = FILING_KINDS[kind];
   const taxType = cfg.getViewingType();
@@ -11464,10 +11485,12 @@ function renderFilingStatusTable(kind){
   // 신고일 입력)이라 기존 공용 렌더러를 쓰지 않고 별도 함수로 분기함. 검토표(review)의 원천세는 애초에
   // 이 함수 자체를 안 타므로(renderReviewPanel에서 reviewIncomeTaxBox로 처리) 여기선 안 건드림
   if(kind === 'status' && taxType === '원천세'){ renderIncomeTaxFilingStatusTable(); return; }
+  const isSettlement = (kind === 'status' && taxType === '결산');
   renderFilingPeriodControls(kind);
   const period = currentFilingPeriodKey(kind, taxType);
   const titleEl = document.getElementById(cfg.ids.title);
-  if(titleEl) titleEl.textContent = `${FILING_TYPE_FULL_NAME[taxType] || taxType} ${cfg.titleSuffix}`;
+  // 결산은 "신고"라는 개념이 없어서 다른 세목처럼 "결산 신고현황"이라고 하면 어색함 - 그냥 "결산"이라고만 표시
+  if(titleEl) titleEl.textContent = isSettlement ? '결산' : `${FILING_TYPE_FULL_NAME[taxType] || taxType} ${cfg.titleSuffix}`;
   const list = filingStatusClientList(taxType);
   const wrap = document.getElementById(cfg.ids.wrap);
   if(!wrap) return;
@@ -11479,6 +11502,8 @@ function renderFilingStatusTable(kind){
   // 세부항목 열은 신고현황(status) 화면의 원천세에서만, 신고구분(월별/반기/연간)에 맞는 항목만 보여줌
   const subitems = (kind === 'status' && taxType === '원천세') ? (FILING_STATUS_SUBITEMS[cfg.state.sourceMode] || []) : [];
   const subitemHeaderCells = subitems.map(it=>`<th class="cvb" style="white-space:nowrap; font-size:11px;">${escHtml(it.label)}</th>`).join('');
+  const monthOptionsHtml = (selected)=> `<option value="">-</option>` + Array.from({length:12},(_,i)=>i+1).map(m=>`<option value="${m}" ${String(m)===String(selected)?'selected':''}>${m}월</option>`).join('');
+  const settlementHeaderCells = isSettlement ? SETTLEMENT_MONTH_LABEL.map(l=>`<th class="cvb" style="white-space:nowrap; font-size:11px;">${l}</th>`).join('') : '';
   const rows = list.map((c, idx)=>{
     const entry = periodData[c.id] || { status:'미확인', memo:'' };
     entry.items = entry.items || {};
@@ -11493,19 +11518,28 @@ function renderFilingStatusTable(kind){
         <option value="완료" ${v==='완료'?'selected':''}>완료</option>
       </select></td>`;
     }).join('');
+    const settlementCells = isSettlement ? `
+      <td class="cvb"><select class="filing-settlement-month-select" data-client-id="${c.id}" data-slot="month1" style="font-size:11px; border:1.5px solid var(--border); border-radius:6px; padding:2px 3px;">${monthOptionsHtml(entry.month1)}</select></td>
+      <td class="cvb"><select class="filing-settlement-month-select" data-client-id="${c.id}" data-slot="month2" style="font-size:11px; border:1.5px solid var(--border); border-radius:6px; padding:2px 3px;">${monthOptionsHtml(entry.month2)}</select></td>` : '';
+    const settlementCompletedCell = isSettlement ? `<td class="cvb"><input type="date" class="filing-settlement-completed-input" data-client-id="${c.id}" value="${escHtml(entry.completedAt||'')}" ${entry.status!=='결산완료'?'disabled':''} style="border:1.5px solid var(--border); border-radius:6px; padding:3px 4px; font-size:11px; font-family:inherit; ${entry.status!=='결산완료'?'opacity:0.5;':''}"></td>` : '';
     return `<tr>
       <td class="num cvb">${idx+1}</td>
       <td class="cvb" style="color:${entityColor}; font-weight:800; background:${nameBg};">${escHtml(c.name)}</td>
       ${subitemCells}
+      ${settlementCells}
       <td class="cvb"><select class="${cfg.ids.selectClass}" data-client-id="${c.id}">
         <option value="미확인" ${entry.status==='미확인'?'selected':''}>미확인</option>
         <option value="검토중" ${entry.status==='검토중'?'selected':''}>검토중</option>
-        <option value="신고완료" ${entry.status==='신고완료'?'selected':''}>신고완료</option>
+        ${isSettlement
+          ? `<option value="결산완료" ${entry.status==='결산완료'?'selected':''}>결산완료</option>`
+          : `<option value="신고완료" ${entry.status==='신고완료'?'selected':''}>신고완료</option>`}
       </select></td>
+      ${settlementCompletedCell}
       <td><input type="text" class="${cfg.ids.memoClass}" data-client-id="${c.id}" value="${escHtml(entry.memo||'')}" placeholder="메모" style="width:100%; border:1.5px solid var(--border); border-radius:6px; padding:4px 8px; font-family:'Pretendard',sans-serif; font-size:12px; text-align:center;"></td>
     </tr>`;
   }).join('');
-  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th class="cvb">#</th><th class="cvb">거래처</th>${subitemHeaderCells}<th class="cvb">진행상태</th><th>메모</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  const completedHeaderCell = isSettlement ? `<th class="cvb" style="white-space:nowrap; font-size:11px;">완료일</th>` : '';
+  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th class="cvb">#</th><th class="cvb">상호명</th>${subitemHeaderCells}${settlementHeaderCells}<th class="cvb">진행상태</th>${completedHeaderCell}<th>메모</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   wrap.querySelectorAll('.filing-status-subitem-select').forEach(sel=>{
     sel.addEventListener('change', ()=>{
       const cid = sel.dataset.clientId;
@@ -11515,12 +11549,38 @@ function renderFilingStatusTable(kind){
       setFilingStatusDirty(kind, true);
     });
   });
+  wrap.querySelectorAll('.filing-settlement-month-select').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const cid = sel.dataset.clientId;
+      periodData[cid] = periodData[cid] || { status:'미확인', memo:'' };
+      periodData[cid][sel.dataset.slot] = sel.value;
+      setFilingStatusDirty(kind, true);
+    });
+  });
+  wrap.querySelectorAll('.filing-settlement-completed-input').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const cid = inp.dataset.clientId;
+      periodData[cid] = periodData[cid] || { status:'미확인', memo:'' };
+      periodData[cid].completedAt = inp.value;
+      setFilingStatusDirty(kind, true);
+    });
+  });
   wrap.querySelectorAll('.'+cfg.ids.selectClass).forEach(sel=>{
     sel.addEventListener('change', ()=>{
       const cid = sel.dataset.clientId;
       periodData[cid] = periodData[cid] || { status:'미확인', memo:'' };
       periodData[cid].status = sel.value;
       periodData[cid].updatedAt = new Date().toLocaleString('ko-KR');
+      // 결산완료로 바뀌는 순간 완료일 입력칸을 바로 켜주고(반대로 벗어나면 다시 잠가서 실수로 안 바뀌게),
+      // 이미 입력해둔 날짜값 자체는 지우지 않고 그대로 둠
+      if(isSettlement){
+        const dateInp = sel.closest('tr')?.querySelector('.filing-settlement-completed-input');
+        if(dateInp){
+          const on = sel.value === '결산완료';
+          dateInp.disabled = !on;
+          dateInp.style.opacity = on ? '1' : '0.5';
+        }
+      }
       setFilingStatusDirty(kind, true);
     });
   });
@@ -11632,7 +11692,7 @@ function renderFilingTargetTable(){
     }).join('');
     return `<tr><td class="num cvb">${idx+1}</td><td class="cvb" style="color:${entityColor}; font-weight:800; background:${nameBg}; white-space:nowrap;">${escHtml(c.name)}</td>${monthCells}</tr>`;
   }).join('');
-  wrap.innerHTML = `<table><thead><tr><th class="cvb">#</th><th class="cvb">거래처</th>${monthHeaderCells}</tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.innerHTML = `<table><thead><tr><th class="cvb">#</th><th class="cvb">상호명</th>${monthHeaderCells}</tr></thead><tbody>${rows}</tbody></table>`;
   wrap.querySelectorAll('.filing-target-cell-btn').forEach(btn=>{
     btn.addEventListener('click', ()=> openFilingTargetEditModal(btn.dataset.clientId, btn.dataset.period));
   });
@@ -11822,7 +11882,7 @@ function renderIncomeTaxFilingStatusTable(){
       </tr>`);
     });
   });
-  wrap.innerHTML = bulkDateApplyToolbarHtml('itFilingDate', '체크한 신고일에 일괄적용') + `<div class="table-scroll"><table><thead><tr><th class="cvb">거래처</th><th class="cvb">지급구분</th><th class="cvb">원천세 신고일</th><th class="cvb">지방세 신고일</th><th class="cvb">상태</th><th>메모</th></tr></thead><tbody>${rowsHtml.join('')}</tbody></table></div>`;
+  wrap.innerHTML = bulkDateApplyToolbarHtml('itFilingDate', '체크한 신고일에 일괄적용') + `<div class="table-scroll"><table><thead><tr><th class="cvb">상호명</th><th class="cvb">지급구분</th><th class="cvb">원천세 신고일</th><th class="cvb">지방세 신고일</th><th class="cvb">상태</th><th>메모</th></tr></thead><tbody>${rowsHtml.join('')}</tbody></table></div>`;
   bindBulkDateApplyToolbar(wrap, 'itFilingDate', 'it-date-check');
   wrap.querySelectorAll('.it-filing-date-input').forEach(inp=>{
     inp.addEventListener('input', ()=>{
@@ -11888,7 +11948,7 @@ function renderSubmitStatusTable(){
   renderSubmitPeriodControls();
   const period = submitPeriodKey();
   const titleEl = document.getElementById('submitStatusTitle');
-  if(titleEl) titleEl.textContent = `원천세 제출현황 · ${submitState.sourceMode}`;
+  if(titleEl) titleEl.textContent = '지급명세서 제출현황';
   const list = bookkeepingClientList();
   const wrap = document.getElementById('submitStatusTableWrap');
   if(!wrap) return;
@@ -11918,7 +11978,7 @@ function renderSubmitStatusTable(){
           </select>
           <span class="submit-date-wrap" data-client-id="${c.id}" data-item-key="${it.key}" style="display:${showDate?'inline-flex':'none'}; align-items:center; gap:2px;">
             <input type="checkbox" class="submit-date-check" data-target="${dateInputId}" style="width:auto; margin:0;" title="일괄적용 대상으로 선택">
-            <input type="date" id="${dateInputId}" class="submit-date-input" data-client-id="${c.id}" data-item-key="${it.key}" value="${dateVal}" style="border:1.5px solid var(--border); border-radius:6px; padding:2px 3px; font-size:10px; width:106px;">
+            <input type="date" id="${dateInputId}" class="submit-date-input" data-client-id="${c.id}" data-item-key="${it.key}" value="${dateVal}" style="border:1.5px solid var(--border); border-radius:6px; padding:3px 4px; font-size:11.5px; width:122px;">
           </span>
         </div>
       </td>`;
@@ -11929,7 +11989,7 @@ function renderSubmitStatusTable(){
       ${subitemCells}
     </tr>`;
   }).join('');
-  wrap.innerHTML = bulkDateApplyToolbarHtml('submitDate', '체크한 제출일에 일괄적용') + `<div class="table-scroll"><table><thead><tr><th class="cvb">#</th><th class="cvb">거래처</th>${subitemHeaderCells}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  wrap.innerHTML = bulkDateApplyToolbarHtml('submitDate', '체크한 제출일에 일괄적용') + `<div class="table-scroll"><table><thead><tr><th class="cvb">#</th><th class="cvb">상호명</th>${subitemHeaderCells}</tr></thead><tbody>${rows}</tbody></table></div>`;
   bindBulkDateApplyToolbar(wrap, 'submitDate', 'submit-date-check');
   wrap.querySelectorAll('.submit-status-subitem-select').forEach(sel=>{
     sel.addEventListener('change', ()=>{
