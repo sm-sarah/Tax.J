@@ -785,7 +785,10 @@
   .submit-btn{
     background:var(--indigo); color:#fff; border:none; border-radius:12px;
     padding:10px 28px; font-size:13px; font-weight:700; cursor:pointer;
-    width:auto; min-width:160px; display:block; margin:0 auto;
+    /* 예전엔 min-width:160px가 기본값이라 "추가"/"저장"처럼 글자 두세 글자짜리 칩도 억지로 넓게 늘어나
+       보였음(대부분은 각자 width:auto로 덮어써왔지만 min-width까지는 안 건드린 경우가 많았음) - 기본값
+       자체를 글자 크기에 맞게 줄여서, 따로 안 덮어쓴 버튼도 다 텍스트에 맞는 크기로 나오게 함 */
+    width:auto; min-width:0; display:block; margin:0 auto;
     box-shadow:0 6px 14px -6px rgba(91,95,239,0.5);
   }
   .submit-btn:hover{background:var(--indigo-deep);}
@@ -991,7 +994,9 @@
   .cal-badge{font-size:12px; font-weight:700; padding:2px 6px; border-radius:8px; line-height:1.4; white-space:normal; word-break:keep-all; overflow-wrap:break-word; max-width:100%;}
   .cal-badge.leave{background:var(--coral-bg); color:var(--coral);}
   .cal-badge.annual{background:#CFEFFB; color:#0B5A78;}
-  .cal-work-icon.holiday-icon{color:#DC2626; font-weight:800;}
+  /* 공휴일 라벨(추석 등)은 평일 근무 아이콘(💼)과 같은 옅은 톤(opacity 0.55, 10px)을 그대로 물려받아서
+     너무 흐리고 작게 보였음 - 빨간 글자가 제 색으로 또렷하게 보이도록 별도로 크기·불투명도를 키움 */
+  .cal-work-icon.holiday-icon{color:#DC2626; font-weight:800; font-size:11px; opacity:1;}
   .cal-badge.remote{background:#CFEFFB; color:#0B5A78;}
   .cal-badge.holiday{background:#FEE2E2; color:#DC2626;}
   .cal-badge.party{background:var(--amber-bg); color:var(--amber);}
@@ -1002,7 +1007,9 @@
   .cal-badge.special{background:var(--mint-bg); color:#0A7A55; font-weight:800;}
   /* 당겨쓴 항목 표시 chip - currentColor를 그대로 이어받아서 배지 색(휴가=코럴, 재택=인디고 등)에 맞춰
      점선 테두리만 둘러지고, 안의 글자로도 "당겨씀"이 바로 읽히게 함 */
-  .cal-badge-advance{display:inline-flex; align-items:center; gap:2px; margin-left:3px; padding:0 5px; border-radius:6px; border:1.3px dashed currentColor; font-size:0.92em; font-weight:800;}
+  /* inline-flex 요소는 기본이 baseline 정렬이라, 앞의 일반 텍스트("정기재택")보다 살짝 위로 붕 떠 보였음 -
+     같은 줄 텍스트와 눈높이가 맞도록 vertical-align을 middle로 잡아줌 */
+  .cal-badge-advance{display:inline-flex; align-items:center; gap:2px; margin-left:3px; padding:0 5px; border-radius:6px; border:1.3px dashed currentColor; font-size:0.92em; font-weight:800; vertical-align:middle;}
   /* 결재 > 신고현황 표의 진행상태 select는 .field 밖에 있어서 스타일이 하나도 안 먹고 브라우저 기본 모양 그대로 나왔던 문제 - 같은 표의 메모 입력칸과 톤을 맞춤 */
   .filing-status-select{
     font-family:'Pretendard', sans-serif; font-size:12px;
@@ -1135,7 +1142,7 @@
   }
   .doc .cal-line.tag-leave{background:var(--coral-bg); color:var(--coral);}
   .doc .cal-line.tag-annual{background:#CFEFFB; color:#0B5A78;}
-  .doc .cal-work-icon.holiday-icon{color:#DC2626; font-weight:800;}
+  .doc .cal-work-icon.holiday-icon{color:#DC2626; font-weight:800; opacity:1;}
   .doc .cal-line.tag-remote{background:#CFEFFB; color:#0B5A78;}
   .doc .cal-line.tag-holiday{background:#FEE2E2; color:#DC2626;}
   .doc .cal-line.tag-party{background:var(--amber-bg); color:#8A6D1E;}
@@ -1921,6 +1928,14 @@
         <div class="home-menu-expand-all-row">
           <button type="button" id="homeMenuExpandAllBtn" class="home-menu-expand-all-btn">▾ 전체</button>
         </div>
+        <!-- ⭐ 즐겨찾기: 하위메뉴가 많아져서 자주 쓰는 화면(가장 하위 메뉴 포함, 예: 세무신고>원천세>신고현황)을
+             바로 찾기 번거롭다는 의견으로, 사이드바 맨 위(Client보다도 위)에 최대 5개까지 등록해두는 자리를 둠.
+             항목이 없으면 섹션 전체를 숨기고, 있으면 채워진 자리(.home-fav-tile)와 빈 자리(+, .home-fav-slot-empty)를
+             renderFavoritesBar()가 채워넣음 -->
+        <div class="home-section-row" id="homeFavoritesSection">
+          <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Favorites</div>
+          <div class="home-tiles" id="homeFavoritesChips"></div>
+        </div>
         <!-- Client(거래처 관련 메뉴)를 가장 많이 쓸 것 같아서 맨 위로 올림 -->
         <div class="home-section-row">
           <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Client</div>
@@ -1993,7 +2008,8 @@
               <!-- 법인세/종소세/결산: 아직 신고현황만 있어서 펼칠 하위메뉴 없이 바로 이동함 -->
               <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="법인세"><span>법인세</span></div>
               <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="종소세"><span>종소세</span></div>
-              <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="결산"><span>결산</span></div>
+              <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="결산1차"><span>1차 결산</span></div>
+              <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="결산2차"><span>2차 결산</span></div>
             </div>
             <div class="home-tile home-tile-plain" data-goto="approval" style="--tile-accent:#0EA5A5;">
               <div class="home-tile-icon">📮</div>
@@ -2014,8 +2030,6 @@
               <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="new"><span>기안</span></div>
               <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="mine"><span>기안함</span></div>
               <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="inbox"><span>결재함</span></div>
-              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="rejected"><span>반려함</span></div>
-              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="done"><span>완료함</span></div>
               <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="all"><span>전체이력</span></div>
             </div>
             <div class="home-tile home-tile-plain" data-goto="quickguide" style="--tile-accent:var(--guide-mustard);">
@@ -2433,9 +2447,11 @@
       <!-- 법인 기본정보(CORPORATE PROFILE)와 같은 톤의 등록증 스타일 - 팀명을 큰 제목으로 놓고 그 아래
            담당회계사·세무관리번호·내선번호를 표로 보여줌(buildTeamBasicInfoTable, renderCompanyInfoTeamView에서 채움) -->
       <div id="ciTeamBasicInfoDocWrap"></div>
-      <div style="text-align:center; margin:22px 0 6px;"><span style="font-size:12px; font-weight:800; color:var(--ink-soft); letter-spacing:0.02em;">🔑 공용정보</span></div>
+      <!-- 법인 조회 화면(사내정보 > 법인)의 "🔑 공용정보"와 같은 구성으로 맞춤: 같은 소제목 스타일(.section-subtitle-label)을
+           쓰고, 위 팀 기본정보 카드와 이어지는 구간이라 위에 점선 구분선을 넣어 위/아래 구간을 나눠줌 -->
+      <div style="text-align:center; margin-top:26px; padding-top:20px; border-top:1.5px dashed var(--border); margin-bottom:12px;"><span class="section-subtitle-label">🔑 공용정보</span></div>
       <div id="ciTeamGeneralListWrapView" style="margin-bottom:18px;"></div>
-      <div style="text-align:center; margin:10px 0 6px;"><span style="font-size:12px; font-weight:800; color:var(--ink-soft); letter-spacing:0.02em;">👥 팀원별정보</span></div>
+      <div style="text-align:center; margin:10px 0 12px;"><span class="section-subtitle-label">👥 팀원별정보</span></div>
       <div id="ciTeamListWrapView"></div>
     </div>
   </section>
@@ -2604,6 +2620,12 @@
         <div style="text-align:center; margin-top:26px; padding-top:20px; border-top:1.5px dashed var(--border); margin-bottom:12px;"><span class="section-subtitle-label">추가정보</span></div>
         <div style="background:var(--bg); border-radius:10px; padding:14px 16px; margin-bottom:10px;">
           <div style="text-align:center; margin-bottom:10px;"><span style="display:inline-block; font-size:12px; font-weight:800; color:var(--indigo-deep); background:var(--indigo-bg); padding:4px 16px; border-radius:20px;">대표자</span></div>
+          <div style="text-align:right; margin-bottom:10px;">
+            <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-soft); font-weight:700; cursor:pointer;" title="주로 연락하는 창구를 대표자로 지정해요">
+              <input type="radio" name="cl-primary-contact" id="cl-primary-rep" value="rep" style="width:15px; height:15px; cursor:pointer;">
+              ⭐ 주연락처
+            </label>
+          </div>
           <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
             <div class="field" style="flex:1 1 130px;"><label>이름</label><input type="text" id="cl-rep-name" placeholder="예: 홍길동"></div>
             <div class="field" style="flex:1 1 130px;"><label>연락처</label><input type="text" id="cl-rep-phone" placeholder="예: 010-1234-5678"></div>
@@ -2620,6 +2642,7 @@
           </div>
           <div id="cl-contacts-list"></div>
           <button type="button" id="cl-contact-add-btn" class="del-btn" style="margin:2px 0 14px;">+ 담당자 추가</button>
+          <div class="hint" style="font-size:11px; color:var(--ink-soft); text-align:right; margin:-8px 0 8px;">각 담당자 옆 ⭐ 주연락으로 주로 연락하는 실무자를 지정할 수 있어요.</div>
         </div>
 
         <div style="text-align:center; margin-top:26px; padding-top:20px; border-top:1.5px dashed var(--border); margin-bottom:12px;"><span class="section-subtitle-label">개인정보</span></div>
@@ -2771,7 +2794,8 @@
             <button type="button" class="filing-type-btn" data-filing-type="부가세">부가세</button>
             <button type="button" class="filing-type-btn" data-filing-type="법인세">법인세</button>
             <button type="button" class="filing-type-btn" data-filing-type="종소세">종소세</button>
-            <button type="button" class="filing-type-btn" data-filing-type="결산">결산</button>
+            <button type="button" class="filing-type-btn" data-filing-type="결산1차">1차 결산</button>
+            <button type="button" class="filing-type-btn" data-filing-type="결산2차">2차 결산</button>
           </div>
         </div>
         <div class="approval-nav-branch">
@@ -2798,8 +2822,6 @@
             <button type="button" class="approval-doc-btn active" data-approval-doc="new">✏️ 기안</button>
             <button type="button" class="approval-doc-btn" data-approval-doc="mine">📤 기안함<span id="approvalMineCount" class="approval-doc-badge" style="display:none;"></span></button>
             <button type="button" class="approval-doc-btn" data-approval-doc="inbox">📥 결재함<span id="approvalInboxCount" class="approval-doc-badge" style="display:none;"></span></button>
-            <button type="button" class="approval-doc-btn" data-approval-doc="rejected">🚫 반려함<span id="approvalRejectedCount" class="approval-doc-badge" style="display:none;"></span></button>
-            <button type="button" class="approval-doc-btn" data-approval-doc="done">✅ 완료함<span id="approvalDoneCount" class="approval-doc-badge" style="display:none;"></span></button>
             <button type="button" class="approval-doc-btn" data-approval-doc="all">📚 전체이력</button>
           </div>
         </div>
@@ -2844,8 +2866,9 @@
           <span class="hint" style="font-size:11px; margin:0;">칸을 눌러서 그 달의 신고대상 여부·신고구분·지급시기를 설정하세요.</span>
         </div>
         <!-- 원래는 "1월 설정 일괄적용"/"전년도 12월 복사" 두 버튼이었는데, 실제로는 잘 안 쓰이고 화면만
-             복잡하게 만든다는 의견으로 없애고 단순 초기화 버튼 하나로 대체함 -->
-        <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+             복잡하게 만든다는 의견으로 없애고 단순 초기화 버튼 하나로 대체함. 가운데 배치는 표 위에서 눈에
+             너무 띄어 다른 목록 화면들(회사 ID/PW 등)처럼 표 바로 위 오른쪽 정렬로 옮김 -->
+        <div style="display:flex; justify-content:flex-end; margin-bottom:6px;">
           <button type="button" id="filingTargetResetBtn" class="del-btn" style="background:var(--coral-bg); color:var(--coral);" title="선택한 해의 신고대상 설정을 전체 거래처·전체 달 모두 초기화해요">🗑️ 초기화</button>
         </div>
         <div id="filingTargetTableWrap" class="table-scroll"></div>
@@ -2959,23 +2982,13 @@
         </div>
 
         <div class="approval-doc-panel" data-approval-doc="mine" style="display:none;">
-          <p class="hint" style="text-align:center;">내가 기안한 문서와 진행 상태예요.</p>
+          <p class="hint" style="text-align:center;">내가 기안한 문서와 진행 상태예요. (검토중 / 결재완료 / 반려)</p>
           <div id="approvalMineWrap"></div>
         </div>
 
         <div class="approval-doc-panel" data-approval-doc="inbox" style="display:none;">
-          <p class="hint" style="text-align:center;">나에게 결재를 요청한 문서예요. 승인하거나 반려할 수 있어요.</p>
+          <p class="hint" style="text-align:center;">나에게 결재를 요청한 문서예요. 승인하거나 반려할 수 있어요. (결정이 끝나면 이 목록에서는 빠져요)</p>
           <div id="approvalInboxWrap"></div>
-        </div>
-
-        <div class="approval-doc-panel" data-approval-doc="rejected" style="display:none;">
-          <p class="hint" style="text-align:center;">내가 반려했거나, 내가 기안한 문서 중 반려받은 목록이에요.</p>
-          <div id="approvalRejectedWrap"></div>
-        </div>
-
-        <div class="approval-doc-panel" data-approval-doc="done" style="display:none;">
-          <p class="hint" style="text-align:center;">승인이 완료된 문서예요 - 내가 기안했거나 내가 승인한 것 모두 보여요.</p>
-          <div id="approvalDoneWrap"></div>
         </div>
 
         <div class="approval-doc-panel" data-approval-doc="all" style="display:none;">
@@ -2995,6 +3008,18 @@
         <button type="button" id="approvalDetailModalClose" class="del-btn modal-close-btn">닫기</button>
       </div>
       <div id="approvalDetailModalBody"></div>
+    </div>
+  </div>
+
+  <!-- 즐겨찾기 선택 팝업: 사이드바의 빈 즐겨찾기 자리(+)를 누르면 뜸 - 메뉴 트리 전체(가장 하위 메뉴까지) 중
+       아직 즐겨찾기에 없는 항목을 골라 추가함 -->
+  <div id="favoriteMenuPickerOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:360px; width:100%; max-height:80vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
+        <div style="font-weight:800; font-size:15px; color:var(--ink);">⭐ 즐겨찾기 추가</div>
+        <button type="button" id="favoriteMenuPickerClose" class="del-btn modal-close-btn">닫기</button>
+      </div>
+      <div id="favoriteMenuPickerList"></div>
     </div>
   </div>
 
@@ -3203,7 +3228,7 @@
               <span style="font-size:13px; color:var(--ink-soft);">일</span>
             </div>
           </div>
-          <div class="field"><label>1일 기준 금액 (원)</label><input type="number" id="ll-daily" class="num-input" min="0" step="1" required></div>
+          <div class="field" style="align-items:center;"><label>1일 기준 금액 (원)</label><input type="number" id="ll-daily" class="num-input" min="0" step="1" required style="width:180px;"></div>
           <div style="text-align:center;">
             <button type="submit" class="submit-btn">한도 추가</button>
           </div>
@@ -3217,8 +3242,8 @@
       <p class="hint">전 직원 공통으로 반영돼요. 점심회식·공휴일·기타는 식대계산 근무일수에서 빠지고, 저녁회식은 일정 공유용이라 식대계산에는 영향 없어요.</p>
       <div class="mini-form compact" style="max-width:600px; margin:0 auto;">
         <form id="exclusionForm" style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; margin-bottom:0; justify-content:center;">
-          <div class="field" style="flex:1 1 140px; margin-bottom:0;"><label>날짜</label><input type="date" id="ex-date" required min="2015-01-01" max="2099-12-31"></div>
-          <div class="field" style="flex:1 1 140px; margin-bottom:0;"><label>사유</label>
+          <div class="field" style="width:155px; flex:0 0 auto; margin-bottom:0;"><label>날짜</label><input type="date" id="ex-date" required min="2015-01-01" max="2099-12-31"></div>
+          <div class="field" style="width:150px; flex:0 0 auto; margin-bottom:0;"><label>사유</label>
             <select id="ex-reason">
               <option value="공휴일">공휴일</option>
               <option value="점심회식">점심회식 (식대계산 제외)</option>
@@ -3226,7 +3251,7 @@
               <option value="기타">기타</option>
             </select>
           </div>
-          <div class="field" style="flex:1 1 140px; margin-bottom:0;" id="exNameField">
+          <div class="field" style="flex:1 1 180px; margin-bottom:0;" id="exNameField">
             <label id="exNameLabel">공휴일명 <span style="font-weight:400; color:var(--ink-soft);">(선택)</span></label>
             <input type="text" id="ex-name" placeholder="예: 광복절">
           </div>
@@ -3240,18 +3265,24 @@
       <div class="settings-sub-title" id="ssTitle-staffLeave" style="scroll-margin-top:112px;">🌴 직원휴가 <span class="badge">관리자 전용</span></div>
       <p class="hint">입사일 등록 시 법정휴가는 자동으로 부여돼요. 여기는 회사 기준과 다를 때 수동으로 더하거나 빼서 맞추는 용도예요.</p>
       <div class="mini-form compact" style="max-width:600px; margin:0 auto;">
-        <form id="grantForm" style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; margin-bottom:0; justify-content:center;">
-          <div class="field" style="flex:1 1 140px; margin-bottom:0;"><label>날짜</label><input type="date" id="g-date" required min="2015-01-01" max="2099-12-31"></div>
-          <div class="field" style="flex:1 1 140px; margin-bottom:0;"><label>구분</label>
-            <select id="g-mode">
-              <option value="add">추가 (+)</option>
-              <option value="subtract">차감 (−)</option>
-            </select>
+        <!-- 날짜/구분/일수 한 줄 + 메모 한 줄 + 추가버튼 한 줄로 나눠서, 예전처럼 메모칸과 추가버튼이 한 줄에
+             끼어들어 칸 너비가 서로 들쭉날쭉해 보이던 걸 정리함(제외일수와 입력칸 너비도 맞춤) -->
+        <form id="grantForm" style="display:flex; flex-direction:column; gap:8px; margin-bottom:0;">
+          <div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; justify-content:center;">
+            <div class="field" style="width:155px; flex:0 0 auto; margin-bottom:0;"><label>날짜</label><input type="date" id="g-date" required min="2015-01-01" max="2099-12-31"></div>
+            <div class="field" style="width:150px; flex:0 0 auto; margin-bottom:0;"><label>구분</label>
+              <select id="g-mode">
+                <option value="add">추가 (+)</option>
+                <option value="subtract">차감 (−)</option>
+              </select>
+            </div>
+            <div class="field" style="width:90px; flex:0 0 auto; margin-bottom:0;"><label>일수</label><input type="number" id="g-days" class="num-input" step="0.5" min="0" value="1"></div>
           </div>
-          <div class="field" style="flex:1 1 140px; margin-bottom:0;"><label>일수</label><input type="number" id="g-days" class="num-input" step="0.5" min="0" value="1"></div>
-          <div class="field" style="flex:1 1 140px; margin-bottom:0;"><label>메모</label><input type="text" id="g-memo" placeholder="예: 회사 기준 보정"></div>
-          <button type="submit" class="submit-btn" id="grantSubmitBtn" style="width:auto; flex:0 0 auto;">추가</button>
-          <button type="button" id="grantCancelEditBtn" class="del-btn" style="display:none; flex:0 0 auto;">취소</button>
+          <div class="field" style="margin-bottom:0;"><label>메모</label><input type="text" id="g-memo" placeholder="예: 회사 기준 보정"></div>
+          <div style="display:flex; gap:8px; justify-content:center;">
+            <button type="submit" class="submit-btn" id="grantSubmitBtn" style="width:auto;">추가</button>
+            <button type="button" id="grantCancelEditBtn" class="del-btn" style="display:none;">취소</button>
+          </div>
         </form>
         <div style="text-align:center;"><span class="save-msg" id="grantSaveMsg"></span></div>
       </div>
@@ -3572,6 +3603,7 @@ function loadSharedData(){
   try{ sharedTeamInfo = JSON.parse(localStorage.getItem('worklog_shared_teaminfo') || 'null') || { note:'' }; }catch(e){ sharedTeamInfo = { note:'' }; }
   try{ sharedSpecialPeriods = JSON.parse(localStorage.getItem('worklog_shared_specialperiods') || '[]') || []; }catch(e){ sharedSpecialPeriods = []; }
   try{ sharedFilingStatus = JSON.parse(localStorage.getItem('worklog_shared_filingstatus') || '{}') || {}; }catch(e){ sharedFilingStatus = {}; }
+  migrateSettlementFilingStatus();
   try{ sharedReviewStatus = JSON.parse(localStorage.getItem('worklog_shared_reviewstatus') || '{}') || {}; }catch(e){ sharedReviewStatus = {}; }
   try{ sharedFilingHelp = JSON.parse(localStorage.getItem('worklog_shared_filinghelp') || '{}') || {}; }catch(e){ sharedFilingHelp = {}; }
   try{ sharedApprovals = JSON.parse(localStorage.getItem('worklog_shared_approvals') || '[]') || []; }catch(e){ sharedApprovals = []; }
@@ -4880,8 +4912,6 @@ async function loadAll(){
     populateApproverSelect();
     renderApprovalInbox();
     renderApprovalMine();
-    renderApprovalRejected();
-    renderApprovalDone();
     renderApprovalAll();
     renderApprovalAllBadges();
   }
@@ -6386,8 +6416,9 @@ function openClientDetailModal(c){
   let html = group('기본정보', rowHtml('프로그램', programDisplay) + rowHtml('회사코드', c.companyCode || '-') + rowHtml('사업자 상세구분', subTypeDisplay)
     + rowHtml('사업장 주소', c.bizAddress || '-') + rowHtml('개업일', c.openDate || '-') + foundingRow + rowHtml('업종', bizTypeDisplay));
 
-  // 2) 대표자
-  html += group('대표자', rowHtml('이름', c.repName || '-') + rowHtml('연락처', c.repPhone || '-') + rowHtml('이메일', c.repEmail || '-'));
+  // 2) 대표자 (실무자 중 아무도 주연락처로 지정 안 했으면 대표자가 기본 주연락처)
+  const repIsPrimary = c.primaryContactType !== 'contact';
+  html += group('대표자' + (repIsPrimary ? ' ⭐ 주연락처' : ''), rowHtml('이름', c.repName || '-') + rowHtml('연락처', c.repPhone || '-') + rowHtml('이메일', c.repEmail || '-'));
 
   // 3) 실무자 (등록할 때 "대표자와 동일" 체크했으면 중복으로 안 보여주고 한 줄로 표시, 여러 명이면 실무자1/실무자2...로 각각 표시)
   const contacts = (c.contacts && c.contacts.length) ? c.contacts : (c.contact || c.phone || c.email) ? [{name:c.contact, phone:c.phone, email:c.email}] : [];
@@ -6399,7 +6430,8 @@ function openClientDetailModal(c){
   } else {
     contacts.forEach((p, i)=>{
       const n = contacts.length > 1 ? i+1 : '';
-      contactRows += rowHtml(`실무자${n} 이름`, p.name || '-')
+      const isPrimary = c.primaryContactType === 'contact' && c.primaryContactIdx === i;
+      contactRows += rowHtml(`실무자${n} 이름`, (p.name || '-') + (isPrimary ? ' ⭐ 주연락처' : ''))
         + rowHtml(`실무자${n} 연락처`, p.phone || '-')
         + rowHtml(`실무자${n} 이메일`, p.email || '-');
     });
@@ -6600,13 +6632,19 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
       <td class="num cvb">${escHtml(c.terminationDate||'-')}</td>
       <td class="num cvb">${escHtml(c.terminationMonth||'-')}</td>
       ${terminationReasonCell}` : '';
+    // ℹ️/📝/🕘/✏️/🗑️ 이모지는 OS/브라우저가 기본으로 깔아둔 컬러 이모지 폰트(Noto Color Emoji 등)로 그려지는데,
+    // 그 스타일이 구글 자체 아이콘(제미나이 등)처럼 보인다는 의견이 있어서 - 위의 폴더/열쇠 아이콘과 같은 방식으로
+    // 앱 색상표(indigo/coral/pink)를 그대로 쓸 수 있는 자체 인라인 SVG 선화 아이콘으로 통일함
+    const infoSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+    const memoSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="14" y2="17"></line></svg>`;
+    const historySvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 16 14"></polyline></svg>`;
     const memoBtn = c.memo
-      ? `<button class="del-btn client-action-btn client-memo-btn" data-id="${c.id}" title="메모 보기">📝</button>`
-      : `<button class="del-btn client-action-btn" disabled style="opacity:0.3; cursor:default;" title="메모 없음">📝</button>`;
+      ? `<button class="del-btn client-action-btn client-memo-btn client-icon-plain" data-id="${c.id}" title="메모 보기" style="color:var(--indigo);">${memoSvg}</button>`
+      : `<button class="del-btn client-action-btn client-icon-plain" disabled style="opacity:0.3; cursor:default; color:var(--ink-soft);" title="메모 없음">${memoSvg}</button>`;
     const historyBtn = (c.editHistory && c.editHistory.length)
-      ? `<button class="del-btn client-action-btn client-history-btn" data-id="${c.id}" title="수정이력 보기">🕘</button>`
-      : `<button class="del-btn client-action-btn" disabled style="opacity:0.3; cursor:default;" title="수정이력 없음">🕘</button>`;
-    const detailBtn = `<button class="del-btn client-action-btn client-detail-btn client-icon-plain" data-id="${c.id}" title="추가정보 보기">ℹ️</button>`;
+      ? `<button class="del-btn client-action-btn client-history-btn client-icon-plain" data-id="${c.id}" title="수정이력 보기" style="color:var(--ink-soft);">${historySvg}</button>`
+      : `<button class="del-btn client-action-btn client-icon-plain" disabled style="opacity:0.3; cursor:default; color:var(--ink-soft);" title="수정이력 없음">${historySvg}</button>`;
+    const detailBtn = `<button class="del-btn client-action-btn client-detail-btn client-icon-plain" data-id="${c.id}" title="추가정보 보기" style="color:var(--indigo);">${infoSvg}</button>`;
     // 📁 이모지를 twemoji가 외부 CDN 이미지로 바꿔치기하는 과정에서, 네트워크 상황에 따라 잠깐 노란 이모지로
     // 보이다가 로딩 실패 시 글자색(파란기)으로 바뀌어 보이는 문제가 있어서 - 항상 똑같이 노란 폴더로 보이도록
     // 네트워크 의존 없는 인라인 SVG로 직접 그림 (twemoji.parse 대상도 아니라서 나중에 다시 바뀔 일도 없음)
@@ -6617,6 +6655,8 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
     // 열쇠 아이콘은 폴더 아이콘과 색이 겹쳐 헷갈리지 않도록 분홍색으로 구분함 - 이모지는 색을 못 바꿔서 인라인 SVG로 그림
     const keySvg = `<svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style="vertical-align:-2px;"><path fill-rule="evenodd" d="M8 7a5 5 0 113.61 4.804l-1.903 1.903A1 1 0 019 14H8v1a1 1 0 01-1 1H6v1a1 1 0 01-1 1H3a1 1 0 01-1-1v-2a1 1 0 01.293-.707L8.196 8.39A5.002 5.002 0 018 7zm5-3a.75.75 0 000 1.5A1.5 1.5 0 0114.5 7 .75.75 0 0016 7a3 3 0 00-3-3z" clip-rule="evenodd"/></svg>`;
     const personalKeyBtn = `<button class="del-btn client-action-btn client-personal-key-btn client-icon-plain" data-id="${c.id}" title="개인정보(ID/PW) 보기" style="color:var(--pink, #DB2777);">${keySvg}</button>`;
+    const editSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>`;
+    const trashSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>`;
     return `<tr>
       <td class="num cvb">${idx+1}</td>${groupNoCell}
       <td class="cvb" style="color:${taxColor}; font-weight:600;">${escHtml(taxTypeDisplay)}</td>
@@ -6631,8 +6671,8 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
       <td>${detailBtn}${folderBtn}${personalKeyBtn}</td>
       <td>${memoBtn}</td>
       <td>${historyBtn}</td>
-      <td><button class="del-btn client-action-btn client-jump-edit-btn" data-id="${c.id}" title="수정">✏️</button></td>
-      <td><button class="del-btn client-action-btn client-jump-del-btn" data-id="${c.id}" title="삭제">🗑️</button></td>
+      <td><button class="del-btn client-action-btn client-jump-edit-btn client-icon-plain" data-id="${c.id}" title="수정" style="color:var(--pink, #DB2777);">${editSvg}</button></td>
+      <td><button class="del-btn client-action-btn client-jump-del-btn client-icon-plain" data-id="${c.id}" title="삭제" style="color:var(--coral);">${trashSvg}</button></td>
     </tr>`;
   }).join('');
   const groupNoHeader = showGroupNo ? '<th class="cvb"></th>' : '';
@@ -6754,7 +6794,9 @@ function openClFeeMonthPopup(anchorEl){
   // 가려버렸음 - 아이콘 왼쪽 끝에 맞춰 오른쪽으로 펼쳐지게 바꿔서 표 앞쪽을 가리지 않게 함
   const popupWidth = popup.offsetWidth || 170;
   popup.style.left = Math.min(rect.left, window.innerWidth - popupWidth - 8) + 'px';
-  popup.style.top = (rect.bottom + 6) + 'px';
+  // 아이콘 아래로 펼치면 팝업이 바로 밑 거래처 행들(수임료·계약일 등)을 가려서, 아이콘 "위쪽"에 뜨도록 변경함
+  const popupHeight = popup.offsetHeight || 90;
+  popup.style.top = Math.max(8, rect.top - popupHeight - 6) + 'px';
 }
 document.addEventListener('click', (e)=>{
   const popup = document.getElementById('clFeeMonthPopup');
@@ -6809,6 +6851,9 @@ async function populateClientEditForm(c){
   clContactRows = (c.contacts && c.contacts.length)
     ? c.contacts.map(x=>({ name: x.name||'', phone: x.phone||'', email: x.email||'' }))
     : [{ name: c.contact||'', phone: c.phone||'', email: c.email||'' }];
+  clPrimaryContact = (c.primaryContactType === 'contact' && clContactRows[c.primaryContactIdx])
+    ? { type:'contact', idx: c.primaryContactIdx }
+    : { type:'rep', idx: null };
   document.getElementById('cl-contact-same-as-rep').checked = !!c.contactSameAsRep;
   updateContactSameAsRep();
   document.getElementById('cl-taxtype').value = c.taxType || '기장대행';
@@ -7335,7 +7380,9 @@ function buildCiAccountTable(list, category, admin, person, titlePrefix, showCon
       ${ciRowButtons(admin, category, it.id, person, it.history&&it.history.length, showControls)}
     </tr>`;
   }).join('');
-  const titleHtml = hideTitle ? '' : `<div style="text-align:center; margin:14px 0 10px;"><span class="section-subtitle-label">🔑 ${escHtml((titlePrefix||'')+'공용정보')}</span></div>`;
+  // 이 제목이 보일 때는(=법인 조회 화면) 바로 위 기본정보 카드와 이어지는 구간이라, 다른 화면들의 "새 구획 시작"
+  // 패턴(거래처 등록폼의 "추가정보"/"개인정보" 등)과 똑같이 위에 점선 구분선을 넣어 위/아래 구간을 나눠줌
+  const titleHtml = hideTitle ? '' : `<div style="text-align:center; margin-top:26px; padding-top:20px; border-top:1.5px dashed var(--border); margin-bottom:12px;"><span class="section-subtitle-label">🔑 ${escHtml((titlePrefix||'')+'공용정보')}</span></div>`;
   return `${titleHtml}<div class="table-scroll"><table><thead><tr><th>항목명</th><th>ID</th><th>PW</th><th>메모</th>${withControls?'<th>관리</th>':''}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 // "공용ID/PW"(개인용, 평문 저장) - 사내정보 > 개인 탭 전용
@@ -9098,13 +9145,125 @@ function renderHomeDashboard(){
   if(cfg.enabled.has('notice')) renderDashboardImportantNotices();
 }
 
+// ⭐ 즐겨찾기: 홈 화면이 대시보드로 바뀌면서 예전엔 있던 즐겨찾기 목록이 통째로 빠졌었는데(관련 CSS는 그대로
+// 남아있었음), 세무신고 밑 하위메뉴가 많이 늘어나 자주 쓰는 화면을 매번 펼쳐서 찾기 번거롭다는 의견으로
+// 사이드바 맨 위(Client보다도 위)에 최대 5개까지 등록해두는 자리로 다시 둠 - 이번엔 최상위 메뉴뿐 아니라
+// 가장 하위 메뉴(예: 세무신고>원천세>신고현황)까지 전부 등록 대상. 이 브라우저에만 저장되는 개인 설정이라
+// gdrive 동기화는 하지 않음(대시보드 위젯 설정과 같은 방식).
+const FAVORITE_MENU_MAX = 5;
+const FAVORITE_MENU_KEY = 'worklog_favorite_menu_items';
+// 즐겨찾기로 등록 가능한 항목 = 사이드바 메뉴 트리 안에서 실제로 어딘가로 이동시키는 data-*-goto 속성을 가진 노드
+const FAVORITE_MENU_SELECTOR = '.home-tile[data-goto], .home-tile[data-settings-cat-goto], .home-submenu-item[data-approval-cat-goto], .home-submenu-leaf[data-approval-cat-goto], .home-submenu-item[data-companyinfo-cat-goto], .home-submenu-item[data-policy-cat-goto], .home-submenu-item[data-settings-anchor-goto]';
+// 항목의 정체성 = 그 항목이 실제로 어떻게 동작하는지를 결정하는 data-*goto 속성들의 조합 - HTML을 직접
+// 건드리지 않고도(고유 id를 새로 안 붙여도) 안정적으로 같은 항목을 다시 찾아낼 수 있음
+function favoriteMenuKeyOf(el){
+  const ds = el.dataset;
+  return Object.keys(ds).filter(k=>/goto/i.test(k)).sort().map(k=>`${k}=${ds[k]}`).join('&');
+}
+function favoriteMenuLabelOf(el){
+  const titleEl = el.querySelector('.home-tile-title') || el.querySelector(':scope > span');
+  let label = (titleEl ? titleEl.textContent : el.textContent).trim();
+  // "신고현황"/"검토표"/"신고대상"은 원천세 밑에도 부가세 밑에도 똑같은 이름으로 있어서 이름만 봐서는
+  // 구분이 안 되므로, 즐겨찾기 목록·선택 팝업에서 헷갈리지 않도록 세목 이름을 앞에 붙여줌
+  const AMBIGUOUS_LABELS = ['신고현황','검토표','신고대상'];
+  if(AMBIGUOUS_LABELS.includes(label)){
+    const ds = el.dataset;
+    const prefix = ds.filingTypeGoto || ds.reviewTypeGoto;
+    if(prefix) label = `${prefix} ${label}`;
+  }
+  return label;
+}
+function favoriteMenuAccentOf(el){
+  try{ return (getComputedStyle(el).getPropertyValue('--tile-accent') || '').trim(); }catch(e){ return ''; }
+}
+function getFavoriteMenuItems(){
+  try{ return JSON.parse(localStorage.getItem(FAVORITE_MENU_KEY) || '[]'); }catch(e){ return []; }
+}
+function saveFavoriteMenuItems(list){
+  try{ localStorage.setItem(FAVORITE_MENU_KEY, JSON.stringify(list.slice(0, FAVORITE_MENU_MAX))); }catch(e){}
+}
+function findFavoriteMenuTarget(key){
+  return Array.from(document.querySelectorAll(FAVORITE_MENU_SELECTOR)).find(el=>favoriteMenuKeyOf(el)===key);
+}
+function addFavoriteMenuItem(el){
+  const key = favoriteMenuKeyOf(el);
+  if(!key) return;
+  const list = getFavoriteMenuItems();
+  if(list.some(f=>f.key===key) || list.length >= FAVORITE_MENU_MAX) return;
+  list.push({ key, label: favoriteMenuLabelOf(el), accent: favoriteMenuAccentOf(el) });
+  saveFavoriteMenuItems(list);
+  renderFavoritesBar();
+}
+function removeFavoriteMenuItem(key){
+  saveFavoriteMenuItems(getFavoriteMenuItems().filter(f=>f.key!==key));
+  renderFavoritesBar();
+}
+// 채워진 자리(.home-fav-tile, 클릭하면 원래 메뉴 항목을 그대로 대신 눌러줌)와 빈 자리(+, 누르면 선택 팝업)를
+// 합쳐 항상 5줄을 유지함
+function renderFavoritesBar(){
+  const wrap = document.getElementById('homeFavoritesChips');
+  if(!wrap) return;
+  const list = getFavoriteMenuItems();
+  let html = list.map(f=>`
+    <div class="home-tile home-tile-plain home-fav-tile" data-fav-key="${escHtml(f.key)}" style="--tile-accent:${escHtml(f.accent||'var(--indigo)')};">
+      <div class="home-tile-title">${escHtml(f.label)}</div>
+      <button type="button" class="home-fav-remove" data-fav-key="${escHtml(f.key)}" title="즐겨찾기에서 제거">✕</button>
+    </div>`).join('');
+  for(let i=list.length; i<FAVORITE_MENU_MAX; i++){
+    html += `<div class="home-fav-slot-empty" title="즐겨찾기 추가">+</div>`;
+  }
+  wrap.innerHTML = html;
+  wrap.querySelectorAll('.home-fav-tile').forEach(tile=>{
+    tile.addEventListener('click', (e)=>{
+      if(e.target.closest('.home-fav-remove')) return;
+      const target = findFavoriteMenuTarget(tile.dataset.favKey);
+      if(target) target.click();
+      else alert('연결된 메뉴를 찾을 수 없어요. 즐겨찾기에서 지우고 다시 등록해주세요.');
+    });
+  });
+  wrap.querySelectorAll('.home-fav-remove').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{ e.stopPropagation(); removeFavoriteMenuItem(btn.dataset.favKey); });
+  });
+  wrap.querySelectorAll('.home-fav-slot-empty').forEach(slot=>{
+    slot.addEventListener('click', openFavoriteMenuPicker);
+  });
+}
+function openFavoriteMenuPicker(){
+  const overlay = document.getElementById('favoriteMenuPickerOverlay');
+  const listWrap = document.getElementById('favoriteMenuPickerList');
+  if(!overlay || !listWrap) return;
+  const favKeys = new Set(getFavoriteMenuItems().map(f=>f.key));
+  const items = Array.from(document.querySelectorAll(FAVORITE_MENU_SELECTOR))
+    .filter(el=>!favKeys.has(favoriteMenuKeyOf(el)))
+    .map(el=>({ el, key:favoriteMenuKeyOf(el), label:favoriteMenuLabelOf(el), accent:favoriteMenuAccentOf(el) }));
+  if(!items.length){
+    listWrap.innerHTML = `<div class="empty-state">더 등록할 수 있는 메뉴가 없어요.</div>`;
+  } else {
+    listWrap.innerHTML = items.map(it=>`<div class="home-fav-picker-item" data-fav-key="${escHtml(it.key)}" style="--tile-accent:${escHtml(it.accent||'var(--indigo)')};"><div class="home-tile-title">${escHtml(it.label)}</div></div>`).join('');
+    listWrap.querySelectorAll('.home-fav-picker-item').forEach(row=>{
+      row.addEventListener('click', ()=>{
+        const found = items.find(it=>it.key===row.dataset.favKey);
+        if(found) addFavoriteMenuItem(found.el);
+        overlay.style.display = 'none';
+      });
+    });
+  }
+  overlay.style.display = 'flex';
+}
+document.getElementById('favoriteMenuPickerClose')?.addEventListener('click', ()=>{
+  document.getElementById('favoriteMenuPickerOverlay').style.display = 'none';
+});
+document.getElementById('favoriteMenuPickerOverlay')?.addEventListener('click', (e)=>{
+  if(e.target.id === 'favoriteMenuPickerOverlay') e.currentTarget.style.display = 'none';
+});
+
 function renderHome(){
-  // 즐겨찾기 기능은 제거됨 - 홈 화면은 이제 대시보드(renderHomeDashboard)가 대신함.
   // 대시보드 카드는 예전엔 activateTab('home')을 탈 때만 그려졌는데, 새로고침/로그인 직후에는
   // 마지막 탭이 홈이었을 경우(가장 흔한 경우) 그 activateTab('home')이 아예 호출되지 않아서
   // 카드 4개가 계속 초기값 "-"로 멈춰 있는 문제가 있었음 - renderAll()이 항상 부르는 이 함수 안에서
   // 같이 그려주면 새로고침 직후에도 바로 채워짐(activateTab에서 또 한번 부르는 건 비용이 작아 무해함).
   if(typeof renderHomeDashboard === 'function') renderHomeDashboard();
+  renderFavoritesBar();
 }
 renderHome();
 
@@ -10686,6 +10845,15 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
   const contacts = clContactRows
     .map(r=>({ name: (r.name||'').trim(), phone: (r.phone||'').trim(), email: (r.email||'').trim() }))
     .filter(r=> r.name || r.phone || r.email);
+  // 주연락처(⭐) 계산: clContactRows 기준으로 고른 인덱스를, 빈 행을 걸러낸 뒤의 contacts 배열 인덱스로 다시 매핑함
+  let primaryContactType = 'rep';
+  let primaryContactIdx = null;
+  if(clPrimaryContact.type === 'contact' && clContactRows[clPrimaryContact.idx]){
+    const row = clContactRows[clPrimaryContact.idx];
+    const rowTrim = { name:(row.name||'').trim(), phone:(row.phone||'').trim(), email:(row.email||'').trim() };
+    const mappedIdx = contacts.findIndex(c=> c.name===rowTrim.name && c.phone===rowTrim.phone && c.email===rowTrim.email);
+    if(mappedIdx >= 0){ primaryContactType = 'contact'; primaryContactIdx = mappedIdx; }
+  }
   const fields = {
     name,
     entityType: document.getElementById('cl-entity-type').value,
@@ -10706,6 +10874,8 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
     repEmail: document.getElementById('cl-rep-email').value.trim(),
     contactSameAsRep,
     contacts,
+    primaryContactType,
+    primaryContactIdx,
     // 예전 화면(표의 연락처 칸 등)과 호환을 위해 대표 담당자 1명 기준 요약값도 같이 저장
     contact: contacts.map(c=>c.name).filter(Boolean).join(', '),
     phone: contacts.map(c=>c.phone).filter(Boolean).join(' '),
@@ -10762,6 +10932,7 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
   setTimeout(()=>document.getElementById('clientSaveMsg').textContent='',1200);
   document.getElementById('clientForm').reset();
   clContactRows = [{ name:'', phone:'', email:'' }];
+  clPrimaryContact = { type:'rep', idx:null };
   clMemoRows = [];
   renderMemoRows();
   clSubTags = [];
@@ -10814,6 +10985,7 @@ function resetClientFormToNew(){
   document.getElementById('client-cancel').style.display = 'none';
   document.getElementById('clientForm').reset();
   clContactRows = [{ name:'', phone:'', email:'' }];
+  clPrimaryContact = { type:'rep', idx:null };
   clMemoRows = [];
   renderMemoRows();
   clSubTags = [];
@@ -10854,6 +11026,7 @@ document.getElementById('client-cancel').addEventListener('click', ()=>{
   document.getElementById('clientSaveMsg').textContent = '';
   document.getElementById('clientForm').reset();
   clContactRows = [{ name:'', phone:'', email:'' }];
+  clPrimaryContact = { type:'rep', idx:null };
   clMemoRows = [];
   renderMemoRows();
   clSubTags = [];
@@ -11112,6 +11285,9 @@ document.getElementById('cl-program').addEventListener('change', (e)=>{
 // "대표자와 실무담당자 동일" 체크시 실무담당자 필드를 대표자 값으로 자동 채우고 잠금(중복입력 방지)
 // 실무담당자는 여러 명일 수 있어서 배열(clContactRows)로 관리하고, 폼에 동적으로 행을 그려줌
 let clContactRows = [{ name:'', phone:'', email:'' }];
+// 주연락처 지정: 대표자와 실무자(여러 명) 중 누구를 주로 연락할 창구로 볼지 라디오로 하나만 고를 수 있게 함.
+// type이 'rep'이면 대표자, 'contact'면 idx번째 실무담당자(clContactRows 기준 인덱스, 저장 시 빈 행을 걸러낸 뒤의 실제 인덱스로 다시 계산함)
+let clPrimaryContact = { type: 'rep', idx: null };
 
 function renderContactRows(){
   const wrap = document.getElementById('cl-contacts-list');
@@ -11121,6 +11297,10 @@ function renderContactRows(){
       <div class="field" style="flex:1 1 130px; margin-bottom:0;"><label style="font-size:11px;">이름</label><input type="text" class="cl-contact-name" placeholder="예: 김실장 (주 컨택)" value="${escHtml(row.name)}" ${same && i===0 ? 'disabled' : ''}></div>
       <div class="field" style="flex:1 1 130px; margin-bottom:0;"><label style="font-size:11px;">연락처</label><input type="text" class="cl-contact-phone" placeholder="예: 010-2345-6789" value="${escHtml(row.phone)}" ${same && i===0 ? 'disabled' : ''}></div>
       <div class="field" style="flex:1 1 160px; margin-bottom:0;"><label style="font-size:11px;">이메일</label><input type="email" class="cl-contact-email" placeholder="예: staff@client.com" value="${escHtml(row.email)}" ${same && i===0 ? 'disabled' : ''}></div>
+      <div class="field" style="flex:0 0 54px; margin-bottom:0; align-items:center;">
+        <label style="font-size:11px; white-space:nowrap;" title="주연락처로 설정">⭐</label>
+        <input type="radio" name="cl-primary-contact" class="cl-primary-contact-radio" data-idx="${i}" value="contact-${i}" style="width:16px; height:16px; cursor:pointer;" ${clPrimaryContact.type==='contact' && clPrimaryContact.idx===i ? 'checked' : ''}>
+      </div>
       <button type="button" class="del-btn cl-contact-remove-btn" ${clContactRows.length<=1 ? 'style="opacity:0.35; cursor:default;" disabled' : ''}>삭제</button>
     </div>`).join('');
   wrap.querySelectorAll('.cl-contact-row').forEach(rowEl=>{
@@ -11128,13 +11308,23 @@ function renderContactRows(){
     rowEl.querySelector('.cl-contact-name').addEventListener('input', e=>{ clContactRows[idx].name = e.target.value; });
     rowEl.querySelector('.cl-contact-phone').addEventListener('input', e=>{ clContactRows[idx].phone = e.target.value; });
     rowEl.querySelector('.cl-contact-email').addEventListener('input', e=>{ clContactRows[idx].email = e.target.value; });
+    rowEl.querySelector('.cl-primary-contact-radio').addEventListener('change', e=>{
+      if(e.target.checked) clPrimaryContact = { type:'contact', idx };
+    });
     rowEl.querySelector('.cl-contact-remove-btn').addEventListener('click', ()=>{
       if(clContactRows.length <= 1) return;
+      const wasPrimary = clPrimaryContact.type==='contact' && clPrimaryContact.idx===idx;
       clContactRows.splice(idx, 1);
+      if(wasPrimary) clPrimaryContact = { type:'rep', idx:null };
+      else if(clPrimaryContact.type==='contact' && clPrimaryContact.idx > idx) clPrimaryContact.idx--;
       renderContactRows();
     });
   });
+  document.getElementById('cl-primary-rep').checked = clPrimaryContact.type === 'rep';
 }
+document.getElementById('cl-primary-rep').addEventListener('change', e=>{
+  if(e.target.checked) clPrimaryContact = { type:'rep', idx:null };
+});
 document.getElementById('cl-contact-add-btn').addEventListener('click', ()=>{
   clContactRows.push({ name:'', phone:'', email:'' });
   renderContactRows();
@@ -11658,7 +11848,9 @@ let viewingFilingType = '원천세';
 let viewingReviewType = '원천세';
 const FILING_KINDS = {
   status: {
-    types: ['원천세','부가세','법인세','종소세','결산'],
+    // 결산은 1차/2차를 각각 별도 진행상태·완료일로 관리해야 해서 "결산1차"/"결산2차" 두 세목으로 분리함
+    // (예전엔 "결산" 하나에 결산월(1차)/결산월(2차) 두 열만 있고 진행상태·완료일은 공용이었음)
+    types: ['원천세','부가세','법인세','종소세','결산1차','결산2차'],
     getStore: ()=>sharedFilingStatus,
     save: ()=>saveSharedFilingStatus(),
     // 원천세=월별/반기 중 선택, 부가세=분기, 법인세·종소세·결산=연1회
@@ -11692,6 +11884,31 @@ function ensureFilingPeriodStateInit(kind){
   st.year = monthStr.slice(0,4);
   st.month = String(Number(monthStr.slice(5,7)));
 }
+// 결산이 "결산1차"/"결산2차" 두 세목으로 나뉘기 전 데이터(세목명 "결산" 하나에 결산월(1차)/(2차)만 있고
+// 진행상태·완료일은 공용이던 옛 구조)를 새 구조로 한 번만 옮겨줌 - 상태/메모/완료일은 기존에 하나였으니
+// 양쪽에 그대로 복사하고, 결산월만 각자 month1→결산1차.month, month2→결산2차.month로 나눠 넣음.
+// 이미 옮겨진 뒤(옛 "결산" 키가 없음)라면 곧바로 빠져나가는 안전한 1회성 함수라 로드될 때마다 불러도 됨
+function migrateSettlementFilingStatus(){
+  const old = sharedFilingStatus['결산'];
+  if(!old) return;
+  sharedFilingStatus['결산1차'] = sharedFilingStatus['결산1차'] || {};
+  sharedFilingStatus['결산2차'] = sharedFilingStatus['결산2차'] || {};
+  Object.keys(old).forEach(period=>{
+    const periodData = old[period] || {};
+    sharedFilingStatus['결산1차'][period] = sharedFilingStatus['결산1차'][period] || {};
+    sharedFilingStatus['결산2차'][period] = sharedFilingStatus['결산2차'][period] || {};
+    Object.keys(periodData).forEach(clientId=>{
+      const entry = periodData[clientId] || {};
+      if(!sharedFilingStatus['결산1차'][period][clientId]){
+        sharedFilingStatus['결산1차'][period][clientId] = { status:entry.status||'미확인', memo:entry.memo||'', updatedAt:entry.updatedAt||'', completedAt:entry.completedAt||'', month:entry.month1||'' };
+      }
+      if(!sharedFilingStatus['결산2차'][period][clientId]){
+        sharedFilingStatus['결산2차'][period][clientId] = { status:entry.status||'미확인', memo:entry.memo||'', updatedAt:entry.updatedAt||'', completedAt:entry.completedAt||'', month:entry.month2||'' };
+      }
+    });
+  });
+  delete sharedFilingStatus['결산'];
+}
 function filingStatusClientList(taxType){
   const list = bookkeepingClientList();
   if(taxType === '법인세') return list.filter(c=>c.entityType === '법인');
@@ -11706,12 +11923,16 @@ function currentFilingPeriodKey(kind, taxType){
   if(taxType === '부가세') return `${y}-${st.quarter}`;
   return `${y}`; // 법인세/종소세/결산: 연 1회
 }
+// 부가세는 "N분기"보다 실무에서 실제로 쓰는 신고 구분(1기 예정/확정, 2기 예정/확정)으로 부르는 게 더
+// 익숙하다는 의견 - 내부 저장 키(Q1~Q4)는 그대로 두고 화면에 보이는 이름만 바꿈(기존에 입력해둔 데이터가
+// 그대로 이어짐)
+const VAT_PERIOD_LABEL = { Q1:'1기 예정신고', Q2:'1기 확정신고', Q3:'2기 예정신고', Q4:'2기 확정신고' };
 function currentFilingPeriodLabel(kind, taxType){
   ensureFilingPeriodStateInit(kind);
   const st = FILING_KINDS[kind].state;
   const y = st.year;
   if(taxType === '원천세') return st.sourceMode === '연간' ? `${y}년 (지급명세서)` : st.sourceMode === '반기' ? `${y}년 ${st.half==='H1' ? '상반기' : '하반기'}` : `${y}년 ${Number(st.month)}월`;
-  if(taxType === '부가세') return `${y}년 ${st.quarter.replace('Q','')}분기`;
+  if(taxType === '부가세') return `${y}년 ${VAT_PERIOD_LABEL[st.quarter]}`;
   return `${y}년 귀속`;
 }
 // 신고현황/검토표 상단의 귀속기간 지정 컨트롤(연도/월·반기·분기)을 세목에 맞게 다시 그림
@@ -11739,7 +11960,7 @@ function renderFilingPeriodControls(kind){
   if(st.year) years.add(st.year); // 지금 보고 있는 연도도 항상 포함
   const sortedYears = Array.from(years).sort((a,b)=> Number(b) - Number(a));
   yearSel.innerHTML = sortedYears.map(y=>`<option value="${y}" ${y===st.year?'selected':''}>${y}년 귀속</option>`).join('');
-  if(taxType === '법인세' || taxType === '종소세' || taxType === '결산' || (taxType === '원천세' && st.sourceMode === '연간')){
+  if(taxType === '법인세' || taxType === '종소세' || taxType === '결산1차' || taxType === '결산2차' || (taxType === '원천세' && st.sourceMode === '연간')){
     subSel.style.display = 'none';
   } else if(taxType === '원천세' && st.sourceMode === '반기'){
     subSel.style.display = '';
@@ -11749,11 +11970,11 @@ function renderFilingPeriodControls(kind){
     subSel.innerHTML = Array.from({length:12},(_,i)=>i+1).map(m=>`<option value="${m}" ${String(m)===String(st.month)?'selected':''}>${m}월</option>`).join('');
   } else if(taxType === '부가세'){
     subSel.style.display = '';
-    subSel.innerHTML = ['Q1','Q2','Q3','Q4'].map(q=>`<option value="${q}" ${q===st.quarter?'selected':''}>${q.replace('Q','')}분기</option>`).join('');
+    subSel.innerHTML = ['Q1','Q2','Q3','Q4'].map(q=>`<option value="${q}" ${q===st.quarter?'selected':''}>${VAT_PERIOD_LABEL[q]}</option>`).join('');
   }
 }
 // 세목 짧은 이름 -> 화면 상단 큰 제목에 쓸 정식 명칭 (원천세·법인세·결산은 이미 정식명칭이라 그대로 둠)
-const FILING_TYPE_FULL_NAME = { 원천세:'원천세', 부가세:'부가가치세', 법인세:'법인세', 종소세:'종합소득세', 결산:'결산' };
+const FILING_TYPE_FULL_NAME = { 원천세:'원천세', 부가세:'부가가치세', 법인세:'법인세', 종소세:'종합소득세', 결산1차:'1차 결산', 결산2차:'2차 결산' };
 // 신고현황/검토표는 상태를 바꾸거나 메모를 입력해도 바로 저장되지 않고, 화면 우측 하단에 고정된 저장 버튼을
 // 눌러야 저장됨(자동저장이었을 땐 언제 저장됐는지 알기 어렵다는 의견이 있어서 수동저장으로 바꿈).
 // 버튼은 표가 아무리 길어져도(내부 스크롤 없이 페이지 전체로 늘어남) 항상 화면에 고정돼 있고,
@@ -11799,8 +12020,9 @@ const FILING_STATUS_SUBITEMS = {
   ],
 };
 // 결산은 다른 세목과 달리 "신고" 자체가 없는 결산작업 진행 체크용이라, 완료 상태 이름(결산완료)과
-// 전용 항목(결산월 1차/2차 - 어디 달까지 결산했는지, 완료일)이 따로 필요함. 이 상수 하나로 그 차이를 관리함
-const SETTLEMENT_MONTH_LABEL = ['결산월(1차)', '결산월(2차)'];
+// 전용 항목(결산월 - 어디 달까지 결산했는지, 완료일)이 따로 필요함. 1차/2차를 각각 별도로 진행상태·완료일을
+// 관리하기로 하면서 세목 자체를 결산1차/결산2차로 나눴고, 그 각각의 결산월 열 이름을 여기서 관리함
+const SETTLEMENT_MONTH_LABEL = { 결산1차:'결산월(1차)', 결산2차:'결산월(2차)' };
 function renderFilingStatusTable(kind){
   const cfg = FILING_KINDS[kind];
   const taxType = cfg.getViewingType();
@@ -11808,12 +12030,12 @@ function renderFilingStatusTable(kind){
   // 신고일 입력)이라 기존 공용 렌더러를 쓰지 않고 별도 함수로 분기함. 검토표(review)의 원천세는 애초에
   // 이 함수 자체를 안 타므로(renderReviewPanel에서 reviewIncomeTaxBox로 처리) 여기선 안 건드림
   if(kind === 'status' && taxType === '원천세'){ renderIncomeTaxFilingStatusTable(); return; }
-  const isSettlement = (kind === 'status' && taxType === '결산');
+  const isSettlement = (kind === 'status' && (taxType === '결산1차' || taxType === '결산2차'));
   renderFilingPeriodControls(kind);
   const period = currentFilingPeriodKey(kind, taxType);
   const titleEl = document.getElementById(cfg.ids.title);
-  // 결산은 "신고"라는 개념이 없어서 다른 세목처럼 "결산 신고현황"이라고 하면 어색함 - 그냥 "결산"이라고만 표시
-  if(titleEl) titleEl.textContent = isSettlement ? '결산' : `${FILING_TYPE_FULL_NAME[taxType] || taxType} ${cfg.titleSuffix}`;
+  // 결산은 "신고"라는 개념이 없어서 다른 세목처럼 "결산 신고현황"이라고 하면 어색함 - "1차 결산"/"2차 결산"이라고만 표시
+  if(titleEl) titleEl.textContent = isSettlement ? FILING_TYPE_FULL_NAME[taxType] : `${FILING_TYPE_FULL_NAME[taxType] || taxType} ${cfg.titleSuffix}`;
   const list = filingStatusClientList(taxType);
   const wrap = document.getElementById(cfg.ids.wrap);
   if(!wrap) return;
@@ -11826,7 +12048,7 @@ function renderFilingStatusTable(kind){
   const subitems = (kind === 'status' && taxType === '원천세') ? (FILING_STATUS_SUBITEMS[cfg.state.sourceMode] || []) : [];
   const subitemHeaderCells = subitems.map(it=>`<th class="cvb" style="white-space:nowrap; font-size:11px;">${escHtml(it.label)}</th>`).join('');
   const monthOptionsHtml = (selected)=> `<option value="">-</option>` + Array.from({length:12},(_,i)=>i+1).map(m=>`<option value="${m}" ${String(m)===String(selected)?'selected':''}>${m}월</option>`).join('');
-  const settlementHeaderCells = isSettlement ? SETTLEMENT_MONTH_LABEL.map(l=>`<th class="cvb" style="white-space:nowrap; font-size:11px;">${l}</th>`).join('') : '';
+  const settlementHeaderCells = isSettlement ? `<th class="cvb" style="white-space:nowrap; font-size:11px;">${SETTLEMENT_MONTH_LABEL[taxType]}</th>` : '';
   const rows = list.map((c, idx)=>{
     const entry = periodData[c.id] || { status:'미확인', memo:'' };
     entry.items = entry.items || {};
@@ -11842,8 +12064,7 @@ function renderFilingStatusTable(kind){
       </select></td>`;
     }).join('');
     const settlementCells = isSettlement ? `
-      <td class="cvb"><select class="filing-settlement-month-select" data-client-id="${c.id}" data-slot="month1" style="font-size:11px; border:1.5px solid var(--border); border-radius:6px; padding:2px 3px;">${monthOptionsHtml(entry.month1)}</select></td>
-      <td class="cvb"><select class="filing-settlement-month-select" data-client-id="${c.id}" data-slot="month2" style="font-size:11px; border:1.5px solid var(--border); border-radius:6px; padding:2px 3px;">${monthOptionsHtml(entry.month2)}</select></td>` : '';
+      <td class="cvb"><select class="filing-settlement-month-select" data-client-id="${c.id}" data-slot="month" style="font-size:11px; border:1.5px solid var(--border); border-radius:6px; padding:2px 3px;">${monthOptionsHtml(entry.month)}</select></td>` : '';
     const settlementCompletedCell = isSettlement ? `<td class="cvb"><input type="date" class="filing-settlement-completed-input" data-client-id="${c.id}" value="${escHtml(entry.completedAt||'')}" ${entry.status!=='결산완료'?'disabled':''} style="border:1.5px solid var(--border); border-radius:6px; padding:3px 4px; font-size:11px; font-family:inherit; ${entry.status!=='결산완료'?'opacity:0.5;':''}"></td>` : '';
     return `<tr>
       <td class="num cvb">${idx+1}</td>
@@ -11855,7 +12076,8 @@ function renderFilingStatusTable(kind){
         <option value="검토중" ${entry.status==='검토중'?'selected':''}>검토중</option>
         ${isSettlement
           ? `<option value="결산완료" ${entry.status==='결산완료'?'selected':''}>결산완료</option>`
-          : `<option value="신고완료" ${entry.status==='신고완료'?'selected':''}>신고완료</option>`}
+          : `<option value="기안완료" ${entry.status==='기안완료'?'selected':''}>기안완료</option>
+        <option value="신고완료" ${entry.status==='신고완료'?'selected':''}>신고완료</option>`}
       </select></td>
       ${settlementCompletedCell}
       <td><input type="text" class="${cfg.ids.memoClass}" data-client-id="${c.id}" value="${escHtml(entry.memo||'')}" placeholder="메모" style="width:100%; border:1.5px solid var(--border); border-radius:6px; padding:4px 8px; font-family:'Pretendard',sans-serif; font-size:12px; text-align:center;"></td>
@@ -12916,7 +13138,7 @@ document.querySelectorAll('.approval-cat-btn').forEach(btn=>{
     else if(cat === 'submit') renderSubmitStatusTable();
     else if(cat === 'review') renderReviewPanel();
     else if(cat === 'help'){ populateFilingHelpClientSelect(); renderFilingHelpChecklist(); }
-    else if(cat === 'doc'){ populateApproverSelect(); renderApprovalInbox(); renderApprovalMine(); renderApprovalRejected(); renderApprovalDone(); renderApprovalAll(); renderApprovalAllBadges(); updateApprovalNotifyBtn(); }
+    else if(cat === 'doc'){ populateApproverSelect(); renderApprovalInbox(); renderApprovalMine(); renderApprovalAll(); renderApprovalAllBadges(); updateApprovalNotifyBtn(); }
   });
 });
 
@@ -12969,14 +13191,12 @@ document.getElementById('approvalDraftForm')?.addEventListener('submit', async (
   renderApprovalAllBadges();
   renderApprovalInbox();
   renderApprovalMine();
-  renderApprovalRejected();
-  renderApprovalDone();
   renderApprovalAll();
   setTimeout(()=>{ if(msgEl) msgEl.textContent=''; }, 2500);
 });
 
 // 탭을 눌러 실제로 목록을 보면 "새 항목" 표시를 지워줌(공지사항 읽음 처리와 같은 방식) - 결재함은 대기 건수를
-// 그대로 보여주는 용도라 읽음 처리 대상이 아니고, 기안함/반려함/완료함만 "안 본 새 변화" 배지를 씀
+// 그대로 보여주는 용도라 읽음 처리 대상이 아니고, 기안함만 "안 본 새 변화" 배지를 씀
 document.querySelectorAll('.approval-doc-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     document.querySelectorAll('.approval-doc-btn').forEach(b=>b.classList.remove('active'));
@@ -12988,17 +13208,16 @@ document.querySelectorAll('.approval-doc-btn').forEach(btn=>{
     if(doc === 'new') populateApproverSelect();
     else if(doc === 'inbox') renderApprovalInbox();
     else if(doc === 'mine'){ renderApprovalMine(); markApprovalSeen('mine', myApprovalMineList()); renderApprovalAllBadges(); }
-    else if(doc === 'rejected'){ renderApprovalRejected(); markApprovalSeen('rejected', myApprovalRejectedList()); renderApprovalAllBadges(); }
-    else if(doc === 'done'){ renderApprovalDone(); markApprovalSeen('done', myApprovalDoneList()); renderApprovalAllBadges(); }
     else if(doc === 'all') renderApprovalAll();
   });
 });
 
+// 반려되면 "기안"→"검토중"으로 이미 넘어간 상태이므로, 기안자 입장에서는 아직 결론이 안 난 기안(기안/검토중)과
+// 결재완료(승인)/반려 셋으로만 구분해서 보여줌 - 결재자가 열어보기 전(기안)도 기안자에게는 그냥 "검토중"으로 보임
 function approvalStatusTagHtml(status){
-  if(status === '승인') return `<span class="tag tag-grant">승인</span>`;
+  if(status === '승인') return `<span class="tag tag-grant">결재완료</span>`;
   if(status === '반려') return `<span class="tag" style="background:#FEE2E2; color:#B91C1C;">반려</span>`;
-  if(status === '검토중') return `<span class="tag tag-usage">검토중</span>`;
-  return `<span class="tag" style="background:#E0E7FF; color:#3730A3;">기안</span>`;
+  return `<span class="tag tag-usage">검토중</span>`;
 }
 // ── 결재 4개 목록(기안함/결재함/반려함/완료함) 각각을 "나" 기준으로 걸러주는 헬퍼 ──
 // 기안함: 내가 기안한 전체 문서 / 결재함: 나에게 결재가 온 문서 중 아직 결론 안 난 것(기안·검토중)
@@ -13060,14 +13279,46 @@ function renderApprovalTable(wrapId, list, emptyText){
 function renderApprovalInbox(){
   renderApprovalTable('approvalInboxWrap', myApprovalInboxList(), '결재 대기 문서가 없습니다.');
 }
+// 기안함은 전부 내가 기안한 문서라 "기안자" 칸은 빼고, 반려된 건은 바로 다시 상신할 수 있게 "다시 기안"
+// 버튼을 같이 보여줌(누르면 기안 폼에 원래 내용을 그대로 채워주고 새 문서로 다시 상신하는 방식 - 결재라인이
+// 단순 2단계라 반려-재승인을 하나의 문서로 잇지 않고 완전히 새 기안으로 처리해도 충분함)
 function renderApprovalMine(){
-  renderApprovalTable('approvalMineWrap', myApprovalMineList(), '기안한 문서가 없습니다.');
+  const wrap = document.getElementById('approvalMineWrap');
+  if(!wrap) return;
+  const list = myApprovalMineList();
+  if(!list.length){ wrap.innerHTML = `<div class="empty-state">기안한 문서가 없습니다.</div>`; return; }
+  const rows = list.map(item=>`<tr>
+    <td>${escHtml(item.title)}</td>
+    <td>${escHtml(item.approverName || item.approverEmail || '')}</td>
+    <td>${approvalStatusTagHtml(item.status)}</td>
+    <td class="num">${escHtml(item.createdAt||'')}</td>
+    <td>
+      <button type="button" class="del-btn approval-view-btn" data-id="${item.id}">보기</button>
+      ${item.status==='반려' ? `<button type="button" class="del-btn approval-resubmit-btn" data-id="${item.id}" style="background:var(--indigo-bg); color:var(--indigo-deep);">다시 기안</button>` : ''}
+    </td>
+  </tr>`).join('');
+  wrap.innerHTML = `<table><thead><tr><th>제목</th><th>결재자</th><th>상태</th><th>기안일</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  bindApprovalViewButtons(wrap);
+  wrap.querySelectorAll('.approval-resubmit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>resubmitApprovalDraft(btn.dataset.id));
+  });
 }
-function renderApprovalRejected(){
-  renderApprovalTable('approvalRejectedWrap', myApprovalRejectedList(), '반려된 문서가 없습니다.');
-}
-function renderApprovalDone(){
-  renderApprovalTable('approvalDoneWrap', myApprovalDoneList(), '완료된 결재가 없습니다.');
+// 반려된 기안을 기안 폼에 그대로 불러와서(제목/내용/첨부/결재자) 다시 손볼 수 있게 함 - 원본 문서를 고치는 게
+// 아니라 항상 새 기안(sharedApprovals에 새 항목)으로 상신되므로, 반려된 원본은 이력으로 그대로 남음
+function resubmitApprovalDraft(id){
+  const item = (sharedApprovals||[]).find(a=>a.id===id);
+  if(!item) return;
+  document.querySelector('.approval-doc-btn[data-approval-doc="new"]')?.click();
+  document.getElementById('ad-title').value = item.title || '';
+  document.getElementById('ad-content').value = item.content || '';
+  document.getElementById('ad-attachment').value = item.attachmentLink || '';
+  populateApproverSelect();
+  if(item.approverEmail) document.getElementById('ad-approver').value = item.approverEmail;
+  const msgEl = document.getElementById('approvalDraftSaveMsg');
+  if(msgEl){
+    msgEl.textContent = '반려된 기안 내용을 불러왔어요. 확인 후 다시 상신해주세요.';
+    setTimeout(()=>{ if(msgEl.textContent==='반려된 기안 내용을 불러왔어요. 확인 후 다시 상신해주세요.') msgEl.textContent=''; }, 4000);
+  }
 }
 function renderApprovalAll(){
   renderApprovalTable('approvalAllWrap', sharedApprovals||[], '결재 이력이 없습니다.');
@@ -13092,9 +13343,11 @@ function openApprovalDetailModal(id){
     <div style="margin-top:12px; font-weight:700;">상태: ${approvalStatusTagHtml(item.status)}${item.comment ? ' · '+escHtml(item.comment) : ''}${item.decidedAt ? ' · '+escHtml(item.decidedAt) : ''}</div>
     ${canDecide ? `
       <div class="field" style="margin-top:14px;"><label>의견 (선택)</label><input type="text" id="approvalDecisionComment" placeholder="의견을 남길 수 있어요"></div>
-      <div style="text-align:center; display:flex; gap:8px; justify-content:center; margin-top:10px;">
-        <button type="button" class="submit-btn" style="width:auto; padding:8px 18px;" id="approvalApproveBtn">승인</button>
-        <button type="button" class="del-btn" style="padding:8px 18px;" id="approvalRejectBtn">반려</button>
+      <!-- 승인/반려 둘 다 같은 .del-btn 기반에 패딩·글자크기·둥근모서리를 똑같이 맞추고, 색만 달리해서
+           구분되게 함(예전엔 승인이 .submit-btn이라 글자 크기·모서리·그림자가 반려와 서로 달라 짝이 안 맞아 보였음) -->
+      <div style="text-align:center; display:flex; gap:10px; justify-content:center; margin-top:14px;">
+        <button type="button" class="del-btn" id="approvalApproveBtn" style="padding:9px 26px; font-size:13px; border-radius:10px; background:var(--indigo); color:#fff;">승인</button>
+        <button type="button" class="del-btn" id="approvalRejectBtn" style="padding:9px 26px; font-size:13px; border-radius:10px; background:var(--coral-bg); color:var(--coral);">반려</button>
       </div>
     ` : ''}
   `;
@@ -13115,8 +13368,6 @@ async function decideApproval(id, decision){
   document.getElementById('approvalDetailModalOverlay').style.display = 'none';
   renderApprovalInbox();
   renderApprovalMine();
-  renderApprovalRejected();
-  renderApprovalDone();
   renderApprovalAll();
   renderApprovalAllBadges();
 }
@@ -13126,13 +13377,11 @@ document.getElementById('approvalDetailModalClose')?.addEventListener('click', (
 document.getElementById('approvalDetailModalOverlay')?.addEventListener('click', (e)=>{
   if(e.target.id === 'approvalDetailModalOverlay') document.getElementById('approvalDetailModalOverlay').style.display = 'none';
 });
-// 사이드바 알림뱃지(N) + 5개 탭 각각의 New 표시(pill)를 한번에 갱신. 결재함은 "대기중 건수"를 그대로,
-// 기안함/반려함/완료함은 "아직 안 본 새 변화" 건수를 보여줌(markApprovalSeen으로 탭을 열면 사라짐)
+// 사이드바 알림뱃지(N) + 결재함/기안함 각각의 New 표시(pill)를 한번에 갱신. 결재함은 "대기중 건수"를 그대로,
+// 기안함은 "아직 안 본 새 변화" 건수를 보여줌(markApprovalSeen으로 탭을 열면 사라짐)
 function renderApprovalAllBadges(){
   const inboxList = myApprovalInboxList();
   const mineList = myApprovalMineList();
-  const rejectedList = myApprovalRejectedList();
-  const doneList = myApprovalDoneList();
   const navBadge = document.getElementById('approvalPendingBadge');
   if(navBadge){
     navBadge.style.display = inboxList.length>0 ? 'flex' : 'none';
@@ -13146,8 +13395,6 @@ function renderApprovalAllBadges(){
   };
   setPill('approvalInboxCount', inboxList.length);
   setPill('approvalMineCount', countApprovalUnseen('mine', mineList));
-  setPill('approvalRejectedCount', countApprovalUnseen('rejected', rejectedList));
-  setPill('approvalDoneCount', countApprovalUnseen('done', doneList));
 }
 // 예전 이름(renderApprovalBadge)으로 부르는 곳이 남아있어도 그대로 동작하도록 별칭 유지
 function renderApprovalBadge(){ renderApprovalAllBadges(); }
@@ -13757,6 +14004,7 @@ document.getElementById('importSharedFile').addEventListener('change', async (e)
     sharedTeamInfo = data.shared.teamInfo || { note:'' };
     sharedSpecialPeriods = data.shared.specialPeriods || [];
     sharedFilingStatus = data.shared.filingStatus || {};
+    migrateSettlementFilingStatus();
     sharedReviewStatus = data.shared.reviewStatus || {};
     sharedFilingHelp = data.shared.filingHelp || {};
     sharedApprovals = data.shared.approvals || [];
@@ -13863,6 +14111,7 @@ document.getElementById('importAllFile').addEventListener('change', async (e)=>{
       sharedTeamInfo = data.shared.teamInfo || { note:'' };
       sharedSpecialPeriods = data.shared.specialPeriods || [];
       sharedFilingStatus = data.shared.filingStatus || {};
+    migrateSettlementFilingStatus();
       sharedReviewStatus = data.shared.reviewStatus || {};
       sharedFilingHelp = data.shared.filingHelp || {};
       sharedApprovals = data.shared.approvals || [];
