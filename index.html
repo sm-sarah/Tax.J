@@ -963,6 +963,9 @@
   .cal-badge.schedule{background:var(--indigo-bg); color:var(--indigo-deep);}
   .cal-work-icon{font-size:10px; font-weight:700; opacity:0.55; display:inline-flex; align-items:center; gap:2px;}
   .cal-badge.special{background:var(--mint-bg); color:#0A7A55; font-weight:800;}
+  /* 당겨쓴 항목 표시 chip - currentColor를 그대로 이어받아서 배지 색(휴가=코럴, 재택=인디고 등)에 맞춰
+     점선 테두리만 둘러지고, 안의 글자로도 "당겨씀"이 바로 읽히게 함 */
+  .cal-badge-advance{display:inline-flex; align-items:center; gap:2px; margin-left:3px; padding:0 5px; border-radius:6px; border:1.3px dashed currentColor; font-size:0.92em; font-weight:800;}
   /* 결재 > 신고현황 표의 진행상태 select는 .field 밖에 있어서 스타일이 하나도 안 먹고 브라우저 기본 모양 그대로 나왔던 문제 - 같은 표의 메모 입력칸과 톤을 맞춤 */
   .filing-status-select{
     font-family:'Pretendard', sans-serif; font-size:12px;
@@ -1383,9 +1386,15 @@
           <div class="field" style="flex:1 1 160px;"><label>ID</label><input type="text" id="ci-entry-idval" placeholder="선택"></div>
           <div class="field" style="flex:1 1 160px;"><label>PW</label><input type="text" id="ci-entry-pwval" placeholder="선택"></div>
         </div>
-        <div class="field"><label>링크 <span style="font-weight:400; color:var(--ink-soft);">(선택)</span></label><input type="url" id="ci-entry-link" placeholder="예: https://..."></div>
       </div>
-      <div class="field"><label>메모 <span style="font-weight:400; color:var(--ink-soft);">(선택)</span></label><textarea id="ci-entry-note" style="width:100%; min-height:70px; font-family:'Pretendard',sans-serif; font-size:13px; line-height:1.6; border:1.5px solid transparent; border-radius:10px; padding:10px 12px; background:var(--bg); color:var(--ink); resize:vertical;"></textarea></div>
+      <!-- 예전엔 링크를 따로 입력하는 칸이 있었는데, 메모랑 항목이 둘로 나뉘어 있어 헷갈린다는 의견으로
+           없애고 메모 하나로 합침 - 이 체크를 하면 메모 내용을 그대로 링크(href)로 써서, 조회 화면에서
+           메모 대신 "🔗 열기" 버튼이 보이고 누르면 바로 그 주소로 이동함 -->
+      <div class="field"><label>메모 <span style="font-weight:400; color:var(--ink-soft);">(선택)</span></label><textarea id="ci-entry-note" style="width:100%; min-height:70px; font-family:'Pretendard',sans-serif; font-size:13px; line-height:1.6; border:1.5px solid transparent; border-radius:10px; padding:10px 12px; background:var(--bg); color:var(--ink); resize:vertical;"></textarea>
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12px; font-weight:700; color:var(--ink-soft); margin-top:6px;">
+          <input type="checkbox" id="ci-entry-note-is-link" style="width:auto;"> 🔗 이 메모는 링크예요 <span style="font-weight:400;">(누르면 바로 사이트로 이동해요)</span>
+        </label>
+      </div>
       <div style="text-align:center; margin-top:10px; display:flex; gap:8px; justify-content:center;">
         <button type="submit" id="ciEntryModalSaveBtn" class="submit-btn" style="width:auto; min-width:100px; margin:0; padding:9px 20px; display:inline-flex; align-items:center; justify-content:center;">저장</button>
         <button type="button" id="ciEntryModalDeleteBtn" class="del-btn" style="display:none; min-width:100px; padding:9px 20px; font-size:13px; font-weight:700; border-radius:12px; align-items:center; justify-content:center;">삭제</button>
@@ -2976,7 +2985,7 @@
            방식). 기본정보(주소·번호 등) 입력 기능은 없고 ID/PW 등록만 함 - 회사 기본정보는 위 회사정보 폼에서
            따로 관리됨. 바뀔 때마다 이력이 남고, 사내정보 > 법인 탭은 조회 전용이라 여기서 관리한 내용이 그대로
            보임(데이터 저장소는 sharedCompanyInfo.corp) -->
-      <div style="text-align:center; margin:22px 0 6px;"><span class="section-subtitle-label">공용 ID/PW</span></div>
+      <div style="text-align:center; margin:22px 0 6px;"><span class="section-subtitle-label">🔑 공용정보</span></div>
       <div class="settings-box" style="max-width:680px;">
         <div style="display:flex; justify-content:flex-end; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
           <button type="button" id="ciCorpResetBtn" class="del-btn" style="display:none; background:var(--coral-bg); color:var(--coral);" title="등록된 회사 ID/PW를 전부 지우고 처음부터 다시 등록해요">🗑️ 초기화</button>
@@ -4247,6 +4256,20 @@ function leaveTeamCalShortType(type, subtype){
 function advIconTag(){
   return `<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; flex:none;" title="당겨씀(당겨쓰기)"><path d="M4 5l7 7-7 7"/><path d="M13 5l7 7-7 7"/></svg>`;
 }
+// 당겨쓴 항목(재택/휴가)을 달력 뱃지 안에서 한눈에 알아보게 만드는 조각 - 화살표 아이콘(≫) 하나만으로는
+// 작은 캘린더 칸 안에서 잘 안 보인다는 피드백이 있어서, 점선 테두리를 두른 chip에 글자까지 같이 보여주도록 바꿈.
+// 재택은 "며칠에 썼는지"보다 "실제로 몇 월 한도에서 차감되는지"가 헷갈리는 포인트라, monthLabel로 그 달을
+// 같이 보여줌(예: "11월 선사용") - 휴가는 그런 구분이 필요 없어서 그냥 "당겨씀"만 표시
+function advBadgeTag(monthLabel){
+  const text = monthLabel ? `${monthLabel} 선사용` : '당겨씀';
+  return ` <span class="cal-badge-advance" title="당겨씀(당겨쓰기) · 아직 발생하지 않은 다음 한도에서 미리 차감">${advIconTag()}${escHtml(text)}</span>`;
+}
+// 재택 한도차감 달(creditMonth, "YYYY-MM")을 배지에 넣기 좋은 짧은 "N월" 형태로
+function creditMonthShortLabel(creditMonth){
+  if(!creditMonth) return '';
+  const mm = Number(creditMonth.slice(5,7));
+  return mm ? `${mm}월` : '';
+}
 
 function renderAdminCalendar(){
   updateTeamCalHeader();
@@ -4269,7 +4292,7 @@ function renderAdminCalendar(){
         const u = g.entries[0];
         const t = (u.type==='반차'||u.type==='반반차') ? leaveAbsenceTime(u.date, u.type, u.subtype) : '';
         const titleAttr = t ? ` title="${escHtml(t)}"` : '';
-        const advSuffix = u.advance ? ' ' + advIconTag() : '';
+        const advSuffix = u.advance ? advBadgeTag() : '';
         (byDate[g.startDate]=byDate[g.startDate]||[]).push(`<span class="cal-badge leave"${titleAttr}>🌴 ${escHtml(name)}) ${escHtml(leaveTeamCalShortType(u.type, u.subtype))}${advSuffix}</span>`);
       } else {
         // 연속 휴가는 하루짜리 뱃지 두 개(시작일/복귀일)로 뚝 끊어 보여주지 않고, 그 사이 평일들을 이어지는 막대로 표시함
@@ -4292,7 +4315,8 @@ function renderAdminCalendar(){
           const isSpanEnd = !connectNext;
           const radiusStyle = `border-radius:${isSpanStart?'8px':'0'} ${isSpanEnd?'8px':'0'} ${isSpanEnd?'8px':'0'} ${isSpanStart?'8px':'0'};`;
           const marginStyle = `margin-left:${connectPrev?'-9px':'0'}; margin-right:${connectNext?'-9px':'0'};`;
-          const label = isSpanStart ? `🌴 ${escHtml(name)}) ${escHtml(leaveTeamCalShortType(g.type, g.subtype))} (${g.totalDays}일)` : '';
+          const spanAdvSuffix = isSpanStart && g.entries.some(e=>e.advance) ? advBadgeTag() : '';
+          const label = isSpanStart ? `🌴 ${escHtml(name)}) ${escHtml(leaveTeamCalShortType(g.type, g.subtype))} (${g.totalDays}일)${spanAdvSuffix}` : '';
           (byDate[dateStr]=byDate[dateStr]||[]).push(`<span class="cal-badge leave cal-badge-span" style="display:block; text-align:${isSpanStart?'left':'center'}; ${radiusStyle} ${marginStyle} position:relative; z-index:1;">${label || '&nbsp;'}</span>`);
         });
       }
@@ -4301,7 +4325,7 @@ function renderAdminCalendar(){
       const cls = r.bonus ? 'special' : 'remote';
       const icon = r.bonus ? '🎁' : '🏠';
       const typeLabel = r.bonus ? '특별재택' : '정기재택';
-      const advSuffix = r.advance ? ' ' + advIconTag() : '';
+      const advSuffix = r.advance ? advBadgeTag(creditMonthShortLabel(r.creditMonth)) : '';
       (byDate[r.date]=byDate[r.date]||[]).push(`<span class="cal-badge ${cls}">${icon} ${escHtml(name)}) ${typeLabel}${advSuffix}</span>`);
     });
     (sch.events||[]).filter(e=>e.date.startsWith(monthStr) && e.shared !== false).forEach(e=>{
@@ -5886,7 +5910,7 @@ function renderCalendar(){
     }
   });
   const remoteByDate = {};
-  attendance.remoteEntries.filter(r=>r.date.startsWith(monthStr)).forEach(r=>{ remoteByDate[r.date] = { bonus: !!r.bonus, advance: !!r.advance }; });
+  attendance.remoteEntries.filter(r=>r.date.startsWith(monthStr)).forEach(r=>{ remoteByDate[r.date] = { bonus: !!r.bonus, advance: !!r.advance, creditMonth: r.creditMonth }; });
   const exclusionByDate = {};
   (sharedExclusionDays||[]).filter(x=>x.date.startsWith(monthStr)).forEach(x=>{
     (exclusionByDate[x.date] = exclusionByDate[x.date]||[]).push(x);
@@ -5911,7 +5935,8 @@ function renderCalendar(){
         const isSpanEnd = !connectNext;
         const radiusStyle = `border-radius:${isSpanStart?'8px':'0'} ${isSpanEnd?'8px':'0'} ${isSpanEnd?'8px':'0'} ${isSpanStart?'8px':'0'};`;
         const marginStyle = `margin-left:${connectPrev?'-9px':'0'}; margin-right:${connectNext?'-9px':'0'};`;
-        const spanLabel = isSpanStart ? `🌴 ${g.type} (${g.totalDays}일)` : '&nbsp;';
+        const spanAdvSuffix = isSpanStart && g.entries.some(e=>e.advance) ? advBadgeTag() : '';
+        const spanLabel = isSpanStart ? `🌴 ${g.type} (${g.totalDays}일)${spanAdvSuffix}` : '&nbsp;';
         badges += `<span class="cal-badge leave cal-badge-span" style="display:block; text-align:${isSpanStart?'left':'center'}; ${radiusStyle} ${marginStyle} position:relative; z-index:1;">${spanLabel}</span>`;
         return;
       }
@@ -5926,12 +5951,12 @@ function renderCalendar(){
         else label = `${u.type}(${u.days}일)`;
       }
       const titleAttr = timeLabel ? ` title="${escHtml(timeLabel)}"` : '';
-      const advSuffix = g.entries[0].advance ? ' ' + advIconTag() : '';
+      const advSuffix = g.entries[0].advance ? advBadgeTag() : '';
       badges += `<span class="cal-badge leave"${titleAttr}>🌴 ${label}${advSuffix}</span>`;
     });
     if(remoteByDate[dateStr]){
       const rInfo = remoteByDate[dateStr];
-      const rAdvSuffix = rInfo.advance ? ' ' + advIconTag() : '';
+      const rAdvSuffix = rInfo.advance ? advBadgeTag(creditMonthShortLabel(rInfo.creditMonth)) : '';
       badges += rInfo.bonus ? `<span class="cal-badge special">🎁 특별재택${rAdvSuffix}</span>` : `<span class="cal-badge remote">🏠 정기재택${rAdvSuffix}</span>`;
     }
     let holidayIcon = '';
@@ -6001,7 +6026,7 @@ function scheduleTwemojiParse(){
     twemoji.parse(document.body, {folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'});
   }, 150);
 }
-function renderAll(){ renderAttendance(); renderExpense(); renderWorkdaysSuggestion(); renderCalendar(); renderScheduleList(); renderClients(); renderClientsRegular(); renderClientsOther(); renderClientsTerminated(); renderPersonalInfo(); renderDeadlineBanner(); renderAdminCalendar(); renderHome(); renderAllLeaveHistory(); renderNoticeIfOpen(); renderManualGrantList(); renderEmployeeRoster(); renderCompanyInfoCorp(); renderCompanyInfoTeam(); renderApprovalBadge(); scheduleTwemojiParse(); }
+function renderAll(){ renderAttendance(); renderExpense(); renderWorkdaysSuggestion(); renderCalendar(); renderScheduleList(); renderClients(); renderClientsRegular(); renderClientsOther(); renderClientsTerminated(); renderPersonalInfo(); renderDeadlineBanner(); renderAdminCalendar(); renderHome(); renderAllLeaveHistory(); renderNoticeIfOpen(); renderManualGrantList(); renderEmployeeRoster(); renderCompanyInfoCorp(); renderCompanyInfoTeam(); renderCompanyInfoCorpView(); renderCompanyInfoTeamView(); renderApprovalBadge(); scheduleTwemojiParse(); }
 
 function renderScheduleList(){
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
@@ -6306,12 +6331,12 @@ function diffClientFields(oldC, newFields){
 }
 
 // 사내정보(법인/팀/개인) 항목 수정 시 "무엇이 바뀌었는지" 이력 문장으로 남길 때 씀. ID/PW 자체 값은 이력에 남기지 않고 변경 여부만 표시함(민감정보 확산 방지).
-function diffCiEntryFields(oldEntry, label, link, note, credChanged, content){
+function diffCiEntryFields(oldEntry, label, noteIsLink, note, credChanged, content){
   const changes = [];
   if((oldEntry.label||'') !== label) changes.push({ label:'항목명', before: oldEntry.label||'(없음)', after: label||'(없음)' });
   if(content !== undefined && (oldEntry.content||'') !== content) changes.push({ label:'내용', before: oldEntry.content||'(없음)', after: content||'(없음)' });
-  if((oldEntry.link||'') !== link) changes.push({ label:'링크', before: oldEntry.link||'(없음)', after: link||'(없음)' });
   if((oldEntry.note||'') !== note) changes.push({ label:'메모', before: oldEntry.note||'(없음)', after: note||'(없음)' });
+  if(!!oldEntry.noteIsLink !== !!noteIsLink) changes.push({ label:'메모 링크 여부', before: oldEntry.noteIsLink ? '링크':'일반', after: noteIsLink ? '링크':'일반' });
   if(credChanged) changes.push({ label:'ID/PW', before:'-', after:'변경됨' });
   return changes;
 }
@@ -7164,36 +7189,47 @@ function buildCiAccountTable(list, category, admin, person, titlePrefix, showCon
   if(!list.length) return '';
   const withControls = admin && showControls!==false;
   const cell = (v)=> v ? escHtml(v) : '<span style="color:var(--ink-soft);">-</span>';
+  // 메모가 링크로 등록된 항목이면(noteIsLink) 메모칸 자체를 "🔗 열기" 버튼으로 보여줌 - 예전엔 링크를
+  // 따로 입력하는 칸이 있었는데(레거시 it.link) 이제 메모 하나로 합쳐짐. 아직 새 방식으로 저장(재수정)되지
+  // 않은 옛 항목은 노트가 비어 있어도 레거시 링크값으로 대신 열 수 있게 남겨둠
+  const noteCell = (it)=>{
+    const href = it.noteIsLink ? (it.note||it.link||'') : (it.link && !it.note ? it.link : '');
+    if(href) return `<a href="${escHtml(href)}" target="_blank" rel="noopener" style="color:var(--indigo); font-weight:700;">🔗 열기</a>`;
+    return `<span style="white-space:pre-wrap; font-size:12px; color:var(--ink-soft); max-width:220px; display:inline-block;">${escHtml(it.note||'')}</span>`;
+  };
   const rows = list.map(it=>{
     let idCell, pwCell;
     if(!it.sensitiveEnc){ idCell = cell(it.idVal); pwCell = cell(it.pwVal); }
     else if(ciRevealedValues[it.id]){ idCell = cell(ciRevealedValues[it.id].idVal); pwCell = cell(ciRevealedValues[it.id].pwVal); }
     else { idCell = pwCell = ciRevealBtnHtml(it.id); }
-    const linkCell = it.link ? `<a href="${escHtml(it.link)}" target="_blank" rel="noopener" style="color:var(--indigo); font-weight:700;">🔗 열기</a>` : '<span style="color:var(--ink-soft);">-</span>';
     return `<tr>
       <td style="font-weight:700;">${escHtml(it.label||'')}</td>
-      <td>${idCell}</td><td>${pwCell}</td><td>${linkCell}</td>
-      <td style="white-space:pre-wrap; font-size:12px; color:var(--ink-soft); max-width:220px;">${escHtml(it.note||'')}</td>
+      <td>${idCell}</td><td>${pwCell}</td>
+      <td>${noteCell(it)}</td>
       ${ciRowButtons(admin, category, it.id, person, it.history&&it.history.length, showControls)}
     </tr>`;
   }).join('');
-  const titleHtml = hideTitle ? '' : `<div style="text-align:center; margin:14px 0 10px;"><span class="section-subtitle-label">${escHtml((titlePrefix||'')+'공용 ID/PW')}</span></div>`;
-  return `${titleHtml}<div class="table-scroll"><table><thead><tr><th>항목명</th><th>ID</th><th>PW</th><th>링크</th><th>메모</th>${withControls?'<th>관리</th>':''}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  const titleHtml = hideTitle ? '' : `<div style="text-align:center; margin:14px 0 10px;"><span class="section-subtitle-label">🔑 ${escHtml((titlePrefix||'')+'공용정보')}</span></div>`;
+  return `${titleHtml}<div class="table-scroll"><table><thead><tr><th>항목명</th><th>ID</th><th>PW</th><th>메모</th>${withControls?'<th>관리</th>':''}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 // "공용ID/PW"(개인용, 평문 저장) - 사내정보 > 개인 탭 전용
 function buildCiPersonalAccountTable(list){
   if(!list.length) return '';
+  const noteCell = (it)=>{
+    const href = it.noteIsLink ? (it.note||it.link||'') : (it.link && !it.note ? it.link : '');
+    if(href) return `<a href="${escHtml(href)}" target="_blank" rel="noopener" style="color:var(--indigo); font-weight:700;">🔗 열기</a>`;
+    return `<span style="white-space:pre-wrap; font-size:12px; color:var(--ink-soft); max-width:220px; display:inline-block;">${escHtml(it.note||'')}</span>`;
+  };
   const rows = list.map(it=>{
-    const linkCell = it.link ? `<a href="${escHtml(it.link)}" target="_blank" rel="noopener" style="color:var(--indigo); font-weight:700;">🔗 열기</a>` : '<span style="color:var(--ink-soft);">-</span>';
     return `<tr>
       <td style="font-weight:700;">${escHtml(it.label||'')}</td>
-      <td>${escHtml(it.idVal||'-')}</td><td>${escHtml(it.pwVal||'-')}</td><td>${linkCell}</td>
-      <td style="white-space:pre-wrap; font-size:12px; color:var(--ink-soft); max-width:220px;">${escHtml(it.note||'')}</td>
+      <td>${escHtml(it.idVal||'-')}</td><td>${escHtml(it.pwVal||'-')}</td>
+      <td>${noteCell(it)}</td>
       ${ciRowButtons(true, 'personal', it.id, null, it.history&&it.history.length)}
     </tr>`;
   }).join('');
   return `<div style="text-align:center; margin:14px 0 10px;"><span class="section-subtitle-label">공용ID/PW</span></div>
-  <div class="table-scroll"><table><thead><tr><th>항목명</th><th>ID</th><th>PW</th><th>링크</th><th>메모</th><th>관리</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  <div class="table-scroll"><table><thead><tr><th>항목명</th><th>ID</th><th>PW</th><th>메모</th><th>관리</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 // 사내정보 목록의 수정/이력/삭제 버튼 위임 - corp/team/personal 목록 wrap 어디서든 공통으로 재사용
 function bindCiRowButtons(wrap){
@@ -7563,8 +7599,12 @@ async function openCiEntryFormModal(category, id, person, owner){
   document.getElementById('ci-entry-label').value = entry ? (entry.label||'') : '';
   document.getElementById('ci-entry-label').readOnly = false;
   document.getElementById('ci-entry-content').value = entry ? (entry.content||'') : '';
-  document.getElementById('ci-entry-link').value = entry ? (entry.link||'') : '';
-  document.getElementById('ci-entry-note').value = entry ? (entry.note||'') : '';
+  // 예전엔 링크를 따로 입력받았는데(entry.link) 이제 메모+체크박스로 합쳐짐 - 예전에 등록해둔 링크가 있고
+  // 메모가 비어있으면, 수정 화면을 열 때 그 링크값을 메모칸에 그대로 옮겨서 보여주고 체크도 미리 켜둠
+  // (그대로 저장만 하면 자연스럽게 새 방식으로 옮겨감 - 데이터 유실 없음)
+  const legacyLink = entry && !entry.noteIsLink && !entry.note && entry.link ? entry.link : '';
+  document.getElementById('ci-entry-note').value = entry ? (entry.note || legacyLink || '') : '';
+  document.getElementById('ci-entry-note-is-link').checked = !!(entry && (entry.noteIsLink || legacyLink));
   document.getElementById('ci-entry-idval').value = entry ? (entry.idVal||'') : '';
   document.getElementById('ci-entry-pwval').value = entry ? (entry.pwVal||'') : '';
   document.getElementById('ci-entry-encrypt').checked = !!(entry && entry.sensitiveEnc);
@@ -7651,7 +7691,7 @@ document.getElementById('ciEntryModalForm').addEventListener('submit', async (e)
   const label = document.getElementById('ci-entry-label').value.trim();
   const note = document.getElementById('ci-entry-note').value.trim();
   const content = type==='info' ? document.getElementById('ci-entry-content').value.trim() : '';
-  const link = type==='account' ? document.getElementById('ci-entry-link').value.trim() : '';
+  const noteIsLink = document.getElementById('ci-entry-note-is-link').checked;
   const idVal = type==='account' ? document.getElementById('ci-entry-idval').value : '';
   const pwVal = type==='account' ? document.getElementById('ci-entry-pwval').value : '';
   if(!label) return;
@@ -7661,13 +7701,13 @@ document.getElementById('ciEntryModalForm').addEventListener('submit', async (e)
     if(id){
       const entry = (sharedCompanyInfo.personal||[]).find(x=>x.id===id);
       if(entry){
-        const changes = diffCiEntryFields(entry, label, link, note, credChanged, content);
-        entry.type=type; entry.label=label; entry.link=link; entry.note=note; entry.content=content; entry.idVal=idVal; entry.pwVal=pwVal; entry.updatedAt = todayStr();
+        const changes = diffCiEntryFields(entry, label, noteIsLink, note, credChanged, content);
+        entry.type=type; entry.label=label; entry.noteIsLink=noteIsLink; entry.note=note; entry.content=content; entry.idVal=idVal; entry.pwVal=pwVal; entry.updatedAt = todayStr();
         if(changes.length){ if(!entry.history) entry.history=[]; entry.history.unshift({date:new Date().toLocaleString('ko-KR'), changes}); }
       }
     } else {
       if(!sharedCompanyInfo.personal) sharedCompanyInfo.personal = [];
-      sharedCompanyInfo.personal.push({ id: genId(), owner, type, label, link, note, content, idVal, pwVal, updatedAt: todayStr(), history:[] });
+      sharedCompanyInfo.personal.push({ id: genId(), owner, type, label, noteIsLink, note, content, idVal, pwVal, updatedAt: todayStr(), history:[] });
     }
   } else {
     // 이제 corp/teamGeneral/team은 기본적으로 암호화하지 않음 - "🔒 암호화"를 체크한 항목만 sensitiveEnc로
@@ -7688,25 +7728,25 @@ document.getElementById('ciEntryModalForm').addEventListener('submit', async (e)
       if(id){
         const entry = (sharedCompanyInfo.corp||[]).find(x=>x.id===id);
         if(entry){
-          const changes = diffCiEntryFields(entry, label, link, note, credChanged, content);
-          entry.type=type; entry.label=label; entry.link=link; entry.note=note; entry.content=savedContent; entry.idVal=savedIdVal; entry.pwVal=savedPwVal; entry.sensitiveEnc=sensitiveEnc; entry.updatedAt = todayStr();
+          const changes = diffCiEntryFields(entry, label, noteIsLink, note, credChanged, content);
+          entry.type=type; entry.label=label; entry.noteIsLink=noteIsLink; entry.note=note; entry.content=savedContent; entry.idVal=savedIdVal; entry.pwVal=savedPwVal; entry.sensitiveEnc=sensitiveEnc; entry.updatedAt = todayStr();
           if(changes.length){ if(!entry.history) entry.history=[]; entry.history.unshift({date:new Date().toLocaleString('ko-KR'), changes}); }
         }
       } else {
         if(!sharedCompanyInfo.corp) sharedCompanyInfo.corp = [];
-        sharedCompanyInfo.corp.push({ id: genId(), type, label, link, note, content:savedContent, idVal:savedIdVal, pwVal:savedPwVal, sensitiveEnc, updatedAt: todayStr(), history:[] });
+        sharedCompanyInfo.corp.push({ id: genId(), type, label, noteIsLink, note, content:savedContent, idVal:savedIdVal, pwVal:savedPwVal, sensitiveEnc, updatedAt: todayStr(), history:[] });
       }
     } else if(category==='teamGeneral'){
       if(id){
         const entry = (sharedCompanyInfo.teamGeneral||[]).find(x=>x.id===id);
         if(entry){
-          const changes = diffCiEntryFields(entry, label, link, note, credChanged, content);
-          entry.type=type; entry.label=label; entry.link=link; entry.note=note; entry.content=savedContent; entry.idVal=savedIdVal; entry.pwVal=savedPwVal; entry.sensitiveEnc=sensitiveEnc; entry.updatedAt = todayStr();
+          const changes = diffCiEntryFields(entry, label, noteIsLink, note, credChanged, content);
+          entry.type=type; entry.label=label; entry.noteIsLink=noteIsLink; entry.note=note; entry.content=savedContent; entry.idVal=savedIdVal; entry.pwVal=savedPwVal; entry.sensitiveEnc=sensitiveEnc; entry.updatedAt = todayStr();
           if(changes.length){ if(!entry.history) entry.history=[]; entry.history.unshift({date:new Date().toLocaleString('ko-KR'), changes}); }
         }
       } else {
         if(!sharedCompanyInfo.teamGeneral) sharedCompanyInfo.teamGeneral = [];
-        sharedCompanyInfo.teamGeneral.push({ id: genId(), type, label, link, note, content:savedContent, idVal:savedIdVal, pwVal:savedPwVal, sensitiveEnc, updatedAt: todayStr(), history:[] });
+        sharedCompanyInfo.teamGeneral.push({ id: genId(), type, label, noteIsLink, note, content:savedContent, idVal:savedIdVal, pwVal:savedPwVal, sensitiveEnc, updatedAt: todayStr(), history:[] });
       }
     } else if(category==='team'){
       if(!sharedCompanyInfo.team) sharedCompanyInfo.team = [];
@@ -7721,13 +7761,13 @@ document.getElementById('ciEntryModalForm').addEventListener('submit', async (e)
       if(id){
         const entry = (p.items||[]).find(x=>x.id===id);
         if(entry){
-          const changes = diffCiEntryFields(entry, label, link, note, credChanged, content);
-          entry.type=type; entry.label=label; entry.link=link; entry.note=note; entry.content=savedContent; entry.idVal=savedIdVal; entry.pwVal=savedPwVal; entry.sensitiveEnc=sensitiveEnc; entry.updatedAt = todayStr();
+          const changes = diffCiEntryFields(entry, label, noteIsLink, note, credChanged, content);
+          entry.type=type; entry.label=label; entry.noteIsLink=noteIsLink; entry.note=note; entry.content=savedContent; entry.idVal=savedIdVal; entry.pwVal=savedPwVal; entry.sensitiveEnc=sensitiveEnc; entry.updatedAt = todayStr();
           if(changes.length){ if(!entry.history) entry.history=[]; entry.history.unshift({date:new Date().toLocaleString('ko-KR'), changes}); }
         }
       } else {
         if(!p.items) p.items = [];
-        p.items.push({ id: genId(), type, label, link, note, content:savedContent, idVal:savedIdVal, pwVal:savedPwVal, sensitiveEnc, updatedAt: todayStr(), history:[] });
+        p.items.push({ id: genId(), type, label, noteIsLink, note, content:savedContent, idVal:savedIdVal, pwVal:savedPwVal, sensitiveEnc, updatedAt: todayStr(), history:[] });
       }
     }
   }
@@ -11653,6 +11693,40 @@ function incomeTaxStatusBadgeHtml(t){
   if(noneDone) return `<span class="tag" style="background:var(--bg); color:var(--ink-soft);">미신고</span>`;
   return `<span class="tag" style="background:var(--coral-bg); color:var(--coral);">⚠️ 한쪽만 신고</span>`;
 }
+// ── 날짜 일괄적용 공용 툴바 ──────────────────────────────────────────────
+// 세무신고(신고현황)·제출현황처럼 거래처마다 날짜를 하나하나 입력해야 하는 표에서, 날짜 하나를 고르고
+// 체크해둔 칸에 한 번에 채워넣을 수 있게 하는 공용 UI. 대상 input[type=date] 각각에 고유 id를 붙여두면,
+// 그 옆 체크박스(data-target=그 id)만 표시해서 켜고 끌 수 있게 하고, 실제로 값을 넣을 땐 진짜 input을
+// dispatchEvent로 발생시켜서 그 화면에 이미 있는 change/input 리스너가 그대로 타도록 함(로직 중복 없음)
+function bulkDateApplyToolbarHtml(idPrefix, label){
+  return `<div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; justify-content:flex-end;">
+    <label style="display:flex; align-items:center; gap:4px; font-size:12px; font-weight:700; color:var(--ink-soft); cursor:pointer;"><input type="checkbox" id="${idPrefix}SelectAll" style="width:auto;">전체선택</label>
+    <input type="date" id="${idPrefix}BulkDate" style="border:1.5px solid var(--border); border-radius:6px; padding:4px 6px; font-size:12px;">
+    <button type="button" id="${idPrefix}BulkApplyBtn" class="del-btn" style="background:var(--indigo); color:#fff;">📅 ${escHtml(label||'선택 항목 일괄적용')}</button>
+  </div>`;
+}
+function bindBulkDateApplyToolbar(wrap, idPrefix, checkClass){
+  const selectAll = wrap.querySelector(`#${idPrefix}SelectAll`);
+  const dateInput = wrap.querySelector(`#${idPrefix}BulkDate`);
+  const applyBtn = wrap.querySelector(`#${idPrefix}BulkApplyBtn`);
+  if(selectAll) selectAll.addEventListener('change', (e)=>{
+    // 화면에서 실제로 보이는(날짜칸이 열려 있는) 체크박스만 전체선택 대상으로 삼음
+    wrap.querySelectorAll('.'+checkClass).forEach(cb=>{ if(cb.offsetParent !== null) cb.checked = e.target.checked; });
+  });
+  if(applyBtn) applyBtn.addEventListener('click', ()=>{
+    const dateVal = dateInput ? dateInput.value : '';
+    if(!dateVal){ alert('먼저 적용할 날짜를 선택해주세요.'); return; }
+    const checked = [...wrap.querySelectorAll('.'+checkClass+':checked')];
+    if(!checked.length){ alert('일괄적용할 항목을 먼저 체크해주세요.'); return; }
+    checked.forEach(cb=>{
+      const target = document.getElementById(cb.dataset.target);
+      if(!target) return;
+      target.value = dateVal;
+      target.dispatchEvent(new Event('input', { bubbles:true }));
+      target.dispatchEvent(new Event('change', { bubbles:true }));
+    });
+  });
+}
 function renderIncomeTaxFilingStatusTable(){
   renderFilingPeriodControls('status');
   const period = currentFilingPeriodKey('status', '원천세'); // sourceMode가 항상 '월별'로 고정돼 있어 'YYYY-MM' 형식
@@ -11683,14 +11757,15 @@ function renderIncomeTaxFilingStatusTable(){
       rowsHtml.push(`<tr data-client-id="${c.id}" data-timing="${timingKey}">
         <td class="cvb" style="color:${entityColor}; font-weight:800; background:${nameBg}; white-space:nowrap;">${escHtml(c.name)} <span style="font-size:10px; color:var(--ink-soft); font-weight:600;">(${target.cycle})</span></td>
         <td class="cvb" style="white-space:nowrap; font-size:11.5px;">${timingLabel}</td>
-        <td class="cvb"><input type="date" class="it-filing-date-input" data-client-id="${c.id}" data-timing="${timingKey}" data-field="national" value="${t.national||''}" style="border:1.5px solid var(--border); border-radius:6px; padding:3px 4px; font-size:11.5px;"></td>
-        <td class="cvb"><input type="date" class="it-filing-date-input" data-client-id="${c.id}" data-timing="${timingKey}" data-field="local" value="${t.local||''}" style="border:1.5px solid var(--border); border-radius:6px; padding:3px 4px; font-size:11.5px;"></td>
+        <td class="cvb"><span style="display:inline-flex; align-items:center; gap:3px;"><input type="checkbox" class="it-date-check" data-target="it-date-${c.id}-${timingKey}-national" style="width:auto; margin:0;" title="일괄적용 대상으로 선택"><input type="date" id="it-date-${c.id}-${timingKey}-national" class="it-filing-date-input" data-client-id="${c.id}" data-timing="${timingKey}" data-field="national" value="${t.national||''}" style="border:1.5px solid var(--border); border-radius:6px; padding:3px 4px; font-size:11.5px;"></span></td>
+        <td class="cvb"><span style="display:inline-flex; align-items:center; gap:3px;"><input type="checkbox" class="it-date-check" data-target="it-date-${c.id}-${timingKey}-local" style="width:auto; margin:0;" title="일괄적용 대상으로 선택"><input type="date" id="it-date-${c.id}-${timingKey}-local" class="it-filing-date-input" data-client-id="${c.id}" data-timing="${timingKey}" data-field="local" value="${t.local||''}" style="border:1.5px solid var(--border); border-radius:6px; padding:3px 4px; font-size:11.5px;"></span></td>
         <td class="cvb it-filing-status-cell">${incomeTaxStatusBadgeHtml(t)}</td>
         <td><input type="text" class="it-filing-memo-input" data-client-id="${c.id}" data-timing="${timingKey}" value="${escHtml(t.memo||'')}" placeholder="메모" style="width:100%; border:1.5px solid var(--border); border-radius:6px; padding:4px 8px; font-family:'Pretendard',sans-serif; font-size:12px; text-align:center;"></td>
       </tr>`);
     });
   });
-  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th class="cvb">거래처</th><th class="cvb">지급구분</th><th class="cvb">원천세 신고일</th><th class="cvb">지방세 신고일</th><th class="cvb">상태</th><th>메모</th></tr></thead><tbody>${rowsHtml.join('')}</tbody></table></div>`;
+  wrap.innerHTML = bulkDateApplyToolbarHtml('itFilingDate', '체크한 신고일에 일괄적용') + `<div class="table-scroll"><table><thead><tr><th class="cvb">거래처</th><th class="cvb">지급구분</th><th class="cvb">원천세 신고일</th><th class="cvb">지방세 신고일</th><th class="cvb">상태</th><th>메모</th></tr></thead><tbody>${rowsHtml.join('')}</tbody></table></div>`;
+  bindBulkDateApplyToolbar(wrap, 'itFilingDate', 'it-date-check');
   wrap.querySelectorAll('.it-filing-date-input').forEach(inp=>{
     inp.addEventListener('input', ()=>{
       const entry = incomeTaxFilingEntry(period, inp.dataset.clientId);
@@ -11766,48 +11841,66 @@ function renderSubmitStatusTable(){
   const subitems = FILING_STATUS_SUBITEMS[submitState.sourceMode] || [];
   const subitemHeaderCells = subitems.map(it=>`<th class="cvb" style="white-space:nowrap; font-size:11px;">${escHtml(it.label)}</th>`).join('');
   const rows = list.map((c, idx)=>{
-    const entry = periodData[c.id] || { status:'미확인', memo:'' };
+    const entry = periodData[c.id] || { memo:'' };
     entry.items = entry.items || {};
+    entry.itemDates = entry.itemDates || {};
     const entityColor = c.entityType === '법인' ? '#0B5A78' : c.entityType === '개인' ? '#BE185D' : 'inherit';
     const nameBg = c.entityType === '법인' ? '#DCEEF5' : c.entityType === '개인' ? '#FCE9F1' : 'transparent';
     const subitemCells = subitems.map(it=>{
-      const v = entry.items[it.key] || '해당없음';
-      return `<td class="cvb"><select class="submit-status-subitem-select" data-client-id="${c.id}" data-item-key="${it.key}" style="font-size:11px; border:1.5px solid var(--border); border-radius:6px; padding:2px 3px;">
-        <option value="해당없음" ${v==='해당없음'?'selected':''}>해당없음</option>
-        <option value="미확인" ${v==='미확인'?'selected':''}>미확인</option>
-        <option value="완료" ${v==='완료'?'selected':''}>완료</option>
-      </select></td>`;
+      const v = normalizeSubmitItemStatus(entry.items[it.key]);
+      const showDate = v === '제출완료';
+      const dateVal = entry.itemDates[it.key] || '';
+      const dateInputId = `submit-date-${c.id}-${it.key}`;
+      return `<td class="cvb" style="white-space:nowrap;">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:3px;">
+          <select class="submit-status-subitem-select" data-client-id="${c.id}" data-item-key="${it.key}" style="font-size:11px; border:1.5px solid var(--border); border-radius:6px; padding:2px 3px;">
+            <option value="해당없음" ${v==='해당없음'?'selected':''}>해당없음</option>
+            <option value="검토중" ${v==='검토중'?'selected':''}>검토중</option>
+            <option value="제출완료" ${v==='제출완료'?'selected':''}>제출완료</option>
+          </select>
+          <span class="submit-date-wrap" data-client-id="${c.id}" data-item-key="${it.key}" style="display:${showDate?'inline-flex':'none'}; align-items:center; gap:2px;">
+            <input type="checkbox" class="submit-date-check" data-target="${dateInputId}" style="width:auto; margin:0;" title="일괄적용 대상으로 선택">
+            <input type="date" id="${dateInputId}" class="submit-date-input" data-client-id="${c.id}" data-item-key="${it.key}" value="${dateVal}" style="border:1.5px solid var(--border); border-radius:6px; padding:2px 3px; font-size:10px; width:106px;">
+          </span>
+        </div>
+      </td>`;
     }).join('');
     return `<tr>
       <td class="num cvb">${idx+1}</td>
       <td class="cvb" style="color:${entityColor}; font-weight:800; background:${nameBg};">${escHtml(c.name)}</td>
       ${subitemCells}
-      <td class="cvb"><select class="submit-status-select" data-client-id="${c.id}">
-        <option value="미확인" ${entry.status==='미확인'?'selected':''}>미확인</option>
-        <option value="검토중" ${entry.status==='검토중'?'selected':''}>검토중</option>
-        <option value="신고완료" ${entry.status==='신고완료'?'selected':''}>신고완료</option>
-      </select></td>
     </tr>`;
   }).join('');
-  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th class="cvb">#</th><th class="cvb">거래처</th>${subitemHeaderCells}<th class="cvb">진행상태</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  wrap.innerHTML = bulkDateApplyToolbarHtml('submitDate', '체크한 제출일에 일괄적용') + `<div class="table-scroll"><table><thead><tr><th class="cvb">#</th><th class="cvb">거래처</th>${subitemHeaderCells}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  bindBulkDateApplyToolbar(wrap, 'submitDate', 'submit-date-check');
   wrap.querySelectorAll('.submit-status-subitem-select').forEach(sel=>{
     sel.addEventListener('change', ()=>{
-      const cid = sel.dataset.clientId;
-      periodData[cid] = periodData[cid] || { status:'미확인', memo:'' };
+      const cid = sel.dataset.clientId, key = sel.dataset.itemKey;
+      periodData[cid] = periodData[cid] || { memo:'' };
       periodData[cid].items = periodData[cid].items || {};
-      periodData[cid].items[sel.dataset.itemKey] = sel.value;
+      periodData[cid].items[key] = sel.value;
+      setSubmitStatusDirty(true);
+      const dateWrap = wrap.querySelector(`.submit-date-wrap[data-client-id="${cid}"][data-item-key="${key}"]`);
+      if(dateWrap) dateWrap.style.display = sel.value === '제출완료' ? 'inline-flex' : 'none';
+    });
+  });
+  wrap.querySelectorAll('.submit-date-input').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const cid = inp.dataset.clientId, key = inp.dataset.itemKey;
+      periodData[cid] = periodData[cid] || { memo:'' };
+      periodData[cid].itemDates = periodData[cid].itemDates || {};
+      periodData[cid].itemDates[key] = inp.value || '';
       setSubmitStatusDirty(true);
     });
   });
-  wrap.querySelectorAll('.submit-status-select').forEach(sel=>{
-    sel.addEventListener('change', ()=>{
-      const cid = sel.dataset.clientId;
-      periodData[cid] = periodData[cid] || { status:'미확인', memo:'' };
-      periodData[cid].status = sel.value;
-      periodData[cid].updatedAt = new Date().toLocaleString('ko-KR');
-      setSubmitStatusDirty(true);
-    });
-  });
+}
+// 예전엔 세부항목 상태가 해당없음/미확인/완료 3단계였는데, "미확인"이라는 말이 검토 중이라는 뜻과 헷갈린다는
+// 의견으로 검토중/제출완료로 이름을 바꿈 - 이미 저장돼 있던 옛 값(미확인/완료)도 그대로 새 이름으로 보여줌
+// (저장된 원본 값은 사용자가 그 칸을 직접 다시 저장하기 전까진 안 건드림)
+function normalizeSubmitItemStatus(v){
+  if(v === '완료') return '제출완료';
+  if(v === '미확인') return '검토중';
+  return v || '해당없음';
 }
 function setSubmitStatusDirty(isDirty){
   document.getElementById('submitStatusSaveBtn')?.classList.toggle('is-dirty', !!isDirty);
@@ -13929,12 +14022,12 @@ function upsertCorpBasicInfoField(label, content){
   if(!sharedCompanyInfo.corp) sharedCompanyInfo.corp = [];
   const entry = findCorpInfoEntry(label);
   if(entry){
-    const changes = diffCiEntryFields(entry, label, entry.link||'', entry.note||'', false, content);
+    const changes = diffCiEntryFields(entry, label, !!entry.noteIsLink, entry.note||'', false, content);
     entry.content = content;
     entry.updatedAt = todayStr();
     if(changes.length){ if(!entry.history) entry.history=[]; entry.history.unshift({date:new Date().toLocaleString('ko-KR'), changes}); }
   } else {
-    sharedCompanyInfo.corp.push({ id: genId(), type:'info', label, link:'', note:'', content, updatedAt: todayStr(), history:[] });
+    sharedCompanyInfo.corp.push({ id: genId(), type:'info', label, note:'', content, updatedAt: todayStr(), history:[] });
   }
 }
 function populateCompanyNameInput(){
