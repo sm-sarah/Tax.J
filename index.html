@@ -186,12 +186,13 @@
     content:''; position:absolute; left:50%; bottom:0; transform:translateX(-50%);
     width:28px; height:3px; border-radius:2px; background:var(--indigo);
   }
-  /* 카드 4개 아래로 화면 하단까지 빈 공간이 크게 남는다는 피드백이 있어서, grid-auto-rows로 두 줄이
-     세로 공간을 나눠 채우게 하고 최소 높이를 넉넉히 잡아 세로 활용폭을 늘림 */
-  .home-dashboard-grid{ display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:1fr; gap:16px; min-height:min(62vh, 620px); }
-  @media (max-width:640px){ .home-dashboard-grid{ grid-template-columns:1fr; min-height:0; } }
+  /* 예전엔 grid-auto-rows:1fr + 큰 min-height로 두 줄을 억지로 꽉 채웠는데, 그러면 내용이 짧은 카드
+     (팀캘린더·결재현황)만 아래쪽에 불필요하게 큰 빈 여백이 생겼음 - 이제 각 카드가 자기 내용만큼만 높이를
+     차지하도록(align-items:start) 바꾸고, 최소 높이도 확 줄여서 화면을 훑을 때 여백이 두드러지지 않게 함 */
+  .home-dashboard-grid{ display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:auto; align-items:start; gap:14px; }
+  @media (max-width:640px){ .home-dashboard-grid{ grid-template-columns:1fr; } }
   .home-dash-card{
-    background:var(--surface); border-radius:16px; padding:18px 20px; min-height:150px;
+    background:var(--surface); border-radius:16px; padding:16px 18px; min-height:0;
     box-shadow:0 1px 2px rgba(29,30,51,0.04), 0 8px 20px -14px rgba(29,30,51,0.2);
     display:flex; flex-direction:column; gap:8px;
     /* 팀캘린더/근태현황 카드 안에 실제 화면을 그대로 축소해 넣은 미리보기(cloneForDashboardPreview)가
@@ -203,10 +204,33 @@
   }
   .home-dash-card[data-goto]{ cursor:pointer; transition:transform 0.15s, box-shadow 0.15s; }
   .home-dash-card[data-goto]:hover{ transform:translateY(-2px); box-shadow:0 3px 8px rgba(29,30,51,0.06), 0 12px 24px -14px rgba(29,30,51,0.26); }
-  /* 제목 앞에 붙어있던 이모지 아이콘을 빼고, 대신 자간을 살짝 넓혀서 더 정돈되고 고급스러운 라벨처럼 보이게 함 */
-  .home-dash-card-title{ display:flex; align-items:center; justify-content:space-between; gap:8px; font-weight:700; font-size:13.5px; letter-spacing:0.01em; color:var(--ink); }
+  /* 그냥 텍스트 라벨만 있던 밋밋한 제목에 카드 성격을 바로 알려주는 작은 컬러 아이콘 배지를 붙여서
+     대시보드 전체가 좀 더 표정 있고 정돈된 느낌이 나게 함(위젯마다 accent 색으로 구분) */
+  .home-dash-card-title{ display:flex; align-items:center; justify-content:space-between; gap:8px; font-weight:800; font-size:13.5px; letter-spacing:0.01em; color:var(--ink); }
+  .home-dash-card-title-main{ display:flex; align-items:center; gap:7px; min-width:0; }
+  .home-dash-card-title-badge{
+    display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:8px;
+    flex:none; color:#fff; background:var(--accent, var(--indigo));
+    box-shadow:0 3px 7px -2px rgba(29,30,51,0.3);
+  }
   .home-dash-card-link{ font-size:11px; font-weight:700; color:var(--indigo); white-space:nowrap; }
   .home-dash-card-body{ flex:1; font-size:12.5px; color:var(--ink-soft); }
+  /* 대시보드 미니 표(팀캘린더/결재현황) - 열 제목 + 구분선으로 실제 표처럼 보이게 함 */
+  .home-dash-table-head{
+    display:flex; gap:8px; padding:0 0 6px; margin-bottom:4px; border-bottom:1.5px solid var(--border);
+    font-size:10.5px; font-weight:800; color:var(--ink-soft); letter-spacing:0.02em;
+  }
+  .home-dash-table-row{
+    display:flex; gap:8px; padding:6px 0; border-bottom:1px dashed var(--border); font-size:12px;
+    align-items:center;
+  }
+  .home-dash-table-row:last-child{ border-bottom:none; }
+  .home-dash-table-col-date{ flex:0 0 48px; font-weight:700; color:var(--indigo-deep); font-size:11px; white-space:nowrap; }
+  .home-dash-table-col-time{ flex:0 0 52px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--ink-soft); white-space:nowrap; }
+  .home-dash-table-col-person{ flex:0 0 60px; font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .home-dash-table-col-main{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink); }
+  .home-dash-table-col-status{ flex:0 0 auto; }
+  .home-dash-table-row[data-approval-id]:hover{ background:rgba(29,30,51,0.04); border-radius:6px; }
   /* 대시보드 "근태현황" 카드는 숫자만 요약해서 새로 그리는 대신, 근태경비 탭에 실제로 그려져 있는
      카드(잔여연차/경비정산 칩)를 그대로 복제해서 작게 축소해 보여줌 - 진짜 화면을 그대로 미리보기하는 느낌 */
   .home-dash-mini-preview-wrap{ overflow:hidden; border-radius:10px; position:relative; }
@@ -262,15 +286,23 @@
   .home-dash-mascot.state-done svg{ animation:mascotPop .5s cubic-bezier(.34,1.56,.64,1); }
   @keyframes mascotPop{ 0%{ transform:scale(0.6) rotate(-6deg); opacity:0; } 60%{ transform:scale(1.08) rotate(3deg); } 100%{ transform:scale(1) rotate(0); opacity:1; } }
   /* 마스코트가 새하얀 비숑 털이라, 배경이 옅으면 윤곽이 잘 안 보인다는 피드백 - 상태색을 옅게 깐 둥근
-     배경을 마스코트 뒤에 항상 깔아서 어떤 바탕 위에서도 또렷하게 도드라지게 함 */
+     배경을 마스코트 뒤에 항상 깔아서 어떤 바탕 위에서도 또렷하게 도드라지게 함. 대시보드의 "포인트"인
+     만큼 배경을 더 진하고 또렷하게(그라디언트 진하게 + 점선 링 + 그림자) 강조해서 카드 안에서 시선이
+     바로 가게 함 */
   .home-dash-mascot-backdrop{
-    display:flex; align-items:center; justify-content:center; width:104px; height:104px; border-radius:50%;
-    margin:0 auto 2px;
+    display:flex; align-items:center; justify-content:center; width:112px; height:112px; border-radius:50%;
+    margin:0 auto 4px; position:relative;
+    box-shadow:0 8px 20px -10px rgba(29,30,51,0.28);
+  }
+  .home-dash-mascot-backdrop::before{
+    content:''; position:absolute; inset:-6px; border-radius:50%; border:2px dashed var(--ring, var(--indigo));
+    opacity:0.35;
   }
   .home-dash-mascot-backdrop .home-dash-mascot{ margin-bottom:0; }
-  .home-dash-mascot-backdrop.state-idle{ background:radial-gradient(circle, #E4E7FC 55%, transparent 78%); }
-  .home-dash-mascot-backdrop.state-working{ background:radial-gradient(circle, #DCF3EA 55%, transparent 78%); }
-  .home-dash-mascot-backdrop.state-done{ background:radial-gradient(circle, #FCE1EB 55%, transparent 78%); }
+  .home-dash-mascot-backdrop .home-dash-mascot svg{ filter:drop-shadow(0 4px 6px rgba(29,30,51,0.18)); }
+  .home-dash-mascot-backdrop.state-idle{ --ring:#7C86EE; background:radial-gradient(circle, #D7DBFB 58%, transparent 80%); }
+  .home-dash-mascot-backdrop.state-working{ --ring:#3FB999; background:radial-gradient(circle, #C7EEE0 58%, transparent 80%); }
+  .home-dash-mascot-backdrop.state-done{ --ring:#F2789F; background:radial-gradient(circle, #FBD2E1 58%, transparent 80%); }
   /* 출근/퇴근 시각을 색으로도 구분해달라는 요청 - 출근은 시작하는 초록, 퇴근은 마무리하는 코럴로,
      버튼(action-start/action-stop)과 같은 계열 색을 그대로 맞춰 씀 */
   .home-dash-clock-flow-time.in.filled{ color:#1E9E6C; }
@@ -398,20 +430,11 @@
   .home-submenu-item .home-tile-expand-btn{ padding:2px; }
   .home-submenu-sub{ padding-left:14px; }
   .home-submenu-leaf{ font-size:12px; font-weight:500; padding-left:16px; }
-  .home-fav-picker-item{
-    display:flex; align-items:center; gap:0; padding:6px 6px; cursor:pointer;
-    border-bottom:1px solid var(--border);
-  }
-  .home-fav-picker-item:last-child{ border-bottom:none; }
-  .home-fav-picker-item:hover{ background:rgba(29,30,51,0.035); }
-  .home-fav-picker-item .home-tile-icon{ display:none; }
-  .home-fav-picker-item .home-tile-title{
-    font-weight:700; font-size:14px; letter-spacing:0.01em; color:var(--ink); position:relative; padding-left:15px;
-  }
-  .home-fav-picker-item .home-tile-title::before{
-    content:''; position:absolute; left:0; top:50%; transform:translateY(-50%);
-    width:6px; height:6px; border-radius:50%; background:var(--tile-accent, var(--indigo));
-  }
+  <!-- 팝업 목록 줄도 실제 사이드바 메뉴 줄(.home-tile-plain)과 똑같은 모양(둥근 점 대신 왼쪽 컬러 바)을 쓰도록
+       .home-tile.home-tile-plain 스타일을 그대로 재사용함 - 예전엔 이 팝업만 별도로 둥근 점 불릿을 썼어서
+       실제 메뉴 목록과 생김새가 달라 보였음 -->
+  .home-fav-picker-item.home-tile-plain{ border-radius:0; }
+  .home-fav-picker-item.home-tile-plain:last-child{ border-bottom:none; }
   @media (max-width:560px){
     .home-section-row{max-width:100%; gap:6px;}
     .home-section-label{font-size:11.5px; padding:5px 12px;}
@@ -982,9 +1005,12 @@
   .cal-owner-label{ font-size:13px; font-weight:800; color:var(--indigo-deep); text-align:left; }
   .cal-legend{
     display:flex; justify-content:center; align-items:center; flex-wrap:wrap;
-    gap:10px 18px; margin:16px 0 2px; font-size:12.5px; font-weight:700; color:var(--ink);
+    gap:6px 8px; margin:16px 0 2px;
   }
-  .cal-legend-icon{font-size:22px; margin-right:2px; vertical-align:middle;}
+  /* 예전엔 범례가 큰 이모지(22px) + 맨글자 조합이라 실제 달력 칸 안의 배지(pill) 모양과 서로 달라 보였음 -
+     범례도 실제 배지와 똑같은 .cal-badge 클래스를 그대로 써서 같은 모양·색으로 통일함(아이콘도 같은 크기) */
+  .cal-legend .cal-badge{font-size:12px;}
+  .cal-badge.workday{background:var(--bg); color:var(--ink-soft); border:1px solid var(--border);}
   .cal-cell.weekend{background:var(--bg); border:1px solid var(--border); box-shadow:none;}
   .cal-cell.weekend .cal-badge{font-size:10.5px; padding:2px 5px;}
   .cal-cell.empty{background:transparent; box-shadow:none; border:none;}
@@ -1933,7 +1959,7 @@
              항목이 없으면 섹션 전체를 숨기고, 있으면 채워진 자리(.home-fav-tile)와 빈 자리(+, .home-fav-slot-empty)를
              renderFavoritesBar()가 채워넣음 -->
         <div class="home-section-row" id="homeFavoritesSection">
-          <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Favorites</div>
+          <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Bookmarks</div>
           <div class="home-tiles" id="homeFavoritesChips"></div>
         </div>
         <!-- Client(거래처 관련 메뉴)를 가장 많이 쓸 것 같아서 맨 위로 올림 -->
@@ -2286,7 +2312,7 @@
       <div id="calAdvanceNote" class="cal-advance-note" style="display:none;"></div>
       <div id="calendarGridWrap"></div>
       <p class="cal-legend">
-        <span><b class="cal-legend-icon">🌴</b> 휴가</span><span><b class="cal-legend-icon">🏠</b> 재택근무</span><span><b class="cal-legend-icon">🎌</b> 공휴일</span><span><b class="cal-legend-icon">🍻</b> 회식</span><span><b class="cal-legend-icon">🗓️</b> 개인 일정</span><span><b class="cal-legend-icon">💼</b> 일반 근무일</span>
+        <span class="cal-badge leave">🌴 휴가</span><span class="cal-badge remote">🏠 재택근무</span><span class="cal-badge holiday">🎌 공휴일</span><span class="cal-badge party">🍻 회식</span><span class="cal-badge schedule">🗓️ 개인 일정</span><span class="cal-badge workday">💼 일반 근무일</span>
       </p>
     </div>
   </section>
@@ -2623,7 +2649,7 @@
           <div style="text-align:right; margin-bottom:10px;">
             <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-soft); font-weight:700; cursor:pointer;" title="주로 연락하는 창구를 대표자로 지정해요">
               <input type="radio" name="cl-primary-contact" id="cl-primary-rep" value="rep" style="width:15px; height:15px; cursor:pointer;">
-              ⭐ 주연락처
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="3" width="18" height="18" rx="4"></rect><polyline points="7 12 10.5 15.5 17 8"></polyline></svg> 주연락처
             </label>
           </div>
           <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
@@ -2642,7 +2668,7 @@
           </div>
           <div id="cl-contacts-list"></div>
           <button type="button" id="cl-contact-add-btn" class="del-btn" style="margin:2px 0 14px;">+ 담당자 추가</button>
-          <div class="hint" style="font-size:11px; color:var(--ink-soft); text-align:right; margin:-8px 0 8px;">각 담당자 옆 ⭐ 주연락으로 주로 연락하는 실무자를 지정할 수 있어요.</div>
+          <div class="hint" style="font-size:11px; color:var(--ink-soft); text-align:right; margin:-8px 0 8px;">각 담당자 옆 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><rect x="3" y="3" width="18" height="18" rx="4"></rect><polyline points="7 12 10.5 15.5 17 8"></polyline></svg> 주연락으로 주로 연락하는 실무자를 지정할 수 있어요.</div>
         </div>
 
         <div style="text-align:center; margin-top:26px; padding-top:20px; border-top:1.5px dashed var(--border); margin-bottom:12px;"><span class="section-subtitle-label">개인정보</span></div>
@@ -2770,7 +2796,7 @@
       <div id="teamCalAdvanceNote" class="cal-advance-note" style="display:none;"></div>
       <div id="adminCalendarWrap"></div>
       <p class="cal-legend">
-        <span><b class="cal-legend-icon">🌴</b> 휴가</span><span><b class="cal-legend-icon">🏠</b> 재택근무</span><span><b class="cal-legend-icon">🎌</b> 공휴일</span><span><b class="cal-legend-icon">🍻</b> 회식</span><span><b class="cal-legend-icon">🗓️</b> 개인 일정</span><span><b class="cal-legend-icon">⏰</b> 조기퇴근</span>
+        <span class="cal-badge leave">🌴 휴가</span><span class="cal-badge remote">🏠 재택근무</span><span class="cal-badge holiday">🎌 공휴일</span><span class="cal-badge party">🍻 회식</span><span class="cal-badge schedule">🗓️ 개인 일정</span><span class="cal-badge schedule">⏰ 조기퇴근</span>
       </p>
     </div>
   </section>
@@ -3016,7 +3042,7 @@
   <div id="favoriteMenuPickerOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
     <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:360px; width:100%; max-height:80vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
-        <div style="font-weight:800; font-size:15px; color:var(--ink);">⭐ 즐겨찾기 추가</div>
+        <div style="font-weight:800; font-size:15px; color:var(--ink);">⭐ Bookmarks 추가</div>
         <button type="button" id="favoriteMenuPickerClose" class="del-btn modal-close-btn">닫기</button>
       </div>
       <div id="favoriteMenuPickerList"></div>
@@ -4472,16 +4498,16 @@ function renderAdminCalendar(){
       const label = isStart ? `📌 특별기간) ${escHtml(sp.content)}` : '&nbsp;';
       (byDate[dateStr]=byDate[dateStr]||[]).push(`<span class="cal-badge schedule cal-badge-span" style="display:block; text-align:${isStart?'left':'center'}; ${radiusStyle} ${marginStyle} position:relative; z-index:1;">${label}</span>`);
     });
-    const holidayEntry = (sharedExclusionDays||[]).find(x=>x.date===dateStr && x.reason==='공휴일');
-    (sharedExclusionDays||[]).filter(x=>x.date===dateStr && x.reason!=='공휴일').forEach(x=>{
-      const cls = x.reason==='점심회식' ? 'lunchparty' : x.reason==='저녁회식' ? 'party' : 'other';
+    // 공휴일(추석 등)도 휴가·재택근무·회식과 똑같이 배지 목록에 pill 스타일로 넣어줌 - 예전엔 날짜 옆에
+    // 작은 빨간 글자로만 붙어서 다른 배지들과 스타일이 이질적으로 보였음
+    (sharedExclusionDays||[]).filter(x=>x.date===dateStr).forEach(x=>{
+      const cls = x.reason==='공휴일' ? 'holiday' : x.reason==='점심회식' ? 'lunchparty' : x.reason==='저녁회식' ? 'party' : 'other';
       const info = exclusionBadgeInfo(x);
       (byDate[dateStr]=byDate[dateStr]||[]).push(`<span class="cal-badge ${cls}">${info.icon} ${escHtml(info.label)}</span>`);
     });
     const badges = (byDate[dateStr]||[]).join('');
-    const holidayIconTeam = holidayEntry ? `<span class="cal-work-icon holiday-icon">${exclusionBadgeInfo(holidayEntry).icon} ${escHtml(exclusionBadgeInfo(holidayEntry).label)}</span>` : '';
     cells += `<div class="cal-cell ${isWeekend?'weekend':''}">
-      <div class="cal-date ${dateStr===todayS?'today':''}">${d}${holidayIconTeam}</div>
+      <div class="cal-date ${dateStr===todayS?'today':''}">${d}</div>
       <div class="cal-badges">${badges}</div>
     </div>`;
   }
@@ -6115,14 +6141,9 @@ function renderCalendar(){
       const rAdvSuffix = rInfo.advance ? advBadgeTag(creditMonthShortLabel(rInfo.creditMonth)) : '';
       badges += rInfo.bonus ? `<span class="cal-badge special">🎁 특별재택${rAdvSuffix}</span>` : `<span class="cal-badge remote">🏠 정기재택${rAdvSuffix}</span>`;
     }
-    let holidayIcon = '';
+    // 공휴일(추석 등)도 다른 배지들과 같은 pill 스타일로 통일 - 예전엔 날짜 옆에 작은 빨간 글자로만 붙어서 이질적으로 보였음
     (exclusionByDate[dateStr]||[]).forEach(x=>{
-      if(x.reason==='공휴일'){
-        const info = exclusionBadgeInfo(x);
-        holidayIcon = `<span class="cal-work-icon holiday-icon">${info.icon} ${escHtml(info.label)}</span>`;
-        return;
-      }
-      const cls = x.reason==='점심회식' ? 'lunchparty' : x.reason==='저녁회식' ? 'party' : 'other';
+      const cls = x.reason==='공휴일' ? 'holiday' : x.reason==='점심회식' ? 'lunchparty' : x.reason==='저녁회식' ? 'party' : 'other';
       const info = exclusionBadgeInfo(x);
       badges += `<span class="cal-badge ${cls}">${info.icon} ${escHtml(info.label)}</span>`;
     });
@@ -6136,7 +6157,7 @@ function renderCalendar(){
     if(whException && !isWeekend) badges += `<span class="cal-badge schedule">⏰ ${whException.endTime} 조기퇴근</span>`;
     const hasAnnualLeave = (rawLeaveByDate[dateStr]||[]).some(u=>GROUPABLE_LEAVE_TYPES.includes(u.type));
     const hasHoliday = (exclusionByDate[dateStr]||[]).some(x=>x.reason==='공휴일');
-    let workIcon = holidayIcon;
+    let workIcon = '';
     if(!isWeekend && !hasAnnualLeave && !hasHoliday){
       workIcon = `<span class="cal-work-icon" title="근무">💼</span>`;
     }
@@ -6400,6 +6421,14 @@ function openClientDetailModal(c){
       <span style="color:var(--ink-soft); font-weight:700; flex-shrink:0;">${escHtml(label)}</span>
       <span style="text-align:right;">${escHtml(val)}</span>
     </div>`;
+  // val에 주연락 배지(아이콘) 같은 raw HTML을 그대로 넣어야 할 때는 escHtml을 거치지 않는 이 버전을 씀(이름 부분은 호출부에서 escHtml 처리)
+  const rowHtmlRaw = (label,valHtml) => `
+    <div style="display:flex; justify-content:space-between; gap:10px; padding:5px 0; font-size:12.5px;">
+      <span style="color:var(--ink-soft); font-weight:700; flex-shrink:0;">${escHtml(label)}</span>
+      <span style="text-align:right;">${valHtml}</span>
+    </div>`;
+  // 주연락처 표시: 예전엔 ⭐ 이모지였는데, 앱 전체에 쓰는 선 스타일 아이콘(체크박스 형태)으로 통일
+  const primaryContactBadge = `<span style="display:inline-flex; align-items:center; gap:3px; color:var(--indigo-deep); font-weight:800; font-size:10.5px; margin-left:6px; vertical-align:middle;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><rect x="3" y="3" width="18" height="18" rx="4"></rect><polyline points="7 12 10.5 15.5 17 8"></polyline></svg>주연락</span>`;
   // 밑줄 대신 옅은 배경 박스로 묶어서, 그룹 사이 여백이 "빈 공간"이 아니라 "하나의 덩어리"로 보이게 함
   const group = (t, rowsHtml) => `
     <div style="background:var(--bg); border-radius:10px; padding:10px 12px; margin-bottom:10px;">
@@ -6418,7 +6447,7 @@ function openClientDetailModal(c){
 
   // 2) 대표자 (실무자 중 아무도 주연락처로 지정 안 했으면 대표자가 기본 주연락처)
   const repIsPrimary = c.primaryContactType !== 'contact';
-  html += group('대표자' + (repIsPrimary ? ' ⭐ 주연락처' : ''), rowHtml('이름', c.repName || '-') + rowHtml('연락처', c.repPhone || '-') + rowHtml('이메일', c.repEmail || '-'));
+  html += group('대표자', rowHtmlRaw('이름', escHtml(c.repName || '-') + (repIsPrimary ? primaryContactBadge : '')) + rowHtml('연락처', c.repPhone || '-') + rowHtml('이메일', c.repEmail || '-'));
 
   // 3) 실무자 (등록할 때 "대표자와 동일" 체크했으면 중복으로 안 보여주고 한 줄로 표시, 여러 명이면 실무자1/실무자2...로 각각 표시)
   const contacts = (c.contacts && c.contacts.length) ? c.contacts : (c.contact || c.phone || c.email) ? [{name:c.contact, phone:c.phone, email:c.email}] : [];
@@ -6426,12 +6455,12 @@ function openClientDetailModal(c){
   if(c.contactSameAsRep){
     contactRows = rowHtml('실무자', '대표자와 동일 ✓');
   } else if(!contacts.length){
-    contactRows = rowHtml('실무자', '-');
+    contactRows = rowHtml('등록 인원', '없음');
   } else {
     contacts.forEach((p, i)=>{
       const n = contacts.length > 1 ? i+1 : '';
       const isPrimary = c.primaryContactType === 'contact' && c.primaryContactIdx === i;
-      contactRows += rowHtml(`실무자${n} 이름`, (p.name || '-') + (isPrimary ? ' ⭐ 주연락처' : ''))
+      contactRows += rowHtmlRaw(`실무자${n} 이름`, escHtml(p.name || '-') + (isPrimary ? primaryContactBadge : ''))
         + rowHtml(`실무자${n} 연락처`, p.phone || '-')
         + rowHtml(`실무자${n} 이메일`, p.email || '-');
     });
@@ -8166,16 +8195,9 @@ function buildCalendarHTML(monthStr){
       if(timeLabel) lines += `<span class="cal-line tag-leave" style="opacity:0.82;">🕐 ${timeLabel}</span>`;
     });
     if(remoteByDate[dateStr]) lines += remoteByDate[dateStr]==='bonus' ? `<span class="cal-line tag-special">🎁 특별재택</span>` : `<span class="cal-line tag-remote">🏠 정기재택</span>`;
-    let holidayIconPrint = '';
+    // 공휴일(추석 등)도 다른 배지들과 같은 pill 스타일(.cal-line.tag-holiday)로 통일
     (exclusionByDate[dateStr]||[]).forEach(x=>{
-      if(x.reason==='공휴일'){
-        const info = exclusionBadgeInfo(x);
-        holidayIconPrint = isWeekend
-          ? `<span class="cal-work-icon holiday-icon" title="${escHtml(info.label)}">${info.icon}</span>`
-          : `<span class="cal-work-icon holiday-icon">${info.icon} ${escHtml(info.label)}</span>`;
-        return;
-      }
-      const cls = x.reason==='점심회식' ? 'tag-lunchparty' : x.reason==='저녁회식' ? 'tag-party' : 'tag-schedule';
+      const cls = x.reason==='공휴일' ? 'tag-holiday' : x.reason==='점심회식' ? 'tag-lunchparty' : x.reason==='저녁회식' ? 'tag-party' : 'tag-schedule';
       const info = exclusionBadgeInfo(x);
       lines += `<span class="cal-line ${cls}">${info.icon} ${escHtml(info.label)}</span>`;
     });
@@ -8188,7 +8210,7 @@ function buildCalendarHTML(monthStr){
     if(whExceptionPrint && !isWeekend) lines += `<span class="cal-line tag-schedule">⏰ ${whExceptionPrint.endTime} 조기퇴근</span>`;
     const hasAnnualLeavePrint = (rawLeaveByDate[dateStr]||[]).some(u=>GROUPABLE_LEAVE_TYPES.includes(u.type));
     const hasHolidayPrint = (exclusionByDate[dateStr]||[]).some(x=>x.reason==='공휴일');
-    let workIconPrint = holidayIconPrint;
+    let workIconPrint = '';
     if(!isWeekend && !hasAnnualLeavePrint && !hasHolidayPrint){
       workIconPrint = `<span class="cal-work-icon">💼 근무</span>`;
     }
@@ -8573,7 +8595,7 @@ const DASHBOARD_WIDGET_DEFS = {
   clock:      { label:'출퇴근', mandatory:true },
   calendar:   { label:'팀캘린더' },
   attendance: { label:'근태현황' },
-  approval:   { label:'결재 이력' },
+  approval:   { label:'결재현황' },
   notice:     { label:'공지사항' },
 };
 const DASHBOARD_WIDGET_DEFAULT_ORDER = ['clock','calendar','approval','notice','attendance'];
@@ -8597,21 +8619,32 @@ function saveDashboardConfig(order, enabledSet){
     localStorage.setItem('worklog_dashboard_enabled', JSON.stringify(Array.from(enabledSet)));
   }catch(e){}
 }
+// 위젯 제목 옆에 붙는 작은 컬러 아이콘 배지 - 라인아이콘 스타일 통일 + 위젯 성격이 색으로 바로 구분되게 함
+function dashCardTitleIcon(key){
+  const common = 'width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"';
+  const paths = {
+    calendar:   `<rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>`,
+    attendance: `<line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line>`,
+    approval:   `<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>`,
+    notice:     `<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>`,
+  };
+  return `<span class="home-dash-card-title-badge"><svg ${common}>${paths[key]||''}</svg></span>`;
+}
 // 출퇴근은 다른 위젯과 달리 흰 박스(.home-dash-card)가 아니라 배경 없이 그림+내용만 자유롭게 배치함(.home-dash-freeform)
 function dashboardWidgetHtml(key){
   if(key === 'clock') return `<div class="home-dash-freeform" id="dashClockBody">-</div>`;
   const defs = {
-    calendar:   { goto:'teamcalendar', title:'팀캘린더', link:'바로가기 →', bodyId:'dashCalendarBody' },
-    attendance: { goto:'attendance', title:'근태현황', link:'바로가기 →', bodyId:'dashAttendanceBody' },
-    approval:   { goto:'approval', title:'결재 전체이력', link:'바로가기 →', bodyId:'dashApprovalAllBody' },
-    notice:     { id:'dashNoticeCard', title:'공지사항 <span style="font-size:10px; font-weight:700; color:var(--coral);">(중요공지)</span>', link:'더보기 →', bodyId:'dashNoticeBody' },
+    calendar:   { goto:'teamcalendar', title:'팀캘린더', link:'바로가기 →', bodyId:'dashCalendarBody', accent:'var(--mint)' },
+    attendance: { goto:'attendance', title:'근태현황', link:'바로가기 →', bodyId:'dashAttendanceBody', accent:'var(--coral)' },
+    approval:   { goto:'approval', title:'결재현황', link:'바로가기 →', bodyId:'dashApprovalAllBody', accent:'var(--indigo)' },
+    notice:     { id:'dashNoticeCard', title:'공지사항 <span style="font-size:10px; font-weight:700; color:var(--coral);">(중요공지)</span>', link:'더보기 →', bodyId:'dashNoticeBody', accent:'var(--amber)' },
   };
   const d = defs[key];
   if(!d) return '';
   const gotoAttr = d.goto ? ` data-goto="${d.goto}"` : '';
   const idAttr = d.id ? ` id="${d.id}"` : '';
-  return `<div class="home-dash-card"${gotoAttr}${idAttr}>
-    <div class="home-dash-card-title"><span>${d.title}</span><span class="home-dash-card-link">${d.link}</span></div>
+  return `<div class="home-dash-card"${gotoAttr}${idAttr} style="--accent:${d.accent};">
+    <div class="home-dash-card-title"><span class="home-dash-card-title-main">${dashCardTitleIcon(key)}<span>${d.title}</span></span><span class="home-dash-card-link">${d.link}</span></div>
     <div class="home-dash-card-body" id="${d.bodyId}">-</div>
   </div>`;
 }
@@ -8701,11 +8734,11 @@ function computeWeekTeamAgenda(){
     const holidayEntry = (sharedExclusionDays||[]).find(x=>x.date===ds && x.reason==='공휴일');
     if(holidayEntry){
       const info = exclusionBadgeInfo(holidayEntry);
-      items.push({ dateLabel, icon: info.icon || '🎌', text: info.label || '공휴일' });
+      items.push({ dateLabel, person:'전체', icon: info.icon || '🎌', text: info.label || '공휴일' });
     }
     (sharedExclusionDays||[]).filter(x=>x.date===ds && x.reason!=='공휴일').forEach(x=>{
       const info = exclusionBadgeInfo(x);
-      items.push({ dateLabel, icon: info.icon || '📌', text: info.label || x.reason });
+      items.push({ dateLabel, person:'전체', icon: info.icon || '📌', text: info.label || x.reason });
     });
     getProfiles().forEach(p=>{
       const s = readProfileRaw(p.id,'settings') || {};
@@ -8713,13 +8746,13 @@ function computeWeekTeamAgenda(){
       const sch = readProfileRaw(p.id,'schedule') || { events:[] };
       const name = s.employeeName || p.name || '(미등록)';
       (att.leaveUsage||[]).filter(u=>u.date===ds).forEach(u=>{
-        items.push({ dateLabel, icon:'🌴', text:`${name} · ${leaveTeamCalShortType(u.type, u.subtype)}` });
+        items.push({ dateLabel, person:name, icon:'🌴', text:leaveTeamCalShortType(u.type, u.subtype) });
       });
       (att.remoteEntries||[]).filter(r=>r.date===ds).forEach(r=>{
-        items.push({ dateLabel, icon: r.bonus ? '🎁' : '🏠', text:`${name} · ${r.bonus ? '특별재택' : '정기재택'}` });
+        items.push({ dateLabel, person:name, icon: r.bonus ? '🎁' : '🏠', text: r.bonus ? '특별재택' : '정기재택' });
       });
       (sch.events||[]).filter(e=>e.date===ds && e.shared !== false).forEach(e=>{
-        items.push({ dateLabel, icon:'🗓️', text:`${name} · ${e.type || '일정'}` });
+        items.push({ dateLabel, person:name, icon:'🗓️', text: e.type || '일정' });
       });
     });
   });
@@ -8747,8 +8780,17 @@ function renderDashboardCalendarPreview(){
   const MAX = 5;
   const shown = items.slice(0, MAX);
   const restCount = items.length - shown.length;
-  body.innerHTML = headerHtml
-    + shown.map(it=>`<div class="home-dash-info-row"><span style="flex:none; font-weight:800; color:var(--indigo-deep); font-size:11px;">${it.dateLabel}</span> ${it.icon} <span>${escHtml(it.text)}</span></div>`).join('')
+  // 날짜/대상자/일정을 각자 텍스트가 섞여 나오던 한 줄짜리 목록 대신, 열 제목 + 구분선이 있는 미니 표로 바꿔서
+  // 한눈에 훑어보기 쉽게 함(날짜·대상자가 왼쪽에 고정폭으로 정렬되고, 일정 내용만 오른쪽으로 늘어남)
+  const tableHtml = `<div class="home-dash-table-head">
+      <span class="home-dash-table-col-date">날짜</span><span class="home-dash-table-col-person">대상자</span><span class="home-dash-table-col-main">일정</span>
+    </div>`
+    + shown.map(it=>`<div class="home-dash-table-row">
+      <span class="home-dash-table-col-date">${escHtml(it.dateLabel)}</span>
+      <span class="home-dash-table-col-person">${escHtml(it.person||'전체')}</span>
+      <span class="home-dash-table-col-main">${it.icon} ${escHtml(it.text)}</span>
+    </div>`).join('');
+  body.innerHTML = headerHtml + tableHtml
     + (restCount > 0 ? `<div class="hint" style="margin:4px 0 0; font-size:10.5px; text-align:right;">+${restCount}건 더 (팀캘린더에서 확인)</div>` : '');
 }
 // 대시보드 "근태현황" 위젯 - 근태경비 탭에 이미 그려져 있는 실제 카드(잔여연차/휴가사용/재택근무 3장)를
@@ -9086,6 +9128,18 @@ function cloneForDashboardPreview(sourceEl, naturalWidth){
   return clone;
 }
 // 대시보드 결재 전체이력 카드 - 내 것만 걸러내지 않고, 결재 탭의 "전체이력"과 같은 전사 결재 이력을 최신순으로 보여줌
+// "2026. 9. 3. 오후 4:07:17"처럼 toLocaleString('ko-KR')로 저장된 문자열을 날짜/시간 두 칸으로 쪼갬.
+// 좁은 카드 칸에 맞게 날짜는 "9/3"으로, 시간은 초 단위를 빼고 "오후 4:07"로 줄여서 표시함
+function splitKrDateTime(s){
+  if(!s) return { date:'', time:'' };
+  const idx = s.search(/오전|오후/);
+  const rawDate = idx === -1 ? s : s.slice(0,idx);
+  const rawTime = idx === -1 ? '' : s.slice(idx).trim();
+  const dm = rawDate.match(/(\d+)\D+(\d+)\D+(\d+)/);
+  const date = dm ? `${dm[2]}/${dm[3]}` : rawDate.trim();
+  const time = rawTime.replace(/(:\d{2}):\d{2}\s*$/, '$1');
+  return { date, time };
+}
 function renderDashboardApprovalAllPreview(){
   const body = document.getElementById('dashApprovalAllBody');
   if(!body) return;
@@ -9095,14 +9149,24 @@ function renderDashboardApprovalAllPreview(){
     return;
   }
   const sorted = [...list].sort((a,b)=>(b.decidedAt||b.createdAt||'').localeCompare(a.decidedAt||a.createdAt||''));
-  body.innerHTML = sorted.slice(0,5).map(a=>{
-    const dateLabel = a.decidedAt || a.createdAt || '';
-    return `<div class="home-dash-list-row" data-approval-id="${a.id}">
-      <span class="home-dash-list-row-title">${escHtml(dateLabel)} · ${escHtml(a.drafterName||a.drafterEmail||'')} · ${escHtml(a.title||'(제목 없음)')}</span>
-      ${typeof approvalStatusTagHtml === 'function' ? approvalStatusTagHtml(a.status) : escHtml(a.status||'')}
+  // 날짜·기안자·제목이 한 줄에 점(·)으로 이어붙어 있던 목록 대신, 날짜/기안시간/기안자/기안제목/진행상황을
+  // 각자 칸으로 나누고 열 제목 + 구분선을 넣은 미니 표로 바꿔서 결재 현황을 한눈에 훑어볼 수 있게 함
+  const headHtml = `<div class="home-dash-table-head">
+      <span class="home-dash-table-col-date">날짜</span><span class="home-dash-table-col-time">기안시간</span>
+      <span class="home-dash-table-col-person">기안자</span><span class="home-dash-table-col-main">기안제목</span>
+      <span class="home-dash-table-col-status">진행상황</span>
+    </div>`;
+  body.innerHTML = headHtml + sorted.slice(0,5).map(a=>{
+    const { date, time } = splitKrDateTime(a.decidedAt || a.createdAt || '');
+    return `<div class="home-dash-table-row" data-approval-id="${a.id}" style="cursor:pointer;">
+      <span class="home-dash-table-col-date">${escHtml(date)}</span>
+      <span class="home-dash-table-col-time">${escHtml(time)}</span>
+      <span class="home-dash-table-col-person">${escHtml(a.drafterName||a.drafterEmail||'')}</span>
+      <span class="home-dash-table-col-main">${escHtml(a.title||'(제목 없음)')}</span>
+      <span class="home-dash-table-col-status">${typeof approvalStatusTagHtml === 'function' ? approvalStatusTagHtml(a.status) : escHtml(a.status||'')}</span>
     </div>`;
   }).join('');
-  body.querySelectorAll('.home-dash-list-row').forEach(row=>{
+  body.querySelectorAll('.home-dash-table-row').forEach(row=>{
     row.addEventListener('click', (e)=>{
       e.stopPropagation();
       document.querySelector('.tab-btn[data-tab="approval"]')?.click();
@@ -9176,6 +9240,11 @@ function favoriteMenuLabelOf(el){
 function favoriteMenuAccentOf(el){
   try{ return (getComputedStyle(el).getPropertyValue('--tile-accent') || '').trim(); }catch(e){ return ''; }
 }
+// 하위메뉴를 펼치는 화살표(.home-tile-expand-btn)를 가진 노드는 그 자체로는 어디로도 이동하지 않는
+// "카테고리"라서 즐겨찾기 후보에서 뺌 - 실제로 이동 가능한 하위 항목(리프)만 즐겨찾기 대상으로 남김
+function favoriteMenuIsLeaf(el){
+  return !el.querySelector('.home-tile-expand-btn');
+}
 function getFavoriteMenuItems(){
   try{ return JSON.parse(localStorage.getItem(FAVORITE_MENU_KEY) || '[]'); }catch(e){ return []; }
 }
@@ -9234,12 +9303,13 @@ function openFavoriteMenuPicker(){
   if(!overlay || !listWrap) return;
   const favKeys = new Set(getFavoriteMenuItems().map(f=>f.key));
   const items = Array.from(document.querySelectorAll(FAVORITE_MENU_SELECTOR))
+    .filter(el=>favoriteMenuIsLeaf(el))
     .filter(el=>!favKeys.has(favoriteMenuKeyOf(el)))
     .map(el=>({ el, key:favoriteMenuKeyOf(el), label:favoriteMenuLabelOf(el), accent:favoriteMenuAccentOf(el) }));
   if(!items.length){
     listWrap.innerHTML = `<div class="empty-state">더 등록할 수 있는 메뉴가 없어요.</div>`;
   } else {
-    listWrap.innerHTML = items.map(it=>`<div class="home-fav-picker-item" data-fav-key="${escHtml(it.key)}" style="--tile-accent:${escHtml(it.accent||'var(--indigo)')};"><div class="home-tile-title">${escHtml(it.label)}</div></div>`).join('');
+    listWrap.innerHTML = items.map(it=>`<div class="home-tile home-tile-plain home-fav-picker-item" data-fav-key="${escHtml(it.key)}" style="--tile-accent:${escHtml(it.accent||'var(--indigo)')};"><div class="home-tile-title">${escHtml(it.label)}</div></div>`).join('');
     listWrap.querySelectorAll('.home-fav-picker-item').forEach(row=>{
       row.addEventListener('click', ()=>{
         const found = items.find(it=>it.key===row.dataset.favKey);
@@ -11298,7 +11368,7 @@ function renderContactRows(){
       <div class="field" style="flex:1 1 130px; margin-bottom:0;"><label style="font-size:11px;">연락처</label><input type="text" class="cl-contact-phone" placeholder="예: 010-2345-6789" value="${escHtml(row.phone)}" ${same && i===0 ? 'disabled' : ''}></div>
       <div class="field" style="flex:1 1 160px; margin-bottom:0;"><label style="font-size:11px;">이메일</label><input type="email" class="cl-contact-email" placeholder="예: staff@client.com" value="${escHtml(row.email)}" ${same && i===0 ? 'disabled' : ''}></div>
       <div class="field" style="flex:0 0 54px; margin-bottom:0; align-items:center;">
-        <label style="font-size:11px; white-space:nowrap;" title="주연락처로 설정">⭐</label>
+        <label style="font-size:11px; white-space:nowrap; cursor:pointer;" title="주연락처로 설정"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="3" width="18" height="18" rx="4"></rect><polyline points="7 12 10.5 15.5 17 8"></polyline></svg></label>
         <input type="radio" name="cl-primary-contact" class="cl-primary-contact-radio" data-idx="${i}" value="contact-${i}" style="width:16px; height:16px; cursor:pointer;" ${clPrimaryContact.type==='contact' && clPrimaryContact.idx===i ? 'checked' : ''}>
       </div>
       <button type="button" class="del-btn cl-contact-remove-btn" ${clContactRows.length<=1 ? 'style="opacity:0.35; cursor:default;" disabled' : ''}>삭제</button>
