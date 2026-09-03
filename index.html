@@ -613,6 +613,10 @@
     color:var(--ink-soft); border-radius:20px; box-shadow:0 1px 2px rgba(29,30,51,0.05);
   }
   .policy-category-toggle button.active{color:#fff; background:var(--guide-slate);}
+  /* 신고대상 편집 팝업의 매월/반기 칩은 글자가 2자뿐인데 공용 카테고리 칩 크기(padding:8px 18px)를 그대로 쓰면
+     텍스트에 비해 과하게 커 보였음 - 이 팝업 전용으로만 좁혀서 텍스트 크기에 맞춤(다른 화면의
+     .policy-category-toggle에는 영향 없음) */
+  .ft-cycle-toggle button{padding:6px 14px; font-size:12.5px;}
   /* 신고현황 하위의 원천세/부가세/법인세/종소세 칩이 상위 신고현황/검토표/결재 칩과 완전히 같은 스타일이라
      하위메뉴로 안 보이고 나란히 노출된 것처럼 보인다는 피드백이 계속 있었음 - 상위 3개 카테고리는 세로로
      쌓은 칩으로 두고, 활성 카테고리 아래에서만 왼쪽 세로선을 따라 가지처럼 뻗어나가는 밑줄 텍스트 목록으로
@@ -1587,21 +1591,23 @@
 <!-- 원천세 신고대상: 거래처 × 월 그리드의 한 칸을 눌렀을 때 뜨는 편집 팝업 -->
 <div id="filingTargetEditModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:400px; width:100%; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
-    <div style="text-align:center; margin-bottom:14px;">
-      <div id="filingTargetEditTitle" style="font-weight:800; font-size:16px; color:var(--ink);"></div>
+    <!-- 예전엔 "거래처 · 연월"을 한 줄로 합쳐놔서 거래처명이 잘 안 띄었고, 신고대상 여부도 대상/대상아님
+         칩 버튼 두 개라 한눈에 안 들어왔음 - 거래처명을 맨 위에 크게 두고, 그 아래 연월 옆에 신고대상
+         체크박스 하나만 두는 걸로 단순화함 -->
+    <div style="text-align:center; margin-bottom:16px;">
+      <div id="filingTargetEditClientName" style="font-weight:800; font-size:16px; color:var(--ink);"></div>
+      <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-top:8px;">
+        <span id="filingTargetEditPeriod" style="font-size:13px; font-weight:700; color:var(--ink-soft);"></span>
+        <label style="display:flex; align-items:center; gap:5px; font-weight:800; font-size:12.5px; color:var(--indigo-deep); cursor:pointer;">
+          <input type="checkbox" id="ft-applicable" style="width:auto;"> 신고대상
+        </label>
+      </div>
     </div>
     <div style="display:flex; flex-direction:column; gap:12px; font-size:12.5px;">
-      <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
-        <span style="font-weight:700; color:var(--ink-soft);">신고대상 여부</span>
-        <span class="policy-category-toggle" id="filingTargetApplicableToggle" style="margin-bottom:0;">
-          <button type="button" class="ft-applicable-btn" data-applicable="0">대상 아님</button>
-          <button type="button" class="ft-applicable-btn" data-applicable="1">대상</button>
-        </span>
-      </div>
       <div id="filingTargetDetailFields" style="display:flex; flex-direction:column; gap:12px;">
         <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
           <span style="font-weight:700; color:var(--ink-soft);">신고구분</span>
-          <span class="policy-category-toggle" id="filingTargetCycleToggle" style="margin-bottom:0;">
+          <span class="policy-category-toggle ft-cycle-toggle" id="filingTargetCycleToggle" style="margin-bottom:0;">
             <button type="button" class="ft-cycle-btn" data-cycle="매월">매월</button>
             <button type="button" class="ft-cycle-btn" data-cycle="반기">반기</button>
           </span>
@@ -1614,7 +1620,7 @@
       </div>
     </div>
     <div style="text-align:center; margin-top:16px; display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
-      <button type="button" id="filingTargetApplyRestBtn" class="del-btn" title="지금 설정한 내용을 이 해의 남은 달에도 똑같이 적용해요">이후 달에도 동일 적용</button>
+      <button type="button" id="filingTargetApplyRestBtn" class="del-btn" title="지금 설정한 내용을 이 해의 남은 달에도 똑같이 적용해요">이후 동일적용</button>
       <button type="button" id="filingTargetEditSaveBtn" class="submit-btn" style="width:auto; padding:8px 18px;">저장</button>
       <button type="button" id="filingTargetEditCloseBtn" class="del-btn modal-close-btn">닫기</button>
     </div>
@@ -11637,9 +11643,7 @@ document.getElementById('filingTargetYear')?.addEventListener('change', (e)=>{
 // 신고대상 편집 팝업 - 저장을 눌러야 실제로 sharedFilingTargets에 저장(saveSharedFilingTargets)되고 화면이 갱신됨
 let filingTargetEditCtx = { clientId:null, period:null };
 function syncFilingTargetModalUI(entry){
-  document.querySelectorAll('#filingTargetApplicableToggle .ft-applicable-btn').forEach(b=>{
-    b.classList.toggle('active', (b.dataset.applicable === '1') === !!entry.applicable);
-  });
+  document.getElementById('ft-applicable').checked = !!entry.applicable;
   document.getElementById('filingTargetDetailFields').style.display = entry.applicable ? 'flex' : 'none';
   document.querySelectorAll('#filingTargetCycleToggle .ft-cycle-btn').forEach(b=>{
     b.classList.toggle('active', b.dataset.cycle === entry.cycle);
@@ -11651,19 +11655,18 @@ function openFilingTargetEditModal(clientId, period){
   filingTargetEditCtx = { clientId, period };
   const client = (clients.list||[]).find(c=>c.id===clientId);
   const [y,m] = period.split('-');
-  document.getElementById('filingTargetEditTitle').textContent = `${client ? client.name : ''} · ${y}년 ${Number(m)}월`;
+  document.getElementById('filingTargetEditClientName').textContent = client ? client.name : '';
+  document.getElementById('filingTargetEditPeriod').textContent = `${y}년 ${Number(m)}월`;
   syncFilingTargetModalUI(filingTargetEntry(clientId, period));
   document.getElementById('filingTargetEditModalOverlay').style.display = 'flex';
 }
-document.querySelectorAll('#filingTargetApplicableToggle .ft-applicable-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    const { clientId, period } = filingTargetEditCtx;
-    if(!clientId) return;
-    const entry = filingTargetEntry(clientId, period);
-    entry.applicable = btn.dataset.applicable === '1';
-    if(entry.applicable && !entry.sameMonthPay && !entry.nextMonthPay) entry.sameMonthPay = true;
-    syncFilingTargetModalUI(entry);
-  });
+document.getElementById('ft-applicable')?.addEventListener('change', (e)=>{
+  const { clientId, period } = filingTargetEditCtx;
+  if(!clientId) return;
+  const entry = filingTargetEntry(clientId, period);
+  entry.applicable = e.target.checked;
+  if(entry.applicable && !entry.sameMonthPay && !entry.nextMonthPay) entry.sameMonthPay = true;
+  syncFilingTargetModalUI(entry);
 });
 document.querySelectorAll('#filingTargetCycleToggle .ft-cycle-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
