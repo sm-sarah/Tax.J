@@ -191,7 +191,10 @@
   /* 예전엔 grid-auto-rows:1fr + 큰 min-height로 두 줄을 억지로 꽉 채웠는데, 그러면 내용이 짧은 카드
      (팀캘린더·결재현황)만 아래쪽에 불필요하게 큰 빈 여백이 생겼음 - 이제 각 카드가 자기 내용만큼만 높이를
      차지하도록(align-items:start) 바꾸고, 최소 높이도 확 줄여서 화면을 훑을 때 여백이 두드러지지 않게 함 */
-  .home-dashboard-grid{ display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:auto; align-items:start; gap:14px; }
+  /* grid-auto-flow:dense - 세로형/크게처럼 여러 행을 차지하는 위젯이 섞이면 기본 흐름(row)에서는 뒤에 오는
+     위젯이 자리를 못 찾고 계단식으로 밀려 내려가 들쭉날쭉해 보임 - dense로 바꿔서 빈 칸을 먼저 채우게 하면
+     훨씬 가지런하게 맞아떨어짐 */
+  .home-dashboard-grid{ display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:auto; grid-auto-flow:dense; align-items:start; gap:14px; }
   @media (max-width:640px){ .home-dashboard-grid{ grid-template-columns:1fr; } }
   .home-dash-card{
     background:var(--surface); border-radius:16px; padding:16px 18px; min-height:0;
@@ -431,7 +434,7 @@
      가늠하기 어렵다는 피드백 - 목록 위에 지금 설정 그대로의 배치를 작은 박스로 미리 보여주는 실시간
      미리보기를 둬서, 체크·순서·크게를 바꿀 때마다 바로 눈으로 결과를 확인할 수 있게 함 */
   .dashboard-config-preview{
-    display:grid; grid-template-columns:repeat(2, 1fr); gap:6px; padding:10px;
+    display:grid; grid-template-columns:repeat(2, 1fr); grid-auto-flow:dense; gap:6px; padding:10px;
     background:var(--bg); border-radius:12px; margin-bottom:10px;
   }
   .dashboard-config-preview-box{
@@ -834,6 +837,9 @@
     color:var(--ink-soft); border-radius:20px; box-shadow:0 1px 2px rgba(29,30,51,0.05);
   }
   .policy-category-toggle button.active{color:#fff; background:var(--guide-slate);}
+  /* 엑셀 일괄 다운로드의 "전체받기"는 시트 선택 칩이 아니라 네 칩을 한 번에 켜는 지름길 버튼이라, 선택 칩과
+     헷갈리지 않도록 톤을 다르게(인디고) 둠 */
+  #bulkExcelSelectAllBtn{ background:var(--indigo-bg); color:var(--indigo-deep); font-weight:800; }
   /* 신고대상 편집 팝업의 매월/반기 칩은 글자가 2자뿐인데 공용 카테고리 칩 크기(padding:8px 18px)를 그대로 쓰면
      텍스트에 비해 과하게 커 보였음 - 이 팝업 전용으로만 좁혀서 텍스트 크기에 맞춤(다른 화면의
      .policy-category-toggle에는 영향 없음) */
@@ -1000,6 +1006,12 @@
     box-shadow:0 6px 14px -6px rgba(91,95,239,0.5);
   }
   .submit-btn:hover{background:var(--indigo-deep);}
+  /* .submit-btn 기본값(margin:0 auto)은 혼자 있을 때(부모가 text-align:center인 블록 등) 스스로 가운데
+     정렬되게 하려던 건데, 옆에 다른 버튼과 나란히 flex row에 놓이면 auto-margin이 flex 여유 공간을 혼자
+     다 차지해버려서 부모의 justify-content:center를 무시하고 두 버튼이 양쪽 끝으로 벌어져 보이는 문제가
+     있었음("저장/닫기가 가운데가 아니라 떨어져 있다") - 다른 버튼과 나란히 있는(형제 버튼이 있는) 경우에는
+     margin을 0으로 되돌려서 부모의 정렬 방식을 그대로 따르게 함 */
+  .submit-btn:has(+ button), button + .submit-btn{ margin:0; }
   /* 설정 소메뉴 팝업(chipifySettingsCategory) 안의 저장·추가 버튼들은 팝업 크기에 비해 너무 큼직해서, 텍스트 크기에 맞는 작은 칩 형태로 줄임 */
   .settings-subpopup-inner .submit-btn{ min-width:0; width:auto; height:38px; box-sizing:border-box; padding:0 18px; font-size:13px; border-radius:10px; box-shadow:none; display:inline-flex; align-items:center; justify-content:center; }
   .settings-subpopup-inner form .del-btn{ height:38px; box-sizing:border-box; padding:0 16px; font-size:13px; display:inline-flex; align-items:center; justify-content:center; }
@@ -3707,11 +3719,20 @@
            기장거래처/전체거래처/회사정보/팀정보 네 가지를 시트 하나씩으로 담은 파일 하나를 만들어줌 -->
       <div class="settings-sub-title" id="ssTitle-excelbackup" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> 엑셀 일괄 다운로드 <span class="badge">관리자 전용</span></div>
       <p class="hint" style="text-align:center;">
-        기장거래처·전체거래처(기장/기타/해지 포함)·회사정보·팀정보를 시트 4개짜리 엑셀 파일 하나로 받아요.<br>
+        기장거래처·전체거래처(기장/기타/해지 포함)·회사정보·팀정보 중 원하는 항목만 골라 시트로 담은 엑셀 파일 하나로 받아요.<br>
         위 백업복구처럼 앱으로 다시 불러오는 용도가 아니라, 자료가 사라질까 걱정될 때 따로 보관하거나 다른 곳에 바로 활용하기 좋은 형태예요.<br>
         회사정보에 암호화된 계정이 있으면, 먼저 사내정보 잠금을 해제해야 실제 ID/PW까지 포함돼요.
       </p>
       <div class="settings-box" style="max-width:480px; text-align:center;">
+        <!-- 어떤 시트가 받아지는지 안 보인 채로 버튼 하나만 있던 것 -> 시트별 칩으로 골라서 받을 수 있게 함
+             (다중선택, 기본은 전부 선택됨). "전체받기"는 네 칩을 한 번에 다 선택하는 지름길 칩 -->
+        <div class="policy-category-toggle" id="bulkExcelSheetToggle" style="justify-content:center; flex-wrap:wrap; margin-bottom:14px;">
+          <button type="button" class="bulk-excel-sheet-btn active" data-sheet="bk">기장거래처</button>
+          <button type="button" class="bulk-excel-sheet-btn active" data-sheet="all">전체거래처</button>
+          <button type="button" class="bulk-excel-sheet-btn active" data-sheet="ci">회사정보</button>
+          <button type="button" class="bulk-excel-sheet-btn active" data-sheet="ti">팀정보</button>
+          <button type="button" class="bulk-excel-sheet-btn" id="bulkExcelSelectAllBtn">전체받기</button>
+        </div>
         <button type="button" id="bulkExcelExportBtn" class="submit-btn" style="width:auto; padding:9px 16px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 19h16"/></svg> 엑셀 일괄 다운로드</button>
         <div class="save-msg" id="bulkExcelSaveMsg" style="margin-top:8px;"></div>
       </div>
@@ -15298,52 +15319,73 @@ async function bulkExcelDecryptCiItem(it){
     return { idVal: plain.idVal||'', pwVal: plain.pwVal||'', content: plain.content||'' };
   }catch(e){ return null; }
 }
-async function buildBulkExcelWorkbook(){
+// sheets: {bk,all,ci,ti} 중 true인 것만 시트로 담음(기본은 전부 true) - 위 칩에서 고른 대로 넘어옴
+async function buildBulkExcelWorkbook(sheets){
+  sheets = sheets || { bk:true, all:true, ci:true, ti:true };
   const wb = XLSX.utils.book_new();
   // 시트1: 기장거래처
-  const bkList = bookkeepingClientList();
-  const bkRows = [BULK_EXCEL_CLIENT_COLUMNS, ...bkList.map((c,i)=>bulkExcelClientRow(c, i+1, '기장'))];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(bkRows), '기장거래처');
+  if(sheets.bk){
+    const bkList = bookkeepingClientList();
+    const bkRows = [BULK_EXCEL_CLIENT_COLUMNS, ...bkList.map((c,i)=>bulkExcelClientRow(c, i+1, '기장'))];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(bkRows), '기장거래처');
+  }
   // 시트2: 전체거래처(기장/기타/해지 모두 - 화면과 같은 정렬 기준)
-  const allList = sortClientsCanonical(clients.list||[]);
-  const allRows = [BULK_EXCEL_CLIENT_COLUMNS, ...allList.map((c,i)=>bulkExcelClientRow(c, i+1, clientGroupLabel(c)))];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(allRows), '전체거래처');
+  if(sheets.all){
+    const allList = sortClientsCanonical(clients.list||[]);
+    const allRows = [BULK_EXCEL_CLIENT_COLUMNS, ...allList.map((c,i)=>bulkExcelClientRow(c, i+1, clientGroupLabel(c)))];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(allRows), '전체거래처');
+  }
   // 시트3: 회사정보(사내정보 - 법인공용/팀총괄/팀원별/개인). 암호화된 항목은 잠금 해제된 상태에서만 실제 값이 들어가고,
   // 잠긴 채로 받으면 "🔒(잠금 상태)"로 표시됨(값이 텅 빈 채로 조용히 내려가서 안 들어간 줄 모르는 것보다 나음)
-  const ciRows = [['구분','대상','항목명','유형','ID/내용','PW','메모','암호화 여부']];
-  const pushCiRow = async (category, target, it) => {
-    const dec = await bulkExcelDecryptCiItem(it);
-    const locked = !!it.sensitiveEnc && !dec;
-    const isInfo = (it.type||'account') === 'info';
-    return ciRows.push([category, target, it.label||'', isInfo?'정보':'계정',
-      locked ? '🔒(잠금 상태)' : (dec ? (isInfo?dec.content:dec.idVal) : ''),
-      locked ? '🔒(잠금 상태)' : (dec ? dec.pwVal : ''),
-      it.note||'', it.sensitiveEnc ? 'Y' : 'N']);
-  };
-  for(const it of (sharedCompanyInfo.corp||[])) await pushCiRow('법인공용', sharedCompanyName||'', it);
-  for(const it of (sharedCompanyInfo.teamGeneral||[])) await pushCiRow('팀총괄', '', it);
-  for(const person of (sharedCompanyInfo.team||[])){
-    for(const it of (person.items||[])) await pushCiRow('팀원', person.person||'', it);
+  if(sheets.ci){
+    const ciRows = [['구분','대상','항목명','유형','ID/내용','PW','메모','암호화 여부']];
+    const pushCiRow = async (category, target, it) => {
+      const dec = await bulkExcelDecryptCiItem(it);
+      const locked = !!it.sensitiveEnc && !dec;
+      const isInfo = (it.type||'account') === 'info';
+      return ciRows.push([category, target, it.label||'', isInfo?'정보':'계정',
+        locked ? '🔒(잠금 상태)' : (dec ? (isInfo?dec.content:dec.idVal) : ''),
+        locked ? '🔒(잠금 상태)' : (dec ? dec.pwVal : ''),
+        it.note||'', it.sensitiveEnc ? 'Y' : 'N']);
+    };
+    for(const it of (sharedCompanyInfo.corp||[])) await pushCiRow('법인공용', sharedCompanyName||'', it);
+    for(const it of (sharedCompanyInfo.teamGeneral||[])) await pushCiRow('팀총괄', '', it);
+    for(const person of (sharedCompanyInfo.team||[])){
+      for(const it of (person.items||[])) await pushCiRow('팀원', person.person||'', it);
+    }
+    for(const it of (sharedCompanyInfo.personal||[])) await pushCiRow('개인', it.owner||'', it);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ciRows), '회사정보');
   }
-  for(const it of (sharedCompanyInfo.personal||[])) await pushCiRow('개인', it.owner||'', it);
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ciRows), '회사정보');
   // 시트4: 팀정보(설정 > 회사 > 팀정보)
-  const tiRows = [['항목','값'],
-    ['팀명', sharedTeamInfo.teamName||''],
-    ['담당회계사', sharedTeamInfo.accountant||''],
-    ['세무관리번호', sharedTeamInfo.taxMgmtNo||''],
-    ['세무관리비밀번호', sharedTeamInfo.taxMgmtPw||''],
-    ['내선번호', sharedTeamInfo.extNo||''],
-    ['메모', sharedTeamInfo.note||'']
-  ];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(tiRows), '팀정보');
+  if(sheets.ti){
+    const tiRows = [['항목','값'],
+      ['팀명', sharedTeamInfo.teamName||''],
+      ['담당회계사', sharedTeamInfo.accountant||''],
+      ['세무관리번호', sharedTeamInfo.taxMgmtNo||''],
+      ['세무관리비밀번호', sharedTeamInfo.taxMgmtPw||''],
+      ['내선번호', sharedTeamInfo.extNo||''],
+      ['메모', sharedTeamInfo.note||'']
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(tiRows), '팀정보');
+  }
   return wb;
 }
+// 어떤 시트를 받을지 안 보인 채로 버튼 하나만 있던 걸, 시트별 칩(다중선택, 기본 전부 선택)으로 직접 골라
+// 받을 수 있게 함. "전체받기"는 토글이 아니라 네 칩을 한 번에 켜는 지름길 버튼
+document.querySelectorAll('#bulkExcelSheetToggle .bulk-excel-sheet-btn[data-sheet]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{ btn.classList.toggle('active'); });
+});
+document.getElementById('bulkExcelSelectAllBtn')?.addEventListener('click', ()=>{
+  document.querySelectorAll('#bulkExcelSheetToggle .bulk-excel-sheet-btn[data-sheet]').forEach(btn=>btn.classList.add('active'));
+});
 document.getElementById('bulkExcelExportBtn')?.addEventListener('click', async ()=>{
   const msgEl = document.getElementById('bulkExcelSaveMsg');
   if(typeof XLSX === 'undefined'){ alert('엑셀 기능을 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해주세요.'); return; }
-  const hasEncrypted = (sharedCompanyInfo.corp||[]).some(x=>x.sensitiveEnc) || (sharedCompanyInfo.teamGeneral||[]).some(x=>x.sensitiveEnc) ||
-    (sharedCompanyInfo.team||[]).some(p=>(p.items||[]).some(x=>x.sensitiveEnc));
+  const sheets = {};
+  document.querySelectorAll('#bulkExcelSheetToggle .bulk-excel-sheet-btn[data-sheet]').forEach(btn=>{ sheets[btn.dataset.sheet] = btn.classList.contains('active'); });
+  if(!Object.values(sheets).some(Boolean)){ alert('받을 항목을 하나 이상 선택해주세요.'); return; }
+  const hasEncrypted = sheets.ci && ((sharedCompanyInfo.corp||[]).some(x=>x.sensitiveEnc) || (sharedCompanyInfo.teamGeneral||[]).some(x=>x.sensitiveEnc) ||
+    (sharedCompanyInfo.team||[]).some(p=>(p.items||[]).some(x=>x.sensitiveEnc)));
   if(hasEncrypted && !adminCryptoKey){
     if(confirm('회사정보에 암호화된 항목이 있어요. 지금 잠금을 해제하면 실제 ID/PW까지 포함해서 받을 수 있어요. 잠금을 해제할까요? (취소하면 암호화된 항목은 "잠금 상태"로 표시돼요)')){
       await unlockSensitiveView();
@@ -15351,7 +15393,7 @@ document.getElementById('bulkExcelExportBtn')?.addEventListener('click', async (
   }
   if(msgEl) msgEl.textContent = '만드는 중...';
   try{
-    const wb = await buildBulkExcelWorkbook();
+    const wb = await buildBulkExcelWorkbook(sheets);
     XLSX.writeFile(wb, `taxj-백업-${todayStr()}.xlsx`);
     if(msgEl){ msgEl.textContent = '다운로드 완료'; setTimeout(()=>{ msgEl.textContent=''; }, 2500); }
   }catch(e){
