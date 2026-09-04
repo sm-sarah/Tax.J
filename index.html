@@ -180,21 +180,26 @@
      로고는 크고 진한 브랜드 글자로, 이 제목은 작고 여백 있는 라벨(eyebrow) 스타일로 확실히 갈라놓음.
      다만 너무 밋밋하다는 의견이 있어서, 색을 진하게(indigo-deep)·글자를 더 굵게 하고 밑에 작은 강조
      밑줄을 하나 둬서 라벨이면서도 존재감이 있게 함 */
+  /* "제목 좀더 키우고 스타일 다르게" 요청 - 예전엔 작은 대문자 eyebrow 라벨(12.5px)에 색·굵기·밑줄만
+     더한 정도라 "커졌다"고 느껴지지 않았음. 실제 제목처럼 크게 키우고(28px), 전부 대문자로 늘어놓는 라벨
+     스타일 대신 진짜 헤딩처럼(첫 글자만 대문자, 자간 살짝 좁게) 바꾸고, 밑줄도 두껍고 그라데이션을 줘서
+     눈에 띄게 함 */
   .home-dashboard-title{
-    font-size:12.5px; font-weight:800; letter-spacing:0.2em; text-transform:uppercase; color:var(--indigo-deep);
-    margin:0 0 20px; text-align:center; position:relative; padding-bottom:10px;
+    font-size:28px; font-weight:900; letter-spacing:-0.01em; text-transform:none; color:var(--indigo-deep);
+    margin:0 0 22px; text-align:center; position:relative; padding-bottom:14px;
   }
   .home-dashboard-title::after{
     content:''; position:absolute; left:50%; bottom:0; transform:translateX(-50%);
-    width:28px; height:3px; border-radius:2px; background:var(--indigo);
+    width:44px; height:5px; border-radius:3px; background:linear-gradient(90deg, var(--indigo), var(--mint));
   }
-  /* 예전엔 grid-auto-rows:1fr + 큰 min-height로 두 줄을 억지로 꽉 채웠는데, 그러면 내용이 짧은 카드
-     (팀캘린더·결재현황)만 아래쪽에 불필요하게 큰 빈 여백이 생겼음 - 이제 각 카드가 자기 내용만큼만 높이를
-     차지하도록(align-items:start) 바꾸고, 최소 높이도 확 줄여서 화면을 훑을 때 여백이 두드러지지 않게 함 */
-  /* grid-auto-flow:dense - 세로형/크게처럼 여러 행을 차지하는 위젯이 섞이면 기본 흐름(row)에서는 뒤에 오는
+  /* "같은 라인에 있는 항목은 세로폭이 동일하게" 요청으로 align-items를 stretch로 바꿈 - 이제 같은 줄(행)에
+     나란히 놓인 두 카드는 그 줄에서 더 큰 카드 높이에 맞춰 같이 늘어남(예: 근태현황/세무일정처럼 내용량이
+     다른 카드가 한 줄에 있어도 세로폭이 맞춰짐). 카드 내부는 flex-direction:column + body flex:1이라
+     늘어난 만큼 본문 영역이 자연스럽게 커짐
+     grid-auto-flow:dense - 세로형/크게처럼 여러 행을 차지하는 위젯이 섞이면 기본 흐름(row)에서는 뒤에 오는
      위젯이 자리를 못 찾고 계단식으로 밀려 내려가 들쭉날쭉해 보임 - dense로 바꿔서 빈 칸을 먼저 채우게 하면
      훨씬 가지런하게 맞아떨어짐 */
-  .home-dashboard-grid{ display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:auto; grid-auto-flow:dense; align-items:start; gap:14px; }
+  .home-dashboard-grid{ display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:auto; grid-auto-flow:dense; align-items:stretch; gap:14px; }
   @media (max-width:640px){ .home-dashboard-grid{ grid-template-columns:1fr; } }
   .home-dash-card{
     background:var(--surface); border-radius:16px; padding:16px 18px; min-height:0;
@@ -240,27 +245,37 @@
   }
   /* "대시보드 글자 크기좀 키워줘" 요청으로 위젯 본문·표 글자를 전반적으로 한 단계씩 키움 */
   .home-dash-card-body{ flex:1; font-size:14.5px; color:var(--ink-soft); }
-  /* 대시보드 미니 표(팀캘린더/결재현황) - 열 제목 + 구분선으로 실제 표처럼 보이게 함 */
-  .home-dash-table-head{
-    display:flex; gap:8px; padding:0 0 6px; margin-bottom:4px; border-bottom:1.5px solid var(--border);
+  /* 대시보드 미니 표(팀캘린더/결재현황/공지사항) - 예전엔 각 칸을 flex span으로 흉내낸 "가짜 표"라 줄마다
+     칸 너비가 그 줄 내용 기준으로 따로 정해져서, 헤더와 데이터 줄의 구분선이 서로 안 맞고 글자도 중구난방으로
+     보였음. display:table로 진짜 표로 바꿔서 모든 줄이 같은 열 너비를 쓰게 하고(작성자/기안자/날짜처럼 짧은
+     내용은 자동으로 좁게, 나머지는 넓게), 칸 사이에 세로 구분선을 넣고 그 구분선을 기준으로 글자가 정확히
+     가운데 오도록 함 */
+  .home-dash-table{ display:table; width:100%; border-collapse:collapse; table-layout:auto; }
+  .home-dash-table-head{ display:table-row; }
+  .home-dash-table-row{ display:table-row; font-size:14px; }
+  .home-dash-table-head > span, .home-dash-table-row > span{
+    display:table-cell; vertical-align:middle; padding:6px 9px; border-right:1px solid var(--border);
+  }
+  .home-dash-table-head > span:last-child, .home-dash-table-row > span:last-child{ border-right:none; }
+  .home-dash-table-head > span{
+    padding-top:0; padding-bottom:6px; border-bottom:1.5px solid var(--border);
     font-size:12.5px; font-weight:800; color:var(--ink-soft); letter-spacing:0.02em;
   }
-  .home-dash-table-row{
-    display:flex; gap:8px; padding:6px 0; border-bottom:1px dashed var(--border); font-size:14px;
-    align-items:center;
-  }
-  .home-dash-table-row:last-child{ border-bottom:none; }
-  .home-dash-table-col-date{ flex:0 0 48px; font-weight:700; color:var(--indigo-deep); font-size:13px; white-space:nowrap; text-align:center; }
+  .home-dash-table-row > span{ border-bottom:1px dashed var(--border); }
+  .home-dash-table-row:last-child > span{ border-bottom:none; }
+  .home-dash-table-col-date{ font-weight:700; color:var(--indigo-deep); font-size:13px; white-space:nowrap; text-align:center; }
   /* 결재현황 위젯 전용 - 기안일 하나에 날짜+시간을 같이 보여줌(예전엔 날짜/기안시간 두 칸이었는데 하나로 합침) */
-  .home-dash-table-col-draftdate{ flex:0 0 108px; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft); white-space:nowrap; text-align:center; }
-  .home-dash-table-col-person{ flex:0 0 60px; font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; }
-  .home-dash-table-col-main{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink); text-align:center; }
-  .home-dash-table-col-status{ flex:0 0 auto; text-align:center; }
-  /* 공지사항 위젯 전용 열 - 제목·내용 가로폭이 서로 너무 차이 나 보인다는 의견으로 둘 다 flex:1로 맞춰서
-     비슷한 너비를 쓰게 함(내용은 어차피 렌더링 전에 글자수로 잘라서 넣으니 폭이 늘어도 줄바꿈되진 않음) */
-  .home-dash-table-col-title{ flex:1 1 0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; color:var(--ink); font-weight:700; }
-  .home-dash-table-col-content{ flex:1 1 0; min-width:0; color:var(--ink-soft); font-size:12px; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .home-dash-table-row[data-approval-id]:hover, .home-dash-table-row[data-notice-id]:hover{ background:rgba(29,30,51,0.04); border-radius:6px; cursor:pointer; }
+  .home-dash-table-col-draftdate{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft); white-space:nowrap; text-align:center; }
+  /* 기안자/결재자/작성자는 이름 한두 글자~서너 글자면 충분해서, 고정폭(60px)으로 넓게 잡아두지 않고
+     실제 내용만큼만(표 자동 너비 계산) 차지하도록 폭 지정을 없앰 */
+  .home-dash-table-col-person{ font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; }
+  .home-dash-table-col-main{ width:100%; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink); text-align:center; }
+  .home-dash-table-col-status{ white-space:nowrap; text-align:center; }
+  /* 공지사항 위젯 전용 열 - 제목·내용 가로폭이 서로 너무 차이 나 보인다는 의견으로 둘 다 넉넉한 width를 줘서
+     남는 공간을 나눠 갖게 함(내용은 어차피 렌더링 전에 글자수로 잘라서 넣으니 폭이 늘어도 줄바꿈되진 않음) */
+  .home-dash-table-col-title{ width:60%; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; color:var(--ink); font-weight:700; }
+  .home-dash-table-col-content{ width:60%; min-width:0; color:var(--ink-soft); font-size:12px; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .home-dash-table-row[data-approval-id]:hover, .home-dash-table-row[data-notice-id]:hover{ background:rgba(29,30,51,0.04); cursor:pointer; }
   /* 팀캘린더 위젯 - 옆의 출퇴근(freeform-hero) 카드와 세로폭이 안 맞아 혼자 짧아 보인다는 의견으로,
      같은 그리드 줄에서 출퇴근 카드 높이만큼 늘어나게(stretch) 하고, 늘어난 만큼 안쪽 표를 스크롤 영역으로
      채움(이번 달 일정 전체를 다 보여주면서도 카드 밖으로 넘치지 않게) */
@@ -3133,7 +3148,7 @@
         <h2 class="section-title" style="justify-content:center; font-size:22px; margin:4px 0 14px;">원천세 신고대상</h2>
         <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
           <select id="filingTargetYear" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
-          <span class="hint" style="font-size:11px; margin:0;">칸을 눌러서 그 달의 신고대상 여부·신고구분·지급시기를 설정하세요.</span>
+          <span class="hint" style="font-size:11px; margin:0;">칸을 눌러서 그 달(귀속월 기준)의 신고대상 여부·신고구분·지급시기를 설정하세요.</span>
         </div>
         <!-- 원래는 "1월 설정 일괄적용"/"전년도 12월 복사" 두 버튼이었는데, 실제로는 잘 안 쓰이고 화면만
              복잡하게 만든다는 의견으로 없애고 단순 초기화 버튼 하나로 대체함. 가운데 배치는 표 위에서 눈에
@@ -9321,7 +9336,7 @@ function renderDashboardCalendarPreview(){
       <span class="home-dash-table-col-person">${escHtml(it.person||'전체')}</span>
       <span class="home-dash-table-col-main">${it.icon} ${escHtml(it.text)}</span>
     </div>`).join('');
-  body.innerHTML = headerHtml + `<div class="home-dash-card-scroll">${tableHtml}</div>`;
+  body.innerHTML = headerHtml + `<div class="home-dash-card-scroll"><div class="home-dash-table">${tableHtml}</div></div>`;
 }
 // 대시보드 "근태현황" 위젯 - 예전엔 근태경비 탭의 실제 카드(.summary-cards)를 그대로 복제해 축소하는
 // 방식이었는데, 출퇴근 카드와 스타일이 안 맞아서 이 위젯 전용 색칩 3개(잔여연차/이번달 사용/이번달 재택)로
@@ -9723,7 +9738,7 @@ function renderDashboardApprovalAllPreview(){
       <span class="home-dash-table-col-person">기안자</span><span class="home-dash-table-col-main">기안명</span>
       <span class="home-dash-table-col-person">결재자</span><span class="home-dash-table-col-status">진행상황</span>
     </div>`;
-  body.innerHTML = headHtml + sorted.slice(0,5).map(a=>{
+  const rowsHtml = sorted.slice(0,5).map(a=>{
     const { date, time } = splitKrDateTime(a.decidedAt || a.createdAt || '');
     return `<div class="home-dash-table-row" data-approval-id="${a.id}" style="cursor:pointer;">
       <span class="home-dash-table-col-draftdate">${escHtml(date)} ${escHtml(time)}</span>
@@ -9733,6 +9748,7 @@ function renderDashboardApprovalAllPreview(){
       <span class="home-dash-table-col-status">${typeof approvalStatusTagHtml === 'function' ? approvalStatusTagHtml(a.status) : escHtml(a.status||'')}</span>
     </div>`;
   }).join('');
+  body.innerHTML = `<div class="home-dash-table">${headHtml}${rowsHtml}</div>`;
   body.querySelectorAll('.home-dash-table-row').forEach(row=>{
     row.addEventListener('click', (e)=>{
       e.stopPropagation();
@@ -9774,7 +9790,7 @@ function renderDashboardImportantNotices(){
       <span class="home-dash-table-col-person">${escHtml(n.authorName||'-')}</span>
     </div>`;
   }).join('');
-  body.innerHTML = headHtml + rowsHtml;
+  body.innerHTML = `<div class="home-dash-table">${headHtml}${rowsHtml}</div>`;
   body.querySelectorAll('.home-dash-table-row[data-notice-id]').forEach(row=>{
     row.addEventListener('click', (e)=>{
       e.stopPropagation();
@@ -13000,7 +13016,7 @@ function renderFilingTargetTable(){
     }).join('');
     return `<tr><td class="num cvb">${idx+1}</td><td class="cvb" style="color:${entityColor}; font-weight:800; background:${nameBg}; white-space:nowrap;">${escHtml(c.name)}</td>${monthCells}</tr>`;
   }).join('');
-  wrap.innerHTML = `<table><thead><tr><th class="cvb">#</th><th class="cvb">상호명</th>${monthHeaderCells}</tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.innerHTML = `<table><thead><tr><th class="cvb" rowspan="2">#</th><th class="cvb" rowspan="2">상호명</th><th class="cvb" colspan="12">귀속월</th></tr><tr>${monthHeaderCells}</tr></thead><tbody>${rows}</tbody></table>`;
   wrap.querySelectorAll('.filing-target-cell-btn').forEach(btn=>{
     btn.addEventListener('click', ()=> openFilingTargetEditModal(btn.dataset.clientId, btn.dataset.period));
   });
@@ -13840,19 +13856,27 @@ function renderReviewItTaxTable(clientId, year){
   const headerCells = REVIEW_TAX_GROUPS.map(g=>`<th class="cvb" colspan="2" style="white-space:nowrap;"${g.headerHint?` title="${escHtml(g.headerHint)}"`:''}>${escHtml(g.label)}</th>`).join('');
   const subHeaderCells = REVIEW_TAX_GROUPS.map(()=>`<th class="cvb" style="font-size:10px;">소득세</th><th class="cvb" style="font-size:10px; color:var(--ink-soft);">지방세</th>`).join('');
   const taxReturnHeaderCells = REVIEW_TAXRETURN_FIELDS.map(f=>`<th class="cvb" style="white-space:nowrap; font-size:10.5px;"${f.headerHint?` title="${escHtml(f.headerHint)}"`:''}>${escHtml(f.label)}</th>`).join('');
+  // 예전엔 이 colspan/rowspan 합이 실제 <td> 개수(taxReturnCells: REVIEW_TAXRETURN_FIELDS.length개 + 합계 1 +
+  // 검증 1 + 지방세(신고서) 1 + 검증 1)와 안 맞았음(REVIEW_TAXRETURN_FIELDS가 6개인데 colspan은 7로, 전체
+  // colspan도 9로 하드코딩돼 있었음) - 그래서 "소득세(신고서) 합계"·"검증"(국세) 헤더가 아예 빠진 채로
+  // 지방세(신고서)·검증 헤더가 실제로는 엉뚱한 칸(합계·검증 칸) 위에 얹혀 보이고, 진짜 지방세(신고서)·검증
+  // 칸은 헤더 없이 표 밖으로 밀려나 있었음. REVIEW_TAXRETURN_FIELDS.length를 그대로 참조해서 항목이 늘거나
+  // 줄어도 항상 실제 데이터 칸 수와 맞도록 고침 + "합계"·"검증"(국세)을 2행에 rowspan으로 명시함
+  const taxReturnSectionSpan = REVIEW_TAXRETURN_FIELDS.length + 4; // 유형별 칸 + 합계 + 검증(국세) + 지방세(신고서) + 검증(지방세)
   wrap.innerHTML = `<table><thead>
       <tr>
         <th class="cvb" rowspan="3">귀속월</th>
         <th class="cvb" colspan="22">급여명세서 기준</th>
-        <th class="cvb" colspan="9">신고서 기준</th>
+        <th class="cvb" colspan="${taxReturnSectionSpan}">신고서 기준</th>
       </tr>
       <tr>
         ${headerCells}
         <th class="cvb" rowspan="2">소득세합계<br>(계산)</th><th class="cvb" rowspan="2">지방세합계<br>(계산)</th>
-        <th class="cvb" colspan="7">소득세(신고서) <span style="font-weight:600; font-size:9.5px; color:var(--ink-soft);">— 유형별로 입력, 합계를 소득세합계(계산)과 대조</span></th>
+        <th class="cvb" colspan="${REVIEW_TAXRETURN_FIELDS.length}">소득세(신고서) <span style="font-weight:600; font-size:9.5px; color:var(--ink-soft);">— 유형별로 입력, 합계를 소득세합계(계산)과 대조</span></th>
+        <th class="cvb" rowspan="2">합계</th><th class="cvb" rowspan="2">검증</th>
         <th class="cvb" rowspan="2">지방세<br>(신고서)</th><th class="cvb" rowspan="2">검증</th>
       </tr>
-      <tr>${subHeaderCells}${taxReturnHeaderCells}<th class="cvb" style="font-size:10px;">합계</th><th class="cvb" style="font-size:10px;">검증</th></tr>
+      <tr>${subHeaderCells}${taxReturnHeaderCells}</tr>
     </thead><tbody>${rows}</tbody></table>`;
   wrap.querySelectorAll('.review-it-tax-input').forEach(inp=>{
     inp.addEventListener('input', ()=>{
