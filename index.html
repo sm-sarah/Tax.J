@@ -3194,8 +3194,8 @@
           <div id="reviewItClientMeta" style="display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; font-size:12px; color:var(--ink-soft);"></div>
 
           <div class="policy-category-toggle" id="reviewItSectionToggle" style="margin-bottom:14px;">
-            <button type="button" class="review-it-section-btn active" data-it-section="income">급여검증</button>
-            <button type="button" class="review-it-section-btn" data-it-section="tax">납부세액검증</button>
+            <button type="button" class="review-it-section-btn active" data-it-section="income">급여명세서 기준</button>
+            <button type="button" class="review-it-section-btn" data-it-section="tax">신고서 기준</button>
           </div>
 
           <div style="display:flex; align-items:center; justify-content:flex-end; gap:8px; max-width:1160px; margin:0 auto 6px;">
@@ -3264,23 +3264,62 @@
         </div>
 
         <div class="approval-doc-panel" data-approval-doc="new">
-          <div id="approvalDraftFormTitle" style="text-align:center; font-weight:800; font-size:13px; color:var(--ink); margin-bottom:6px;">새 기안</div>
           <p class="hint" style="text-align:center; margin-bottom:14px;">결재라인: <b>① 기안</b>(직원 등록된 사람 누구나) → <b>② 승인</b>(회계사만) — 결재자 목록은 관리자로 등록된 회계사만 나와요. 작성 중 저장만 해두려면 "임시저장"을, 결재를 요청하려면 "기안 상신"을 눌러주세요.</p>
-          <div class="settings-box" style="max-width:560px;">
-            <form id="approvalDraftForm">
-              <input type="hidden" id="ad-edit-id" value="">
-              <div class="field"><label>제목</label><input type="text" id="ad-title" placeholder="예: 8월 휴가 신청" required></div>
-              <div class="field"><label>내용</label><textarea id="ad-content" style="width:100%; min-height:120px; font-family:'Pretendard',sans-serif; font-size:13px; border:1.5px solid transparent; border-radius:10px; padding:10px; background:var(--bg); color:var(--ink); resize:vertical;" placeholder="결재 내용을 적어주세요"></textarea></div>
-              <div class="field"><label>첨부 (링크) <span style="font-weight:400; color:var(--ink-soft);">— 구글드라이브 등 파일 링크를 붙여넣으세요</span></label><input type="url" id="ad-attachment" placeholder="https://drive.google.com/..."></div>
-              <div class="field"><label>결재자 (회계사)</label>
-                <select id="ad-approver" required></select>
+          <!-- 실제 사내 그룹웨어 기안문 양식을 참고해서, 기안자/소속/기안일이 자동으로 채워지는 문서 머리글과
+               기안→승인 결재선을 시각적으로 보여주는 formal한 문서 느낌으로 구성함 -->
+          <div class="settings-box" style="max-width:560px; padding:0; overflow:hidden;">
+            <div style="background:linear-gradient(160deg, var(--navy), #2B3768); color:#fff; padding:14px 22px; display:flex; align-items:center; justify-content:space-between;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div id="approvalDraftFormTitle" style="font-weight:800; font-size:15px; letter-spacing:0.02em;">업무기안</div>
+                <span id="approvalDraftEditBadge" style="display:none; font-size:10px; font-weight:700; background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:20px;">임시저장 수정중</span>
               </div>
-              <div style="text-align:center; display:flex; gap:8px; justify-content:center;">
-                <button type="button" id="ad-save-draft-btn" class="del-btn" style="padding:9px 18px;">임시저장</button>
-                <button type="submit" class="submit-btn" style="width:auto; margin:0; padding:9px 18px;">기안 상신</button>
-              </div>
-              <div style="text-align:center;"><span class="save-msg" id="approvalDraftSaveMsg"></span></div>
-            </form>
+              <div style="font-size:10.5px; opacity:0.8; font-weight:600;">Tax.J 전자결재</div>
+            </div>
+            <div style="padding:20px 22px;">
+              <form id="approvalDraftForm">
+                <input type="hidden" id="ad-edit-id" value="">
+                <div style="display:grid; grid-template-columns:84px 1fr; border:1.5px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:12px; font-size:12px;">
+                  <div style="padding:7px 10px; background:var(--bg); font-weight:700; color:var(--ink-soft); border-bottom:1px solid var(--border); border-right:1px solid var(--border);">기안자</div>
+                  <div style="padding:7px 10px; border-bottom:1px solid var(--border);" id="adMetaDrafter">-</div>
+                  <div style="padding:7px 10px; background:var(--bg); font-weight:700; color:var(--ink-soft); border-bottom:1px solid var(--border); border-right:1px solid var(--border);">소속</div>
+                  <div style="padding:7px 10px; border-bottom:1px solid var(--border);" id="adMetaTeam">-</div>
+                  <div style="padding:7px 10px; background:var(--bg); font-weight:700; color:var(--ink-soft); border-right:1px solid var(--border);">기안일</div>
+                  <div style="padding:7px 10px;" id="adMetaDate">-</div>
+                </div>
+                <div style="display:flex; align-items:stretch; border:1.5px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:14px;">
+                  <div style="flex:1; text-align:center; padding:9px 8px;">
+                    <div style="font-size:10px; color:var(--ink-soft); font-weight:700; margin-bottom:3px;">신청</div>
+                    <div style="font-size:12.5px; font-weight:800; color:var(--ink);" id="adMetaDrafter2">-</div>
+                  </div>
+                  <div style="display:flex; align-items:center; padding:0 4px; color:var(--border); font-weight:800;">→</div>
+                  <div style="flex:1; text-align:center; padding:9px 8px; border-left:1.5px solid var(--border);">
+                    <div style="font-size:10px; color:var(--ink-soft); font-weight:700; margin-bottom:3px;">승인</div>
+                    <div style="font-size:12.5px; font-weight:800; color:var(--ink);" id="adMetaApprover">결재자를 선택하세요</div>
+                  </div>
+                </div>
+                <div class="field"><label>문서종류</label>
+                  <select id="ad-doctype">
+                    <option value="일반">일반</option>
+                    <option value="지출결의서">지출결의서</option>
+                    <option value="휴가">휴가</option>
+                    <option value="부가가치세">부가가치세</option>
+                    <option value="법인세">법인세</option>
+                    <option value="종합소득세">종합소득세</option>
+                  </select>
+                </div>
+                <div class="field"><label>제목</label><input type="text" id="ad-title" placeholder="예: 8월 휴가 신청" required></div>
+                <div class="field"><label>내용</label><textarea id="ad-content" style="width:100%; min-height:120px; font-family:'Pretendard',sans-serif; font-size:13px; border:1.5px solid transparent; border-radius:10px; padding:10px; background:var(--bg); color:var(--ink); resize:vertical;" placeholder="결재 내용을 적어주세요"></textarea></div>
+                <div class="field"><label>첨부 (링크) <span style="font-weight:400; color:var(--ink-soft);">— 구글드라이브 등 파일 링크를 붙여넣으세요</span></label><input type="url" id="ad-attachment" placeholder="https://drive.google.com/..."></div>
+                <div class="field"><label>결재자 (회계사)</label>
+                  <select id="ad-approver" required></select>
+                </div>
+                <div style="text-align:center; display:flex; gap:8px; justify-content:center;">
+                  <button type="button" id="ad-save-draft-btn" class="del-btn" style="padding:9px 18px;">임시저장</button>
+                  <button type="submit" class="submit-btn" style="width:auto; margin:0; padding:9px 18px;">기안 상신</button>
+                </div>
+                <div style="text-align:center;"><span class="save-msg" id="approvalDraftSaveMsg"></span></div>
+              </form>
+            </div>
           </div>
         </div>
 
@@ -3889,8 +3928,8 @@ let sharedFilingStatus = {}; // 결재 > 신고현황: { [taxType]: { [period]: 
 let sharedReviewStatus = {}; // 결재 > 검토표: 신고현황과 완전히 같은 구조지만 원천세/부가세만 다루고, 신고 자체 이력과는 별도 저장소로 관리(신고 전 검토 단계 - 나중에 거래처별 손익보고서에 활용 예정)
 let sharedFilingHelp = {}; // 결재 > 신고도움: { [clientId]: { items: { [itemKey]: {checked, note} } } }
 let sharedApprovals = []; // 결재 > 결재(그룹웨어): [{id, title, content, attachmentLink, drafterEmail, drafterName, approverEmail, approverName, status, comment, createdAt, decidedAt}]
-let sharedReviewFigures = {}; // 검토표(원천세) 거래처별 월별 실제 숫자: { [clientId]: { [year]: { [month]: { income:{[fieldKey]:num}, incomeReported:num, tax:{[groupKey]:{tax:num, local:num}}, taxReported:{tax:num, local:num} } } } }
-let sharedReviewMeta = {}; // 검토표(원천세) 거래처별 설정: { [clientId]: { sameMonth:true/false(귀속=지급 동일 여부), payCycle:'매월'|'반기' } } - 원본 엑셀 '2026 총괄' 시트의 귀속/지급, 신고구분 값과 동일
+let sharedReviewFigures = {}; // 검토표(원천세) 거래처별 월별 실제 숫자: { [clientId]: { [year]: { [month]: { income:{[fieldKey]:num}, incomeReported:num, tax:{[groupKey]:{tax:num, local:num}}, taxReported:{[근로/일용/사업/기타/이자]:num}, taxReportedLocal:num } } } }
+let sharedReviewMeta = {}; // 검토표(원천세) 거래처별 설정: { [clientId]: { sameMonth:true/false(귀속=지급 동일 여부), payCycle:'매월'|'반기', secondHalfPayCycle:null|'매월'|'반기' } } - 원본 엑셀 '2026 총괄' 시트의 귀속/지급, 신고구분 값과 동일. secondHalfPayCycle은 연중(7월부터) 신고구분이 바뀌는 거래처를 위한 값 - null이면 1~12월 내내 payCycle 그대로, 값이 있으면 7~12월만 그 값을 씀(신고구분 전환은 반기 단위로만 일어나므로 7월 기준 한 번만 지원)
 // 결재 > 신고대상(원천세): 거래처별·월별로 그 달에 원천세 신고 대상인지, 대상이면 매월/반기 중 어느 신고구분인지,
 // 그리고 그 달에 당월귀속당월지급/당월귀속익월지급 중 무엇이 실제로 발생하는지(둘 다 동시에 있을 수 있음)를 관리함.
 // 이 값에 따라 신고현황 화면에 그 거래처가 뜨는지, 뜬다면 지급시기별로 몇 줄이 뜨는지가 결정됨.
@@ -13451,9 +13490,10 @@ function renderReviewPanel(){
 }
 
 // ── 검토표(원천세): 거래처를 먼저 고르면(엑셀에서 거래처마다 시트가 따로였던 것과 동일한 방식) 그 거래처의 12개월치 검토표가 나옴.
-// 원본 엑셀 '양식' 시트의 급여검증/납부세액검증 표 구조와 수식을 그대로 옮김. 국세납부서/지방세납부서 교차검증(양식 시트 38~53행)은
-// "징수세액(납부서)" 검증 컬럼(REVIEW_TAXPAY_FIELDS)으로 반영함. 제출기한(간이·일용 지급명세서, "지급월의 다음 달") 탭은
-// 실제로 잘 안 쓰인다는 의견으로 삭제함.
+// 원본 엑셀 '양식' 시트의 급여검증/납부세액검증 표 구조와 수식을 그대로 옮김. "소득세(신고서)"는 신고서를 보고 유형별로
+// 나눠 입력하도록 REVIEW_TAXRETURN_FIELDS 컬럼으로 세분화함(예전엔 총액 한 칸이었는데, 그 위에 있던 "징수세액(납부서)
+// 검증"이 사실상 같은 걸 다시 유형별로 쪼개 입력하는 중복 항목이라 그쪽을 없애고 이쪽에 합침). 제출기한(간이·일용
+// 지급명세서, "지급월의 다음 달") 탭은 실제로 잘 안 쓰인다는 의견으로 삭제함.
 const REVIEW_INCOME_FIELDS = [
   { key:'근로과세', label:'근로소득(과세)' },
   { key:'근로제출비과세', label:'근로소득(제출비과세)', excludeFromTotal:true },
@@ -13482,16 +13522,17 @@ const REVIEW_TAX_GROUPS = [
   { key:'이자', label:'이자배당소득' },
   { key:'환급잔액', label:'환급잔액' },
 ];
-// 납부서(원천징수세액 납부서) 쪽 소득세는 신고서와 달리 5개 소득유형으로만 나뉘어 있어서, 급여명세서에서
-// 더 잘게 나눈 근로-간이/중도/일용 세 칸을 합쳐야 납부서의 "근로소득세" 한 줄과 맞대볼 수 있음(사용자 설명 그대로).
-// 지방세는 납부서에 유형별 구분이 따로 없어서(전체가 합산되어 한 줄로 나옴) 소득세처럼 5칸으로 안 쪼개고
-// 아래 taxPayLocal 하나로만 관리함
-const REVIEW_TAXPAY_FIELDS = [
-  { key:'근로', label:'근로소득세', sourceGroups:['간이','중도','일용'] },
-  { key:'사업', label:'사업소득세', sourceGroups:['사업'] },
-  { key:'기타', label:'기타소득세', sourceGroups:['기타간이미대상','기타간이대상'] },
-  { key:'퇴직', label:'퇴직소득세', sourceGroups:['퇴직'] },
-  { key:'이자', label:'이자소득세', sourceGroups:['이자'] },
+// 소득세(신고서)는 실제 신고서를 보고 5개 소득유형으로 나눠 입력함. headerHint는 각 칸이 급여명세서
+// 쪽(계산값) 어느 항목들과 비슷해야 하는지 참고용으로만 보여주는 것이고, 자동 합산은 아님(신고서에
+// 적힌 숫자를 그대로 옮겨 적는 칸이라 사람이 직접 입력해야 함). 지방세(신고서)는 신고서에 유형별
+// 구분이 따로 없어서(전체가 합산되어 한 줄로 나옴) 소득세처럼 5칸으로 안 쪼개고 taxReportedLocal
+// 하나로만 관리함
+const REVIEW_TAXRETURN_FIELDS = [
+  { key:'근로', label:'근로소득세', headerHint:'참고: 근로-간이 + 근로-중도 + 근로-연말 합계와 비슷해야 해요' },
+  { key:'일용', label:'일용소득세', headerHint:'참고: 근로-일용 합계와 비슷해야 해요' },
+  { key:'사업', label:'사업소득세', headerHint:'참고: 사업소득 합계와 비슷해야 해요' },
+  { key:'기타', label:'기타소득세', headerHint:'참고: 기타소득(간이미대상) + 기타소득(간이대상) 합계와 비슷해야 해요' },
+  { key:'이자', label:'이자소득세', headerHint:'참고: 이자배당소득 합계와 비슷해야 해요' },
 ];
 // 검토표(원천세) 초기 시드 데이터: 원천세_2026.xlsx의 12개 거래처 탭(왓츠랩·나우이엔지는 익월/당월 두 탭을 귀속월 기준으로 합산)에서
 // 1~7월 실제 숫자를 추출해 둔 값. 이 파일 안에는 사용자가 실제 등록한 거래처ID가 없어서(거래처 데이터는 로컬/구글드라이브에만 있음)
@@ -13503,12 +13544,24 @@ function reviewItMonthData(clientId, year, month){
   sharedReviewFigures[clientId] = sharedReviewFigures[clientId] || {};
   sharedReviewFigures[clientId][year] = sharedReviewFigures[clientId][year] || {};
   const key = String(month);
-  if(!sharedReviewFigures[clientId][year][key]) sharedReviewFigures[clientId][year][key] = { income:{}, incomeReported:null, tax:{}, taxReported:null, taxReportedLocal:null, taxPay:{}, taxPayLocal:null };
-  return sharedReviewFigures[clientId][year][key];
+  if(!sharedReviewFigures[clientId][year][key]) sharedReviewFigures[clientId][year][key] = { income:{}, incomeReported:null, tax:{}, taxReported:{}, taxReportedLocal:null };
+  const data = sharedReviewFigures[clientId][year][key];
+  // 예전엔 taxReported가 숫자 하나(소득세 신고서 총액)였는데, 이제는 유형별로 나눠 입력하도록
+  // {근로,일용,사업,기타,이자} 객체로 바뀜. 예전에 저장돼 있던 숫자값은 사라지지 않게 일단 "근로소득세"
+  // 칸으로 옮겨두고, 정확한 유형별 구분은 신고서를 다시 보고 나눠 입력해야 함
+  if(typeof data.taxReported === 'number'){ data.taxReported = { 근로: data.taxReported }; }
+  else if(data.taxReported == null){ data.taxReported = {}; }
+  return data;
 }
 function reviewItMeta(clientId){
-  sharedReviewMeta[clientId] = sharedReviewMeta[clientId] || { sameMonth:true, payCycle:'매월' };
+  sharedReviewMeta[clientId] = sharedReviewMeta[clientId] || { sameMonth:true, payCycle:'매월', secondHalfPayCycle:null };
+  if(sharedReviewMeta[clientId].secondHalfPayCycle === undefined) sharedReviewMeta[clientId].secondHalfPayCycle = null;
   return sharedReviewMeta[clientId];
+}
+// 연중에 신고구분이 바뀌는 거래처용 - 7월부터는 secondHalfPayCycle이 있으면 그걸, 없으면 원래
+// payCycle을 그대로 씀(신고구분 전환은 반기 단위로만 일어나므로 7월 기준 한 번만 지원)
+function reviewItPayCycleForMonth(meta, month){
+  return (month >= 7 && meta.secondHalfPayCycle) ? meta.secondHalfPayCycle : meta.payCycle;
 }
 // 총지급액(P) = 전체 합 - 제출비과세 - 즉, 제출비과세 항목은 총지급액 계산에서 아예 빠짐(원본 수식 =SUM(B:O)-(D+G)와 동일 결과)
 function reviewItIncomeTotal(monthData){
@@ -13522,15 +13575,16 @@ function reviewItTaxTotal(monthData){
 function reviewItTaxLocalTotal(monthData){
   return REVIEW_TAX_GROUPS.reduce((sum,g)=> sum + (Number((monthData.tax[g.key]||{}).local)||0), 0);
 }
-// 납부서 쪽 소득세 5칸 합계 - 근로소득세 칸은 간이+중도+일용 세 유형의 "소득세합계"에 들어가는 값과
-// 대응되므로, 5칸을 다 더하면 이론상 소득세합계(계산)와 같아야 함(그래서 같은 계산값으로 검증함)
-function reviewItTaxPaySum(monthData){
-  const p = monthData.taxPay || {};
-  return REVIEW_TAXPAY_FIELDS.reduce((sum,f)=> sum + (Number(p[f.key])||0), 0);
+// 소득세(신고서) 5칸 합계 - 신고서를 유형별로 나눠 적은 값을 다 더한 것으로, 소득세합계(계산)와
+// 대조하는 검증값으로 씀(단, 퇴직소득세는 이 5칸에 없어서 퇴직소득이 있는 달은 정상적으로도 두 값이
+// 다르게 나올 수 있음)
+function reviewItTaxReportedSum(monthData){
+  const t = monthData.taxReported || {};
+  return REVIEW_TAXRETURN_FIELDS.reduce((sum,f)=> sum + (Number(t[f.key])||0), 0);
 }
-function reviewItTaxPayHasAny(monthData){
-  const p = monthData.taxPay || {};
-  return REVIEW_TAXPAY_FIELDS.some(f=> p[f.key] != null && p[f.key] !== '');
+function reviewItTaxReportedHasAny(monthData){
+  const t = monthData.taxReported || {};
+  return REVIEW_TAXRETURN_FIELDS.some(f=> t[f.key] != null && t[f.key] !== '');
 }
 // 매월 신고면 그달이 곧 신고월, 반기 신고면 6월/12월에만 그 반기 누적분을 신고서와 대조함
 function reviewItIsPeriodEnd(month, payCycle){
@@ -13541,40 +13595,34 @@ function reviewItPeriodMonths(month, payCycle){
   return month <= 6 ? [1,2,3,4,5,6] : [7,8,9,10,11,12];
 }
 function reviewItIncomeCheckMark(clientId, year, month, meta){
-  if(!reviewItIsPeriodEnd(month, meta.payCycle)) return '<span style="color:var(--ink-soft);">-</span>';
+  const payCycle = reviewItPayCycleForMonth(meta, month);
+  if(!reviewItIsPeriodEnd(month, payCycle)) return '<span style="color:var(--ink-soft);">-</span>';
   const data = reviewItMonthData(clientId, year, month);
   if(data.incomeReported == null || data.incomeReported === '') return '';
-  const periodTotal = reviewItPeriodMonths(month, meta.payCycle).reduce((s,m)=> s + reviewItIncomeTotal(reviewItMonthData(clientId, year, m)), 0);
+  const periodTotal = reviewItPeriodMonths(month, payCycle).reduce((s,m)=> s + reviewItIncomeTotal(reviewItMonthData(clientId, year, m)), 0);
   return Number(data.incomeReported) === periodTotal
     ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--mint)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>'
     : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--coral)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
 }
 const REVIEW_CHECK_OK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--mint)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
 const REVIEW_CHECK_X_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--coral)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
-// 소득세(신고서)/지방세(신고서)/납부서 소득세/납부서 지방세 검증 4가지가 전부 "period 합계(계산값) vs
-// 사람이 입력한 값이 같은가"라는 같은 모양이라 공용 함수로 뽑음 - totalFn만 바꿔 끼우면 어떤 계산값이든 비교 가능
+// 소득세(신고서) 합계/지방세(신고서) 검증 둘 다 "period 합계(계산값) vs 사람이 입력한 값이 같은가"라는
+// 같은 모양이라 공용 함수로 뽑음 - totalFn만 바꿔 끼우면 어떤 계산값이든 비교 가능
 function reviewItGenericCheckMark(clientId, year, month, meta, reportedVal, totalFn){
-  if(!reviewItIsPeriodEnd(month, meta.payCycle)) return '<span style="color:var(--ink-soft);">-</span>';
+  const payCycle = reviewItPayCycleForMonth(meta, month);
+  if(!reviewItIsPeriodEnd(month, payCycle)) return '<span style="color:var(--ink-soft);">-</span>';
   if(reportedVal == null || reportedVal === '') return '';
-  const periodTotal = reviewItPeriodMonths(month, meta.payCycle).reduce((s,m)=> s + totalFn(reviewItMonthData(clientId, year, m)), 0);
+  const periodTotal = reviewItPeriodMonths(month, payCycle).reduce((s,m)=> s + totalFn(reviewItMonthData(clientId, year, m)), 0);
   return Number(reportedVal) === periodTotal ? REVIEW_CHECK_OK_SVG : REVIEW_CHECK_X_SVG;
 }
 function reviewItTaxCheckMark(clientId, year, month, meta){
   const data = reviewItMonthData(clientId, year, month);
-  return reviewItGenericCheckMark(clientId, year, month, meta, data.taxReported, reviewItTaxTotal);
+  const reportedVal = reviewItTaxReportedHasAny(data) ? reviewItTaxReportedSum(data) : null;
+  return reviewItGenericCheckMark(clientId, year, month, meta, reportedVal, reviewItTaxTotal);
 }
 function reviewItTaxLocalCheckMark(clientId, year, month, meta){
   const data = reviewItMonthData(clientId, year, month);
   return reviewItGenericCheckMark(clientId, year, month, meta, data.taxReportedLocal, reviewItTaxLocalTotal);
-}
-function reviewItTaxPayCheckMark(clientId, year, month, meta){
-  const data = reviewItMonthData(clientId, year, month);
-  const reportedVal = reviewItTaxPayHasAny(data) ? reviewItTaxPaySum(data) : null;
-  return reviewItGenericCheckMark(clientId, year, month, meta, reportedVal, reviewItTaxTotal);
-}
-function reviewItTaxPayLocalCheckMark(clientId, year, month, meta){
-  const data = reviewItMonthData(clientId, year, month);
-  return reviewItGenericCheckMark(clientId, year, month, meta, data.taxPayLocal, reviewItTaxLocalTotal);
 }
 function refreshReviewItIncomeRow(clientId, year, month){
   const row = document.getElementById('reviewItIncomeWrap')?.querySelector(`tr[data-month="${month}"]`);
@@ -13595,14 +13643,12 @@ function refreshReviewItTaxRow(clientId, year, month){
   if(totalCell) totalCell.textContent = reviewItTaxTotal(data).toLocaleString();
   const localTotalCell = row.querySelector('.review-it-tax-local-total-cell');
   if(localTotalCell) localTotalCell.textContent = reviewItTaxLocalTotal(data).toLocaleString();
+  const reportedSumCell = row.querySelector('.review-it-tax-reported-sum-cell');
+  if(reportedSumCell) reportedSumCell.textContent = reviewItTaxReportedSum(data).toLocaleString();
   const checkCell = row.querySelector('.review-it-tax-check-cell');
   if(checkCell) checkCell.innerHTML = reviewItTaxCheckMark(clientId, year, month, meta);
   const localCheckCell = row.querySelector('.review-it-tax-local-check-cell');
   if(localCheckCell) localCheckCell.innerHTML = reviewItTaxLocalCheckMark(clientId, year, month, meta);
-  const payCheckCell = row.querySelector('.review-it-taxpay-check-cell');
-  if(payCheckCell) payCheckCell.innerHTML = reviewItTaxPayCheckMark(clientId, year, month, meta);
-  const payLocalCheckCell = row.querySelector('.review-it-taxpay-local-check-cell');
-  if(payLocalCheckCell) payLocalCheckCell.innerHTML = reviewItTaxPayLocalCheckMark(clientId, year, month, meta);
 }
 function setReviewItDirty(isDirty){
   const btn = document.getElementById('reviewItSaveBtn');
@@ -13640,7 +13686,7 @@ function renderReviewItIncomeTable(clientId, year){
   const meta = reviewItMeta(clientId);
   const rows = Array.from({length:12}, (_,i)=>i+1).map(month=>{
     const data = reviewItMonthData(clientId, year, month);
-    const isEnd = reviewItIsPeriodEnd(month, meta.payCycle);
+    const isEnd = reviewItIsPeriodEnd(month, reviewItPayCycleForMonth(meta, month));
     const fieldCells = REVIEW_INCOME_FIELDS.map(f=>{
       const v = data.income[f.key];
       return `<td><input type="text" inputmode="numeric" class="review-it-income-input" data-month="${month}" data-key="${f.key}" value="${v!=null?Number(v).toLocaleString():''}" style="width:76px; border:1.5px solid var(--border); border-radius:6px; padding:3px 5px; font-family:'IBM Plex Mono',monospace; font-size:11px; text-align:right;"${f.excludeFromTotal?' title="총지급액 계산에서 제외됨"':''}></td>`;
@@ -13666,7 +13712,7 @@ function renderReviewItIncomeTable(clientId, year){
       data.income[inp.dataset.key] = moneyParse(inp.value);
       setReviewItDirty(true);
       refreshReviewItIncomeRow(clientId, year, month);
-      if(meta.payCycle === '반기'){
+      if(reviewItPayCycleForMonth(meta, month) === '반기'){
         const endMonth = month <= 6 ? 6 : 12;
         if(endMonth !== month) refreshReviewItIncomeRow(clientId, year, endMonth);
       }
@@ -13696,51 +13742,43 @@ function renderReviewItTaxTable(clientId, year){
   const meta = reviewItMeta(clientId);
   const rows = Array.from({length:12}, (_,i)=>i+1).map(month=>{
     const data = reviewItMonthData(clientId, year, month);
-    const isEnd = reviewItIsPeriodEnd(month, meta.payCycle);
+    const isEnd = reviewItIsPeriodEnd(month, reviewItPayCycleForMonth(meta, month));
     const groupCells = REVIEW_TAX_GROUPS.map(g=>{
       const cur = data.tax[g.key] || {};
       return `<td><input type="text" inputmode="numeric" class="review-it-tax-input" data-month="${month}" data-group="${g.key}" data-sub="tax" value="${cur.tax!=null?Number(cur.tax).toLocaleString():''}" style="width:64px; border:1.5px solid var(--border); border-radius:6px; padding:3px 4px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-align:right;"></td><td><input type="text" inputmode="numeric" class="review-it-tax-input" data-month="${month}" data-group="${g.key}" data-sub="local" value="${cur.local!=null?Number(cur.local).toLocaleString():''}" style="width:64px; border:1.5px solid var(--border); border-radius:6px; padding:3px 4px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-align:right; background:#FAFAFC;"></td>`;
     }).join('');
     const dash = `<td style="text-align:center; color:var(--ink-soft);">-</td>`;
-    // 소득세(신고서)/지방세(신고서) - 기존엔 "징수세액(신고서)" 하나였는데 소득세·지방세를 각각 따로
-    // 입력하고 각각 검증하도록 나눔
-    const reportedCell = isEnd ? `<td>${reviewItMoneyInputHtml('review-it-tax-reported-input', month, {}, data.taxReported, {width:'88px', bg:'#FFFBEA'})}</td>` : dash;
+    // 소득세(신고서) - 신고서를 보고 유형별로 나눠 입력하는 5칸(REVIEW_TAXRETURN_FIELDS) + 합계.
+    // 지방세(신고서)는 신고서에 유형 구분이 따로 없어서 기존처럼 1칸 그대로 유지
+    const t = data.taxReported || {};
+    const taxReturnCells = isEnd
+      ? REVIEW_TAXRETURN_FIELDS.map(f=>`<td>${reviewItMoneyInputHtml('review-it-tax-return-input', month, {field:f.key}, t[f.key], {width:'76px', bg:'#FFFBEA'})}</td>`).join('')
+      : REVIEW_TAXRETURN_FIELDS.map(()=>dash).join('');
+    const reportedSumCell = isEnd ? `<td class="num cvb review-it-tax-reported-sum-cell" style="font-weight:800; background:var(--indigo-bg);">${reviewItTaxReportedSum(data).toLocaleString()}</td>` : dash;
     const reportedLocalCell = isEnd ? `<td>${reviewItMoneyInputHtml('review-it-tax-reported-local-input', month, {}, data.taxReportedLocal, {width:'88px', bg:'#FFFBEA'})}</td>` : dash;
-    // 납부서 검증(신규) - 소득세는 근로소득세/사업소득세/기타소득세/퇴직소득세/이자소득세 5칸, 지방세는
-    // 유형 구분 없이 1칸. 둘 다 소득세(신고서)·지방세(신고서)와 같은 계산값(소득세합계/지방세합계)으로 검증됨
-    const p = data.taxPay || {};
-    const taxPayCells = isEnd
-      ? REVIEW_TAXPAY_FIELDS.map(f=>`<td>${reviewItMoneyInputHtml('review-it-taxpay-input', month, {field:f.key}, p[f.key], {width:'78px', bg:'#FFFBEA'})}</td>`).join('')
-      : REVIEW_TAXPAY_FIELDS.map(()=>dash).join('');
-    const taxPayLocalCell = isEnd ? `<td>${reviewItMoneyInputHtml('review-it-taxpay-local-input', month, {}, data.taxPayLocal, {width:'88px', bg:'#FFFBEA'})}</td>` : dash;
     return `<tr data-month="${month}">
       <td class="num cvb" style="font-weight:700;">${month}월</td>
       ${groupCells}
       <td class="num cvb review-it-tax-total-cell" style="font-weight:800; background:var(--indigo-bg);">${reviewItTaxTotal(data).toLocaleString()}</td>
       <td class="num cvb review-it-tax-local-total-cell" style="font-weight:800; background:var(--indigo-bg);">${reviewItTaxLocalTotal(data).toLocaleString()}</td>
-      ${reportedCell}
+      ${taxReturnCells}
+      ${reportedSumCell}
       <td class="review-it-tax-check-cell" style="text-align:center; font-size:14px;">${reviewItTaxCheckMark(clientId, year, month, meta)}</td>
       ${reportedLocalCell}
       <td class="review-it-tax-local-check-cell" style="text-align:center; font-size:14px;">${reviewItTaxLocalCheckMark(clientId, year, month, meta)}</td>
-      ${taxPayCells}
-      <td class="review-it-taxpay-check-cell" style="text-align:center; font-size:14px;">${reviewItTaxPayCheckMark(clientId, year, month, meta)}</td>
-      ${taxPayLocalCell}
-      <td class="review-it-taxpay-local-check-cell" style="text-align:center; font-size:14px;">${reviewItTaxPayLocalCheckMark(clientId, year, month, meta)}</td>
     </tr>`;
   }).join('');
   const headerCells = REVIEW_TAX_GROUPS.map(g=>`<th class="cvb" colspan="2" style="white-space:nowrap;"${g.headerHint?` title="${escHtml(g.headerHint)}"`:''}>${escHtml(g.label)}</th>`).join('');
   const subHeaderCells = REVIEW_TAX_GROUPS.map(()=>`<th class="cvb" style="font-size:10px;">소득세</th><th class="cvb" style="font-size:10px; color:var(--ink-soft);">지방세</th>`).join('');
-  const taxPayHeaderCells = REVIEW_TAXPAY_FIELDS.map(f=>`<th class="cvb" style="white-space:nowrap; font-size:10.5px;" title="근로소득세=근로-간이+근로-중도+근로-일용 합계">${escHtml(f.label)}</th>`).join('');
+  const taxReturnHeaderCells = REVIEW_TAXRETURN_FIELDS.map(f=>`<th class="cvb" style="white-space:nowrap; font-size:10.5px;"${f.headerHint?` title="${escHtml(f.headerHint)}"`:''}>${escHtml(f.label)}</th>`).join('');
   wrap.innerHTML = `<table><thead>
       <tr>
         <th class="cvb" rowspan="2">귀속월</th>${headerCells}
         <th class="cvb" rowspan="2">소득세합계<br>(계산)</th><th class="cvb" rowspan="2">지방세합계<br>(계산)</th>
-        <th class="cvb" rowspan="2">소득세<br>(신고서)</th><th class="cvb" rowspan="2">검증</th>
+        <th class="cvb" colspan="7">소득세(신고서) <span style="font-weight:600; font-size:9.5px; color:var(--ink-soft);">— 유형별로 입력, 합계를 소득세합계(계산)과 대조</span></th>
         <th class="cvb" rowspan="2">지방세<br>(신고서)</th><th class="cvb" rowspan="2">검증</th>
-        <th class="cvb" colspan="6">징수세액(납부서) 검증 <span style="font-weight:600; font-size:9.5px; color:var(--ink-soft);">— 신고서와 같은 계산값으로 대조</span></th>
-        <th class="cvb" rowspan="2">지방세<br>(납부서)</th><th class="cvb" rowspan="2">검증</th>
       </tr>
-      <tr>${subHeaderCells}${taxPayHeaderCells}<th class="cvb" style="font-size:10px;">검증</th></tr>
+      <tr>${subHeaderCells}${taxReturnHeaderCells}<th class="cvb" style="font-size:10px;">합계</th><th class="cvb" style="font-size:10px;">검증</th></tr>
     </thead><tbody>${rows}</tbody></table>`;
   wrap.querySelectorAll('.review-it-tax-input').forEach(inp=>{
     inp.addEventListener('input', ()=>{
@@ -13751,18 +13789,19 @@ function renderReviewItTaxTable(clientId, year){
       data.tax[inp.dataset.group][inp.dataset.sub] = moneyParse(inp.value);
       setReviewItDirty(true);
       refreshReviewItTaxRow(clientId, year, month);
-      if(meta.payCycle === '반기'){
+      if(reviewItPayCycleForMonth(meta, month) === '반기'){
         const endMonth = month <= 6 ? 6 : 12;
         if(endMonth !== month) refreshReviewItTaxRow(clientId, year, endMonth);
       }
     });
   });
-  wrap.querySelectorAll('.review-it-tax-reported-input').forEach(inp=>{
+  wrap.querySelectorAll('.review-it-tax-return-input').forEach(inp=>{
     inp.addEventListener('input', ()=>{
       formatMoneyInputLive(inp);
       const month = Number(inp.dataset.month);
-      const parsed = moneyParse(inp.value);
-      reviewItMonthData(clientId, year, month).taxReported = parsed === undefined ? null : parsed;
+      const data = reviewItMonthData(clientId, year, month);
+      data.taxReported = data.taxReported || {};
+      data.taxReported[inp.dataset.field] = moneyParse(inp.value);
       setReviewItDirty(true);
       refreshReviewItTaxRow(clientId, year, month);
     });
@@ -13773,27 +13812,6 @@ function renderReviewItTaxTable(clientId, year){
       const month = Number(inp.dataset.month);
       const parsed = moneyParse(inp.value);
       reviewItMonthData(clientId, year, month).taxReportedLocal = parsed === undefined ? null : parsed;
-      setReviewItDirty(true);
-      refreshReviewItTaxRow(clientId, year, month);
-    });
-  });
-  wrap.querySelectorAll('.review-it-taxpay-input').forEach(inp=>{
-    inp.addEventListener('input', ()=>{
-      formatMoneyInputLive(inp);
-      const month = Number(inp.dataset.month);
-      const data = reviewItMonthData(clientId, year, month);
-      data.taxPay = data.taxPay || {};
-      data.taxPay[inp.dataset.field] = moneyParse(inp.value);
-      setReviewItDirty(true);
-      refreshReviewItTaxRow(clientId, year, month);
-    });
-  });
-  wrap.querySelectorAll('.review-it-taxpay-local-input').forEach(inp=>{
-    inp.addEventListener('input', ()=>{
-      formatMoneyInputLive(inp);
-      const month = Number(inp.dataset.month);
-      const parsed = moneyParse(inp.value);
-      reviewItMonthData(clientId, year, month).taxPayLocal = parsed === undefined ? null : parsed;
       setReviewItDirty(true);
       refreshReviewItTaxRow(clientId, year, month);
     });
@@ -13865,6 +13883,14 @@ function renderReviewItClientMeta(clientId){
         <button type="button" class="review-it-cycle-btn ${meta.payCycle==='매월' ? 'active' : ''}" data-cycle="매월">매월</button>
         <button type="button" class="review-it-cycle-btn ${meta.payCycle==='반기' ? 'active' : ''}" data-cycle="반기">반기</button>
       </span>
+    </span>
+    <span style="display:inline-flex; align-items:center; gap:6px;" title="연중에 신고구분이 바뀐 거래처면 7월부터 적용할 구분을 골라주세요(반기 신고는 7월 기준으로만 바뀌므로 선택지도 그 시점 하나뿐이에요)">
+      <span style="font-weight:700;">7월부터</span>
+      <select id="reviewItSecondHalfCycleSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:4px 6px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:11.5px;">
+        <option value="" ${!meta.secondHalfPayCycle ? 'selected' : ''}>(전환없음)</option>
+        <option value="매월" ${meta.secondHalfPayCycle==='매월' ? 'selected' : ''}>매월로 전환</option>
+        <option value="반기" ${meta.secondHalfPayCycle==='반기' ? 'selected' : ''}>반기로 전환</option>
+      </select>
     </span>`;
   box.querySelectorAll('.review-it-same-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -13884,6 +13910,14 @@ function renderReviewItClientMeta(clientId){
       renderReviewItSection(clientId, Number(document.getElementById('reviewItYearSelect').value));
     });
   });
+  const secondHalfSel = document.getElementById('reviewItSecondHalfCycleSelect');
+  if(secondHalfSel){
+    secondHalfSel.addEventListener('change', ()=>{
+      reviewItMeta(clientId).secondHalfPayCycle = secondHalfSel.value || null;
+      setReviewItDirty(true);
+      renderReviewItSection(clientId, Number(document.getElementById('reviewItYearSelect').value));
+    });
+  }
 }
 function renderReviewItSection(clientId, year){
   if(!clientId){
@@ -13997,7 +14031,7 @@ function applyReviewSeedImport(){
     const seed = REVIEW_SEED_2026[sel.dataset.seedKey];
     if(!seed) return;
     clientCount++;
-    if(!sharedReviewMeta[clientId]) sharedReviewMeta[clientId] = { sameMonth: seed.meta.sameMonth, payCycle: seed.meta.payCycle };
+    if(!sharedReviewMeta[clientId]) sharedReviewMeta[clientId] = { sameMonth: seed.meta.sameMonth, payCycle: seed.meta.payCycle, secondHalfPayCycle: null };
     Object.keys(seed.months).forEach(monthKey=>{
       const src = seed.months[monthKey];
       const data = reviewItMonthData(clientId, 2026, Number(monthKey));
@@ -14008,7 +14042,9 @@ function applyReviewSeedImport(){
         if(!data.tax[g.key] && src.tax[g.key]){ data.tax[g.key] = { tax: src.tax[g.key].tax||0, local: src.tax[g.key].local||0 }; filledCount++; }
       });
       if(data.incomeReported == null && src.incomeReported != null){ data.incomeReported = src.incomeReported; filledCount++; }
-      if(data.taxReported == null && src.taxReported != null){ data.taxReported = src.taxReported; filledCount++; }
+      // 소득세(신고서)는 이제 유형별로 나눠 입력하는데 엑셀 시드 쪽엔 예전 방식대로 총액 한 칸만 있어서
+      // 어느 유형에 얼마씩인지 알 수 없음 - 잘못 나눠 채우면 오히려 검증을 그르치니 이 칸은 자동으로
+      // 채우지 않고 신고서를 보고 직접 입력하도록 남겨둠
     });
   });
   saveSharedReviewFigures();
@@ -14493,7 +14529,36 @@ function populateApproverSelect(){
     return `<option value="${escHtml(email)}">${nm ? escHtml(nm)+' · ' : ''}${escHtml(email)}</option>`;
   }).join('');
   if(list.includes(prevVal)) sel.value = prevVal;
+  updateApprovalDraftMeta();
 }
+// 기안 폼 상단 "기안자/소속/기안일"과 "신청→승인" 결재선 표시를 실제 값으로 채움 - 결재자 select를
+// 바꿀 때마다도 다시 불러서 결재선의 "승인" 칸이 선택에 맞춰 바로 갱신되게 함
+function updateApprovalDraftMeta(){
+  const drafterEl = document.getElementById('adMetaDrafter');
+  const drafter2El = document.getElementById('adMetaDrafter2');
+  const teamEl = document.getElementById('adMetaTeam');
+  const dateEl = document.getElementById('adMetaDate');
+  const approverEl = document.getElementById('adMetaApprover');
+  if(!drafterEl) return;
+  const myName = currentStaffDisplayName() || '';
+  drafterEl.textContent = myName || '-';
+  if(drafter2El) drafter2El.textContent = myName || '-';
+  if(teamEl){
+    const teamLabel = [sharedCompanyName, (sharedTeamInfo&&sharedTeamInfo.teamName)].filter(Boolean).join(' ');
+    teamEl.textContent = teamLabel || '-';
+  }
+  if(dateEl){
+    const t = new Date();
+    const dow = ['일','월','화','수','목','금','토'][t.getDay()];
+    dateEl.textContent = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}(${dow})`;
+  }
+  if(approverEl){
+    const sel = document.getElementById('ad-approver');
+    const opt = sel && sel.selectedOptions && sel.selectedOptions[0];
+    approverEl.textContent = (opt && opt.value) ? opt.textContent : '결재자를 선택하세요';
+  }
+}
+document.getElementById('ad-approver')?.addEventListener('change', updateApprovalDraftMeta);
 // 기안 폼 저장 공용 로직 - "임시저장" 버튼과 "기안 상신" 제출을 같은 필드에서 status만 다르게 저장함.
 // ad-edit-id에 값이 있으면(임시저장해둔 문서를 다시 열어 고치는 중) 새 항목을 만들지 않고 그 문서를 그대로 갱신함
 function saveApprovalDraftForm(status){
@@ -14501,6 +14566,7 @@ function saveApprovalDraftForm(status){
   const content = document.getElementById('ad-content').value.trim();
   const attachmentLink = document.getElementById('ad-attachment').value.trim();
   const approverEmail = document.getElementById('ad-approver').value;
+  const docType = document.getElementById('ad-doctype')?.value || '일반';
   const editId = document.getElementById('ad-edit-id').value;
   const msgEl = document.getElementById('approvalDraftSaveMsg');
   if(!title){ if(msgEl) msgEl.textContent = '제목을 입력해주세요'; return false; }
@@ -14509,11 +14575,12 @@ function saveApprovalDraftForm(status){
   if(existing){
     existing.title = title; existing.content = content; existing.attachmentLink = attachmentLink;
     existing.approverEmail = approverEmail; existing.approverName = resolveNameByEmail(approverEmail);
+    existing.docType = docType;
     existing.status = status;
     if(status === '기안') existing.createdAt = new Date().toLocaleString('ko-KR');
   } else {
     sharedApprovals.unshift({
-      id: genId(), title, content, attachmentLink,
+      id: genId(), title, content, attachmentLink, docType,
       drafterEmail: currentUserEmail || '',
       drafterName: currentStaffDisplayName(),
       approverEmail, approverName: resolveNameByEmail(approverEmail),
@@ -14524,8 +14591,10 @@ function saveApprovalDraftForm(status){
   if(msgEl) msgEl.textContent = status === '기안' ? '기안 상신 완료' : '임시저장했어요';
   document.getElementById('approvalDraftForm').reset();
   document.getElementById('ad-edit-id').value = '';
-  document.getElementById('approvalDraftFormTitle').textContent = '새 기안';
+  const editBadge = document.getElementById('approvalDraftEditBadge');
+  if(editBadge) editBadge.style.display = 'none';
   populateApproverSelect();
+  updateApprovalDraftMeta();
   renderApprovalAllBadges();
   renderApprovalInbox();
   renderApprovalMine();
@@ -14550,9 +14619,13 @@ function editApprovalDraft(id){
   document.getElementById('ad-title').value = item.title || '';
   document.getElementById('ad-content').value = item.content || '';
   document.getElementById('ad-attachment').value = item.attachmentLink || '';
+  const docTypeEl = document.getElementById('ad-doctype');
+  if(docTypeEl) docTypeEl.value = item.docType || '일반';
   populateApproverSelect();
   if(item.approverEmail) document.getElementById('ad-approver').value = item.approverEmail;
-  document.getElementById('approvalDraftFormTitle').textContent = '기안 수정 (임시저장 문서)';
+  updateApprovalDraftMeta();
+  const editBadge = document.getElementById('approvalDraftEditBadge');
+  if(editBadge) editBadge.style.display = '';
 }
 async function deleteApprovalDraft(id){
   if(!confirm('이 임시저장 기안문을 삭제할까요?')) return;
@@ -14577,9 +14650,11 @@ document.querySelectorAll('.approval-doc-btn').forEach(btn=>{
     if(doc === 'new'){
       document.getElementById('approvalDraftForm').reset();
       document.getElementById('ad-edit-id').value = '';
-      document.getElementById('approvalDraftFormTitle').textContent = '새 기안';
+      const editBadge = document.getElementById('approvalDraftEditBadge');
+      if(editBadge) editBadge.style.display = 'none';
       document.getElementById('ad-save-draft-btn').style.display = '';
       populateApproverSelect();
+      updateApprovalDraftMeta();
     }
     else if(doc === 'inbox') renderApprovalInbox();
     else if(doc === 'mine'){ renderApprovalMine(); markApprovalSeen('mine', myApprovalMineList()); renderApprovalAllBadges(); }
@@ -14633,9 +14708,34 @@ function countApprovalUnseen(bucket, items){
   const set = getApprovalSeenSet(bucket);
   return (items||[]).filter(item=>!set.has(approvalSeenToken(item))).length;
 }
+// 기안문 문서종류 - 기안함/결재함/전체이력에서 종류별로 걸러볼 수 있게 공용 목록으로 둠(기안 폼의 select와 동일한 값)
+const APPROVAL_DOC_TYPES = ['일반','지출결의서','휴가','부가가치세','법인세','종합소득세'];
+let approvalDocTypeFilter = { inbox:'전체', mine:'전체', all:'전체' };
+function approvalDocTypeChipsHtml(bucket){
+  const cur = approvalDocTypeFilter[bucket] || '전체';
+  const opts = ['전체', ...APPROVAL_DOC_TYPES];
+  return `<div class="approval-doctype-chips" data-bucket="${bucket}" style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-bottom:10px;">
+    ${opts.map(t=>`<button type="button" class="del-btn approval-doctype-chip-btn${t===cur?' active':''}" data-doctype="${escHtml(t)}" style="${t===cur?'background:var(--indigo); color:#fff;':''}">${escHtml(t)}</button>`).join('')}
+  </div>`;
+}
+function bindApprovalDocTypeChips(container, onChange){
+  container.querySelectorAll('.approval-doctype-chip-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const bucket = container.dataset.bucket;
+      approvalDocTypeFilter[bucket] = btn.dataset.doctype;
+      onChange();
+    });
+  });
+}
+function filterByDocType(list, bucket){
+  const cur = approvalDocTypeFilter[bucket] || '전체';
+  if(cur === '전체') return list;
+  return list.filter(item=>(item.docType||'일반')===cur);
+}
 function approvalRowHtml(item){
   return `<tr>
     <td>${escHtml(item.title)}</td>
+    <td><span class="tag" style="background:var(--bg); color:var(--ink-soft);">${escHtml(item.docType||'일반')}</span></td>
     <td>${escHtml(resolveNameByEmail(item.drafterEmail) || item.drafterName || '')}</td>
     <td>${escHtml(resolveNameByEmail(item.approverEmail) || item.approverName || '')}</td>
     <td>${approvalStatusTagHtml(item.status)}</td>
@@ -14648,16 +14748,21 @@ function bindApprovalViewButtons(wrap){
     btn.addEventListener('click', ()=>openApprovalDetailModal(btn.dataset.id));
   });
 }
-function renderApprovalTable(wrapId, list, emptyText){
+function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
   const wrap = document.getElementById(wrapId);
   if(!wrap) return;
-  if(!list.length){ wrap.innerHTML = `<div class="empty-state">${emptyText}</div>`; return; }
-  const rows = list.map(approvalRowHtml).join('');
-  wrap.innerHTML = `<table><thead><tr><th>제목</th><th>기안자</th><th>결재자</th><th>상태</th><th>기안일</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  const chipsHtml = bucket ? approvalDocTypeChipsHtml(bucket) : '';
+  const filtered = bucket ? filterByDocType(list, bucket) : list;
+  if(!filtered.length){ wrap.innerHTML = `${chipsHtml}<div class="empty-state">${list.length ? '이 종류의 문서가 없습니다.' : emptyText}</div>`; }
+  else{
+    const rows = filtered.map(approvalRowHtml).join('');
+    wrap.innerHTML = `${chipsHtml}<table><thead><tr><th>제목</th><th>종류</th><th>기안자</th><th>결재자</th><th>상태</th><th>기안일</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
   bindApprovalViewButtons(wrap);
+  if(bucket) bindApprovalDocTypeChips(wrap.querySelector('.approval-doctype-chips'), onChange);
 }
 function renderApprovalInbox(){
-  renderApprovalTable('approvalInboxWrap', myApprovalInboxList(), '결재 대기 문서가 없습니다.');
+  renderApprovalTable('approvalInboxWrap', myApprovalInboxList(), '결재 대기 문서가 없습니다.', 'inbox', renderApprovalInbox);
 }
 // 기안함은 전부 내가 기안한 문서라 "기안자" 칸은 빼고, 반려된 건은 바로 다시 상신할 수 있게 "다시 기안"
 // 버튼을 같이 보여줌(누르면 기안 폼에 원래 내용을 그대로 채워주고 새 문서로 다시 상신하는 방식 - 결재라인이
@@ -14666,9 +14771,12 @@ function renderApprovalMine(){
   const wrap = document.getElementById('approvalMineWrap');
   if(!wrap) return;
   const list = myApprovalMineList();
-  if(!list.length){ wrap.innerHTML = `<div class="empty-state">기안한 문서가 없습니다.</div>`; return; }
-  const rows = list.map(item=>`<tr>
+  const chipsHtml = approvalDocTypeChipsHtml('mine');
+  const filtered = filterByDocType(list, 'mine');
+  if(!filtered.length){ wrap.innerHTML = `${chipsHtml}<div class="empty-state">${list.length ? '이 종류의 문서가 없습니다.' : '기안한 문서가 없습니다.'}</div>`; bindApprovalDocTypeChips(wrap.querySelector('.approval-doctype-chips'), renderApprovalMine); return; }
+  const rows = filtered.map(item=>`<tr>
     <td>${escHtml(item.title)}</td>
+    <td><span class="tag" style="background:var(--bg); color:var(--ink-soft);">${escHtml(item.docType||'일반')}</span></td>
     <td>${escHtml(resolveNameByEmail(item.approverEmail) || item.approverName || '')}</td>
     <td>${approvalStatusTagHtml(item.status, 'mine')}</td>
     <td class="num">${escHtml(item.createdAt||'')}</td>
@@ -14680,8 +14788,9 @@ function renderApprovalMine(){
       ${item.status==='반려' ? `<button type="button" class="del-btn approval-resubmit-btn" data-id="${item.id}" style="background:var(--indigo-bg); color:var(--indigo-deep);">다시 기안</button>` : ''}
     </td>
   </tr>`).join('');
-  wrap.innerHTML = `<table><thead><tr><th>제목</th><th>결재자</th><th>상태</th><th>기안일</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.innerHTML = `${chipsHtml}<table><thead><tr><th>제목</th><th>종류</th><th>결재자</th><th>상태</th><th>기안일</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
   bindApprovalViewButtons(wrap);
+  bindApprovalDocTypeChips(wrap.querySelector('.approval-doctype-chips'), renderApprovalMine);
   wrap.querySelectorAll('.approval-resubmit-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>resubmitApprovalDraft(btn.dataset.id));
   });
@@ -14701,8 +14810,11 @@ function resubmitApprovalDraft(id){
   document.getElementById('ad-title').value = item.title || '';
   document.getElementById('ad-content').value = item.content || '';
   document.getElementById('ad-attachment').value = item.attachmentLink || '';
+  const docTypeEl = document.getElementById('ad-doctype');
+  if(docTypeEl) docTypeEl.value = item.docType || '일반';
   populateApproverSelect();
   if(item.approverEmail) document.getElementById('ad-approver').value = item.approverEmail;
+  updateApprovalDraftMeta();
   const msgEl = document.getElementById('approvalDraftSaveMsg');
   if(msgEl){
     msgEl.textContent = '반려된 기안 내용을 불러왔어요. 확인 후 다시 상신해주세요.';
@@ -14711,7 +14823,7 @@ function resubmitApprovalDraft(id){
 }
 function renderApprovalAll(){
   // 임시저장 문서는 아직 상신 전이라 회사 전체 결재 이력에는 노출하지 않음
-  renderApprovalTable('approvalAllWrap', (sharedApprovals||[]).filter(a=>a.status !== '임시저장'), '결재 이력이 없습니다.');
+  renderApprovalTable('approvalAllWrap', (sharedApprovals||[]).filter(a=>a.status !== '임시저장'), '결재 이력이 없습니다.', 'all', renderApprovalAll);
 }
 // 결재 상세팝업의 "의견" - 예전엔 결재자가 승인/반려할 때만 한 줄 남길 수 있었는데, 기안자든 결재자든
 // 서로 댓글처럼 자유롭게 의견을 주고받을 수 있게 comments 배열로 바꿈. 승인/반려를 결정할 때 남긴 의견도
@@ -14736,7 +14848,7 @@ function openApprovalDetailModal(id){
     saveSharedApprovals();
     renderApprovalInbox(); renderApprovalMine(); renderApprovalAll(); renderApprovalAllBadges();
   }
-  document.getElementById('approvalDetailModalTitle').innerHTML = `${escHtml(item.title)} ${approvalStatusTagHtml(item.status)}`;
+  document.getElementById('approvalDetailModalTitle').innerHTML = `${escHtml(item.title)} <span class="tag" style="background:var(--bg); color:var(--ink-soft);">${escHtml(item.docType||'일반')}</span> ${approvalStatusTagHtml(item.status)}`;
   const canDecide = (item.status === '기안' || item.status === '검토중') && (item.approverEmail||'').toLowerCase() === myEmail;
   const canComment = myEmail && ((item.drafterEmail||'').toLowerCase()===myEmail || (item.approverEmail||'').toLowerCase()===myEmail || (typeof isCurrentUserAdmin!=='undefined' && isCurrentUserAdmin));
   const attachmentHtml = item.attachmentLink ? `<div style="margin-top:8px;"><a href="${escHtml(item.attachmentLink)}" target="_blank" rel="noopener" style="color:var(--navy); font-weight:700;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg> 첨부 보기</a></div>` : '';
