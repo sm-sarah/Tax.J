@@ -3205,6 +3205,11 @@
             <button type="button" class="review-it-section-btn" data-it-section="tax">납부세액검증</button>
           </div>
 
+          <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin:-6px 0 12px;">
+            <button type="button" id="reviewItIncomeResetBtn" class="del-btn" title="이 거래처・이 연도의 급여검증(급여명세서 항목·총지급액(신고서)) 입력값을 12개월 전부 지워요">급여검증 초기화</button>
+            <button type="button" id="reviewItTaxResetBtn" class="del-btn" title="이 거래처・이 연도의 납부세액검증(급여명세서 기준·신고서 기준) 입력값을 12개월 전부 지워요">납부세액검증 초기화</button>
+          </div>
+
           <div style="display:flex; align-items:center; justify-content:flex-end; gap:8px; max-width:1160px; margin:0 auto 6px;">
             <span class="hint" style="font-size:11px; margin:0;">숫자를 입력해도 자동 저장되지 않아요 - 저장 버튼을 눌러야 저장돼요.</span>
             <span class="save-msg" id="reviewItSaveMsg" style="margin-top:0; display:inline-block;"></span>
@@ -13532,10 +13537,10 @@ const REVIEW_TAX_GROUPS = [
   { key:'이자', label:'이자배당소득' },
   { key:'환급잔액', label:'환급잔액' },
 ];
-// 소득세(신고서)는 실제 신고서를 보고 5개 소득유형으로 나눠 입력함. headerHint는 각 칸이 급여명세서
+// 소득세(신고서)는 실제 신고서를 보고 6개 소득유형으로 나눠 입력함. headerHint는 각 칸이 급여명세서
 // 쪽(계산값) 어느 항목들과 비슷해야 하는지 참고용으로만 보여주는 것이고, 자동 합산은 아님(신고서에
 // 적힌 숫자를 그대로 옮겨 적는 칸이라 사람이 직접 입력해야 함). 지방세(신고서)는 신고서에 유형별
-// 구분이 따로 없어서(전체가 합산되어 한 줄로 나옴) 소득세처럼 5칸으로 안 쪼개고 taxReportedLocal
+// 구분이 따로 없어서(전체가 합산되어 한 줄로 나옴) 소득세처럼 6칸으로 안 쪼개고 taxReportedLocal
 // 하나로만 관리함
 const REVIEW_TAXRETURN_FIELDS = [
   { key:'근로', label:'근로소득세', headerHint:'참고: 근로-간이 + 근로-중도 + 근로-연말 합계와 비슷해야 해요' },
@@ -13543,6 +13548,7 @@ const REVIEW_TAXRETURN_FIELDS = [
   { key:'사업', label:'사업소득세', headerHint:'참고: 사업소득 합계와 비슷해야 해요' },
   { key:'기타', label:'기타소득세', headerHint:'참고: 기타소득(간이미대상) + 기타소득(간이대상) 합계와 비슷해야 해요' },
   { key:'이자', label:'이자소득세', headerHint:'참고: 이자배당소득 합계와 비슷해야 해요' },
+  { key:'퇴직', label:'퇴직소득세', headerHint:'참고: 퇴직소득 합계와 비슷해야 해요' },
 ];
 // 검토표(원천세) 초기 시드 데이터: 원천세_2026.xlsx의 12개 거래처 탭(왓츠랩·나우이엔지는 익월/당월 두 탭을 귀속월 기준으로 합산)에서
 // 1~7월 실제 숫자를 추출해 둔 값. 이 파일 안에는 사용자가 실제 등록한 거래처ID가 없어서(거래처 데이터는 로컬/구글드라이브에만 있음)
@@ -13585,9 +13591,8 @@ function reviewItTaxTotal(monthData){
 function reviewItTaxLocalTotal(monthData){
   return REVIEW_TAX_GROUPS.reduce((sum,g)=> sum + (Number((monthData.tax[g.key]||{}).local)||0), 0);
 }
-// 소득세(신고서) 5칸 합계 - 신고서를 유형별로 나눠 적은 값을 다 더한 것으로, 소득세합계(계산)와
-// 대조하는 검증값으로 씀(단, 퇴직소득세는 이 5칸에 없어서 퇴직소득이 있는 달은 정상적으로도 두 값이
-// 다르게 나올 수 있음)
+// 소득세(신고서) 6칸 합계 - 신고서를 유형별로 나눠 적은 값을 다 더한 것으로, 소득세합계(계산)와
+// 대조하는 검증값으로 씀 (퇴직소득세 칸도 포함돼 있어서 퇴직소득이 있는 달도 정상적으로 값이 맞아야 함)
 function reviewItTaxReportedSum(monthData){
   const t = monthData.taxReported || {};
   return REVIEW_TAXRETURN_FIELDS.reduce((sum,f)=> sum + (Number(t[f.key])||0), 0);
@@ -13812,7 +13817,7 @@ function renderReviewItTaxTable(clientId, year){
       return `<td><input type="text" inputmode="numeric" class="review-it-tax-input" data-month="${month}" data-group="${g.key}" data-sub="tax" value="${cur.tax!=null?Number(cur.tax).toLocaleString():''}" style="width:64px; border:1.5px solid var(--border); border-radius:6px; padding:3px 4px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-align:right;"></td><td><input type="text" inputmode="numeric" class="review-it-tax-input" data-month="${month}" data-group="${g.key}" data-sub="local" value="${cur.local!=null?Number(cur.local).toLocaleString():''}" style="width:64px; border:1.5px solid var(--border); border-radius:6px; padding:3px 4px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-align:right; background:#FAFAFC;"></td>`;
     }).join('');
     const dash = `<td style="text-align:center; color:var(--ink-soft);">-</td>`;
-    // 소득세(신고서) - 신고서를 보고 유형별로 나눠 입력하는 5칸(REVIEW_TAXRETURN_FIELDS) + 합계.
+    // 소득세(신고서) - 신고서를 보고 유형별로 나눠 입력하는 6칸(REVIEW_TAXRETURN_FIELDS) + 합계.
     // 지방세(신고서)는 신고서에 유형 구분이 따로 없어서 기존처럼 1칸 그대로 유지
     const t = data.taxReported || {};
     const taxReturnCells = isEnd
@@ -14054,6 +14059,39 @@ document.getElementById('reviewItRevertBtn')?.addEventListener('click', ()=>{
   renderReviewItAll();
   const msgEl = document.getElementById('reviewItSaveMsg');
   if(msgEl){ msgEl.textContent = '되돌렸어요'; clearTimeout(msgEl._flashT); msgEl._flashT = setTimeout(()=>{ msgEl.textContent=''; }, 1500); }
+});
+// 초기화: "되돌리기"(마지막 저장 상태로 복원)와 달리, 이미 저장돼 있던 값까지 포함해서 지금 보고 있는
+// 거래처・연도의 12개월치 값을 통째로 비움 - 잘못된 값이 쌓여서 처음부터 다시 입력하고 싶을 때 씀.
+// 급여검증/납부세액검증은 서로 다른 항목(income vs tax)이라 따로 지울 수 있게 버튼을 나눔.
+// 지운 것도 결국 "입력"과 같은 취급이라 저장 버튼을 눌러야 실제로 반영됨(자동저장 아님)
+document.getElementById('reviewItIncomeResetBtn')?.addEventListener('click', ()=>{
+  const clientId = document.getElementById('reviewItClientSelect')?.value;
+  const year = Number(document.getElementById('reviewItYearSelect')?.value);
+  if(!clientId || !year){ alert('먼저 거래처와 연도를 선택해주세요.'); return; }
+  if(!confirm(`이 거래처의 ${year}년 급여검증(급여명세서 항목・총지급액(신고서)) 입력값을 12개월 전부 지울까요?\n(저장 버튼을 눌러야 실제로 저장돼요)`)) return;
+  for(let m=1; m<=12; m++){
+    const data = reviewItMonthData(clientId, year, m);
+    data.income = {};
+    data.incomeReported = null;
+    if(data.manualCheck) delete data.manualCheck.income;
+  }
+  setReviewItDirty(true);
+  renderReviewItIncomeTable(clientId, year);
+});
+document.getElementById('reviewItTaxResetBtn')?.addEventListener('click', ()=>{
+  const clientId = document.getElementById('reviewItClientSelect')?.value;
+  const year = Number(document.getElementById('reviewItYearSelect')?.value);
+  if(!clientId || !year){ alert('먼저 거래처와 연도를 선택해주세요.'); return; }
+  if(!confirm(`이 거래처의 ${year}년 납부세액검증(급여명세서 기준・신고서 기준) 입력값을 12개월 전부 지울까요?\n(저장 버튼을 눌러야 실제로 저장돼요)`)) return;
+  for(let m=1; m<=12; m++){
+    const data = reviewItMonthData(clientId, year, m);
+    data.tax = {};
+    data.taxReported = {};
+    data.taxReportedLocal = null;
+    if(data.manualCheck){ delete data.manualCheck.tax; delete data.manualCheck.taxLocal; }
+  }
+  setReviewItDirty(true);
+  renderReviewItTaxTable(clientId, year);
 });
 
 // ── 검토표(원천세) 엑셀 데이터 일괄 불러오기: REVIEW_SEED_2026(회사명 기준)을 지금 등록된 거래처(ID 기준)에 이름으로 매칭해서 채워 넣음 ──
