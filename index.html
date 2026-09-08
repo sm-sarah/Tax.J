@@ -171,6 +171,14 @@
      아래로 자연스럽게 쌓이도록 flex-wrap을 씀 */
   .home-dashboard-layout{ display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap; }
   .home-menu-col{ flex:0 0 auto; }
+  /* 대시보드(홈)와 사이드바 "전체" 펼침보기는 굳이 복사 기능이 필요 없다는 요청 - 특히 휴대폰에서 길게
+     누르면 뜨는 텍스트선택/복사 콜아웃이 스크롤·탭을 방해해서 불편하다는 의미로 보고, 홈 탭 전체에
+     텍스트선택을 꺼둠. 입력창(메모 등)까지 막히면 오히려 불편하므로 input/textarea/select 등 실제
+     입력요소 안에서는 다시 살려둠(다른 탭·팝업의 텍스트 선택/복사는 이 규칙과 무관하게 그대로 동작함) */
+  #tab-home{ user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+  #tab-home input, #tab-home textarea, #tab-home select, #tab-home [contenteditable="true"]{
+    user-select:text; -webkit-user-select:text; -webkit-touch-callout:default;
+  }
   /* 사이드바 전체 펼치기/접기 버튼 - 메뉴 목록 맨 위, 오른쪽 정렬로 작게 둠 */
   .home-menu-expand-all-row{ display:flex; justify-content:flex-end; margin:0 0 8px; }
   .home-menu-expand-all-btn{ background:none; border:none; cursor:pointer; font-size:11px; font-weight:700; color:var(--ink-soft); padding:2px 4px; display:inline-flex; align-items:center; gap:3px; }
@@ -874,10 +882,17 @@
   #filingTargetApplicableToggle .ft-applicable-btn{ border:1.5px solid var(--border); }
   #filingTargetApplicableToggle .ft-applicable-btn[data-value="target"].active{background:var(--indigo); border-color:var(--indigo-deep);}
   #filingTargetApplicableToggle .ft-applicable-btn[data-value="not-target"].active{background:var(--coral); border-color:#B91C1C;}
-  /* 부가세 신고대상 칸 편집 팝업의 대상/미대상 토글도 원천세 신고대상 팝업과 완전히 같은 스타일을 씀 */
-  #vatTargetApplicableToggle .vt-applicable-btn{ border:1.5px solid var(--border); }
-  #vatTargetApplicableToggle .vt-applicable-btn[data-value="target"].active{background:var(--indigo); border-color:var(--indigo-deep);}
-  #vatTargetApplicableToggle .vt-applicable-btn[data-value="not-target"].active{background:var(--coral); border-color:#B91C1C;}
+  /* 부가세 신고대상 칸 편집 팝업의 상태 토글도 원천세 신고대상 팝업과 같은 테두리 스타일을 씀. 확정은
+     대상/미대상 2개뿐이지만 예정은 예정신고/예정고지/고지제외/미대상까지 최대 4개라 매번 버튼을 새로
+     그려넣으므로(openVatTargetEditModal), data-status 값 기준으로 색을 매칭함 */
+  #vatTargetStatusToggle .vt-status-btn{ border:1.5px solid var(--border); }
+  #vatTargetStatusToggle .vt-status-btn[data-status="target"].active,
+  #vatTargetStatusToggle .vt-status-btn[data-status="filing"].active{background:var(--indigo); border-color:var(--indigo-deep);}
+  #vatTargetStatusToggle .vt-status-btn[data-status="notice"].active{background:var(--coral); border-color:#B91C1C;}
+  #vatTargetStatusToggle .vt-status-btn[data-status="notice-excluded"].active{background:var(--amber); border-color:#8A5A05; color:#3A2600;}
+  #vatTargetStatusToggle .vt-status-btn[data-status="not-target"].active{background:var(--guide-slate);}
+  /* 신고대상 일괄적용 팝업의 값 선택 칩 - 흰 팝업 배경에 묻히지 않도록 위와 같은 이유로 테두리를 둘러줌 */
+  #targetBulkApplyValueRow .target-bulk-value-btn{ border:1.5px solid var(--border); font-size:12px; padding:6px 12px; }
   /* 엑셀 일괄 다운로드의 "전체받기"는 시트 선택 칩이 아니라 네 칩을 한 번에 켜는 지름길 버튼이라, 선택 칩과
      헷갈리지 않도록 톤을 다르게(인디고) 둠 */
   #bulkExcelSelectAllBtn{ background:var(--indigo-bg); color:var(--indigo-deep); font-weight:800; }
@@ -2030,25 +2045,44 @@
     <div id="filingCycleHistoryWrap"></div>
   </div>
 </div>
-<!-- 부가세 신고대상: 거래처 × 기수 그리드의 한 칸을 눌렀을 때 뜨는 편집 팝업 (원천세 신고대상 팝업과 같은 구성) -->
+<!-- 부가세 신고대상: 거래처 × 기수 그리드의 한 칸을 눌렀을 때 뜨는 편집 팝업. 확정(1기확정/2기확정)은
+     특별한 사유가 없으면 전부 대상이라 대상/미대상 2단 토글로 충분하지만, 예정(1기예정/2기예정)은
+     법인만 예정신고대상이 될 수 있고(개인사업자는 예정신고 개념 자체가 없어 항상 예정고지 대상),
+     예정고지 대상 중에서도 납부세액이 고지제외기준 미만이면 실제 고지서가 안 나가는 경우(고지제외)가
+     있어 상태가 3~4개로 늘어남 - 버튼 목록을 매번 openVatTargetEditModal에서 거래처 사업자구분·기수에
+     맞게 동적으로 채워넣음(#vatTargetStatusToggle) -->
 <div id="vatTargetEditModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:400px; width:100%; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
     <div style="text-align:center; margin-bottom:16px;">
       <div id="vatTargetEditClientName" style="font-weight:800; font-size:16px; color:var(--ink);"></div>
-      <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-top:8px; flex-wrap:wrap;">
-        <span id="vatTargetEditPeriod" style="font-size:13px; font-weight:700; color:var(--ink-soft);"></span>
-        <span class="policy-category-toggle ft-cycle-toggle" id="vatTargetApplicableToggle" style="margin-bottom:0;">
-          <button type="button" class="vt-applicable-btn" data-value="target">대상</button>
-          <button type="button" class="vt-applicable-btn" data-value="not-target">미대상</button>
-        </span>
-      </div>
-    </div>
-    <div id="vatTargetNoticeRow" style="display:flex; align-items:center; justify-content:center; gap:8px; font-size:12.5px;">
-      <label style="display:flex; align-items:center; gap:5px; font-weight:600; cursor:pointer;"><input type="checkbox" id="vt-expected-notice" style="width:auto;"> 예정고지 대상</label>
+      <div id="vatTargetEditPeriod" style="font-size:13px; font-weight:700; color:var(--ink-soft); margin-top:4px;"></div>
+      <div class="policy-category-toggle ft-cycle-toggle" id="vatTargetStatusToggle" style="margin:10px 0 0; display:flex; flex-wrap:wrap; justify-content:center; gap:6px;"></div>
+      <div id="vatTargetEditHint" class="hint" style="font-size:10.5px; margin:6px 0 0;"></div>
     </div>
     <div style="text-align:center; margin-top:16px; display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
       <button type="button" id="vatTargetEditSaveBtn" class="submit-btn" style="width:auto; padding:8px 18px;">저장</button>
       <button type="button" id="vatTargetEditCloseBtn" class="del-btn modal-close-btn">닫기</button>
+    </div>
+  </div>
+</div>
+<!-- 원천세/부가세 신고대상 공용 일괄적용 팝업 - 선택한 연도의 특정 달(원천세)/기수(부가세) 또는 전체에
+     대해 모든 거래처에 같은 값을 한 번에 적용함. appConfirm으로 한 번 더 확인받은 뒤에만 실제로 적용됨 -->
+<div id="targetBulkApplyModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:420px; width:100%; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="text-align:center; margin-bottom:14px;">
+      <div id="targetBulkApplyTitle" style="font-weight:800; font-size:16px; color:var(--ink);">일괄적용</div>
+      <div class="hint" style="margin-top:4px;">선택한 범위의 전체 거래처에 같은 값을 한 번에 적용해요.</div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:12px; font-size:12.5px;">
+      <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+        <span style="font-weight:700; color:var(--ink-soft); flex-shrink:0;">적용 범위</span>
+        <select id="targetBulkApplyPeriod" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700; flex:1;"></select>
+      </div>
+      <div id="targetBulkApplyValueRow" style="display:flex; flex-wrap:wrap; justify-content:center; gap:6px;"></div>
+    </div>
+    <div style="text-align:center; margin-top:16px; display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
+      <button type="button" id="targetBulkApplyRunBtn" class="submit-btn" style="width:auto; padding:8px 18px;">적용</button>
+      <button type="button" id="targetBulkApplyCloseBtn" class="del-btn modal-close-btn">닫기</button>
     </div>
   </div>
 </div>
@@ -3283,8 +3317,11 @@
         </div>
         <!-- 원래는 "1월 설정 일괄적용"/"전년도 12월 복사" 두 버튼이었는데, 실제로는 잘 안 쓰이고 화면만
              복잡하게 만든다는 의견으로 없애고 단순 초기화 버튼 하나로 대체함. 가운데 배치는 표 위에서 눈에
-             너무 띄어 다른 목록 화면들(회사 ID/PW 등)처럼 표 바로 위 오른쪽 정렬로 옮김 -->
-        <div style="display:flex; justify-content:flex-end; margin-bottom:6px;">
+             너무 띄어 다른 목록 화면들(회사 ID/PW 등)처럼 표 바로 위 오른쪽 정렬로 옮김. 이후 "달마다
+             거래처 하나씩 칸을 눌러 설정하기 번거롭다"는 의견으로, 선택한 달(또는 연중 전체)에 모든
+             거래처를 한 번에 같은 값으로 설정하는 일괄적용 버튼을 초기화 버튼 옆에 추가함 -->
+        <div style="display:flex; justify-content:flex-end; gap:6px; margin-bottom:6px;">
+          <button type="button" id="filingTargetBulkApplyBtn" class="del-btn" style="background:var(--indigo-bg); color:var(--indigo-deep);" title="선택한 달(또는 전체)의 신고대상 여부를 전체 거래처에 한 번에 적용해요"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg> 일괄적용</button>
           <button type="button" id="filingTargetResetBtn" class="del-btn" style="background:var(--coral-bg); color:var(--coral);" title="선택한 해의 신고대상 설정을 전체 거래처·전체 달 모두 초기화해요"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg> 초기화</button>
         </div>
         <div id="filingTargetTableWrap" class="table-scroll"></div>
@@ -3298,7 +3335,12 @@
         <h2 class="section-title" style="justify-content:center; font-size:22px; margin:4px 0 14px;">부가세 신고대상</h2>
         <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
           <select id="vatTargetYear" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
-          <span class="hint" style="font-size:11px; margin:0;">기수별로 신고대상 여부와(신고대상이 아니면) 예정고지 대상 여부를 체크하세요. 체크 즉시 저장돼요.</span>
+          <span class="hint" style="font-size:11px; margin:0;">칸을 눌러서 그 기수의 신고대상 여부(확정)/예정신고·예정고지 여부(예정)를 설정하세요.</span>
+        </div>
+        <!-- 원천세 신고대상과 같은 구성(일괄적용 + 초기화)을 그대로 맞춤 -->
+        <div style="display:flex; justify-content:flex-end; gap:6px; margin-bottom:6px;">
+          <button type="button" id="vatTargetBulkApplyBtn" class="del-btn" style="background:var(--indigo-bg); color:var(--indigo-deep);" title="선택한 기수(또는 전체)의 신고대상 상태를 전체 거래처에 한 번에 적용해요"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg> 일괄적용</button>
+          <button type="button" id="vatTargetResetBtn" class="del-btn" style="background:var(--coral-bg); color:var(--coral);" title="선택한 해의 신고대상 설정을 전체 거래처·전체 기수 모두 초기화해요"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg> 초기화</button>
         </div>
         <div id="vatTargetTableWrap" class="table-scroll"></div>
         </div>
@@ -4131,9 +4173,12 @@ let sharedFilingCycles = {};
 // { [period 'YYYY-MM']: { [clientId]: { sameMonth:{national,local,memo}, nextMonth:{national,local,memo} } } }
 // sameMonth=당월귀속당월지급분, nextMonth=당월귀속익월지급분 - 한 거래처가 그 달에 두 지급유형을 동시에 가지면 둘 다 채워짐
 let sharedIncomeTaxFilingStatus = {};
-// 결재 > 신고대상(부가세): 거래처별·귀속연도별로 1기예정/1기확정/2기예정/2기확정 각 기수가 신고대상인지,
-// 신고대상이 아니라면 예정고지 대상인지를 관리함(예정고지는 예정 기수에만 해당).
-// { [clientId]: { [year]: { '1기예정':{applicable, expectedNotice}, '1기확정':{applicable}, '2기예정':{applicable, expectedNotice}, '2기확정':{applicable} } } }
+// 결재 > 신고대상(부가세): 거래처별·귀속연도별로 1기예정/1기확정/2기예정/2기확정 각 기수의 상태를 관리함.
+// 확정 기수는 { applicable:true|false }(특별한 사유 없으면 기본 대상), 예정 기수는
+// { status:'filing'|'notice'|'notice-excluded'|'not-target' }(예정신고대상/예정고지대상/예정고지대상(고지제외)/미대상)를
+// 씀 - 자세한 상태 판정 로직은 vatEntryStatus() 참고. 예전 { applicable, expectedNotice } 형식으로 저장된
+// 데이터도 vatEntryStatus()가 읽을 때 새 상태로 변환해서 그대로 이어서 씀.
+// { [clientId]: { [year]: { '1기예정':{status}, '1기확정':{applicable}, '2기예정':{status}, '2기확정':{applicable} } } }
 let sharedVatFilingTargets = {};
 // 검토표(부가세) 거래처별 기수별 실제 숫자 - 원본 엑셀 "부가가치세 신고자료 통합조회" 시트 구조를 그대로 옮김.
 // 기수(1기예정/1기확정/2기예정/2기확정)마다 "자료"(세금계산서·카드 등 실제 증빙 자료 합계)와 "신고서"(실제 신고서에
@@ -9769,9 +9814,11 @@ function dashMascotSvg(state){
   }
   const face = `${fluff}<circle cx="${cx}" cy="${cy}" r="${r+2}" fill="${fur}" ${outline}/>`;
 
-  // 상태색 링 - 팔다리 대신 상태를 알려주던 몸통색을 얼굴 둘레의 얇은 색 링으로 옮겨서, 몸이 없어도
-  // 여전히 상태색(인디고/민트/핑크)이 한눈에 보이게 함
-  const statusRing = `<circle cx="${cx}" cy="${cy}" r="${r+7.5}" fill="none" stroke="${pal.ring}" stroke-width="2.5" stroke-dasharray="4 5" opacity="0.55"/>`;
+  // 예전엔 얼굴 둘레 바깥에 상태색 원(점선 링)을 하나 더 둘러서 상태(인디고/민트/핑크)를 표시했는데,
+  // 뽀글뽀글한 털뭉치 사이로 매끈한 원 하나가 그대로 비쳐 보여서 "원라인"처럼 겉돌고 이상해 보인다는
+  // 의견으로 완전히 없앰 - 상태색은 이제 마스코트 바깥의 backdrop(state-idle/working/done 클래스)이
+  // 대신 보여주므로, 뽀글머리는 털뭉치만 남기고 순수하게 얼굴만 그림
+  const statusRing = '';
 
   // 볼터치 - 항상 동일
   const cheeks = `<ellipse cx="${cx-20}" cy="${cy+6}" rx="4.8" ry="3" fill="#FBD4CE" opacity="0.85"/><ellipse cx="${cx+20}" cy="${cy+6}" rx="4.8" ry="3" fill="#FBD4CE" opacity="0.85"/>`;
@@ -12943,6 +12990,10 @@ function _appConfirmOpen(message, opts){
   cancelBtn.textContent = opts.cancelText || '취소';
   cancelBtn.style.display = opts.showCancel === false ? 'none' : '';
   overlay.style.display = 'flex';
+  // 이 팝업은 항상 최상단이어야 하므로(다른 팝업 위에서 확인을 받는 용도), 고정 z-index만 믿지 않고
+  // 열릴 때마다 그 시점 기준 가장 앞으로 한 번 더 끌어올림 - 세션을 오래 써서 다른 팝업들의 z-index가
+  // 누적되어 고정값을 넘어선 경우에도 항상 맨 위에 뜨도록 함
+  if(typeof window.__bringOverlayToFront === 'function') window.__bringOverlayToFront(overlay);
   return new Promise(resolve=>{ _appConfirmResolve = resolve; });
 }
 // 확인/취소 두 버튼짜리 팝업 - true(확인)/false(취소)를 담은 Promise를 돌려줌. 기존 confirm('...')을
@@ -13035,6 +13086,114 @@ function ensureFilingPeriodStateInit(kind){
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
   st.year = monthStr.slice(0,4);
   st.month = String(Number(monthStr.slice(5,7)));
+}
+// 세무신고(신고현황/신고대상/제출현황/검토표) 안에서 지금 보고 있는 세목·기간·거래처 조합을 새로고침해도
+// 그대로 이어볼 수 있게 저장해둠 - worklog_last_tab(최상위 탭 기억)과 같은 방식이고, 세부 하위화면이
+// 바뀌는 여러 지점(카테고리 칩, 세목 칩, 연도/월/반기 선택, 검토표 거래처·연도 선택 등)에서 두루 호출됨.
+// 페이지 로드 시 복원 로직은 파일 맨 아래쪽(worklog_last_tab 복원부 근처)에 있음.
+function saveFilingSubviewState(){
+  try{
+    const cat = document.querySelector('.approval-cat-btn.active')?.dataset.approvalCat || 'status';
+    const st = FILING_KINDS.status.state;
+    localStorage.setItem('worklog_last_filing_subview', JSON.stringify({
+      cat,
+      filingType: viewingFilingType,
+      filingState: { year:st.year, sourceMode:st.sourceMode, month:st.month, half:st.half, quarter:st.quarter },
+      targetType: viewingTargetType,
+      targetYear: filingTargetYear,
+      vatTargetYear: vatTargetYear,
+      submitState: { year:submitState.year, sourceMode:submitState.sourceMode, month:submitState.month, half:submitState.half },
+      reviewType: viewingReviewType,
+      reviewItSection: viewingReviewItSection,
+      reviewItClientId: document.getElementById('reviewItClientSelect')?.value || '',
+      reviewItYear: document.getElementById('reviewItYearSelect')?.value || '',
+      reviewVatClientId: document.getElementById('reviewVatClientSelect')?.value || '',
+      reviewVatYear: document.getElementById('reviewVatYearSelect')?.value || ''
+    }));
+  }catch(e){}
+}
+// saveFilingSubviewState로 저장해둔 조합을 페이지 로드 시 다시 불러와, 세무신고 탭이 복원될 때 그 안의
+// 세부 화면까지 마지막 보던 그대로 이어지게 함 - 사이드바에서 이 화면들로 들어올 때(위쪽 goto 클릭 로직)와
+// 똑같이 실제 칩·버튼을 원격으로 클릭하는 방식을 그대로 재사용하고, 그 위에 연도/월/반기/거래처 같은 세부
+// 값만 한 번 더 덮어씀. 저장된 조합이 지금은 없는 값(삭제된 거래처 등)이라도 조용히 기본 화면으로
+// 남도록 전체를 try/catch로 감쌈 - 이 복원 하나 때문에 페이지 로드 자체가 깨지면 안 되므로.
+function restoreFilingSubviewState(){
+  try{
+    const raw = localStorage.getItem('worklog_last_filing_subview');
+    if(!raw) return;
+    const saved = JSON.parse(raw);
+    if(!saved || typeof saved !== 'object' || !saved.cat) return;
+    document.querySelector(`.approval-cat-btn[data-approval-cat="${saved.cat}"]`)?.click();
+    if(saved.cat === 'status' && saved.filingType){
+      document.querySelector(`#filingTypeToggle .filing-type-btn[data-filing-type="${saved.filingType}"]`)?.click();
+      if(saved.filingState){
+        const st = FILING_KINDS.status.state;
+        if(saved.filingState.year) st.year = saved.filingState.year;
+        if(saved.filingState.sourceMode) st.sourceMode = saved.filingState.sourceMode;
+        if(saved.filingState.month) st.month = saved.filingState.month;
+        if(saved.filingState.half) st.half = saved.filingState.half;
+        if(saved.filingState.quarter) st.quarter = saved.filingState.quarter;
+        renderFilingStatusTable('status');
+      }
+    } else if(saved.cat === 'target' && saved.targetType){
+      document.querySelector(`#targetTypeToggle .target-type-btn[data-filing-type="${saved.targetType}"]`)?.click();
+      if(saved.targetType === '원천세' && saved.targetYear){
+        filingTargetYear = saved.targetYear;
+        renderFilingTargetTable();
+      } else if(saved.targetType === '부가세' && saved.vatTargetYear){
+        vatTargetYear = saved.vatTargetYear;
+        renderVatFilingTargetTable();
+      }
+    } else if(saved.cat === 'submit' && saved.submitState){
+      const st = submitState;
+      if(saved.submitState.sourceMode){
+        st.sourceMode = saved.submitState.sourceMode;
+        document.querySelectorAll('#submitTypeToggle .submit-type-btn').forEach(b=>{
+          b.classList.toggle('active', b.dataset.submitType === st.sourceMode);
+        });
+      }
+      if(saved.submitState.year) st.year = saved.submitState.year;
+      if(saved.submitState.month) st.month = saved.submitState.month;
+      if(saved.submitState.half) st.half = saved.submitState.half;
+      renderSubmitStatusTable();
+    } else if(saved.cat === 'review' && saved.reviewType){
+      document.querySelector(`#reviewTypeToggle .review-type-btn[data-filing-type="${saved.reviewType}"]`)?.click();
+      if(saved.reviewType === '원천세'){
+        if(saved.reviewItSection){
+          viewingReviewItSection = saved.reviewItSection;
+          document.querySelectorAll('.review-it-section-btn').forEach(b=>{
+            b.classList.toggle('active', b.dataset.itSection === saved.reviewItSection);
+          });
+          const wraps = { income:'reviewItIncomeWrap', tax:'reviewItTaxWrap' };
+          Object.keys(wraps).forEach(k=>{
+            const el = document.getElementById(wraps[k]);
+            if(el) el.style.display = (k === viewingReviewItSection) ? '' : 'none';
+          });
+        }
+        const yearSel = document.getElementById('reviewItYearSelect');
+        if(yearSel && saved.reviewItYear) yearSel.value = saved.reviewItYear;
+        if(saved.reviewItClientId){
+          populateReviewItClientSelect(); // 지금 연도 기준으로 거래처 목록을 먼저 채움
+          const clientSel = document.getElementById('reviewItClientSelect');
+          if(clientSel && Array.from(clientSel.options).some(o=>o.value === saved.reviewItClientId)){
+            clientSel.value = saved.reviewItClientId;
+            renderReviewItAll();
+          }
+        }
+      } else if(saved.reviewType === '부가세'){
+        const yearSel = document.getElementById('reviewVatYearSelect');
+        if(yearSel && saved.reviewVatYear) yearSel.value = saved.reviewVatYear;
+        if(saved.reviewVatClientId){
+          populateReviewVatClientSelect();
+          const clientSel = document.getElementById('reviewVatClientSelect');
+          if(clientSel && Array.from(clientSel.options).some(o=>o.value === saved.reviewVatClientId)){
+            clientSel.value = saved.reviewVatClientId;
+            renderReviewVatAll();
+          }
+        }
+      }
+    }
+  }catch(e){}
 }
 // 결산이 "결산1차"/"결산2차" 두 세목으로 나뉘기 전 데이터(세목명 "결산" 하나에 결산월(1차)/(2차)만 있고
 // 진행상태·완료일은 공용이던 옛 구조)를 새 구조로 한 번만 옮겨줌 - 상태/메모/완료일은 기존에 하나였으니
@@ -13176,6 +13335,7 @@ const FILING_STATUS_SUBITEMS = {
 // 관리하기로 하면서 세목 자체를 결산1차/결산2차로 나눴고, 그 각각의 결산월 열 이름을 여기서 관리함
 const SETTLEMENT_MONTH_LABEL = { 결산1차:'결산월(1차)', 결산2차:'결산월(2차)' };
 function renderFilingStatusTable(kind){
+  saveFilingSubviewState();
   const cfg = FILING_KINDS[kind];
   const taxType = cfg.getViewingType();
   // 원천세 신고현황(status)은 신고대상 기반의 완전히 새로운 화면(당월지급/익월지급 분리, 원천세/지방세 각각
@@ -13195,7 +13355,12 @@ function renderFilingStatusTable(kind){
   const vatTargetFiltered = kind === 'status' && taxType === '부가세';
   if(vatTargetFiltered){
     const targetPeriod = VAT_QUARTER_TO_TARGET_PERIOD[cfg.state.quarter];
-    list = list.filter(c=> vatFilingTargetEntry(c.id, cfg.state.year, targetPeriod).applicable);
+    // 실제로 "직접 신고"하는 거래처만 신고현황에 보여줌 - 확정기수는 대상(target), 예정기수는 예정신고대상(filing)
+    // 인 경우만 해당하고, 예정고지 대상(notice/notice-excluded)은 거래처가 직접 신고하는 게 아니라서 제외함
+    list = list.filter(c=>{
+      const status = vatEntryStatus(vatFilingTargetEntry(c.id, cfg.state.year, targetPeriod), targetPeriod, c.entityType);
+      return status === 'target' || status === 'filing';
+    });
   }
   const wrap = document.getElementById(cfg.ids.wrap);
   if(!wrap) return;
@@ -13426,6 +13591,7 @@ function filingTargetCellLabel(entry, clientId, period){
   return '-';
 }
 function renderFilingTargetTable(){
+  saveFilingSubviewState();
   populateFilingTargetYearSelect();
   const wrap = document.getElementById('filingTargetTableWrap');
   if(!wrap) return;
@@ -13666,8 +13832,20 @@ document.getElementById('filingCycleHistoryCloseBtn')?.addEventListener('click',
 });
 
 // ══════════════════════════════════════════════════════════
-// 🎯 신고대상(부가세): 원천세와 달리 월이 아니라 1기예정/1기확정/2기예정/2기확정 4개 기수 단위로 거래처별 신고대상 여부·예정고지 대상 여부를 관리
-// 항목이 체크박스 2개뿐이라 원천세처럼 팝업을 띄우지 않고 표에서 바로 체크하면 즉시 저장됨(신고도움 체크리스트와 같은 방식)
+// 🎯 신고대상(부가세): 원천세와 달리 월이 아니라 1기예정/1기확정/2기예정/2기확정 4개 기수 단위로 관리.
+// 확정(1기확정/2기확정)은 특별한 사유가 없으면 모든 거래처가 대상이라 대상/미대상 2단 상태만 있으면 되지만,
+// 예정(1기예정/2기예정)은 실제 업무상 다음처럼 더 세분화됨:
+//   - 예정신고대상(filing): 법인만 해당 - 실제로 예정신고를 직접 신고함
+//   - 예정고지대상(notice): 개인사업자는 예정신고 개념이 아예 없어 무조건 이 상태(항상), 법인은 예정신고
+//     대신 예정고지를 받기로 한 경우
+//   - 예정고지대상(고지제외)(notice-excluded): 예정고지 대상이긴 하지만 납부세액이 고지제외기준 미만이라
+//     실제로는 고지서 자체가 안 나가는 경우
+//   - 미대상(not-target): 그 기수엔 아예 해당사항 없음(폐업 예정, 신규등록 전 등 예외적인 경우)
+// 데이터는 예전엔 {applicable, expectedNotice} 체크박스 두 개였는데, 위 4가지 상태를 다 표현할 수 없어서
+// 예정 기수는 {status:'filing'|'notice'|'notice-excluded'|'not-target'}로 바꿈. 확정 기수는 여전히 단순한
+// {applicable:true|false}를 쓰되, 기본값을 false→true로 바꿔서 "특별한 사유 없으면 전부 대상"을 반영함.
+// 예전에 저장된 {applicable, expectedNotice} 형식 데이터는 vatEntryStatus()가 읽을 때 새 상태로 변환해서
+// 보여주므로 별도 마이그레이션 스크립트 없이도 그대로 이어서 씀.
 // ══════════════════════════════════════════════════════════
 const VAT_TARGET_PERIODS = ['1기예정','1기확정','2기예정','2기확정'];
 // 표시용 라벨(띄어쓰기 포함) - 저장 키(VAT_TARGET_PERIODS의 값)는 그대로 두고 화면에 보이는 이름만 다듬음
@@ -13679,10 +13857,30 @@ function vatFilingTargetEntry(clientId, year, period){
   sharedVatFilingTargets[clientId] = sharedVatFilingTargets[clientId] || {};
   sharedVatFilingTargets[clientId][year] = sharedVatFilingTargets[clientId][year] || {};
   if(!sharedVatFilingTargets[clientId][year][period]){
-    sharedVatFilingTargets[clientId][year][period] = { applicable:false, expectedNotice:false };
+    sharedVatFilingTargets[clientId][year][period] = {};
   }
   return sharedVatFilingTargets[clientId][year][period];
 }
+// 저장된 entry(신구 형식 모두)와 기수·거래처 사업자구분을 보고 실제 상태를 하나로 결정함.
+// 확정: 'target' | 'not-target' (미확인/미기록이면 기본 'target' - 특별한 사유 없으면 전부 대상)
+// 예정: 'filing' | 'notice' | 'notice-excluded' | 'not-target'
+function vatEntryStatus(entry, period, entityType){
+  entry = entry || {};
+  if(!period.endsWith('예정')){
+    // 확정: applicable을 명시적으로 false로 저장해둔 경우(특별한 사유로 예외 처리)만 미대상, 그 외엔 대상
+    return entry.applicable === false ? 'not-target' : 'target';
+  }
+  // 예정: 새 형식이 이미 있으면 그대로 사용
+  if(entry.status) return entry.status;
+  // 예전 형식(applicable/expectedNotice) 마이그레이션
+  if(entry.applicable) return 'filing';
+  if(entry.expectedNotice) return 'notice';
+  // 한 번도 설정한 적 없는 경우: 개인사업자는 예정신고 개념이 없어 항상 예정고지 대상이 기본값,
+  // 법인은 예정신고/예정고지 여부를 직접 골라야 하므로 미대상(미확인 '-')을 기본값으로 둠
+  return entityType === '개인' ? 'notice' : 'not-target';
+}
+const VAT_JEONGGI_STATUS_LABEL = { filing:'예정신고대상', notice:'예정고지대상', 'notice-excluded':'예정고지대상(고지제외)', 'not-target':'미대상' };
+const VAT_HWAKJEONG_STATUS_LABEL = { target:'대상', 'not-target':'미대상' };
 let vatTargetYear = null;
 function populateVatFilingTargetYearSelect(){
   const sel = document.getElementById('vatTargetYear');
@@ -13700,14 +13898,16 @@ function populateVatFilingTargetYearSelect(){
   vatTargetYear = sorted.includes(prevVal) ? prevVal : (sorted.includes(String(nowY)) ? String(nowY) : sorted[0]);
   sel.value = vatTargetYear;
 }
-// 신고대상(부가세) 표의 칸 라벨 - 체크박스 두 개를 눌러서 채우던 걸 원천세 신고대상처럼 칸을 눌러서
-// 팝업으로 편집하는 방식으로 바꿈. 조회 화면에는 지금 지정된 상태만 딱 보여줌(대상/예정고지/-)
-function vatTargetCellLabel(entry){
-  if(entry.applicable) return '대상';
-  if(entry.expectedNotice) return '예정고지';
+// 신고대상(부가세) 표의 칸 라벨 - 조회 화면에는 지금 지정된 상태만 딱 보여줌
+function vatTargetCellLabel(status, period){
+  if(!period.endsWith('예정')) return status === 'target' ? '대상' : '미대상';
+  if(status === 'filing') return '예정신고';
+  if(status === 'notice') return '예정고지';
+  if(status === 'notice-excluded') return '고지제외';
   return '-';
 }
 function renderVatFilingTargetTable(){
+  saveFilingSubviewState();
   populateVatFilingTargetYearSelect();
   const wrap = document.getElementById('vatTargetTableWrap');
   if(!wrap) return;
@@ -13720,12 +13920,12 @@ function renderVatFilingTargetTable(){
     const nameBg = c.entityType === '법인' ? '#DCEEF5' : c.entityType === '개인' ? '#FCE9F1' : 'transparent';
     const periodCells = VAT_TARGET_PERIODS.map(p=>{
       const entry = vatFilingTargetEntry(c.id, year, p);
-      const label = vatTargetCellLabel(entry);
-      const isOn = entry.applicable;
-      const isNotice = !entry.applicable && entry.expectedNotice;
-      const cellColor = isOn ? 'var(--indigo)' : isNotice ? 'var(--coral)' : 'var(--border)';
-      const cellBg = isOn ? 'var(--indigo-bg)' : isNotice ? 'var(--coral-bg)' : 'transparent';
-      const cellText = isOn ? 'var(--indigo-deep)' : isNotice ? 'var(--coral)' : 'var(--ink-soft)';
+      const status = vatEntryStatus(entry, p, c.entityType);
+      const label = vatTargetCellLabel(status, p);
+      // 대상/예정신고 = 인디고, 예정고지 = 코랄, 고지제외 = 앰버, 미대상 = 회색
+      const cellColor = (status === 'target' || status === 'filing') ? 'var(--indigo)' : status === 'notice' ? 'var(--coral)' : status === 'notice-excluded' ? 'var(--amber)' : 'var(--border)';
+      const cellBg = (status === 'target' || status === 'filing') ? 'var(--indigo-bg)' : status === 'notice' ? 'var(--coral-bg)' : status === 'notice-excluded' ? 'var(--amber-bg)' : 'transparent';
+      const cellText = (status === 'target' || status === 'filing') ? 'var(--indigo-deep)' : status === 'notice' ? 'var(--coral)' : status === 'notice-excluded' ? '#8A5A05' : 'var(--ink-soft)';
       return `<td class="cvb"><button type="button" class="vat-target-cell-btn" data-client-id="${c.id}" data-period="${p}" style="width:100%; border:1.5px solid ${cellColor}; border-radius:6px; padding:4px 2px; background:${cellBg}; color:${cellText}; font-size:10.5px; font-weight:700; cursor:pointer;">${escHtml(label)}</button></td>`;
     }).join('');
     return `<tr><td class="num cvb">${idx+1}</td><td class="cvb" style="color:${entityColor}; font-weight:800; background:${nameBg}; white-space:nowrap;">${escHtml(c.name)}</td>${periodCells}</tr>`;
@@ -13739,42 +13939,57 @@ document.getElementById('vatTargetYear')?.addEventListener('change', (e)=>{
   vatTargetYear = e.target.value;
   renderVatFilingTargetTable();
 });
-// 신고대상(부가세) 칸 편집 팝업 - 원천세 신고대상 팝업과 같은 구성(대상/미대상 토글 + 예정고지는 예정 기수에서만)
+// 신고대상(부가세) 칸 편집 팝업 - 확정은 대상/미대상 2단 토글, 예정은 거래처 사업자구분에 따라
+// 고를 수 있는 상태 버튼을 동적으로 구성함(법인: 예정신고대상/예정고지대상/예정고지대상(고지제외)/미대상,
+// 개인: 예정신고대상 없이 예정고지대상/예정고지대상(고지제외)/미대상)
 let vatTargetEditCtx = { clientId:null, year:null, period:null };
-function syncVatTargetModalUI(entry, period){
-  document.querySelectorAll('#vatTargetApplicableToggle .vt-applicable-btn').forEach(b=>{
-    b.classList.toggle('active', b.dataset.value === 'target' ? !!entry.applicable : !entry.applicable);
+function syncVatTargetModalUI(status){
+  document.querySelectorAll('#vatTargetStatusToggle .vt-status-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.status === status);
   });
-  const noticeRow = document.getElementById('vatTargetNoticeRow');
-  const isPreliminary = period.endsWith('예정');
-  if(noticeRow) noticeRow.style.display = (isPreliminary && !entry.applicable) ? 'flex' : 'none';
-  const noticeChk = document.getElementById('vt-expected-notice');
-  if(noticeChk) noticeChk.checked = !!entry.expectedNotice;
 }
 function openVatTargetEditModal(clientId, year, period){
   vatTargetEditCtx = { clientId, year, period };
   const client = (clients.list||[]).find(c=>c.id===clientId);
+  const entityType = client ? client.entityType : null;
   document.getElementById('vatTargetEditClientName').textContent = client ? client.name : '';
   document.getElementById('vatTargetEditPeriod').textContent = `${year}년 ${VAT_TARGET_PERIOD_LABEL[period]}`;
-  syncVatTargetModalUI(vatFilingTargetEntry(clientId, year, period), period);
+  const isJeonggi = period.endsWith('예정');
+  const toggle = document.getElementById('vatTargetStatusToggle');
+  const hint = document.getElementById('vatTargetEditHint');
+  let statusKeys;
+  if(!isJeonggi){
+    statusKeys = ['target','not-target'];
+    if(hint) hint.textContent = '확정신고는 특별한 사유가 없으면 모든 거래처가 대상이에요.';
+  } else if(entityType === '개인'){
+    statusKeys = ['notice','notice-excluded','not-target'];
+    if(hint) hint.textContent = '개인사업자는 예정신고 개념이 없어 항상 예정고지 대상이에요(납부세액이 고지제외기준 미만이면 고지제외).';
+  } else {
+    statusKeys = ['filing','notice','notice-excluded','not-target'];
+    if(hint) hint.textContent = '법인은 예정신고를 직접 하거나, 예정고지를 받을 수 있어요.';
+  }
+  const labelMap = isJeonggi ? VAT_JEONGGI_STATUS_LABEL : VAT_HWAKJEONG_STATUS_LABEL;
+  if(toggle){
+    toggle.innerHTML = statusKeys.map(k=>`<button type="button" class="vt-status-btn" data-status="${k}">${escHtml(labelMap[k])}</button>`).join('');
+    toggle.querySelectorAll('.vt-status-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const { clientId, year, period } = vatTargetEditCtx;
+        if(!clientId) return;
+        const entry = vatFilingTargetEntry(clientId, year, period);
+        if(period.endsWith('예정')){
+          entry.status = btn.dataset.status;
+          delete entry.applicable; delete entry.expectedNotice; // 새 형식으로 저장하면서 예전 필드는 정리
+        } else {
+          entry.applicable = btn.dataset.status === 'target';
+        }
+        syncVatTargetModalUI(btn.dataset.status);
+      });
+    });
+  }
+  const entry = vatFilingTargetEntry(clientId, year, period);
+  syncVatTargetModalUI(vatEntryStatus(entry, period, entityType));
   document.getElementById('vatTargetEditModalOverlay').style.display = 'flex';
 }
-document.querySelectorAll('#vatTargetApplicableToggle .vt-applicable-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    const { clientId, year, period } = vatTargetEditCtx;
-    if(!clientId) return;
-    const entry = vatFilingTargetEntry(clientId, year, period);
-    entry.applicable = btn.dataset.value === 'target';
-    // 신고대상으로 켜지면 예정고지 대상은 의미가 없어지므로 자동으로 꺼줌
-    if(entry.applicable) entry.expectedNotice = false;
-    syncVatTargetModalUI(entry, period);
-  });
-});
-document.getElementById('vt-expected-notice')?.addEventListener('change', (e)=>{
-  const { clientId, year, period } = vatTargetEditCtx;
-  if(!clientId) return;
-  vatFilingTargetEntry(clientId, year, period).expectedNotice = e.target.checked;
-});
 document.getElementById('vatTargetEditSaveBtn')?.addEventListener('click', async ()=>{
   await saveSharedVatFilingTargets();
   document.getElementById('vatTargetEditModalOverlay').style.display = 'none';
@@ -13783,6 +13998,117 @@ document.getElementById('vatTargetEditSaveBtn')?.addEventListener('click', async
 document.getElementById('vatTargetEditCloseBtn')?.addEventListener('click', ()=>{
   document.getElementById('vatTargetEditModalOverlay').style.display = 'none';
   renderVatFilingTargetTable();
+});
+// 신고대상(부가세) 초기화 - 원천세 신고대상 초기화 버튼과 같은 구성(선택한 해의 전체 거래처·전체 기수를
+// 한 번에 지우고 appConfirm으로 확인받음)
+document.getElementById('vatTargetResetBtn')?.addEventListener('click', async ()=>{
+  const year = vatTargetYear;
+  if(!year) return;
+  const list = bookkeepingClientList();
+  let touched = 0;
+  list.forEach(c=>{
+    const entries = sharedVatFilingTargets[c.id] && sharedVatFilingTargets[c.id][year];
+    if(!entries) return;
+    VAT_TARGET_PERIODS.forEach(p=>{ if(entries[p]){ delete entries[p]; touched++; } });
+  });
+  if(!touched){ appAlert(`${year}년에는 초기화할 신고대상 설정이 없어요.`); return; }
+  if(!(await appConfirm(`${year}년 부가세 신고대상 설정을 전체 거래처·전체 기수 모두 초기화해요. 되돌릴 수 없어요. 계속할까요?`))) return;
+  await saveSharedVatFilingTargets();
+  renderVatFilingTargetTable();
+  appAlert(`${year}년 부가세 신고대상 설정을 모두 초기화했어요.`);
+});
+
+// ══════════════════════════════════════════════════════════
+// 🎯 신고대상(원천세/부가세) 공용 일괄적용 팝업 - 선택한 연도의 특정 달(원천세)/기수(부가세) 또는 전체에
+// 대해 모든 거래처에 같은 값을 한 번에 적용함
+// ══════════════════════════════════════════════════════════
+let targetBulkApplyCtx = null; // 'income' | 'vat'
+function openTargetBulkApplyModal(kind){
+  targetBulkApplyCtx = kind;
+  const title = document.getElementById('targetBulkApplyTitle');
+  const periodSel = document.getElementById('targetBulkApplyPeriod');
+  const valueRow = document.getElementById('targetBulkApplyValueRow');
+  if(kind === 'income'){
+    title.textContent = `원천세 신고대상 일괄적용 (${filingTargetYear}년)`;
+    periodSel.innerHTML = `<option value="all">전체(1~12월)</option>` + Array.from({length:12},(_,i)=>i+1).map(m=>`<option value="${m}">${m}월</option>`).join('');
+    valueRow.innerHTML = `
+      <button type="button" class="del-btn target-bulk-value-btn active" data-value="target" style="background:var(--indigo-bg); color:var(--indigo-deep);">대상</button>
+      <button type="button" class="del-btn target-bulk-value-btn" data-value="not-target">미대상</button>`;
+  } else {
+    title.textContent = `부가세 신고대상 일괄적용 (${vatTargetYear}년)`;
+    periodSel.innerHTML = `<option value="all">전체(4개 기수)</option>` + VAT_TARGET_PERIODS.map(p=>`<option value="${p}">${VAT_TARGET_PERIOD_LABEL[p]}</option>`).join('');
+    valueRow.innerHTML = `
+      <button type="button" class="del-btn target-bulk-value-btn active" data-value="target" style="background:var(--indigo-bg); color:var(--indigo-deep);" title="확정 기수엔 대상, 예정 기수엔 예정신고대상(법인)/예정고지대상(개인)으로 적용돼요">대상 / 예정신고대상</button>
+      <button type="button" class="del-btn target-bulk-value-btn" data-value="notice">예정고지대상</button>
+      <button type="button" class="del-btn target-bulk-value-btn" data-value="notice-excluded">예정고지대상(고지제외)</button>
+      <button type="button" class="del-btn target-bulk-value-btn" data-value="not-target">미대상</button>`;
+  }
+  valueRow.querySelectorAll('.target-bulk-value-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      valueRow.querySelectorAll('.target-bulk-value-btn').forEach(b=>{ b.classList.remove('active'); b.style.background=''; b.style.color=''; });
+      btn.classList.add('active'); btn.style.background='var(--indigo-bg)'; btn.style.color='var(--indigo-deep)';
+    });
+  });
+  document.getElementById('targetBulkApplyModalOverlay').style.display = 'flex';
+}
+document.getElementById('filingTargetBulkApplyBtn')?.addEventListener('click', ()=> openTargetBulkApplyModal('income'));
+document.getElementById('vatTargetBulkApplyBtn')?.addEventListener('click', ()=> openTargetBulkApplyModal('vat'));
+document.getElementById('targetBulkApplyCloseBtn')?.addEventListener('click', ()=>{
+  document.getElementById('targetBulkApplyModalOverlay').style.display = 'none';
+});
+document.getElementById('targetBulkApplyRunBtn')?.addEventListener('click', async ()=>{
+  if(!targetBulkApplyCtx) return;
+  const periodVal = document.getElementById('targetBulkApplyPeriod').value;
+  const valueBtn = document.querySelector('#targetBulkApplyValueRow .target-bulk-value-btn.active');
+  const value = valueBtn ? valueBtn.dataset.value : 'target';
+  const list = bookkeepingClientList();
+  if(!list.length){ appAlert('거래처가 없어요.'); return; }
+  if(targetBulkApplyCtx === 'income'){
+    const year = filingTargetYear;
+    const months = periodVal === 'all' ? Array.from({length:12},(_,i)=>i+1) : [Number(periodVal)];
+    const label = value === 'target' ? '대상' : '미대상';
+    const scopeLabel = periodVal === 'all' ? `${year}년 전체(1~12월)` : `${year}년 ${periodVal}월`;
+    if(!(await appConfirm(`${scopeLabel}을(를) 전체 거래처 "${label}"(으)로 일괄적용해요. 이미 입력해둔 내용은 덮어써져요. 계속할까요?`))) return;
+    list.forEach(c=>{
+      sharedFilingTargets[c.id] = sharedFilingTargets[c.id] || {};
+      months.forEach(m=>{
+        const period = `${year}-${String(m).padStart(2,'0')}`;
+        if(value === 'target'){
+          sharedFilingTargets[c.id][period] = { applicable:true, marked:true, cycle: effectiveCycleFor(c.id, period), sameMonthPay:true, nextMonthPay:false };
+        } else {
+          sharedFilingTargets[c.id][period] = { applicable:false, marked:true, cycle: effectiveCycleFor(c.id, period), sameMonthPay:true, nextMonthPay:false };
+        }
+      });
+    });
+    await saveSharedFilingTargets();
+    document.getElementById('targetBulkApplyModalOverlay').style.display = 'none';
+    renderFilingTargetTable();
+    appAlert('일괄적용했어요.');
+  } else {
+    const year = vatTargetYear;
+    const periods = periodVal === 'all' ? VAT_TARGET_PERIODS : [periodVal];
+    const scopeLabel = periodVal === 'all' ? `${year}년 전체(4개 기수)` : `${year}년 ${VAT_TARGET_PERIOD_LABEL[periodVal]}`;
+    if(!(await appConfirm(`${scopeLabel}을(를) 전체 거래처에 일괄적용해요. 이미 입력해둔 내용은 덮어써져요. 계속할까요?`))) return;
+    list.forEach(c=>{
+      sharedVatFilingTargets[c.id] = sharedVatFilingTargets[c.id] || {};
+      sharedVatFilingTargets[c.id][year] = sharedVatFilingTargets[c.id][year] || {};
+      periods.forEach(p=>{
+        const isJeonggi = p.endsWith('예정');
+        if(!isJeonggi){
+          sharedVatFilingTargets[c.id][year][p] = { applicable: value !== 'not-target' };
+        } else {
+          let status = value === 'target' ? 'filing' : value;
+          // 개인사업자는 예정신고 개념이 없으므로 "대상"을 골라도 예정고지대상으로 적용됨
+          if(status === 'filing' && c.entityType === '개인') status = 'notice';
+          sharedVatFilingTargets[c.id][year][p] = { status };
+        }
+      });
+    });
+    await saveSharedVatFilingTargets();
+    document.getElementById('targetBulkApplyModalOverlay').style.display = 'none';
+    renderVatFilingTargetTable();
+    appAlert('일괄적용했어요.');
+  }
 });
 
 // ══════════════════════════════════════════════════════════
@@ -13978,6 +14304,7 @@ function bindSubmitDateTriggers(wrap){
   });
 }
 function renderSubmitStatusTable(){
+  saveFilingSubviewState();
   renderSubmitPeriodControls();
   const period = submitPeriodKey();
   const titleEl = document.getElementById('submitStatusTitle');
@@ -14622,6 +14949,7 @@ function renderReviewItSection(clientId, year){
   else renderReviewItTaxTable(clientId, year);
 }
 function renderReviewItAll(){
+  saveFilingSubviewState();
   const titleEl = document.getElementById('reviewStatusTitle');
   if(titleEl) titleEl.textContent = '원천세 검토표';
   const sel = document.getElementById('reviewItClientSelect');
@@ -14636,6 +14964,7 @@ document.querySelectorAll('.review-it-section-btn').forEach(btn=>{
     document.querySelectorAll('.review-it-section-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     viewingReviewItSection = btn.dataset.itSection;
+    saveFilingSubviewState();
     const wraps = { income:'reviewItIncomeWrap', tax:'reviewItTaxWrap' };
     Object.keys(wraps).forEach(k=>{
       const el = document.getElementById(wraps[k]);
@@ -15040,6 +15369,7 @@ function populateReviewVatYearSelect(clientId){
   sel.value = sortedYears.includes(prevVal) ? prevVal : String(nowY);
 }
 function renderReviewVatAll(){
+  saveFilingSubviewState();
   const titleEl = document.getElementById('reviewStatusTitle');
   if(titleEl) titleEl.textContent = '부가세 검토표';
   const sel = document.getElementById('reviewVatClientSelect');
@@ -15283,6 +15613,9 @@ document.querySelectorAll('.approval-cat-btn').forEach(btn=>{
     else if(cat === 'review') renderReviewPanel();
     else if(cat === 'help'){ populateFilingHelpClientSelect(); renderFilingHelpChecklist(); }
     else if(cat === 'doc'){ populateApproverSelect(); renderApprovalDraftList(); renderApprovalInbox(); renderApprovalMine(); renderApprovalAll(); renderApprovalAllBadges(); updateApprovalNotifyBtn(); }
+    // 위 각 렌더 함수들이 대부분 알아서 저장해주지만(신고현황/신고대상/제출현황/검토표), 결재·신고도움처럼
+    // 저장 훅이 없는 카테고리로 넘어갈 때도 최소한 카테고리 자체는 기억하도록 여기서도 한 번 더 저장해둠
+    saveFilingSubviewState();
   });
 });
 
@@ -16932,7 +17265,7 @@ document.getElementById('empDataTransferRunBtn')?.addEventListener('click', asyn
   const profiles = getProfiles();
   const srcName = profiles.find(p=>p.id===srcId)?.name || '(이름 미등록)';
   const dstName = profiles.find(p=>p.id===dstId)?.name || '(이름 미등록)';
-  const ok = await appConfirm(`"${srcName}" 계정의 근태(연차·재택·출퇴근)·경비 기록을 "${dstName}" 계정으로 옮겨 합칠까요?\n\n· 대상 계정에 이미 있던 기록은 지워지지 않고 그대로 남아요(합치기).\n· 이관이 끝나면 원본 계정의 근태·경비 기록은 비워져요.\n· 되돌릴 수 없어요.`);
+  const ok = await appConfirm(`"${srcName}" 계정의 근태(연차·재택·출퇴근)·경비 기록을 "${dstName}" 계정으로 옮겨 합칠까요?\n\n· 대상 계정에 이미 있던 기록은 지워지지 않고 그대로 남아요(합치기).\n· 이관이 끝나면 원본 계정의 근태·경비 "기록"만 비워져요 - "${srcName}" 계정 자체는 삭제되지 않고 그대로 남아요.\n· 되돌릴 수 없어요.`);
   if(!ok) return;
   try{
     const srcAtt = readProfileRaw(srcId, 'attendance') || {};
@@ -17926,6 +18259,9 @@ try{
   // activateTab을 호출해서 복원함
   if(lastTab && lastTab !== 'home' && restoredGdriveToken && document.getElementById('tab-'+lastTab)){
     activateTab(lastTab, true);
+    // 세무신고(approval) 탭이면 그 안의 세부 화면(신고현황/신고대상/검토표 - 어느 세목, 어느 연도·월/반기,
+    // 검토표면 어느 거래처였는지까지)도 마지막 보던 그대로 복원함
+    if(lastTab === 'approval' && typeof restoreFilingSubviewState === 'function') restoreFilingSubviewState();
   }
 }catch(e){}
 scheduleTwemojiParse();
@@ -17952,6 +18288,11 @@ scheduleTwemojiParse();
     lastSetZ.set(el, String(topZ));
     el.style.zIndex = String(topZ);
   }
+  // appConfirm/appAlert(#appConfirmModalOverlay)처럼 "항상 맨 위여야 하는" 팝업은 고정 z-index(10050)만 믿으면
+  // 세션을 오래 쓰면서 다른 팝업이 계속 열려 topZ가 그 값을 넘어서는 순간부터 뒤로 밀려버리는 문제가 있었음
+  // (신고 확인창을 눌렀는데 안 뜨는 것처럼 보이던 버그의 원인). 그런 팝업이 열릴 때 이 함수로 topZ 최신값 기준
+  // 맨 앞으로 강제로 끌어올릴 수 있게 밖에서도 부를 수 있도록 노출해둠.
+  window.__bringOverlayToFront = bringToFront;
   // 안전장치: 위 자기참조 방지 로직으로도 못 막는 예상 못한 반복(예: 다른 코드가 계속 같은 팝업을 지웠다 다시
   // 그리는 경우)이 생기면, 화면이 완전히 멈추는 것보단 이 겹침 기능만 조용히 꺼지는 쪽이 낫다고 판단해
   // 아주 짧은 시간 안에 비정상적으로 많이 반응하면 옵저버 자체를 끊어버림.
