@@ -10013,61 +10013,41 @@ function dashClockState(entry){
   if(!entry.checkOut) return 'working';
   return 'done';
 }
-// Tax.J 마스코트(비숑) - "팔다리 없이 얼굴만 있는 뽀글뽀글한 비숑으로, 표정만 바뀌게 해달라"는 요청.
-// 한 차례 전신(몸통·꼬리·발) 버전으로 새로 그렸다가, 이 요청으로 다시 "얼굴만" 있는 형태로 되돌림 -
-// 다만 예전과 완전히 같은 모양이 아니라 뭉치 배치·크기를 다시 짜서 새로 그림. 크고 작은 털 뭉치 두 겹을
-// 얼굴 둘레에 둘러 뽀글뽀글한 질감을 내고, 상태(idle/working/done)에 따라 입 모양만 바뀌고 나머지
-// 실루엣·표정은 항상 동일하게 유지함.
+// Tax.J 마스코트(비숑) - "입체감은 없어도 되니 이모티콘 일러스트 느낌으로" 라는 요청으로, 그라디언트·
+// 드롭섀도우를 다 걷어내고 굵은 선+플랫 컬러의 단순한 이모티콘 스타일로 다시 그림. 팔다리 없이 얼굴만 있고,
+// 상태(idle/working/done)에 따라 입 모양만 바뀌는 건 동일.
 function dashMascotSvg(state){
-  const ink = '#3A3550';
-  const fur = '#FFFDF9';
-  const furShade = '#F3ECDD';   // 털 뭉치 사이사이 그림자로 깔아 입체감을 주는 살짝 어두운 톤
-  const outline = 'stroke="#E4DBC4" stroke-width="1.4"';
-  const cx=52, cy=58;
+  const ink = '#2B2A33';
+  const fur = '#FFFFFF';
+  const cx=60, cy=62;
+  const ol = `stroke="${ink}" stroke-width="3" stroke-linejoin="round"`;
 
-  // 큰 뭉치(뒷레이어)와 작은 뭉치(앞레이어)를 크기를 섞어서 배치 - 팔다리 없이 얼굴 둘레만 몽글몽글하게 두름
-  function fluffRing(r, sizes, layerFill){
-    let out = '';
-    const count = sizes.length;
-    for(let i=0;i<count;i++){
-      const deg = (360/count)*i - 90;
-      const rad = deg * Math.PI/180;
-      const x = (cx + r*Math.cos(rad)).toFixed(1);
-      const y = (cy + r*Math.sin(rad)).toFixed(1);
-      out += `<circle cx="${x}" cy="${y}" r="${sizes[i]}" fill="${layerFill}" ${outline}/>`;
-    }
-    return out;
-  }
-  const backFluff = fluffRing(37, [10,12,9.5,12.5,10,11.5,9.5,12,10,12.5,9.5,11.5,10,12,9.5,12.5], furShade);
-  const frontFluff = fluffRing(36, [9,10.5,8.5,11,9,10,8.5,10.5,9,11,8.5,10,9,10.5,8.5,11], fur);
-  // 정수리 위로 살짝 삐져나온 귀 두 뭉치
-  const ears = `<circle cx="${cx-25}" cy="${cy-29}" r="12" fill="${fur}" ${outline}/><circle cx="${cx+25}" cy="${cy-29}" r="12" fill="${fur}" ${outline}/>`;
-  const face = `${ears}${backFluff}${frontFluff}<circle cx="${cx}" cy="${cy}" r="30" fill="${fur}" ${outline}/>`;
+  // 귀 - 이모티콘 느낌의 뭉툭하고 납작한 두 뭉치, 머리 뒤에 깔려서 바깥쪽 둥근 윤곽만 살짝 보이게 함
+  const ears = `<ellipse cx="${cx-34}" cy="${cy+6}" rx="14" ry="18" fill="${fur}" ${ol}/>
+    <ellipse cx="${cx+34}" cy="${cy+6}" rx="14" ry="18" fill="${fur}" ${ol}/>`;
+  // 머리 - 매끈한 원(정수리 쪽에만 작은 뭉치 몇 개로 살짝 뽀글거리는 느낌만 가볍게 얹음)
+  const topFluff = [-24,-8,8,24].map((dx,i)=>`<circle cx="${cx+dx}" cy="${cy-38+((i%2)*3)}" r="8.5" fill="${fur}" ${ol}/>`).join('');
+  const head = `${topFluff}<circle cx="${cx}" cy="${cy}" r="40" fill="${fur}" ${ol}/>`;
 
-  // 볼터치 - 항상 동일
-  const cheeks = `<ellipse cx="${cx-19}" cy="${cy+9}" rx="5.5" ry="3.6" fill="#FCC7BE" opacity="0.9"/><ellipse cx="${cx+19}" cy="${cy+9}" rx="5.5" ry="3.6" fill="#FCC7BE" opacity="0.9"/>`;
-  // 코끝 하이라이트가 들어간 하트형 코 - 항상 동일
-  const nose = `<path d="M${cx-3.4},${cy+2.2} Q${cx-3.4},${cy-0.6} ${cx},${cy-0.6} Q${cx+3.4},${cy-0.6} ${cx+3.4},${cy+2.2} Q${cx+3.4},${cy+4.6} ${cx},${cy+6.4} Q${cx-3.4},${cy+4.6} ${cx-3.4},${cy+2.2} Z" fill="${ink}"/><circle cx="${cx-1.4}" cy="${cy+0.8}" r="0.9" fill="#fff" opacity="0.8"/>`;
-
-  // 눈·입(표정) - 큼직한 초롱초롱한 눈에 반짝이를 넣어 상태와 무관하게 늘 사랑스럽게 유지,
-  // 입 모양만 상태별로 바꿔서 감정을 표현함
-  const sparkle = (x,y)=>`<circle cx="${x}" cy="${y}" r="1.7" fill="#fff"/><circle cx="${x+2.6}" cy="${y+2.8}" r="0.9" fill="#fff" opacity="0.85"/>`;
+  const cheeks = `<ellipse cx="${cx-21}" cy="${cy+12}" rx="6" ry="4" fill="#FFC9C9"/><ellipse cx="${cx+21}" cy="${cy+12}" rx="6" ry="4" fill="#FFC9C9"/>`;
+  const nose = `<ellipse cx="${cx}" cy="${cy+7}" rx="5" ry="3.8" fill="${ink}"/>`;
   let mouth;
   if(state==='done'){
     // 퇴근 완료 - 혀를 살짝 내밀며 활짝 웃는 입(신남·홀가분함)
-    mouth = `<path d="M${cx-8.5},${cy+13} Q${cx},${cy+21.5} ${cx+8.5},${cy+13}" stroke="${ink}" stroke-width="2.4" fill="none" stroke-linecap="round"/>
-      <path d="M${cx-2.8},${cy+15.5} Q${cx},${cy+21} ${cx+2.8},${cy+15.5} Q${cx+2.2},${cy+19.5} ${cx},${cy+19.8} Q${cx-2.2},${cy+19.5} ${cx-2.8},${cy+15.5} Z" fill="#F2789F"/>`;
+    mouth = `<path d="M${cx-10},${cy+14} Q${cx},${cy+25} ${cx+10},${cy+14}" stroke="${ink}" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M${cx-5.5},${cy+16.5} Q${cx},${cy+24} ${cx+5.5},${cy+16.5} Q${cx+4},${cy+21.5} ${cx},${cy+22} Q${cx-4},${cy+21.5} ${cx-5.5},${cy+16.5} Z" fill="#F0879C"/>`;
   } else if(state==='working'){
     // 근무 중 - 야무지게 다문 작은 입(차분·집중)
-    mouth = `<path d="M${cx-4},${cy+14.5} Q${cx},${cy+17} ${cx+4},${cy+14.5}" stroke="${ink}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
+    mouth = `<path d="M${cx-4.5},${cy+15.5} Q${cx},${cy+18} ${cx+4.5},${cy+15.5}" stroke="${ink}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
   } else {
     // 출근 전(idle) - 살짝 벌어진 웃는 입(밝고 기본적인 표정)
-    mouth = `<path d="M${cx-6.5},${cy+13} Q${cx},${cy+19} ${cx+6.5},${cy+13}" stroke="${ink}" stroke-width="2.3" fill="none" stroke-linecap="round"/>`;
+    mouth = `<path d="M${cx-7.5},${cy+14} Q${cx},${cy+21} ${cx+7.5},${cy+14}" stroke="${ink}" stroke-width="2.8" fill="none" stroke-linecap="round"/>`;
   }
-  const eyes = `<ellipse cx="${cx-10.5}" cy="${cy-3}" rx="5" ry="6.2" fill="${ink}"/>${sparkle(cx-12.3,cy-5.6)}
-    <ellipse cx="${cx+10.5}" cy="${cy-3}" rx="5" ry="6.2" fill="${ink}"/>${sparkle(cx+8.7,cy-5.6)}`;
+  // 눈 - 이모티콘처럼 단순한 진한 눈동자 + 하이라이트 점 하나, 상태와 무관하게 항상 동일
+  const eye = (ex,ey)=>`<circle cx="${ex}" cy="${ey}" r="6" fill="${ink}"/><circle cx="${ex-2}" cy="${ey-2}" r="1.8" fill="#fff"/>`;
+  const eyes = `${eye(cx-14, cy-3)}${eye(cx+14, cy-3)}`;
 
-  return `<svg viewBox="-2 -2 108 108" width="76" height="79" aria-hidden="true">${face}${cheeks}${eyes}${nose}${mouth}</svg>`;
+  return `<svg viewBox="0 0 120 128" width="86" height="92" aria-hidden="true">${ears}${head}${cheeks}${eyes}${nose}${mouth}</svg>`;
 }
 // 버튼/상태태그용 커스텀 아이콘 - ✅↩️🟢🔴 같은 기본 이모지 대신 브랜드 컬러의 손그림 아이콘으로 통일
 function dashIconSvg(type){
