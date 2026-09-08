@@ -3570,6 +3570,7 @@
                     </label>
                   </div>
                   <div id="ad-attach-msg" class="hint" style="margin:0;"></div>
+                  <div id="ad-attach-uploaded-list" style="display:flex; flex-direction:column; gap:4px; margin-top:6px;"></div>
                 </div>
                 <div class="field"><label>결재자 (회계사)</label>
                   <select id="ad-approver" required></select>
@@ -4218,7 +4219,8 @@ let sharedSpecialPeriods = []; // 설정 > 복지 > 특별기간 설정: [{id, s
 let sharedFilingStatus = {}; // 결재 > 신고현황: { [taxType]: { [period]: { [clientId]: {status, memo, updatedAt} } } } (세목: 원천세/부가세/법인세/종소세/결산)
 let sharedReviewStatus = {}; // 결재 > 검토표: 신고현황과 완전히 같은 구조지만 원천세/부가세만 다루고, 신고 자체 이력과는 별도 저장소로 관리(신고 전 검토 단계 - 나중에 거래처별 손익보고서에 활용 예정)
 let sharedFilingHelp = {}; // 결재 > 신고도움: { [clientId]: { items: { [itemKey]: {checked, note} } } }
-let sharedApprovals = []; // 결재 > 결재(그룹웨어): [{id, title, content, attachmentLink, drafterEmail, drafterName, approverEmail, approverName, status, comment, createdAt, decidedAt}]
+let sharedApprovals = []; // 결재 > 결재(그룹웨어): [{id, title, content, attachments:[{id,name,mimeType,url,manual}], drafterEmail, drafterName, approverEmail, approverName, status, comment, createdAt, decidedAt}]
+// attachments가 없는 예전 문서는 attachmentLink(콤마로 구분된 링크 문자열)만 갖고 있음 - attachmentListHtml()이 이 경우를 폴백 처리함
 let sharedReviewFigures = {}; // 검토표(원천세) 거래처별 월별 실제 숫자: { [clientId]: { [year]: { [month]: { income:{[fieldKey]:num}, incomeReported:num, tax:{[groupKey]:{tax:num, local:num}}, taxReported:{[근로/일용/사업/기타/이자]:num}, taxReportedLocal:num } } } }
 let sharedReviewMeta = {}; // 검토표(원천세) 거래처별 설정: { [clientId]: { sameMonth:true/false(귀속=지급 동일 여부), payCycle:'매월'|'반기', secondHalfPayCycle:null|'매월'|'반기' } } - 원본 엑셀 '2026 총괄' 시트의 귀속/지급, 신고구분 값과 동일. secondHalfPayCycle은 연중(7월부터) 신고구분이 바뀌는 거래처를 위한 값 - null이면 1~12월 내내 payCycle 그대로, 값이 있으면 7~12월만 그 값을 씀(신고구분 전환은 반기 단위로만 일어나므로 7월 기준 한 번만 지원)
 // 결재 > 신고대상(원천세): 거래처별·월별로 그 달에 원천세 신고 대상인지, 대상이면 매월/반기 중 어느 신고구분인지,
@@ -5649,6 +5651,15 @@ async function loadAll(){
   }
 
   const monthInput = document.getElementById('monthSelect');
+  // 근태경비 데이터 이관으로 이 계정에 옮겨온 기록이 있으면(이관 직후 딱 한 번만) 조회월을 "오늘이 속한
+  // 달" 대신 옮겨온 기록 중 가장 최근 날짜가 속한 달로 맞춰줌 - 안 그러면 개인캘린더/근태경비 탭이 항상
+  // 오늘 기준 달만 먼저 보여줘서, 옛 계정에서 옮겨온(대부분 지난 달 이전) 기록은 데이터 자체는 멀쩡히
+  // 저장돼 있어도 조회월을 수동으로 바꾸기 전까진 화면에 하나도 안 보이는 문제가 있었음
+  const transferFocusMonth = localStorage.getItem(`worklog_transfer_focus_month__${activeProfileId}`);
+  if(transferFocusMonth){
+    monthInput.value = transferFocusMonth;
+    localStorage.removeItem(`worklog_transfer_focus_month__${activeProfileId}`);
+  }
   if(!monthInput.value) monthInput.value = todayStr().slice(0,7);
   const teamCalMonthEl = document.getElementById('teamCalMonthSelect');
   if(teamCalMonthEl) teamCalMonthEl.value = monthInput.value;
@@ -7200,6 +7211,7 @@ function openClientDetailModal(c){
 function closeMemoModal(){
   document.getElementById('memoModalOverlay').style.display = 'none';
   document.getElementById('memoModalOverlay').dataset.noBackdropClose = '';
+  if(typeof revokeApprovalAttachmentObjectUrls === 'function') revokeApprovalAttachmentObjectUrls(); // 기안 미리보기의 이미지 첨부 object URL 정리
 }
 document.getElementById('memoModalClose').addEventListener('click', closeMemoModal);
 document.getElementById('memoModalOverlay').addEventListener('click', (e)=>{
@@ -7925,6 +7937,142 @@ async function gdriveUploadAttachment(file){
     });
   }catch(e){ console.error('첨부파일 공유권한 설정 실패', e); }
   return { id:data.id, name:file.name, url:`https://drive.google.com/file/d/${data.id}/view` };
+}
+// ── 업무기안(전자결재) 첨부파일 전용 업로드 ──
+// 개인정보 첨부파일(gdriveUploadAttachment)과 달리, 회사 공유 드라이브("01.기장대리")의
+// "0004.전자결재첨부" 폴더 밑에 문서종류별 하위폴더를 만들어 그 안에 저장함. 공유드라이브는 멤버십으로
+// 이미 접근이 제한되므로 개인정보 첨부파일처럼 "링크가 있는 사람은 볼 수 있음" 권한을 따로 붙이지 않음.
+// 매번 폴더를 검색/생성하면 느리고 API 호출도 낭비라 세션 메모리 + localStorage에 폴더 ID를 캐시해둠.
+let approvalAttachmentFolderCache = {};
+try{
+  approvalAttachmentFolderCache = JSON.parse(localStorage.getItem('worklog_approval_attachment_folders') || '{}') || {};
+}catch(e){ approvalAttachmentFolderCache = {}; }
+function saveApprovalAttachmentFolderCache(){
+  try{ localStorage.setItem('worklog_approval_attachment_folders', JSON.stringify(approvalAttachmentFolderCache)); }catch(e){}
+}
+// 이름이 정확히 일치하는 폴더를 parentId(공유드라이브 루트 또는 하위 폴더) 밑에서 찾고, 없으면 새로 만듦
+async function gdriveFindOrCreateFolder(name, parentId, driveId){
+  const qName = name.replace(/'/g, "\\'");
+  const q = encodeURIComponent(`name='${qName}' and mimeType='application/vnd.google-apps.folder' and trashed=false and '${parentId}' in parents`);
+  const listUrl = `https://www.googleapis.com/drive/v3/files?q=${q}&driveId=${driveId}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&fields=files(id,name)`;
+  const res = await fetch(listUrl, { headers:{ Authorization:`Bearer ${gdriveAccessToken}` } });
+  const data = await res.json();
+  if(!res.ok){
+    if(res.status === 401) gdriveHandleUnauthorized();
+    throw new Error(data.error ? data.error.message : `폴더 조회 실패 (${res.status})`);
+  }
+  if(data.files && data.files.length) return data.files[0].id;
+  const createRes = await fetch(`https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id`, {
+    method:'POST',
+    headers:{ Authorization:`Bearer ${gdriveAccessToken}`, 'Content-Type':'application/json' },
+    body: JSON.stringify({ name, mimeType:'application/vnd.google-apps.folder', parents:[parentId] })
+  });
+  const createData = await createRes.json();
+  if(!createRes.ok){
+    if(createRes.status === 401) gdriveHandleUnauthorized();
+    throw new Error(createData.error ? createData.error.message : `폴더 생성 실패 (${createRes.status})`);
+  }
+  return createData.id;
+}
+// 문서종류(docType)에 맞는 업로드 대상 폴더 ID를 구함 - "01.기장대리" 공유드라이브 > "0004.전자결재첨부" >
+// 문서종류 폴더 순서로 찾아가며, 없는 폴더는 그때그때 만듦. 결과는 캐시해서 다음부터는 API 호출 없이 바로 씀
+// 이름("01.기장대리")만으로 찾으면, 이 계정이 접근 가능한 공유드라이브 중에 같은 이름이 여러 개 있거나
+// 나중에 실수로 동명의 드라이브가 하나 더 생기는 경우 엉뚱한 드라이브를 골라버릴 위험이 있음 - 이름은
+// 바뀌거나 겹칠 수 있지만 드라이브 고유 ID는 절대 안 바뀌므로, 사용자가 직접 확인해준 ID를 최우선으로
+// 고정해서 씀. 혹시 이 ID의 드라이브에 더 이상 접근할 수 없게 되는 경우에만(계정 변경 등) 이름 검색으로 대체함
+const APPROVAL_ATTACHMENT_DRIVE_ID = '0ALthIaDsIhh1Uk9PVA'; // "01.기장대리" 공유드라이브 고유 ID
+async function resolveApprovalAttachmentFolder(docType){
+  if(!gdriveAccessToken) throw new Error('로그인이 필요해요.');
+  const cache = approvalAttachmentFolderCache;
+  if(cache.docTypeFolders && cache.docTypeFolders[docType]) return cache.docTypeFolders[docType];
+  let driveId = cache.driveId;
+  if(!driveId){
+    // 1순위: 고정해둔 드라이브 ID로 바로 접근되는지 확인(이름 검색 없이 즉시 확정) - get 요청이 성공하면
+    // 그 ID를 그대로 씀. 계정이 접근 권한이 없거나(404/403) ID가 더 이상 유효하지 않은 아주 예외적인
+    // 경우에만 아래 이름 검색으로 넘어감(폴백)
+    try{
+      const idRes = await fetch(`https://www.googleapis.com/drive/v3/drives/${APPROVAL_ATTACHMENT_DRIVE_ID}`, {
+        headers:{ Authorization:`Bearer ${gdriveAccessToken}` }
+      });
+      if(idRes.ok){
+        const idData = await idRes.json();
+        if(idData && idData.id) driveId = idData.id;
+      } else if(idRes.status === 401){
+        gdriveHandleUnauthorized();
+        throw new Error('로그인이 만료됐어요. 다시 로그인해주세요.');
+      }
+    }catch(e){ if(e && /로그인이 만료/.test(e.message||'')) throw e; /* 그 외엔 아래 이름 검색으로 폴백 */ }
+    if(!driveId){
+      const driveQ = encodeURIComponent(`name='01.기장대리'`);
+      const res = await fetch(`https://www.googleapis.com/drive/v3/drives?q=${driveQ}`, {
+        headers:{ Authorization:`Bearer ${gdriveAccessToken}` }
+      });
+      const data = await res.json();
+      if(!res.ok){
+        if(res.status === 401) gdriveHandleUnauthorized();
+        throw new Error(data.error ? data.error.message : `공유 드라이브 조회 실패 (${res.status})`);
+      }
+      const drive = (data.drives || []).find(d=>d.name === '01.기장대리');
+      if(!drive) throw new Error('공유 드라이브 "01.기장대리"를 찾을 수 없어요. 이 계정이 그 공유 드라이브의 멤버인지 확인해주세요.');
+      driveId = drive.id;
+    }
+    cache.driveId = driveId;
+    saveApprovalAttachmentFolderCache();
+  }
+  let rootFolderId = cache.rootFolderId;
+  if(!rootFolderId){
+    rootFolderId = await gdriveFindOrCreateFolder('0004.전자결재첨부', driveId, driveId);
+    cache.rootFolderId = rootFolderId;
+    saveApprovalAttachmentFolderCache();
+  }
+  const docTypeFolderId = await gdriveFindOrCreateFolder(docType, rootFolderId, driveId);
+  cache.docTypeFolders = cache.docTypeFolders || {};
+  cache.docTypeFolders[docType] = docTypeFolderId;
+  saveApprovalAttachmentFolderCache();
+  return docTypeFolderId;
+}
+// 파일명/제목에 들어갈 수 없는 문자(경로 구분자 등)를 밑줄로 치환
+function sanitizeApprovalFilenamePart(s){
+  return String(s||'').replace(/[\/\\:*?"<>|]/g, '_').trim();
+}
+// 업무기안 첨부파일 업로드 - 회사 공유 드라이브의 문서종류별 폴더에
+// "기안일자_기안제목_기안자_원본파일명" 형태로 자동 이름을 붙여 저장함. 개인정보 첨부파일용
+// gdriveUploadAttachment()와는 별도 함수로 둬서, 그쪽은 그대로 개인 드라이브 + 공개링크 방식을 유지하게 함
+async function gdriveUploadApprovalAttachment(file, docType, draftMeta){
+  if(!gdriveAccessToken) throw new Error('로그인이 필요해요.');
+  const parentFolderId = await resolveApprovalAttachmentFolder(docType);
+  const t = new Date();
+  const dateStr = (draftMeta && draftMeta.date) || `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+  const titleStr = sanitizeApprovalFilenamePart((draftMeta && draftMeta.title) || '(제목없음)');
+  const drafterStr = sanitizeApprovalFilenamePart((draftMeta && draftMeta.drafter) || '');
+  const fileName = sanitizeApprovalFilenamePart(`${dateStr}_${titleStr}_${drafterStr}_${file.name}`);
+  const boundary = 'taxjapprovalboundary';
+  const metadata = JSON.stringify({ name: fileName, parents:[parentFolderId] });
+  const fileBuf = await file.arrayBuffer();
+  const body = new Blob([
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n--${boundary}\r\nContent-Type: ${file.type||'application/octet-stream'}\r\n\r\n`,
+    fileBuf,
+    `\r\n--${boundary}--`
+  ]);
+  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,mimeType', {
+    method:'POST',
+    headers:{ Authorization:`Bearer ${gdriveAccessToken}`, 'Content-Type':`multipart/related; boundary=${boundary}` },
+    body
+  });
+  const data = await res.json();
+  if(!res.ok){
+    if(res.status === 401) gdriveHandleUnauthorized();
+    // 캐시해둔 폴더가 그 사이 삭제됐거나 권한이 바뀌었을 수 있으므로, 폴더 관련 오류로 보이면
+    // 캐시를 비우고 한 번만 다시 시도함(그래도 실패하면 그대로 오류를 알려줌)
+    if((res.status === 404 || res.status === 403) && !file.__approvalUploadRetried){
+      file.__approvalUploadRetried = true;
+      approvalAttachmentFolderCache = {};
+      saveApprovalAttachmentFolderCache();
+      return gdriveUploadApprovalAttachment(file, docType, draftMeta);
+    }
+    throw new Error(data.error ? data.error.message : `업로드 실패 (${res.status})`);
+  }
+  return { id:data.id, name:data.name || file.name, mimeType:data.mimeType || file.type || '', url:`https://drive.google.com/file/d/${data.id}/view` };
 }
 // ── 거래처 등록/수정 폼의 개인정보 입력 섹션 ──
 // 신규 등록: 처음 입력하는 데이터라 바로 입력칸이 열려있음(잠금 없음)
@@ -15834,10 +15982,38 @@ function fillAdContentEl(content){
   if(!el) return;
   el.innerHTML = content ? (noticeContentIsRich(content) ? content : escHtml(content).replace(/\n/g,'<br>')) : '';
 }
+// 업무기안 폼에서 "파일 업로드"로 방금 회사 공유 드라이브에 올린 첨부파일들(id/name/mimeType/url) -
+// 폼을 새로 열거나(새 기안/임시저장 불러오기/다시 기안) 저장을 마치면 그때마다 이 배열도 다시 채워짐
+let adUploadedAttachments = [];
+// 업무기안 폼에서 지금 첨부돼 있는 파일들을 하나의 배열로 합침 - ① 파일 업로드 버튼으로 회사 공유
+// 드라이브에 올린 파일(id/name/mimeType까지 알고 있음, adUploadedAttachments)과 ② 첨부칸에 손으로
+// 붙여넣은 외부 링크(콤마로 구분, mimeType을 알 수 없어 항상 그냥 링크로만 보여줌) 두 종류를 함께 저장함
+function combinedAttachmentsFromForm(){
+  const manualLinks = (document.getElementById('ad-attachment')?.value || '').split(',').map(s=>s.trim()).filter(Boolean);
+  const manualAttachments = manualLinks.map(url=>({ url, manual:true }));
+  return [...adUploadedAttachments, ...manualAttachments];
+}
+// 업로드로 첨부해둔 파일 목록을 첨부칸 아래에 이름으로 보여주고, 각각 "빼기" 버튼으로 취소할 수 있게 함
+function renderAdAttachUploadedList(){
+  const wrap = document.getElementById('ad-attach-uploaded-list');
+  if(!wrap) return;
+  if(!adUploadedAttachments.length){ wrap.innerHTML = ''; return; }
+  wrap.innerHTML = adUploadedAttachments.map((a,i)=>`
+    <div style="display:flex; align-items:center; gap:6px; background:var(--bg); border-radius:8px; padding:5px 9px; font-size:12px;">
+      <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${(a.mimeType||'').startsWith('image/') ? '🖼️' : '📎'} ${escHtml(a.name||a.url)}</span>
+      <button type="button" class="del-btn ad-attach-remove-btn" data-idx="${i}" style="padding:2px 8px; font-size:11px; background:var(--coral-bg); color:var(--coral);">빼기</button>
+    </div>`).join('');
+  wrap.querySelectorAll('.ad-attach-remove-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      adUploadedAttachments.splice(Number(btn.dataset.idx), 1);
+      renderAdAttachUploadedList();
+    });
+  });
+}
 function saveApprovalDraftForm(status){
   const title = document.getElementById('ad-title').value.trim();
   const content = document.getElementById('ad-content').innerHTML.trim();
-  const attachmentLink = document.getElementById('ad-attachment').value.trim();
+  const attachments = combinedAttachmentsFromForm();
   const approverEmail = document.getElementById('ad-approver').value;
   const docType = document.getElementById('ad-doctype')?.value || '일반';
   const editId = document.getElementById('ad-edit-id').value;
@@ -15846,14 +16022,14 @@ function saveApprovalDraftForm(status){
   if(status === '기안' && !approverEmail){ if(msgEl) msgEl.textContent = '결재자를 선택해주세요 (등록된 관리자가 있어야 해요)'; return false; }
   const existing = editId ? (sharedApprovals||[]).find(a=>a.id===editId) : null;
   if(existing){
-    existing.title = title; existing.content = content; existing.attachmentLink = attachmentLink;
+    existing.title = title; existing.content = content; existing.attachments = attachments; delete existing.attachmentLink;
     existing.approverEmail = approverEmail; existing.approverName = resolveNameByEmail(approverEmail);
     existing.docType = docType;
     existing.status = status;
     if(status === '기안') existing.createdAt = new Date().toLocaleString('ko-KR');
   } else {
     sharedApprovals.unshift({
-      id: genId(), title, content, attachmentLink, docType,
+      id: genId(), title, content, attachments, docType,
       drafterEmail: currentUserEmail || '',
       drafterName: currentStaffDisplayName(),
       approverEmail, approverName: resolveNameByEmail(approverEmail),
@@ -15865,6 +16041,8 @@ function saveApprovalDraftForm(status){
   document.getElementById('approvalDraftForm').reset();
   document.getElementById('ad-content').innerHTML = ''; // reset()은 contenteditable(폼 컨트롤이 아님)을 안 비워주므로 따로 비워줌
   document.getElementById('ad-attach-msg').textContent = '';
+  adUploadedAttachments = [];
+  renderAdAttachUploadedList();
   document.getElementById('ad-edit-id').value = '';
   const editBadge = document.getElementById('approvalDraftEditBadge');
   if(editBadge) editBadge.style.display = 'none';
@@ -15997,7 +16175,7 @@ function openApprovalPreviewModal(){
   const docType = document.getElementById('ad-doctype')?.value || '일반';
   const approverEmail = document.getElementById('ad-approver').value;
   const approverName = resolveNameByEmail(approverEmail) || document.getElementById('ad-approver').selectedOptions[0]?.textContent || '-';
-  const attachmentLink = document.getElementById('ad-attachment').value.trim();
+  const attachments = combinedAttachmentsFromForm();
   document.getElementById('memoModalTitle').textContent = '기안 미리보기';
   document.getElementById('memoModalBody').innerHTML = `
     <div style="border:1.5px solid var(--border); border-radius:10px; overflow:hidden; text-align:left;">
@@ -16007,13 +16185,14 @@ function openApprovalPreviewModal(){
           <span>${escHtml(docType)}</span><span>·</span><span>기안 ${escHtml(currentStaffDisplayName()||'')}</span><span>→</span><span>승인 ${escHtml(approverName)}</span>
         </div>
         <div style="white-space:pre-wrap; line-height:1.7; background:var(--bg); border-radius:8px; padding:12px; user-select:text;">${contentIsEmpty ? '(내용 없음)' : content}</div>
-        ${attachmentLinksHtml(attachmentLink)}
+        ${attachmentListHtml({ attachments })}
       </div>
     </div>
     <div style="text-align:center; margin-top:14px;">
       <button type="button" id="approvalPreviewSubmitBtn" class="submit-btn" style="width:auto; padding:9px 20px;">이대로 상신하기</button>
     </div>`;
   document.getElementById('memoModalOverlay').style.display = 'flex';
+  initApprovalAttachmentImages(document.getElementById('memoModalBody'));
   document.getElementById('approvalPreviewSubmitBtn').addEventListener('click', ()=>{
     closeMemoModal();
     saveApprovalDraftForm('기안');
@@ -16028,13 +16207,15 @@ document.getElementById('ad-mail-btn')?.addEventListener('click', ()=>{
   const content = stripHtml(document.getElementById('ad-content').innerHTML); // 메일은 일반 텍스트라 서식은 빼고 글자만 담음
   const approverEmail = document.getElementById('ad-approver').value;
   if(!approverEmail){ appAlert('결재자를 선택해주세요.'); return; }
-  const attachmentLink = document.getElementById('ad-attachment').value.trim();
+  const attachments = combinedAttachmentsFromForm();
+  const attachmentText = attachments.map(a=>a.url).filter(Boolean).join(', ');
   const subject = `[Tax.J 결재요청] ${title}`;
-  const body = `${content}${attachmentLink ? '\n\n첨부: '+attachmentLink : ''}\n\n— ${currentStaffDisplayName()||''}`;
+  const body = `${content}${attachmentText ? '\n\n첨부: '+attachmentText : ''}\n\n— ${currentStaffDisplayName()||''}`;
   const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(approverEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   window.open(url, '_blank');
 });
-// 첨부 링크(콤마로 여러 개 구분)를 미리보기/상세보기에서 각각 클릭 가능한 링크로 나열해서 보여줌
+// 첨부 링크(콤마로 여러 개 구분)만 있던 예전 데이터를 각각 클릭 가능한 링크로 나열해서 보여줌 - mimeType을
+// 몰라서 이미지 미리보기는 못 하고, 항상 이렇게 링크 목록으로만 보여줌(예전 데이터 호환용)
 function attachmentLinksHtml(attachmentLink){
   const links = (attachmentLink||'').split(',').map(s=>s.trim()).filter(Boolean);
   if(!links.length) return '';
@@ -16042,8 +16223,53 @@ function attachmentLinksHtml(attachmentLink){
     `<a href="${escHtml(link)}" target="_blank" rel="noopener" style="color:var(--navy); font-weight:700; font-size:12px;">📎 ${escHtml(link)}</a>`
   ).join('')}</div>`;
 }
-// 첨부파일 업로드 - 개인정보 첨부파일에서 쓰던 gdriveUploadAttachment()를 그대로 재사용함. 업로드가 끝나면
-// 첨부 링크칸(콤마로 여러 개 구분)에 이어붙여서, 손으로 붙여넣은 외부 링크와 같이 저장/조회되게 함
+// 첨부파일 목록을 미리보기/상세보기에서 보여줌 - item.attachments(배열)가 있으면 그걸 쓰고, 이미지
+// 첨부(mimeType이 image/로 시작하고 드라이브 파일 id를 아는 경우)는 화면 안에 실제 썸네일로 보여줌.
+// item.attachments가 아예 없는(예전 attachmentLink 문자열만 있던) 데이터는 attachmentLinksHtml로 그대로 폴백함
+function attachmentListHtml(item){
+  if(item && Array.isArray(item.attachments)){
+    const list = item.attachments.filter(a=>a && a.url);
+    if(!list.length) return '';
+    const rows = list.map(a=>{
+      if(a.id && (a.mimeType||'').startsWith('image/')){
+        return `<div><img class="approval-att-img" data-file-id="${escHtml(a.id)}" alt="${escHtml(a.name||'첨부이미지')}" title="${escHtml(a.name||'')}" style="max-width:220px; max-height:220px; border-radius:8px; border:1px solid var(--border); object-fit:cover; cursor:pointer; background:var(--bg); opacity:0.45; transition:opacity .15s;" onclick="window.open('${escHtml(a.url)}','_blank')"></div>`;
+      }
+      return `<a href="${escHtml(a.url)}" target="_blank" rel="noopener" style="color:var(--navy); font-weight:700; font-size:12px;">📎 ${escHtml(a.name || a.url)}</a>`;
+    }).join('');
+    return `<div style="margin-top:8px; display:flex; flex-direction:column; gap:6px; align-items:flex-start;">${rows}</div>`;
+  }
+  return attachmentLinksHtml(item && item.attachmentLink);
+}
+// 이미지 첨부는 <img src="드라이브 링크">로 바로 넣으면 로그인 세션이 없어 대부분 안 뜨므로, 이미 갖고 있는
+// gdriveAccessToken으로 인증된 요청(alt=media)을 직접 보내 Blob으로 받아온 뒤 object URL로 바꿔서 보여줌.
+// 첨부가 많은 목록에서 한꺼번에 다 받아오면 API 호출이 낭비되므로, 실제로 이 목록이 화면에 그려질 때만(모달을
+// 열 때만) 지연 로딩함
+let approvalAttachmentObjectUrls = [];
+function revokeApprovalAttachmentObjectUrls(){
+  approvalAttachmentObjectUrls.forEach(u=>{ try{ URL.revokeObjectURL(u); }catch(e){} });
+  approvalAttachmentObjectUrls = [];
+}
+async function loadApprovalAttachmentImage(imgEl){
+  const fileId = imgEl.dataset.fileId;
+  if(!fileId || !gdriveAccessToken) return;
+  try{
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`, {
+      headers:{ Authorization:`Bearer ${gdriveAccessToken}` }
+    });
+    if(!res.ok){ if(res.status === 401) gdriveHandleUnauthorized(); return; }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    approvalAttachmentObjectUrls.push(url);
+    imgEl.src = url;
+    imgEl.style.opacity = '1';
+  }catch(e){ console.error('첨부 이미지 불러오기 실패', e); }
+}
+function initApprovalAttachmentImages(scopeEl){
+  (scopeEl||document).querySelectorAll('img.approval-att-img[data-file-id]').forEach(img=>loadApprovalAttachmentImage(img));
+}
+// 첨부파일 업로드 - 회사 공유 드라이브("01.기장대리" > "0004.전자결재첨부" > 문서종류)에 자동 이름을
+// 붙여 올림(gdriveUploadApprovalAttachment). 업로드가 끝나면 adUploadedAttachments 배열에 담아뒀다가
+// 저장할 때 첨부칸에 손으로 붙여넣은 외부 링크와 합쳐서 함께 저장됨
 document.getElementById('ad-attach-file-input')?.addEventListener('change', async (e)=>{
   const files = Array.from(e.target.files || []);
   if(!files.length) return;
@@ -16053,20 +16279,24 @@ document.getElementById('ad-attach-file-input')?.addEventListener('change', asyn
   const originalText = labelText.textContent;
   label.style.pointerEvents = 'none';
   label.style.opacity = '0.6';
+  const docType = document.getElementById('ad-doctype')?.value || '일반';
+  const draftMeta = {
+    title: document.getElementById('ad-title')?.value.trim() || '(제목없음)',
+    drafter: currentStaffDisplayName() || ''
+  };
   try{
     for(let i=0;i<files.length;i++){
       const file = files[i];
       labelText.textContent = `업로드 중... (${i+1}/${files.length})`;
       if(msgEl) msgEl.textContent = `${file.name} 업로드 중...`;
-      const uploaded = await gdriveUploadAttachment(file);
-      const attachEl = document.getElementById('ad-attachment');
-      const cur = attachEl.value.trim();
-      attachEl.value = cur ? `${cur}, ${uploaded.url}` : uploaded.url;
+      const uploaded = await gdriveUploadApprovalAttachment(file, docType, draftMeta);
+      adUploadedAttachments.push(uploaded);
+      renderAdAttachUploadedList();
       if(msgEl) msgEl.textContent = `${file.name} 업로드 완료`;
     }
   }catch(err){
     console.error('업무기안 첨부파일 업로드 실패', err);
-    appAlert(err && err.message ? err.message : '첨부파일 업로드에 실패했어요.');
+    appAlert(err && err.message ? err.message : '첨부파일 업로드에 실패했어요. 회사 공유 드라이브("01.기장대리")의 멤버로 등록돼 있는지 확인해주세요.');
     if(msgEl) msgEl.textContent = '업로드 실패';
   }finally{
     labelText.textContent = originalText;
@@ -16084,7 +16314,16 @@ function editApprovalDraft(id){
   document.getElementById('ad-edit-id').value = id;
   document.getElementById('ad-title').value = item.title || '';
   fillAdContentEl(item.content || '');
-  document.getElementById('ad-attachment').value = item.attachmentLink || '';
+  // 업로드로 붙인 첨부(mimeType 등을 알고 있는 것)는 adUploadedAttachments로, 손으로 붙여넣었던 외부
+  // 링크(manual)는 첨부 입력칸으로 각각 되돌려서 이어서 수정할 수 있게 함
+  if(Array.isArray(item.attachments)){
+    adUploadedAttachments = item.attachments.filter(a=>a && !a.manual);
+    document.getElementById('ad-attachment').value = item.attachments.filter(a=>a && a.manual).map(a=>a.url).join(', ');
+  } else {
+    adUploadedAttachments = [];
+    document.getElementById('ad-attachment').value = item.attachmentLink || '';
+  }
+  renderAdAttachUploadedList();
   const docTypeEl = document.getElementById('ad-doctype');
   if(docTypeEl) docTypeEl.value = item.docType || '일반';
   populateApproverSelect();
@@ -16118,6 +16357,8 @@ document.querySelectorAll('.approval-doc-btn').forEach(btn=>{
       document.getElementById('approvalDraftForm').reset();
       document.getElementById('ad-content').innerHTML = ''; // reset()은 contenteditable을 안 비워주므로 따로 비워줌
       document.getElementById('ad-attach-msg').textContent = '';
+      adUploadedAttachments = [];
+      renderAdAttachUploadedList();
       document.getElementById('ad-edit-id').value = '';
       const editBadge = document.getElementById('approvalDraftEditBadge');
       if(editBadge) editBadge.style.display = 'none';
@@ -16362,7 +16603,14 @@ function resubmitApprovalDraft(id){
   document.querySelector('.approval-doc-btn[data-approval-doc="new"]')?.click();
   document.getElementById('ad-title').value = item.title || '';
   fillAdContentEl(item.content || '');
-  document.getElementById('ad-attachment').value = item.attachmentLink || '';
+  if(Array.isArray(item.attachments)){
+    adUploadedAttachments = item.attachments.filter(a=>a && !a.manual);
+    document.getElementById('ad-attachment').value = item.attachments.filter(a=>a && a.manual).map(a=>a.url).join(', ');
+  } else {
+    adUploadedAttachments = [];
+    document.getElementById('ad-attachment').value = item.attachmentLink || '';
+  }
+  renderAdAttachUploadedList();
   const docTypeEl = document.getElementById('ad-doctype');
   if(docTypeEl) docTypeEl.value = item.docType || '일반';
   populateApproverSelect();
@@ -16405,7 +16653,7 @@ function openApprovalDetailModal(id){
   document.getElementById('approvalDetailModalTitle').innerHTML = `${escHtml(item.title)} <span class="tag" style="background:var(--bg); color:var(--ink-soft);">${escHtml(item.docType||'일반')}</span> ${approvalStatusTagHtml(item.status)}`;
   const canDecide = (item.status === '기안' || item.status === '검토중') && (item.approverEmail||'').toLowerCase() === myEmail;
   const canComment = myEmail && ((item.drafterEmail||'').toLowerCase()===myEmail || (item.approverEmail||'').toLowerCase()===myEmail || (typeof isCurrentUserAdmin!=='undefined' && isCurrentUserAdmin));
-  const attachmentHtml = attachmentLinksHtml(item.attachmentLink);
+  const attachmentHtml = attachmentListHtml(item);
   const contentHtml = item.content ? (noticeContentIsRich(item.content) ? item.content : escHtml(item.content).replace(/\n/g,'<br>')) : '(내용 없음)';
   document.getElementById('approvalDetailModalBody').innerHTML = `
     <div style="font-size:12px; color:var(--ink-soft); margin-bottom:10px;">기안자 ${escHtml(resolveNameByEmail(item.drafterEmail)||item.drafterName||'')} · 결재자 ${escHtml(resolveNameByEmail(item.approverEmail)||item.approverName||'')}</div>
@@ -16437,6 +16685,7 @@ function openApprovalDetailModal(id){
     document.getElementById('approvalRejectBtn').addEventListener('click', ()=>decideApproval(id, '반려'));
   }
   document.getElementById('approvalDetailModalOverlay').style.display = 'flex';
+  initApprovalAttachmentImages(document.getElementById('approvalDetailModalBody'));
 }
 async function addApprovalComment(id, decisionLabel){
   const item = (sharedApprovals||[]).find(a=>a.id===id);
@@ -16482,9 +16731,10 @@ async function decideApproval(id, decision){
 }
 document.getElementById('approvalDetailModalClose')?.addEventListener('click', ()=>{
   document.getElementById('approvalDetailModalOverlay').style.display = 'none';
+  revokeApprovalAttachmentObjectUrls();
 });
 document.getElementById('approvalDetailModalOverlay')?.addEventListener('click', (e)=>{
-  if(e.target.id === 'approvalDetailModalOverlay') document.getElementById('approvalDetailModalOverlay').style.display = 'none';
+  if(e.target.id === 'approvalDetailModalOverlay'){ document.getElementById('approvalDetailModalOverlay').style.display = 'none'; revokeApprovalAttachmentObjectUrls(); }
 });
 // 사이드바 알림뱃지(N) + 결재함/기안함 각각의 New 표시(pill)를 한번에 갱신. 결재함은 "대기중 건수"를 그대로,
 // 기안함은 "아직 안 본 새 변화" 건수를 보여줌(markApprovalSeen으로 탭을 열면 사라짐)
@@ -17598,6 +17848,23 @@ function mergeProfileArrayData(srcData, dstData, fieldKeys, fallback){
   });
   return out;
 }
+// 이관해온(원본 계정의) 기록 중 가장 최근 날짜가 속한 "YYYY-MM"을 구함 - 개인캘린더/근태경비 탭은
+// 전부 화면 상단 조회월(#monthSelect, 기본값 오늘이 속한 달) 기준으로만 그 달 데이터를 보여주기 때문에,
+// 옛날 계정에서 옮겨온 기록이 이번 달 것이 아니면(거의 항상 그럼 - 예전 계정 기록이니까) 이관이 실제로는
+// 정상적으로 끝났는데도 "개인캘린더/근태경비에 아무것도 안 보인다"는 문제가 있었음(이관된 데이터 자체는
+// localStorage에 멀쩡히 저장되어 있었음 - 그저 화면이 보여주는 달이 아니었을 뿐).
+function latestMonthInProfileArrayData(dataObjs, fieldKeys){
+  let latest = '';
+  dataObjs.forEach(data=>{
+    fieldKeys.forEach(f=>{
+      const arr = Array.isArray(data && data[f]) ? data[f] : [];
+      arr.forEach(e=>{
+        if(e && typeof e.date === 'string' && e.date > latest) latest = e.date;
+      });
+    });
+  });
+  return latest ? latest.slice(0,7) : '';
+}
 document.getElementById('empDataTransferRunBtn')?.addEventListener('click', async ()=>{
   const srcId = document.getElementById('empDataTransferSrc').value;
   const dstId = document.getElementById('empDataTransferDst').value;
@@ -17623,6 +17890,16 @@ document.getElementById('empDataTransferRunBtn')?.addEventListener('click', asyn
     // 원본 쪽은 이관 완료 후 비움(같은 기록이 두 계정에 중복으로 남지 않도록) - 직원 정보 자체(이름/이메일 등)는 그대로 유지
     localStorage.setItem(`worklog_attendance__${srcId}`, JSON.stringify({ leaveGrants:[], leaveUsage:[], remoteEntries:[], clockLog:[] }));
     localStorage.setItem(`worklog_expense__${srcId}`, JSON.stringify({ lunchEntries:[], dinnerEntries:[], otherExpenses:[], taxiEntries:[], prepaidEntries:[] }));
+    // 옮겨온(원본 계정의) 기록이 이번 달 것이 아니면 개인캘린더/근태경비 탭이 기본으로 보여주는 "오늘이
+    // 속한 달" 화면에는 하나도 안 보여서 이관이 실패한 것처럼 보임 - 옮겨온 기록 중 가장 최근 날짜가
+    // 속한 달을 기억해뒀다가, 그 대상 계정(dstId)으로 다음에 화면이 열릴 때 조회월을 그 달로 자동으로
+    // 맞춰줌(loadAll()에서 소비). 대상 계정 화면이 실제로 한 번 열리기 전까지는 계속 남아있어도 되므로
+    // 여기서 만료시각 등은 따로 두지 않음
+    const transferFocusMonth = latestMonthInProfileArrayData(
+      [srcAtt, srcExp],
+      ['leaveGrants','leaveUsage','remoteEntries','clockLog','lunchEntries','dinnerEntries','otherExpenses','taxiEntries','prepaidEntries']
+    );
+    if(transferFocusMonth) localStorage.setItem(`worklog_transfer_focus_month__${dstId}`, transferFocusMonth);
     // 지금 로그인해 쓰고 있는 계정이 이관 대상/원본 중 하나였다면, 화면에 물려있는 전역 attendance/expense도
     // 같이 갱신해줘야 새로고침 없이 바로 반영됨
     if(activeProfileId === dstId){ attendance = mergedAtt; expense = mergedExp; }
