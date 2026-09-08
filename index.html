@@ -2598,6 +2598,10 @@
           </div>
         </div>
       </div>
+      <div id="dataMonthHintBanner" style="display:none; margin:0 0 14px; padding:10px 14px; border-radius:10px; background:var(--coral-bg); border:1px solid var(--coral); font-size:13px; font-weight:700; color:var(--coral); align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+        <span id="dataMonthHintText"></span>
+        <button type="button" id="dataMonthHintJumpBtn" style="border:none; background:var(--coral); color:#fff; font-weight:800; font-size:12px; padding:6px 12px; border-radius:7px; cursor:pointer; font-family:inherit;">해당 월로 이동</button>
+      </div>
       <div class="settings-group-title section-title-accent" style="font-size:19px; margin:0 0 18px;">근태현황</div>
 
     <div class="summary-cards">
@@ -6937,7 +6941,7 @@ function scheduleTwemojiParse(){
     twemoji.parse(document.body, {folder:'svg', ext:'.svg', base:'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/'});
   }, 150);
 }
-function renderAll(){ renderAttendance(); renderExpense(); renderWorkdaysSuggestion(); renderCalendar(); renderScheduleList(); renderClients(); renderClientsRegular(); renderClientsOther(); renderClientsTerminated(); renderPersonalInfo(); renderDeadlineBanner(); renderAdminCalendar(); renderHome(); renderAllLeaveHistory(); renderNoticeIfOpen(); renderManualGrantList(); renderEmployeeRoster(); renderCompanyInfoCorp(); renderCompanyInfoTeam(); renderCompanyInfoCorpView(); renderCompanyInfoTeamView(); renderApprovalBadge(); scheduleTwemojiParse(); }
+function renderAll(){ renderAttendance(); renderExpense(); renderWorkdaysSuggestion(); renderCalendar(); renderScheduleList(); renderClients(); renderClientsRegular(); renderClientsOther(); renderClientsTerminated(); renderPersonalInfo(); renderDeadlineBanner(); renderAdminCalendar(); renderHome(); renderAllLeaveHistory(); renderNoticeIfOpen(); renderManualGrantList(); renderEmployeeRoster(); renderCompanyInfoCorp(); renderCompanyInfoTeam(); renderCompanyInfoCorpView(); renderCompanyInfoTeamView(); renderApprovalBadge(); scheduleTwemojiParse(); checkDataMonthHint(); }
 
 function renderScheduleList(){
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
@@ -17833,6 +17837,56 @@ function latestMonthInProfileArrayData(dataObjs, fieldKeys){
   });
   return latest ? latest.slice(0,7) : '';
 }
+// 이관 등으로 현재 조회월엔 기록이 하나도 없는데 다른 달엔 근태·경비 기록이 있는 경우, 화면 상단에
+// "다른 달에 기록이 있어요" 안내 배너를 띄우고 그 달로 바로 이동할 수 있는 버튼을 보여줌. 이관 직후
+// 자동으로 조회월을 맞춰주는 worklog_transfer_focus_month__ 힌트(loadAll 참고)는 "이관 이후"에만
+// 적용되므로, 그 이전에 이미 이관된 기록처럼 힌트가 없는 경우를 위한 보완 장치
+function checkDataMonthHint(){
+  const banner = document.getElementById('dataMonthHintBanner');
+  const textEl = document.getElementById('dataMonthHintText');
+  if(!banner || !textEl) return;
+  const monthEl = document.getElementById('monthSelect');
+  const curMonth = monthEl && monthEl.value;
+  if(!curMonth || !activeProfileId){ banner.style.display = 'none'; return; }
+  const att = readProfileRaw(activeProfileId, 'attendance') || {};
+  const exp = readProfileRaw(activeProfileId, 'expense') || {};
+  const fieldKeys = ['leaveGrants','leaveUsage','remoteEntries','clockLog','lunchEntries','dinnerEntries','otherExpenses','taxiEntries','prepaidEntries'];
+  const months = new Set();
+  let curMonthHasData = false;
+  [att, exp].forEach(data=>{
+    fieldKeys.forEach(f=>{
+      const arr = Array.isArray(data[f]) ? data[f] : [];
+      arr.forEach(e=>{
+        if(e && typeof e.date === 'string'){
+          const m = e.date.slice(0,7);
+          months.add(m);
+          if(m === curMonth) curMonthHasData = true;
+        }
+      });
+    });
+  });
+  if(curMonthHasData || months.size === 0){ banner.style.display = 'none'; return; }
+  const latest = [...months].sort().pop();
+  banner.dataset.targetMonth = latest;
+  const [cy, cm] = curMonth.split('-');
+  const [ty, tm] = latest.split('-');
+  textEl.textContent = `${cy}년 ${parseInt(cm,10)}월에는 근태·경비 기록이 없어요. ${ty}년 ${parseInt(tm,10)}월에 기록이 있어요.`;
+  banner.style.display = 'flex';
+}
+document.getElementById('dataMonthHintJumpBtn')?.addEventListener('click', ()=>{
+  const banner = document.getElementById('dataMonthHintBanner');
+  const target = banner && banner.dataset.targetMonth;
+  if(!target) return;
+  const monthEl = document.getElementById('monthSelect');
+  monthEl.value = target;
+  const teamCalEl = document.getElementById('teamCalMonthSelect');
+  if(teamCalEl) teamCalEl.value = target;
+  const calProxyEl = document.getElementById('calMonthSelectProxy');
+  if(calProxyEl) calProxyEl.value = target;
+  syncDateFieldsToMonth();
+  renderAll();
+  renderExclusionList();
+});
 document.getElementById('empDataTransferRunBtn')?.addEventListener('click', async ()=>{
   const srcId = document.getElementById('empDataTransferSrc').value;
   const dstId = document.getElementById('empDataTransferDst').value;
