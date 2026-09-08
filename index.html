@@ -859,6 +859,9 @@
     color:var(--ink-soft); border-radius:20px; box-shadow:0 1px 2px rgba(29,30,51,0.05);
   }
   .policy-category-toggle button.active{color:#fff; background:var(--guide-slate);}
+  /* 원천세 신고대상 편집팝업의 "대상/미대상" 토글 - 대상은 기존 인디고 톤, 미대상은 눈에 띄게 코랄 톤으로 구분 */
+  #filingTargetApplicableToggle .ft-applicable-btn[data-value="target"].active{background:var(--indigo);}
+  #filingTargetApplicableToggle .ft-applicable-btn[data-value="not-target"].active{background:var(--coral);}
   /* 엑셀 일괄 다운로드의 "전체받기"는 시트 선택 칩이 아니라 네 칩을 한 번에 켜는 지름길 버튼이라, 선택 칩과
      헷갈리지 않도록 톤을 다르게(인디고) 둠 */
   #bulkExcelSelectAllBtn{ background:var(--indigo-bg); color:var(--indigo-deep); font-weight:800; }
@@ -993,6 +996,8 @@
     background:var(--surface); color:var(--ink); width:100%;
   }
   .field input:focus, .field select:focus{outline:none; border-color:var(--indigo); background:var(--surface);}
+  .field input:disabled, .field select:disabled{background:var(--frame-bg); color:var(--ink-soft); cursor:not-allowed; opacity:0.75;}
+  #nm-content:empty:before{content:attr(data-placeholder); color:var(--ink-soft); pointer-events:none;}
   .field input.num-input{font-family:'IBM Plex Mono', monospace;}
   /* 거래처 개인정보(구분/ID/PW/비고) 행은 .field로 감싸지 않은 입력칸이라 기본 브라우저 스타일 그대로 보였음 - .field input과 동일한 스타일을 입혀서 통일 */
   .cl-pi-row input[type="text"]{
@@ -1066,6 +1071,10 @@
   table{width:100%; border-collapse:collapse; background:var(--surface); border-radius:14px; overflow:hidden; box-shadow:0 1px 2px rgba(29,30,51,0.04); border:1px solid var(--border);}
   thead th{text-align:left; font-size:11.5px; color:var(--indigo-deep); font-weight:800; padding:10px 12px; background:var(--indigo-bg);}
   tbody td{padding:10px 12px; font-size:13px; border-top:1px solid var(--border);}
+  /* 거래처 목록 등 표에서 지금 마우스가 올라가 있는 줄이 어디인지 한눈에 보이도록 행 전체에 은은한 음영을 줌 */
+  tbody tr:hover td{background:rgba(91,95,239,0.055);}
+  #clientsRegularListWrap tbody tr:hover td, #clientsOtherListWrp tbody tr:hover td,
+  #clientsOtherListWrap tbody tr:hover td, #clientsTerminatedListWrap tbody tr:hover td{background:rgba(91,95,239,0.08);}
   /* 기장거래처 표는 가로 구분선만으론 열 구분이 잘 안 보인다는 피드백 - 순번~수임시작일 구간(개인정보 상세/아이콘 열 제외)에만 옅은 세로선 추가 */
   .cvb{border-right:1px solid var(--border);}
   /* overflow-x:auto 하나만 주면 브라우저가 overflow-y도 자동으로 auto 취급해서 이 박스 자체가 별도의 스크롤 컨테이너가 되고,
@@ -1477,21 +1486,27 @@
             <option value="20">아주 크게</option>
           </select>
         </div>
-        <div class="field" style="flex:0 0 100px; margin-bottom:0;"><label>색상</label>
-          <select id="nm-color">
-            <option value="">기본</option>
-            <option value="#DC2626">빨강</option>
-            <option value="#D97706">주황</option>
-            <option value="#2563EB">파랑</option>
-            <option value="#16A34A">초록</option>
-          </select>
-        </div>
         <div style="display:flex; gap:8px; align-items:center;">
-          <label class="notice-toggle-chip" for="nm-bold"><input type="checkbox" id="nm-bold"><span>굵게</span></label>
           <label class="notice-toggle-chip" id="noticeImportantField" for="nm-important" style="display:none;"><input type="checkbox" id="nm-important"><span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> 중요</span></label>
         </div>
       </div>
-      <textarea id="nm-content" placeholder="예: 8/15(금) 전사 워크숍으로 사무실 휴무입니다." style="width:100%; min-height:160px; font-family:'Pretendard',sans-serif; font-size:13.5px; line-height:1.7; border:1.5px solid transparent; border-radius:10px; padding:14px; background:var(--bg); color:var(--ink); resize:vertical;" required></textarea>
+      <!-- 굵게/색상/정렬은 이제 공지 전체가 아니라, 원하는 부분만 드래그로 선택해서 그 부분에만 적용할 수 있음
+           (브라우저 내장 document.execCommand로 선택 영역에 굵게·글자색·정렬을 적용하고, 결과 HTML을 그대로 저장함) -->
+      <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:8px; padding:6px 8px; background:var(--bg); border-radius:10px;">
+        <button type="button" class="del-btn notice-rt-btn" data-cmd="bold" title="굵게" style="font-weight:900;">B</button>
+        <span style="width:1px; height:16px; background:var(--border);"></span>
+        <button type="button" class="del-btn notice-rt-color" data-color="#DC2626" title="빨강" style="background:#DC2626; width:18px; height:18px; padding:0; border-radius:50%;"></button>
+        <button type="button" class="del-btn notice-rt-color" data-color="#D97706" title="주황" style="background:#D97706; width:18px; height:18px; padding:0; border-radius:50%;"></button>
+        <button type="button" class="del-btn notice-rt-color" data-color="#2563EB" title="파랑" style="background:#2563EB; width:18px; height:18px; padding:0; border-radius:50%;"></button>
+        <button type="button" class="del-btn notice-rt-color" data-color="#16A34A" title="초록" style="background:#16A34A; width:18px; height:18px; padding:0; border-radius:50%;"></button>
+        <button type="button" class="del-btn notice-rt-color" data-color="" title="색상 지우기" style="background:var(--surface); width:18px; height:18px; padding:0; border-radius:50%; border:1.5px solid var(--border); position:relative;"><span style="position:absolute; inset:0; border-top:1.5px solid var(--coral); transform:rotate(45deg);"></span></button>
+        <span style="width:1px; height:16px; background:var(--border);"></span>
+        <button type="button" class="del-btn notice-rt-btn" data-cmd="justifyLeft" title="왼쪽 정렬"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg></button>
+        <button type="button" class="del-btn notice-rt-btn" data-cmd="justifyCenter" title="가운데 정렬"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg></button>
+        <button type="button" class="del-btn notice-rt-btn" data-cmd="justifyRight" title="오른쪽 정렬"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="6" y1="18" x2="21" y2="18"/></svg></button>
+        <span style="font-size:10.5px; color:var(--ink-soft); margin-left:4px;">텍스트를 드래그로 선택한 뒤 눌러주세요</span>
+      </div>
+      <div id="nm-content" contenteditable="true" data-placeholder="예: 8/15(금) 전사 워크숍으로 사무실 휴무입니다." style="width:100%; min-height:160px; font-family:'Pretendard',sans-serif; font-size:13.5px; line-height:1.7; border:1.5px solid transparent; border-radius:10px; padding:14px; background:var(--bg); color:var(--ink); overflow-y:auto; max-height:40vh;"></div>
       <div style="text-align:center; margin-top:10px;">
         <button type="submit" id="noticeModalSaveBtn" class="submit-btn" style="width:auto; padding:9px 20px;">등록</button>
       </div>
@@ -1896,11 +1911,15 @@
          체크박스 하나만 두는 걸로 단순화함 -->
     <div style="text-align:center; margin-bottom:16px;">
       <div id="filingTargetEditClientName" style="font-weight:800; font-size:16px; color:var(--ink);"></div>
-      <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-top:8px;">
+      <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-top:8px; flex-wrap:wrap;">
         <span id="filingTargetEditPeriod" style="font-size:13px; font-weight:700; color:var(--ink-soft);"></span>
-        <label style="display:flex; align-items:center; gap:5px; font-weight:800; font-size:12.5px; color:var(--indigo-deep); cursor:pointer;">
-          <input type="checkbox" id="ft-applicable" style="width:auto;"> 신고대상
-        </label>
+        <!-- 예전엔 대상/대상아님 칩 두 개를 체크박스 하나로 단순화했었는데, 그러면 "아직 확인 안 함"과
+             "확인해봤는데 대상이 아님"을 구분할 수 없다는 요청이 있어서 다시 대상/미대상 둘 다 명시적으로
+             고를 수 있는 버튼 두 개로 되돌림(같은 버튼을 다시 누르면 "미확인" 상태로 돌아감) -->
+        <span class="policy-category-toggle ft-cycle-toggle" id="filingTargetApplicableToggle" style="margin-bottom:0;">
+          <button type="button" class="ft-applicable-btn" data-value="target">대상</button>
+          <button type="button" class="ft-applicable-btn" data-value="not-target">미대상</button>
+        </span>
       </div>
     </div>
     <div style="display:flex; flex-direction:column; gap:12px; font-size:12.5px;">
@@ -3343,14 +3362,23 @@
                   </select>
                 </div>
                 <div class="field"><label>제목</label><input type="text" id="ad-title" placeholder="예: 8월 휴가 신청" required></div>
-                <div class="field"><label>내용</label><textarea id="ad-content" style="width:100%; min-height:120px; font-family:'Pretendard',sans-serif; font-size:13px; border:1.5px solid transparent; border-radius:10px; padding:10px; background:var(--bg); color:var(--ink); resize:vertical;" placeholder="결재 내용을 적어주세요"></textarea></div>
+                <div class="field">
+                  <label style="display:flex; align-items:center; justify-content:space-between;">내용
+                    <!-- 문서종류를 고르면 그에 맞는 인사말/맺음말 문구를 내용칸에 바로 채워주는 버튼 - 매번
+                         "안녕하세요, ~ 관련하여 결재 요청드립니다" 같은 문장을 처음부터 치지 않아도 되게 함 -->
+                    <button type="button" id="ad-auto-phrase-btn" style="border:none; background:transparent; color:var(--indigo); font-size:10.5px; font-weight:700; cursor:pointer; text-decoration:underline;">자동 문구 넣기</button>
+                  </label>
+                  <textarea id="ad-content" style="width:100%; min-height:120px; font-family:'Pretendard',sans-serif; font-size:13px; border:1.5px solid transparent; border-radius:10px; padding:10px; background:var(--bg); color:var(--ink); resize:vertical;" placeholder="결재 내용을 적어주세요"></textarea>
+                </div>
                 <div class="field"><label>첨부 (링크) <span style="font-weight:400; color:var(--ink-soft);">— 구글드라이브 등 파일 링크를 붙여넣으세요</span></label><input type="url" id="ad-attachment" placeholder="https://drive.google.com/..."></div>
                 <div class="field"><label>결재자 (회계사)</label>
                   <select id="ad-approver" required></select>
                 </div>
-                <div style="text-align:center; display:flex; gap:8px; justify-content:center;">
-                  <button type="button" id="ad-save-draft-btn" class="del-btn" style="padding:9px 18px;">임시저장</button>
-                  <button type="submit" class="submit-btn" style="width:auto; margin:0; padding:9px 18px;">기안 상신</button>
+                <div style="text-align:center; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+                  <button type="button" id="ad-approval-preview-btn" class="del-btn" style="padding:9px 18px; border-radius:20px; font-size:13px; font-weight:700; background:var(--indigo-bg); color:var(--indigo-deep);">미리보기</button>
+                  <button type="button" id="ad-mail-btn" class="del-btn" title="결재자에게 메일로도 알리기" style="padding:9px 18px; border-radius:20px; font-size:13px; font-weight:700; background:var(--amber-bg); color:#8A6200;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg> 메일 보내기</button>
+                  <button type="button" id="ad-save-draft-btn" class="del-btn" style="padding:9px 18px; border-radius:20px; font-size:13px; font-weight:700;">임시저장</button>
+                  <button type="submit" class="submit-btn" style="width:auto; margin:0; padding:9px 18px; border-radius:20px; box-shadow:none;">기안 상신</button>
                 </div>
                 <div style="text-align:center;"><span class="save-msg" id="approvalDraftSaveMsg"></span></div>
               </form>
@@ -3364,7 +3392,7 @@
         </div>
 
         <div class="approval-doc-panel" data-approval-doc="inbox" style="display:none;">
-          <p class="hint" style="text-align:center;">나에게 결재를 요청한 문서예요. 승인하거나 반려할 수 있어요. (결정이 끝나면 이 목록에서는 빠져요)</p>
+          <p class="hint" style="text-align:center;">나에게 결재를 요청한 문서예요. 대기 중인 문서는 승인하거나 반려할 수 있고, 이미 처리한 문서도 상태(대기·승인·반려)와 함께 계속 조회할 수 있어요.</p>
           <div id="approvalInboxWrap"></div>
         </div>
 
@@ -3446,6 +3474,7 @@
           <div class="field"><label>조정반번호</label><input type="text" id="company-taxagent-input" placeholder="조정반번호 입력"></div>
           <div class="field"><label>대표번호</label><input type="text" id="company-phone-input" placeholder="02-0000-0000"></div>
           <div class="field"><label>대표팩스</label><input type="text" id="company-fax-input" placeholder="02-0000-0000"></div>
+          <div class="field"><label>공유드라이브 폴더 링크 <span style="font-weight:400; color:var(--ink-soft);">(선택)</span></label><input type="url" id="company-drive-folder" placeholder="예: https://drive.google.com/drive/folders/..."></div>
           <div style="text-align:center; display:flex; gap:8px; justify-content:center;">
             <button type="submit" class="submit-btn" id="companyNameSubmitBtn" style="width:auto; padding:8px 16px;">등록</button>
             <button type="button" id="companyNameDeleteBtn" class="del-btn" style="display:none;">삭제</button>
@@ -4388,7 +4417,8 @@ function noticeAllRecipientEmails(){
 function openNoticeMailCompose(n){
   const emails = noticeAllRecipientEmails();
   const subject = `[Tax.J 공지] ${n.title || '(제목 없음)'}`;
-  const body = `${n.content || ''}\n\n— ${n.authorName || ''} (${noticeDateOf(n)})`;
+  const plainContent = n.content ? (noticeContentIsRich(n.content) ? stripHtmlToText(n.content) : n.content) : '';
+  const body = `${plainContent}\n\n— ${n.authorName || ''} (${noticeDateOf(n)})`;
   const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emails.join(','))}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   window.open(url, '_blank');
 }
@@ -4430,14 +4460,15 @@ function renderNoticeImportantSection(){
   }
   const read = getReadNoticeIds();
   wrap.innerHTML = importantList.map(n=>{
-    const contentStyle = `font-size:${n.size||13.5}px; ${n.color ? 'color:'+n.color+';' : ''} ${n.bold ? 'font-weight:800;' : ''}`;
+    const contentStyle = `font-size:${n.size||13.5}px; ${n.bold ? 'font-weight:800;' : ''}`;
     const unread = !read.has(n.id);
+    const contentHtml = n.content ? (noticeContentIsRich(n.content) ? n.content : escHtml(n.content).replace(/\n/g,'<br>')) : '(내용 없음)';
     return `
     <div class="notice-important-item" data-id="${n.id}" style="border-radius:14px; overflow:hidden; margin-bottom:10px; cursor:pointer; border:1.5px solid var(--coral);">
       <div style="background:var(--coral); color:#fff; text-align:center; padding:10px 16px; font-weight:800; font-size:15px;">
         ${unread ? '<span class="notice-unread-dot on-coral">N</span>' : ''}<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> ${escHtml(n.title||'(제목 없음)')}
       </div>
-      <div style="background:var(--coral-bg); text-align:center; padding:16px; white-space:pre-wrap; line-height:1.7; ${contentStyle}">${escHtml(n.content||'(내용 없음)')}</div>
+      <div style="background:var(--coral-bg); text-align:center; padding:16px; white-space:pre-wrap; line-height:1.7; ${contentStyle}">${contentHtml}</div>
       <div style="background:var(--surface); text-align:center; padding:6px; font-size:11px; color:var(--ink-soft);">${escHtml(n.authorName||'-')} · ${escHtml(noticeDateOf(n))}</div>
     </div>`;
   }).join('');
@@ -4469,14 +4500,15 @@ function renderNoticeList(){
       <td style="text-align:center;"><span class="tag ${n.scope==='전체' ? 'tag-grant' : 'tag-usage'}">${n.scope || '개인'}</span></td>
       <td style="text-align:center;">${unread ? '<span class="notice-unread-dot">N</span>' : ''}${escHtml(n.title || '(제목 없음)')}</td>
       <td style="text-align:center;">${escHtml(n.authorName || '-')}</td>
-      <td class="num" style="text-align:center;">${escHtml(noticeDateOf(n))}${n.editedAt ? `<br><span style="font-size:10px; color:var(--ink-soft);">(수정됨)</span>` : ''}</td>
+      <td class="num" style="text-align:center;">${escHtml(noticeDateOf(n))}</td>
       <td style="white-space:nowrap; text-align:center;">
         <div style="display:inline-flex; align-items:center; justify-content:center; gap:6px;">
-          <label class="notice-star-toggle" title="중요표시">
-            <input type="checkbox" class="notice-important-check" data-id="${n.id}" ${n.important?'checked':''} ${canSetImportant?'':'disabled'}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          <label class="notice-star-toggle" title="중요표시(즐겨찾기)">
+            <input type="checkbox" class="notice-important-check" data-id="${n.id}" ${n.important?'checked':''} ${canSetImportant?'':'disabled'}><svg width="12" height="12" viewBox="0 0 24 24" fill="${n.important?'#F5A524':'none'}" stroke="${n.important?'#F5A524':'currentColor'}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
           </label>
           <button class="del-btn notice-view-btn" data-id="${n.id}">보기</button>
           <button class="del-btn notice-mail-btn" data-id="${n.id}" title="메일로 전달"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg> 메일</button>
+          <button class="del-btn notice-history-btn" data-id="${n.id}" title="수정이력">${(n.editHistory&&n.editHistory.length)?`이력(${n.editHistory.length})`:'이력'}</button>
           <button class="del-btn notice-edit-btn" data-id="${n.id}">수정</button>
           <button class="del-btn notice-del-btn" data-id="${n.id}">삭제</button>
         </div>
@@ -4505,6 +4537,12 @@ function renderNoticeList(){
       if(n) openNoticeMailCompose(n);
     });
   });
+  wrap.querySelectorAll('.notice-history-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const n = sharedNoticeHistory.find(x=>x.id===btn.dataset.id);
+      if(n) openHistoryModal((n.title||'공지사항') + ' 수정이력', n.editHistory||[]);
+    });
+  });
   wrap.querySelectorAll('.notice-edit-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       openNoticeFormModal(btn.dataset.id);
@@ -4528,13 +4566,25 @@ function renderNoticeIfOpen(){
   if(currentActiveTabName === 'notice') renderNoticeList();
 }
 
+// 예전 공지(줄바꿈만 있는 순수 텍스트)와 새로 리치텍스트 편집기로 저장한 공지(굵게/색상/정렬용 태그가 섞인 HTML)를
+// 구분하기 위한 판별 함수 - 태그가 하나라도 있으면 리치텍스트로 보고 그대로 innerHTML로 렌더링함
+function noticeContentIsRich(content){
+  return /<[a-z][\s\S]*>/i.test(content||'');
+}
+function stripHtmlToText(html){
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html || '';
+  return (tmp.textContent || tmp.innerText || '').trim();
+}
 function openNoticeViewPopup(n){
   document.getElementById('memoModalTitle').textContent = n.title || '공지사항';
-  const styleStr = `font-size:${n.size||13.5}px; ${n.color ? 'color:'+n.color+';' : ''} ${n.bold ? 'font-weight:800;' : ''}`;
+  const styleStr = `font-size:${n.size||13.5}px; ${n.bold ? 'font-weight:800;' : ''}`;
+  const contentHtml = n.content ? (noticeContentIsRich(n.content) ? n.content : escHtml(n.content).replace(/\n/g,'<br>')) : '(내용 없음)';
   document.getElementById('memoModalBody').innerHTML = `
     <div style="text-align:center; margin-bottom:12px;"><span class="section-subtitle-label">공지사항</span></div>
-    <div style="text-align:center; margin-bottom:10px; font-size:11.5px; color:var(--ink-soft);">${escHtml(n.savedAt||'')} · ${escHtml(n.authorName||'-')} · ${n.scope||'개인'} 공지${n.editedAt ? ' · 수정됨 '+escHtml(n.editedAt) : ''}${n.important ? ' · <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>중요' : ''}</div>
-    <div style="white-space:pre-wrap; line-height:1.7; padding:14px; background:var(--bg); border-radius:10px; ${styleStr}">${escHtml(n.content || '(내용 없음)')}</div>`;
+    <div style="text-align:center; margin-bottom:10px; font-size:11.5px; color:var(--ink-soft);">${escHtml(n.savedAt||'')} · ${escHtml(n.authorName||'-')} · ${n.scope||'개인'} 공지${n.important ? ' · <svg width="11" height="11" viewBox="0 0 24 24" fill="#F5A524" stroke="#F5A524" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>중요' : ''}</div>
+    <div style="white-space:pre-wrap; line-height:1.7; padding:14px; background:var(--bg); border-radius:10px; user-select:text; ${styleStr}">${contentHtml}</div>`;
+  document.getElementById('memoModalOverlay').dataset.noBackdropClose = '1';
   document.getElementById('memoModalOverlay').style.display = 'flex';
   markNoticeRead(n.id);
   renderNoticeIfOpen();
@@ -4554,20 +4604,16 @@ function openNoticeFormModal(editId){
     document.getElementById('nm-scope').value = n.scope || '개인';
     document.getElementById('nm-title').value = n.title || '';
     document.getElementById('nm-size').value = n.size || '13.5';
-    document.getElementById('nm-color').value = n.color || '';
-    document.getElementById('nm-bold').checked = !!n.bold;
     document.getElementById('nm-important').checked = !!n.important;
-    document.getElementById('nm-content').value = n.content || '';
+    document.getElementById('nm-content').innerHTML = n.content ? (noticeContentIsRich(n.content) ? n.content : escHtml(n.content).replace(/\n/g,'<br>')) : '';
     document.getElementById('noticeModalSaveBtn').textContent = '수정 완료';
   } else {
     document.getElementById('noticeFormModalTitle').textContent = '공지 등록';
     document.getElementById('nm-scope').value = '개인';
     document.getElementById('nm-title').value = '';
     document.getElementById('nm-size').value = '13.5';
-    document.getElementById('nm-color').value = '';
-    document.getElementById('nm-bold').checked = false;
     document.getElementById('nm-important').checked = false;
-    document.getElementById('nm-content').value = '';
+    document.getElementById('nm-content').innerHTML = '';
     document.getElementById('noticeModalSaveBtn').textContent = '등록';
   }
   document.getElementById('noticeModalSaveMsg').textContent = '';
@@ -4585,12 +4631,12 @@ document.getElementById('noticeModalForm').addEventListener('submit', async (e)=
   e.preventDefault();
   const isAdmin = !!isCurrentUserAdmin;
   const title = document.getElementById('nm-title').value.trim();
-  const content = document.getElementById('nm-content').value.trim();
-  if(!title || !content) return;
+  const contentEl = document.getElementById('nm-content');
+  const content = contentEl.innerHTML.trim();
+  const contentIsEmpty = !contentEl.textContent.trim();
+  if(!title || contentIsEmpty) return;
   const scope = isAdmin ? (document.getElementById('nm-scope').value || '개인') : '개인';
   const size = document.getElementById('nm-size').value;
-  const color = document.getElementById('nm-color').value;
-  const bold = document.getElementById('nm-bold').checked;
   const important = isAdmin ? document.getElementById('nm-important').checked : false;
   const myProfile = currentUserEmail ? getProfiles().find(p=>(p.email||'').toLowerCase()===currentUserEmail) : null;
   // 우선순위: 내 직원 프로필 이름 > (직원 프로필이 없는 관리자라면) 관리자 목록에 등록해둔 이름 > 이 기기 개인설정 이름 > 기본값
@@ -4602,7 +4648,15 @@ document.getElementById('noticeModalForm').addEventListener('submit', async (e)=
   if(editingNoticeModalId){
     const n = sharedNoticeHistory.find(x=>x.id===editingNoticeModalId);
     if(n){
-      n.title = title; n.content = content; n.scope = scope; n.size = size; n.color = color; n.bold = bold;
+      // 수정 전 내용을 이력에 남겨서(제목/내용이 바뀐 경우만) "이력" 버튼에서 예전 버전을 확인할 수 있게 함
+      const changes = [];
+      if(n.title !== title) changes.push({label:'제목', before:n.title||'(제목 없음)', after:title||'(제목 없음)'});
+      if(n.content !== content) changes.push({label:'내용', before:stripHtmlToText(n.content)||'(내용 없음)', after:stripHtmlToText(content)||'(내용 없음)'});
+      if(changes.length){
+        if(!n.editHistory) n.editHistory = [];
+        n.editHistory.unshift({ date: new Date().toLocaleString('ko-KR'), changes });
+      }
+      n.title = title; n.content = content; n.scope = scope; n.size = size;
       if(isAdmin) n.important = important;
       n.editedAt = new Date().toLocaleString('ko-KR');
     }
@@ -4611,7 +4665,7 @@ document.getElementById('noticeModalForm').addEventListener('submit', async (e)=
     const savedAt = new Date().toLocaleString('ko-KR');
     const savedAtDate = todayStr();
     const newId = genId();
-    sharedNoticeHistory.unshift({ id: newId, title, content, scope, authorName, savedAt, savedAtDate, size, color, bold, important });
+    sharedNoticeHistory.unshift({ id: newId, title, content, scope, authorName, savedAt, savedAtDate, size, important });
     markNoticeRead(newId);
     document.getElementById('noticeModalSaveMsg').textContent = '등록됨';
   }
@@ -4622,6 +4676,24 @@ document.getElementById('noticeModalForm').addEventListener('submit', async (e)=
     renderNoticeList();
     updateNoticeUnreadBadge();
   }, 400);
+});
+
+// 공지 작성 리치텍스트 툴바 - 굵게/색상/정렬 버튼은 execCommand로 지금 선택된(드래그한) 텍스트에만 적용됨.
+// 아무것도 선택 안 하고 누르면 브라우저 기본 동작대로 "지금 커서 위치부터 새로 입력하는 글자"에 적용됨
+document.querySelectorAll('.notice-rt-btn').forEach(btn=>{
+  btn.addEventListener('mousedown', (e)=>e.preventDefault()); // mousedown을 막아야 버튼 클릭에 선택영역이 풀리지 않음
+  btn.addEventListener('click', ()=>{
+    document.getElementById('nm-content').focus();
+    document.execCommand(btn.dataset.cmd, false, null);
+  });
+});
+document.querySelectorAll('.notice-rt-color').forEach(btn=>{
+  btn.addEventListener('mousedown', (e)=>e.preventDefault());
+  btn.addEventListener('click', ()=>{
+    document.getElementById('nm-content').focus();
+    const color = btn.dataset.color;
+    document.execCommand('foreColor', false, color || 'inherit');
+  });
 });
 
 // 상단 원형 아이콘(설정/공지/휴지통)은 한 번에 하나만 강조돼야 하는데, 각자 따로 자기 배경색만 indigo로 바꾸다 보니
@@ -6802,9 +6874,9 @@ function openHistoryModal(title, history){
       let changesHtml;
       if(Array.isArray(h.changes)){
         changesHtml = h.changes.map(ch=>`
-          <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:4px;">
-            <span style="display:inline-block; font-size:10.5px; font-weight:800; color:#8A6200; background:var(--amber-bg); padding:2px 8px; border-radius:10px; flex-shrink:0;">${escHtml(ch.label)}</span>
-            <span style="font-size:12.5px;">${escHtml(ch.before)} <span style="color:var(--coral); font-weight:800;">→</span> ${escHtml(ch.after)}</span>
+          <div style="display:flex; align-items:flex-start; flex-wrap:wrap; gap:6px; margin-bottom:4px;">
+            <span title="${escHtml(ch.label)}" style="display:inline-block; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10.5px; font-weight:800; color:#8A6200; background:var(--amber-bg); padding:2px 8px; border-radius:10px; flex-shrink:0;">${escHtml(ch.label)}</span>
+            <span style="font-size:12.5px; word-break:break-word; overflow-wrap:anywhere; min-width:0; flex:1 1 200px;">${escHtml(ch.before)} <span style="color:var(--coral); font-weight:800;">→</span> ${escHtml(ch.after)}</span>
           </div>`).join('');
       } else {
         changesHtml = `<div style="font-size:12.5px;">${escHtml(h.changes||'')}</div>`;
@@ -6881,10 +6953,14 @@ function openClientDetailModal(c){
 }
 function closeMemoModal(){
   document.getElementById('memoModalOverlay').style.display = 'none';
+  document.getElementById('memoModalOverlay').dataset.noBackdropClose = '';
 }
 document.getElementById('memoModalClose').addEventListener('click', closeMemoModal);
 document.getElementById('memoModalOverlay').addEventListener('click', (e)=>{
-  if(e.target.id === 'memoModalOverlay') closeMemoModal();
+  // 공지사항 내용을 읽다가 실수로 바깥을 클릭하면 팝업이 그대로 닫혀버려서 다시 열어야 하는 문제가 있었음 -
+  // 공지사항 팝업(openNoticeViewPopup에서 noBackdropClose를 켜둠)은 바깥 클릭으로는 안 닫히고, 우측 상단
+  // "닫기" 버튼으로만 닫히게 함. 다른 안내 팝업들은 기존처럼 바깥 클릭으로 닫힘
+  if(e.target.id === 'memoModalOverlay' && document.getElementById('memoModalOverlay').dataset.noBackdropClose !== '1') closeMemoModal();
 });
 document.getElementById('leaveScheduleInfoBtn').addEventListener('click', openLeaveScheduleModal);
 document.getElementById('lunchLimitInfoBtn').addEventListener('click', openWorkdaysCalcInfoModal);
@@ -7105,7 +7181,7 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
       <td>${detailBtn}${folderBtn}${personalKeyBtn}</td>
       <td>${memoBtn}</td>
       <td>${historyBtn}</td>
-      <td><button class="del-btn client-action-btn client-jump-edit-btn client-icon-plain" data-id="${c.id}" title="수정" style="color:var(--pink, #DB2777);">${editSvg}</button></td>
+      <td><button class="del-btn client-action-btn client-jump-edit-btn client-icon-plain" data-id="${c.id}" title="수정" style="color:var(--navy);">${editSvg}</button></td>
       <td><button class="del-btn client-action-btn client-jump-del-btn client-icon-plain" data-id="${c.id}" title="삭제" style="color:var(--coral);">${trashSvg}</button></td>
     </tr>`;
   }).join('');
@@ -7173,6 +7249,9 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
     btn.addEventListener('click', async ()=>{
       const c = clients.list.find(x=>x.id===btn.dataset.id);
       if(!c) return;
+      // 수정 완료 후 원래 있던 목록·상세팝업으로 자동으로 돌아가기 위해, 어느 거래처의 "상세정보" 팝업에서
+      // 들어왔는지 기억해둠 (clientPostSaveReopen)
+      clientPostSaveReopen = { clientId: c.id, type:'detail' };
       document.querySelector('.tab-btn[data-tab="clients-edit"]')?.click();
       await populateClientEditForm(c);
     });
@@ -7388,6 +7467,17 @@ function personalInfoRowHtml(c, rowNum, unlocked, decryptedMap){
   </div>`;
 }
 
+// "Client > 개인정보" 목록의 등록/수정 버튼 - 개인정보(홈택스 ID/PW, 대표자 주민번호 등)는 거래처 등록/수정 폼
+// 안의 "개인정보" 섹션에서 입력하므로, 그 거래처의 등록·수정 화면으로 이동해서 바로 그 섹션이 보이게 스크롤함
+// (예전엔 이 함수가 아예 정의돼 있지 않아서 버튼을 눌러도 아무 반응이 없던 버그가 있었음)
+async function openPersonalInfoModal(client){
+  clientPostSaveReopen = { clientId: client.id, type:'personal' };
+  document.querySelector('.tab-btn[data-tab="clients-edit"]')?.click();
+  await populateClientEditForm(client);
+  setTimeout(()=>{
+    document.getElementById('clPersonalInfoSection')?.scrollIntoView({behavior:'smooth', block:'start'});
+  }, 60);
+}
 function bindPersonalInfoRowEvents(wrap, unlocked){
   wrap.querySelectorAll('.pi-memo-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -7486,21 +7576,62 @@ async function renderPersonalInfoEtcList(client, unlocked){
   if(!wrap) return;
   if(!unlocked){ wrap.innerHTML = ''; return; }
   const p = findPersonalInfoForClient(client);
-  if(!p || !p.sensitiveEnc){ wrap.innerHTML = `<div class="empty-state">등록된 개인정보가 없습니다.</div>`; return; }
-  let s = {};
-  try{ s = await decryptJSON(p.sensitiveEnc, adminCryptoKey); }
-  catch(err){ wrap.innerHTML = `<div class="empty-state"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> 복호화 실패</div>`; return; }
-  const etc = s.etcAccounts || [];
-  if(!etc.length){ wrap.innerHTML = `<div class="empty-state">등록된 개인정보가 없습니다.</div>`; return; }
+  let etc = [];
+  if(p && p.sensitiveEnc){
+    try{ const s = await decryptJSON(p.sensitiveEnc, adminCryptoKey); etc = s.etcAccounts || []; }
+    catch(err){ wrap.innerHTML = `<div class="empty-state"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> 복호화 실패</div>`; return; }
+  }
+  // 홈택스/대표자 주민번호는 등록 화면과 마찬가지로 조회 화면에도 항상 기본으로 보이게 함(값이 비어있어도 -로 표시)
+  CL_PERSONAL_INFO_DEFAULT_LABELS.forEach(label=>{
+    if(!etc.some(a=>a.label===label)) etc.unshift({id:'default-'+label, label, idVal:'', pwVal:'', note:'', locked:true});
+  });
+  etc.sort((a,b)=>{
+    const wa = CL_PERSONAL_INFO_DEFAULT_LABELS.indexOf(a.label);
+    const wb = CL_PERSONAL_INFO_DEFAULT_LABELS.indexOf(b.label);
+    if(wa===-1 && wb===-1) return 0;
+    if(wa===-1) return 1;
+    if(wb===-1) return -1;
+    return wa - wb;
+  });
   wrap.innerHTML = etc.map(a=>`
-    <div class="pi-etc-row" data-id="${a.id}" style="display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); flex-wrap:wrap;">
+    <div class="pi-etc-row" data-id="${a.id}" style="display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); flex-wrap:wrap; user-select:text;">
       <span style="font-weight:800; font-size:13px; min-width:90px;">${escHtml(a.label||'기타')}</span>
+      <button type="button" class="del-btn pi-etc-copy-btn" data-idval="${escHtml(a.idVal||'')}" data-pwval="${escHtml(a.pwVal||'')}" title="ID/PW 복사" style="font-size:10px; padding:3px 8px;">복사</button>
       <span style="font-size:12.5px; color:var(--ink-soft);">ID</span><span class="num" style="font-size:15px; letter-spacing:0.05em;">${escHtml(a.idVal||'-')}</span>
       <span style="font-size:12.5px; color:var(--ink-soft);">PW</span><span class="num" style="font-size:15px; letter-spacing:0.05em;">${escHtml(a.pwVal||'-')}</span>
       ${a.note ? `<span style="font-size:12px; color:var(--ink-soft);">비고</span><span style="font-size:12px;">${linkifyText(a.note)}</span>` : ''}
       ${a.file && a.file.url ? `<a href="${escHtml(a.file.url)}" target="_blank" rel="noopener" class="del-btn" style="text-decoration:none; background:var(--amber-bg); color:var(--amber);" title="${escHtml(a.file.name||'첨부파일')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg> 첨부</a>` : ''}
     </div>`).join('');
+  wrap.querySelectorAll('.pi-etc-copy-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>copyIdPwToClipboard(btn.dataset.idval, btn.dataset.pwval, btn));
+  });
 }
+// ID/PW처럼 민감한 값을 화면에서 드래그로 긁어 복사하기보다, 버튼 하나로 "ID / PW" 형태로 클립보드에 바로 복사할 수 있게 함
+async function copyIdPwToClipboard(idVal, pwVal, btn){
+  const text = [idVal, pwVal].filter(Boolean).join(' / ');
+  if(!text){ return; }
+  try{
+    await navigator.clipboard.writeText(text);
+  }catch(err){
+    // 클립보드 API가 막혀있는 환경(권한 거부 등)을 위한 대체 수단
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); }catch(e2){}
+    document.body.removeChild(ta);
+  }
+  if(btn){
+    const original = btn.textContent;
+    btn.textContent = '복사됨';
+    setTimeout(()=>{ btn.textContent = original; }, 1200);
+  }
+}
+// 사내정보(회사/팀 공용 ID·PW) 표는 여러 화면에서 재사용되는 HTML 문자열이라 매번 개별로 리스너를 붙이기
+// 번거로움 - 문서 전체에 위임(delegation)해서 어디서 그려지든 "복사" 버튼이 항상 동작하게 함
+document.addEventListener('click', (e)=>{
+  const btn = e.target.closest('.ci-account-copy-btn');
+  if(btn) copyIdPwToClipboard(btn.dataset.idval, btn.dataset.pwval, btn);
+});
 // 이 팝업은 조회 전용 - 입력/수정/삭제는 거래처 등록·수정 폼의 개인정보 섹션에서만 함
 function openPersonalInfoEtcModal(client, unlocked){
   personalInfoEtcClientId = client.id;
@@ -7569,9 +7700,31 @@ function setClPersonalInfoUnlocked(unlocked){
   if(lockNotice) lockNotice.style.display = unlocked ? 'none' : 'block';
   if(editWrap) editWrap.style.display = unlocked ? '' : 'none';
 }
+// 홈택스 ID/PW, 대표자 주민번호는 거래처마다 항상 있는 정보라 매번 새로 "항목 추가"하지 않아도 되도록
+// 기본으로 항상 맨 위 두 줄에 깔아두는 항목 - locked라 삭제 버튼이 안 보이고(라벨 자체는 고정), 값만 채우면 됨
+const CL_PERSONAL_INFO_DEFAULT_LABELS = ['홈택스', '대표자 주민번호'];
+function ensureClPersonalInfoDefaults(){
+  CL_PERSONAL_INFO_DEFAULT_LABELS.forEach(label=>{
+    if(!clPersonalInfoEntries.some(a=>a.label===label)){
+      clPersonalInfoEntries.unshift({id:genId(), label, idVal:'', pwVal:'', note:'', locked:true});
+    } else {
+      const e = clPersonalInfoEntries.find(a=>a.label===label);
+      if(e) e.locked = true;
+    }
+  });
+  // 기본 두 항목이 항상 맨 위(홈택스 → 대표자 주민번호 순)에 오도록 정렬
+  clPersonalInfoEntries.sort((a,b)=>{
+    const wa = CL_PERSONAL_INFO_DEFAULT_LABELS.indexOf(a.label);
+    const wb = CL_PERSONAL_INFO_DEFAULT_LABELS.indexOf(b.label);
+    if(wa===-1 && wb===-1) return 0;
+    if(wa===-1) return 1;
+    if(wb===-1) return -1;
+    return wa - wb;
+  });
+}
 async function loadClPersonalInfoEntriesForClient(client){
   const p = client && findPersonalInfoForClient(client);
-  if(!p || !p.sensitiveEnc){ clPersonalInfoEntries = []; return; }
+  if(!p || !p.sensitiveEnc){ clPersonalInfoEntries = []; ensureClPersonalInfoDefaults(); return; }
   try{
     const s = await decryptJSON(p.sensitiveEnc, adminCryptoKey);
     clPersonalInfoEntries = (s.etcAccounts||[]).map(a=>({...a, _fileToUpload:null}));
@@ -7579,10 +7732,12 @@ async function loadClPersonalInfoEntriesForClient(client){
     console.error('개인정보 복호화 실패', err);
     clPersonalInfoEntries = [];
   }
+  ensureClPersonalInfoDefaults();
 }
 // 신규등록 화면을 열 때 호출 - 항목을 비우고 바로 입력 가능하게 함
 function resetClPersonalInfoForNew(){
   clPersonalInfoEntries = [];
+  ensureClPersonalInfoDefaults();
   setClPersonalInfoUnlocked(true);
   renderClPersonalInfoRows();
 }
@@ -7599,12 +7754,14 @@ function renderClPersonalInfoRows(){
     wrap.innerHTML = `<div class="empty-state" style="padding:6px 0;">등록된 항목이 없습니다.</div>`;
   } else {
     wrap.innerHTML = clPersonalInfoEntries.map((a,i)=>`
-      <div class="cl-pi-row" data-idx="${i}" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; padding:6px 0; border-bottom:1px solid var(--border);">
-        <input type="text" class="cl-pi-label" data-idx="${i}" placeholder="구분(직접입력) 예: 지방세시스템" value="${escHtml(a.label||'')}" style="flex:1 1 130px;">
+      <div class="cl-pi-row" data-idx="${i}" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; padding:6px 0; border-bottom:1px solid var(--border); ${a.locked?'background:var(--indigo-bg); border-radius:8px; padding-left:8px; padding-right:8px;':''}">
+        ${a.locked
+          ? `<span style="flex:1 1 130px; font-weight:800; font-size:12.5px; color:var(--indigo-deep);">${escHtml(a.label||'')} <span style="font-weight:400; color:var(--ink-soft); font-size:10.5px;">(기본)</span></span>`
+          : `<input type="text" class="cl-pi-label" data-idx="${i}" placeholder="구분(직접입력) 예: 지방세시스템" value="${escHtml(a.label||'')}" style="flex:1 1 130px;">`}
         <input type="text" class="cl-pi-id" data-idx="${i}" placeholder="ID" value="${escHtml(a.idVal||'')}" style="flex:1 1 100px;">
         <input type="text" class="cl-pi-pw" data-idx="${i}" placeholder="PW" value="${escHtml(a.pwVal||'')}" style="flex:1 1 100px;">
         <input type="text" class="cl-pi-note" data-idx="${i}" placeholder="비고 (URL 입력시 자동 링크)" value="${escHtml(a.note||'')}" style="flex:1 1 180px;">
-        <button type="button" class="del-btn cl-pi-del-btn" data-idx="${i}">삭제</button>
+        ${a.locked ? '' : `<button type="button" class="del-btn cl-pi-del-btn" data-idx="${i}">삭제</button>`}
       </div>`).join('');
   }
   wrap.querySelectorAll('.cl-pi-label').forEach(el=>el.addEventListener('input', e=>{ clPersonalInfoEntries[+e.target.dataset.idx].label = e.target.value; }));
@@ -7810,8 +7967,12 @@ function buildCiAccountTable(list, category, admin, person, titlePrefix, showCon
     if(!it.sensitiveEnc){ idCell = cell(it.idVal); pwCell = cell(it.pwVal); }
     else if(ciRevealedValues[it.id]){ idCell = cell(ciRevealedValues[it.id].idVal); pwCell = cell(ciRevealedValues[it.id].pwVal); }
     else { idCell = pwCell = ciRevealBtnHtml(it.id); }
+    const canCopy = !it.sensitiveEnc || ciRevealedValues[it.id];
+    const copyIdVal = !it.sensitiveEnc ? (it.idVal||'') : (ciRevealedValues[it.id] ? ciRevealedValues[it.id].idVal||'' : '');
+    const copyPwVal = !it.sensitiveEnc ? (it.pwVal||'') : (ciRevealedValues[it.id] ? ciRevealedValues[it.id].pwVal||'' : '');
+    const copyBtn = canCopy && (copyIdVal||copyPwVal) ? `<button type="button" class="del-btn ci-account-copy-btn" data-idval="${escHtml(copyIdVal)}" data-pwval="${escHtml(copyPwVal)}" title="ID/PW 복사" style="font-size:10px; padding:3px 8px; margin-left:6px;">복사</button>` : '';
     return `<tr>
-      <td style="font-weight:700;">${escHtml(it.label||'')}</td>
+      <td style="font-weight:700;">${escHtml(it.label||'')}${copyBtn}</td>
       <td>${idCell}</td><td>${pwCell}</td>
       <td>${noteCell(it)}</td>
       ${ciRowButtons(admin, category, it.id, person, it.history&&it.history.length, showControls)}
@@ -7866,7 +8027,7 @@ function bindCiRowButtons(wrap){
 // 정해진 순서로 크게(임팩트 있게) 보여주고 개별 수정/이력/삭제 버튼은 없앰. 이 표준 항목 외에
 // 예전 방식으로 등록돼 있던 다른 기본정보 항목이 있으면(예: 참고용 안내 항목) "기타 기본정보"로 따로 보여주고
 // 거기엔 기존처럼 수정/이력/삭제를 남겨둠
-const CORP_BASIC_INFO_ORDER = ['사업자번호','법인등록번호','회사명','창립일','대표자','주민등록번호','주소','우편번호','조정반번호','대표번호','대표팩스'];
+const CORP_BASIC_INFO_ORDER = ['사업자번호','법인등록번호','회사명','창립일','대표자','주민등록번호','주소','우편번호','조정반번호','대표번호','대표팩스','폴더 링크'];
 // 사업자번호는 "2958703076"처럼 숫자만 저장돼 있어도, 실제 사업자등록증 표기(3자리-2자리-5자리)에 맞춰
 // 화면에서만 대시를 넣어 보여줌 - 저장된 원본 값은 그대로 두고 표시할 때만 가공함.
 // 이미 대시가 섞여 있거나 자릿수가 10자리가 아니면(오입력 등) 손대지 않고 원본 그대로 보여줌
@@ -7899,7 +8060,9 @@ function buildCorpBasicInfoTable(infoList, companyName, admin, showControls){
     .filter(label => byLabel[label] && (byLabel[label].content||'').trim())
     .map(label => {
       const rawValue = byLabel[label].content;
-      const displayValue = label === '사업자번호' ? formatBizRegNo(rawValue) : rawValue;
+      const displayValue = label === '사업자번호' ? formatBizRegNo(rawValue)
+        : label === '폴더 링크' ? {html:`<a href="${escHtml(rawValue)}" target="_blank" rel="noopener">${escHtml(rawValue)}</a>`}
+        : rawValue;
       return [label, displayValue];
     });
   const docHtml = buildProfileDocHtml(companyName || '회사명 미등록', 'CORPORATE PROFILE', rows, '설정 > 회사 정보에서 등록해보세요.');
@@ -9026,13 +9189,16 @@ const DASHBOARD_WIDGET_DEFAULT_ENABLED = ['clock','calendar','approval','notice'
 const DASHBOARD_SHAPES = { normal:{label:'기본'}, wide:{label:'가로형'}, tall:{label:'세로형'}, big:{label:'크게'} };
 function getDashboardConfig(){
   let order, enabledList, wideList, shapeObj;
-  try{ order = JSON.parse(localStorage.getItem('worklog_dashboard_order') || 'null'); }catch(e){ order = null; }
-  try{ enabledList = JSON.parse(localStorage.getItem('worklog_dashboard_enabled') || 'null'); }catch(e){ enabledList = null; }
+  // 대시보드 위젯 배치는 사람마다(연동된 구글 계정마다) 다르게 두고 싶어하는 개인 취향이라, 다른 개인정보들과
+  // 마찬가지로 skey()로 계정별(activeProfileId별)로 따로 저장함 - 예전엔 접미사 없는 공용 키
+  // (worklog_dashboard_*)를 썼어서 이 브라우저의 모든 계정이 같은 배치를 공유하는 버그가 있었음.
+  // 이미 그 공용 키로 저장돼 있던 예전 설정은, 계정별 설정이 아직 없을 때 1회성으로 이어받아 옴(마이그레이션)
+  try{ order = JSON.parse(localStorage.getItem(skey('dashboard_order')) || localStorage.getItem('worklog_dashboard_order') || 'null'); }catch(e){ order = null; }
+  try{ enabledList = JSON.parse(localStorage.getItem(skey('dashboard_enabled')) || localStorage.getItem('worklog_dashboard_enabled') || 'null'); }catch(e){ enabledList = null; }
   // 위젯 모양(기본/가로형/세로형/크게) - 위치(순서)는 예전부터 있었지만, "위치나 크기를 유도리있게
   // 조정하고 싶다"는 요청에 맞춰 늘림. 예전엔 가로형(wide) 하나뿐이었는데, 그 시절 데이터
   // (worklog_dashboard_wide, 배열)가 남아있으면 그 위젯들을 shape:'wide'로 옮겨와서 그대로 이어씀.
-  // 개인 화면 배치라 순서/공개 여부와 마찬가지로 이 브라우저에만 저장됨
-  try{ shapeObj = JSON.parse(localStorage.getItem('worklog_dashboard_shape') || 'null'); }catch(e){ shapeObj = null; }
+  try{ shapeObj = JSON.parse(localStorage.getItem(skey('dashboard_shape')) || localStorage.getItem('worklog_dashboard_shape') || 'null'); }catch(e){ shapeObj = null; }
   if(!shapeObj || typeof shapeObj !== 'object'){
     try{ wideList = JSON.parse(localStorage.getItem('worklog_dashboard_wide') || 'null'); }catch(e){ wideList = null; }
     shapeObj = {};
@@ -9051,9 +9217,9 @@ function getDashboardConfig(){
 }
 function saveDashboardConfig(order, enabledSet, shapeObj){
   try{
-    localStorage.setItem('worklog_dashboard_order', JSON.stringify(order));
-    localStorage.setItem('worklog_dashboard_enabled', JSON.stringify(Array.from(enabledSet)));
-    localStorage.setItem('worklog_dashboard_shape', JSON.stringify(shapeObj || {}));
+    localStorage.setItem(skey('dashboard_order'), JSON.stringify(order));
+    localStorage.setItem(skey('dashboard_enabled'), JSON.stringify(Array.from(enabledSet)));
+    localStorage.setItem(skey('dashboard_shape'), JSON.stringify(shapeObj || {}));
   }catch(e){}
 }
 // 달력·근태 관련 이모지(🌴🏠🎁⏰🗓️🍻🎌🍱)를 앱 전체에서 쓰는 선 스타일 아이콘으로 통일하기 위한 헬퍼.
@@ -10595,6 +10761,9 @@ document.getElementById('expenseHistoryModalOverlay').addEventListener('click', 
 
 let editingScheduleId = null;
 let editingClientId = null;
+// 거래처 수정을 "상세정보" 팝업이나 "개인정보" 목록에서 들어왔을 때, 수정완료 후 다시 그 팝업으로 자동으로
+// 돌아가기 위한 기록 - {clientId, type:'detail'|'personal'}. 거래처등록 탭에서 직접 들어온 경우엔 null로 남아있음
+let clientPostSaveReopen = null;
 
 const CLIENT_IMPORT_DATA = [
   {
@@ -11610,6 +11779,17 @@ document.getElementById('schedule-cancel').addEventListener('click', ()=>{
 
 document.getElementById('clientForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
+  // 예전엔 이 함수 안에서 에러가 나면(예: 특정 필드 값 조합에서 예외 발생) 아무 안내 없이 그냥 "수정완료"가
+  // 안 되는 것처럼 보이는 문제가 있었음 - 전체를 try/catch로 감싸서, 실패하면 최소한 어떤 오류인지
+  // 알림창으로 보여주고 콘솔에도 남겨서 원인을 찾을 수 있게 함
+  try{
+    await handleClientFormSubmit();
+  }catch(err){
+    console.error('거래처 저장 중 오류', err);
+    alert('저장 중 오류가 발생해서 반영되지 않았어요. 다시 시도해보시고, 계속되면 화면을 새로고침한 뒤 다시 입력해주세요.\n\n(오류: ' + (err && err.message ? err.message : err) + ')');
+  }
+});
+async function handleClientFormSubmit(){
   const name = document.getElementById('cl-name').value.trim();
   // novalidate로 브라우저 자체검증을 껐기 때문에, 상호명 필수 체크는 여기서 직접 안내하며 처리함
   if(!name){
@@ -11638,7 +11818,7 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
     subTags: clSubTags.map(t=>({key:t.key, notes:(t.notes||[]).map(n=>({id:n.id, text:n.text, date:n.date||''})), activeNoteId:t.activeNoteId||null})),
     entitySubType: '', // 예전 단일값 필드는 더 이상 새로 쓰지 않음(과거 데이터 호환용으로만 남겨둠)
     bizNo: document.getElementById('cl-bizno').value.trim(),
-    corpRegNo: document.getElementById('cl-corpregno').value.trim(),
+    corpRegNo: document.getElementById('cl-entity-type').value === '법인' ? document.getElementById('cl-corpregno').value.trim() : '',
     bizAddress: document.getElementById('cl-biz-address').value.trim(),
     openDate: document.getElementById('cl-open-date').value,
     foundingDate: document.getElementById('cl-entity-type').value === '법인' ? document.getElementById('cl-founding-date').value : '',
@@ -11687,15 +11867,41 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
     lastEditedClientId = editingClientId;
     editingClientId = null;
     document.getElementById('clientSaveMsg').textContent = '수정 완료';
-    if(c) await saveClPersonalInfoForClient(c);
+    // 거래처 기본/추가정보 저장은 개인정보(암호화) 저장과 완전히 분리함 - 개인정보 저장 쪽에서 비밀번호
+    // 확인이 막히거나 오류가 나더라도, 방금 입력한 기본/추가정보만큼은 반드시 저장되게 하기 위함
+    // (예전엔 개인정보 저장까지 한 번에 묶여있어서, 그쪽에서 문제가 생기면 "수정완료"를 눌러도 거래처
+    // 기본정보까지 통째로 저장 안 된 것처럼 보이는 문제가 있었음)
     await saveClients();
+    if(c){
+      try{ await saveClPersonalInfoForClient(c); }
+      catch(err){ console.error('개인정보 저장 실패', err); alert('개인정보 저장 중 문제가 있었어요. 나머지 정보는 정상 저장됐어요.\n\n(오류: ' + (err && err.message ? err.message : err) + ')'); }
+    }
     renderClients();
     renderClientsRegular();
     renderClientsOther();
     renderClientsTerminated();
     renderPersonalInfo();
-    // 수정 저장 후에는 폼을 비우지 않고, 방금 수정한 내용을 보여준 채로 잠가둠 (신규등록/수정 버튼으로 다음 동작 선택)
-    lockClientFormAfterEdit();
+    // 상세정보/개인정보 팝업에서 "수정"으로 들어왔었다면, 확인 절차 없이 바로 그 거래처가 있는 목록으로
+    // 돌아가서 같은 팝업을 다시 띄워줌. 거래처등록 탭에서 새로 만들거나 직접 들어와 수정한 경우엔
+    // 예전처럼 폼에 남아서 이어서 다른 항목을 고를 수 있게 둠
+    const reopen = (c && clientPostSaveReopen && clientPostSaveReopen.clientId === c.id) ? clientPostSaveReopen : null;
+    clientPostSaveReopen = null;
+    if(c && reopen){
+      const targetTab = c.status === '해지' ? 'clients-terminated'
+        : ['기장대행','신고대리'].includes(c.taxType) ? 'clients-regular' : 'clients-other';
+      document.querySelector(`.tab-btn[data-tab="${targetTab}"]`)?.click();
+      setTimeout(()=>{
+        if(reopen.type === 'detail') openClientDetailModal(c);
+        else if(reopen.type === 'personal'){
+          const admin = !!gdriveAccessToken && isCurrentUserAdmin;
+          const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
+          openPersonalInfoEtcModal(c, unlocked);
+        }
+      }, 80);
+    } else {
+      // 수정 저장 후에는 폼을 비우지 않고, 방금 수정한 내용을 보여준 채로 잠가둠 (신규등록/수정 버튼으로 다음 동작 선택)
+      lockClientFormAfterEdit();
+    }
     return;
   }
   const newClient = {
@@ -11731,7 +11937,7 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
   renderClientsOther();
   renderClientsTerminated();
   renderPersonalInfo();
-});
+}
 
 // 수정 저장 직후: 입력칸을 비활성화해서 "방금 뭘 저장했는지" 그대로 보여주고, 신규등록/수정 버튼만 남김
 let lastEditedClientId = null;
@@ -11965,12 +12171,17 @@ function renderSubTagChipOptions(){
   });
   updateSubTagTriggerLabel();
 }
-// 설립일은 법인만 있는 개념이라, 사업자구분이 개인이면 입력을 막고 값도 비워둠
+// 설립일·법인등록번호는 법인만 있는 개념이라, 사업자구분이 개인이면 입력을 막고 값도 비워둠
 function updateFoundingDateFieldState(){
   const isCorp = document.getElementById('cl-entity-type').value !== '개인';
   const foundingInput = document.getElementById('cl-founding-date');
   foundingInput.disabled = !isCorp;
   if(!isCorp) foundingInput.value = '';
+  const corpRegNoInput = document.getElementById('cl-corpregno');
+  if(corpRegNoInput){
+    corpRegNoInput.disabled = !isCorp;
+    if(!isCorp) corpRegNoInput.value = '';
+  }
 }
 document.getElementById('cl-entity-type').addEventListener('change', ()=>{
   // 사업자구분을 바꾸면 그 구분에 없는 상세유형(예: 법인으로 바꿨는데 간이가 붙어있던 경우)은 자동으로 정리함
@@ -12976,7 +13187,9 @@ document.querySelectorAll('.target-type-btn').forEach(btn=>{
 function filingTargetEntry(clientId, period){
   sharedFilingTargets[clientId] = sharedFilingTargets[clientId] || {};
   if(!sharedFilingTargets[clientId][period]){
-    sharedFilingTargets[clientId][period] = { applicable:false, cycle:'매월', sameMonthPay:true, nextMonthPay:false };
+    // marked: 대상/미대상 둘 중 하나를 명시적으로 골랐는지 여부 - false면 "아직 확인 안 함"(빈 칸 '-')이고,
+    // marked인데 applicable이 false면 "확인해봤는데 신고대상이 아님"(미대상)으로, 서로 다른 상태로 구분됨
+    sharedFilingTargets[clientId][period] = { applicable:false, marked:false, cycle:'매월', sameMonthPay:true, nextMonthPay:false };
   }
   return sharedFilingTargets[clientId][period];
 }
@@ -12998,11 +13211,14 @@ function populateFilingTargetYearSelect(){
   sel.value = filingTargetYear;
 }
 function filingTargetCellLabel(entry){
-  if(!entry || !entry.applicable) return '-';
-  const timing = [];
-  if(entry.sameMonthPay) timing.push('당월');
-  if(entry.nextMonthPay) timing.push('익월');
-  return `${entry.cycle}${timing.length ? '·'+timing.join('+') : ''}`;
+  if(entry && entry.applicable) {
+    const timing = [];
+    if(entry.sameMonthPay) timing.push('당월');
+    if(entry.nextMonthPay) timing.push('익월');
+    return `${entry.cycle}${timing.length ? '·'+timing.join('+') : ''}`;
+  }
+  if(entry && entry.marked) return '미대상';
+  return '-';
 }
 function renderFilingTargetTable(){
   populateFilingTargetYearSelect();
@@ -13020,7 +13236,11 @@ function renderFilingTargetTable(){
       const entry = (sharedFilingTargets[c.id]||{})[period];
       const label = filingTargetCellLabel(entry);
       const isOn = entry && entry.applicable;
-      return `<td class="cvb"><button type="button" class="filing-target-cell-btn" data-client-id="${c.id}" data-period="${period}" style="width:100%; border:1.5px solid ${isOn?'var(--indigo)':'var(--border)'}; border-radius:6px; padding:4px 2px; background:${isOn?'var(--indigo-bg)':'transparent'}; color:${isOn?'var(--indigo-deep)':'var(--ink-soft)'}; font-size:10.5px; font-weight:700; cursor:pointer;">${escHtml(label)}</button></td>`;
+      const isNotTarget = entry && entry.marked && !entry.applicable;
+      const cellColor = isOn ? 'var(--indigo)' : isNotTarget ? 'var(--coral)' : 'var(--border)';
+      const cellBg = isOn ? 'var(--indigo-bg)' : isNotTarget ? 'var(--coral-bg)' : 'transparent';
+      const cellText = isOn ? 'var(--indigo-deep)' : isNotTarget ? 'var(--coral)' : 'var(--ink-soft)';
+      return `<td class="cvb"><button type="button" class="filing-target-cell-btn" data-client-id="${c.id}" data-period="${period}" style="width:100%; border:1.5px solid ${cellColor}; border-radius:6px; padding:4px 2px; background:${cellBg}; color:${cellText}; font-size:10.5px; font-weight:700; cursor:pointer;">${escHtml(label)}</button></td>`;
     }).join('');
     return `<tr><td class="num cvb">${idx+1}</td><td class="cvb" style="color:${entityColor}; font-weight:800; background:${nameBg}; white-space:nowrap;">${escHtml(c.name)}</td>${monthCells}</tr>`;
   }).join('');
@@ -13036,7 +13256,10 @@ document.getElementById('filingTargetYear')?.addEventListener('change', (e)=>{
 // 신고대상 편집 팝업 - 저장을 눌러야 실제로 sharedFilingTargets에 저장(saveSharedFilingTargets)되고 화면이 갱신됨
 let filingTargetEditCtx = { clientId:null, period:null };
 function syncFilingTargetModalUI(entry){
-  document.getElementById('ft-applicable').checked = !!entry.applicable;
+  document.querySelectorAll('#filingTargetApplicableToggle .ft-applicable-btn').forEach(b=>{
+    const isTargetBtn = b.dataset.value === 'target';
+    b.classList.toggle('active', isTargetBtn ? !!entry.applicable : !!(entry.marked && !entry.applicable));
+  });
   document.getElementById('filingTargetDetailFields').style.display = entry.applicable ? 'flex' : 'none';
   document.querySelectorAll('#filingTargetCycleToggle .ft-cycle-btn').forEach(b=>{
     b.classList.toggle('active', b.dataset.cycle === entry.cycle);
@@ -13053,13 +13276,24 @@ function openFilingTargetEditModal(clientId, period){
   syncFilingTargetModalUI(filingTargetEntry(clientId, period));
   document.getElementById('filingTargetEditModalOverlay').style.display = 'flex';
 }
-document.getElementById('ft-applicable')?.addEventListener('change', (e)=>{
-  const { clientId, period } = filingTargetEditCtx;
-  if(!clientId) return;
-  const entry = filingTargetEntry(clientId, period);
-  entry.applicable = e.target.checked;
-  if(entry.applicable && !entry.sameMonthPay && !entry.nextMonthPay) entry.sameMonthPay = true;
-  syncFilingTargetModalUI(entry);
+document.querySelectorAll('#filingTargetApplicableToggle .ft-applicable-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const { clientId, period } = filingTargetEditCtx;
+    if(!clientId) return;
+    const entry = filingTargetEntry(clientId, period);
+    const wantTarget = btn.dataset.value === 'target';
+    const alreadyThisState = wantTarget ? (entry.applicable && entry.marked) : (entry.marked && !entry.applicable);
+    if(alreadyThisState){
+      // 이미 선택된 버튼을 다시 누르면 "아직 확인 안 함" 상태로 되돌림
+      entry.applicable = false; entry.marked = false;
+    } else if(wantTarget){
+      entry.applicable = true; entry.marked = true;
+      if(!entry.sameMonthPay && !entry.nextMonthPay) entry.sameMonthPay = true;
+    } else {
+      entry.applicable = false; entry.marked = true;
+    }
+    syncFilingTargetModalUI(entry);
+  });
 });
 document.querySelectorAll('#filingTargetCycleToggle .ft-cycle-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
@@ -14806,6 +15040,69 @@ document.getElementById('approvalDraftForm')?.addEventListener('submit', (e)=>{
 document.getElementById('ad-save-draft-btn')?.addEventListener('click', ()=>{
   saveApprovalDraftForm('임시저장');
 });
+// 문서종류별로 자주 쓰는 인사말/맺음말을 미리 준비해두고, 버튼 한 번으로 내용칸에 채워줌 - 이미 내용이
+// 있으면 지우지 않고 그 앞뒤로 인사말/맺음말만 붙여서 기존에 쓰던 내용은 그대로 유지함
+const AD_AUTO_PHRASE = {
+  '일반': { greeting:'안녕하세요, 아래와 같이 결재 요청드립니다.', closing:'검토 후 승인 부탁드립니다. 감사합니다.' },
+  '지출결의서': { greeting:'안녕하세요, 아래 지출건에 대해 결재 요청드립니다.', closing:'첨부한 증빙 확인 후 승인 부탁드립니다. 감사합니다.' },
+  '휴가': { greeting:'안녕하세요, 아래와 같이 휴가를 신청합니다.', closing:'업무 인수인계는 별도로 안내드리겠습니다. 승인 부탁드립니다.' },
+  '부가가치세': { greeting:'안녕하세요, 아래 거래처의 부가가치세 신고 관련 결재 요청드립니다.', closing:'검토 후 승인 부탁드립니다. 감사합니다.' },
+  '법인세': { greeting:'안녕하세요, 아래 거래처의 법인세 신고 관련 결재 요청드립니다.', closing:'검토 후 승인 부탁드립니다. 감사합니다.' },
+  '종합소득세': { greeting:'안녕하세요, 아래 거래처의 종합소득세 신고 관련 결재 요청드립니다.', closing:'검토 후 승인 부탁드립니다. 감사합니다.' }
+};
+document.getElementById('ad-auto-phrase-btn')?.addEventListener('click', ()=>{
+  const docType = document.getElementById('ad-doctype')?.value || '일반';
+  const phrase = AD_AUTO_PHRASE[docType] || AD_AUTO_PHRASE['일반'];
+  const contentEl = document.getElementById('ad-content');
+  const body = contentEl.value.trim();
+  contentEl.value = `${phrase.greeting}\n\n${body}${body?'\n\n':''}${phrase.closing}`;
+});
+// 기안 상신 전에 실제로 결재자에게 어떻게 보일지 문서 형태로 미리 확인할 수 있는 팝업 - 여기서 바로
+// "상신하기"를 눌러도 되고, 닫고 폼으로 돌아가 더 수정해도 됨
+function openApprovalPreviewModal(){
+  const title = document.getElementById('ad-title').value.trim();
+  if(!title){ alert('제목을 입력해주세요.'); return; }
+  const content = document.getElementById('ad-content').value.trim();
+  const docType = document.getElementById('ad-doctype')?.value || '일반';
+  const approverEmail = document.getElementById('ad-approver').value;
+  const approverName = resolveNameByEmail(approverEmail) || document.getElementById('ad-approver').selectedOptions[0]?.textContent || '-';
+  const attachmentLink = document.getElementById('ad-attachment').value.trim();
+  document.getElementById('memoModalTitle').textContent = '기안 미리보기';
+  document.getElementById('memoModalBody').innerHTML = `
+    <div style="border:1.5px solid var(--border); border-radius:10px; overflow:hidden; text-align:left;">
+      <div style="background:linear-gradient(160deg, var(--navy), #2B3768); color:#fff; padding:12px 16px; font-weight:800;">${escHtml(title)}</div>
+      <div style="padding:14px 16px; font-size:12.5px;">
+        <div style="display:flex; gap:10px; margin-bottom:10px; color:var(--ink-soft); font-weight:700;">
+          <span>${escHtml(docType)}</span><span>·</span><span>기안 ${escHtml(currentStaffDisplayName()||'')}</span><span>→</span><span>승인 ${escHtml(approverName)}</span>
+        </div>
+        <div style="white-space:pre-wrap; line-height:1.7; background:var(--bg); border-radius:8px; padding:12px; user-select:text;">${escHtml(content || '(내용 없음)')}</div>
+        ${attachmentLink ? `<div style="margin-top:8px;"><a href="${escHtml(attachmentLink)}" target="_blank" rel="noopener" style="color:var(--indigo); font-weight:700;">📎 첨부 링크 열기</a></div>` : ''}
+      </div>
+    </div>
+    <div style="text-align:center; margin-top:14px;">
+      <button type="button" id="approvalPreviewSubmitBtn" class="submit-btn" style="width:auto; padding:9px 20px;">이대로 상신하기</button>
+    </div>`;
+  document.getElementById('memoModalOverlay').style.display = 'flex';
+  document.getElementById('approvalPreviewSubmitBtn').addEventListener('click', ()=>{
+    closeMemoModal();
+    saveApprovalDraftForm('기안');
+  });
+}
+document.getElementById('ad-approval-preview-btn')?.addEventListener('click', openApprovalPreviewModal);
+// 기안 내용을 앱 안에서 결재만 요청하는 데 그치지 않고, 결재자에게 메일로도 바로 알릴 수 있게 함
+// (급한 건이거나 결재자가 앱을 자주 안 볼 때 유용함) - 공지사항 메일 전달과 같은 방식(Gmail 작성창 새 탭)
+document.getElementById('ad-mail-btn')?.addEventListener('click', ()=>{
+  const title = document.getElementById('ad-title').value.trim();
+  if(!title){ alert('제목을 입력해주세요.'); return; }
+  const content = document.getElementById('ad-content').value.trim();
+  const approverEmail = document.getElementById('ad-approver').value;
+  if(!approverEmail){ alert('결재자를 선택해주세요.'); return; }
+  const attachmentLink = document.getElementById('ad-attachment').value.trim();
+  const subject = `[Tax.J 결재요청] ${title}`;
+  const body = `${content}${attachmentLink ? '\n\n첨부: '+attachmentLink : ''}\n\n— ${currentStaffDisplayName()||''}`;
+  const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(approverEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(url, '_blank');
+});
 // 임시저장해둔(또는 잘못 써서 다시 고치려는) 기안문을 폼에 그대로 불러옴 - ad-edit-id를 채워두면
 // 이후 저장/상신 시 새 항목이 아니라 이 문서를 그대로 갱신함
 function editApprovalDraft(id){
@@ -14878,9 +15175,18 @@ function myApprovalMineList(){
   const myEmail = (currentUserEmail||'').toLowerCase();
   return (sharedApprovals||[]).filter(a=>(a.drafterEmail||'').toLowerCase()===myEmail);
 }
+// 예전엔 결재 대기(기안/검토중) 상태인 문서만 보여줘서, 승인/반려 결정을 내리고 나면 이 목록에서
+// 바로 사라졌음 - 이제는 내가 결재자로 지정된 문서를 상태와 상관없이 전부 보여주고("상태" 칸으로
+// 대기/승인/반려를 구분), 최근에 처리한 것부터 위로 오도록 정렬함
 function myApprovalInboxList(){
   const myEmail = (currentUserEmail||'').toLowerCase();
-  return (sharedApprovals||[]).filter(a=>(a.approverEmail||'').toLowerCase()===myEmail && (a.status==='기안' || a.status==='검토중'));
+  return (sharedApprovals||[]).filter(a=>(a.approverEmail||'').toLowerCase()===myEmail && a.status!=='임시저장')
+    .sort((a,b)=>{
+      const pendingA = (a.status==='기안'||a.status==='검토중') ? 0 : 1;
+      const pendingB = (b.status==='기안'||b.status==='검토중') ? 0 : 1;
+      if(pendingA !== pendingB) return pendingA - pendingB; // 대기 중인 문서를 항상 위로
+      return (b.createdAt||'').localeCompare(a.createdAt||'');
+    });
 }
 function myApprovalRejectedList(){
   const myEmail = (currentUserEmail||'').toLowerCase();
@@ -16612,7 +16918,8 @@ const COMPANY_BASIC_INFO_FIELDS = [
   { field:'company-zipcode-input', label:'우편번호' },
   { field:'company-taxagent-input', label:'조정반번호' },
   { field:'company-phone-input', label:'대표번호' },
-  { field:'company-fax-input', label:'대표팩스' }
+  { field:'company-fax-input', label:'대표팩스' },
+  { field:'company-drive-folder', label:'폴더 링크' }
 ];
 function findCorpInfoEntry(label){
   return (sharedCompanyInfo.corp||[]).find(x=>(x.type||'info')==='info' && x.label===label);
