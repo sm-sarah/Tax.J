@@ -7878,7 +7878,6 @@ async function renderPersonalInfoEtcList(client, unlocked){
         : `<span style="font-size:12.5px; color:var(--ink-soft);">ID</span><span class="num" style="font-size:15px; letter-spacing:0.05em;">${escHtml(a.idVal||'-')}</span>
       <span style="font-size:12.5px; color:var(--ink-soft);">PW</span><span class="num" style="font-size:15px; letter-spacing:0.05em;">${escHtml(a.pwVal||'-')}</span>`}
       ${a.note ? `<span style="font-size:12px; color:var(--ink-soft);">비고</span><span style="font-size:12px;">${linkifyText(a.note)}</span>` : ''}
-      ${a.file && a.file.url ? `<a href="${escHtml(a.file.url)}" target="_blank" rel="noopener" class="del-btn" style="text-decoration:none; background:var(--amber-bg); color:var(--amber);" title="${escHtml(a.file.name||'첨부파일')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg> 첨부</a>` : ''}
     </div>`;
   }).join('');
 }
@@ -7906,40 +7905,10 @@ document.getElementById('personalInfoEtcModalClose').addEventListener('click', (
 document.getElementById('personalInfoEtcModalOverlay').addEventListener('click', (e)=>{
   if(e.target.id === 'personalInfoEtcModalOverlay') document.getElementById('personalInfoEtcModalOverlay').style.display = 'none';
 });
-// 개인정보 첨부파일(이미지/PDF)을 구글드라이브에 업로드 - 이 앱은 회사 공통 데이터를 JSON 하나로 동기화하는 구조라
-// 업로드한 사람 본인의 드라이브에 파일이 생기는데, 그대로 두면 링크를 다른 직원이 열지 못하므로
-// 업로드 직후 "링크가 있는 사람은 볼 수 있음" 권한을 붙여서 팀 누구나 저장된 링크로 열람 가능하게 함.
-async function gdriveUploadAttachment(file){
-  if(!gdriveAccessToken) throw new Error('로그인이 필요해요.');
-  const boundary = 'taxjfileboundary';
-  const metadata = JSON.stringify({ name: `TaxJ_개인정보첨부_${Date.now()}_${file.name}` });
-  const fileBuf = await file.arrayBuffer();
-  const body = new Blob([
-    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n--${boundary}\r\nContent-Type: ${file.type||'application/octet-stream'}\r\n\r\n`,
-    fileBuf,
-    `\r\n--${boundary}--`
-  ]);
-  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-    method:'POST',
-    headers:{ Authorization:`Bearer ${gdriveAccessToken}`, 'Content-Type':`multipart/related; boundary=${boundary}` },
-    body
-  });
-  const data = await res.json();
-  if(!res.ok){
-    if(res.status === 401) gdriveHandleUnauthorized();
-    throw new Error(data.error ? data.error.message : `업로드 실패 (${res.status})`);
-  }
-  try{
-    await fetch(`https://www.googleapis.com/drive/v3/files/${data.id}/permissions`, {
-      method:'POST',
-      headers:{ Authorization:`Bearer ${gdriveAccessToken}`, 'Content-Type':'application/json' },
-      body: JSON.stringify({ role:'reader', type:'anyone' })
-    });
-  }catch(e){ console.error('첨부파일 공유권한 설정 실패', e); }
-  return { id:data.id, name:file.name, url:`https://drive.google.com/file/d/${data.id}/view` };
-}
 // ── 업무기안(전자결재) 첨부파일 전용 업로드 ──
-// 개인정보 첨부파일(gdriveUploadAttachment)과 달리, 회사 공유 드라이브("01.기장대리")의
+// 예전엔 거래처 개인정보 화면에도 별도의 첨부파일 업로드(gdriveUploadAttachment, 개인 드라이브+공개링크
+// 방식)가 있었는데, 어차피 기장거래처의 "폴더" 항목(구글드라이브 폴더 링크)을 그 용도로 쓸 수 있어서
+// 중복 기능이라 완전히 없앰 - 회사 공유 드라이브("01.기장대리")의
 // "0004.전자결재첨부" 폴더 밑에 문서종류별 하위폴더를 만들어 그 안에 저장함. 공유드라이브는 멤버십으로
 // 이미 접근이 제한되므로 개인정보 첨부파일처럼 "링크가 있는 사람은 볼 수 있음" 권한을 따로 붙이지 않음.
 // 매번 폴더를 검색/생성하면 느리고 API 호출도 낭비라 세션 메모리 + localStorage에 폴더 ID를 캐시해둠.
@@ -8113,7 +8082,7 @@ async function loadClPersonalInfoEntriesForClient(client){
   if(!p || !p.sensitiveEnc){ clPersonalInfoEntries = []; ensureClPersonalInfoDefaults(); return; }
   try{
     const s = await decryptJSON(p.sensitiveEnc, adminCryptoKey);
-    clPersonalInfoEntries = (s.etcAccounts||[]).map(a=>({...a, _fileToUpload:null}));
+    clPersonalInfoEntries = (s.etcAccounts||[]);
   }catch(err){
     console.error('개인정보 복호화 실패', err);
     clPersonalInfoEntries = [];
@@ -8190,7 +8159,7 @@ document.getElementById('clPersonalInfoUnlockBtn')?.addEventListener('click', as
 // 아직 잠금해제된 적이 없다면(신규등록에서 바로 입력한 경우 등) 저장 시점에 한 번 비밀번호를 물어봄
 async function saveClPersonalInfoForClient(client){
   if(!clPersonalInfoUnlocked) return; // 잠긴 채로(비밀번호 확인 없이) 저장했으면 기존 개인정보는 그대로 둠
-  const hasContent = clPersonalInfoEntries.some(a=>(a.label||a.idVal||a.pwVal||a.note||a.file||a._fileToUpload));
+  const hasContent = clPersonalInfoEntries.some(a=>(a.label||a.idVal||a.pwVal||a.note));
   const existing = findPersonalInfoForClient(client);
   const hadExistingData = !!(existing && existing.sensitiveEnc);
   if(!hasContent && !hadExistingData) return; // 원래도 없었고 지금도 빈 상태면 굳이 암호화하지 않음
@@ -8201,12 +8170,11 @@ async function saveClPersonalInfoForClient(client){
       return;
     }
   }
-  // 첨부 기능은 더 이상 새로 등록하지 않지만, 예전에 이미 등록된 첨부(a.file)가 있다면 지우지 않고 그대로 유지함
+  // 첨부파일 기능은 완전히 없앰(기장거래처의 "폴더" 항목으로 대체) - 이제 저장은 텍스트 항목(label/ID/PW/비고)만 다룸
   const uploaded = [];
   for(const a of clPersonalInfoEntries){
-    const file = a.file || null;
-    if(a.label||a.idVal||a.pwVal||a.note||file){
-      uploaded.push({ id:a.id||genId(), label:a.label||'기타', type: a.type==='info' ? 'info' : 'idpw', idVal:a.idVal||'', pwVal:a.pwVal||'', note:a.note||'', file });
+    if(a.label||a.idVal||a.pwVal||a.note){
+      uploaded.push({ id:a.id||genId(), label:a.label||'기타', type: a.type==='info' ? 'info' : 'idpw', idVal:a.idVal||'', pwVal:a.pwVal||'', note:a.note||'' });
     }
   }
   const p = getOrCreatePersonalInfoEntry(client);
@@ -18104,18 +18072,45 @@ function gdriveBuildPayload(){
   };
 }
 
-function gdriveBuildMultipartBody(contentObj){
-  const metadata = JSON.stringify({ name: GDRIVE_FILE_NAME, mimeType: 'application/json' });
+function gdriveBuildMultipartBody(contentObj, metadataOverride){
+  const metadata = metadataOverride || JSON.stringify({ name: GDRIVE_FILE_NAME, mimeType: 'application/json' });
   const content = JSON.stringify(contentObj, null, 2);
   return `--taxjboundary\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n--taxjboundary\r\nContent-Type: application/json\r\n\r\n${content}\r\n--taxjboundary--`;
 }
 
 let gdriveFileWasJustCreated = false;
 
+// 회사 전체 데이터(taxj-shared-data.json) 저장 위치를 찾음/만듦 - 예전엔 그냥 "이 계정이 볼 수 있는 파일 중
+// 이름이 같은 것"을 찾아서, 결국 최초로 만든 사람(관리자)의 개인 드라이브에 파일이 생기는 구조였음. 그러면
+// 그 계정이 없어지거나 접근을 잃으면 회사 전체 데이터가 위태로워지므로, 이제 회사 공유 드라이브
+// ("01.기장대리")안에 두도록 바꿈. 이미 예전 방식으로(개인 드라이브에) 만들어진 파일이 있다면 새로
+// 만들지 않고 그 파일을 공유 드라이브 쪽으로 옮겨서(데이터 유지) 계속 씀 - 처음 한 번만 일어나는 이전(migration) 작업.
 async function gdriveEnsureFile(){
   if(gdriveFileId) return gdriveFileId;
   const q = encodeURIComponent(`name='${GDRIVE_FILE_NAME}' and trashed=false`);
-  const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, {
+  // 1) 먼저 공유 드라이브 안에서 찾음 - 이미 옮겨져 있는 정상적인 상태라면 여기서 바로 찾아짐
+  let driveId = null;
+  try{
+    const driveRes = await fetch(`https://www.googleapis.com/drive/v3/drives/${APPROVAL_ATTACHMENT_DRIVE_ID}`, {
+      headers: { Authorization: `Bearer ${gdriveAccessToken}` }
+    });
+    if(driveRes.ok){ const d = await driveRes.json(); if(d && d.id) driveId = d.id; }
+    else if(driveRes.status === 401){ gdriveHandleUnauthorized(); throw new Error('로그인이 만료됐어요. 다시 로그인해주세요.'); }
+  }catch(e){ if(e && /로그인이 만료/.test(e.message||'')) throw e; /* 공유드라이브 접근 실패 시 아래에서 개인 드라이브 방식으로 폴백 */ }
+  if(driveId){
+    const inDriveRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&driveId=${driveId}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&fields=files(id,name)`, {
+      headers: { Authorization: `Bearer ${gdriveAccessToken}` }
+    });
+    const inDriveData = await inDriveRes.json();
+    if(inDriveRes.ok && inDriveData.files && inDriveData.files.length){
+      gdriveFileId = inDriveData.files[0].id;
+      gdriveFileWasJustCreated = false;
+      localStorage.setItem('worklog_gdrive_file_id', gdriveFileId);
+      return gdriveFileId;
+    }
+  }
+  // 2) 공유 드라이브엔 없음 - 예전 방식으로(이 계정이 접근 가능한 개인 드라이브 등) 만들어진 파일이 있는지 찾아봄
+  const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,parents)`, {
     headers: { Authorization: `Bearer ${gdriveAccessToken}` }
   });
   const searchData = await searchRes.json();
@@ -18124,13 +18119,31 @@ async function gdriveEnsureFile(){
     throw new Error(`파일 검색 실패: ${searchData.error ? searchData.error.message : searchRes.status}`);
   }
   if(searchData.files && searchData.files.length){
-    gdriveFileId = searchData.files[0].id;
+    const found = searchData.files[0];
+    if(driveId){
+      // 기존 파일을 공유 드라이브로 옮김(내용은 그대로, 위치만 이동) - 데이터를 잃지 않도록 새로 만들지 않음
+      try{
+        const oldParents = (found.parents||[]).join(',');
+        const moveRes = await fetch(`https://www.googleapis.com/drive/v3/files/${found.id}?addParents=${driveId}${oldParents?`&removeParents=${oldParents}`:''}&supportsAllDrives=true&fields=id,parents`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${gdriveAccessToken}` }
+        });
+        if(!moveRes.ok){ console.error('회사 데이터 파일을 공유 드라이브로 옮기는 데 실패했어요 - 예전 위치를 그대로 씀', await moveRes.json().catch(()=>({}))); }
+      }catch(e){ console.error('회사 데이터 파일 이동 실패', e); }
+    }
+    gdriveFileId = found.id;
     gdriveFileWasJustCreated = false;
   } else {
-    const createRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    // 3) 어디에도 없음(진짜 최초 생성) - 공유 드라이브를 쓸 수 있으면 그 안에 바로 만들고, 아니면(공유 드라이브
+    // 접근이 안 되는 예외적인 경우) 예전처럼 이 계정의 개인 드라이브에 만듦
+    const metadata = driveId
+      ? JSON.stringify({ name: GDRIVE_FILE_NAME, mimeType: 'application/json', parents:[driveId] })
+      : JSON.stringify({ name: GDRIVE_FILE_NAME, mimeType: 'application/json' });
+    const createUrl = `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart${driveId?'&supportsAllDrives=true':''}`;
+    const createRes = await fetch(createUrl, {
       method: 'POST',
       headers: { Authorization: `Bearer ${gdriveAccessToken}`, 'Content-Type': 'multipart/related; boundary=taxjboundary' },
-      body: gdriveBuildMultipartBody(gdriveBuildPayload())
+      body: gdriveBuildMultipartBody(gdriveBuildPayload(), metadata)
     });
     const createData = await createRes.json();
     if(!createRes.ok || !createData.id){
@@ -18149,7 +18162,7 @@ async function gdriveEnsureFile(){
 async function gdrivePush(){
   if(!gdriveAccessToken || !gdriveFileId) return false;
   try{
-    const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${gdriveFileId}?uploadType=media`, {
+    const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${gdriveFileId}?uploadType=media&supportsAllDrives=true`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${gdriveAccessToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(gdriveBuildPayload(), null, 2)
@@ -18197,7 +18210,7 @@ async function gdrivePull(){
     }
   }
   try{
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${gdriveFileId}?alt=media`, {
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${gdriveFileId}?alt=media&supportsAllDrives=true`, {
       headers: { Authorization: `Bearer ${gdriveAccessToken}` }
     });
     if(!res.ok){
