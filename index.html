@@ -10013,41 +10013,46 @@ function dashClockState(entry){
   if(!entry.checkOut) return 'working';
   return 'done';
 }
-// Tax.J 마스코트(비숑) - "입체감은 없어도 되니 이모티콘 일러스트 느낌으로" 라는 요청으로, 그라디언트·
-// 드롭섀도우를 다 걷어내고 굵은 선+플랫 컬러의 단순한 이모티콘 스타일로 다시 그림. 팔다리 없이 얼굴만 있고,
-// 상태(idle/working/done)에 따라 입 모양만 바뀌는 건 동일.
+// Tax.J 마스코트(비숑) - "비숑은 뽀글머리가 메인인데 귀만 있고 뽀글거림이 없다"는 요청으로, 귀를 완전히
+// 없애고 머리 전체를 뽀글뽀글한 곱슬 뭉치 하나로 다시 그림. 뭉치마다 따로 선을 두르면 뭉치 사이사이에
+// 경계선이 생기므로, 살짝 키운 검정 실루엣 레이어를 먼저 깔고 그 위에 원래 크기의 흰색 뭉치를 덮어서
+// 뭉치끼리는 경계선 없이 매끈하게 이어지고 바깥 둘레에만 자연스러운 외곽선이 생기게 함.
 function dashMascotSvg(state){
   const ink = '#2B2A33';
   const fur = '#FFFFFF';
-  const cx=60, cy=62;
-  const ol = `stroke="${ink}" stroke-width="3" stroke-linejoin="round"`;
+  const cx=60, cy=60;
 
-  // 귀 - 이모티콘 느낌의 뭉툭하고 납작한 두 뭉치, 머리 뒤에 깔려서 바깥쪽 둥근 윤곽만 살짝 보이게 함
-  const ears = `<ellipse cx="${cx-34}" cy="${cy+6}" rx="14" ry="18" fill="${fur}" ${ol}/>
-    <ellipse cx="${cx+34}" cy="${cy+6}" rx="14" ry="18" fill="${fur}" ${ol}/>`;
-  // 머리 - 매끈한 원(정수리 쪽에만 작은 뭉치 몇 개로 살짝 뽀글거리는 느낌만 가볍게 얹음)
-  const topFluff = [-24,-8,8,24].map((dx,i)=>`<circle cx="${cx+dx}" cy="${cy-38+((i%2)*3)}" r="8.5" fill="${fur}" ${ol}/>`).join('');
-  const head = `${topFluff}<circle cx="${cx}" cy="${cy}" r="40" fill="${fur}" ${ol}/>`;
+  // 얼굴 중심의 큰 원 + 둘레를 감싸는 곱슬 뭉치 12개 - 전부 같은 흰색이라 뭉치와 얼굴 사이에 경계가 안 생김
+  const puffs = [
+    [0,-34,13],[19,-30,11],[32,-16,12],[37,3,12],[32,22,12],[18,32,11],
+    [0,36,12],[-18,32,11],[-32,22,12],[-37,3,12],[-32,-16,12],[-19,-30,11]
+  ];
+  function layer(growBy, fill){
+    let out = `<circle cx="${cx}" cy="${cy}" r="${30+growBy}" fill="${fill}"/>`;
+    puffs.forEach(([dx,dy,r])=>{ out += `<circle cx="${cx+dx}" cy="${cy+dy}" r="${r+growBy}" fill="${fill}"/>`; });
+    return out;
+  }
+  const head = `${layer(2.6, ink)}${layer(0, fur)}`;
 
-  const cheeks = `<ellipse cx="${cx-21}" cy="${cy+12}" rx="6" ry="4" fill="#FFC9C9"/><ellipse cx="${cx+21}" cy="${cy+12}" rx="6" ry="4" fill="#FFC9C9"/>`;
-  const nose = `<ellipse cx="${cx}" cy="${cy+7}" rx="5" ry="3.8" fill="${ink}"/>`;
+  const cheeks = `<ellipse cx="${cx-20}" cy="${cy+13}" rx="6" ry="4" fill="#FFC9C9"/><ellipse cx="${cx+20}" cy="${cy+13}" rx="6" ry="4" fill="#FFC9C9"/>`;
+  const nose = `<ellipse cx="${cx}" cy="${cy+8}" rx="5" ry="3.8" fill="${ink}"/>`;
   let mouth;
   if(state==='done'){
     // 퇴근 완료 - 혀를 살짝 내밀며 활짝 웃는 입(신남·홀가분함)
-    mouth = `<path d="M${cx-10},${cy+14} Q${cx},${cy+25} ${cx+10},${cy+14}" stroke="${ink}" stroke-width="3" fill="none" stroke-linecap="round"/>
-      <path d="M${cx-5.5},${cy+16.5} Q${cx},${cy+24} ${cx+5.5},${cy+16.5} Q${cx+4},${cy+21.5} ${cx},${cy+22} Q${cx-4},${cy+21.5} ${cx-5.5},${cy+16.5} Z" fill="#F0879C"/>`;
+    mouth = `<path d="M${cx-10},${cy+15} Q${cx},${cy+26} ${cx+10},${cy+15}" stroke="${ink}" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M${cx-5.5},${cy+17.5} Q${cx},${cy+25} ${cx+5.5},${cy+17.5} Q${cx+4},${cy+22.5} ${cx},${cy+23} Q${cx-4},${cy+22.5} ${cx-5.5},${cy+17.5} Z" fill="#F0879C"/>`;
   } else if(state==='working'){
     // 근무 중 - 야무지게 다문 작은 입(차분·집중)
-    mouth = `<path d="M${cx-4.5},${cy+15.5} Q${cx},${cy+18} ${cx+4.5},${cy+15.5}" stroke="${ink}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
+    mouth = `<path d="M${cx-4.5},${cy+16.5} Q${cx},${cy+19} ${cx+4.5},${cy+16.5}" stroke="${ink}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
   } else {
     // 출근 전(idle) - 살짝 벌어진 웃는 입(밝고 기본적인 표정)
-    mouth = `<path d="M${cx-7.5},${cy+14} Q${cx},${cy+21} ${cx+7.5},${cy+14}" stroke="${ink}" stroke-width="2.8" fill="none" stroke-linecap="round"/>`;
+    mouth = `<path d="M${cx-7.5},${cy+15} Q${cx},${cy+22} ${cx+7.5},${cy+15}" stroke="${ink}" stroke-width="2.8" fill="none" stroke-linecap="round"/>`;
   }
   // 눈 - 이모티콘처럼 단순한 진한 눈동자 + 하이라이트 점 하나, 상태와 무관하게 항상 동일
   const eye = (ex,ey)=>`<circle cx="${ex}" cy="${ey}" r="6" fill="${ink}"/><circle cx="${ex-2}" cy="${ey-2}" r="1.8" fill="#fff"/>`;
-  const eyes = `${eye(cx-14, cy-3)}${eye(cx+14, cy-3)}`;
+  const eyes = `${eye(cx-14, cy-2)}${eye(cx+14, cy-2)}`;
 
-  return `<svg viewBox="0 0 120 128" width="86" height="92" aria-hidden="true">${ears}${head}${cheeks}${eyes}${nose}${mouth}</svg>`;
+  return `<svg viewBox="0 0 120 128" width="86" height="92" aria-hidden="true">${head}${cheeks}${eyes}${nose}${mouth}</svg>`;
 }
 // 버튼/상태태그용 커스텀 아이콘 - ✅↩️🟢🔴 같은 기본 이모지 대신 브랜드 컬러의 손그림 아이콘으로 통일
 function dashIconSvg(type){
