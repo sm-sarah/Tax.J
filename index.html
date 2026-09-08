@@ -6583,7 +6583,9 @@ function renderCalendar(){
     }
   });
   const remoteByDate = {};
-  attendance.remoteEntries.filter(r=>r.date.startsWith(monthStr)).forEach(r=>{ remoteByDate[r.date] = { bonus: !!r.bonus, advance: !!r.advance, creditMonth: r.creditMonth }; });
+  // 정기재택 몇 회째 사용인지(remoteEntryRank)를 뱃지에 같이 보여주려면 항목 원본(id/date 포함)이 필요해서,
+  // 예전처럼 필드 몇 개만 골라 담지 않고 항목 객체를 그대로 저장함
+  attendance.remoteEntries.filter(r=>r.date.startsWith(monthStr)).forEach(r=>{ remoteByDate[r.date] = r; });
   const advNoteEl = document.getElementById('calAdvanceNote');
   if(advNoteEl){
     const advEntries = crossMonthAdvanceEntries(attendance.remoteEntries, monthStr);
@@ -6641,7 +6643,9 @@ function renderCalendar(){
     if(remoteByDate[dateStr]){
       const rInfo = remoteByDate[dateStr];
       const rAdvSuffix = rInfo.advance ? advBadgeTag(creditMonthShortLabel(rInfo.creditMonth)) : '';
-      badges += rInfo.bonus ? `<span class="cal-badge special">${calIconSvg('special')} 특별재택${rAdvSuffix}</span>` : `<span class="cal-badge remote">${calIconSvg('remote')} 정기재택${rAdvSuffix}</span>`;
+      // 특별재택은 한도 밖이라 회차 표기가 의미 없어서 그대로 두고, 정기재택은 팀캘린더 미리보기(대시보드)처럼
+      // "N회/6회" 사용 회차를 같이 보여줌 - 요청: "개인캘린더에도 정기재택 횟수 표기가 되게해줘"
+      badges += rInfo.bonus ? `<span class="cal-badge special">${calIconSvg('special')} 특별재택${rAdvSuffix}</span>` : `<span class="cal-badge remote">${calIconSvg('remote')} 정기재택 (${remoteEntryRank(attendance.remoteEntries, rInfo)}회/${REGULAR_REMOTE_MONTHLY_QUOTA}회)${rAdvSuffix}</span>`;
     }
     // 공휴일(추석 등)도 다른 배지들과 같은 pill 스타일로 통일 - 예전엔 날짜 옆에 작은 빨간 글자로만 붙어서 이질적으로 보였음
     (exclusionByDate[dateStr]||[]).forEach(x=>{
