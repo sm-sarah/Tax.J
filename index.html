@@ -7864,6 +7864,7 @@ async function renderPersonalInfoEtcList(client, unlocked){
   CL_PERSONAL_INFO_DEFAULT_LABELS.forEach(label=>{
     if(!etc.some(a=>a.label===label)) etc.unshift({id:'default-'+label, label, idVal:'', pwVal:'', note:'', locked:true});
   });
+  applyClPersonalInfoForcedTypes(etc);
   etc.sort((a,b)=>{
     const wa = CL_PERSONAL_INFO_DEFAULT_LABELS.indexOf(a.label);
     const wb = CL_PERSONAL_INFO_DEFAULT_LABELS.indexOf(b.label);
@@ -8062,6 +8063,17 @@ function setClPersonalInfoUnlocked(unlocked){
 // 홈택스 ID/PW, 대표자 주민번호는 거래처마다 항상 있는 정보라 매번 새로 "항목 추가"하지 않아도 되도록
 // 기본으로 항상 맨 위 두 줄에 깔아두는 항목 - locked라 삭제 버튼이 안 보이고(라벨 자체는 고정), 값만 채우면 됨
 const CL_PERSONAL_INFO_DEFAULT_LABELS = ['홈택스', '대표자 주민번호'];
+// 대표자 주민번호는 ID/PW 한 쌍이 아니라 값 하나(주민번호)라서, ID/PW 두 칸이 아니라 "정보" 형태(값 한 칸)로만
+// 보이게 강제함. 홈택스는 실제 로그인 ID/PW라 그대로 idpw 유지. 기존에 이미 idpw로 저장된 옛 데이터도
+// 이 라벨이면 표시할 때 항상 info로 취급함(별도 마이그레이션 없이 렌더링 시점에 덮어씀).
+const CL_PERSONAL_INFO_FORCED_TYPE = { '대표자 주민번호': 'info' };
+function applyClPersonalInfoForcedTypes(list){
+  list.forEach(a=>{
+    const forced = CL_PERSONAL_INFO_FORCED_TYPE[a.label];
+    if(forced){ a.type = forced; if(forced==='info') a.pwVal = ''; }
+  });
+  return list;
+}
 function ensureClPersonalInfoDefaults(){
   CL_PERSONAL_INFO_DEFAULT_LABELS.forEach(label=>{
     if(!clPersonalInfoEntries.some(a=>a.label===label)){
@@ -8071,6 +8083,7 @@ function ensureClPersonalInfoDefaults(){
       if(e) e.locked = true;
     }
   });
+  applyClPersonalInfoForcedTypes(clPersonalInfoEntries);
   // 기본 두 항목이 항상 맨 위(홈택스 → 대표자 주민번호 순)에 오도록 정렬
   clPersonalInfoEntries.sort((a,b)=>{
     const wa = CL_PERSONAL_INFO_DEFAULT_LABELS.indexOf(a.label);
