@@ -18007,7 +18007,7 @@ document.getElementById('empDataTransferRunBtn')?.addEventListener('click', asyn
   const profiles = getProfiles();
   const srcName = profiles.find(p=>p.id===srcId)?.name || '(이름 미등록)';
   const dstName = profiles.find(p=>p.id===dstId)?.name || '(이름 미등록)';
-  const ok = await appConfirm(`"${srcName}" 계정의 근태(연차·재택·출퇴근)·경비 기록을 "${dstName}" 계정으로 옮겨 합칠까요?\n\n· 대상 계정에 이미 있던 기록은 지워지지 않고 그대로 남아요(합치기).\n· 이관이 끝나면 원본 계정의 근태·경비 "기록"만 비워져요 - "${srcName}" 계정 자체는 삭제되지 않고 그대로 남아요.\n· 되돌릴 수 없어요.`);
+  const ok = await appConfirm(`"${srcName}" 계정의 근태(연차·재택·출퇴근)·경비·개인 일정 기록을 "${dstName}" 계정으로 옮겨 합칠까요?\n\n· 대상 계정에 이미 있던 기록은 지워지지 않고 그대로 남아요(합치기).\n· 이관이 끝나면 원본 계정의 근태·경비·개인 일정 "기록"만 비워져요 - "${srcName}" 계정 자체는 삭제되지 않고 그대로 남아요.\n· 되돌릴 수 없어요.`);
   if(!ok) return;
   try{
     const srcAtt = readProfileRaw(srcId, 'attendance') || {};
@@ -18016,27 +18016,35 @@ document.getElementById('empDataTransferRunBtn')?.addEventListener('click', asyn
     const srcExp = readProfileRaw(srcId, 'expense') || {};
     const dstExp = readProfileRaw(dstId, 'expense') || {};
     const mergedExp = mergeProfileArrayData(srcExp, dstExp, ['lunchEntries','dinnerEntries','otherExpenses','taxiEntries','prepaidEntries'], ()=>({ lunchEntries:[], dinnerEntries:[], otherExpenses:[], taxiEntries:[], prepaidEntries:[] }));
+    // 개인 일정(schedule.events, 개인캘린더의 "일정" 표시)도 근태·경비와 같은 방식으로 합침 - 예전엔
+    // 이 부분이 빠져 있어서 근태·경비는 잘 옮겨졌는데도 개인캘린더의 "일정"만 옮겨온 계정에 안 보이는
+    // 문제가 있었음("STAFF 메뉴에 이관한 데이터가 안 보인다"는 피드백의 실제 원인)
+    const srcSch = readProfileRaw(srcId, 'schedule') || {};
+    const dstSch = readProfileRaw(dstId, 'schedule') || {};
+    const mergedSch = mergeProfileArrayData(srcSch, dstSch, ['events'], ()=>({ events:[] }));
     // 대상 계정에 먼저 병합 결과를 저장 - 원본을 비우기 전에 먼저 저장해서, 중간에 실패하더라도
     // 원본 데이터가 사라지는 일(데이터 유실)만은 없게 함
     localStorage.setItem(`worklog_attendance__${dstId}`, JSON.stringify(mergedAtt));
     localStorage.setItem(`worklog_expense__${dstId}`, JSON.stringify(mergedExp));
+    localStorage.setItem(`worklog_schedule__${dstId}`, JSON.stringify(mergedSch));
     // 원본 쪽은 이관 완료 후 비움(같은 기록이 두 계정에 중복으로 남지 않도록) - 직원 정보 자체(이름/이메일 등)는 그대로 유지
     localStorage.setItem(`worklog_attendance__${srcId}`, JSON.stringify({ leaveGrants:[], leaveUsage:[], remoteEntries:[], clockLog:[] }));
     localStorage.setItem(`worklog_expense__${srcId}`, JSON.stringify({ lunchEntries:[], dinnerEntries:[], otherExpenses:[], taxiEntries:[], prepaidEntries:[] }));
+    localStorage.setItem(`worklog_schedule__${srcId}`, JSON.stringify({ events:[] }));
     // 옮겨온(원본 계정의) 기록이 이번 달 것이 아니면 개인캘린더/근태경비 탭이 기본으로 보여주는 "오늘이
     // 속한 달" 화면에는 하나도 안 보여서 이관이 실패한 것처럼 보임 - 옮겨온 기록 중 가장 최근 날짜가
     // 속한 달을 기억해뒀다가, 그 대상 계정(dstId)으로 다음에 화면이 열릴 때 조회월을 그 달로 자동으로
     // 맞춰줌(loadAll()에서 소비). 대상 계정 화면이 실제로 한 번 열리기 전까지는 계속 남아있어도 되므로
     // 여기서 만료시각 등은 따로 두지 않음
     const transferFocusMonth = latestMonthInProfileArrayData(
-      [srcAtt, srcExp],
-      ['leaveGrants','leaveUsage','remoteEntries','clockLog','lunchEntries','dinnerEntries','otherExpenses','taxiEntries','prepaidEntries']
+      [srcAtt, srcExp, srcSch],
+      ['leaveGrants','leaveUsage','remoteEntries','clockLog','lunchEntries','dinnerEntries','otherExpenses','taxiEntries','prepaidEntries','events']
     );
     if(transferFocusMonth) localStorage.setItem(`worklog_transfer_focus_month__${dstId}`, transferFocusMonth);
-    // 지금 로그인해 쓰고 있는 계정이 이관 대상/원본 중 하나였다면, 화면에 물려있는 전역 attendance/expense도
-    // 같이 갱신해줘야 새로고침 없이 바로 반영됨
-    if(activeProfileId === dstId){ attendance = mergedAtt; expense = mergedExp; }
-    if(activeProfileId === srcId){ attendance = { leaveGrants:[], leaveUsage:[], remoteEntries:[], clockLog:[] }; expense = { lunchEntries:[], dinnerEntries:[], otherExpenses:[], taxiEntries:[], prepaidEntries:[] }; }
+    // 지금 로그인해 쓰고 있는 계정이 이관 대상/원본 중 하나였다면, 화면에 물려있는 전역
+    // attendance/expense/schedule도 같이 갱신해줘야 새로고침 없이 바로 반영됨
+    if(activeProfileId === dstId){ attendance = mergedAtt; expense = mergedExp; schedule = mergedSch; }
+    if(activeProfileId === srcId){ attendance = { leaveGrants:[], leaveUsage:[], remoteEntries:[], clockLog:[] }; expense = { lunchEntries:[], dinnerEntries:[], otherExpenses:[], taxiEntries:[], prepaidEntries:[] }; schedule = { events:[] }; }
     // 이 이관은 로컬(이 브라우저)에만 저장하고 끝나면 다른 기기(다른 직원의 로그인)에는 전혀 반영이
     // 안 되는데("아무것도 연동이 안 됐어" 피드백의 원인), 예전엔 드라이브 저장이 실패해도 콘솔에만 로그를
     // 남기고 조용히 넘어가서 사용자가 실패 사실을 알 수 없었음 - 이제 gdriveFileId가 아직 없으면 먼저
