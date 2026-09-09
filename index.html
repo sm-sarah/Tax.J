@@ -2109,10 +2109,10 @@
   </div>
 </div>
 <div id="employeeModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
-  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:560px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:14px;">
+  <div style="background:var(--bg); border-radius:16px; padding:20px 22px; max-width:560px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="position:relative; text-align:center; margin-bottom:14px;">
       <div id="employeeModalTitle" style="font-weight:800; font-size:15px; color:var(--ink);"></div>
-      <button type="button" id="employeeModalClose" class="del-btn modal-close-btn" style="flex-shrink:0;">닫기</button>
+      <button type="button" id="employeeModalClose" class="del-btn modal-close-btn" style="position:absolute; right:0; top:50%; transform:translateY(-50%);">닫기</button>
     </div>
 
     <!-- 입력/수정 -->
@@ -2171,15 +2171,11 @@
           </div>
         </div>
 
-        <p class="hint" style="margin:14px 0 4px; text-align:center;">이미 등록된 정보도 위 값을 바꾸고 다시 저장하면 바로 수정돼요.</p>
-        <div style="text-align:center;">
-          <button type="submit" class="submit-btn" style="margin-top:2px;">직원 정보 저장 / 수정</button>
+        <div style="text-align:center; margin-top:14px;">
+          <button type="submit" class="submit-btn" style="margin-top:2px;">저장</button>
         </div>
         <div style="text-align:center;"><span class="save-msg" id="settingsSaveMsg"></span></div>
       </form>
-      <p class="hint" style="margin-top:10px; text-align:center;">
-        입사일을 등록하면 근로기준법 기준으로 법정휴가가 자동 부여됩니다.<br>(1년 미만: 매월 개근 1일 / 1년 이상: 15일 + 2년마다 1일 가산, 최대 25일)
-      </p>
     </div>
 
     <!-- 현황 -->
@@ -2204,6 +2200,12 @@
      안 보일 수 있어서, 화면 하단에 항상 고정으로 뜨는 저장 확인 토스트를 별도로 둠 -->
 <div id="filingStatusSaveToast" style="opacity:0; transition:opacity 0.25s; pointer-events:none; position:fixed; left:50%; bottom:28px; transform:translateX(-50%); background:var(--navy); color:#fff; font-size:12.5px; font-weight:800; padding:9px 18px; border-radius:20px; box-shadow:0 8px 20px -6px rgba(20,24,50,0.5); z-index:9999;"></div>
 <div id="reviewStatusSaveToast" style="opacity:0; transition:opacity 0.25s; pointer-events:none; position:fixed; left:50%; bottom:28px; transform:translateX(-50%); background:var(--navy); color:#fff; font-size:12.5px; font-weight:800; padding:9px 18px; border-radius:20px; box-shadow:0 8px 20px -6px rgba(20,24,50,0.5); z-index:9999;"></div>
+<!-- 저장/수정/등록 등 완료 알림 전용 - 여기저기 흩어져 있던 작은 인라인 "저장됨" 문구들 대신, 화면
+     정중앙에 잠깐 떴다 사라지는 알림창 하나로 통일함(showCenterToast() 참고) -->
+<div id="appCenterToast" style="opacity:0; transition:opacity 0.2s ease, transform 0.2s ease; pointer-events:none; position:fixed; left:50%; top:50%; transform:translate(-50%,-50%) scale(0.94); background:rgba(29,30,51,0.92); color:#fff; font-size:14px; font-weight:800; padding:16px 26px; border-radius:16px; box-shadow:0 20px 40px -12px rgba(29,30,51,0.5); z-index:10100; display:flex; align-items:center; gap:8px; white-space:nowrap;">
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#7CE0B0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+  <span id="appCenterToastText"></span>
+</div>
 <!-- 기장거래처 표의 "수임료" 헤더 옆 아이콘을 누르면 뜨는 월별 수임료 합계 조회 팝업 -->
 <div id="clFeeMonthPopup" style="display:none; position:fixed; z-index:9999; background:var(--mint-bg); border:1.5px solid var(--border); border-radius:12px; box-shadow:0 8px 24px -4px rgba(29,30,51,0.28); padding:12px 14px; min-width:150px; text-align:right;">
   <div class="tab-group tg-profile" style="padding:4px 8px; margin-bottom:8px;">
@@ -4919,14 +4921,14 @@ document.getElementById('noticeModalForm').addEventListener('submit', async (e)=
       if(isAdmin) n.important = important;
       n.editedAt = new Date().toLocaleString('ko-KR');
     }
-    document.getElementById('noticeModalSaveMsg').textContent = '수정됨';
+    showCenterToast('수정됐어요'); document.getElementById('noticeModalSaveMsg').textContent = '수정됨';
   } else {
     const savedAt = new Date().toLocaleString('ko-KR');
     const savedAtDate = todayStr();
     const newId = genId();
     sharedNoticeHistory.unshift({ id: newId, title, content, scope, authorName, savedAt, savedAtDate, size, important });
     markNoticeRead(newId);
-    document.getElementById('noticeModalSaveMsg').textContent = '등록됨';
+    showCenterToast('등록됐어요'); document.getElementById('noticeModalSaveMsg').textContent = '등록됨';
   }
   if(editingNoticeModalId) markNoticeRead(editingNoticeModalId);
   await saveSharedNoticeHistory();
@@ -5048,8 +5050,9 @@ async function openEmployeeModal(mode, profileId){
   const p = getProfiles().find(x=>x.id===profileId);
   const label = p ? (p.name || '(이름 미등록)') : '(알 수 없음)';
   const modeLabel = mode === 'edit' ? '수정' : mode === 'status' ? '현황' : '수정이력';
-  // 현황은 이름 옆 [현황] 버튼을 직접 눌러서 들어오는 화면이라 "· 현황" 표시가 중복이어서 이름만 남김
-  document.getElementById('employeeModalTitle').textContent = mode === 'status' ? label : `${label} · ${modeLabel}`;
+  // 현황/수정 둘 다 이름 옆 버튼을 직접 눌러서 들어오는 화면이라 "· 현황"/"· 수정" 표시가 중복으로
+  // 느껴진다는 요청으로, 수정이력만 구분 표시가 필요해서 그대로 두고 나머지는 이름만 남김
+  document.getElementById('employeeModalTitle').textContent = mode === 'history' ? `${label} · ${modeLabel}` : label;
   document.getElementById('employeeModalEdit').style.display = mode === 'edit' ? '' : 'none';
   document.getElementById('employeeModalStatus').style.display = mode === 'status' ? '' : 'none';
   document.getElementById('employeeModalHistory').style.display = mode === 'history' ? '' : 'none';
@@ -8751,7 +8754,7 @@ document.getElementById('ciTeamPersonModalForm').addEventListener('submit', asyn
     sharedCompanyInfo.team.push({ person: name, title, items: [] });
   }
   await saveSharedCompanyInfo();
-  document.getElementById('ciTeamPersonModalSaveMsg').textContent = '저장됨';
+  showCenterToast('저장됐어요'); document.getElementById('ciTeamPersonModalSaveMsg').textContent = '저장됨';
   setTimeout(()=>{ closeCiTeamPersonModal(); renderCompanyInfoTeam(); }, 400);
 });
 
@@ -8979,7 +8982,7 @@ document.getElementById('ciEntryModalForm').addEventListener('submit', async (e)
     }
   }
   await saveSharedCompanyInfo();
-  document.getElementById('ciEntryModalSaveMsg').textContent = '저장됨';
+  showCenterToast('저장됐어요'); document.getElementById('ciEntryModalSaveMsg').textContent = '저장됨';
   setTimeout(()=>{
     closeCiEntryFormModal();
     if(category==='corp') renderCompanyInfoCorp();
@@ -10815,10 +10818,10 @@ document.getElementById('grantForm').addEventListener('submit', async (e)=>{
     editingGrantId = null;
     document.getElementById('grantSubmitBtn').textContent = '추가';
     document.getElementById('grantCancelEditBtn').style.display = 'none';
-    document.getElementById('grantSaveMsg').textContent = '수정됨';
+    showCenterToast('수정됐어요'); document.getElementById('grantSaveMsg').textContent = '수정됨';
   } else {
     attendance.leaveGrants.push({id:genId(), date, type:'법정휴가', days, memo});
-    document.getElementById('grantSaveMsg').textContent = '추가됨';
+    showCenterToast('등록됐어요'); document.getElementById('grantSaveMsg').textContent = '추가됨';
   }
   await saveAttendance();
   setTimeout(()=>document.getElementById('grantSaveMsg').textContent='',1200);
@@ -11005,7 +11008,7 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
     if(editingUsageId){
       const en = attendance.leaveUsage.find(x=>x.id===editingUsageId);
       if(en){ en.date=date; en.type=type; en.subtype=subtype; en.days=days; en.memo=memo; en.advance = useAdvance || undefined; }
-      document.getElementById('usageSaveMsg').textContent = '수정됨';
+      showCenterToast('수정됐어요'); document.getElementById('usageSaveMsg').textContent = '수정됨';
       resetUsageFormEditState();
       closeCalRegisterModal();
       await saveAttendance();
@@ -11042,7 +11045,7 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
         if(useAdvance){ en.advance = true; en.creditMonth = nextAvailableRemoteCreditMonth(monthAfter(date)); }
         else { en.advance = undefined; en.creditMonth = undefined; }
       }
-      document.getElementById('usageSaveMsg').textContent = '수정됨';
+      showCenterToast('수정됐어요'); document.getElementById('usageSaveMsg').textContent = '수정됨';
       resetUsageFormEditState();
       closeCalRegisterModal();
       await saveAttendance();
@@ -11133,7 +11136,7 @@ document.getElementById('expenseEntryForm').addEventListener('submit', async (e)
     list.push({id:genId(), date, amount, [descField]:desc});
   }
   await saveExpense();
-  document.getElementById('expenseEntrySaveMsg').textContent = '저장됨';
+  showCenterToast('저장됐어요'); document.getElementById('expenseEntrySaveMsg').textContent = '저장됨';
   setTimeout(()=>{ closeExpenseRegisterModal(); renderExpense(); document.getElementById('expenseEntrySaveMsg').textContent=''; }, 350);
 });
 document.querySelectorAll('.expense-history-icon-btn').forEach(btn=>{
@@ -12146,11 +12149,11 @@ document.getElementById('scheduleForm').addEventListener('submit', async (e)=>{
     editingScheduleId = null;
     document.getElementById('scheduleForm').querySelector('button[type="submit"]').textContent = '일정 추가';
     document.getElementById('schedule-cancel').style.display = 'none';
-    document.getElementById('scheduleSaveMsg').textContent = '수정됨';
+    showCenterToast('수정됐어요'); document.getElementById('scheduleSaveMsg').textContent = '수정됨';
     closeCalRegisterModal();
   } else {
     schedule.events.push({id:genId(), date, startTime, endTime, type, memo, shared});
-    document.getElementById('scheduleSaveMsg').textContent = '추가됨';
+    showCenterToast('등록됐어요'); document.getElementById('scheduleSaveMsg').textContent = '추가됨';
   }
   await saveSchedule();
   setTimeout(()=>document.getElementById('scheduleSaveMsg').textContent='',1200);
@@ -12259,7 +12262,7 @@ async function handleClientFormSubmit(){
     }
     lastEditedClientId = editingClientId;
     editingClientId = null;
-    document.getElementById('clientSaveMsg').textContent = '수정 완료';
+    showCenterToast('수정됐어요'); document.getElementById('clientSaveMsg').textContent = '수정 완료';
     // 거래처 기본/추가정보 저장은 개인정보(암호화) 저장과 완전히 분리함 - 개인정보 저장 쪽에서 비밀번호
     // 확인이 막히거나 오류가 나더라도, 방금 입력한 기본/추가정보만큼은 반드시 저장되게 하기 위함
     // (예전엔 개인정보 저장까지 한 번에 묶여있어서, 그쪽에서 문제가 생기면 "수정완료"를 눌러도 거래처
@@ -12303,7 +12306,7 @@ async function handleClientFormSubmit(){
     ...fields
   };
   clients.list.push(newClient);
-  document.getElementById('clientSaveMsg').textContent = '추가됨';
+  showCenterToast('등록됐어요'); document.getElementById('clientSaveMsg').textContent = '추가됨';
   await saveClPersonalInfoForClient(newClient);
   await saveClients();
   setTimeout(()=>document.getElementById('clientSaveMsg').textContent='',1200);
@@ -12804,10 +12807,10 @@ document.getElementById('exclusionForm').addEventListener('submit', async (e)=>{
     editingExclusionId = null;
     document.getElementById('exclusionForm').querySelector('button[type="submit"]').textContent = '추가';
     document.getElementById('exclusion-cancel').style.display = 'none';
-    document.getElementById('exclusionSaveMsg').textContent = '수정됨';
+    showCenterToast('수정됐어요'); document.getElementById('exclusionSaveMsg').textContent = '수정됨';
   } else {
     sharedExclusionDays.push({id:genId(), date, reason, name});
-    document.getElementById('exclusionSaveMsg').textContent = '추가됨';
+    showCenterToast('등록됐어요'); document.getElementById('exclusionSaveMsg').textContent = '추가됨';
   }
   await saveSharedExclusions();
   setTimeout(()=>document.getElementById('exclusionSaveMsg').textContent='',1200);
@@ -12892,7 +12895,7 @@ document.getElementById('settingsForm').addEventListener('submit', async (e)=>{
 
   await saveSettings();
   await syncAutoGrants();
-  document.getElementById('settingsSaveMsg').textContent = changed ? '저장됨 (변경이력에 기록됨)' : '저장됨 (변경 사항 없음)';
+  showCenterToast('저장됐어요'); document.getElementById('settingsSaveMsg').textContent = changed ? '저장됨 (변경이력에 기록됨)' : '저장됨 (변경 사항 없음)';
   setTimeout(()=>document.getElementById('settingsSaveMsg').textContent='',1800);
   renderAll();
   renderEmployeeInfoView();
@@ -12985,7 +12988,7 @@ document.getElementById('lunchLimitForm').addEventListener('submit', async (e)=>
   settings.lunchLimitHistory = settings.lunchLimitHistory || [];
   settings.lunchLimitHistory.push({id:genId(), effectiveDate:date, dailyAmount});
   await saveSettings();
-  document.getElementById('lunchLimitSaveMsg').textContent = '추가됨';
+  showCenterToast('등록됐어요'); document.getElementById('lunchLimitSaveMsg').textContent = '추가됨';
   setTimeout(()=>document.getElementById('lunchLimitSaveMsg').textContent='',1200);
   document.getElementById('ll-daily').value='';
   renderLunchLimitHistory();
@@ -13189,6 +13192,24 @@ document.getElementById('savePolicyBtn').addEventListener('click', async ()=>{
 
 function escHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// 저장/수정/등록 등 "완료됐다"는 걸 알려주는 짧은 알림 - 예전엔 화면 여기저기(버튼 옆 작은 글씨)에 흩어져
+// 있어서 잘 안 보이거나 스크롤 밖으로 벗어나는 문제가 있었음. 이제 화면 정중앙에 잠깐 떴다 자동으로
+// 사라지는 알림창 하나로 통일함 - 앱 어디서든 showCenterToast('저장됐어요') 처럼 부르면 됨.
+let _centerToastTimer = null;
+function showCenterToast(message){
+  const toast = document.getElementById('appCenterToast');
+  const textEl = document.getElementById('appCenterToastText');
+  if(!toast || !textEl) return;
+  textEl.textContent = message == null ? '' : String(message);
+  toast.style.opacity = '1';
+  toast.style.transform = 'translate(-50%,-50%) scale(1)';
+  clearTimeout(_centerToastTimer);
+  _centerToastTimer = setTimeout(()=>{
+    toast.style.opacity = '0';
+    toast.style.transform = 'translate(-50%,-50%) scale(0.94)';
+  }, 1400);
 }
 
 // 앱 전체 통일 확인/알림 팝업 - 브라우저 기본 confirm()/appAlert()가 "사이트 주소 내용:"처럼 안 예쁘게 나오고
@@ -13517,6 +13538,7 @@ const FILING_TYPE_FULL_NAME = { 원천세:'원천세', 부가세:'부가가치�
 // 바뀐 내용이 있으면 빨간색으로 표시돼서 저장이 필요하다는 걸 알려줌. 누르면 이 토스트로 저장됐다는 걸 알려줌.
 function flashFilingStatusSaveMsg(kind){
   const cfg = FILING_KINDS[kind];
+  showCenterToast('저장됐어요');
   const msgEl = document.getElementById(cfg.ids.saveMsg);
   if(msgEl){
     msgEl.textContent = '저장됨';
@@ -14694,7 +14716,7 @@ document.querySelectorAll('#submitTypeToggle .submit-type-btn').forEach(btn=>{
 document.getElementById('submitStatusSaveBtn')?.addEventListener('click', async ()=>{
   await saveSharedFilingStatus();
   const msgEl = document.getElementById('submitStatusSaveMsg');
-  if(msgEl){ msgEl.textContent = '저장됨'; clearTimeout(msgEl._flashT); msgEl._flashT = setTimeout(()=>{ msgEl.textContent=''; }, 1500); }
+  if(msgEl){ showCenterToast('저장됐어요'); msgEl.textContent = '저장됨'; clearTimeout(msgEl._flashT); msgEl._flashT = setTimeout(()=>{ msgEl.textContent=''; }, 1500); }
   setSubmitStatusDirty(false);
 });
 
@@ -15272,7 +15294,7 @@ document.getElementById('reviewItSaveBtn')?.addEventListener('click', async ()=>
   await saveSharedReviewFigures();
   await saveSharedReviewMeta();
   const msgEl = document.getElementById('reviewItSaveMsg');
-  if(msgEl){ msgEl.textContent = '저장됨'; clearTimeout(msgEl._flashT); msgEl._flashT = setTimeout(()=>{ msgEl.textContent=''; }, 1500); }
+  if(msgEl){ showCenterToast('저장됐어요'); msgEl.textContent = '저장됨'; clearTimeout(msgEl._flashT); msgEl._flashT = setTimeout(()=>{ msgEl.textContent=''; }, 1500); }
   setReviewItDirty(false);
 });
 // 되돌리기: 저장 버튼을 안 눌러 아직 localStorage에 반영 안 된 입력들을 전부 버리고, 마지막으로
@@ -15311,7 +15333,7 @@ document.getElementById('reviewItIncomeResetBtn')?.addEventListener('click', asy
   await saveSharedReviewFigures();
   setReviewItDirty(false);
   const msgEl = document.getElementById('reviewItSaveMsg');
-  if(msgEl){ msgEl.textContent = '초기화 후 저장됨'; clearTimeout(msgEl._flashT); msgEl._flashT = setTimeout(()=>{ msgEl.textContent=''; }, 1500); }
+  if(msgEl){ showCenterToast('초기화 후 저장됐어요'); msgEl.textContent = '초기화 후 저장됨'; clearTimeout(msgEl._flashT); msgEl._flashT = setTimeout(()=>{ msgEl.textContent=''; }, 1500); }
 });
 document.getElementById('reviewItTaxResetBtn')?.addEventListener('click', async ()=>{
   const clientId = document.getElementById('reviewItClientSelect')?.value;
@@ -15329,7 +15351,7 @@ document.getElementById('reviewItTaxResetBtn')?.addEventListener('click', async 
   await saveSharedReviewFigures();
   setReviewItDirty(false);
   const msgEl = document.getElementById('reviewItSaveMsg');
-  if(msgEl){ msgEl.textContent = '초기화 후 저장됨'; clearTimeout(msgEl._flashT); msgEl._flashT = setTimeout(()=>{ msgEl.textContent=''; }, 1500); }
+  if(msgEl){ showCenterToast('초기화 후 저장됐어요'); msgEl.textContent = '초기화 후 저장됨'; clearTimeout(msgEl._flashT); msgEl._flashT = setTimeout(()=>{ msgEl.textContent=''; }, 1500); }
 });
 // 급여/납부세액 입력칸은 (다른 결재 탭 표들과 마찬가지로) 저장 버튼을 눌러야 실제로 반영되는 구조라,
 // 숫자만 입력해두고 저장을 안 누른 채 사이드바로 다른 화면에 갔다가 돌아오면 "저장 안 했는데도 그대로 남아있다"고
@@ -15669,7 +15691,7 @@ document.getElementById('reviewVatYearSelect')?.addEventListener('change', rende
 document.getElementById('reviewVatSaveBtn')?.addEventListener('click', async ()=>{
   await saveSharedVatReviewFigures();
   const msgEl = document.getElementById('reviewVatSaveMsg');
-  if(msgEl){ msgEl.textContent = '저장됨'; clearTimeout(msgEl._flashT); msgEl._flashT = setTimeout(()=>{ msgEl.textContent=''; }, 1500); }
+  if(msgEl){ showCenterToast('저장됐어요'); msgEl.textContent = '저장됨'; clearTimeout(msgEl._flashT); msgEl._flashT = setTimeout(()=>{ msgEl.textContent=''; }, 1500); }
   setReviewVatDirty(false);
 });
 // 되돌리기: 원천세와 동일하게, 저장 안 한 입력을 버리고 마지막 저장 상태를 다시 불러옴
@@ -16188,7 +16210,7 @@ document.getElementById('autoPhraseSettingsSaveBtn')?.addEventListener('click', 
   });
   await saveSharedAutoPhrases();
   const msgEl = document.getElementById('autoPhraseSettingsSaveMsg');
-  if(msgEl){ msgEl.textContent = '저장됐어요'; setTimeout(()=>{ if(msgEl.textContent==='저장됐어요') msgEl.textContent=''; }, 1800); }
+  if(msgEl){ showCenterToast('저장됐어요'); msgEl.textContent = '저장됐어요'; setTimeout(()=>{ if(msgEl.textContent==='저장됐어요') msgEl.textContent=''; }, 1800); }
 });
 // 기안 상신 전에 실제로 결재자에게 어떻게 보일지 문서 형태로 미리 확인할 수 있는 팝업 - 여기서 바로
 // "상신하기"를 눌러도 되고, 닫고 폼으로 돌아가 더 수정해도 됨
@@ -18035,7 +18057,7 @@ document.getElementById('empDataTransferRunBtn')?.addEventListener('click', asyn
   const profiles = getProfiles();
   const srcName = profiles.find(p=>p.id===srcId)?.name || '(이름 미등록)';
   const dstName = profiles.find(p=>p.id===dstId)?.name || '(이름 미등록)';
-  const ok = await appConfirm(`"${srcName}" 계정의 근태(연차·재택·출퇴근)·경비·개인 일정 기록을 "${dstName}" 계정으로 옮겨 합칠까요?\n\n· 대상 계정에 이미 있던 기록은 지워지지 않고 그대로 남아요(합치기).\n· 이관이 끝나면 원본 계정의 근태·경비·개인 일정 "기록"만 비워져요 - "${srcName}" 계정 자체는 삭제되지 않고 그대로 남아요.\n· 되돌릴 수 없어요.`);
+  const ok = await appConfirm(`"${srcName}" 계정의 근태(연차·재택·출퇴근)·경비·개인 일정·점심식대 한도 이력을 "${dstName}" 계정으로 옮겨 합칠까요?\n\n· 대상 계정에 이미 있던 기록은 지워지지 않고 그대로 남아요(합치기).\n· 이관이 끝나면 원본 계정의 근태·경비·개인 일정·점심식대 한도 "기록"만 비워져요 - "${srcName}" 계정 자체는 삭제되지 않고 그대로 남아요.\n· 되돌릴 수 없어요.`);
   if(!ok) return;
   try{
     const srcAtt = readProfileRaw(srcId, 'attendance') || {};
@@ -18050,15 +18072,24 @@ document.getElementById('empDataTransferRunBtn')?.addEventListener('click', asyn
     const srcSch = readProfileRaw(srcId, 'schedule') || {};
     const dstSch = readProfileRaw(dstId, 'schedule') || {};
     const mergedSch = mergeProfileArrayData(srcSch, dstSch, ['events'], ()=>({ events:[] }));
+    // 점심식대 한도 이력(settings.lunchLimitHistory)도 마찬가지로 근태·경비와 같은 "기록"인데, settings에
+    // 들어있다는 이유만으로 이관 범위에서 빠져 있었음 - 그래서 근태·경비·일정은 정상적으로 옮겨졌는데도
+    // "이달의 점심식대한도"만 대상 계정에 등록된 적 없는 값(0원)으로 보이는 문제가 있었음. settings의
+    // 다른 필드(이름·입사일 등 계정 고유 정보)는 손대지 않고 lunchLimitHistory 배열만 합침
+    const srcSet = readProfileRaw(srcId, 'settings') || {};
+    const dstSet = readProfileRaw(dstId, 'settings') || {};
+    const mergedSet = mergeProfileArrayData(srcSet, dstSet, ['lunchLimitHistory'], ()=>({ lunchLimitHistory:[] }));
     // 대상 계정에 먼저 병합 결과를 저장 - 원본을 비우기 전에 먼저 저장해서, 중간에 실패하더라도
     // 원본 데이터가 사라지는 일(데이터 유실)만은 없게 함
     localStorage.setItem(`worklog_attendance__${dstId}`, JSON.stringify(mergedAtt));
     localStorage.setItem(`worklog_expense__${dstId}`, JSON.stringify(mergedExp));
     localStorage.setItem(`worklog_schedule__${dstId}`, JSON.stringify(mergedSch));
+    localStorage.setItem(`worklog_settings__${dstId}`, JSON.stringify(mergedSet));
     // 원본 쪽은 이관 완료 후 비움(같은 기록이 두 계정에 중복으로 남지 않도록) - 직원 정보 자체(이름/이메일 등)는 그대로 유지
     localStorage.setItem(`worklog_attendance__${srcId}`, JSON.stringify({ leaveGrants:[], leaveUsage:[], remoteEntries:[], clockLog:[] }));
     localStorage.setItem(`worklog_expense__${srcId}`, JSON.stringify({ lunchEntries:[], dinnerEntries:[], otherExpenses:[], taxiEntries:[], prepaidEntries:[] }));
     localStorage.setItem(`worklog_schedule__${srcId}`, JSON.stringify({ events:[] }));
+    localStorage.setItem(`worklog_settings__${srcId}`, JSON.stringify({ ...srcSet, lunchLimitHistory:[] }));
     // 옮겨온(원본 계정의) 기록이 이번 달 것이 아니면 개인캘린더/근태경비 탭이 기본으로 보여주는 "오늘이
     // 속한 달" 화면에는 하나도 안 보여서 이관이 실패한 것처럼 보임 - 옮겨온 기록 중 가장 최근 날짜가
     // 속한 달을 기억해뒀다가, 그 대상 계정(dstId)으로 다음에 화면이 열릴 때 조회월을 그 달로 자동으로
@@ -18071,8 +18102,8 @@ document.getElementById('empDataTransferRunBtn')?.addEventListener('click', asyn
     if(transferFocusMonth) localStorage.setItem(`worklog_transfer_focus_month__${dstId}`, transferFocusMonth);
     // 지금 로그인해 쓰고 있는 계정이 이관 대상/원본 중 하나였다면, 화면에 물려있는 전역
     // attendance/expense/schedule도 같이 갱신해줘야 새로고침 없이 바로 반영됨
-    if(activeProfileId === dstId){ attendance = mergedAtt; expense = mergedExp; schedule = mergedSch; }
-    if(activeProfileId === srcId){ attendance = { leaveGrants:[], leaveUsage:[], remoteEntries:[], clockLog:[] }; expense = { lunchEntries:[], dinnerEntries:[], otherExpenses:[], taxiEntries:[], prepaidEntries:[] }; schedule = { events:[] }; }
+    if(activeProfileId === dstId){ attendance = mergedAtt; expense = mergedExp; schedule = mergedSch; settings = mergedSet; }
+    if(activeProfileId === srcId){ attendance = { leaveGrants:[], leaveUsage:[], remoteEntries:[], clockLog:[] }; expense = { lunchEntries:[], dinnerEntries:[], otherExpenses:[], taxiEntries:[], prepaidEntries:[] }; schedule = { events:[] }; settings = { ...srcSet, lunchLimitHistory:[] }; }
     // 이 이관은 로컬(이 브라우저)에만 저장하고 끝나면 다른 기기(다른 직원의 로그인)에는 전혀 반영이
     // 안 되는데("아무것도 연동이 안 됐어" 피드백의 원인), 예전엔 드라이브 저장이 실패해도 콘솔에만 로그를
     // 남기고 조용히 넘어가서 사용자가 실패 사실을 알 수 없었음 - 이제 gdriveFileId가 아직 없으면 먼저
@@ -18662,7 +18693,7 @@ document.getElementById('companyNameForm').addEventListener('submit', async (e)=
     upsertCorpBasicInfoField(label, inputEl.value.trim());
   });
   await saveSharedCompanyInfo();
-  document.getElementById('companyNameSaveMsg').textContent = '저장됨';
+  showCenterToast('저장됐어요'); document.getElementById('companyNameSaveMsg').textContent = '저장됨';
   setTimeout(()=>{ document.getElementById('companyNameSaveMsg').textContent = ''; }, 1500);
   updateCompanyNameButtonsUI();
   renderCompanyInfoCorp();
@@ -18678,7 +18709,7 @@ document.getElementById('companyNameDeleteBtn')?.addEventListener('click', async
     if(inputEl) inputEl.value = '';
   });
   await saveSharedCompanyInfo();
-  document.getElementById('companyNameSaveMsg').textContent = '삭제됨';
+  showCenterToast('삭제됐어요'); document.getElementById('companyNameSaveMsg').textContent = '삭제됨';
   setTimeout(()=>{ document.getElementById('companyNameSaveMsg').textContent = ''; }, 1500);
   updateCompanyNameButtonsUI();
   renderCompanyInfoCorp();
@@ -18732,7 +18763,7 @@ document.getElementById('teamInfoForm')?.addEventListener('submit', async (e)=>{
   await saveSharedTeamInfo();
   updateCiTeamSectionHeading();
   updateTeamInfoButtons();
-  document.getElementById('teamInfoSaveMsg').textContent = '저장됨';
+  showCenterToast('저장됐어요'); document.getElementById('teamInfoSaveMsg').textContent = '저장됨';
   setTimeout(()=>{ document.getElementById('teamInfoSaveMsg').textContent = ''; }, 1500);
 });
 document.getElementById('teamInfoResetBtn')?.addEventListener('click', async ()=>{
@@ -18740,7 +18771,7 @@ document.getElementById('teamInfoResetBtn')?.addEventListener('click', async ()=
   sharedTeamInfo = { teamName:'', accountant:'', taxMgmtNo:'', taxMgmtPw:'', extNo:'', selectedMembers: sharedTeamInfo.selectedMembers };
   await saveSharedTeamInfo();
   populateTeamInfoInput();
-  document.getElementById('teamInfoSaveMsg').textContent = '초기화됨';
+  showCenterToast('초기화됐어요'); document.getElementById('teamInfoSaveMsg').textContent = '초기화됨';
   setTimeout(()=>{ document.getElementById('teamInfoSaveMsg').textContent = ''; }, 1500);
 });
 
