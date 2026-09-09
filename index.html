@@ -1231,6 +1231,9 @@
   #tab-settings .settings-sub-title .badge{ display:none; }
   /* 근태현황/경비정산처럼 옆에 다른 요소(등록 버튼 등)가 있어도 제목이 눈에 띄도록 밑줄 포인트를 줌 */
   .section-title-accent{display:inline-block; padding-bottom:6px; border-bottom:3px solid var(--indigo); border-radius:2px;}
+  /* 근태현황/경비정산 카드 제목 - 바로 위 큰 연월 숫자(.cal-title-big, 23px/900/navy)와 비슷한 굵기·크기라
+     둘이 헷갈린다는 의견이 있어서, 훨씬 작고 가벼운 "라벨" 느낌의 태그 스타일로 확실히 구분함 */
+  .section-title-tag{display:inline-flex; align-items:center; font-size:13px; font-weight:800; letter-spacing:0.02em; color:var(--indigo-deep); background:var(--indigo-bg); padding:5px 14px; border-radius:999px;}
   /* .settings-sub-title와 똑같이 생겼지만, 설정 하위메뉴 팝업을 나눌 때(chipifySettingsCategory) 새 팝업 경계로 취급되지 않음 -
      같은 팝업 안에서 소제목만 하나 더 두고 싶을 때(예: "점심식대 설정" 팝업 안의 "한도 변동이력") 사용 */
   .settings-sub-title-inline{font-size:12px; font-weight:800; color:var(--indigo); margin:20px 0 10px; padding-top:16px; border-top:1.5px dashed var(--border); display:flex; align-items:center; justify-content:center; gap:6px; text-transform:uppercase; letter-spacing:0.04em;}
@@ -1507,6 +1510,12 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
+<!-- 월 선택용 보조 input(showPicker로 브라우저 기본 달력 팝업을 띄우는 용도) - 근태현황·개인캘린더 두 탭에서
+     같이 씀. 원래 개인캘린더 탭(.tab-panel) 안에 있었는데, 탭 패널은 안 보이는 동안 display:none이라
+     근태현황 탭에서 열었을 때(개인캘린더 탭이 숨겨진 상태) 위치 계산이 깨져서 팝업이 화면 왼쪽 위 구석에
+     엉뚱하게 뜨는 문제가 있었음 - 어느 탭이 활성화돼있든 항상 정상 위치에 뜨도록 탭 밖(항상 표시되는
+     영역)으로 옮겨둠 -->
+<input type="month" id="calMonthSelectProxy" style="position:absolute; left:-9999px; width:auto;" tabindex="-1" aria-hidden="true">
 <!-- 첫 진입 시 화면을 다 가리는 로그인 게이트 - 저장된 로그인이 아직 살아있으면(자동 재연결 성공) afterGdriveConnected()에서 바로 사라짐 -->
 <div id="appLoginGate" style="position:fixed; inset:0; z-index:100000; display:flex; align-items:center; justify-content:center; padding:20px; background:var(--bg);">
   <div style="width:100%; max-width:320px; background:#EAEFFB; border-radius:28px; padding:50px 28px 40px; text-align:center; box-shadow:0 24px 60px -20px rgba(29,30,51,0.35), 0 2px 6px rgba(29,30,51,0.06);">
@@ -2586,12 +2595,29 @@
            정렬해서 재사용함 - 실제 상태를 쥔 #profileSelect·#monthSelect는 화면 밖에 숨겨서 그대로 유지하고
            (기존 renderProfileSwitcher/관리자 잠금 로직 등이 그대로 동작), 화면엔 updateCalHeader()가 같이
            채워주는 #attCalOwnerLabel·#attMonthTitleBig만 보이게 함 -->
-      <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-bottom:10px;">
-        <div class="cal-owner-label" id="attCalOwnerLabel"></div>
-        <button type="button" class="cal-nav-arrow" id="attMonthPrevBtn" title="전월"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
-        <div class="cal-title-big" id="attMonthTitleBig">-</div>
-        <button type="button" class="cal-nav-arrow" id="attMonthNextBtn" title="익월"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
-        <button type="button" class="cal-nav-btn" id="attMonthPickerBtn" title="월 선택"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></button>
+      <!-- 개인캘린더 탭과 똑같은 .cal-header-nav(좌/중앙/우 3분할) 구조를 재사용함 - 가운데엔 이름·연월·달력
+           아이콘을, 오른쪽엔 등록/일정/근태 버튼을 둬서 카드 맨 위 한 줄에서 다 끝나게 함(예전엔 버튼들이
+           "근태현황" 제목 줄에 따로 있어서 두 줄로 나뉘어 있었음). .cal-header-nav 클래스를 써야 달력
+           아이콘이 연월 숫자에 바짝 붙는 보정(margin-left:-14px)도 같이 적용돼서, 개인캘린더 탭과 완전히
+           같은 간격으로 보임 -->
+      <div class="cal-header-nav" style="margin-bottom:6px;">
+        <div></div>
+        <div style="display:flex; align-items:center; gap:8px; justify-content:center;">
+          <div class="cal-owner-label" id="attCalOwnerLabel"></div>
+          <button type="button" class="cal-nav-arrow" id="attMonthPrevBtn" title="전월"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+          <div class="cal-title-big" id="attMonthTitleBig">-</div>
+          <button type="button" class="cal-nav-arrow" id="attMonthNextBtn" title="익월"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+          <button type="button" class="cal-nav-btn" id="attMonthPickerBtn" title="월 선택"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></button>
+        </div>
+        <!-- 개인캘린더 탭 상단에 있던 등록/일정/근태 버튼을 여기로 옮겨왔어요(근태현황 카드 묶음과 더 밀접한
+             기능이라 근태현황 그룹칩 쪽에 있는게 자연스럽다는 요청) - id는 그대로 유지해서 기존 클릭
+             핸들러(openCalRegisterModal 등)가 위치와 무관하게 그대로 동작함. 카드 맨 위 줄 오른쪽 끝으로
+             둬서 잘리지 않고 확실히 카드 안쪽 우상단에 자리잡게 함 -->
+        <div style="display:flex; justify-content:flex-end; align-items:center; gap:6px; flex-wrap:wrap;">
+          <button type="button" id="calRegisterBtn" class="del-btn" style="background:var(--indigo-bg); color:var(--indigo-deep);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 등록</button>
+          <button type="button" id="calScheduleHistoryBtn" class="del-btn" style="background:var(--mint-bg); color:var(--mint);" title="이달의 개인일정"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 일정</button>
+          <button type="button" id="calAttendanceHistoryBtn" class="del-btn" style="background:var(--amber-bg); color:var(--amber);" title="이달의 근태내역"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 근태</button>
+        </div>
       </div>
       <div style="position:absolute; left:-9999px; width:0; height:0; overflow:hidden;" aria-hidden="true">
         <select id="profileSelect"></select>
@@ -2601,16 +2627,11 @@
         <span id="dataMonthHintText"></span>
         <button type="button" id="dataMonthHintJumpBtn" style="border:none; background:var(--coral); color:#fff; font-weight:800; font-size:12px; padding:6px 12px; border-radius:7px; cursor:pointer; font-family:inherit;">해당 월로 이동</button>
       </div>
-      <div style="position:relative; text-align:center; margin:0 0 18px;">
-        <div class="settings-group-title section-title-accent" style="font-size:19px; margin:0;">근태현황</div>
-        <!-- 개인캘린더 탭 상단에 있던 등록/일정/근태 버튼을 여기로 옮겨왔어요(근태현황 카드 묶음과 더 밀접한
-             기능이라 근태현황 그룹칩 쪽에 있는게 자연스럽다는 요청) - id는 그대로 유지해서 기존 클릭
-             핸들러(openCalRegisterModal 등)가 위치와 무관하게 그대로 동작함 -->
-        <div style="position:absolute; right:0; top:50%; transform:translateY(-50%); display:flex; gap:6px; flex-wrap:wrap;">
-          <button type="button" id="calRegisterBtn" class="del-btn" style="background:var(--indigo-bg); color:var(--indigo-deep);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 등록</button>
-          <button type="button" id="calScheduleHistoryBtn" class="del-btn" style="background:var(--mint-bg); color:var(--mint);" title="이달의 개인일정"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 일정</button>
-          <button type="button" id="calAttendanceHistoryBtn" class="del-btn" style="background:var(--amber-bg); color:var(--amber);" title="이달의 근태내역"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 근태</button>
-        </div>
+      <!-- 이 줄엔 이제 "근태현황" 제목만 남음 - 위 연월 타이틀(cal-title-big, 23px/900)과 헷갈리지 않도록
+           일부러 더 작고 얇은, 라벨에 가까운 스타일(section-title-tag)을 써서 "이건 이 카드의 소제목이다"가
+           한눈에 구분되게 함 -->
+      <div style="text-align:center; margin:0 0 18px;">
+        <div class="section-title-tag">근태현황</div>
       </div>
 
     <div class="summary-cards">
@@ -2653,8 +2674,13 @@
 
     <div class="settings-group">
       <div style="position:relative; text-align:center; margin-bottom:18px;">
-        <div style="position:absolute; left:0; top:50%; transform:translateY(-50%); font-size:12px; font-weight:700; color:var(--ink-soft); white-space:nowrap;">이번달 근무가능일수 <span class="num" id="workdaysAutoValue" style="font-size:12.5px; font-weight:800; color:var(--navy);">-</span></div>
-        <div class="settings-group-title section-title-accent" style="font-size:19px; margin:0;">경비정산</div>
+        <!-- "이번달 근무가능일수"를 예전엔 카드 맨 왼쪽 끝에 따로 떨어뜨려 둬서 "경비정산" 제목과 뚝 떨어져
+             보였음 - 제목 바로 왼쪽에 붙는 하나의 가운데정렬 그룹으로 묶고, 작은 배경음영(pill)을 줘서
+             제목과는 다른 보조 정보라는 걸 시각적으로 구분함 -->
+        <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+          <div style="font-size:11.5px; font-weight:700; color:var(--ink-soft); white-space:nowrap; background:var(--bg); border-radius:999px; padding:4px 10px;">이번달 근무가능일수 <span class="num" id="workdaysAutoValue" style="font-size:12px; font-weight:800; color:var(--navy);">-</span></div>
+          <div class="settings-group-title section-title-accent" style="font-size:19px; margin:0;">경비정산</div>
+        </div>
         <button type="button" id="expenseRegisterBtn" title="경비 등록" style="position:absolute; right:0; top:50%; transform:translateY(-50%); border:none; background:var(--indigo); color:#fff; border-radius:8px; padding:5px 10px; font-size:10.5px; font-weight:800; cursor:pointer; font-family:inherit;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 등록</button>
       </div>
       <div id="deadlineBanner"></div>
@@ -2763,7 +2789,6 @@
 
   <!-- 달력 -->
   <section id="tab-calendar" class="tab-panel">
-    <input type="month" id="calMonthSelectProxy" style="position:absolute; left:-9999px; width:auto;" tabindex="-1" aria-hidden="true">
     <div class="calendar-panel">
       <div class="cal-header-nav">
         <div></div>
@@ -4528,7 +4553,96 @@ function getProfiles(){ try{ const p = localStorage.getItem('worklog_profiles');
 // 한 번이라도 일어나면, 아직 Drive에 반영 안 된 로컬 변경이 예전 원격 데이터로 덮어써지면서 방금 등록한
 // 직원이 직원현황 목록에서 그냥 사라져버렸음("직원등록해도 직원현황에 안 보인다"는 제보의 원인) -
 // 다른 save* 함수들과 동일하게 gdriveScheduleSync()를 불러서 이 문제를 없앰
-function saveProfiles(list){ try{ localStorage.setItem('worklog_profiles', JSON.stringify(list)); }catch(e){ console.error('프로필 저장 실패', e); } gdriveScheduleSync(); }
+// 직원 한 명 한 명이 "마지막으로 언제 바뀌었는지" 알아야 나중에 여러 기기의 내용을 병합할 수 있어서,
+// 저장 직전의 값과 비교해서 실제로 바뀐 사람에게만 updatedAt(지금 시각)을 새로 찍어둠.
+function saveProfiles(list){
+  try{
+    const prevRaw = localStorage.getItem('worklog_profiles');
+    const prevMap = new Map((prevRaw ? JSON.parse(prevRaw) : []).map(p=>[p.id,p]));
+    const now = Date.now();
+    list.forEach(p=>{
+      const before = prevMap.get(p.id);
+      const beforeCmp = before ? JSON.stringify({...before, updatedAt:undefined}) : null;
+      const afterCmp = JSON.stringify({...p, updatedAt:undefined});
+      if(beforeCmp !== afterCmp) p.updatedAt = now;
+      else if(before && before.updatedAt) p.updatedAt = before.updatedAt;
+    });
+    localStorage.setItem('worklog_profiles', JSON.stringify(list));
+  }catch(e){ console.error('프로필 저장 실패', e); }
+  gdriveScheduleSync();
+}
+// ===== 범용 3-way 병합 엔진 =====
+// 직원목록뿐 아니라 근태/경비/일정/거래처/원천세 검토표/결재 등 Drive로 동기화되는 데이터 전체에
+// 똑같이 적용됨(일부 기능만 고치는 게 아니라, gdrivePush/gdrivePull이 다루는 데이터 전체가 이 방식을 씀).
+// "마지막으로 다 같이 합의했던 상태(baseline = 지난번에 실제로 주고받은 내용)"를 기준으로, 로컬과
+// 원격이 각각 거기서 뭘 바꿨는지 비교해서: 한쪽만 바꼈으면 그 바뀐 쪽을 채택하고(통째로 덮어쓰지 않음),
+// 항목에 id가 있는 배열(직원목록·결재함·근태기록·경비내역·일정 등)은 항목 단위로 병합해서 서로 다른
+// 항목을 각자 추가/수정/삭제했으면 다 살아남게 하며, 정말 같은 항목을 동시에 고친 경우(진짜 충돌)에만
+// 지금 저장하려는 쪽(로컬)을 우선함.
+function gdriveDeepEqual(a, b){
+  if(a === b) return true;
+  if(a === undefined || b === undefined || a === null || b === null) return a === b;
+  if(typeof a !== 'object' || typeof b !== 'object') return false;
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+function gdriveIsPlainObject(v){ return !!v && typeof v === 'object' && !Array.isArray(v); }
+function gdriveArrayAllHaveIds(arr){ return Array.isArray(arr) && arr.length>0 && arr.every(x=>x && typeof x==='object' && x.id!==undefined); }
+function gdriveMergeArrayById(baseArr, localArr, remoteArr){
+  const idOf = x=> x && typeof x==='object' ? x.id : undefined;
+  const baseMap = new Map((baseArr||[]).map(x=>[idOf(x),x]));
+  const localMap = new Map((localArr||[]).map(x=>[idOf(x),x]));
+  const remoteMap = new Map((remoteArr||[]).map(x=>[idOf(x),x]));
+  const order = []; const seen = new Set();
+  (localArr||[]).forEach(x=>{ const k=idOf(x); if(k!==undefined && !seen.has(k)){ seen.add(k); order.push(k); } });
+  (remoteArr||[]).forEach(x=>{ const k=idOf(x); if(k!==undefined && !seen.has(k)){ seen.add(k); order.push(k); } });
+  const result = [];
+  order.forEach(id=>{
+    const b = baseMap.get(id), l = localMap.get(id), r = remoteMap.get(id);
+    if(l === undefined && r === undefined) return;
+    if(l === undefined){
+      if(b === undefined || gdriveDeepEqual(r, b)) return; // 로컬 삭제를 존중 (혹은 원격도 그 항목을 몰랐음)
+      result.push(r); // 원격에서 그 사이 수정함 - 유실 방지 위해 살림
+      return;
+    }
+    if(r === undefined){
+      if(b === undefined || gdriveDeepEqual(l, b)) return; // 원격 삭제를 존중
+      result.push(l); // 로컬에서 그 사이 수정함 - 살림
+      return;
+    }
+    result.push(gdriveMergeValue(b, l, r));
+  });
+  return result;
+}
+function gdriveMergeValue(base, local, remote){
+  if(gdriveDeepEqual(local, remote)) return local;
+  const localChanged = !gdriveDeepEqual(local, base);
+  const remoteChanged = !gdriveDeepEqual(remote, base);
+  if(!localChanged && remoteChanged) return remote;
+  if(localChanged && !remoteChanged) return local;
+  if(!localChanged && !remoteChanged) return local;
+  // 여기부터는 진짜 충돌(둘 다 baseline에서 바뀜)
+  if(Array.isArray(local) && Array.isArray(remote)){
+    if(gdriveArrayAllHaveIds(local) && gdriveArrayAllHaveIds(remote) && (!Array.isArray(base) || base.length===0 || gdriveArrayAllHaveIds(base))){
+      return gdriveMergeArrayById(Array.isArray(base)?base:[], local, remote);
+    }
+    return local; // id 없는 배열은 항목 단위 병합이 불가능 - 지금 저장하려는 쪽을 우선
+  }
+  if(gdriveIsPlainObject(local) && gdriveIsPlainObject(remote)){
+    const b = gdriveIsPlainObject(base) ? base : {};
+    const keys = new Set([...Object.keys(b), ...Object.keys(local), ...Object.keys(remote)]);
+    const out = {};
+    keys.forEach(k=>{ out[k] = gdriveMergeValue(b[k], local[k], remote[k]); });
+    return out;
+  }
+  return local; // 원시값이 정말 동시에 다르게 바뀐 경우 - 지금 저장하려는 쪽을 우선
+}
+// Drive와 마지막으로 주고받은(둘이 합의한) 전체 데이터 스냅샷 - 3-way 병합의 기준점.
+function getGdriveMergeBaseline(){
+  try{ const raw = localStorage.getItem('worklog_gdrive_merge_baseline'); return raw ? JSON.parse(raw) : null; }catch(e){ return null; }
+}
+function setGdriveMergeBaseline(payload){
+  try{ localStorage.setItem('worklog_gdrive_merge_baseline', JSON.stringify(payload)); }catch(e){}
+}
 // 직원 삭제는 "다른 기기/브라우저에 예전 목록이 남아있다가, 거기서 뭔가 저장되는 순간 그 예전 목록이
 // 그대로 Drive에 다시 올라가면서 방금 지운 직원이 부활하는" 문제가 생기기 쉬움(여러 명이 같은 Drive
 // 파일을 동시에 씀 + 마지막에 저장한 쪽이 통째로 덮어씀 구조라서). 그래서 삭제한 직원 id는 일정 시간
@@ -18516,10 +18630,11 @@ async function gdriveEnsureFile(){
 async function gdrivePush(){
   if(!gdriveAccessToken || !gdriveFileId) return false;
   try{
+    const payload = gdriveBuildPayload();
     const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${gdriveFileId}?uploadType=media&supportsAllDrives=true`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${gdriveAccessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(gdriveBuildPayload(), null, 2)
+      body: JSON.stringify(payload, null, 2)
     });
     if(!res.ok){
       if(res.status === 401){ gdriveHandleUnauthorized(); return false; }
@@ -18528,6 +18643,8 @@ async function gdrivePush(){
     }
     gdriveSetStatus(`연결됨 · ${new Date().toLocaleTimeString('ko-KR')} 저장됨`);
     try{ localStorage.removeItem('worklog_gdrive_pending_push'); }catch(e){}
+    setGdriveMergeBaseline(payload); // 방금 이 내용을 Drive에 그대로 반영했으니, 다음 병합 기준점도 이걸로 갱신
+    lastGdrivePulledSnapshot = JSON.stringify(payload); // 방금 올린 내용과 100% 같은 걸 다시 받아오면(다음 pull) 재작업 안 하게
     return true;
   }catch(e){
     console.error('Drive 저장 실패', e);
@@ -18576,21 +18693,24 @@ async function gdrivePull(){
     const remoteSnapshot = JSON.stringify(remote);
     if(remoteSnapshot === lastGdrivePulledSnapshot) return; // 지난번 받아온 것과 완전히 동일 - 다시 그릴 필요 없음
     lastGdrivePulledSnapshot = remoteSnapshot;
-    const deletedIds = getRecentlyDeletedProfileIds();
-    let incomingProfiles = remote.profiles;
-    if(deletedIds.length){
-      const revivedIds = new Set(deletedIds.map(e=>e.id));
-      const filtered = incomingProfiles.filter(p=>!revivedIds.has(p.id));
-      if(filtered.length !== incomingProfiles.length){
-        // 다른 기기에서 예전 목록이 다시 올라와서 삭제했던 직원이 부활한 상태 - 걸러내고 Drive에도 다시 반영
-        incomingProfiles = filtered;
-        lastGdrivePulledSnapshot = null; // 우리가 고친 내용을 다시 밀어올린 뒤, 다음 pull에서도 정상 비교되게 초기화
-        gdriveScheduleSync();
-      }
+    // 여기서부터는 이제 "받아온 걸로 통째로 덮어쓰기"가 아니라, 로컬 전체 데이터와 방금 받아온 원격
+    // 데이터를 baseline(지난번에 실제로 주고받았던 상태) 기준으로 항목 단위 병합함 - 직원목록/근태/경비/
+    // 일정/거래처/원천세 검토표/결재 등 Drive로 오가는 데이터 전체에 똑같이 적용됨.
+    const localPayload = gdriveBuildPayload();
+    const baseline = getGdriveMergeBaseline();
+    const merged = baseline ? gdriveMergeValue(baseline, localPayload, remote) : remote;
+    // 그래도 직원 삭제만큼은 한 번 더 안전장치 - 최근에 지운 직원 id는 병합 결과에 남아있어도 확실히 제거
+    const deletedIds = new Set(getRecentlyDeletedProfileIds().map(e=>e.id));
+    if(deletedIds.size) merged.profiles = (merged.profiles||[]).filter(p=>!deletedIds.has(p.id));
+    if(!gdriveDeepEqual(merged, remote)){
+      // 병합 결과가 방금 받아온 원격 내용과 다르면(우리 쪽에만 있던 변경이 있었으면) Drive에도 다시 반영
+      lastGdrivePulledSnapshot = null; // 우리가 고친 내용을 다시 밀어올린 뒤, 다음 pull에서도 정상 비교되게 초기화
+      gdriveScheduleSync();
     }
-    saveProfiles(incomingProfiles);
-    Object.keys(remote.data || {}).forEach(pid=>{
-      const d = remote.data[pid];
+    setGdriveMergeBaseline(merged);
+    saveProfiles(merged.profiles || []);
+    Object.keys(merged.data || {}).forEach(pid=>{
+      const d = merged.data[pid];
       if(d.settings) localStorage.setItem(`worklog_settings__${pid}`, JSON.stringify(d.settings));
       if(d.attendance) localStorage.setItem(`worklog_attendance__${pid}`, JSON.stringify(d.attendance));
       if(d.expense) localStorage.setItem(`worklog_expense__${pid}`, JSON.stringify(d.expense));
@@ -18598,33 +18718,32 @@ async function gdrivePull(){
       if(d.clients) localStorage.setItem(`worklog_clients__${pid}`, JSON.stringify(d.clients));
       if(d.personalInfo) localStorage.setItem(`worklog_personalinfo__${pid}`, JSON.stringify(d.personalInfo));
     });
-    if(remote.shared){
-      if(remote.shared.exclusionDays) localStorage.setItem('worklog_shared_exclusions', JSON.stringify(remote.shared.exclusionDays));
-      if(remote.shared.workHourExceptions) localStorage.setItem('worklog_shared_workhours', JSON.stringify(remote.shared.workHourExceptions));
-      if(remote.shared.noticeHistory) localStorage.setItem('worklog_shared_notice_history', JSON.stringify(remote.shared.noticeHistory));
-      if(remote.shared.adminEmails) localStorage.setItem('worklog_shared_admins', JSON.stringify(remote.shared.adminEmails));
-      if(remote.shared.manageSalt !== undefined) localStorage.setItem('worklog_shared_managesalt', remote.shared.manageSalt);
-      if(remote.shared.manageVerifier !== undefined) localStorage.setItem('worklog_shared_manageverifier', JSON.stringify(remote.shared.manageVerifier));
-      if(remote.shared.companyInfo !== undefined) localStorage.setItem('worklog_shared_companyinfo', JSON.stringify(remote.shared.companyInfo));
-      if(remote.shared.companyName !== undefined) localStorage.setItem('worklog_shared_companyname', remote.shared.companyName);
-      if(remote.shared.teamInfo !== undefined) localStorage.setItem('worklog_shared_teaminfo', JSON.stringify(remote.shared.teamInfo));
-      if(remote.shared.specialPeriods !== undefined) localStorage.setItem('worklog_shared_specialperiods', JSON.stringify(remote.shared.specialPeriods));
-      // 결재 탭 데이터(신고현황/검토표/신고도움/결재)는 그동안 여기서 안 받아와서, 다른 기기에서 저장한 내용이 이 기기엔 안 뜨는 문제가 있었음 - 같이 받아오게 함
-      if(remote.shared.filingStatus !== undefined) localStorage.setItem('worklog_shared_filingstatus', JSON.stringify(remote.shared.filingStatus));
-      if(remote.shared.reviewStatus !== undefined) localStorage.setItem('worklog_shared_reviewstatus', JSON.stringify(remote.shared.reviewStatus));
-      if(remote.shared.filingHelp !== undefined) localStorage.setItem('worklog_shared_filinghelp', JSON.stringify(remote.shared.filingHelp));
-      if(remote.shared.approvals !== undefined) localStorage.setItem('worklog_shared_approvals', JSON.stringify(remote.shared.approvals));
-      if(remote.shared.reviewFigures !== undefined) localStorage.setItem('worklog_shared_reviewfigures', JSON.stringify(remote.shared.reviewFigures));
-      if(remote.shared.reviewMeta !== undefined) localStorage.setItem('worklog_shared_reviewmeta', JSON.stringify(remote.shared.reviewMeta));
-      if(remote.shared.filingTargets !== undefined) localStorage.setItem('worklog_shared_filingtargets', JSON.stringify(remote.shared.filingTargets));
-      if(remote.shared.filingCycles !== undefined) localStorage.setItem('worklog_shared_filingCycles', JSON.stringify(remote.shared.filingCycles));
-      if(remote.shared.autoPhrases !== undefined) localStorage.setItem('worklog_shared_autophrases', JSON.stringify(remote.shared.autoPhrases));
-      if(remote.shared.itFilingStatus !== undefined) localStorage.setItem('worklog_shared_itfilingstatus', JSON.stringify(remote.shared.itFilingStatus));
-      if(remote.shared.vatFilingTargets !== undefined) localStorage.setItem('worklog_shared_vatfilingtargets', JSON.stringify(remote.shared.vatFilingTargets));
-      if(remote.shared.vatReviewFigures !== undefined) localStorage.setItem('worklog_shared_vatreviewfigures', JSON.stringify(remote.shared.vatReviewFigures));
+    if(merged.shared){
+      if(merged.shared.exclusionDays) localStorage.setItem('worklog_shared_exclusions', JSON.stringify(merged.shared.exclusionDays));
+      if(merged.shared.workHourExceptions) localStorage.setItem('worklog_shared_workhours', JSON.stringify(merged.shared.workHourExceptions));
+      if(merged.shared.noticeHistory) localStorage.setItem('worklog_shared_notice_history', JSON.stringify(merged.shared.noticeHistory));
+      if(merged.shared.adminEmails) localStorage.setItem('worklog_shared_admins', JSON.stringify(merged.shared.adminEmails));
+      if(merged.shared.manageSalt !== undefined) localStorage.setItem('worklog_shared_managesalt', merged.shared.manageSalt);
+      if(merged.shared.manageVerifier !== undefined) localStorage.setItem('worklog_shared_manageverifier', JSON.stringify(merged.shared.manageVerifier));
+      if(merged.shared.companyInfo !== undefined) localStorage.setItem('worklog_shared_companyinfo', JSON.stringify(merged.shared.companyInfo));
+      if(merged.shared.companyName !== undefined) localStorage.setItem('worklog_shared_companyname', merged.shared.companyName);
+      if(merged.shared.teamInfo !== undefined) localStorage.setItem('worklog_shared_teaminfo', JSON.stringify(merged.shared.teamInfo));
+      if(merged.shared.specialPeriods !== undefined) localStorage.setItem('worklog_shared_specialperiods', JSON.stringify(merged.shared.specialPeriods));
+      if(merged.shared.filingStatus !== undefined) localStorage.setItem('worklog_shared_filingstatus', JSON.stringify(merged.shared.filingStatus));
+      if(merged.shared.reviewStatus !== undefined) localStorage.setItem('worklog_shared_reviewstatus', JSON.stringify(merged.shared.reviewStatus));
+      if(merged.shared.filingHelp !== undefined) localStorage.setItem('worklog_shared_filinghelp', JSON.stringify(merged.shared.filingHelp));
+      if(merged.shared.approvals !== undefined) localStorage.setItem('worklog_shared_approvals', JSON.stringify(merged.shared.approvals));
+      if(merged.shared.reviewFigures !== undefined) localStorage.setItem('worklog_shared_reviewfigures', JSON.stringify(merged.shared.reviewFigures));
+      if(merged.shared.reviewMeta !== undefined) localStorage.setItem('worklog_shared_reviewmeta', JSON.stringify(merged.shared.reviewMeta));
+      if(merged.shared.filingTargets !== undefined) localStorage.setItem('worklog_shared_filingtargets', JSON.stringify(merged.shared.filingTargets));
+      if(merged.shared.filingCycles !== undefined) localStorage.setItem('worklog_shared_filingCycles', JSON.stringify(merged.shared.filingCycles));
+      if(merged.shared.autoPhrases !== undefined) localStorage.setItem('worklog_shared_autophrases', JSON.stringify(merged.shared.autoPhrases));
+      if(merged.shared.itFilingStatus !== undefined) localStorage.setItem('worklog_shared_itfilingstatus', JSON.stringify(merged.shared.itFilingStatus));
+      if(merged.shared.vatFilingTargets !== undefined) localStorage.setItem('worklog_shared_vatfilingtargets', JSON.stringify(merged.shared.vatFilingTargets));
+      if(merged.shared.vatReviewFigures !== undefined) localStorage.setItem('worklog_shared_vatreviewfigures', JSON.stringify(merged.shared.vatReviewFigures));
     }
-    if(!getActiveProfileId() || !remote.profiles.find(p=>p.id===getActiveProfileId())){
-      if(remote.profiles.length) setActiveProfileId(remote.profiles[0].id);
+    if(!getActiveProfileId() || !(merged.profiles||[]).find(p=>p.id===getActiveProfileId())){
+      if(merged.profiles && merged.profiles.length) setActiveProfileId(merged.profiles[0].id);
     }
     await loadAll();
   }catch(e){
@@ -19161,8 +19280,10 @@ if(restoredGdriveToken){
 }
 
 window.addEventListener('focus', ()=>{ if(gdriveAccessToken && gdriveFileId) gdrivePull(); });
-// 브라우저 알림을 켜둔 경우, 이 탭을 계속 열어두기만 해도(다른 탭을 보고 있어도) 몇 분마다 자동으로 동기화해서 새 공지를 놓치지 않게 함
-setInterval(()=>{ if(gdriveAccessToken && gdriveFileId) gdrivePull(); }, 3*60*1000);
+// 이 탭을 열어두기만 해도 15초마다 자동으로 동기화해서, 여러 명이 거의 동시에 써도 서로의 변경사항이
+// 최대한 빨리(예전엔 3분 주기였음) 반영되게 함. 이제 직원목록 등은 통째로 덮어쓰지 않고 병합해서
+// 반영하므로, 주기를 짧게 당겨도 서로의 변경을 지워버릴 위험이 줄어듦.
+setInterval(()=>{ if(gdriveAccessToken && gdriveFileId) gdrivePull(); }, 15*1000);
 
 document.getElementById('mailNotifyBtn').addEventListener('click', ()=>{
   const myProfile = currentUserEmail ? getProfiles().find(p=>(p.email||'').toLowerCase()===currentUserEmail) : null;
