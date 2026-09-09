@@ -2727,7 +2727,10 @@
     <div style="max-width:480px; margin:0 auto;">
       <h2 class="section-title">출퇴근현황</h2>
       <div class="hint" id="clockHistoryProfileName" style="margin:0 0 10px; text-align:center;"></div>
-      <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:12px;">
+      <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+        <div class="tab-group tg-profile" id="clockHistoryProfilePickerWrap" style="padding:4px 8px;">
+          <select id="clockHistoryProfileSelect"></select>
+        </div>
         <input type="month" id="clockHistoryMonth" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;">
       </div>
       <div id="clockDataMonthHintBanner" style="display:none; margin:0 0 12px; padding:10px 14px; border-radius:10px; background:var(--coral-bg); border:1px solid var(--coral); font-size:13px; font-weight:700; color:var(--coral); align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
@@ -5480,10 +5483,15 @@ function renderEmployeeInfoHistory(){
   });
 }
 
+// 근태경비 탭의 #profileSelect와 출퇴근현황 탭의 #clockHistoryProfileSelect는 둘 다 "지금 activeProfileId로
+// 누구 걸 보고 있는지"를 나타내는 같은 성격의 드롭다운이라, 옵션 목록/선택값을 항상 같이 맞춰줌
 function renderProfileSwitcher(){
-  const sel = document.getElementById('profileSelect');
   const profiles = getProfiles();
-  sel.innerHTML = profiles.map(p=>`<option value="${p.id}" ${p.id===activeProfileId?'selected':''}>${p.name ? p.name : '(이름 미등록)'}</option>`).join('');
+  const optHtml = profiles.map(p=>`<option value="${p.id}" ${p.id===activeProfileId?'selected':''}>${p.name ? p.name : '(이름 미등록)'}</option>`).join('');
+  ['profileSelect','clockHistoryProfileSelect'].forEach(id=>{
+    const sel = document.getElementById(id);
+    if(sel) sel.innerHTML = optHtml;
+  });
 }
 
 function syncProfileName(){
@@ -10757,6 +10765,16 @@ document.getElementById('profileSelect').addEventListener('change', async ()=>{
   const profileSelectEl = document.getElementById('profileSelect');
   if(profileSelectEl.value && profileSelectEl.value !== activeProfileId){
     setActiveProfileId(profileSelectEl.value);
+    await loadAll();
+    updatePersonalBackupLabel(!!gdriveAccessToken && isCurrentUserAdmin);
+  }
+});
+// 출퇴근현황 탭도 관리자가 직원을 바꿔가며 볼 수 있어야 한다는 요청으로, 근태경비 탭의 #profileSelect와
+// 똑같이 activeProfileId를 바꾸고 전체를 다시 불러옴(#profileSelect 쪽도 renderProfileSwitcher를 통해 같이 맞춰짐)
+document.getElementById('clockHistoryProfileSelect')?.addEventListener('change', async ()=>{
+  const sel = document.getElementById('clockHistoryProfileSelect');
+  if(sel.value && sel.value !== activeProfileId){
+    setActiveProfileId(sel.value);
     await loadAll();
     updatePersonalBackupLabel(!!gdriveAccessToken && isCurrentUserAdmin);
   }
@@ -17003,8 +17021,11 @@ function applyPermissionUI(){
   // 결정함 - 여기서는 관리자가 아니면 확실히 숨기기만 함
   if(!admin){ const rb = document.getElementById('ciCorpResetBtn'); if(rb) rb.style.display = 'none'; }
   updatePersonalInfoFormState();
-  const profileSelectEl = document.getElementById('profileSelect');
-  if(profileSelectEl){
+  // 근태경비 탭 #profileSelect와 출퇴근현황 탭 #clockHistoryProfileSelect 둘 다 같은 규칙 적용: 관리자는
+  // 자유롭게 다른 직원으로 바꿔볼 수 있고(잠금 없음), 일반 직원은 항상 자기 계정으로 고정(잠금)함
+  ['profileSelect','clockHistoryProfileSelect'].forEach(selId=>{
+    const profileSelectEl = document.getElementById(selId);
+    if(!profileSelectEl) return;
     if(admin || !signedIn){
       profileSelectEl.disabled = false;
     } else {
@@ -17018,6 +17039,13 @@ function applyPermissionUI(){
         profileSelectEl.disabled = false;
       }
     }
+  });
+  // 출퇴근현황 탭의 이름 텍스트("OO 님의 기록")는 원래 있던 직원 전용 안내 문구였는데, 이제 관리자에게는
+  // 그 자리에 있는 드롭다운(#clockHistoryProfileSelect)이 같은 정보를 대신 보여주므로 관리자일 땐 숨기고,
+  // 드롭다운이 잠긴 일반 직원에게만 계속 보여줌(중복 표시 방지)
+  {
+    const nameEl = document.getElementById('clockHistoryProfileName');
+    if(nameEl) nameEl.style.display = (admin || !signedIn) ? 'none' : '';
   }
   renderAdminEmailList();
   populateCompanyNameInput();
@@ -18259,7 +18287,39 @@ let gdriveFileWasJustCreated = false;
 // ("01.기장대리")안에 두도록 바꿈. 이미 예전 방식으로(개인 드라이브에) 만들어진 파일이 있다면 새로
 // 만들지 않고 그 파일을 공유 드라이브 쪽으로 옮겨서(데이터 유지) 계속 씀 - 처음 한 번만 일어나는 이전(migration) 작업.
 async function gdriveEnsureFile(){
-  if(gdriveFileId) return gdriveFileId;
+  if(gdriveFileId){
+    // 이미 이 파일 위치를 알고 있어도(브라우저에 gdriveFileId가 캐시돼 있어도), 그게 예전에(공유
+    // 드라이브로 옮기기 전에) 개인 드라이브 방식으로 연결했을 때 저장해둔 값일 수 있음 - 그 경우 아래
+    // 이관 로직을 아예 안 타서 계속 개인 드라이브의 그 파일에만 저장되고, 회사 공유 드라이브
+    // ("01.기장대리")엔 영영 안 나타나는 문제가 있었음. 그래서 캐시된 파일이라도 매번 실제 위치를
+    // 가볍게 확인해서, 아직 공유 드라이브가 아니면 그제서야 옮겨줌(이미 옮겨져 있으면 확인 API 호출 한 번으로 끝남).
+    try{
+      const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${gdriveFileId}?fields=parents,driveId&supportsAllDrives=true`, {
+        headers: { Authorization: `Bearer ${gdriveAccessToken}` }
+      });
+      if(metaRes.status === 401){ gdriveHandleUnauthorized(); throw new Error('로그인이 만료됐어요. 다시 로그인해주세요.'); }
+      if(metaRes.ok){
+        const meta = await metaRes.json();
+        if(meta.driveId !== APPROVAL_ATTACHMENT_DRIVE_ID){
+          const driveRes = await fetch(`https://www.googleapis.com/drive/v3/drives/${APPROVAL_ATTACHMENT_DRIVE_ID}`, {
+            headers: { Authorization: `Bearer ${gdriveAccessToken}` }
+          });
+          if(driveRes.ok){
+            const d = await driveRes.json();
+            if(d && d.id){
+              const oldParents = (meta.parents||[]).join(',');
+              const moveRes = await fetch(`https://www.googleapis.com/drive/v3/files/${gdriveFileId}?addParents=${d.id}${oldParents?`&removeParents=${oldParents}`:''}&supportsAllDrives=true&fields=id,parents`, {
+                method: 'PATCH',
+                headers: { Authorization: `Bearer ${gdriveAccessToken}` }
+              });
+              if(!moveRes.ok){ console.error('회사 데이터 파일을 공유 드라이브로 옮기는 데 실패했어요 - 기존 위치를 그대로 씀', await moveRes.json().catch(()=>({}))); }
+            }
+          }
+        }
+      }
+    }catch(e){ if(e && /로그인이 만료/.test(e.message||'')) throw e; console.error('공유 드라이브 위치 확인 실패 - 기존 위치를 그대로 씀', e); }
+    return gdriveFileId;
+  }
   const q = encodeURIComponent(`name='${GDRIVE_FILE_NAME}' and trashed=false`);
   // 1) 먼저 공유 드라이브 안에서 찾음 - 이미 옮겨져 있는 정상적인 상태라면 여기서 바로 찾아짐
   let driveId = null;
