@@ -4529,6 +4529,28 @@ function getProfiles(){ try{ const p = localStorage.getItem('worklog_profiles');
 // 직원이 직원현황 목록에서 그냥 사라져버렸음("직원등록해도 직원현황에 안 보인다"는 제보의 원인) -
 // 다른 save* 함수들과 동일하게 gdriveScheduleSync()를 불러서 이 문제를 없앰
 function saveProfiles(list){ try{ localStorage.setItem('worklog_profiles', JSON.stringify(list)); }catch(e){ console.error('프로필 저장 실패', e); } gdriveScheduleSync(); }
+// 직원 삭제는 "다른 기기/브라우저에 예전 목록이 남아있다가, 거기서 뭔가 저장되는 순간 그 예전 목록이
+// 그대로 Drive에 다시 올라가면서 방금 지운 직원이 부활하는" 문제가 생기기 쉬움(여러 명이 같은 Drive
+// 파일을 동시에 씀 + 마지막에 저장한 쪽이 통째로 덮어씀 구조라서). 그래서 삭제한 직원 id는 일정 시간
+// "최근 삭제 목록"에 남겨두고, Drive에서 뭔가 불러올 때마다(gdrivePull) 그 목록에 있는 직원이 다시
+// 나타나면 즉시 다시 걸러내고 Drive에도 재반영해서 부활을 막음.
+const RECENT_DELETION_TTL_MS = 30*60*1000; // 30분
+function getRecentlyDeletedProfileIds(){
+  try{
+    const raw = JSON.parse(localStorage.getItem('worklog_recent_profile_deletions') || '[]');
+    const now = Date.now();
+    const fresh = raw.filter(e=> e && e.id && (now - e.at) < RECENT_DELETION_TTL_MS);
+    if(fresh.length !== raw.length) localStorage.setItem('worklog_recent_profile_deletions', JSON.stringify(fresh));
+    return fresh;
+  }catch(e){ return []; }
+}
+function recordDeletedProfileId(id){
+  try{
+    const list = getRecentlyDeletedProfileIds();
+    if(!list.find(e=>e.id===id)) list.push({id, at: Date.now()});
+    localStorage.setItem('worklog_recent_profile_deletions', JSON.stringify(list));
+  }catch(e){}
+}
 function getActiveProfileId(){ try{ return localStorage.getItem('worklog_active_profile') || ''; }catch(e){ return ''; } }
 function setActiveProfileId(id){ try{ localStorage.setItem('worklog_active_profile', id); }catch(e){} }
 function skey(base){ return `worklog_${base}__${activeProfileId}`; }
@@ -17933,6 +17955,7 @@ function renderEmployeeRoster(){
       if(!(await appConfirm(`"${target.name || '(이름 미등록)'}" 직원을 목록에서 삭제할까요?\n(잘못 등록한 경우에만 사용하세요. 퇴사자는 삭제 대신 재직상태를 "퇴사"로 바꿔서 이력을 보존하는 걸 추천해요.)`))) return;
       pushToTrash('employee', 'profile', `직원 ${target.name || '(이름 미등록)'}`, target);
       const remaining = list.filter(x=>x.id!==id);
+      recordDeletedProfileId(id);
       saveProfiles(remaining);
       renderProfileSwitcher();
       renderEmployeeRoster();
@@ -18553,7 +18576,19 @@ async function gdrivePull(){
     const remoteSnapshot = JSON.stringify(remote);
     if(remoteSnapshot === lastGdrivePulledSnapshot) return; // 지난번 받아온 것과 완전히 동일 - 다시 그릴 필요 없음
     lastGdrivePulledSnapshot = remoteSnapshot;
-    saveProfiles(remote.profiles);
+    const deletedIds = getRecentlyDeletedProfileIds();
+    let incomingProfiles = remote.profiles;
+    if(deletedIds.length){
+      const revivedIds = new Set(deletedIds.map(e=>e.id));
+      const filtered = incomingProfiles.filter(p=>!revivedIds.has(p.id));
+      if(filtered.length !== incomingProfiles.length){
+        // 다른 기기에서 예전 목록이 다시 올라와서 삭제했던 직원이 부활한 상태 - 걸러내고 Drive에도 다시 반영
+        incomingProfiles = filtered;
+        lastGdrivePulledSnapshot = null; // 우리가 고친 내용을 다시 밀어올린 뒤, 다음 pull에서도 정상 비교되게 초기화
+        gdriveScheduleSync();
+      }
+    }
+    saveProfiles(incomingProfiles);
     Object.keys(remote.data || {}).forEach(pid=>{
       const d = remote.data[pid];
       if(d.settings) localStorage.setItem(`worklog_settings__${pid}`, JSON.stringify(d.settings));
