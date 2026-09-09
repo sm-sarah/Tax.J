@@ -2582,17 +2582,20 @@
     <div class="settings-group">
       <!-- id="workdaysAutoValue"(이번달 근무가능일수 값)과 id="quickPrintReportBtn"(지출결의서 출력)은
            칩 형태를 벗어나 각각 경비정산 제목 왼쪽 텍스트 / 경비정산 카드 묶음 안쪽 우측 하단으로 옮겼어요.
-           직원선택·조회월선택 칩은 캘린더 탭과 같은 " ‹ 2026년 08월 › " 형식(전월·익월 화살표)으로 바꿨어요. -->
-      <div style="display:flex; justify-content:flex-end; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
-        <div class="tab-group tg-profile" style="padding:4px 10px;">
-          <label style="font-size:10px; font-weight:800; color:var(--navy); margin-right:2px;">직원</label>
-          <select id="profileSelect"></select>
-        </div>
-        <div class="tab-group tg-profile" id="dashboardGroup" style="padding:4px 6px; gap:0;">
-          <button type="button" id="attMonthPrevBtn" class="cal-nav-arrow" title="전월" style="width:20px; height:20px; color:var(--navy);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
-          <input type="month" id="monthSelect">
-          <button type="button" id="attMonthNextBtn" class="cal-nav-arrow" title="익월" style="width:20px; height:20px; color:var(--navy);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
-        </div>
+           직원선택·조회월선택은 개인캘린더 탭 상단과 완전히 같은 스타일("이름 ‹ 2026년 9월 › 📅")로 가운데
+           정렬해서 재사용함 - 실제 상태를 쥔 #profileSelect·#monthSelect는 화면 밖에 숨겨서 그대로 유지하고
+           (기존 renderProfileSwitcher/관리자 잠금 로직 등이 그대로 동작), 화면엔 updateCalHeader()가 같이
+           채워주는 #attCalOwnerLabel·#attMonthTitleBig만 보이게 함 -->
+      <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-bottom:10px;">
+        <div class="cal-owner-label" id="attCalOwnerLabel"></div>
+        <button type="button" class="cal-nav-arrow" id="attMonthPrevBtn" title="전월"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+        <div class="cal-title-big" id="attMonthTitleBig">-</div>
+        <button type="button" class="cal-nav-arrow" id="attMonthNextBtn" title="익월"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+        <button type="button" class="cal-nav-btn" id="attMonthPickerBtn" title="월 선택"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></button>
+      </div>
+      <div style="position:absolute; left:-9999px; width:0; height:0; overflow:hidden;" aria-hidden="true">
+        <select id="profileSelect"></select>
+        <input type="month" id="monthSelect">
       </div>
       <div id="dataMonthHintBanner" style="display:none; margin:0 0 14px; padding:10px 14px; border-radius:10px; background:var(--coral-bg); border:1px solid var(--coral); font-size:13px; font-weight:700; color:var(--coral); align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
         <span id="dataMonthHintText"></span>
@@ -3423,41 +3426,50 @@
       <div class="approval-panel" data-approval-cat="review" style="display:none;">
         <h2 class="section-title" style="justify-content:center; font-size:22px; margin:4px 0 14px;" id="reviewStatusTitle">원천세 검토표</h2>
 
-        <!-- 원천세 검토표: 거래처를 먼저 고르면(엑셀에서 거래처마다 시트가 따로였던 것과 같은 방식) 그 거래처의
-             12개월치 검토표가 쭉 나옴 -->
+        <!-- 원천세 검토표: 원래는 거래처를 먼저 고르고(귀속/지급·신고구분까지 매번 선택) 그 아래 표가 나오는
+             방식이었는데, 매번 선택하는 절차 없이 거래처 목록에서 바로 급여검증/납부세액검증 아이콘을 눌러
+             전체화면 팝업으로 검증하는 방식을 더 선호한다는 요청으로 거래처목록형 UI로 바꿈. 표를 실제로
+             그리는 renderReviewItIncomeTable/renderReviewItTaxTable 등 계산 로직은 그대로 재사용하고,
+             화면(팝업)만 새로 짬 -->
         <div id="reviewIncomeTaxBox">
-          <div style="display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+          <div style="display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
             <input type="text" id="reviewItClientSearch" placeholder="거래처 검색" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 10px; font-family:'Pretendard',sans-serif; font-size:12.5px; width:140px;">
-            <select id="reviewItClientSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700; max-width:220px;"></select>
             <select id="reviewItYearSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
             <button type="button" id="reviewSeedImportBtn" class="del-btn" title="원천세_2026.xlsx에서 뽑아둔 1~7월 실제 숫자를 거래처명이 맞는 곳에 채워넣어요(이미 입력된 칸은 안 건드림)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> 엑셀 데이터 불러오기</button>
           </div>
+          <p class="hint" style="text-align:center; margin:0 0 12px;">거래처의 아이콘을 눌러 급여검증 또는 납부세액검증을 전체화면으로 열어요.</p>
 
-          <div id="reviewItClientMeta" style="display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; font-size:12px; color:var(--ink-soft);"></div>
+          <div id="reviewItClientListWrap"></div>
+        </div>
 
-          <div class="policy-category-toggle" id="reviewItSectionToggle" style="margin-bottom:14px;">
-            <button type="button" class="review-it-section-btn active" data-it-section="income">급여검증</button>
-            <button type="button" class="review-it-section-btn" data-it-section="tax">납부세액검증</button>
+        <!-- 급여검증/납부세액검증 전체화면 팝업 - 스크롤 없이 한 화면에서 12개월치를 다 보고 검증할 수 있게
+             화면 전체를 씀(예전의 max-width:1160px 캡을 없애고 뷰포트 폭을 그대로 씀) -->
+        <div id="reviewItFullscreenOverlay" style="display:none; position:fixed; inset:0; z-index:900; background:rgba(15,16,30,0.6); padding:14px; align-items:stretch; justify-content:stretch;">
+          <div style="background:var(--bg); border-radius:16px; width:100%; height:100%; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px -12px rgba(0,0,0,0.4);">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:14px 20px; border-bottom:1.5px solid var(--border); flex-shrink:0;">
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <span id="reviewItFsClientName" style="font-size:16.5px; font-weight:900; color:var(--navy);"></span>
+                <span id="reviewItFsSectionBadge" style="font-size:11px; font-weight:700; color:var(--indigo); background:var(--indigo-bg); border-radius:20px; padding:3px 10px;"></span>
+                <select id="reviewItFsYearSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:5px 7px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12px; font-weight:700;"></select>
+                <div id="reviewItFsMetaWrap" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:11.5px; color:var(--ink-soft);"></div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="hint" style="font-size:11px; margin:0;">숫자를 입력해도 자동 저장되지 않아요 - 저장 버튼을 눌러야 저장돼요.</span>
+                <span class="save-msg" id="reviewItSaveMsg" style="margin-top:0; display:inline-block;"></span>
+                <button type="button" id="reviewItRevertBtn" title="되돌리기 (아직 저장하지 않은 입력 내용을 모두 취소하고 마지막 저장 상태로 되돌려요)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:1.5px solid var(--border); background:var(--surface); color:var(--ink-soft); box-shadow:0 2px 6px -2px rgba(29,30,51,0.2); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                </button>
+                <button type="button" id="reviewItSaveBtn" title="저장 (바뀐 내용이 있으면 버튼이 빨갛게 표시돼요)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:none; background:var(--indigo); color:#fff; box-shadow:0 4px 10px -3px rgba(29,30,51,0.35); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                </button>
+                <button type="button" id="reviewItFsCloseBtn" class="del-btn" style="background:var(--bg); color:var(--ink-soft); font-weight:800;">✕ 닫기</button>
+              </div>
+            </div>
+            <div style="flex:1; overflow:auto; padding:14px 20px;">
+              <div id="reviewItIncomeWrap" class="table-scroll" style="display:none; max-height:none; overflow:visible;"></div>
+              <div id="reviewItTaxWrap" class="table-scroll" style="display:none; max-height:none; overflow:visible;"></div>
+            </div>
           </div>
-
-          <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin:-6px 0 12px;">
-            <button type="button" id="reviewItIncomeResetBtn" class="del-btn" title="이 거래처・이 연도의 급여검증(급여명세서 항목·총지급액(신고서)) 입력값을 12개월 전부 지워요">급여검증 초기화</button>
-            <button type="button" id="reviewItTaxResetBtn" class="del-btn" title="이 거래처・이 연도의 납부세액검증(급여명세서 기준·신고서 기준) 입력값을 12개월 전부 지워요">납부세액검증 초기화</button>
-          </div>
-
-          <div style="display:flex; align-items:center; justify-content:flex-end; gap:8px; max-width:1160px; margin:0 auto 6px;">
-            <span class="hint" style="font-size:11px; margin:0;">숫자를 입력해도 자동 저장되지 않아요 - 저장 버튼을 눌러야 저장돼요.</span>
-            <span class="save-msg" id="reviewItSaveMsg" style="margin-top:0; display:inline-block;"></span>
-            <button type="button" id="reviewItRevertBtn" title="되돌리기 (아직 저장하지 않은 입력 내용을 모두 취소하고 마지막 저장 상태로 되돌려요)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:1.5px solid var(--border); background:var(--surface); color:var(--ink-soft); box-shadow:0 2px 6px -2px rgba(29,30,51,0.2); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
-            </button>
-            <button type="button" id="reviewItSaveBtn" title="저장 (바뀐 내용이 있으면 버튼이 빨갛게 표시돼요)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:none; background:var(--indigo); color:#fff; box-shadow:0 4px 10px -3px rgba(29,30,51,0.35); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-            </button>
-          </div>
-
-          <div id="reviewItIncomeWrap" class="table-scroll" style="max-width:1160px; margin:0 auto;"></div>
-          <div id="reviewItTaxWrap" class="table-scroll" style="max-width:1160px; margin:0 auto; display:none;"></div>
         </div>
 
         <!-- 부가세 검토표: 원본 엑셀(부가가치세 신고자료 통합조회) 구조를 그대로 옮김 - 거래처를 먼저 고르면 그 거래처의
@@ -3517,7 +3529,7 @@
         </div>
 
         <div class="approval-doc-panel" data-approval-doc="new">
-          <p class="hint" style="text-align:center; margin-bottom:14px;">결재라인: <b>① 기안</b>(직원 등록된 사람 누구나) → <b>② 승인</b>(회계사만) — 결재자 목록은 관리자로 등록된 회계사만 나와요. 작성 중 저장만 해두려면 "임시저장"을, 결재를 요청하려면 "기안 상신"을 눌러주세요.</p>
+          <p class="hint" style="text-align:center; margin-bottom:14px;">결재라인: <b>① 기안</b>(직원 등록된 사람 누구나) → <b>② 승인</b>(회계사만) — 결재자 목록은 관리자로 등록된 회계사만 나와요. 작성 중 저장만 해두려면 "임시저장"을, 결재를 요청하려면 "기안 상신"을 눌러주세요. <span style="color:var(--indigo);">테스트용으로 기안자·결재자 모두 본인을 포함해 원하는 사람으로 골라볼 수 있어요 - 알림이 어떻게 오가는지 확인해보세요.</span></p>
           <!-- 실제 사내 그룹웨어 기안문 양식을 참고해서, 기안자/소속/기안일이 자동으로 채워지는 문서 머리글과
                기안→승인 결재선을 시각적으로 보여주는 formal한 문서 느낌으로 구성함 -->
           <div class="settings-box" style="max-width:560px; padding:0; overflow:hidden;">
@@ -3533,7 +3545,7 @@
                 <input type="hidden" id="ad-edit-id" value="">
                 <div style="display:grid; grid-template-columns:84px 1fr; border:1.5px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:12px; font-size:12px;">
                   <div style="padding:7px 10px; background:var(--bg); font-weight:700; color:var(--ink-soft); border-bottom:1px solid var(--border); border-right:1px solid var(--border);">기안자</div>
-                  <div style="padding:7px 10px; border-bottom:1px solid var(--border);" id="adMetaDrafter">-</div>
+                  <div style="padding:0 4px; border-bottom:1px solid var(--border);"><select id="ad-drafter" title="테스트용 - 기안자를 원하는 사람으로 바꿔볼 수 있어요" style="width:100%; border:none; background:transparent; font-family:inherit; font-size:12px; font-weight:700; color:var(--ink); padding:7px 6px;"></select></div>
                   <div style="padding:7px 10px; background:var(--bg); font-weight:700; color:var(--ink-soft); border-bottom:1px solid var(--border); border-right:1px solid var(--border);">소속</div>
                   <div style="padding:7px 10px; border-bottom:1px solid var(--border);" id="adMetaTeam">-</div>
                   <div style="padding:7px 10px; background:var(--bg); font-weight:700; color:var(--ink-soft); border-right:1px solid var(--border);">기안일</div>
@@ -5941,16 +5953,20 @@ function formatMonthTitle(monthStr){ const [y,m]=(monthStr||'').split('-').map(N
 // 개인캘린더/팀캘린더 헤더의 큰 월 타이틀을 조회월(#monthSelect) 값에 맞춰 갱신
 function updateCalHeader(){
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
-  const titleEl = document.getElementById('calMonthTitleBig');
-  if(titleEl) titleEl.textContent = formatMonthTitle(monthStr);
-  const ownerEl = document.getElementById('calOwnerLabel');
-  if(ownerEl){
-    ownerEl.textContent = currentStaffDisplayName();
-    // 관리자만 이 라벨을 눌러서 다른 직원 캘린더로 바로 전환할 수 있게(상단에 항상 떠있던 직원선택 칩을 없앤 대신)
-    const canSwitch = !!gdriveAccessToken && isCurrentUserAdmin;
-    ownerEl.style.cursor = canSwitch ? 'pointer' : 'default';
-    ownerEl.title = canSwitch ? '눌러서 다른 직원 캘린더 보기' : '';
-  }
+  const canSwitch = !!gdriveAccessToken && isCurrentUserAdmin;
+  // 근태현황(#attCalOwnerLabel/#attMonthTitleBig)과 개인캘린더(#calOwnerLabel/#calMonthTitleBig) 둘 다
+  // 같은 상태(#monthSelect/activeProfileId)를 보여주는 것뿐이라, 존재하는 쪽 모두 같이 채워줌
+  [['calMonthTitleBig','calOwnerLabel','눌러서 다른 직원 캘린더 보기'], ['attMonthTitleBig','attCalOwnerLabel','눌러서 다른 직원으로 전환']].forEach(([titleId, ownerId, switchTitle])=>{
+    const titleEl = document.getElementById(titleId);
+    if(titleEl) titleEl.textContent = formatMonthTitle(monthStr);
+    const ownerEl = document.getElementById(ownerId);
+    if(ownerEl){
+      ownerEl.textContent = currentStaffDisplayName();
+      // 관리자만 이 라벨을 눌러서 다른 직원으로 바로 전환할 수 있게(상단에 항상 떠있던 직원선택 칩을 없앤 대신)
+      ownerEl.style.cursor = canSwitch ? 'pointer' : 'default';
+      ownerEl.title = canSwitch ? switchTitle : '';
+    }
+  });
   // 헤더를 다시 그릴 때마다 보조 month input을 화면 밖으로 강제로 되돌려서, change/blur를 놓쳐 작은 상자가 남아있는 문제를 방지함
   hideMonthPickerInput(document.getElementById('calMonthSelectProxy'));
 }
@@ -5981,6 +5997,7 @@ function openCalOwnerSwitchPopup(){
   });
 }
 document.getElementById('calOwnerLabel')?.addEventListener('click', openCalOwnerSwitchPopup);
+document.getElementById('attCalOwnerLabel')?.addEventListener('click', openCalOwnerSwitchPopup);
 // 큰 월 타이틀(연도 숫자 포함)을 클릭하면, 화살표로 한달씩 넘기기 힘든 먼 과거/미래로 바로 이동할 수 있도록 네이티브 연/월 선택 팝업을 띄움
 // (개인캘린더에서는 상단 nav의 #monthSelect가 항상 화면에 렌더링돼있지만, 팀캘린더 탭에서는 그 nav가 숨겨져있어서 showPicker가 동작하지 않음 -> 팀캘린더 자체 input(#teamCalMonthSelect)을 대신 씀.
 //  이 보조 input은 평소엔 화면 밖(-9999px)에 둬서 안 보이게 하다가, 클릭한 타이틀 바로 아래로 잠깐 옮겨서 showPicker를 호출함 - 그래야 네이티브 달력 팝업이 화면 밖이 아니라 타이틀 근처에 정상적으로 뜸)
@@ -6058,6 +6075,7 @@ function updateTeamCalHeader(){
 }
 // 캘린더 헤더의 좌우 화살표를 없애고 📅 아이콘 하나로 통일 - 한달씩 넘기지 않고 아이콘 클릭시 바로 브라우저 기본 달력 팝업이 뜸
 document.getElementById('calMonthPickerBtn')?.addEventListener('click', (e)=>{ e.stopPropagation(); openNativeMonthPicker('calMonthSelectProxy', document.getElementById('calMonthTitleBig')); });
+document.getElementById('attMonthPickerBtn')?.addEventListener('click', (e)=>{ e.stopPropagation(); openNativeMonthPicker('calMonthSelectProxy', document.getElementById('attMonthTitleBig')); });
 document.getElementById('teamCalMonthPickerBtn')?.addEventListener('click', (e)=>{ e.stopPropagation(); openNativeMonthPicker('teamCalMonthSelect', document.getElementById('teamCalMonthTitleBig')); });
 
 // 개인일정+휴가+재택근무 통합 등록 팝업 - 근태 탭의 "휴가·재택근무 추가"와 캘린더 탭의 "일정 추가"를 이 팝업 하나로 통합
@@ -13388,8 +13406,6 @@ function saveFilingSubviewState(){
       vatTargetYear: vatTargetYear,
       submitState: { year:submitState.year, sourceMode:submitState.sourceMode, month:submitState.month, half:submitState.half },
       reviewType: viewingReviewType,
-      reviewItSection: viewingReviewItSection,
-      reviewItClientId: document.getElementById('reviewItClientSelect')?.value || '',
       reviewItYear: document.getElementById('reviewItYearSelect')?.value || '',
       reviewVatClientId: document.getElementById('reviewVatClientSelect')?.value || '',
       reviewVatYear: document.getElementById('reviewVatYearSelect')?.value || ''
@@ -13443,27 +13459,11 @@ function restoreFilingSubviewState(){
     } else if(saved.cat === 'review' && saved.reviewType){
       document.querySelector(`#reviewTypeToggle .review-type-btn[data-filing-type="${saved.reviewType}"]`)?.click();
       if(saved.reviewType === '원천세'){
-        if(saved.reviewItSection){
-          viewingReviewItSection = saved.reviewItSection;
-          document.querySelectorAll('.review-it-section-btn').forEach(b=>{
-            b.classList.toggle('active', b.dataset.itSection === saved.reviewItSection);
-          });
-          const wraps = { income:'reviewItIncomeWrap', tax:'reviewItTaxWrap' };
-          Object.keys(wraps).forEach(k=>{
-            const el = document.getElementById(wraps[k]);
-            if(el) el.style.display = (k === viewingReviewItSection) ? '' : 'none';
-          });
-        }
+        // 거래처를 하나 골라 계속 보여주던 예전 화면과 달리, 이제는 거래처 목록 + 전체화면 팝업 방식이라
+        // 팝업까지 열린 채로 복원하지는 않고(팝업은 항상 닫힌 상태로 시작) 목록의 연도 필터만 복원함
         const yearSel = document.getElementById('reviewItYearSelect');
         if(yearSel && saved.reviewItYear) yearSel.value = saved.reviewItYear;
-        if(saved.reviewItClientId){
-          populateReviewItClientSelect(); // 지금 연도 기준으로 거래처 목록을 먼저 채움
-          const clientSel = document.getElementById('reviewItClientSelect');
-          if(clientSel && Array.from(clientSel.options).some(o=>o.value === saved.reviewItClientId)){
-            clientSel.value = saved.reviewItClientId;
-            renderReviewItAll();
-          }
-        }
+        renderReviewItAll();
       } else if(saved.reviewType === '부가세'){
         const yearSel = document.getElementById('reviewVatYearSelect');
         if(yearSel && saved.reviewVatYear) yearSel.value = saved.reviewVatYear;
@@ -14781,7 +14781,7 @@ function renderReviewPanel(){
   if(incomeBox) incomeBox.style.display = isIncomeTax ? '' : 'none';
   if(vatBox) vatBox.style.display = isVat ? '' : 'none';
   if(legacyBox) legacyBox.style.display = 'none';
-  if(isIncomeTax) populateReviewItClientSelect();
+  if(isIncomeTax) renderReviewItAll();
   else if(isVat) populateReviewVatClientSelect();
 }
 
@@ -14837,6 +14837,7 @@ const REVIEW_TAXRETURN_FIELDS = [
 // 이름이 맞는 거래처를 찾아 확인 화면을 보여준 뒤, 빈 칸(아직 값이 없는 월/항목)에만 채워 넣음(이미 입력된 값은 덮어쓰지 않음).
 const REVIEW_SEED_2026 = JSON.parse('{"리빙":{"names":["주식회사 리빙디자인공감","리빙디자인공감","리빙"],"meta":{"payCycle":"반기","sameMonth":true},"months":{"1":{"income":{"근로과세":15350000.0,"근로제출비과세":200000.0,"근로미제출비과세":200000.0,"일용":6660910.0},"incomeReported":null,"tax":{"간이":{"tax":508390.0,"local":50820.0},"일용":{"tax":25110.0,"local":2440.0}},"taxReported":null},"2":{"income":{"근로과세":14951266.0,"근로제출비과세":200000.0,"근로미제출비과세":200000.0,"연말":150394064.0,"일용":6960000.0},"incomeReported":null,"tax":{"간이":{"tax":428480.0,"local":42820.0},"일용":{"tax":19980.0,"local":1980.0},"연말":{"tax":-1786080.0,"local":-178360.0}},"taxReported":null},"3":{"income":{"근로과세":15734750.0,"근로제출비과세":200000.0,"근로미제출비과세":200000.0,"일용":5200810.0},"incomeReported":null,"tax":{"간이":{"tax":496380.0,"local":49610.0},"일용":{"tax":14580.0,"local":1450.0}},"taxReported":null},"4":{"income":{"근로과세":16899112.0,"근로제출비과세":200000.0,"근로미제출비과세":200000.0,"일용":15034800.0},"incomeReported":null,"tax":{"간이":{"tax":636380.0,"local":63620.0},"일용":{"tax":124900.0,"local":12420.0}},"taxReported":null},"5":{"income":{"근로과세":15001266.0,"근로제출비과세":200000.0,"근로미제출비과세":200000.0,"중도과세":13257970.0,"일용":4420000.0,"퇴직":11347140.0},"incomeReported":null,"tax":{"간이":{"tax":351260.0,"local":35100.0},"중도":{"tax":-176700.0,"local":-17650.0},"일용":{"tax":21060.0,"local":2090.0},"퇴직":{"tax":72330.0,"local":7230.0}},"taxReported":null},"6":{"income":{"근로과세":15200000.0,"근로제출비과세":400000.0,"근로미제출비과세":200000.0,"일용":4020000.0},"incomeReported":311832088.0,"tax":{"간이":{"tax":443610.0,"local":44340.0},"일용":{"tax":29970.0,"local":2990.0}},"taxReported":1209650.0},"7":{"income":{"근로과세":16250000.0,"근로제출비과세":400000.0,"근로미제출비과세":200000.0,"일용":6200000.0},"incomeReported":null,"tax":{"간이":{"tax":568780.0,"local":56870.0},"일용":{"tax":54000.0,"local":5380.0}},"taxReported":null}}},"나빌레라":{"names":["협동조합 나빌레라","나빌레라"],"meta":{"payCycle":"매월","sameMonth":true},"months":{"1":{"income":{"근로과세":2750000.0},"incomeReported":2750000.0,"tax":{},"taxReported":0.0},"2":{"income":{"근로과세":4350000.0,"연말":18465235.0},"incomeReported":22815235.0,"tax":{"간이":{"tax":43970.0,"local":4390.0},"연말":{"tax":-11990.0,"local":-1190.0}},"taxReported":31980.0},"3":{"income":{"근로과세":3547680.0,"사업":600000.0,"기타간이대상":2245980.0},"incomeReported":6393660.0,"tax":{"간이":{"tax":15940.0,"local":1590.0},"사업":{"tax":18000.0,"local":1800.0},"기타간이대상":{"tax":179660.0,"local":17960.0}},"taxReported":213600.0},"4":{"income":{"근로과세":3396920.0,"사업":1147000.0,"기타간이대상":380000.0},"incomeReported":4923920.0,"tax":{"간이":{"tax":12840.0,"local":1280.0},"사업":{"tax":34410.0,"local":3410.0}},"taxReported":47250.0},"5":{"income":{"근로과세":3681840.0,"사업":3699000.0,"기타간이대상":4920000.0},"incomeReported":12300840.0,"tax":{"간이":{"tax":18880.0,"local":1880.0},"사업":{"tax":110970.0,"local":11090.0},"기타간이대상":{"tax":377600.0,"local":37760.0}},"taxReported":507450.0},"6":{"income":{"근로과세":3465120.0},"incomeReported":3465120.0,"tax":{"간이":{"tax":14290.0,"local":1420.0}},"taxReported":14290.0},"7":{"income":{"근로과세":2916369.0,"중도과세":12207929.0,"사업":2700000.0,"기타간이대상":120000.0},"incomeReported":17944298.0,"tax":{"중도":{"tax":-105920.0,"local":-10560.0},"사업":{"tax":81000.0,"local":8100.0}},"taxReported":-24920.0}}},"프린웍스산업":{"names":["주식회사 프린웍스산업","프린웍스산업"],"meta":{"payCycle":"매월","sameMonth":true},"months":{"1":{"income":{"근로과세":8667000.0,"일용":300000.0},"incomeReported":8967000.0,"tax":{"간이":{"tax":273030.0,"local":27290.0}},"taxReported":273030.0},"2":{"income":{"근로과세":8667000.0,"중도과세":8334000.0,"연말":81336000.0},"incomeReported":98337000.0,"tax":{"간이":{"tax":121680.0,"local":12160.0},"중도":{"tax":-151350.0,"local":-15130.0},"연말":{"tax":-1737060.0,"local":-173610.0}},"taxReported":-1766730.0},"3":{"income":{"근로과세":4500000.0},"incomeReported":4500000.0,"tax":{"간이":{"tax":121680.0,"local":12160.0}},"taxReported":-1645050.0},"4":{"income":{"근로과세":4500000.0},"incomeReported":4500000.0,"tax":{"간이":{"tax":121680.0,"local":12160.0}},"taxReported":-1523370.0},"5":{"income":{"근로과세":4500000.0},"incomeReported":4500000.0,"tax":{"간이":{"tax":121680.0,"local":12160.0}},"taxReported":-1401690.0},"6":{"income":{"근로과세":4500000.0},"incomeReported":4500000.0,"tax":{"간이":{"tax":121680.0,"local":12160.0}},"taxReported":-1280010.0},"7":{"income":{"근로과세":4500000.0},"incomeReported":null,"tax":{"간이":{"tax":121680.0,"local":12160.0}},"taxReported":-1158330.0}}},"프린웍스청양":{"names":["주식회사 프린웍스산업 청양공장","프린웍스산업 청양공장","프린웍스 청양","프린웍스청양"],"meta":{"payCycle":"매월","sameMonth":true},"months":{"1":{"income":{},"incomeReported":null,"tax":{},"taxReported":null},"2":{"income":{},"incomeReported":null,"tax":{},"taxReported":null},"3":{"income":{},"incomeReported":null,"tax":{},"taxReported":null},"4":{"income":{"근로과세":3500000.0},"incomeReported":3500000.0,"tax":{"간이":{"tax":101770.0,"local":10170.0}},"taxReported":101770.0},"5":{"income":{"근로과세":3500000.0},"incomeReported":3500000.0,"tax":{"간이":{"tax":101770.0,"local":10170.0}},"taxReported":101770.0},"6":{"income":{"근로과세":3500000.0},"incomeReported":3500000.0,"tax":{"간이":{"tax":101770.0,"local":10170.0}},"taxReported":101770.0},"7":{"income":{"근로과세":3500000.0},"incomeReported":3500000.0,"tax":{"간이":{"tax":101770.0,"local":10170.0}},"taxReported":101770.0}}},"비앤피랩":{"names":["비앤피랩"],"meta":{"payCycle":"반기","sameMonth":true},"months":{"1":{"income":{"근로과세":3300000.0,"사업":15000000.0,"기타간이대상":6780000.0},"incomeReported":null,"tax":{"간이":{"tax":82520.0,"local":8250.0},"사업":{"tax":450000.0,"local":45000.0},"기타간이대상":{"tax":542400.0,"local":54240.0}},"taxReported":null},"2":{"income":{"근로과세":3300000.0,"연말":38200000.0,"사업":29154000.0,"기타간이대상":1690000.0},"incomeReported":null,"tax":{"간이":{"tax":46720.0,"local":4670.0},"연말":{"tax":-937790.0,"local":-93730.0},"사업":{"tax":874620.0,"local":87460.0},"기타간이대상":{"tax":135200.0,"local":13520.0}},"taxReported":null},"3":{"income":{"근로과세":3700000.0,"사업":2679080.0,"기타간이대상":7300000.0},"incomeReported":null,"tax":{"간이":{"tax":78110.0,"local":7810.0},"사업":{"tax":80370.0,"local":8030.0},"기타간이대상":{"tax":584000.0,"local":58400.0}},"taxReported":null},"4":{"income":{"근로과세":3700000.0,"사업":2321000.0,"기타간이대상":11170000.0},"incomeReported":null,"tax":{"간이":{"tax":78110.0,"local":7810.0},"사업":{"tax":69630.0,"local":6960.0},"기타간이대상":{"tax":893600.0,"local":89360.0}},"taxReported":null},"5":{"income":{"근로과세":7034000.0,"사업":2746000.0,"기타간이대상":8540000.0},"incomeReported":null,"tax":{"간이":{"tax":183320.0,"local":18330.0},"사업":{"tax":82380.0,"local":8230.0},"기타간이대상":{"tax":683200.0,"local":68320.0}},"taxReported":null},"6":{"income":{"근로과세":7034000.0,"기타간이대상":5190000.0},"incomeReported":158838080.0,"tax":{"간이":{"tax":183320.0,"local":18330.0},"기타간이대상":{"tax":415200.0,"local":41520.0}},"taxReported":4524910.0},"7":{"income":{"근로과세":7034000.0},"incomeReported":null,"tax":{"간이":{"tax":183320.0,"local":18330.0}},"taxReported":null}}},"태하":{"names":["태하기술사사무소","태하"],"meta":{"payCycle":"매월","sameMonth":true},"months":{"1":{"income":{"근로과세":600000.0},"incomeReported":600000.0,"tax":{},"taxReported":-167600.0},"2":{"income":{"근로과세":600000.0,"연말":7200000.0},"incomeReported":7800000.0,"tax":{},"taxReported":-167600.0},"3":{"income":{"근로과세":600000.0},"incomeReported":600000.0,"tax":{},"taxReported":-167600.0},"4":{"income":{"근로과세":600000.0},"incomeReported":600000.0,"tax":{},"taxReported":-167600.0},"5":{"income":{"근로과세":600000.0},"incomeReported":600000.0,"tax":{},"taxReported":-167600.0},"6":{"income":{"근로과세":600000.0},"incomeReported":600000.0,"tax":{},"taxReported":-167600.0},"7":{"income":{"근로과세":600000.0},"incomeReported":600000.0,"tax":{},"taxReported":-167600.0}}},"세성":{"names":["세성실업","세성"],"meta":{"payCycle":"매월","sameMonth":true},"months":{"1":{"income":{"근로과세":3050000.0,"근로제출비과세":200000.0,"일용":700000.0},"incomeReported":3950000.0,"tax":{"간이":{"tax":25010.0,"local":2500.0}},"taxReported":25010.0},"2":{"income":{"근로과세":3050000.0,"근로제출비과세":200000.0,"중도과세":2000000.0,"연말":26200000.0},"incomeReported":31450000.0,"tax":{"간이":{"tax":25010.0,"local":2500.0},"연말":{"tax":-300120.0,"local":-30000.0}},"taxReported":-275110.0},"3":{"income":{"근로과세":2050000.0,"근로제출비과세":200000.0,"일용":2100000.0},"incomeReported":4350000.0,"tax":{"간이":{"tax":25010.0,"local":2500.0},"일용":{"tax":9450.0,"local":910.0}},"taxReported":-240650.0},"4":{"income":{"근로과세":2050000.0,"근로제출비과세":200000.0,"일용":1400000.0},"incomeReported":3650000.0,"tax":{"간이":{"tax":25010.0,"local":2500.0}},"taxReported":-215640.0},"5":{"income":{"근로과세":2050000.0,"근로제출비과세":200000.0},"incomeReported":2250000.0,"tax":{"간이":{"tax":25010.0,"local":2500.0}},"taxReported":-190630.0},"6":{"income":{"근로과세":2050000.0,"근로제출비과세":200000.0,"일용":2800000.0},"incomeReported":5050000.0,"tax":{"간이":{"tax":25010.0,"local":2500.0},"일용":{"tax":18900.0,"local":1820.0}},"taxReported":-146720.0},"7":{"income":{"근로과세":2050000.0,"근로제출비과세":200000.0,"일용":1400000.0},"incomeReported":3650000.0,"tax":{"간이":{"tax":25010.0,"local":2500.0}},"taxReported":-121710.0}}},"와이인":{"names":["와이인"],"meta":{"payCycle":"매월","sameMonth":true},"months":{"1":{"income":{"근로과세":6750800.0,"근로제출비과세":400000.0,"사업":3407700.0},"incomeReported":10558500.0,"tax":{"간이":{"tax":222650.0,"local":22250.0},"사업":{"tax":102230.0,"local":10200.0}},"taxReported":324880.0},"2":{"income":{"근로과세":8059800.0,"근로제출비과세":600000.0,"연말":40751150.0,"사업":1031000.0},"incomeReported":50441950.0,"tax":{"간이":{"tax":139700.0,"local":13970.0},"연말":{"tax":-854860.0,"local":-85450.0},"사업":{"tax":30920.0,"local":3080.0}},"taxReported":-684240.0},"3":{"income":{"근로과세":8542950.0,"근로제출비과세":900000.0,"중도과세":1548800.0},"incomeReported":10991750.0,"tax":{"간이":{"tax":123870.0,"local":12380.0}},"taxReported":-560370.0},"4":{"income":{"근로과세":7857800.0,"근로제출비과세":500000.0},"incomeReported":8357800.0,"tax":{"간이":{"tax":123870.0,"local":12380.0}},"taxReported":-436500.0},"5":{"income":{"근로과세":8632700.0,"근로제출비과세":700000.0},"incomeReported":9332700.0,"tax":{"간이":{"tax":144170.0,"local":14410.0}},"taxReported":-292330.0},"6":{"income":{"근로과세":8439400.0,"근로제출비과세":700000.0},"incomeReported":9139400.0,"tax":{"간이":{"tax":136660.0,"local":13650.0}},"taxReported":-155670.0},"7":{"income":{"근로과세":7787100.0,"근로제출비과세":500000.0,"사업":252950.0},"incomeReported":8540050.0,"tax":{"간이":{"tax":213360.0,"local":21330.0},"사업":{"tax":7580.0,"local":750.0}},"taxReported":65270.0}}},"엽떡":{"names":["불닭발땡초동대문엽기떡볶이 분당수내점","불닭발땡초동대문엽기떡볶이","엽떡"],"meta":{"payCycle":"매월","sameMonth":true},"months":{"1":{"income":{"근로과세":7545180.0,"근로제출비과세":729050.0,"중도과세":1303230.0,"중도제출비과세":200000.0,"사업":2948000.0,"일용":650000.0},"incomeReported":13375460.0,"tax":{"간이":{"tax":105290.0,"local":10520.0},"사업":{"tax":88440.0,"local":8840.0}},"taxReported":193730.0},"2":{"income":{"근로과세":7300000.0,"근로제출비과세":600000.0,"연말":18300000.0,"사업":3148000.0,"일용":1593750.0},"incomeReported":31041750.0,"tax":{"간이":{"tax":148220.0,"local":14810.0},"일용":{"tax":9240.0,"local":910.0},"연말":{"tax":-310020.0,"local":-30990.0},"사업":{"tax":94440.0,"local":9440.0}},"taxReported":-58120.0},"3":{"income":{"근로과세":7600000.0,"근로제출비과세":600000.0,"사업":3204000.0,"일용":1636750.0},"incomeReported":13040750.0,"tax":{"간이":{"tax":174310.0,"local":17430.0},"사업":{"tax":96120.0,"local":9610.0}},"taxReported":212310.0},"4":{"income":{"근로과세":7700000.0,"근로제출비과세":600000.0,"사업":3260000.0,"일용":1093250.0},"incomeReported":12653250.0,"tax":{"간이":{"tax":181170.0,"local":18110.0},"사업":{"tax":97800.0,"local":9780.0}},"taxReported":278970.0},"5":{"income":{"근로과세":11182310.0,"근로제출비과세":780645.0,"사업":2220000.0,"일용":3181000.0},"incomeReported":17363955.0,"tax":{"간이":{"tax":343220.0,"local":34310.0},"사업":{"tax":66600.0,"local":6660.0}},"taxReported":409820.0},"6":{"income":{"근로과세":10060000.0,"근로제출비과세":800000.0,"사업":1700000.0,"일용":3687000.0},"incomeReported":16247000.0,"tax":{"간이":{"tax":201610.0,"local":20150.0},"사업":{"tax":51000.0,"local":5100.0}},"taxReported":252610.0},"7":{"income":{"근로과세":9800000.0,"근로제출비과세":800000.0,"사업":1700000.0,"일용":2134000.0},"incomeReported":14434000.0,"tax":{"간이":{"tax":179360.0,"local":17920.0},"사업":{"tax":51000.0,"local":5100.0}},"taxReported":230360.0}}},"코넥트":{"names":["주)코넥트 스튜디오","코넥트 스튜디오","코넥트"],"meta":{"payCycle":"반기","sameMonth":true},"months":{"1":{"income":{},"incomeReported":null,"tax":{},"taxReported":null},"2":{"income":{},"incomeReported":null,"tax":{},"taxReported":null},"3":{"income":{},"incomeReported":null,"tax":{},"taxReported":null},"4":{"income":{},"incomeReported":null,"tax":{},"taxReported":null},"5":{"income":{},"incomeReported":null,"tax":{},"taxReported":null},"6":{"income":{},"incomeReported":null,"tax":{},"taxReported":null},"7":{"income":{"근로과세":2156880.0},"incomeReported":null,"tax":{"간이":{"tax":24340.0,"local":2430.0}},"taxReported":null}}},"왓츠랩":{"names":["주식회사 왓츠랩","왓츠랩"],"meta":{"payCycle":"매월","sameMonth":false},"months":{"1":{"income":{"근로과세":26490000.0,"근로제출비과세":3040000.0,"연말":301337902.0},"incomeReported":330867902,"tax":{"간이":{"tax":477990.0,"local":47750.0},"연말":{"tax":-2500780.0,"local":-249730.0}},"taxReported":-2022790.0},"2":{"income":{"근로과세":26490000.0,"근로제출비과세":2990000.0},"incomeReported":29480000.0,"tax":{"간이":{"tax":469660.0,"local":46920.0}},"taxReported":-1553130.0},"3":{"income":{"근로과세":36430000.0,"근로제출비과세":3160000.0},"incomeReported":39590000.0,"tax":{"간이":{"tax":1035300.0,"local":103470.0}},"taxReported":-517830.0},"4":{"income":{"근로과세":28370000.0,"근로제출비과세":3090000.0,"기타간이대상":1800000.0},"incomeReported":31460000.0,"tax":{"간이":{"tax":515440.0,"local":51490.0},"기타간이대상":{"tax":144000.0,"local":14400.0}},"taxReported":-232220.0},"5":{"income":{"근로과세":28370000.0,"근로제출비과세":3040000.0},"incomeReported":31410000.0,"tax":{"간이":{"tax":515440.0,"local":51490.0}},"taxReported":515440.0},"6":{"income":{"근로과세":28370000.0,"근로제출비과세":3190000.0,"기타간이대상":6720000.0},"incomeReported":38280000.0,"tax":{"간이":{"tax":515440.0,"local":51490.0},"기타간이대상":{"tax":537600.0,"local":53760.0}},"taxReported":1053040.0},"7":{"income":{"근로과세":29560000.0,"근로제출비과세":2980000.0,"기타간이대상":3070000.0},"incomeReported":35610000.0,"tax":{"간이":{"tax":531000.0,"local":53040.0},"기타간이대상":{"tax":245600.0,"local":24560.0}},"taxReported":776600.0}}},"나우이엔지":{"names":["주식회사 나우이엔지","나우이엔지"],"meta":{"payCycle":"매월","sameMonth":false},"months":{"1":{"income":{"근로과세":99509556.0,"중도과세":23104862.0,"연말":1022491006.0,"퇴직":55772757.0},"incomeReported":1200878181,"tax":{"간이":{"tax":3309770.0,"local":330910.0},"연말":{"tax":-15431300.0,"local":-1541900.0},"퇴직":{"tax":100820.0,"local":10080.0}},"taxReported":null},"2":{"income":{"근로과세":85958125.0,"중도과세":2041467.0,"퇴직":12431292.0},"incomeReported":100430884.0,"tax":{"간이":{"tax":4037740.0,"local":403710.0}},"taxReported":-1200910.0},"3":{"income":{"근로과세":79994622.0},"incomeReported":79994622.0,"tax":{"간이":{"tax":3409100.0,"local":340830.0}},"taxReported":-797200.0},"4":{"income":{"근로과세":82833332.0,"사업":5000000.0},"incomeReported":87833332.0,"tax":{"간이":{"tax":3427030.0,"local":342620.0},"사업":{"tax":150000.0,"local":15000.0}},"taxReported":-4880240.0},"5":{"income":{"근로과세":86634555.0},"incomeReported":86634555.0,"tax":{"간이":{"tax":3829610.0,"local":382880.0}},"taxReported":-113750.0},"6":{"income":{"근로과세":95333332.0,"사업":5000000.0},"incomeReported":100333332.0,"tax":{"간이":{"tax":5495410.0,"local":549450.0},"사업":{"tax":150000.0,"local":15000.0}},"taxReported":150000.0},"7":{"income":{"근로과세":96543662.0,"사업":5000000.0},"incomeReported":101543662.0,"tax":{"간이":{"tax":5639790.0,"local":563890.0},"사업":{"tax":150000.0,"local":15000.0}},"taxReported":150000.0}}}}');
 let viewingReviewItSection = 'income'; // income | tax
+let reviewItFsClientId = null; // 지금 전체화면 팝업(급여검증/납부세액검증)에 열려있는 거래처 id - 팝업이 닫혀있으면 null
 function reviewItMonthData(clientId, year, month){
   sharedReviewFigures[clientId] = sharedReviewFigures[clientId] || {};
   sharedReviewFigures[clientId][year] = sharedReviewFigures[clientId][year] || {};
@@ -15193,140 +15194,153 @@ function reviewItClientHasIncomeInYear(clientId, year){
     return Object.values(m.income||{}).some(v=> v!=null && v!=='' && Number(v)!==0);
   });
 }
-function populateReviewItClientSelect(){
-  const sel = document.getElementById('reviewItClientSelect');
-  if(!sel) return;
+// 검색어/연도 필터에 맞는 거래처 목록 - 검색어가 있으면 전체 거래처 중 이름으로만 찾고(신규 거래처의 첫
+// 입력을 위한 통로), 없으면 지금 연도에 급여이력이 있는 거래처만 추려서 보여줌(이력이 하나도 없는 새
+// 연도라면 필터링 없이 전체를 보여줘서 첫 입력을 시작할 수 있게 함)
+function reviewItFilteredClientList(){
   const q = (document.getElementById('reviewItClientSearch')?.value || '').trim().toLowerCase();
   let list = bookkeepingClientList();
   if(q){
-    // 검색어를 직접 입력했을 땐 "이 해엔 급여이력이 없어서" 필터에 걸려 못 찾는 일이 없도록 전체 거래처
-    // 중에서 이름으로만 찾음(신규 거래처의 첫 데이터를 입력하러 들어올 때를 위한 통로)
     list = list.filter(c=>(c.name||'').toLowerCase().includes(q));
   } else {
     const year = document.getElementById('reviewItYearSelect')?.value || todayStr().slice(0,4);
     const filtered = list.filter(c=>reviewItClientHasIncomeInYear(c.id, year));
-    // 급여이력이 있는 거래처가 하나도 없는 해(예: 데이터를 아직 하나도 안 넣은 새 연도)라면 필터링 없이
-    // 전체 거래처를 보여줘서 첫 입력을 시작할 수 있게 함
     if(filtered.length) list = filtered;
   }
-  const prevVal = sel.value;
-  if(!list.length){ sel.innerHTML = `<option value="">${q ? '검색 결과 없음' : '거래처 없음'}</option>`; renderReviewItAll(); return; }
-  sel.innerHTML = list.map((c,idx)=>`<option value="${c.id}">${idx+1}. ${escHtml(c.name)}</option>`).join('');
-  if(list.some(c=>c.id===prevVal)) sel.value = prevVal;
-  renderReviewItAll();
+  return list;
 }
-function populateReviewItYearSelect(clientId){
-  const sel = document.getElementById('reviewItYearSelect');
+// selId 셀렉트를 그 거래처(clientId)가 실제로 데이터를 가진 연도들 + 최근 몇 년으로 채움 - 목록 필터용
+// 셀렉트(#reviewItYearSelect, clientId 없이)와 팝업 안 셀렉트(#reviewItFsYearSelect, 특정 거래처 기준) 둘 다 이걸 씀
+function populateReviewItYearSelectEl(selId, clientId){
+  const sel = document.getElementById(selId);
   if(!sel) return;
   const prevVal = sel.value;
   const nowY = Number(todayStr().slice(0,4));
   const years = new Set();
   for(let y = nowY+1; y >= nowY-2; y--) years.add(String(y));
-  Object.keys(sharedReviewFigures[clientId] || {}).forEach(y=>years.add(y));
+  if(clientId) Object.keys(sharedReviewFigures[clientId] || {}).forEach(y=>years.add(y));
   const sortedYears = Array.from(years).sort((a,b)=>Number(b)-Number(a));
   sel.innerHTML = sortedYears.map(y=>`<option value="${y}">${y}년</option>`).join('');
   sel.value = sortedYears.includes(prevVal) ? prevVal : String(nowY);
 }
-function renderReviewItClientMeta(clientId){
-  const box = document.getElementById('reviewItClientMeta');
+// 거래처 목록 화면 - 예전엔 거래처를 하나 골라야만(select) 표가 나왔는데, 이제는 거래처마다 급여검증・
+// 납부세액검증 아이콘을 바로 붙여서 눌러서 곧장 전체화면 팝업으로 검증할 수 있게 함
+function renderReviewItClientList(){
+  const wrap = document.getElementById('reviewItClientListWrap');
+  if(!wrap) return;
+  const q = (document.getElementById('reviewItClientSearch')?.value || '').trim();
+  const list = reviewItFilteredClientList();
+  if(!list.length){ wrap.innerHTML = `<div class="empty-state">${q ? '검색 결과 없음' : '거래처 없음'}</div>`; return; }
+  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr>
+      <th style="width:36px;">#</th><th>거래처</th>
+      <th style="width:130px; text-align:center;">급여검증</th>
+      <th style="width:130px; text-align:center;">납부세액검증</th>
+    </tr></thead><tbody>
+    ${list.map((c,idx)=>`<tr>
+      <td class="num" style="color:var(--ink-soft);">${idx+1}</td>
+      <td style="font-weight:700;">${escHtml(c.name)}</td>
+      <td style="text-align:center;"><button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}" data-section="income" title="급여검증 전체화면으로 열기" style="background:var(--indigo-bg); color:var(--indigo-deep); font-weight:800;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="8" y1="2" x2="8" y2="6"></line><line x1="16" y1="2" x2="16" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> 급여검증</button></td>
+      <td style="text-align:center;"><button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}" data-section="tax" title="납부세액검증 전체화면으로 열기" style="background:var(--mint-bg); color:var(--mint); font-weight:800;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> 납부세액검증</button></td>
+    </tr>`).join('')}
+  </tbody></table></div>`;
+  wrap.querySelectorAll('.review-it-open-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> openReviewItFullscreen(btn.dataset.clientId, btn.dataset.section));
+  });
+}
+// 전체화면 팝업 상단의 신고구분(매월/반기)·7월부터 전환 컨트롤 - "귀속/지급 동일・다름" 토글은 실제 계산
+// 로직 어디에서도 쓰이지 않는 순수 표시용이었어서(계산에 영향 없음) 이번에 아예 뺌
+function renderReviewItFsMeta(clientId){
+  const box = document.getElementById('reviewItFsMetaWrap');
   if(!box) return;
   if(!clientId){ box.innerHTML = ''; return; }
   const meta = reviewItMeta(clientId);
   box.innerHTML = `
-    <span style="display:inline-flex; align-items:center; gap:6px;">
-      <span style="font-weight:700;">귀속/지급</span>
-      <span class="policy-category-toggle" id="reviewItSameToggle" style="margin-bottom:0;">
-        <button type="button" class="review-it-same-btn ${meta.sameMonth ? 'active' : ''}" data-same="1">동일</button>
-        <button type="button" class="review-it-same-btn ${!meta.sameMonth ? 'active' : ''}" data-same="0">다름</button>
-      </span>
-    </span>
-    <span style="display:inline-flex; align-items:center; gap:6px;">
+    <span style="display:inline-flex; align-items:center; gap:5px;">
       <span style="font-weight:700;">신고구분</span>
-      <span class="policy-category-toggle" id="reviewItCycleToggle" style="margin-bottom:0;">
+      <span class="policy-category-toggle" id="reviewItFsCycleToggle" style="margin-bottom:0;">
         <button type="button" class="review-it-cycle-btn ${meta.payCycle==='매월' ? 'active' : ''}" data-cycle="매월">매월</button>
         <button type="button" class="review-it-cycle-btn ${meta.payCycle==='반기' ? 'active' : ''}" data-cycle="반기">반기</button>
       </span>
     </span>
-    <span style="display:inline-flex; align-items:center; gap:6px;" title="연중에 신고구분이 바뀐 거래처면 7월부터 적용할 구분을 골라주세요(반기 신고는 7월 기준으로만 바뀌므로 선택지도 그 시점 하나뿐이에요)">
+    <span style="display:inline-flex; align-items:center; gap:5px;" title="연중에 신고구분이 바뀐 거래처면 7월부터 적용할 구분을 골라주세요(반기 신고는 7월 기준으로만 바뀌므로 선택지도 그 시점 하나뿐이에요)">
       <span style="font-weight:700;">7월부터</span>
-      <select id="reviewItSecondHalfCycleSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:4px 6px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:11.5px;">
+      <select id="reviewItFsSecondHalfCycleSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:3px 5px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:11px;">
         <option value="" ${!meta.secondHalfPayCycle ? 'selected' : ''}>(전환없음)</option>
         <option value="매월" ${meta.secondHalfPayCycle==='매월' ? 'selected' : ''}>매월로 전환</option>
         <option value="반기" ${meta.secondHalfPayCycle==='반기' ? 'selected' : ''}>반기로 전환</option>
       </select>
     </span>`;
-  box.querySelectorAll('.review-it-same-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      box.querySelectorAll('.review-it-same-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      reviewItMeta(clientId).sameMonth = btn.dataset.same === '1';
-      setReviewItDirty(true);
-      renderReviewItSection(clientId, Number(document.getElementById('reviewItYearSelect').value));
-    });
-  });
   box.querySelectorAll('.review-it-cycle-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       box.querySelectorAll('.review-it-cycle-btn').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
       reviewItMeta(clientId).payCycle = btn.dataset.cycle;
       setReviewItDirty(true);
-      renderReviewItSection(clientId, Number(document.getElementById('reviewItYearSelect').value));
+      renderReviewItFsSection();
     });
   });
-  const secondHalfSel = document.getElementById('reviewItSecondHalfCycleSelect');
+  const secondHalfSel = document.getElementById('reviewItFsSecondHalfCycleSelect');
   if(secondHalfSel){
     secondHalfSel.addEventListener('change', ()=>{
       reviewItMeta(clientId).secondHalfPayCycle = secondHalfSel.value || null;
       setReviewItDirty(true);
-      renderReviewItSection(clientId, Number(document.getElementById('reviewItYearSelect').value));
+      renderReviewItFsSection();
     });
   }
 }
-function renderReviewItSection(clientId, year){
-  if(!clientId){
-    ['reviewItIncomeWrap','reviewItTaxWrap'].forEach(id=>{
-      const el = document.getElementById(id);
-      if(el) el.innerHTML = `<div class="empty-state">거래처를 선택해주세요.</div>`;
-    });
-    return;
-  }
+// 지금 팝업에 열려있는 거래처(reviewItFsClientId)의 표를 다시 그림 - 급여검증/납부세액검증 중 지금 열려있는
+// 쪽(viewingReviewItSection)만 그리고, 팝업이 닫혀있으면(reviewItFsClientId 없음) 아무 것도 안 함
+function renderReviewItFsSection(){
+  const clientId = reviewItFsClientId;
+  if(!clientId) return;
+  const year = Number(document.getElementById('reviewItFsYearSelect')?.value) || Number(todayStr().slice(0,4));
   if(viewingReviewItSection === 'income') renderReviewItIncomeTable(clientId, year);
   else renderReviewItTaxTable(clientId, year);
 }
+// 급여검증/납부세액검증 전체화면 팝업을 염 - clientId・section(income|tax)을 받아 그 표만 딱 채워서 보여줌
+function openReviewItFullscreen(clientId, section){
+  if(!clientId) return;
+  reviewItFsClientId = clientId;
+  viewingReviewItSection = section === 'tax' ? 'tax' : 'income';
+  const client = bookkeepingClientList().find(c=>c.id===clientId);
+  const nameEl = document.getElementById('reviewItFsClientName');
+  if(nameEl) nameEl.textContent = client ? client.name : '';
+  const badgeEl = document.getElementById('reviewItFsSectionBadge');
+  if(badgeEl) badgeEl.textContent = viewingReviewItSection === 'income' ? '급여검증' : '납부세액검증';
+  populateReviewItYearSelectEl('reviewItFsYearSelect', clientId);
+  renderReviewItFsMeta(clientId);
+  ['reviewItIncomeWrap','reviewItTaxWrap'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = (id === (viewingReviewItSection==='income' ? 'reviewItIncomeWrap' : 'reviewItTaxWrap')) ? '' : 'none';
+  });
+  renderReviewItFsSection();
+  setReviewItDirty(false);
+  document.getElementById('reviewItFullscreenOverlay').style.display = 'flex';
+}
+function closeReviewItFullscreen(){
+  // 저장 안 한 입력을 남겨둔 채 닫으면(다른 탭으로 이동할 때와 똑같이) 마지막 저장 상태로 조용히 되돌림
+  if(typeof discardUnsavedReviewItChangesIfAny === 'function') discardUnsavedReviewItChangesIfAny();
+  document.getElementById('reviewItFullscreenOverlay').style.display = 'none';
+  reviewItFsClientId = null;
+}
+document.getElementById('reviewItFsCloseBtn')?.addEventListener('click', closeReviewItFullscreen);
+document.getElementById('reviewItFullscreenOverlay')?.addEventListener('click', (e)=>{
+  if(e.target.id === 'reviewItFullscreenOverlay') closeReviewItFullscreen();
+});
 function renderReviewItAll(){
   saveFilingSubviewState();
   const titleEl = document.getElementById('reviewStatusTitle');
   if(titleEl) titleEl.textContent = '원천세 검토표';
-  const sel = document.getElementById('reviewItClientSelect');
-  const clientId = sel ? sel.value : '';
-  populateReviewItYearSelect(clientId);
-  renderReviewItClientMeta(clientId);
-  const year = Number(document.getElementById('reviewItYearSelect')?.value) || Number(todayStr().slice(0,4));
-  renderReviewItSection(clientId, year);
+  populateReviewItYearSelectEl('reviewItYearSelect', null);
+  renderReviewItClientList();
+  if(reviewItFsClientId) renderReviewItFsSection(); // 팝업이 열려있으면(엑셀 데이터 불러오기 등으로) 그 안 표도 같이 새로고침
 }
-document.querySelectorAll('.review-it-section-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.review-it-section-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    viewingReviewItSection = btn.dataset.itSection;
-    saveFilingSubviewState();
-    const wraps = { income:'reviewItIncomeWrap', tax:'reviewItTaxWrap' };
-    Object.keys(wraps).forEach(k=>{
-      const el = document.getElementById(wraps[k]);
-      if(el) el.style.display = (k === viewingReviewItSection) ? '' : 'none';
-    });
-    const sel = document.getElementById('reviewItClientSelect');
-    const clientId = sel ? sel.value : '';
-    const year = Number(document.getElementById('reviewItYearSelect')?.value) || Number(todayStr().slice(0,4));
-    renderReviewItSection(clientId, year);
-  });
-});
-document.getElementById('reviewItClientSearch')?.addEventListener('input', populateReviewItClientSelect);
-document.getElementById('reviewItClientSelect')?.addEventListener('change', renderReviewItAll);
-document.getElementById('reviewItYearSelect')?.addEventListener('change', ()=>{
-  // 연도가 바뀌면 그 해 기준으로 거래처 목록도 다시 걸러야 함(populateReviewItClientSelect가
-  // 끝에서 renderReviewItAll까지 호출해줌)
-  populateReviewItClientSelect();
+document.getElementById('reviewItClientSearch')?.addEventListener('input', renderReviewItClientList);
+document.getElementById('reviewItYearSelect')?.addEventListener('change', renderReviewItClientList);
+document.getElementById('reviewItFsYearSelect')?.addEventListener('change', ()=>{
+  populateReviewItYearSelectEl('reviewItFsYearSelect', reviewItFsClientId); // 그 거래처 기준 연도 목록 유지
+  renderReviewItFsMeta(reviewItFsClientId);
+  renderReviewItFsSection();
 });
 document.getElementById('reviewItSaveBtn')?.addEventListener('click', async ()=>{
   await saveSharedReviewFigures();
@@ -15347,49 +15361,9 @@ document.getElementById('reviewItRevertBtn')?.addEventListener('click', async ()
   try{ sharedReviewFigures = JSON.parse(localStorage.getItem('worklog_shared_reviewfigures') || '{}') || {}; }catch(e){ sharedReviewFigures = {}; }
   try{ sharedReviewMeta = JSON.parse(localStorage.getItem('worklog_shared_reviewmeta') || '{}') || {}; }catch(e){ sharedReviewMeta = {}; }
   setReviewItDirty(false);
-  renderReviewItAll();
+  if(reviewItFsClientId){ renderReviewItFsMeta(reviewItFsClientId); renderReviewItFsSection(); }
   const msgEl = document.getElementById('reviewItSaveMsg');
   if(msgEl){ msgEl.textContent = '되돌렸어요'; clearTimeout(msgEl._flashT); msgEl._flashT = setTimeout(()=>{ msgEl.textContent=''; }, 1500); }
-});
-// 초기화: "되돌리기"(마지막 저장 상태로 복원)와 달리, 이미 저장돼 있던 값까지 포함해서 지금 보고 있는
-// 거래처・연도의 12개월치 값을 통째로 비움 - 잘못된 값이 쌓여서 처음부터 다시 입력하고 싶을 때 씀.
-// 급여검증/납부세액검증은 서로 다른 항목(income vs tax)이라 따로 지울 수 있게 버튼을 나눔.
-// 예전엔 지운 것도 "입력"과 같은 취급이라 별도로 저장 버튼을 눌러야 실제로 반영됐는데, 초기화 버튼을 누르고
-// 저장을 깜빡하면 "초기화가 안 된다"고 느껴지는 문제가 있어서, 초기화는 확인 즉시 그 자리에서 바로 저장까지 끝냄
-document.getElementById('reviewItIncomeResetBtn')?.addEventListener('click', async ()=>{
-  const clientId = document.getElementById('reviewItClientSelect')?.value;
-  const year = Number(document.getElementById('reviewItYearSelect')?.value);
-  if(!clientId || !year){ appAlert('먼저 거래처와 연도를 선택해주세요.'); return; }
-  if(!(await appConfirm(`이 거래처의 ${year}년 급여검증(급여명세서 항목・총지급액(신고서)) 입력값을 12개월 전부 지울까요?\n(누르면 바로 저장돼요)`))) return;
-  for(let m=1; m<=12; m++){
-    const data = reviewItMonthData(clientId, year, m);
-    data.income = {};
-    data.incomeReported = null;
-    if(data.manualCheck) delete data.manualCheck.income;
-  }
-  renderReviewItIncomeTable(clientId, year);
-  await saveSharedReviewFigures();
-  setReviewItDirty(false);
-  const msgEl = document.getElementById('reviewItSaveMsg');
-  if(msgEl){ showCenterToast('초기화 후 저장됐어요'); msgEl.textContent = '초기화 후 저장됨'; clearTimeout(msgEl._flashT); msgEl._flashT = setTimeout(()=>{ msgEl.textContent=''; }, 1500); }
-});
-document.getElementById('reviewItTaxResetBtn')?.addEventListener('click', async ()=>{
-  const clientId = document.getElementById('reviewItClientSelect')?.value;
-  const year = Number(document.getElementById('reviewItYearSelect')?.value);
-  if(!clientId || !year){ appAlert('먼저 거래처와 연도를 선택해주세요.'); return; }
-  if(!(await appConfirm(`이 거래처의 ${year}년 납부세액검증(급여명세서 기준・신고서 기준) 입력값을 12개월 전부 지울까요?\n(누르면 바로 저장돼요)`))) return;
-  for(let m=1; m<=12; m++){
-    const data = reviewItMonthData(clientId, year, m);
-    data.tax = {};
-    data.taxReported = {};
-    data.taxReportedLocal = null;
-    if(data.manualCheck){ delete data.manualCheck.tax; delete data.manualCheck.taxLocal; }
-  }
-  renderReviewItTaxTable(clientId, year);
-  await saveSharedReviewFigures();
-  setReviewItDirty(false);
-  const msgEl = document.getElementById('reviewItSaveMsg');
-  if(msgEl){ showCenterToast('초기화 후 저장됐어요'); msgEl.textContent = '초기화 후 저장됨'; clearTimeout(msgEl._flashT); msgEl._flashT = setTimeout(()=>{ msgEl.textContent=''; }, 1500); }
 });
 // 급여/납부세액 입력칸은 (다른 결재 탭 표들과 마찬가지로) 저장 버튼을 눌러야 실제로 반영되는 구조라,
 // 숫자만 입력해두고 저장을 안 누른 채 사이드바로 다른 화면에 갔다가 돌아오면 "저장 안 했는데도 그대로 남아있다"고
@@ -15482,7 +15456,6 @@ function applyReviewSeedImport(){
   saveSharedReviewMeta();
   const msgEl = document.getElementById('reviewSeedImportMsg');
   if(msgEl) msgEl.textContent = `${clientCount}개 거래처, ${filledCount}칸 채웠어요.`;
-  populateReviewItYearSelect(document.getElementById('reviewItClientSelect')?.value || '');
   renderReviewItAll();
 }
 document.getElementById('reviewSeedImportBtn')?.addEventListener('click', openReviewSeedImportModal);
@@ -15979,29 +15952,47 @@ function resolveNameByEmail(email){
 function populateApproverSelect(){
   const sel = document.getElementById('ad-approver');
   if(!sel) return;
-  const myEmail = (currentUserEmail||'').toLowerCase();
-  const others = (sharedAdminEmails||[]).filter(e=>e && e.toLowerCase() !== myEmail);
-  const list = others.length ? others : (sharedAdminEmails||[]);
+  // 원래는 "본인은 자기 문서를 결재할 수 없다"는 취지로 목록에서 currentUserEmail을 뺐었는데, 결재
+  // 알림이 어떻게 오가는지 혼자 시뮬레이션해보고 싶다는 요청으로 이제 본인도 포함한 전체 관리자 목록을 보여줌
+  const list = sharedAdminEmails||[];
   if(!list.length){ sel.innerHTML = `<option value="">등록된 관리자가 없어요</option>`; return; }
   const prevVal = sel.value;
   // 결재자 선택 목록에 구글 계정(이메일)이 그대로 노출되던 걸 이름으로만 보이게 함 - resolveNameByEmail이
   // 등록된 이름을 못 찾을 때만 이메일로 대체해서 보여주므로(등록 안 된 예외 상황 대비), 평소엔 이름만 나옴
   sel.innerHTML = list.map(email=> `<option value="${escHtml(email)}">${escHtml(resolveNameByEmail(email))}</option>`).join('');
   if(list.includes(prevVal)) sel.value = prevVal;
+  populateDrafterSelect();
   updateApprovalDraftMeta();
+}
+// 기안자도 테스트 시뮬레이션용으로 원하는 사람을 골라볼 수 있게 함(원래는 항상 로그인한 본인 고정) -
+// 결재자와 같은 방식으로 직원+관리자 전체 목록(noticeAllRecipientEmails)에서 고르고, 기본값은 지금 로그인한 본인
+function populateDrafterSelect(){
+  const sel = document.getElementById('ad-drafter');
+  if(!sel) return;
+  const list = noticeAllRecipientEmails();
+  if(!list.length){ sel.innerHTML = `<option value="">등록된 사람이 없어요</option>`; return; }
+  const prevVal = sel.value;
+  sel.innerHTML = list.map(email=> `<option value="${escHtml(email)}">${escHtml(resolveNameByEmail(email))}</option>`).join('');
+  if(prevVal && list.some(e=>e.toLowerCase()===prevVal.toLowerCase())){
+    sel.value = list.find(e=>e.toLowerCase()===prevVal.toLowerCase());
+  } else if(currentUserEmail && list.some(e=>e.toLowerCase()===currentUserEmail)){
+    sel.value = list.find(e=>e.toLowerCase()===currentUserEmail);
+  }
+}
+// 지금 폼에서 "기안자"로 선택된 이메일 - 선택 UI가 아직 안 채워졌거나 값이 없으면 실제 로그인 계정으로 대체함
+function currentDrafterEmail(){
+  return document.getElementById('ad-drafter')?.value || currentUserEmail || '';
 }
 // 기안 폼 상단 "기안자/소속/기안일"과 "신청→승인" 결재선 표시를 실제 값으로 채움 - 결재자 select를
 // 바꿀 때마다도 다시 불러서 결재선의 "승인" 칸이 선택에 맞춰 바로 갱신되게 함
 function updateApprovalDraftMeta(){
-  const drafterEl = document.getElementById('adMetaDrafter');
   const drafter2El = document.getElementById('adMetaDrafter2');
   const teamEl = document.getElementById('adMetaTeam');
   const dateEl = document.getElementById('adMetaDate');
   const approverEl = document.getElementById('adMetaApprover');
-  if(!drafterEl) return;
-  const myName = currentStaffDisplayName() || '';
-  drafterEl.textContent = myName || '-';
-  if(drafter2El) drafter2El.textContent = myName || '-';
+  if(!drafter2El) return;
+  const myName = resolveNameByEmail(currentDrafterEmail()) || currentStaffDisplayName() || '';
+  drafter2El.textContent = myName || '-';
   if(teamEl){
     const teamLabel = [sharedCompanyName, (sharedTeamInfo&&sharedTeamInfo.teamName)].filter(Boolean).join(' ');
     teamEl.textContent = teamLabel || '-';
@@ -16018,6 +16009,7 @@ function updateApprovalDraftMeta(){
   }
 }
 document.getElementById('ad-approver')?.addEventListener('change', updateApprovalDraftMeta);
+document.getElementById('ad-drafter')?.addEventListener('change', updateApprovalDraftMeta);
 // 기안 폼 저장 공용 로직 - "임시저장" 버튼과 "기안 상신" 제출을 같은 필드에서 status만 다르게 저장함.
 // ad-edit-id에 값이 있으면(임시저장해둔 문서를 다시 열어 고치는 중) 새 항목을 만들지 않고 그 문서를 그대로 갱신함
 // 리치텍스트(HTML)/예전 순수 텍스트 내용을 구분 없이 텍스트만 뽑아내는 공용 헬퍼 - stripHtmlToText가 이미
@@ -16105,18 +16097,21 @@ function saveApprovalDraftForm(status){
   const msgEl = document.getElementById('approvalDraftSaveMsg');
   if(!title){ if(msgEl) msgEl.textContent = '제목을 입력해주세요'; return false; }
   if(status === '기안' && !approverEmail){ if(msgEl) msgEl.textContent = '결재자를 선택해주세요 (등록된 관리자가 있어야 해요)'; return false; }
+  const drafterEmail = currentDrafterEmail();
   const existing = editId ? (sharedApprovals||[]).find(a=>a.id===editId) : null;
   if(existing){
     existing.title = title; existing.content = content; existing.attachments = attachments; delete existing.attachmentLink;
     existing.approverEmail = approverEmail; existing.approverName = resolveNameByEmail(approverEmail);
+    // 기안자도 테스트용으로 바꿔볼 수 있으므로, 임시저장 문서를 다시 열어 고칠 때도 지금 선택된 기안자로 갱신함
+    existing.drafterEmail = drafterEmail; existing.drafterName = resolveNameByEmail(drafterEmail);
     existing.docType = docType;
     existing.status = status;
     if(status === '기안') existing.createdAt = new Date().toLocaleString('ko-KR');
   } else {
     sharedApprovals.unshift({
       id: genId(), title, content, attachments, docType,
-      drafterEmail: currentUserEmail || '',
-      drafterName: currentStaffDisplayName(),
+      drafterEmail,
+      drafterName: resolveNameByEmail(drafterEmail),
       approverEmail, approverName: resolveNameByEmail(approverEmail),
       status, comment:'', comments:[], createdAt: new Date().toLocaleString('ko-KR'), decidedAt:''
     });
@@ -16264,7 +16259,7 @@ function openApprovalPreviewModal(){
   const approverEmail = document.getElementById('ad-approver').value;
   const approverName = resolveNameByEmail(approverEmail) || document.getElementById('ad-approver').selectedOptions[0]?.textContent || '-';
   const attachments = combinedAttachmentsFromForm();
-  const myName = currentStaffDisplayName() || '-';
+  const myName = resolveNameByEmail(currentDrafterEmail()) || currentStaffDisplayName() || '-';
   const teamLabel = [sharedCompanyName, (sharedTeamInfo&&sharedTeamInfo.teamName)].filter(Boolean).join(' ') || '-';
   const t = new Date();
   const dow = ['일','월','화','수','목','금','토'][t.getDay()];
@@ -16324,7 +16319,7 @@ document.getElementById('ad-mail-btn')?.addEventListener('click', ()=>{
   const attachments = combinedAttachmentsFromForm();
   const attachmentText = attachments.map(a=>a.url).filter(Boolean).join(', ');
   const subject = `[Tax.J 결재요청] ${title}`;
-  const body = `${content}${attachmentText ? '\n\n첨부: '+attachmentText : ''}\n\n— ${currentStaffDisplayName()||''}`;
+  const body = `${content}${attachmentText ? '\n\n첨부: '+attachmentText : ''}\n\n— ${resolveNameByEmail(currentDrafterEmail())||currentStaffDisplayName()||''}`;
   const url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(approverEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   window.open(url, '_blank');
 });
@@ -16442,6 +16437,7 @@ function editApprovalDraft(id){
   if(docTypeEl) docTypeEl.value = item.docType || '일반';
   populateApproverSelect();
   if(item.approverEmail) document.getElementById('ad-approver').value = item.approverEmail;
+  if(item.drafterEmail) document.getElementById('ad-drafter').value = item.drafterEmail;
   updateApprovalDraftMeta();
   const editBadge = document.getElementById('approvalDraftEditBadge');
   if(editBadge) editBadge.style.display = '';
@@ -16730,6 +16726,7 @@ function resubmitApprovalDraft(id){
   if(docTypeEl) docTypeEl.value = item.docType || '일반';
   populateApproverSelect();
   if(item.approverEmail) document.getElementById('ad-approver').value = item.approverEmail;
+  if(item.drafterEmail) document.getElementById('ad-drafter').value = item.drafterEmail;
   updateApprovalDraftMeta();
   const msgEl = document.getElementById('approvalDraftSaveMsg');
   if(msgEl){
