@@ -4292,6 +4292,9 @@ let sharedApprovals = []; // 결재 > 결재(그룹웨어): [{id, title, content
 // 수 없는 문제가 있었음("휴지통이 비어있어요" 버그의 실제 원인) - 직원 삭제만큼은 누가 로그인해서 지웠든
 // 항상 볼 수 있는 회사 공용 휴지통(worklog_shared_trash)에 넣도록 분리함
 let sharedTrash = []; // [{id, type:'employee', kind:'profile', label, deletedAt, data:프로필객체}]
+// 점심식대 한도는 직원 개인 사정이 아니라 팀 전체에 동일하게 적용되는 회사 공통 기준이라, settings(직원별)가
+// 아니라 여기(공용)에 둠 - [{id, effectiveDate:'YYYY-MM-DD', dailyAmount}]
+let sharedLunchLimitHistory = [];
 // attachments가 없는 예전 문서는 attachmentLink(콤마로 구분된 링크 문자열)만 갖고 있음 - attachmentListHtml()이 이 경우를 폴백 처리함
 let sharedReviewFigures = {}; // 검토표(원천세) 거래처별 월별 실제 숫자: { [clientId]: { [year]: { [month]: { income:{[fieldKey]:num}, incomeReported:num, tax:{[groupKey]:{tax:num, local:num}}, taxReported:{[근로/일용/사업/기타/이자]:num}, taxReportedLocal:num } } } }
 let sharedReviewMeta = {}; // 검토표(원천세) 거래처별 설정: { [clientId]: { sameMonth:true/false(귀속=지급 동일 여부), payCycle:'매월'|'반기', secondHalfPayCycle:null|'매월'|'반기' } } - 원본 엑셀 '2026 총괄' 시트의 귀속/지급, 신고구분 값과 동일. secondHalfPayCycle은 연중(7월부터) 신고구분이 바뀌는 거래처를 위한 값 - null이면 1~12월 내내 payCycle 그대로, 값이 있으면 7~12월만 그 값을 씀(신고구분 전환은 반기 단위로만 일어나므로 7월 기준 한 번만 지원)
@@ -4362,6 +4365,12 @@ function loadSharedData(){
   try{ sharedFilingHelp = JSON.parse(localStorage.getItem('worklog_shared_filinghelp') || '{}') || {}; }catch(e){ sharedFilingHelp = {}; }
   try{ sharedApprovals = JSON.parse(localStorage.getItem('worklog_shared_approvals') || '[]') || []; }catch(e){ sharedApprovals = []; }
   try{ sharedTrash = JSON.parse(localStorage.getItem('worklog_shared_trash') || '[]') || []; }catch(e){ sharedTrash = []; }
+  // 점심식대 한도도 거래처/개인정보와 같은 이유로 예전엔 직원별로 따로 저장돼서, 계정마다 한도가 다르게
+  // 보이거나 어떤 계정에선 "등록된 한도 이력이 없습니다"로 보이는 문제가 있었음 - 이제 회사 공용 저장소
+  // 하나에서만 불러옴. 아직 없으면(업데이트 후 첫 로딩) migrateLunchLimitToSharedStore()가 기존에 직원별로
+  // 흩어져 있던 한도 이력을 한 번만 자동으로 합쳐줌
+  migrateLunchLimitToSharedStore();
+  try{ sharedLunchLimitHistory = JSON.parse(localStorage.getItem('worklog_shared_lunchlimit') || '[]') || []; }catch(e){ sharedLunchLimitHistory = []; }
   try{ sharedReviewFigures = JSON.parse(localStorage.getItem('worklog_shared_reviewfigures') || '{}') || {}; }catch(e){ sharedReviewFigures = {}; }
   try{ sharedReviewMeta = JSON.parse(localStorage.getItem('worklog_shared_reviewmeta') || '{}') || {}; }catch(e){ sharedReviewMeta = {}; }
   try{ sharedFilingTargets = JSON.parse(localStorage.getItem('worklog_shared_filingtargets') || '{}') || {}; }catch(e){ sharedFilingTargets = {}; }
@@ -4470,6 +4479,36 @@ async function saveSharedReviewStatus(){ try{ localStorage.setItem('worklog_shar
 async function saveSharedFilingHelp(){ try{ localStorage.setItem('worklog_shared_filinghelp', JSON.stringify(sharedFilingHelp)); }catch(e){ console.error('신고도움 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedApprovals(){ try{ localStorage.setItem('worklog_shared_approvals', JSON.stringify(sharedApprovals)); }catch(e){ console.error('결재 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedTrash(){ try{ localStorage.setItem('worklog_shared_trash', JSON.stringify(sharedTrash)); }catch(e){ console.error('공용 휴지통 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedLunchLimitHistory(){ try{ localStorage.setItem('worklog_shared_lunchlimit', JSON.stringify(sharedLunchLimitHistory)); }catch(e){ console.error('점심식대 한도 저장 실패', e); } gdriveScheduleSync(); }
+// worklog_shared_lunchlimit이 아직 없을 때(업데이트 후 첫 로딩) 한 번만 실행 - 그동안 직원 프로필마다 따로
+// 저장돼 있던 점심식대 한도 이력(과 예전의 단일값 lunchDailyLimit)을 전부 모아 공용 저장소로 합침(id 중복 제거)
+function migrateLunchLimitToSharedStore(){
+  if(localStorage.getItem('worklog_shared_lunchlimit') !== null) return; // 이미 마이그레이션 됨
+  try{
+    const profiles = getProfiles();
+    const merged = [];
+    const seenIds = new Set();
+    profiles.forEach(p=>{
+      const raw = readProfileRaw(p.id, 'settings') || {};
+      let hist = raw.lunchLimitHistory || [];
+      // 구버전(직원마다 "1일 한도" 단일값 lunchDailyLimit 하나만 있던 시절) 데이터도 놓치지 않고 같이 건져옴
+      if((!hist || !hist.length) && typeof raw.lunchDailyLimit === 'number' && raw.lunchDailyLimit > 0){
+        hist = [{ id: genId(), effectiveDate: raw.hireDate || '2000-01-01', dailyAmount: raw.lunchDailyLimit }];
+      }
+      hist.forEach(h=>{
+        if(!h || seenIds.has(h.id)) return;
+        seenIds.add(h.id);
+        const dailyAmount = h.dailyAmount !== undefined ? h.dailyAmount : h.amount;
+        merged.push({ id: h.id || genId(), effectiveDate: h.effectiveDate, dailyAmount });
+      });
+    });
+    localStorage.setItem('worklog_shared_lunchlimit', JSON.stringify(merged));
+    if(merged.length) gdriveScheduleSync();
+  }catch(e){
+    console.error('점심식대 한도 공용 저장소 마이그레이션 실패', e);
+    localStorage.setItem('worklog_shared_lunchlimit', JSON.stringify([]));
+  }
+}
 async function saveSharedAutoPhrases(){ try{ localStorage.setItem('worklog_shared_autophrases', JSON.stringify(sharedAutoPhrases)); }catch(e){ console.error('자동 문구 설정 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedReviewFigures(){ try{ localStorage.setItem('worklog_shared_reviewfigures', JSON.stringify(sharedReviewFigures)); }catch(e){ console.error('검토표(원천세) 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedReviewMeta(){ try{ localStorage.setItem('worklog_shared_reviewmeta', JSON.stringify(sharedReviewMeta)); }catch(e){ console.error('검토표(원천세) 거래처 설정 저장 실패', e); } gdriveScheduleSync(); }
@@ -5806,13 +5845,13 @@ function normalizeState(){
   delete expense.monthlyWorkdays; // 구버전 수동 근무일수 필드 (근태 자동계산으로 대체됨)
 
   // settings 기본 구조 보장
-  settings.lunchLimitHistory = settings.lunchLimitHistory || [];
-  if(typeof settings.lunchDailyLimit === 'number' && settings.lunchDailyLimit > 0 && !settings.lunchLimitHistory.length){
-    settings.lunchLimitHistory.push({id:genId(), effectiveDate: settings.hireDate || '2000-01-01', dailyAmount: settings.lunchDailyLimit});
-  }
+  // 점심식대 한도(lunchLimitHistory)는 더 이상 직원별 settings에 저장되지 않고 회사 공용 저장소
+  // (sharedLunchLimitHistory, loadSharedData()의 migrateLunchLimitToSharedStore()에서 불러옴)에서만 관리함.
+  // 혹시 예전 백업을 불러오는 등으로 settings에 옛 필드가 남아있어도 더는 쓰지 않으니 지워서 헷갈리지 않게 함
+  delete settings.lunchLimitHistory;
   delete settings.lunchDailyLimit;
   // 구버전(amount 단일 필드 또는 monthlyCap 포함) 이력을 dailyAmount만 쓰는 구조로 정리
-  settings.lunchLimitHistory = settings.lunchLimitHistory.map(h=>{
+  sharedLunchLimitHistory = (sharedLunchLimitHistory||[]).map(h=>{
     const dailyAmount = h.dailyAmount !== undefined ? h.dailyAmount : h.amount;
     return { id:h.id, effectiveDate:h.effectiveDate, dailyAmount };
   });
@@ -6527,7 +6566,7 @@ function calcAttendanceSummary(monthStr){
 
 function getLunchLimitFor(monthStr){
   const monthEnd = lastDayOfMonth(monthStr);
-  const applicable = (settings.lunchLimitHistory||[]).filter(h => h.effectiveDate <= monthEnd);
+  const applicable = (sharedLunchLimitHistory||[]).filter(h => h.effectiveDate <= monthEnd);
   if(!applicable.length) return { dailyAmount:0 };
   applicable.sort((a,b)=> a.effectiveDate < b.effectiveDate ? 1 : -1);
   return { dailyAmount: Number(applicable[0].dailyAmount)||0 };
@@ -7026,7 +7065,7 @@ function renderWorkHourExceptions(){
 
 function renderLunchLimitHistory(){
   const wrap = document.getElementById('lunchLimitHistoryWrap');
-  const hist = [...(settings.lunchLimitHistory||[])].sort((a,b)=> a.effectiveDate < b.effectiveDate ? 1 : -1);
+  const hist = [...(sharedLunchLimitHistory||[])].sort((a,b)=> a.effectiveDate < b.effectiveDate ? 1 : -1);
   if(!hist.length){
     wrap.innerHTML = `<div class="empty-state">등록된 한도 이력이 없습니다. 위에서 첫 한도를 추가해주세요.</div>`;
     return;
@@ -7048,8 +7087,8 @@ function renderLunchLimitHistory(){
   renderPaginatedRows(wrap, '<tr><th>적용 시작일</th><th>1일 기준</th><th>상태</th><th></th></tr>', rows, 10);
   wrap.querySelectorAll('.lunch-limit-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
-      settings.lunchLimitHistory = settings.lunchLimitHistory.filter(x=>x.id!==btn.dataset.id);
-      await saveSettings();
+      sharedLunchLimitHistory = sharedLunchLimitHistory.filter(x=>x.id!==btn.dataset.id);
+      await saveSharedLunchLimitHistory();
       renderLunchLimitHistory();
       renderExpense();
     });
@@ -13296,9 +13335,9 @@ document.getElementById('lunchLimitForm').addEventListener('submit', async (e)=>
   const dailyAmount = Number(document.getElementById('ll-daily').value);
   if(!ly || !lm || !ld || !dailyAmount) return;
   const date = `${ly}-${String(lm).padStart(2,'0')}-${String(ld).padStart(2,'0')}`;
-  settings.lunchLimitHistory = settings.lunchLimitHistory || [];
-  settings.lunchLimitHistory.push({id:genId(), effectiveDate:date, dailyAmount});
-  await saveSettings();
+  sharedLunchLimitHistory = sharedLunchLimitHistory || [];
+  sharedLunchLimitHistory.push({id:genId(), effectiveDate:date, dailyAmount});
+  await saveSharedLunchLimitHistory();
   showCenterToast('등록됐어요'); document.getElementById('lunchLimitSaveMsg').textContent = '추가됨';
   setTimeout(()=>document.getElementById('lunchLimitSaveMsg').textContent='',1200);
   document.getElementById('ll-daily').value='';
@@ -18077,31 +18116,32 @@ document.getElementById('importClientsOnlyFile').addEventListener('change', asyn
       }
     }
     // 거래처·개인정보 말고도, "전 직원 일괄 백업" 형식이면 지금은 삭제되고 없는 직원(예: 예전 "관리자" 계정처럼)의
-    // 입사일(hireDate)·점심식대 한도 이력(settings.lunchLimitHistory)이 백업 안에 그대로 남아있을 수 있음.
-    // 그 계정 자체는 이제 없으니 자동으로 어디에 넣을지 정할 수 없어서, 지금 남아있는 직원 중 누구에게 합칠지 직접 고르게 함
-    const orphanedLunchSources = [];
+    // 입사일(hireDate)·점심식대 한도 이력이 백업 안에 그대로 남아있을 수 있음. 점심식대 한도는 이제 회사
+    // 공용 데이터라 자동으로 합치면 되지만, 입사일은 계정 고유 정보라 어느 직원 것인지 사람이 직접 골라야 함
+    const orphanedHireDates = [];
+    const backupLunchHistory = [];
     if(Array.isArray(data.profiles) && data.data && typeof data.data === 'object'){
       const currentIds = new Set(getProfiles().map(p=>p.id));
       data.profiles.forEach(p=>{
-        if(currentIds.has(p.id)) return; // 지금도 있는 직원이면 이 복구 대상이 아님(정상적으로 이미 갖고 있음)
         const d = data.data[p.id];
         if(!d || !d.settings) return;
         const hist = (d.settings.lunchLimitHistory||[]).filter(h=>h && typeof h==='object');
+        backupLunchHistory.push(...hist); // 지금도 있는 직원 것이든 삭제된 계정 것이든, 어차피 하나의 공용 목록으로 합쳐지므로 구분할 필요 없음
+        if(currentIds.has(p.id)) return; // 입사일은 지금도 있는 직원이면 이 복구 대상이 아님(정상적으로 이미 갖고 있음)
         const hireDate = d.settings.hireDate || '';
-        if(hist.length || hireDate){
-          orphanedLunchSources.push({ profileName: p.name || '(이름 미등록)', hireDate, lunchLimitHistory: hist });
-        }
+        if(hireDate) orphanedHireDates.push({ profileName: p.name || '(이름 미등록)', hireDate });
       });
     }
-    if(!clientSources.length && !personalSources.length && !orphanedLunchSources.length){
+    if(!clientSources.length && !personalSources.length && !backupLunchHistory.length && !orphanedHireDates.length){
       msgEl.textContent = '이 백업 파일엔 복구할 거래처·개인정보·입사일·식대한도가 없어요.';
       e.target.value = '';
       return;
     }
     const totalClients = clientSources.reduce((n,s)=>n+s.list.length,0);
     let confirmMsg = `이 백업 파일에서 거래처 ${totalClients}건(개인정보 포함)을 찾았어요. 지금 화면의 거래처목록과 합칠까요?\n\n· 지금 있는 거래처는 지워지지 않아요.\n· 같은 거래처(사업자번호 기준)가 겹치면 정보가 더 많이 채워진 쪽만 남아요.\n· 직원목록·근태·경비·회사설정 등 다른 데이터는 전혀 바뀌지 않아요.`;
-    if(orphanedLunchSources.length){
-      confirmMsg += `\n\n· 지금은 삭제되고 없는 계정(${orphanedLunchSources.map(s=>`"${s.profileName}"`).join(', ')})의 입사일/점심식대 한도 이력도 발견됐어요 - 다음 단계에서 지금 남아있는 직원 중 누구에게 합칠지 직접 골라주세요.`;
+    if(backupLunchHistory.length) confirmMsg += `\n\n· 점심식대 한도 이력도 지금의 공용 한도 목록과 합쳐져요(겹치는 건 자동으로 걸러져요).`;
+    if(orphanedHireDates.length){
+      confirmMsg += `\n\n· 지금은 삭제되고 없는 계정(${orphanedHireDates.map(s=>`"${s.profileName}"`).join(', ')})의 입사일도 발견됐어요 - 다음 단계에서 지금 남아있는 직원 중 누구에게 합칠지 직접 골라주세요.`;
     }
     const ok = await appConfirm(confirmMsg);
     if(!ok){ e.target.value=''; return; }
@@ -18115,21 +18155,24 @@ document.getElementById('importClientsOnlyFile').addEventListener('change', asyn
       clients = merged.clients;
       personalInfo = merged.personalInfo;
     }
-    // 삭제된 계정의 입사일/식대한도를 지금 직원 중 누구에게 합칠지 하나씩 물어봄(잘못 합쳐지지 않도록 반드시 직접 선택하게 함)
-    if(orphanedLunchSources.length){
+    if(backupLunchHistory.length){
+      const existingIds = new Set((sharedLunchLimitHistory||[]).map(h=>h.id));
+      const newItems = backupLunchHistory.filter(h=>!existingIds.has(h.id));
+      sharedLunchLimitHistory = (sharedLunchLimitHistory||[]).concat(newItems);
+      localStorage.setItem('worklog_shared_lunchlimit', JSON.stringify(sharedLunchLimitHistory));
+    }
+    // 삭제된 계정의 입사일을 지금 직원 중 누구에게 합칠지 하나씩 물어봄(잘못 합쳐지지 않도록 반드시 직접 선택하게 함)
+    if(orphanedHireDates.length){
       const currentProfiles = getProfiles();
       const pickList = currentProfiles.map((p,i)=>`${i+1}. ${p.name || '(이름 미등록)'}`).join('\n');
-      for(const src of orphanedLunchSources){
-        const answer = prompt(`백업 파일 속 "${src.profileName}" 계정(지금은 삭제된 직원)의 입사일/점심식대 한도 이력을 지금 직원 중 누구에게 합칠까요?\n\n번호를 입력해주세요(취소하면 이 계정은 건너뜀):\n${pickList}`);
+      for(const src of orphanedHireDates){
+        const answer = prompt(`백업 파일 속 "${src.profileName}" 계정(지금은 삭제된 직원)의 입사일을 지금 직원 중 누구에게 합칠까요?\n\n번호를 입력해주세요(취소하면 이 계정은 건너뜀):\n${pickList}`);
         if(!answer) continue;
         const idx = parseInt(answer, 10) - 1;
         const target = currentProfiles[idx];
         if(!target){ continue; }
-        const dstSet = readProfileRaw(target.id, 'settings') || { hireDate:'', lunchLimitHistory:[] };
+        const dstSet = readProfileRaw(target.id, 'settings') || { hireDate:'' };
         if(!dstSet.hireDate && src.hireDate) dstSet.hireDate = src.hireDate;
-        const existingIds = new Set((dstSet.lunchLimitHistory||[]).map(h=>h.id));
-        const newItems = src.lunchLimitHistory.filter(h=>!existingIds.has(h.id));
-        dstSet.lunchLimitHistory = (dstSet.lunchLimitHistory||[]).concat(newItems);
         localStorage.setItem(`worklog_settings__${target.id}`, JSON.stringify(dstSet));
         if(activeProfileId === target.id) settings = dstSet;
       }
@@ -18333,9 +18376,8 @@ document.getElementById('employeeShowTerminatedBtn')?.addEventListener('click', 
 
 // ===== 근태경비 데이터 이관 (한 사람이 계정을 여러 개 쓸 때, 예전 계정 기록을 새 계정으로 옮겨 합침) =====
 // attendance(근태: 연차부여·연차사용·재택·출퇴근도장) + expense(경비: 점심·저녁·택시·기타·차액정산) + schedule(개인일정) +
-// settings.lunchLimitHistory(점심식대 한도 이력, 비어있으면 입사일도 같이) + personalInfo(개인정보) +
-// clients(거래처목록, 겹치는 거래처는 정보가 더 많이 채워진 쪽만 남기고 정리)까지 전부 대상으로 함 - 한 사람이
-// 실수로 프로필을 두 개(예: "관리자"/실명)로 나눠 쓰게 된 경우를 완전히 하나로 합치기 위함.
+// 입사일(대상 계정이 비어있을 때만)까지 대상으로 함 - 한 사람이 실수로 프로필을 두 개(예: "관리자"/실명)로
+// 나눠 쓰게 된 경우를 하나로 합치기 위함. 거래처·개인정보·점심식대 한도는 이제 회사 공용 데이터라 대상에서 빠짐.
 // 배열은 병합(concat 또는 중복정리)만 하고 덮어쓰지 않아서, 대상 계정에 이미 있던 기록을 잃지 않게 함(비파괴적).
 function populateEmpDataTransferSelects(){
   const srcSel = document.getElementById('empDataTransferSrc');
@@ -18497,7 +18539,7 @@ document.getElementById('empDataTransferRunBtn')?.addEventListener('click', asyn
   const profiles = getProfiles();
   const srcName = profiles.find(p=>p.id===srcId)?.name || '(이름 미등록)';
   const dstName = profiles.find(p=>p.id===dstId)?.name || '(이름 미등록)';
-  const ok = await appConfirm(`"${srcName}" 계정의 근태(연차·재택·출퇴근)·경비·개인 일정·점심식대 한도 이력을 "${dstName}" 계정으로 옮겨 합칠까요?\n\n· 대상 계정에 이미 있던 기록은 지워지지 않고 그대로 남아요(합치기).\n· 대상 계정에 입사일이 비어있으면 원본 계정의 입사일도 같이 채워져요.\n· 거래처목록·개인정보는 이제 직원별로 따로 저장되지 않고 전 직원이 함께 보는 공용 데이터라 이관 대상이 아니에요.\n· 이관이 끝나면 원본 계정의 근태·경비·개인 일정·점심식대 한도 "기록"만 비워져요 - "${srcName}" 계정 자체는 삭제되지 않고 그대로 남아요.\n· 되돌릴 수 없어요.`);
+  const ok = await appConfirm(`"${srcName}" 계정의 근태(연차·재택·출퇴근)·경비·개인 일정을 "${dstName}" 계정으로 옮겨 합칠까요?\n\n· 대상 계정에 이미 있던 기록은 지워지지 않고 그대로 남아요(합치기).\n· 대상 계정에 입사일이 비어있으면 원본 계정의 입사일도 같이 채워져요.\n· 거래처목록·개인정보·점심식대 한도는 이제 직원별로 따로 저장되지 않고 전 직원이 함께 보는 공용 데이터라 이관 대상이 아니에요.\n· 이관이 끝나면 원본 계정의 근태·경비·개인 일정 "기록"만 비워져요 - "${srcName}" 계정 자체는 삭제되지 않고 그대로 남아요.\n· 되돌릴 수 없어요.`);
   if(!ok) return;
   try{
     const srcAtt = readProfileRaw(srcId, 'attendance') || {};
@@ -18512,19 +18554,15 @@ document.getElementById('empDataTransferRunBtn')?.addEventListener('click', asyn
     const srcSch = readProfileRaw(srcId, 'schedule') || {};
     const dstSch = readProfileRaw(dstId, 'schedule') || {};
     const mergedSch = mergeProfileArrayData(srcSch, dstSch, ['events'], ()=>({ events:[] }));
-    // 점심식대 한도 이력(settings.lunchLimitHistory)도 마찬가지로 근태·경비와 같은 "기록"인데, settings에
-    // 들어있다는 이유만으로 이관 범위에서 빠져 있었음 - 그래서 근태·경비·일정은 정상적으로 옮겨졌는데도
-    // "이달의 점심식대한도"만 대상 계정에 등록된 적 없는 값(0원)으로 보이는 문제가 있었음. settings의
-    // 다른 필드(이름 등 계정 고유 정보)는 손대지 않고 lunchLimitHistory 배열만 합침
-    const srcSet = readProfileRaw(srcId, 'settings') || {};
-    const dstSet = readProfileRaw(dstId, 'settings') || {};
-    const mergedSet = mergeProfileArrayData(srcSet, dstSet, ['lunchLimitHistory'], ()=>({ lunchLimitHistory:[] }));
-    // 입사일(hireDate)도 계정 고유 정보이긴 하지만, 실수로 서로 다른 계정에 나뉘어 입력된 경우(같은 사람이
+    // 입사일(hireDate)은 계정 고유 정보라, 실수로 서로 다른 계정에 나뉘어 입력된 경우(같은 사람이
     // 두 프로필로 쪼개져 있던 경우)엔 대상 계정에 입사일이 비어있으면 원본 계정 값을 그대로 가져와야
     // 연차 자동계산이 정상적으로 되므로, "대상이 비어있을 때만" 채워줌(대상에 이미 값이 있으면 안 건드림)
+    const srcSet = readProfileRaw(srcId, 'settings') || {};
+    const dstSet = readProfileRaw(dstId, 'settings') || {};
+    const mergedSet = { ...dstSet };
     if(!mergedSet.hireDate && srcSet.hireDate) mergedSet.hireDate = srcSet.hireDate;
-    // 거래처목록(clients)·개인정보(personalInfo)는 이제 직원 프로필별로 따로 저장되지 않고 전 직원이
-    // 함께 보는 공용 데이터라, 두 계정 사이에 "옮겨 합칠" 대상 자체가 아님(이미 하나뿐이라 항상 같음) - 그래서 이 이관 범위에서 빠짐
+    // 거래처목록(clients)·개인정보(personalInfo)·점심식대 한도(lunchLimitHistory)는 이제 직원 프로필별로
+    // 따로 저장되지 않고 전 직원이 함께 보는 공용 데이터라, 두 계정 사이에 "옮겨 합칠" 대상 자체가 아님(이미 하나뿐이라 항상 같음) - 그래서 이 이관 범위에서 빠짐
     // 대상 계정에 먼저 병합 결과를 저장 - 원본을 비우기 전에 먼저 저장해서, 중간에 실패하더라도
     // 원본 데이터가 사라지는 일(데이터 유실)만은 없게 함
     localStorage.setItem(`worklog_attendance__${dstId}`, JSON.stringify(mergedAtt));
@@ -18535,7 +18573,6 @@ document.getElementById('empDataTransferRunBtn')?.addEventListener('click', asyn
     localStorage.setItem(`worklog_attendance__${srcId}`, JSON.stringify({ leaveGrants:[], leaveUsage:[], remoteEntries:[], clockLog:[] }));
     localStorage.setItem(`worklog_expense__${srcId}`, JSON.stringify({ lunchEntries:[], dinnerEntries:[], otherExpenses:[], taxiEntries:[], prepaidEntries:[] }));
     localStorage.setItem(`worklog_schedule__${srcId}`, JSON.stringify({ events:[] }));
-    localStorage.setItem(`worklog_settings__${srcId}`, JSON.stringify({ ...srcSet, lunchLimitHistory:[] }));
     // 옮겨온(원본 계정의) 기록이 이번 달 것이 아니면 개인캘린더/근태경비 탭이 기본으로 보여주는 "오늘이
     // 속한 달" 화면에는 하나도 안 보여서 이관이 실패한 것처럼 보임 - 옮겨온 기록 중 가장 최근 날짜가
     // 속한 달을 기억해뒀다가, 그 대상 계정(dstId)으로 다음에 화면이 열릴 때 조회월을 그 달로 자동으로
@@ -18549,7 +18586,7 @@ document.getElementById('empDataTransferRunBtn')?.addEventListener('click', asyn
     // 지금 로그인해 쓰고 있는 계정이 이관 대상/원본 중 하나였다면, 화면에 물려있는 전역
     // attendance/expense/schedule도 같이 갱신해줘야 새로고침 없이 바로 반영됨
     if(activeProfileId === dstId){ attendance = mergedAtt; expense = mergedExp; schedule = mergedSch; settings = mergedSet; }
-    if(activeProfileId === srcId){ attendance = { leaveGrants:[], leaveUsage:[], remoteEntries:[], clockLog:[] }; expense = { lunchEntries:[], dinnerEntries:[], otherExpenses:[], taxiEntries:[], prepaidEntries:[] }; schedule = { events:[] }; settings = { ...srcSet, lunchLimitHistory:[] }; }
+    if(activeProfileId === srcId){ attendance = { leaveGrants:[], leaveUsage:[], remoteEntries:[], clockLog:[] }; expense = { lunchEntries:[], dinnerEntries:[], otherExpenses:[], taxiEntries:[], prepaidEntries:[] }; schedule = { events:[] }; settings = srcSet; }
     // 이 이관은 로컬(이 브라우저)에만 저장하고 끝나면 다른 기기(다른 직원의 로그인)에는 전혀 반영이
     // 안 되는데("아무것도 연동이 안 됐어" 피드백의 원인), 예전엔 드라이브 저장이 실패해도 콘솔에만 로그를
     // 남기고 조용히 넘어가서 사용자가 실패 사실을 알 수 없었음 - 이제 gdriveFileId가 아직 없으면 먼저
@@ -18594,6 +18631,11 @@ let gdriveFileId = localStorage.getItem('worklog_gdrive_file_id') || '';
 // 실패 메시지가 화면에 뜨자마자 바로 지워지는 문제가 있었음(사용자가 볼 새도 없이 사라짐). 이 플래그를
 // 마지막 상태문구에 같이 반영해서, 옮기기 실패했을 땐 "동기화 완료" 뒤에도 계속 남아있게 함
 let gdriveSharedDriveMoveWarning = '';
+// 지금 로그인한 구글 계정이 회사 공유 드라이브("01.기장대리")에 접근 권한이 아예 없는 경우를 알려주는 경고.
+// 이 경우 gdriveEnsureFile()이 회사 데이터 파일을 못 찾고, 대신 이 계정의 "개인" 드라이브에 새로 빈 파일을
+// 만들어버려서 - 화면은 "연결됨"으로 정상처럼 보이는데 실제로는 다른 직원과 전혀 동기화가 안 되는(이 계정만의
+// 별도 사본에 저장되는) 상태가 됨. 겉보기엔 문제없어 보여서 모르고 넘어가기 쉬우므로 반드시 화면에 표시함
+let gdriveSharedDriveAccessWarning = '';
 let gdriveSyncTimer = null;
 // 관리비밀번호 설정/변경처럼 "확인창(confirm) 뒤에 비동기 저장이 이어지는" 작업 도중에
 // 마침 창 포커스가 돌아오며 자동 불러오기(gdrivePull)가 끼어들면, 아직 로컬에 반영 전인
@@ -18643,7 +18685,7 @@ async function afterGdriveConnected(){
     await fetchCurrentUserEmail();
     applyPermissionUI();
     await gdrivePush();
-    gdriveSetStatus('연결됨 · 방금 동기화함' + (currentUserEmail ? ` (${currentUserEmail}${isCurrentUserAdmin ? ' · 관리자' : ''})` : '') + gdriveSharedDriveMoveWarning);
+    gdriveSetStatus('연결됨 · 방금 동기화함' + (currentUserEmail ? ` (${currentUserEmail}${isCurrentUserAdmin ? ' · 관리자' : ''})` : '') + gdriveSharedDriveMoveWarning + gdriveSharedDriveAccessWarning);
     gdriveUpdateFileLink();
     updatePolicyLockUI();
     renderAll();
@@ -18755,7 +18797,7 @@ function gdriveBuildPayload(){
     schemaVersion: SCHEMA_VERSION, syncedAt: new Date().toISOString(), profiles, data,
     // 거래처목록(clients)·개인정보(personalInfo)는 더 이상 직원 프로필별로 따로 저장되지 않고, 회사 전체가
     // 공유하는 단일 데이터라서 위 per-profile data가 아니라 shared 쪽에 실어 보냄(readSharedClients/readSharedPersonalInfo 참고)
-    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta, filingTargets: sharedFilingTargets, filingCycles: sharedFilingCycles, autoPhrases: sharedAutoPhrases, itFilingStatus: sharedIncomeTaxFilingStatus, vatFilingTargets: sharedVatFilingTargets, vatReviewFigures: sharedVatReviewFigures, clients: readSharedClients(), personalInfo: readSharedPersonalInfo(), trash: sharedTrash }
+    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta, filingTargets: sharedFilingTargets, filingCycles: sharedFilingCycles, autoPhrases: sharedAutoPhrases, itFilingStatus: sharedIncomeTaxFilingStatus, vatFilingTargets: sharedVatFilingTargets, vatReviewFigures: sharedVatReviewFigures, clients: readSharedClients(), personalInfo: readSharedPersonalInfo(), trash: sharedTrash, lunchLimitHistory: sharedLunchLimitHistory }
   };
 }
 
@@ -18796,10 +18838,15 @@ async function gdriveEnsureFile(){
         try{ localStorage.removeItem('worklog_gdrive_file_id'); }catch(e){}
       } else if(metaRes.ok){
         const meta = await metaRes.json();
+        if(meta.driveId === APPROVAL_ATTACHMENT_DRIVE_ID) gdriveSharedDriveAccessWarning = ''; // 이미 정상적으로 공유 드라이브 안에 있음 - 이 계정은 접근 권한이 있다는 뜻
         if(meta.driveId !== APPROVAL_ATTACHMENT_DRIVE_ID){
           const driveRes = await fetch(`https://www.googleapis.com/drive/v3/drives/${APPROVAL_ATTACHMENT_DRIVE_ID}`, {
             headers: { Authorization: `Bearer ${gdriveAccessToken}` }
           });
+          if(!driveRes.ok && driveRes.status !== 401){
+            // 공유 드라이브 자체를 조회할 수 없음 = 이 계정이 그 공유 드라이브의 구성원이 아님
+            gdriveSharedDriveAccessWarning = ' · ⚠️ 이 계정은 "01.기장대리" 공유 드라이브 접근 권한이 없어서, 회사 데이터가 아니라 이 계정만의 별도 사본을 보고 있을 수 있어요 (관리자에게 공유 드라이브 구성원 추가를 요청해주세요)';
+          }
           if(driveRes.ok){
             const d = await driveRes.json();
             if(d && d.id){
@@ -18835,8 +18882,13 @@ async function gdriveEnsureFile(){
     const driveRes = await fetch(`https://www.googleapis.com/drive/v3/drives/${APPROVAL_ATTACHMENT_DRIVE_ID}`, {
       headers: { Authorization: `Bearer ${gdriveAccessToken}` }
     });
-    if(driveRes.ok){ const d = await driveRes.json(); if(d && d.id) driveId = d.id; }
+    if(driveRes.ok){ const d = await driveRes.json(); if(d && d.id) driveId = d.id; gdriveSharedDriveAccessWarning = ''; }
     else if(driveRes.status === 401){ gdriveHandleUnauthorized(); throw new Error('로그인이 만료됐어요. 다시 로그인해주세요.'); }
+    else {
+      // 공유 드라이브 자체를 조회할 수 없음 = 이 계정이 그 공유 드라이브의 구성원이 아님 - 이대로 두면
+      // 아래(2·3단계)에서 이 계정의 "개인" 드라이브에 회사 데이터와 무관한 별도 사본을 만들게 됨
+      gdriveSharedDriveAccessWarning = ' · ⚠️ 이 계정은 "01.기장대리" 공유 드라이브 접근 권한이 없어서, 회사 데이터가 아니라 이 계정만의 별도 사본을 보고 있을 수 있어요 (관리자에게 공유 드라이브 구성원 추가를 요청해주세요)';
+    }
   }catch(e){ if(e && /로그인이 만료/.test(e.message||'')) throw e; /* 공유드라이브 접근 실패 시 아래에서 개인 드라이브 방식으로 폴백 */ }
   if(driveId){
     const inDriveRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&driveId=${driveId}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&fields=files(id,name)`, {
@@ -19037,6 +19089,7 @@ async function gdrivePull(){
       if(merged.shared.clients !== undefined) localStorage.setItem('worklog_shared_clients', JSON.stringify(merged.shared.clients));
       if(merged.shared.personalInfo !== undefined) localStorage.setItem('worklog_shared_personalinfo', JSON.stringify(merged.shared.personalInfo));
       if(merged.shared.trash !== undefined) localStorage.setItem('worklog_shared_trash', JSON.stringify(merged.shared.trash));
+      if(merged.shared.lunchLimitHistory !== undefined) localStorage.setItem('worklog_shared_lunchlimit', JSON.stringify(merged.shared.lunchLimitHistory));
     }
     if(!getActiveProfileId() || !(merged.profiles||[]).find(p=>p.id===getActiveProfileId())){
       if(merged.profiles && merged.profiles.length) setActiveProfileId(merged.profiles[0].id);
