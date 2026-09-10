@@ -1179,7 +1179,10 @@
      그러면 thead의 position:sticky가 "페이지" 기준이 아니라 이 작은 박스 기준으로 잡혀서 사실상 안 붙어보이는 문제가 있었음.
      그래서 아예 overflow-y도 명시적으로 auto로 주고 세로 스크롤 자체를 이 박스 안으로 가둬서(표 자체가 자체 스크롤되는 패널이 되게),
      그 안에서 sticky가 확실하게 동작하도록 함 - 행이 많아도 헤더(순번·상호명 등)는 항상 위에 고정되고 표 내용만 스크롤됨 */
-  .table-scroll{overflow:auto; max-height:68vh; border-radius:14px; box-shadow:0 1px 2px rgba(29,30,51,0.04); background:var(--surface);}
+  /* 테두리 없이 옅은 box-shadow만으로 네 모서리를 표현하던 방식이 흐릿하게 보인다는 의견이 있어서,
+     또렷한 1px 테두리를 같이 둬서 모서리가 선명하게 보이게 함(그림자는 아주 살짝만 남겨서 카드가
+     배경 위에 붕 떠 보이는 느낌만 유지함) */
+  .table-scroll{overflow:auto; max-height:68vh; border-radius:14px; border:1px solid var(--border); box-shadow:0 1px 2px rgba(29,30,51,0.04); background:var(--surface);}
   /* 신고현황(원천세/부가세/법인세/종소세)의 거래처 목록은 항목 수가 많지 않고, 현황을 스크롤 없이 한눈에 봐야 하는 화면이라
      다른 표들과 달리 내부 스크롤(max-height)을 두지 않고 페이지 자체 스크롤로만 늘어나게 함. 다만 원천세 매월/반기/연간
      세부항목 열이 붙으면 표가 박스 폭보다 넓어질 수 있어서, 세로는 그대로 두고 가로만 이 박스 안에서 스크롤되게 함
@@ -3755,13 +3758,36 @@
                     <select id="ad-tax-client" style="flex:2 1 160px;"></select>
                   </div>
                 </div>
+                <!-- 휴가로 기안할 때만 보이는 휴가 일정 선택칸 - 여기서 고른 종류·기간이 기안 내용에도 자동으로
+                     표시되고, 결재자가 승인하면 팀캘린더·개인캘린더·근태 기록(연차 차감 포함)에 자동으로
+                     반영돼서 따로 다시 입력하지 않아도 됨 -->
+                <div class="field" id="ad-leave-target-row" style="display:none;">
+                  <label>휴가 일정 <span style="font-weight:400; color:var(--ink-soft);">(승인되면 팀캘린더·개인캘린더·근태 기록에 자동으로 반영돼요)</span></label>
+                  <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                    <select id="ad-leave-type" style="flex:1 1 110px;">
+                      <option value="연차">연차</option>
+                      <option value="반차">반차</option>
+                      <option value="반반차">반반차</option>
+                      <option value="포상휴가">포상휴가</option>
+                      <option value="경조사휴가">경조사휴가</option>
+                      <option value="기타휴가">기타휴가</option>
+                    </select>
+                    <select id="ad-leave-subtype" style="flex:1 1 170px; display:none;"></select>
+                    <input type="date" id="ad-leave-start" style="flex:1 1 130px;">
+                    <span id="ad-leave-end-wrap" style="display:flex; align-items:center; gap:8px; flex:1 1 auto;">
+                      <span style="color:var(--ink-soft);">~</span>
+                      <input type="date" id="ad-leave-end" style="flex:1 1 130px;">
+                    </span>
+                    <input type="number" id="ad-leave-days" class="num-input" step="0.5" min="0.5" value="1" style="flex:1 1 80px; display:none;" placeholder="일수">
+                  </div>
+                </div>
                 <div class="field"><label>제목</label><input type="text" id="ad-title" placeholder="예: 8월 휴가 신청" required></div>
                 <div class="field">
                   <label style="display:flex; align-items:center; justify-content:space-between;">내용
                     <span style="display:flex; align-items:center; gap:5px;">
                       <!-- 문서종류를 고르면 그에 맞는 인사말/맺음말 문구를 내용칸에 바로 채워주는 버튼 - 매번
                            "안녕하세요, ~ 관련하여 결재 요청드립니다" 같은 문장을 처음부터 치지 않아도 되게 함 -->
-                      <button type="button" id="ad-auto-phrase-btn" style="border:none; background:transparent; color:var(--indigo); font-size:10.5px; font-weight:700; cursor:pointer; text-decoration:underline;">기안 문구</button>
+                      <button type="button" id="ad-auto-phrase-btn" style="border:none; background:transparent; color:var(--indigo); font-size:10.5px; font-weight:700; cursor:pointer; text-decoration:underline;">+자동문구</button>
                       <!-- 문서종류별 기안 문구(기안내용)를 직접 수정할 수 있는 설정 팝업을 여는 톱니바퀴 버튼 -->
                       <button type="button" id="ad-auto-phrase-settings-btn" title="기안문구 설정" style="border:none; background:transparent; color:var(--ink-soft); cursor:pointer; padding:2px; display:flex; align-items:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
                     </span>
@@ -10010,34 +10036,54 @@ function generateExpenseReportPdfBlob(monthStr){
       return;
     }
     const { jsPDF } = window.jspdf;
-    // html2canvas/jsPDF.html()은 캡처 대상의 실제 화면 좌표(getBoundingClientRect)를 기준으로 캡처 영역을
-    // 계산하기 때문에, 예전처럼 "왼쪽으로 아주 멀리(-99999px)" 옮겨서 화면 밖에 그리면 좌표 계산이 어긋나
-    // 캡처 결과가 완전히 빈 페이지로 나오는 문제가 있었음(제보: 첨부된 지출결의서 PDF가 아무 내용 없이 흰 페이지만
-    // 나옴). display:none은 아예 캡처가 안 되고, visibility:hidden도 내용 없이 캡처됨 - 그래서 실제 좌표는
-    // 정상적인 화면 위(0,0)에 두되, 바깥을 크기 0 + overflow:hidden인 래퍼로 감싸서 사용자 눈에는 보이지 않으면서
-    // 내부 요소는 정상적으로 레이아웃·렌더링되게 함(캡처 좌표가 뒤틀리지 않음)
+    // jsPDF의 pdf.html()은 내부적으로 문서를 새 iframe에 복제해서 렌더링하는데, 이 과정에서 캡처 결과가
+    // 완전히 빈 페이지로 나오거나(제보: 첨부된 PDF가 흰 페이지만 나옴) 페이지 수가 실행할 때마다 들쭉날쭉
+    // 달라지는 문제가 있었음(오프스크린 좌표/리플로우 타이밍에 민감함). 그래서 훨씬 더 예측 가능한 방식으로
+    // 바꿈: html2canvas로 문서 전체를 캔버스 하나로 직접 캡처한 뒤, 그 캔버스를 A4 한 페이지 높이씩 우리가
+    // 직접 잘라서 페이지마다 이미지로 넣어줌(jsPDF의 자동 페이지 나누기 기능을 아예 쓰지 않음)
     const holder = document.createElement('div');
-    holder.style.cssText = 'width:760px; background:#fff; padding:10px;';
+    // 화면 좌표(0,0)에 두되 z-index를 아주 낮춰서 실제 화면 요소들 뒤에 가려지게 함 - display:none/visibility:hidden은
+    // html2canvas가 내용 없이 캡처하고, 화면 밖 멀리 배치(예: left:-99999px)는 좌표 계산이 어긋나 캡처가 깨짐
+    holder.style.cssText = 'position:absolute; top:0; left:0; width:760px; background:#fff; padding:10px; z-index:-99999;';
     holder.innerHTML = buildExpenseReportHTML(monthStr);
-    const clipWrap = document.createElement('div');
-    clipWrap.style.cssText = 'position:fixed; top:0; left:0; width:0; height:0; overflow:hidden; z-index:-1;';
-    clipWrap.appendChild(holder);
-    document.body.appendChild(clipWrap);
-    const cleanup = ()=>{ try{ document.body.removeChild(clipWrap); }catch(e){} };
-    try{
-      const pdf = new jsPDF('p', 'pt', 'a4');
-      pdf.html(holder, {
-        x:20, y:20,
-        width:555, // A4(595pt) 폭에서 좌우 여백(20pt씩) 뺀 값
-        windowWidth:760,
-        html2canvas:{ scale:0.75, useCORS:true, backgroundColor:'#ffffff' },
-        callback: (doc)=>{
-          cleanup();
-          try{ resolve(doc.output('blob')); }
-          catch(err){ reject(err); }
-        }
+    document.body.appendChild(holder);
+    const cleanup = ()=>{ try{ document.body.removeChild(holder); }catch(e){} };
+    // 삽입 직후 바로 캡처하면 아직 리플로우·폰트 적용 전이라 높이가 매번 다르게 측정될 수 있어서(페이지 수가
+    // 들쭉날쭉했던 원인), 두 번의 requestAnimationFrame으로 레이아웃이 안정된 뒤 캡처함
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(()=>{
+        window.html2canvas(holder, { scale:1.5, useCORS:true, backgroundColor:'#ffffff' }).then(canvas=>{
+          try{
+            const pdf = new jsPDF('p', 'pt', 'a4');
+            const margin = 20;
+            const usableWidth = pdf.internal.pageSize.getWidth() - margin*2;
+            const usableHeight = pdf.internal.pageSize.getHeight() - margin*2;
+            const pxPerPt = canvas.width / usableWidth; // 캔버스 픽셀 ↔ PDF pt 환산 비율
+            const pageHeightPx = Math.max(1, Math.floor(usableHeight * pxPerPt));
+            let renderedY = 0;
+            let first = true;
+            while(renderedY < canvas.height){
+              const sliceHeightPx = Math.min(pageHeightPx, canvas.height - renderedY);
+              const pageCanvas = document.createElement('canvas');
+              pageCanvas.width = canvas.width;
+              pageCanvas.height = sliceHeightPx;
+              const ctx = pageCanvas.getContext('2d');
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+              ctx.drawImage(canvas, 0, renderedY, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+              const imgData = pageCanvas.toDataURL('image/png');
+              const sliceHeightPt = sliceHeightPx / pxPerPt;
+              if(!first) pdf.addPage();
+              pdf.addImage(imgData, 'PNG', margin, margin, usableWidth, sliceHeightPt);
+              renderedY += sliceHeightPx;
+              first = false;
+            }
+            cleanup();
+            resolve(pdf.output('blob'));
+          }catch(err){ cleanup(); reject(err); }
+        }).catch(err=>{ cleanup(); reject(err); });
       });
-    }catch(err){ cleanup(); reject(err); }
+    });
   });
 }
 // 정산월을 고르면(또는 문서종류를 지출결의서로 바꿔 기본 정산월이 채워지면) 그 달 출력물을 만들어 회사
@@ -10204,6 +10250,126 @@ document.getElementById('ad-doctype')?.addEventListener('change', function(){
     if(titleEl) titleEl.value = '휴가 신청';
   }
 });
+// 휴가 기안 폼의 일정 선택칸 - 반차/반반차는 세부유형을 고르고 종료일 없이 하루만, 그 외(연차·포상·경조사·기타)는
+// 기간(종료일)을 고를 수 있고 포상/경조사/기타는 일수를 직접 입력함. HALF_SUBTYPE_OPTIONS 등은 개인캘린더
+// "휴가 등록" 폼(usageForm)에서 이미 쓰는 것과 똑같은 옵션을 그대로 재사용함
+function adLeaveSubtypeOptionsFor(type){
+  if(typeof HALF_SUBTYPE_OPTIONS === 'undefined') return null;
+  if(type === '반차') return HALF_SUBTYPE_OPTIONS;
+  if(type === '반반차') return QUARTER_SUBTYPE_OPTIONS;
+  return null;
+}
+function syncAdLeaveTypeFields(){
+  const type = document.getElementById('ad-leave-type')?.value;
+  const subtypeSel = document.getElementById('ad-leave-subtype');
+  const opts = adLeaveSubtypeOptionsFor(type);
+  if(subtypeSel){
+    subtypeSel.style.display = opts ? '' : 'none';
+    if(opts) subtypeSel.innerHTML = opts.map(o=>`<option value="${o.value}">${o.text}</option>`).join('');
+  }
+  const isHalfDayOnly = (type === '반차' || type === '반반차');
+  const endWrap = document.getElementById('ad-leave-end-wrap');
+  if(endWrap) endWrap.style.display = isHalfDayOnly ? 'none' : 'flex';
+  const daysEl = document.getElementById('ad-leave-days');
+  const isSpecial = typeof SPECIAL_LEAVE_TYPES !== 'undefined' && SPECIAL_LEAVE_TYPES.includes(type);
+  if(daysEl) daysEl.style.display = isSpecial ? '' : 'none';
+  if(isHalfDayOnly){
+    const startEl = document.getElementById('ad-leave-start');
+    const endEl = document.getElementById('ad-leave-end');
+    if(endEl && startEl) endEl.value = startEl.value;
+  }
+}
+function syncAdLeaveTargetRow(){
+  const docType = document.getElementById('ad-doctype')?.value;
+  const row = document.getElementById('ad-leave-target-row');
+  if(!row) return;
+  const show = docType === '휴가';
+  row.style.display = show ? '' : 'none';
+  if(!show) return;
+  const startEl = document.getElementById('ad-leave-start');
+  if(startEl && !startEl.value) startEl.value = todayStr();
+  syncAdLeaveTypeFields();
+}
+// 휴가 일정 선택칸 내용을 사람이 읽는 문장으로 - "기안 문구"(자동문구) 버튼을 누르면 이 문장이 기안 내용
+// 아래에 자동으로 같이 채워짐
+function adLeaveSummaryText(){
+  const type = document.getElementById('ad-leave-type')?.value;
+  const start = document.getElementById('ad-leave-start')?.value;
+  if(!type || !start) return '';
+  const isHalfDayOnly = (type === '반차' || type === '반반차');
+  const end = isHalfDayOnly ? start : (document.getElementById('ad-leave-end')?.value || start);
+  let subtypeText = '';
+  if(isHalfDayOnly){
+    const subtypeSel = document.getElementById('ad-leave-subtype');
+    subtypeText = subtypeSel?.selectedOptions[0]?.textContent || '';
+  }
+  const dateRangeText = (end && end !== start) ? `${start} ~ ${end}` : start;
+  return `휴가 종류: ${type}${subtypeText ? ` (${subtypeText})` : ''}\n휴가 기간: ${dateRangeText}`;
+}
+document.getElementById('ad-doctype')?.addEventListener('change', syncAdLeaveTargetRow);
+document.getElementById('ad-leave-type')?.addEventListener('change', syncAdLeaveTypeFields);
+document.getElementById('ad-leave-start')?.addEventListener('change', syncAdLeaveTypeFields);
+document.getElementById('ad-leave-end')?.addEventListener('change', function(){
+  if(this.value && document.getElementById('ad-leave-start') && !document.getElementById('ad-leave-start').value){
+    document.getElementById('ad-leave-start').value = this.value;
+  }
+});
+// 임시저장·반려된 휴가 기안을 다시 열 때(수정/재기안), 저장해뒀던 휴가 종류·기간을 선택칸에 그대로 복원함
+function restoreAdLeaveFromItem(item){
+  const row = document.getElementById('ad-leave-target-row');
+  const show = item.docType === '휴가';
+  if(row) row.style.display = show ? '' : 'none';
+  if(!show) return;
+  const typeEl = document.getElementById('ad-leave-type');
+  if(typeEl && item.leaveType) typeEl.value = item.leaveType;
+  const startEl = document.getElementById('ad-leave-start');
+  if(startEl) startEl.value = item.leaveStart || todayStr();
+  syncAdLeaveTypeFields();
+  const endEl = document.getElementById('ad-leave-end');
+  if(endEl && item.leaveEnd) endEl.value = item.leaveEnd;
+  const subtypeEl = document.getElementById('ad-leave-subtype');
+  if(subtypeEl && item.leaveSubtype) subtypeEl.value = item.leaveSubtype;
+  const daysEl = document.getElementById('ad-leave-days');
+  if(daysEl && item.leaveDays) daysEl.value = item.leaveDays;
+}
+// 승인되면(decideApproval에서 호출) 기안자 본인의 근태 기록(attendance.leaveUsage)에 실제로 휴가 사용 내역을
+// 추가함 - 팀캘린더·개인캘린더·근태현황 화면이 전부 이 데이터를 그대로 읽어서 보여주는 구조라, 여기 한 곳에만
+// 추가하면 세 화면 모두 자동으로 반영됨(담당자가 따로 다시 입력할 필요 없음). item.leaveApplied로 한 번만
+// 반영되게 막아서, 혹시 같은 결재가 다시 렌더링되더라도 근태가 중복으로 쌓이지 않게 함
+function applyLeaveApprovalToAttendance(item){
+  if(!item || item.leaveApplied) return;
+  if(item.docType !== '휴가' || !item.leaveType || !item.leaveStart) return;
+  if(typeof getProfiles !== 'function' || typeof readProfileRaw !== 'function') return;
+  const profiles = getProfiles();
+  const profile = profiles.find(p=>(p.email||'').toLowerCase() === (item.drafterEmail||'').toLowerCase());
+  if(!profile) return; // 기안자 이메일로 등록된 직원 프로필을 못 찾으면(예: 관리자 본인) 자동 반영은 건너뜀
+  const att = readProfileRaw(profile.id, 'attendance') || { leaveGrants:[], leaveUsage:[], remoteEntries:[] };
+  att.leaveUsage = att.leaveUsage || [];
+  const isHalfDayOnly = (item.leaveType === '반차' || item.leaveType === '반반차');
+  const isSpecial = typeof SPECIAL_LEAVE_TYPES !== 'undefined' && SPECIAL_LEAVE_TYPES.includes(item.leaveType);
+  const memo = `[기안 승인] ${item.title||''}`.trim();
+  let dates = [item.leaveStart];
+  if(!isHalfDayOnly && item.leaveEnd && item.leaveEnd > item.leaveStart && typeof parseDate === 'function' && typeof fmt === 'function'){
+    dates = [];
+    let cur = parseDate(item.leaveStart);
+    const end = parseDate(item.leaveEnd);
+    while(cur <= end){
+      if(cur.getDay() !== 0 && cur.getDay() !== 6) dates.push(fmt(cur));
+      cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate()+1);
+    }
+    if(!dates.length) dates = [item.leaveStart];
+  }
+  if(dates.length > 1){
+    dates.forEach(ds=>{
+      att.leaveUsage.push({ id: genId(), date: ds, type: item.leaveType, subtype: null, days: isSpecial ? 1 : null, memo });
+    });
+  } else {
+    att.leaveUsage.push({ id: genId(), date: item.leaveStart, type: item.leaveType, subtype: isHalfDayOnly ? (item.leaveSubtype || null) : null, days: isSpecial ? (Number(item.leaveDays)||1) : null, memo });
+  }
+  localStorage.setItem(`worklog_attendance__${profile.id}`, JSON.stringify(att));
+  item.leaveApplied = true;
+  if(typeof gdriveScheduleSync === 'function') gdriveScheduleSync();
+}
 
 document.getElementById('quickPrintReportBtn').addEventListener('click', ()=>{
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
@@ -16415,6 +16581,14 @@ function saveApprovalDraftForm(status){
   const taxYear = isAdTaxDocType ? (document.getElementById('ad-tax-year')?.value || '') : '';
   const taxVatPeriod = (isAdTaxDocType && docType==='부가가치세') ? (document.getElementById('ad-tax-vat-period')?.value || '') : '';
   const taxClientId = isAdTaxDocType ? (document.getElementById('ad-tax-client')?.value || '') : '';
+  // 휴가일 때만 의미 있는 값 - 승인되면 이 값으로 기안자 근태 기록에 자동으로 휴가 사용 내역을 추가함(applyLeaveApprovalToAttendance)
+  const isLeaveDocType = docType === '휴가';
+  const leaveType = isLeaveDocType ? (document.getElementById('ad-leave-type')?.value || '') : '';
+  const leaveStart = isLeaveDocType ? (document.getElementById('ad-leave-start')?.value || '') : '';
+  const isLeaveHalfDayOnly = (leaveType === '반차' || leaveType === '반반차');
+  const leaveEnd = isLeaveDocType ? (isLeaveHalfDayOnly ? leaveStart : (document.getElementById('ad-leave-end')?.value || leaveStart)) : '';
+  const leaveSubtype = (isLeaveDocType && isLeaveHalfDayOnly) ? (document.getElementById('ad-leave-subtype')?.value || '') : '';
+  const leaveDays = (isLeaveDocType && typeof SPECIAL_LEAVE_TYPES!=='undefined' && SPECIAL_LEAVE_TYPES.includes(leaveType)) ? (document.getElementById('ad-leave-days')?.value || '1') : '';
   const editId = document.getElementById('ad-edit-id').value;
   const msgEl = document.getElementById('approvalDraftSaveMsg');
   if(!title){ if(msgEl) msgEl.textContent = '제목을 입력해주세요'; return false; }
@@ -16432,6 +16606,8 @@ function saveApprovalDraftForm(status){
     existing.docType = docType;
     existing.expenseMonth = expenseMonth;
     existing.taxYear = taxYear; existing.taxVatPeriod = taxVatPeriod; existing.taxClientId = taxClientId;
+    existing.leaveType = leaveType; existing.leaveStart = leaveStart; existing.leaveEnd = leaveEnd;
+    existing.leaveSubtype = leaveSubtype; existing.leaveDays = leaveDays;
     existing.status = status;
     if(status === '기안'){
       existing.createdAt = new Date().toLocaleString('ko-KR');
@@ -16443,6 +16619,7 @@ function saveApprovalDraftForm(status){
   } else {
     sharedApprovals.unshift({
       id: genId(), title, content, attachments, docType, expenseMonth, taxYear, taxVatPeriod, taxClientId,
+      leaveType, leaveStart, leaveEnd, leaveSubtype, leaveDays,
       drafterEmail,
       drafterName: resolveNameByEmail(drafterEmail),
       approverEmail, approverName: resolveNameByEmail(approverEmail),
@@ -16540,16 +16717,41 @@ function effectiveAutoPhraseContent(docType){
   }
   return AD_AUTO_PHRASE[docType] || AD_AUTO_PHRASE['일반'];
 }
-// "기안 문구" 버튼 - 누르면 매번 이어붙이지 않고, 항상 "가운데 정렬 + '- 기안 내용 -' 구분줄로 시작하는"
-// 정해진 틀로 내용칸을 통째로 채움(이미 써둔 내용이 있으면 그 아래에 이어서 넣어줌)
-document.getElementById('ad-auto-phrase-btn')?.addEventListener('click', ()=>{
+// "+자동문구" 버튼 - 누르면 매번 이어붙이지 않고, 항상 "가운데 정렬 + '- 기안 내용 -' 구분줄로 시작하는"
+// 정해진 틀로 내용칸을 통째로 채움. 문서종류가 휴가면 고른 휴가 일정을, 세무신고 3종(부가세·법인세·종소세)이면
+// 고른 거래처명과 "결재 특이사항" 빈 줄을 그 아래에 같이 채워줌. adAutoPhraseActive를 true로 켜두면, 이후
+// 문서종류를 바꿀 때 이 버튼을 다시 자동으로 눌러서 새 문서종류에 맞는 문구로 갈아끼워줌
+let adAutoPhraseActive = false;
+function applyAdAutoPhrase(){
   const docType = document.getElementById('ad-doctype')?.value || '일반';
   const content = effectiveAutoPhraseContent(docType);
   const contentEl = document.getElementById('ad-content');
   const contentHtml = escHtml(content).replace(/\n/g,'<br>');
+  let extraHtml = '';
+  if(docType === '휴가'){
+    const summary = typeof adLeaveSummaryText === 'function' ? adLeaveSummaryText() : '';
+    if(summary) extraHtml = `<div style="text-align:center;"><br></div><div style="text-align:center;">${escHtml(summary).replace(/\n/g,'<br>')}</div>`;
+  } else if(typeof AD_TAX_DOCTYPE_KEY !== 'undefined' && AD_TAX_DOCTYPE_KEY[docType]){
+    const clientSel = document.getElementById('ad-tax-client');
+    const clientName = clientSel?.selectedOptions[0]?.textContent || '';
+    if(clientName && clientSel.value){
+      extraHtml = `<div style="text-align:center;"><br></div><div style="text-align:center;">거래처: ${escHtml(clientName)}</div><div style="text-align:center;"><br></div><div style="text-align:center;">결재 특이사항: </div>`;
+    }
+  }
   // 누를 때마다 이어붙이면(예전 방식) 여러 번 누르면 같은 문구가 중복으로 계속 쌓이는 문제가 있었음 -
-  // "기안 문구"는 항상 정해진 틀 하나로 통째로 채우는 버튼이라, 매번 처음부터 다시 씀(이어붙이지 않음)
-  contentEl.innerHTML = `<div style="text-align:center;">- 기안 내용 -</div><div style="text-align:center;"><br></div><div style="text-align:center;">${contentHtml}</div>`;
+  // "+자동문구"는 항상 정해진 틀 하나로 통째로 채우는 버튼이라, 매번 처음부터 다시 씀(이어붙이지 않음)
+  contentEl.innerHTML = `<div style="text-align:center;">- 기안 내용 -</div><div style="text-align:center;"><br></div><div style="text-align:center;">${contentHtml}</div>${extraHtml}`;
+  adAutoPhraseActive = true;
+}
+document.getElementById('ad-auto-phrase-btn')?.addEventListener('click', applyAdAutoPhrase);
+// 자동문구로 채운 뒤에 직접 내용을 손으로 고치면, 더는 "자동으로 유지되는 문구"가 아니므로 문서종류를
+// 바꿔도 더 이상 덮어쓰지 않게 꺼둠(사용자가 손댄 내용을 문서종류 변경만으로 날려버리지 않기 위함)
+document.getElementById('ad-content')?.addEventListener('input', ()=>{ adAutoPhraseActive = false; });
+// 자동문구를 이미 한 번 넣어둔 상태에서 문서종류를 바꾸면, 그 문서종류에 맞는 자동문구로 다시 갈아끼워줌 -
+// 반드시 정산월/세무대상 거래처/휴가 일정 선택칸들이 새 문서종류에 맞춰 먼저 갱신된 뒤에 실행되도록,
+// 그 선택칸들을 채우는 다른 change 리스너들보다 나중에(스크립트 아래쪽에서) 등록함
+document.getElementById('ad-doctype')?.addEventListener('change', function(){
+  if(adAutoPhraseActive) applyAdAutoPhrase();
 });
 // 기안문구 설정 팝업 - 문서종류마다 기안내용을 직접 수정하고 저장할 수 있게 함(회사 공통설정이라
 // 저장하면 전 직원에게 똑같이 적용됨). "기본값"은 항목별로 하드코딩된 기본 문구로 되돌림
@@ -16832,6 +17034,7 @@ function editApprovalDraft(id){
   const expenseStatusEl = document.getElementById('ad-expense-month-status');
   if(expenseStatusEl) expenseStatusEl.textContent = '';
   if(typeof restoreAdTaxTargetFromItem === 'function') restoreAdTaxTargetFromItem(item);
+  if(typeof restoreAdLeaveFromItem === 'function') restoreAdLeaveFromItem(item);
   populateApproverSelect();
   if(item.approverEmail) document.getElementById('ad-approver').value = item.approverEmail;
   if(item.drafterEmail) document.getElementById('ad-drafter').value = item.drafterEmail;
@@ -16964,6 +17167,20 @@ function countApprovalUnseen(bucket, items){
 // 기안문 문서종류 - 기안함/결재함/전체이력에서 종류별로 걸러볼 수 있게 공용 목록으로 둠(기안 폼의 select와 동일한 값)
 const APPROVAL_DOC_TYPES = ['일반','지출결의서','휴가','부가가치세','법인세','종합소득세'];
 let approvalDocTypeFilter = { inbox:'전체', mine:'전체', all:'전체', draft:'전체', rejected:'전체' };
+// 문서종류 칩 색상 - 종류별로 색이 다르면 목록에서 한눈에 구분하기 쉽다는 요청으로, 목록의 "종류" 칩과
+// 기안문 상세 카드 안의 문서종류 칩 둘 다 이 함수 하나로 색을 정함(둘이 항상 같은 색을 쓰게)
+const APPROVAL_DOCTYPE_CHIP_COLORS = {
+  '일반':       { bg:'var(--navy-bg)',         color:'var(--navy)' },
+  '지출결의서': { bg:'var(--coral-bg)',        color:'var(--coral)' },
+  '휴가':       { bg:'var(--mint-bg)',         color:'var(--mint)' },
+  '부가가치세': { bg:'var(--amber-bg)',        color:'#8A6200' },
+  '법인세':     { bg:'var(--indigo-bg)',       color:'var(--indigo-deep)' },
+  '종합소득세': { bg:'var(--guide-wine-bg)',   color:'var(--guide-wine)' },
+};
+function approvalDocTypeChipStyle(docType){
+  const c = APPROVAL_DOCTYPE_CHIP_COLORS[docType] || { bg:'var(--bg)', color:'var(--ink-soft)' };
+  return `background:${c.bg}; color:${c.color};`;
+}
 function approvalDocTypeChipsHtml(bucket){
   const cur = approvalDocTypeFilter[bucket] || '전체';
   const opts = ['전체', ...APPROVAL_DOC_TYPES];
@@ -17116,7 +17333,7 @@ function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
   const rows = pageItems.map(item=>{
     const expanded = approvalExpandedId === item.id;
     return `<tr${expanded?' style="background:var(--indigo-bg);"':''}>
-      <td style="text-align:center; overflow:hidden; text-overflow:ellipsis;"><span class="tag" style="background:var(--bg); color:var(--ink-soft);">${escHtml(item.docType||'일반')}</span></td>
+      <td style="text-align:center; overflow:hidden; text-overflow:ellipsis;"><span class="tag" style="${approvalDocTypeChipStyle(item.docType||'일반')}">${escHtml(item.docType||'일반')}</span></td>
       <td class="num" style="text-align:center; overflow:hidden; text-overflow:ellipsis;">${escHtml(item.createdAt||'')}</td>
       <td style="text-align:center; overflow:hidden; text-overflow:ellipsis;">${escHtml(resolveNameByEmail(item.drafterEmail) || item.drafterName || '')}</td>
       <td style="text-align:center; font-weight:700; white-space:normal; word-break:break-word;">${escHtml(item.title)}</td>
@@ -17248,6 +17465,7 @@ function resubmitApprovalDraft(id){
   const expenseStatusEl = document.getElementById('ad-expense-month-status');
   if(expenseStatusEl) expenseStatusEl.textContent = '';
   if(typeof restoreAdTaxTargetFromItem === 'function') restoreAdTaxTargetFromItem(item);
+  if(typeof restoreAdLeaveFromItem === 'function') restoreAdLeaveFromItem(item);
   populateApproverSelect();
   if(item.approverEmail) document.getElementById('ad-approver').value = item.approverEmail;
   if(item.drafterEmail) document.getElementById('ad-drafter').value = item.drafterEmail;
@@ -17311,7 +17529,7 @@ function approvalDetailBodyHtml(item){
     <div class="approval-doc-card" style="border:1.5px solid var(--border); border-radius:16px; background:var(--surface); padding:16px 18px 18px; box-shadow:0 1px 2px rgba(29,30,51,0.04);">
       <div style="text-align:center;">
         <div style="font-size:23px; font-weight:900; letter-spacing:8px; color:var(--navy);">업&nbsp;무&nbsp;기&nbsp;안</div>
-        <div style="margin-top:6px;"><span class="tag" style="background:var(--bg); color:var(--ink-soft);">${escHtml(item.docType||'일반')}</span></div>
+        <div style="margin-top:6px;"><span class="tag" style="${approvalDocTypeChipStyle(item.docType||'일반')}">${escHtml(item.docType||'일반')}</span></div>
       </div>
       <div style="display:flex; justify-content:flex-end; margin-top:10px; gap:0; flex-wrap:wrap; padding-bottom:12px; border-bottom:2px solid var(--navy); margin-bottom:14px;">
         <table style="border-collapse:collapse; width:auto; border-radius:0; box-shadow:none; border:none; background:transparent;">
@@ -17420,6 +17638,9 @@ async function decideApproval(id, decision){
     text: noteText,
     decision,
   });
+  // 휴가 기안이 승인되면, 담당자가 따로 다시 입력하지 않아도 기안자 본인의 근태 기록에 자동으로 반영됨
+  // (그 데이터를 그대로 읽는 팀캘린더·개인캘린더에도 자연히 같이 반영됨)
+  if(decision === '승인' && typeof applyLeaveApprovalToAttendance === 'function') applyLeaveApprovalToAttendance(item);
   await saveSharedApprovals();
   document.getElementById('approvalDetailModalOverlay').style.display = 'none';
   approvalExpandedId = null; // 결정을 내리면 목록으로 접어서 바뀐 상태를 목록에서 바로 보여줌
