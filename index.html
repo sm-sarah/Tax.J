@@ -1231,9 +1231,6 @@
   #tab-settings .settings-sub-title .badge{ display:none; }
   /* 근태현황/경비정산처럼 옆에 다른 요소(등록 버튼 등)가 있어도 제목이 눈에 띄도록 밑줄 포인트를 줌 */
   .section-title-accent{display:inline-block; padding-bottom:6px; border-bottom:3px solid var(--indigo); border-radius:2px;}
-  /* 근태현황/경비정산 카드 제목 - 바로 위 큰 연월 숫자(.cal-title-big, 23px/900/navy)와 비슷한 굵기·크기라
-     둘이 헷갈린다는 의견이 있어서, 훨씬 작고 가벼운 "라벨" 느낌의 태그 스타일로 확실히 구분함 */
-  .section-title-tag{display:inline-flex; align-items:center; font-size:13px; font-weight:800; letter-spacing:0.02em; color:var(--indigo-deep); background:var(--indigo-bg); padding:5px 14px; border-radius:999px;}
   /* .settings-sub-title와 똑같이 생겼지만, 설정 하위메뉴 팝업을 나눌 때(chipifySettingsCategory) 새 팝업 경계로 취급되지 않음 -
      같은 팝업 안에서 소제목만 하나 더 두고 싶을 때(예: "점심식대 설정" 팝업 안의 "한도 변동이력") 사용 */
   .settings-sub-title-inline{font-size:12px; font-weight:800; color:var(--indigo); margin:20px 0 10px; padding-top:16px; border-top:1.5px dashed var(--border); display:flex; align-items:center; justify-content:center; gap:6px; text-transform:uppercase; letter-spacing:0.04em;}
@@ -2588,50 +2585,48 @@
 
   <!-- 근태관리 -->
   <section id="tab-attendance" class="tab-panel">
+    <!-- id="workdaysAutoValue"(이번달 근무가능일수 값)과 id="quickPrintReportBtn"(지출결의서 출력)은
+         칩 형태를 벗어나 각각 경비정산 제목 왼쪽 / 경비정산 카드 묶음 안쪽 우측 하단으로 옮겼어요.
+         직원선택·조회월선택은 개인캘린더 탭 상단과 완전히 같은 스타일("이름 ‹ 2026년 9월 › 📅")로 가운데
+         정렬해서 재사용함 - 실제 상태를 쥔 #profileSelect·#monthSelect는 화면 밖에 숨겨서 그대로 유지하고
+         (기존 renderProfileSwitcher/관리자 잠금 로직 등이 그대로 동작), 화면엔 updateCalHeader()가 같이
+         채워주는 #attCalOwnerLabel·#attMonthTitleBig만 보이게 함 -->
+    <!-- 연월 네비게이션(+등록/일정/근태 버튼)을 카드(그룹칩) 안이 아니라 탭 맨 위, 카드 바깥에 둬서 이
+         탭의 최상단 헤더처럼 보이게 함 - 개인캘린더 탭과 똑같은 .cal-header-nav(좌/중앙/우 3분할) 구조를
+         재사용함(가운데엔 이름·연월·달력 아이콘, 오른쪽엔 등록/일정/근태 버튼). .cal-header-nav 클래스를
+         써야 달력 아이콘이 연월 숫자에 바짝 붙는 보정(margin-left:-14px)도 같이 적용돼서, 개인캘린더
+         탭과 완전히 같은 간격으로 보임 -->
+    <div class="cal-header-nav" style="margin-bottom:14px;">
+      <div></div>
+      <div style="display:flex; align-items:center; gap:8px; justify-content:center;">
+        <div class="cal-owner-label" id="attCalOwnerLabel"></div>
+        <button type="button" class="cal-nav-arrow" id="attMonthPrevBtn" title="전월"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+        <div class="cal-title-big" id="attMonthTitleBig">-</div>
+        <button type="button" class="cal-nav-arrow" id="attMonthNextBtn" title="익월"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+        <button type="button" class="cal-nav-btn" id="attMonthPickerBtn" title="월 선택"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></button>
+      </div>
+      <!-- 개인캘린더 탭 상단에 있던 등록/일정/근태 버튼을 여기로 옮겨왔어요(근태현황 카드 묶음과 더 밀접한
+           기능이라 근태현황 쪽에 있는게 자연스럽다는 요청) - id는 그대로 유지해서 기존 클릭 핸들러
+           (openCalRegisterModal 등)가 위치와 무관하게 그대로 동작함 -->
+      <div style="display:flex; justify-content:flex-end; align-items:center; gap:6px; flex-wrap:wrap;">
+        <button type="button" id="calRegisterBtn" class="del-btn" style="background:var(--indigo-bg); color:var(--indigo-deep);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 등록</button>
+        <button type="button" id="calScheduleHistoryBtn" class="del-btn" style="background:var(--mint-bg); color:var(--mint);" title="이달의 개인일정"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 일정</button>
+        <button type="button" id="calAttendanceHistoryBtn" class="del-btn" style="background:var(--amber-bg); color:var(--amber);" title="이달의 근태내역"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 근태</button>
+      </div>
+    </div>
+    <div style="position:absolute; left:-9999px; width:0; height:0; overflow:hidden;" aria-hidden="true">
+      <select id="profileSelect"></select>
+      <input type="month" id="monthSelect">
+    </div>
+    <div id="dataMonthHintBanner" style="display:none; margin:0 0 14px; padding:10px 14px; border-radius:10px; background:var(--coral-bg); border:1px solid var(--coral); font-size:13px; font-weight:700; color:var(--coral); align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+      <span id="dataMonthHintText"></span>
+      <button type="button" id="dataMonthHintJumpBtn" style="border:none; background:var(--coral); color:#fff; font-weight:800; font-size:12px; padding:6px 12px; border-radius:7px; cursor:pointer; font-family:inherit;">해당 월로 이동</button>
+    </div>
     <div class="settings-group">
-      <!-- id="workdaysAutoValue"(이번달 근무가능일수 값)과 id="quickPrintReportBtn"(지출결의서 출력)은
-           칩 형태를 벗어나 각각 경비정산 제목 왼쪽 텍스트 / 경비정산 카드 묶음 안쪽 우측 하단으로 옮겼어요.
-           직원선택·조회월선택은 개인캘린더 탭 상단과 완전히 같은 스타일("이름 ‹ 2026년 9월 › 📅")로 가운데
-           정렬해서 재사용함 - 실제 상태를 쥔 #profileSelect·#monthSelect는 화면 밖에 숨겨서 그대로 유지하고
-           (기존 renderProfileSwitcher/관리자 잠금 로직 등이 그대로 동작), 화면엔 updateCalHeader()가 같이
-           채워주는 #attCalOwnerLabel·#attMonthTitleBig만 보이게 함 -->
-      <!-- 개인캘린더 탭과 똑같은 .cal-header-nav(좌/중앙/우 3분할) 구조를 재사용함 - 가운데엔 이름·연월·달력
-           아이콘을, 오른쪽엔 등록/일정/근태 버튼을 둬서 카드 맨 위 한 줄에서 다 끝나게 함(예전엔 버튼들이
-           "근태현황" 제목 줄에 따로 있어서 두 줄로 나뉘어 있었음). .cal-header-nav 클래스를 써야 달력
-           아이콘이 연월 숫자에 바짝 붙는 보정(margin-left:-14px)도 같이 적용돼서, 개인캘린더 탭과 완전히
-           같은 간격으로 보임 -->
-      <div class="cal-header-nav" style="margin-bottom:6px;">
-        <div></div>
-        <div style="display:flex; align-items:center; gap:8px; justify-content:center;">
-          <div class="cal-owner-label" id="attCalOwnerLabel"></div>
-          <button type="button" class="cal-nav-arrow" id="attMonthPrevBtn" title="전월"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
-          <div class="cal-title-big" id="attMonthTitleBig">-</div>
-          <button type="button" class="cal-nav-arrow" id="attMonthNextBtn" title="익월"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
-          <button type="button" class="cal-nav-btn" id="attMonthPickerBtn" title="월 선택"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></button>
-        </div>
-        <!-- 개인캘린더 탭 상단에 있던 등록/일정/근태 버튼을 여기로 옮겨왔어요(근태현황 카드 묶음과 더 밀접한
-             기능이라 근태현황 그룹칩 쪽에 있는게 자연스럽다는 요청) - id는 그대로 유지해서 기존 클릭
-             핸들러(openCalRegisterModal 등)가 위치와 무관하게 그대로 동작함. 카드 맨 위 줄 오른쪽 끝으로
-             둬서 잘리지 않고 확실히 카드 안쪽 우상단에 자리잡게 함 -->
-        <div style="display:flex; justify-content:flex-end; align-items:center; gap:6px; flex-wrap:wrap;">
-          <button type="button" id="calRegisterBtn" class="del-btn" style="background:var(--indigo-bg); color:var(--indigo-deep);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 등록</button>
-          <button type="button" id="calScheduleHistoryBtn" class="del-btn" style="background:var(--mint-bg); color:var(--mint);" title="이달의 개인일정"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 일정</button>
-          <button type="button" id="calAttendanceHistoryBtn" class="del-btn" style="background:var(--amber-bg); color:var(--amber);" title="이달의 근태내역"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 근태</button>
-        </div>
-      </div>
-      <div style="position:absolute; left:-9999px; width:0; height:0; overflow:hidden;" aria-hidden="true">
-        <select id="profileSelect"></select>
-        <input type="month" id="monthSelect">
-      </div>
-      <div id="dataMonthHintBanner" style="display:none; margin:0 0 14px; padding:10px 14px; border-radius:10px; background:var(--coral-bg); border:1px solid var(--coral); font-size:13px; font-weight:700; color:var(--coral); align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-        <span id="dataMonthHintText"></span>
-        <button type="button" id="dataMonthHintJumpBtn" style="border:none; background:var(--coral); color:#fff; font-weight:800; font-size:12px; padding:6px 12px; border-radius:7px; cursor:pointer; font-family:inherit;">해당 월로 이동</button>
-      </div>
-      <!-- 이 줄엔 이제 "근태현황" 제목만 남음 - 위 연월 타이틀(cal-title-big, 23px/900)과 헷갈리지 않도록
-           일부러 더 작고 얇은, 라벨에 가까운 스타일(section-title-tag)을 써서 "이건 이 카드의 소제목이다"가
-           한눈에 구분되게 함 -->
+      <!-- "근태현황" 제목 - 연월 네비게이션이 카드 밖으로 빠져서 더는 혼동될 요소가 없으니, 경비정산과
+           똑같은 제목 스타일(section-title-accent, 밑줄 포인트)로 되돌림 -->
       <div style="text-align:center; margin:0 0 18px;">
-        <div class="section-title-tag">근태현황</div>
+        <div class="settings-group-title section-title-accent" style="font-size:19px; margin:0;">근태현황</div>
       </div>
 
     <div class="summary-cards">
@@ -2673,15 +2668,14 @@
     </div>
 
     <div class="settings-group">
-      <div style="position:relative; text-align:center; margin-bottom:18px;">
-        <!-- "이번달 근무가능일수"를 예전엔 카드 맨 왼쪽 끝에 따로 떨어뜨려 둬서 "경비정산" 제목과 뚝 떨어져
-             보였음 - 제목 바로 왼쪽에 붙는 하나의 가운데정렬 그룹으로 묶고, 작은 배경음영(pill)을 줘서
-             제목과는 다른 보조 정보라는 걸 시각적으로 구분함 -->
-        <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
-          <div style="font-size:11.5px; font-weight:700; color:var(--ink-soft); white-space:nowrap; background:var(--bg); border-radius:999px; padding:4px 10px;">이번달 근무가능일수 <span class="num" id="workdaysAutoValue" style="font-size:12px; font-weight:800; color:var(--navy);">-</span></div>
-          <div class="settings-group-title section-title-accent" style="font-size:19px; margin:0;">경비정산</div>
-        </div>
-        <button type="button" id="expenseRegisterBtn" title="경비 등록" style="position:absolute; right:0; top:50%; transform:translateY(-50%); border:none; background:var(--indigo); color:#fff; border-radius:8px; padding:5px 10px; font-size:10.5px; font-weight:800; cursor:pointer; font-family:inherit;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 등록</button>
+      <!-- "경비정산" 제목은 좌/중앙/우 3분할 그리드의 가운데 칸에 둬서 항상 정확히 카드 중앙에 오게 하고,
+           "이번달 근무가능일수"는 왼쪽 칸 안에서 오른쪽 끝(justify-self:end)으로 붙여서 제목 바로 왼쪽에
+           가깝게 보이면서도 제목 중앙정렬엔 영향을 안 주게 함(예전엔 badge+제목을 한 flex로 같이 묶어서
+           가운데 정렬해 제목 자체가 중앙에서 어긋나 보였음) -->
+      <div style="display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; margin-bottom:18px;">
+        <div style="justify-self:end; font-size:11.5px; font-weight:700; color:var(--ink-soft); white-space:nowrap; background:var(--bg); border-radius:999px; padding:4px 10px;">이번달 근무가능일수 <span class="num" id="workdaysAutoValue" style="font-size:12px; font-weight:800; color:var(--navy);">-</span></div>
+        <div class="settings-group-title section-title-accent" style="font-size:19px; margin:0; white-space:nowrap;">경비정산</div>
+        <button type="button" id="expenseRegisterBtn" title="경비 등록" style="justify-self:start; border:none; background:var(--indigo); color:#fff; border-radius:8px; padding:5px 10px; font-size:10.5px; font-weight:800; cursor:pointer; font-family:inherit;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 등록</button>
       </div>
       <div id="deadlineBanner"></div>
 
@@ -3286,7 +3280,8 @@
         </div>
         <div></div>
       </div>
-      <div id="teamCalAdvanceNote" class="cal-advance-note" style="display:none;"></div>
+      <div id="teamCalAdvanceNote" class="cal-advance-note" style="display:none; float:right; clear:both;"></div>
+      <div style="clear:both;"></div>
       <div id="adminCalendarWrap"></div>
       <p class="cal-legend">
         <span class="cal-badge leave"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 22V13"></path><path d="M12 13c0-4 3-7 7-7-1 4-4 6-7 7z"></path><path d="M12 13c0-4-3-7-7-7 1 4 4 6 7 7z"></path><path d="M12 10c0-3 2-5 5-6-1 3-3 5-5 6z"></path><path d="M12 10c0-3-2-5-5-6 1 3 3 5 5 6z"></path></svg> 휴가</span><span class="cal-badge remote"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg> 재택근무</span><span class="cal-badge holiday"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg> 공휴일</span><span class="cal-badge party"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M17 8h1a4 4 0 1 1 0 8h-1"></path><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg> 회식</span><span class="cal-badge schedule"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> 개인 일정</span><span class="cal-badge schedule"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="13" r="8"></circle><polyline points="12 9 12 13 15 15"></polyline><path d="M5 3 2 6"></path><path d="M22 6l-3-3"></path></svg> 조기퇴근</span>
@@ -18082,9 +18077,11 @@ document.getElementById('employeeShowTerminatedBtn')?.addEventListener('click', 
 });
 
 // ===== 근태경비 데이터 이관 (한 사람이 계정을 여러 개 쓸 때, 예전 계정 기록을 새 계정으로 옮겨 합침) =====
-// attendance(근태: 연차부여·연차사용·재택·출퇴근도장) + expense(경비: 점심·저녁·택시·기타·차액정산) 두 데이터만
-// 대상으로 함 - 거래처/개인정보/설정/개인일정은 계정 고유의 다른 성격 데이터라 이관 범위에서 뺌.
-// 배열은 병합(concat)만 하고 덮어쓰지 않아서, 대상 계정에 이미 있던 기록을 잃지 않게 함(비파괴적).
+// attendance(근태: 연차부여·연차사용·재택·출퇴근도장) + expense(경비: 점심·저녁·택시·기타·차액정산) + schedule(개인일정) +
+// settings.lunchLimitHistory(점심식대 한도 이력, 비어있으면 입사일도 같이) + personalInfo(개인정보) +
+// clients(거래처목록, 겹치는 거래처는 정보가 더 많이 채워진 쪽만 남기고 정리)까지 전부 대상으로 함 - 한 사람이
+// 실수로 프로필을 두 개(예: "관리자"/실명)로 나눠 쓰게 된 경우를 완전히 하나로 합치기 위함.
+// 배열은 병합(concat 또는 중복정리)만 하고 덮어쓰지 않아서, 대상 계정에 이미 있던 기록을 잃지 않게 함(비파괴적).
 function populateEmpDataTransferSelects(){
   const srcSel = document.getElementById('empDataTransferSrc');
   const dstSel = document.getElementById('empDataTransferDst');
@@ -18144,12 +18141,16 @@ function latestMonthInProfileArrayData(dataObjs, fieldKeys){
 // id 세트를 인자로 받아 여러 곳에 동시에 반영함(개인캘린더 탭엔 근태경비 탭의 #monthSelect 자체가
 // 화면에 없어서, 그 탭 안에도 똑같이 값을 보여주는 배너가 하나 더 필요함)
 function checkDataMonthHint(){
-  const monthEl = document.getElementById('monthSelect');
-  const curMonth = monthEl && monthEl.value;
+  // "이번 달엔 기록이 없고 O월엔 있어요" 안내 배너는 불필요하다는 요청으로 꺼둠 - 배너는 항상 숨김 처리만 함
   const bannerSets = [
     ['dataMonthHintBanner','dataMonthHintText'],
     ['calDataMonthHintBanner','calDataMonthHintText'],
   ];
+  bannerSets.forEach(([bId])=>{ const b=document.getElementById(bId); if(b) b.style.display='none'; });
+  return;
+  // eslint-disable-next-line no-unreachable
+  const monthEl = document.getElementById('monthSelect');
+  const curMonth = monthEl && monthEl.value;
   const hide = ()=>bannerSets.forEach(([bId])=>{ const b=document.getElementById(bId); if(b) b.style.display='none'; });
   if(!curMonth || !activeProfileId){ hide(); return; }
   const att = readProfileRaw(activeProfileId, 'attendance') || {};
@@ -18241,7 +18242,7 @@ document.getElementById('empDataTransferRunBtn')?.addEventListener('click', asyn
   const profiles = getProfiles();
   const srcName = profiles.find(p=>p.id===srcId)?.name || '(이름 미등록)';
   const dstName = profiles.find(p=>p.id===dstId)?.name || '(이름 미등록)';
-  const ok = await appConfirm(`"${srcName}" 계정의 근태(연차·재택·출퇴근)·경비·개인 일정·점심식대 한도 이력을 "${dstName}" 계정으로 옮겨 합칠까요?\n\n· 대상 계정에 이미 있던 기록은 지워지지 않고 그대로 남아요(합치기).\n· 이관이 끝나면 원본 계정의 근태·경비·개인 일정·점심식대 한도 "기록"만 비워져요 - "${srcName}" 계정 자체는 삭제되지 않고 그대로 남아요.\n· 되돌릴 수 없어요.`);
+  const ok = await appConfirm(`"${srcName}" 계정의 근태(연차·재택·출퇴근)·경비·개인 일정·점심식대 한도 이력·개인정보·거래처목록을 "${dstName}" 계정으로 옮겨 합칠까요?\n\n· 대상 계정에 이미 있던 기록은 지워지지 않고 그대로 남아요(합치기). 겹치는 거래처는 정보가 더 많이 채워진 쪽만 남아요.\n· 대상 계정에 입사일이 비어있으면 원본 계정의 입사일도 같이 채워져요.\n· 이관이 끝나면 원본 계정의 근태·경비·개인 일정·점심식대 한도·개인정보·거래처 "기록"만 비워져요 - "${srcName}" 계정 자체는 삭제되지 않고 그대로 남아요.\n· 되돌릴 수 없어요.`);
   if(!ok) return;
   try{
     const srcAtt = readProfileRaw(srcId, 'attendance') || {};
@@ -18259,21 +18260,57 @@ document.getElementById('empDataTransferRunBtn')?.addEventListener('click', asyn
     // 점심식대 한도 이력(settings.lunchLimitHistory)도 마찬가지로 근태·경비와 같은 "기록"인데, settings에
     // 들어있다는 이유만으로 이관 범위에서 빠져 있었음 - 그래서 근태·경비·일정은 정상적으로 옮겨졌는데도
     // "이달의 점심식대한도"만 대상 계정에 등록된 적 없는 값(0원)으로 보이는 문제가 있었음. settings의
-    // 다른 필드(이름·입사일 등 계정 고유 정보)는 손대지 않고 lunchLimitHistory 배열만 합침
+    // 다른 필드(이름 등 계정 고유 정보)는 손대지 않고 lunchLimitHistory 배열만 합침
     const srcSet = readProfileRaw(srcId, 'settings') || {};
     const dstSet = readProfileRaw(dstId, 'settings') || {};
     const mergedSet = mergeProfileArrayData(srcSet, dstSet, ['lunchLimitHistory'], ()=>({ lunchLimitHistory:[] }));
+    // 입사일(hireDate)도 계정 고유 정보이긴 하지만, 실수로 서로 다른 계정에 나뉘어 입력된 경우(같은 사람이
+    // 두 프로필로 쪼개져 있던 경우)엔 대상 계정에 입사일이 비어있으면 원본 계정 값을 그대로 가져와야
+    // 연차 자동계산이 정상적으로 되므로, "대상이 비어있을 때만" 채워줌(대상에 이미 값이 있으면 안 건드림)
+    if(!mergedSet.hireDate && srcSet.hireDate) mergedSet.hireDate = srcSet.hireDate;
+    // 개인정보(거래처 로그인 계정 등, personalInfo.list)도 근태·경비와 같은 "기록"이라 같은 방식으로 합침
+    const srcPersonal = readProfileRaw(srcId, 'personalInfo') || {};
+    const dstPersonal = readProfileRaw(dstId, 'personalInfo') || {};
+    const mergedPersonal = mergeProfileArrayData(srcPersonal, dstPersonal, ['list'], ()=>({ list:[] }));
+    // 거래처목록(clients.list)은 직원 프로필마다 따로 저장되는 구조라, 같은 사람이 프로필 두 개로 나뉘어
+    // 쓰인 경우 서로 다른 사본을 갖고 있을 수 있음(한쪽엔 있는데 한쪽엔 없는 거래처, 또는 같은 거래처인데
+    // 한쪽만 최신 정보(폴더링크 등)로 갱신된 경우) - 단순히 이어붙이면 같은 거래처가 중복으로 두 줄 생기므로,
+    // "중복 거래처 정리" 기능과 같은 기준(사업자번호 우선, 없으면 상호명)으로 같은 거래처를 하나로 묶고
+    // 그 중 정보가 더 많이 채워진 쪽만 남김
+    const srcClients = readProfileRaw(srcId, 'clients') || {};
+    const dstClients = readProfileRaw(dstId, 'clients') || {};
+    const clientGroups = new Map();
+    [...(srcClients.list||[]), ...(dstClients.list||[])].forEach(c=>{
+      const key = clientIdentityKey(c) || `name:${normalizeClientName(c.name)}` || `__noid__${c.id}`;
+      if(!clientGroups.has(key)) clientGroups.set(key, []);
+      clientGroups.get(key).push(c);
+    });
+    const mergedClientList = [];
+    clientGroups.forEach(group=>{
+      let best = group[0];
+      for(let i=1;i<group.length;i++){
+        const scoreI = clientCompletenessScore(group[i]) + (group[i].driveFolder ? 1 : 0);
+        const scoreBest = clientCompletenessScore(best) + (best.driveFolder ? 1 : 0);
+        if(scoreI > scoreBest) best = group[i];
+      }
+      mergedClientList.push(best);
+    });
+    const mergedClients = { ...(dstClients||{}), list: mergedClientList };
     // 대상 계정에 먼저 병합 결과를 저장 - 원본을 비우기 전에 먼저 저장해서, 중간에 실패하더라도
     // 원본 데이터가 사라지는 일(데이터 유실)만은 없게 함
     localStorage.setItem(`worklog_attendance__${dstId}`, JSON.stringify(mergedAtt));
     localStorage.setItem(`worklog_expense__${dstId}`, JSON.stringify(mergedExp));
     localStorage.setItem(`worklog_schedule__${dstId}`, JSON.stringify(mergedSch));
     localStorage.setItem(`worklog_settings__${dstId}`, JSON.stringify(mergedSet));
+    localStorage.setItem(`worklog_personalinfo__${dstId}`, JSON.stringify(mergedPersonal));
+    localStorage.setItem(`worklog_clients__${dstId}`, JSON.stringify(mergedClients));
     // 원본 쪽은 이관 완료 후 비움(같은 기록이 두 계정에 중복으로 남지 않도록) - 직원 정보 자체(이름/이메일 등)는 그대로 유지
     localStorage.setItem(`worklog_attendance__${srcId}`, JSON.stringify({ leaveGrants:[], leaveUsage:[], remoteEntries:[], clockLog:[] }));
     localStorage.setItem(`worklog_expense__${srcId}`, JSON.stringify({ lunchEntries:[], dinnerEntries:[], otherExpenses:[], taxiEntries:[], prepaidEntries:[] }));
     localStorage.setItem(`worklog_schedule__${srcId}`, JSON.stringify({ events:[] }));
     localStorage.setItem(`worklog_settings__${srcId}`, JSON.stringify({ ...srcSet, lunchLimitHistory:[] }));
+    localStorage.setItem(`worklog_personalinfo__${srcId}`, JSON.stringify({ list:[] }));
+    localStorage.setItem(`worklog_clients__${srcId}`, JSON.stringify({ ...(srcClients||{}), list:[] }));
     // 옮겨온(원본 계정의) 기록이 이번 달 것이 아니면 개인캘린더/근태경비 탭이 기본으로 보여주는 "오늘이
     // 속한 달" 화면에는 하나도 안 보여서 이관이 실패한 것처럼 보임 - 옮겨온 기록 중 가장 최근 날짜가
     // 속한 달을 기억해뒀다가, 그 대상 계정(dstId)으로 다음에 화면이 열릴 때 조회월을 그 달로 자동으로
@@ -18286,8 +18323,8 @@ document.getElementById('empDataTransferRunBtn')?.addEventListener('click', asyn
     if(transferFocusMonth) localStorage.setItem(`worklog_transfer_focus_month__${dstId}`, transferFocusMonth);
     // 지금 로그인해 쓰고 있는 계정이 이관 대상/원본 중 하나였다면, 화면에 물려있는 전역
     // attendance/expense/schedule도 같이 갱신해줘야 새로고침 없이 바로 반영됨
-    if(activeProfileId === dstId){ attendance = mergedAtt; expense = mergedExp; schedule = mergedSch; settings = mergedSet; }
-    if(activeProfileId === srcId){ attendance = { leaveGrants:[], leaveUsage:[], remoteEntries:[], clockLog:[] }; expense = { lunchEntries:[], dinnerEntries:[], otherExpenses:[], taxiEntries:[], prepaidEntries:[] }; schedule = { events:[] }; settings = { ...srcSet, lunchLimitHistory:[] }; }
+    if(activeProfileId === dstId){ attendance = mergedAtt; expense = mergedExp; schedule = mergedSch; settings = mergedSet; personalInfo = mergedPersonal; clients = mergedClients; }
+    if(activeProfileId === srcId){ attendance = { leaveGrants:[], leaveUsage:[], remoteEntries:[], clockLog:[] }; expense = { lunchEntries:[], dinnerEntries:[], otherExpenses:[], taxiEntries:[], prepaidEntries:[] }; schedule = { events:[] }; settings = { ...srcSet, lunchLimitHistory:[] }; personalInfo = { list:[] }; clients = { ...(srcClients||{}), list:[] }; }
     // 이 이관은 로컬(이 브라우저)에만 저장하고 끝나면 다른 기기(다른 직원의 로그인)에는 전혀 반영이
     // 안 되는데("아무것도 연동이 안 됐어" 피드백의 원인), 예전엔 드라이브 저장이 실패해도 콘솔에만 로그를
     // 남기고 조용히 넘어가서 사용자가 실패 사실을 알 수 없었음 - 이제 gdriveFileId가 아직 없으면 먼저
