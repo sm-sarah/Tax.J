@@ -1196,16 +1196,16 @@
      세부항목 열이 붙으면 표가 박스 폭보다 넓어질 수 있어서, 세로는 그대로 두고 가로만 이 박스 안에서 스크롤되게 함
      (그래야 표가 박스 밖으로 튀어나가 보이는 대신 박스 안에서 옆으로 스크롤됨) */
   #filingStatusTableWrap .table-scroll, #reviewStatusTableWrap .table-scroll{ max-height:none; overflow-y:visible; overflow-x:auto; }
-  /* 기장/기타/해지거래처 표: overflow-x:auto(가로 스크롤)를 주는 순간 CSS 스펙상 overflow-y도 auto/hidden 쪽으로
-     강제 변환돼서 이 박스 자신이 세로 스크롤 컨테이너가 됨 - 그런데 max-height를 없애서(자체 스크롤이 실제로는
-     안 생기게) 페이지 스크롤을 그대로 쓰려고 하면, position:sticky의 기준이 "이 박스의(발생하지 않는) 내부
-     스크롤"이 돼버려서 페이지를 내려도 헤더가 전혀 안 붙거나, 심지어 헤더가 중간 행 위로 겹쳐 보이는 문제가
-     있었음(실제 테스트로 확인). 가로 스크롤 박스 안에서 sticky 헤더가 안정적으로 동작하려면 이 박스 자체가
-     "진짜" 내부 스크롤 컨테이너여야 하므로, 기본 .table-scroll과 동일하게 경계가 있는 max-height를 다시 둬서
-     표 내용만 이 박스 안에서 세로로 스크롤되고 헤더는 그 박스 기준으로 고정되게 함 */
+  /* 기장/기타/해지거래처 표: "표 안에 또 스크롤이 생기지 말고, 이미 있는 바깥(페이지) 스크롤만 쓰고 싶다"는
+     요청 - max-height로 박스 높이를 제한하고 overflow:auto를 주면 이 박스 자체가 내부 스크롤 컨테이너가
+     되어버려서 요청과 반대로 동작하므로, 아예 이 박스에는 높이 제한도 overflow도 주지 않음(overflow:visible).
+     그러면 박스가 스크롤 컨테이너가 아니게 되어 sticky 헤더가 "페이지" 기준으로 정상 동작하고, 표는 페이지
+     스크롤을 따라 전체가 그대로 다 보임. (overflow-x:auto를 같이 주면 CSS 스펙상 overflow-y도 auto로 강제
+     전환되면서 다시 이 박스가 내부 스크롤 컨테이너가 돼버리므로, 가로 스크롤은 일부러 안 씀 - 이 표는 열
+     구성상 화면 폭 안에 보통 다 들어옴) */
   #clientsRegularListWrap .table-scroll, #clientsOtherListWrap .table-scroll,
   #clientsTerminatedListWrap .table-scroll{
-    max-height:68vh; overflow:auto;
+    max-height:none; overflow:visible;
   }
   .table-scroll table{box-shadow:none; border-radius:0; table-layout:auto; overflow:visible;}
   .table-scroll th, .table-scroll td{white-space:nowrap; padding:8px 9px; font-size:13px; text-align:center;}
@@ -2558,6 +2558,13 @@
               <div class="home-tile-icon">🗂️</div>
               <div class="home-tile-title">팀캘린더</div>
             </div>
+            <!-- 공지사항 - 예전엔 상단 아이콘(종 모양)을 눌러야만 볼 수 있었는데, 그 아이콘은 이제 "알림"
+                 (결재·공지 등 새로 온 것들의 알림 목록)으로 바뀌어서 공지사항 전용 화면은 다른 메뉴들처럼
+                 사이드바에서 바로 들어갈 수 있게 함 -->
+            <div class="home-tile home-tile-plain" id="homeSideNoticeTile" style="--tile-accent:var(--navy);">
+              <div class="home-tile-icon">📣</div>
+              <div class="home-tile-title">공지사항</div>
+            </div>
             <div class="home-tile home-tile-plain" data-goto="companyinfo" style="--tile-accent:#8B5CF6;">
               <div class="home-tile-icon">📇</div>
               <div class="home-tile-title">사내정보</div>
@@ -2616,15 +2623,15 @@
             </div>
             <div class="home-tile home-tile-plain" data-goto="approval" style="--tile-accent:#0EA5A5;">
               <div class="home-tile-icon">🖋️</div>
-              <div class="home-tile-title">결재</div>
+              <div class="home-tile-title">결재</div><span id="homeSideApprovalTotalCount" class="approval-doc-badge" style="display:none;"></span>
               <button type="button" class="home-tile-expand-btn" data-expand-target="homeWorkDocSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
             </div>
             <div class="home-submenu" id="homeWorkDocSubmenu" style="display:none;">
               <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="new"><span>기안</span></div>
-              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="draft"><span>임시저장함</span></div>
-              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="mine"><span>기안함</span></div>
-              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="rejected"><span>반려함</span></div>
-              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="inbox"><span>결재함</span></div>
+              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="draft"><span>임시저장함</span><span id="homeSideApprovalDraftCount" class="approval-doc-badge" style="display:none;"></span></div>
+              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="mine"><span>기안함</span><span id="homeSideApprovalMineCount" class="approval-doc-badge" style="display:none;"></span></div>
+              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="rejected"><span>반려함</span><span id="homeSideApprovalRejectedCount" class="approval-doc-badge" style="display:none;"></span></div>
+              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="inbox"><span>결재함</span><span id="homeSideApprovalInboxCount" class="approval-doc-badge" style="display:none;"></span></div>
               <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="all"><span>전체이력</span></div>
             </div>
             <div class="home-tile home-tile-plain" data-goto="quickguide" style="--tile-accent:var(--guide-mustard);">
@@ -4519,6 +4526,12 @@ let sharedExclusionDays = [];   // 공휴일/회식 등 제외일
 let sharedWorkHourExceptions = []; // 조기퇴근 등 근무시간 예외기간
 let sharedNoticeHistory = []; // 전 직원 공지사항 이력 [{id, content, savedAt}], 배열의 0번이 최신
 let sharedNoticeReadState = {}; // 공지사항 읽음 여부 - { [로그인이메일 또는 profile:id]: [공지id, ...] }, 계정 기준으로 기기 간 동기화됨
+// 알림(종 아이콘) 목록 - 예전엔 종 아이콘이 공지사항 화면 자체를 여는 버튼이었는데, 공지사항은 이제 사이드바의
+// 일반 메뉴가 됐고 종 아이콘은 "그동안 온 알림들"(새 결재요청/결재결과/새 공지)을 훑어보는 화면으로 바뀜.
+// [{id, type:'approval-new'|'approval-decided'|'notice', title, content, atMs(정렬·한달경과 판단용), at(화면표시용),
+//   targetEmail(이 알림을 받을 계정 - ''면 전체공지처럼 모두에게), relatedId}]
+let sharedNotificationLog = [];
+let sharedNotificationReadState = {}; // 알림 읽음 여부 - 공지사항 읽음상태와 같은 방식(계정 기준)
 let sharedAdminEmails = []; // 관리자 이메일 목록 (여러 명 가능)
 let sharedAdminNames = {}; // 관리자 이메일 -> 이름 (직원 프로필이 없는 관리자도 공지 작성자 이름이 뜨도록)
 let sharedManageSalt = ''; // PBKDF2 솔트(base64, 비밀값 아님) - 거래처 민감정보 암호화키를 관리비밀번호에서 재생성하는데 사용
@@ -4594,6 +4607,11 @@ function loadSharedData(){
     }catch(e){ /* 이관할 이전 데이터 없음 */ }
   }
   try{ sharedNoticeReadState = JSON.parse(localStorage.getItem('worklog_shared_notice_read') || '{}'); }catch(e){ sharedNoticeReadState = {}; }
+  try{ sharedNotificationLog = JSON.parse(localStorage.getItem('worklog_shared_notifications') || '[]') || []; }catch(e){ sharedNotificationLog = []; }
+  try{ sharedNotificationReadState = JSON.parse(localStorage.getItem('worklog_shared_notification_read') || '{}'); }catch(e){ sharedNotificationReadState = {}; }
+  // 알림은 "최근 한 달"만 보관하는 게 목적이라, 앱을 열 때마다 한 달 지난 항목은 공용 휴지통으로 옮겨서
+  // 목록에서 빠지게 함(완전히 지우는 게 아니라 휴지통에서 계속 확인할 수 있게 함)
+  if(typeof sweepExpiredNotifications === 'function') sweepExpiredNotifications();
   try{ sharedAdminEmails = JSON.parse(localStorage.getItem('worklog_shared_admins') || '[]'); }catch(e){ sharedAdminEmails = []; }
   try{ sharedAdminNames = JSON.parse(localStorage.getItem('worklog_shared_admin_names') || '{}'); }catch(e){ sharedAdminNames = {}; }
   try{ sharedCompanyInfo = JSON.parse(localStorage.getItem('worklog_shared_companyinfo') || 'null') || {}; }catch(e){ sharedCompanyInfo = {}; }
@@ -4713,6 +4731,8 @@ function migrateClientsToSharedStore(){
 async function saveSharedExclusions(){ try{ localStorage.setItem('worklog_shared_exclusions', JSON.stringify(sharedExclusionDays)); }catch(e){ console.error('공통 제외일 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedWorkHourExceptions(){ try{ localStorage.setItem('worklog_shared_workhours', JSON.stringify(sharedWorkHourExceptions)); }catch(e){ console.error('공통 근무시간 예외 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedNoticeHistory(){ try{ localStorage.setItem('worklog_shared_notice_history', JSON.stringify(sharedNoticeHistory)); }catch(e){ console.error('공지사항 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedNotificationLog(){ try{ localStorage.setItem('worklog_shared_notifications', JSON.stringify(sharedNotificationLog)); }catch(e){ console.error('알림 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedNotificationReadState(){ try{ localStorage.setItem('worklog_shared_notification_read', JSON.stringify(sharedNotificationReadState)); }catch(e){ console.error('알림 읽음상태 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedAdminEmails(){ try{ localStorage.setItem('worklog_shared_admins', JSON.stringify(sharedAdminEmails)); }catch(e){ console.error('관리자 목록 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedAdminNames(){ try{ localStorage.setItem('worklog_shared_admin_names', JSON.stringify(sharedAdminNames)); }catch(e){ console.error('관리자 이름 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedCompanyInfo(){ try{ localStorage.setItem('worklog_shared_companyinfo', JSON.stringify(sharedCompanyInfo)); }catch(e){ console.error('사내정보 저장 실패', e); } gdriveScheduleSync(); }
@@ -10898,6 +10918,8 @@ document.querySelectorAll('.home-tile').forEach(tile=>{
     tile.querySelector('.home-tile-expand-btn[data-expand-target]')?.click();
   });
 });
+// 공지사항 사이드바 메뉴 - 다른 항목들처럼 data-tab이 붙은 숨은 tab-btn을 거치지 않고 activateTab을 바로 호출함
+document.getElementById('homeSideNoticeTile')?.addEventListener('click', ()=> activateTab('notice', true));
 
 // 사이드바의 "⚙️ Setting" 목록(회사/직원/설정/데이터)은 일반 메뉴처럼 탭 하나로 바로 안 가고,
 // 설정 탭으로 이동한 뒤 그 안의 회사/직원/설정/데이터 카테고리 칩까지 자동으로 눌러줌
@@ -17859,6 +17881,16 @@ function renderApprovalAllBadges(){
   setPill('approvalMineCount', countApprovalUnseen('mine', mineList));
   setPill('approvalDraftCount', draftList.length);
   setPill('approvalRejectedCount', countApprovalUnseen('rejected', rejectedList));
+  // 실제로 화면에 보이는 사이드바(홈 화면 왼쪽 Company > 결재 하위메뉴)의 기안함/반려함/결재함/임시저장함
+  // 옆에도 같은 숫자를 그대로 띄움 - 위 approvalInboxCount 등은 결재 탭 안으로 들어가야 보이는 pill이라,
+  // 탭에 들어가기 전에도 사이드바 메뉴 글자 옆에서 바로 몇 건 있는지 보이게 해달라는 요청으로 추가함
+  const rejectedUnseen = countApprovalUnseen('rejected', rejectedList);
+  const mineUnseen = countApprovalUnseen('mine', mineList);
+  setPill('homeSideApprovalInboxCount', inboxList.length);
+  setPill('homeSideApprovalMineCount', mineUnseen);
+  setPill('homeSideApprovalRejectedCount', rejectedUnseen);
+  setPill('homeSideApprovalDraftCount', draftList.length);
+  setPill('homeSideApprovalTotalCount', inboxList.length + mineUnseen + rejectedUnseen + draftList.length);
 }
 // 예전 이름(renderApprovalBadge)으로 부르는 곳이 남아있어도 그대로 동작하도록 별칭 유지
 function renderApprovalBadge(){ renderApprovalAllBadges(); }
