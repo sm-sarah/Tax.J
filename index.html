@@ -1077,8 +1077,18 @@
     font-family:'Pretendard', sans-serif; font-size:13px;
     border:1.5px solid var(--border); border-radius:10px; padding:7px 9px;
     background:var(--surface); color:var(--ink);
+    width:100%; box-sizing:border-box;
   }
   .cl-pi-row input[type="text"]:focus{outline:none; border-color:var(--indigo);}
+  .cl-pi-row select.cl-pi-type{ width:100%; box-sizing:border-box; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--ink-soft); }
+  @media (max-width: 640px){
+    /* 화면이 좁으면 표 형태(가로 grid)는 오히려 칸이 너무 좁아져서 읽기 어려우므로, 행 하나가
+       세로로 쌓이는 카드 형태로 바뀜(칩처럼 나열된 항목명 위에 값들이 세로로 오는 방식) */
+    .cl-pi-row-grid{ grid-template-columns:1fr !important; text-align:left !important; }
+    .cl-pi-row-grid > div{ border-right:none !important; border-bottom:1px dashed var(--border); padding:4px 4px !important; }
+    .cl-pi-row-grid > div:last-child{ border-bottom:none; }
+    div.cl-pi-row-grid:not(.cl-pi-row){ display:none !important; }
+  }
   .cl-subtag-trigger-btn{
     font-family:'Pretendard', sans-serif; font-size:13.5px; text-align:left; cursor:pointer;
     border:1.5px solid var(--border); border-radius:10px; padding:8px 10px;
@@ -3205,8 +3215,27 @@
           </div>
           <div id="clPersonalInfoEditWrap" style="display:none;">
             <div id="clPersonalInfoRows"></div>
-            <div style="text-align:center; margin-top:8px;">
-              <button type="button" id="clPersonalInfoAddRowBtn" class="del-btn">+ 항목 추가</button>
+            <div style="text-align:center; margin:14px 0 10px; padding-top:12px; border-top:1px dashed var(--border);">
+              <span class="section-subtitle-label" id="clPersonalInfoFormTitle" style="font-size:11px;">항목 등록</span>
+            </div>
+            <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
+              <div class="field field-tile" style="flex:1 1 150px;"><label>항목</label><input type="text" id="clPiFormLabel" placeholder="예: 지방세시스템"></div>
+              <div class="field field-tile" style="flex:0 1 110px;"><label>유형</label>
+                <select id="clPiFormType">
+                  <option value="idpw">ID/PW</option>
+                  <option value="info">정보</option>
+                </select>
+              </div>
+            </div>
+            <div class="field-row" id="clPiFormIdPwRow" style="display:flex; gap:10px; flex-wrap:wrap;">
+              <div class="field field-tile" style="flex:1 1 140px;"><label>ID</label><input type="text" id="clPiFormId" placeholder="ID"></div>
+              <div class="field field-tile" style="flex:1 1 140px;"><label>PW</label><input type="text" id="clPiFormPw" placeholder="PW"></div>
+            </div>
+            <div class="field field-tile" id="clPiFormInfoRow" style="display:none;"><label>정보 내용</label><input type="text" id="clPiFormInfoVal" placeholder="예: 840719-2037914"></div>
+            <div class="field field-tile"><label>비고</label><input type="text" id="clPiFormNote" placeholder="비고 (선택)"></div>
+            <div style="display:flex; justify-content:center; gap:8px; margin-top:6px;">
+              <button type="button" id="clPiFormSubmitBtn" class="submit-btn" style="width:auto; padding:9px 20px; margin:0;">등록</button>
+              <button type="button" id="clPiFormCancelBtn" class="del-btn" style="display:none;">취소</button>
             </div>
           </div>
         </div>
@@ -8556,24 +8585,32 @@ function resetClPersonalInfoForNew(){
   clPersonalInfoEntries = [];
   ensureClPersonalInfoDefaults();
   setClPersonalInfoUnlocked(true);
+  if(typeof resetClPiForm === 'function') resetClPiForm();
   renderClPersonalInfoRows();
 }
 // 기존 거래처 수정 화면을 열 때 호출 - 비밀번호 입력 전까지는 잠가둠
 function resetClPersonalInfoForEdit(){
   clPersonalInfoEntries = [];
   setClPersonalInfoUnlocked(false);
+  if(typeof resetClPiForm === 'function') resetClPiForm();
   renderClPersonalInfoRows();
 }
-// 항목/ID·PW/비고 순서로 뭘 입력하는 칸인지 한눈에 보이도록 표 머리글을 붙임 - "정보"형(주민번호·통장비밀번호처럼
-// 값이 하나뿐인 항목)은 ID/PW 두 칸을 하나로 합쳐서 쓰기 때문에 헤더도 그 두 칸 폭을 합친 자리에 걸치도록
-// 똑같은 flex 비율(1 1 130px / 1 1 100px / 1 1 100px / 1 1 90px)로 맞춰둠
+// 예전엔 항목/ID/PW/비고를 표 형태로 한 번에 다 입력하는 방식이었는데, "조회화면처럼 등록한 목록이 보이고
+// 등록 버튼을 따로 눌러서 입력하게 해달라"는 요청으로 조회 목록(항목/정보/비고 + 수정·삭제 버튼)과
+// 등록용 입력폼(#clPiFormXxx, 화면 항상 보임)을 분리함. 수정 버튼을 누르면 그 항목의 값이 입력폼에 채워지고
+// 폼의 버튼이 "수정 완료"로 바뀜(clPersonalInfoEditingId로 어떤 항목을 고치는 중인지 기억).
+let clPersonalInfoEditingId = null;
+const CL_PI_LIST_GRID_COLS = '1fr 1.6fr 1fr 84px';
 function clPersonalInfoHeaderHtml(){
-  return `<div style="display:flex; gap:6px; flex-wrap:wrap; padding:0 8px 4px; font-size:10.5px; font-weight:700; color:var(--ink-soft);">
-    <span style="flex:1 1 130px;">항목</span>
-    <span style="flex:1 1 100px;">ID</span>
-    <span style="flex:1 1 100px;">PW</span>
-    <span style="flex:1 1 90px;">비고</span>
+  return `<div class="cl-pi-row-grid" style="display:grid; grid-template-columns:${CL_PI_LIST_GRID_COLS}; text-align:center; padding:0 8px 6px; font-size:11px; font-weight:700; color:var(--indigo-deep); border-bottom:2px solid var(--indigo-bg); margin-bottom:2px;">
+    <span>항목</span><span>정보</span><span>비고</span><span></span>
   </div>`;
+}
+function clPiInfoDisplayHtml(a){
+  const isInfo = a.type === 'info'; // type이 없으면(기존 저장분) 항상 idpw로 취급 - 하위호환
+  if(isInfo) return `<span class="num" style="font-size:13px;">${escHtml(a.idVal||'-')}</span>`;
+  return `<span style="font-size:11px; color:var(--ink-soft); font-weight:600;">ID</span> <span class="num" style="font-size:13px;">${escHtml(a.idVal||'-')}</span>
+    &nbsp; <span style="font-size:11px; color:var(--ink-soft); font-weight:600;">PW</span> <span class="num" style="font-size:13px;">${escHtml(a.pwVal||'-')}</span>`;
 }
 function renderClPersonalInfoRows(){
   const wrap = document.getElementById('clPersonalInfoRows');
@@ -8581,42 +8618,88 @@ function renderClPersonalInfoRows(){
   if(!clPersonalInfoEntries.length){
     wrap.innerHTML = `<div class="empty-state" style="padding:6px 0;">등록된 항목이 없습니다.</div>`;
   } else {
-    wrap.innerHTML = clPersonalInfoHeaderHtml() + clPersonalInfoEntries.map((a,i)=>{
-      const isInfo = a.type === 'info'; // type이 없으면(기존 저장분) 항상 idpw로 취급 - 하위호환
+    const cellDivider = 'padding:6px 8px; border-right:1px solid var(--border); min-width:0;';
+    wrap.innerHTML = clPersonalInfoHeaderHtml() + clPersonalInfoEntries.map(a=>{
       return `
-      <div class="cl-pi-row" data-idx="${i}" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; padding:6px 0; border-bottom:1px solid var(--border); ${a.locked?'background:var(--indigo-bg); border-radius:8px; padding-left:8px; padding-right:8px;':''}">
-        ${a.locked
-          ? `<span style="flex:1 1 130px; font-weight:800; font-size:12.5px; color:var(--indigo-deep);">${escHtml(a.label||'')}</span>`
-          : `<input type="text" class="cl-pi-label" data-idx="${i}" placeholder="구분(직접입력) 예: 지방세시스템" value="${escHtml(a.label||'')}" style="flex:1 1 130px;">`}
-        ${a.locked ? '' : `<select class="cl-pi-type" data-idx="${i}" style="flex:0 0 auto; font-size:12px;">
-          <option value="idpw" ${!isInfo?'selected':''}>ID/PW</option>
-          <option value="info" ${isInfo?'selected':''}>정보</option>
-        </select>`}
-        ${isInfo
-          ? `<input type="text" class="cl-pi-id" data-idx="${i}" placeholder="정보 내용" value="${escHtml(a.idVal||'')}" style="flex:2 1 210px;">`
-          : `<input type="text" class="cl-pi-id" data-idx="${i}" placeholder="ID" value="${escHtml(a.idVal||'')}" style="flex:1 1 100px;">
-        <input type="text" class="cl-pi-pw" data-idx="${i}" placeholder="PW" value="${escHtml(a.pwVal||'')}" style="flex:1 1 100px;">`}
-        <input type="text" class="cl-pi-note" data-idx="${i}" placeholder="비고" value="${escHtml(a.note||'')}" style="flex:1 1 90px;">
-        ${a.locked ? '' : `<button type="button" class="del-btn cl-pi-del-btn" data-idx="${i}">삭제</button>`}
+      <div class="cl-pi-row cl-pi-row-grid" data-id="${a.id}" style="display:grid; grid-template-columns:${CL_PI_LIST_GRID_COLS}; align-items:center; padding:4px 0; border-bottom:1px solid var(--border); ${a.locked?'background:var(--indigo-bg); border-radius:8px;':''} ${clPersonalInfoEditingId===a.id?'outline:1.5px solid var(--indigo);':''}">
+        <div style="${cellDivider} font-weight:800; font-size:12.5px; color:${a.locked?'var(--indigo-deep)':'var(--ink)'};">${escHtml(a.label||'')}</div>
+        <div style="${cellDivider}">${clPiInfoDisplayHtml(a)}</div>
+        <div style="${cellDivider} font-size:12px; color:var(--ink-soft);">${a.note ? linkifyText(a.note) : '-'}</div>
+        <div style="text-align:center; display:flex; gap:4px; justify-content:center;">
+          <button type="button" class="del-btn cl-pi-edit-btn" data-id="${a.id}" style="padding:3px 6px; font-size:10.5px;">수정</button>
+          ${a.locked ? '' : `<button type="button" class="del-btn cl-pi-del-btn" data-id="${a.id}" style="padding:3px 6px; font-size:10.5px;">삭제</button>`}
+        </div>
       </div>`;
     }).join('');
   }
-  wrap.querySelectorAll('.cl-pi-label').forEach(el=>el.addEventListener('input', e=>{ clPersonalInfoEntries[+e.target.dataset.idx].label = e.target.value; }));
-  wrap.querySelectorAll('.cl-pi-type').forEach(el=>el.addEventListener('change', e=>{
-    clPersonalInfoEntries[+e.target.dataset.idx].type = e.target.value;
-    if(e.target.value === 'info') clPersonalInfoEntries[+e.target.dataset.idx].pwVal = ''; // 정보형으로 바꾸면 PW값은 비움
-    renderClPersonalInfoRows();
+  wrap.querySelectorAll('.cl-pi-edit-btn').forEach(el=>el.addEventListener('click', e=>{
+    const entry = clPersonalInfoEntries.find(a=>a.id===e.currentTarget.dataset.id);
+    if(entry) populateClPiFormForEdit(entry);
   }));
-  wrap.querySelectorAll('.cl-pi-id').forEach(el=>el.addEventListener('input', e=>{ clPersonalInfoEntries[+e.target.dataset.idx].idVal = e.target.value; }));
-  wrap.querySelectorAll('.cl-pi-pw').forEach(el=>el.addEventListener('input', e=>{ clPersonalInfoEntries[+e.target.dataset.idx].pwVal = e.target.value; }));
-  wrap.querySelectorAll('.cl-pi-note').forEach(el=>el.addEventListener('input', e=>{ clPersonalInfoEntries[+e.target.dataset.idx].note = e.target.value; }));
-  wrap.querySelectorAll('.cl-pi-del-btn').forEach(el=>el.addEventListener('click', e=>{
-    clPersonalInfoEntries.splice(+e.target.dataset.idx, 1);
+  wrap.querySelectorAll('.cl-pi-del-btn').forEach(el=>el.addEventListener('click', async e=>{
+    const id = e.currentTarget.dataset.id;
+    if(!(await appConfirm('이 항목을 삭제할까요?'))) return;
+    clPersonalInfoEntries = clPersonalInfoEntries.filter(a=>a.id!==id);
+    if(clPersonalInfoEditingId === id) resetClPiForm();
     renderClPersonalInfoRows();
   }));
 }
-document.getElementById('clPersonalInfoAddRowBtn')?.addEventListener('click', ()=>{
-  clPersonalInfoEntries.push({id:genId(), label:'', type:'idpw', idVal:'', pwVal:'', note:''});
+// 입력폼: 유형(ID/PW ↔ 정보)에 따라 ID+PW 두 칸을 보여줄지, 정보 한 칸을 보여줄지 전환
+function clPiFormSyncTypeUI(){
+  const isInfo = document.getElementById('clPiFormType').value === 'info';
+  document.getElementById('clPiFormIdPwRow').style.display = isInfo ? 'none' : '';
+  document.getElementById('clPiFormInfoRow').style.display = isInfo ? '' : 'none';
+}
+document.getElementById('clPiFormType')?.addEventListener('change', clPiFormSyncTypeUI);
+function resetClPiForm(){
+  clPersonalInfoEditingId = null;
+  document.getElementById('clPiFormLabel').value = '';
+  document.getElementById('clPiFormLabel').disabled = false;
+  document.getElementById('clPiFormType').value = 'idpw';
+  document.getElementById('clPiFormId').value = '';
+  document.getElementById('clPiFormPw').value = '';
+  document.getElementById('clPiFormInfoVal').value = '';
+  document.getElementById('clPiFormNote').value = '';
+  clPiFormSyncTypeUI();
+  document.getElementById('clPiFormTitle').textContent = '항목 등록';
+  document.getElementById('clPiFormSubmitBtn').textContent = '등록';
+  document.getElementById('clPiFormCancelBtn').style.display = 'none';
+}
+function populateClPiFormForEdit(entry){
+  clPersonalInfoEditingId = entry.id;
+  const isInfo = entry.type === 'info';
+  document.getElementById('clPiFormLabel').value = entry.label || '';
+  document.getElementById('clPiFormLabel').disabled = !!entry.locked; // 기본 제공 항목(홈택스 등)은 항목명을 못 바꾸게 함
+  document.getElementById('clPiFormType').value = isInfo ? 'info' : 'idpw';
+  document.getElementById('clPiFormId').value = isInfo ? '' : (entry.idVal || '');
+  document.getElementById('clPiFormPw').value = entry.pwVal || '';
+  document.getElementById('clPiFormInfoVal').value = isInfo ? (entry.idVal || '') : '';
+  document.getElementById('clPiFormNote').value = entry.note || '';
+  clPiFormSyncTypeUI();
+  document.getElementById('clPiFormTitle').textContent = `"${entry.label||''}" 수정`;
+  document.getElementById('clPiFormSubmitBtn').textContent = '수정 완료';
+  document.getElementById('clPiFormCancelBtn').style.display = 'inline-block';
+  document.getElementById('clPiFormLabel').scrollIntoView({behavior:'smooth', block:'center'});
+}
+document.getElementById('clPiFormCancelBtn')?.addEventListener('click', ()=>{ resetClPiForm(); });
+document.getElementById('clPiFormSubmitBtn')?.addEventListener('click', ()=>{
+  const label = document.getElementById('clPiFormLabel').value.trim();
+  if(!label){ appAlert('항목명을 입력해주세요.'); return; }
+  const type = document.getElementById('clPiFormType').value;
+  const isInfo = type === 'info';
+  const idVal = isInfo ? document.getElementById('clPiFormInfoVal').value.trim() : document.getElementById('clPiFormId').value.trim();
+  const pwVal = isInfo ? '' : document.getElementById('clPiFormPw').value.trim();
+  const note = document.getElementById('clPiFormNote').value.trim();
+  if(clPersonalInfoEditingId){
+    const entry = clPersonalInfoEntries.find(a=>a.id===clPersonalInfoEditingId);
+    if(entry){
+      if(!entry.locked) entry.label = label;
+      entry.type = type; entry.idVal = idVal; entry.pwVal = pwVal; entry.note = note;
+    }
+  } else {
+    clPersonalInfoEntries.push({id:genId(), label, type, idVal, pwVal, note, locked:false});
+  }
+  resetClPiForm();
   renderClPersonalInfoRows();
 });
 document.getElementById('clPersonalInfoUnlockBtn')?.addEventListener('click', async ()=>{
