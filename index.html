@@ -1052,6 +1052,12 @@
   }
   .field input:focus, .field select:focus{outline:none; border-color:var(--indigo); background:var(--surface);}
   .field input:disabled, .field select:disabled{background:var(--frame-bg); color:var(--ink-soft); cursor:not-allowed; opacity:0.75;}
+  /* 필드 하나하나를 카드처럼 감싸는 스타일 - 흰 배경 입력칸이 밋밋하다는 의견이 있어서, 옅은 배경 박스 안에
+     라벨+입력칸을 함께 담아 구분감을 줌(직원휴가 수동조정 폼에서 처음 사용, 필요하면 다른 폼에도 재사용 가능) */
+  .field-tile{ background:var(--bg); border:1.5px solid var(--border); border-radius:12px; padding:8px 12px; }
+  .field-tile label{ display:block; margin-bottom:4px; }
+  .field-tile input, .field-tile select{ background:transparent; border:none; border-radius:0; padding:2px 0; }
+  .field-tile input:focus, .field-tile select:focus{ background:transparent; }
   #nm-content:empty:before{content:attr(data-placeholder); color:var(--ink-soft); pointer-events:none;}
   #ad-content:empty:before{content:attr(data-placeholder); color:var(--ink-soft); pointer-events:none;}
   .field input.num-input{font-family:'IBM Plex Mono', monospace;}
@@ -1454,6 +1460,9 @@
   .doc table{width:100%; border-collapse:collapse; margin-bottom:6px; border-radius:0; box-shadow:none;}
   .doc table th, .doc table td{border:1px solid #d8d8e2; padding:4px 8px; font-size:11.5px; text-align:center; background:#fff;}
   .doc .doc-meta th{background:var(--doc-accent-bg, var(--indigo-bg)); color:var(--doc-accent, var(--indigo-deep)); width:16%; font-weight:700;}
+  /* 성명·대상기간 줄은 다른 표보다 잘 안 보인다는 의견이 있어서 글자를 더 키움 */
+  .doc .doc-meta th, .doc .doc-meta td{font-size:15px; padding:7px 8px;}
+  .doc .doc-meta td{font-weight:700;}
   .doc table.items th{background:var(--doc-accent-bg, var(--indigo-bg)); color:var(--doc-accent, var(--indigo-deep)); font-weight:700;}
   .doc table.items td.num{font-family:'IBM Plex Mono', monospace;}
   .doc .total-box{
@@ -1932,6 +1941,14 @@
         </select>
       </div>
       <div class="field"><label id="exp-amount-label">금액 (원)</label><input type="number" id="exp-amount" class="num-input" step="1" required></div>
+      <!-- 차액정산(kind==='prepaid')일 때만 보이는 정산방식 선택 - 이 금액을 경비청구액(지출결의서)에 반영할지,
+           네이버페이(점심식대 미사용분과 같은 계좌)에 반영할지 등록할 때 골라둠 -->
+      <div class="field" id="exp-settleto-field" style="display:none;"><label>정산방식</label>
+        <select id="exp-settleto">
+          <option value="claim">경비청구액에 반영</option>
+          <option value="naverpay">네이버페이에 반영</option>
+        </select>
+      </div>
       <div class="field"><label>내용</label><input type="text" id="exp-desc" placeholder="예: 팀 점심"></div>
       <div style="text-align:center; margin-top:10px;">
         <button type="submit" id="expenseEntrySubmitBtn" class="submit-btn" style="width:auto; padding:9px 20px;">추가</button>
@@ -2671,11 +2688,14 @@
       <!-- "경비정산" 제목은 좌/중앙/우 3분할 그리드의 가운데 칸에 둬서 항상 정확히 카드 중앙에 오게 하고,
            "이번달 근무가능일수"는 왼쪽 칸 안에서 오른쪽 끝(justify-self:end)으로 붙여서 제목 바로 왼쪽에
            가깝게 보이면서도 제목 중앙정렬엔 영향을 안 주게 함(예전엔 badge+제목을 한 flex로 같이 묶어서
-           가운데 정렬해 제목 자체가 중앙에서 어긋나 보였음) -->
+           가운데 정렬해 제목 자체가 중앙에서 어긋나 보였음). "경비 등록" 버튼은 일정 등록 버튼과 헷갈리지
+           않도록 맨 위 그룹칩이 아니라 이 경비정산 카드 묶음 자체의 오른쪽 상단(오른쪽 칸)에 둠 -->
       <div style="display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; margin-bottom:18px;">
         <div style="justify-self:end; font-size:11.5px; font-weight:700; color:var(--ink-soft); white-space:nowrap; background:var(--bg); border-radius:999px; padding:4px 10px;">이번달 근무가능일수 <span class="num" id="workdaysAutoValue" style="font-size:12px; font-weight:800; color:var(--navy);">-</span></div>
         <div class="settings-group-title section-title-accent" style="font-size:19px; margin:0; white-space:nowrap;">경비정산</div>
-        <button type="button" id="expenseRegisterBtn" title="경비 등록" style="justify-self:start; border:none; background:var(--indigo); color:#fff; border-radius:8px; padding:5px 10px; font-size:10.5px; font-weight:800; cursor:pointer; font-family:inherit;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 등록</button>
+        <div style="justify-self:start;">
+          <button type="button" id="expenseRegisterBtn" class="del-btn" style="background:var(--coral-bg); color:var(--coral);" title="경비 등록"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 경비</button>
+        </div>
       </div>
       <div id="deadlineBanner"></div>
 
@@ -2729,8 +2749,11 @@
       </div>
     </div>
 
-    <!-- 지출결의서 출력 버튼 - 경비정산 그룹칩 안쪽 우측 하단에 텍스트 크기에 맞춘 작은 칩으로 배치 -->
-    <div style="text-align:right; margin-top:10px;">
+    <!-- 지출결의서 출력 버튼 - 경비정산 그룹칩 안쪽 우측 하단에 텍스트 크기에 맞춘 작은 칩으로 배치.
+         버튼 왼쪽엔 차액정산 반영처 선택에 따라 실제로 지출결의서에 잡힐 경비청구액/네이버페이 금액을
+         미리 보여줌(quickExpenseTotalsDisplay, renderExpense()에서 채움) -->
+    <div style="display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap;">
+      <div id="quickExpenseTotalsDisplay" style="font-size:11px; font-weight:700; color:var(--ink-soft); display:flex; gap:8px;"></div>
       <button type="button" id="quickPrintReportBtn" style="cursor:pointer; border:none; background:var(--coral-bg); color:var(--coral); border-radius:8px; padding:5px 10px; font-size:11px; font-weight:800; font-family:inherit;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> 지출결의서 출력</button>
     </div>
 
@@ -3549,7 +3572,6 @@
         </div>
 
         <div class="approval-doc-panel" data-approval-doc="new">
-          <p class="hint" style="text-align:center; margin-bottom:14px;">결재라인: <b>① 기안</b>(직원 등록된 사람 누구나) → <b>② 승인</b>(회계사만) — 결재자 목록은 관리자로 등록된 회계사만 나와요. 작성 중 저장만 해두려면 "임시저장"을, 결재를 요청하려면 "기안 상신"을 눌러주세요. <span style="color:var(--indigo);">테스트용으로 기안자·결재자 모두 본인을 포함해 원하는 사람으로 골라볼 수 있어요 - 알림이 어떻게 오가는지 확인해보세요.</span></p>
           <!-- 실제 사내 그룹웨어 기안문 양식을 참고해서, 기안자/소속/기안일이 자동으로 채워지는 문서 머리글과
                기안→승인 결재선을 시각적으로 보여주는 formal한 문서 느낌으로 구성함 -->
           <div class="settings-box" style="max-width:560px; padding:0; overflow:hidden;">
@@ -3961,20 +3983,20 @@
       <div class="settings-sub-title" id="ssTitle-staffLeave" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 22V13"></path><path d="M12 13c0-4 3-7 7-7-1 4-4 6-7 7z"></path><path d="M12 13c0-4-3-7-7-7 1 4 4 6 7 7z"></path><path d="M12 10c0-3 2-5 5-6-1 3-3 5-5 6z"></path><path d="M12 10c0-3-2-5-5-6 1 3 3 5 5 6z"></path></svg> 직원휴가 <span class="badge">관리자 전용</span></div>
       <p class="hint">입사일 등록 시 법정휴가는 자동으로 부여돼요. 여기는 회사 기준과 다를 때 수동으로 더하거나 빼서 맞추는 용도예요.</p>
       <div class="mini-form compact settings-addbox-topbtn" style="max-width:600px; margin:0 auto;">
-        <!-- 날짜/구분/일수 한 줄 + 메모 한 줄로 두고, 추가버튼은 더 이상 아래 줄을 따로 차지하지 않고
+        <!-- 날짜/구분/일수/조정사유를 각각 옅은 배경 박스로 감싸서 한 줄에 나란히 두고, 추가버튼은
              박스 오른쪽 위로 옮겨서(제외일수 등 다른 설정 폼과 동일한 규칙) 자리를 아낌 -->
         <form id="grantForm" style="display:flex; flex-direction:column; gap:8px; margin-bottom:0;">
-          <div style="display:flex; gap:6px; align-items:flex-end; flex-wrap:wrap; justify-content:center;">
-            <div class="field" style="width:138px; flex:0 0 auto; margin-bottom:0;"><label>날짜</label><input type="date" id="g-date" required min="2015-01-01" max="2099-12-31"></div>
-            <div class="field" style="width:110px; flex:0 0 auto; margin-bottom:0;"><label>구분</label>
+          <div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; justify-content:center;">
+            <div class="field field-tile" style="width:150px; flex:0 0 auto; margin-bottom:0;"><label>날짜</label><input type="date" id="g-date" required min="2015-01-01" max="2099-12-31"></div>
+            <div class="field field-tile" style="width:120px; flex:0 0 auto; margin-bottom:0;"><label>구분</label>
               <select id="g-mode">
                 <option value="add">추가 (+)</option>
                 <option value="subtract">차감 (−)</option>
               </select>
             </div>
-            <div class="field" style="width:96px; flex:0 0 auto; margin-bottom:0;"><label>일수</label><input type="number" id="g-days" class="num-input" step="0.5" min="0" value="1"></div>
+            <div class="field field-tile" style="width:96px; flex:0 0 auto; margin-bottom:0;"><label>일수</label><input type="number" id="g-days" class="num-input" step="0.5" min="0" value="1"></div>
+            <div class="field field-tile" style="width:180px; flex:1 1 180px; margin-bottom:0;"><label>조정사유</label><input type="text" id="g-memo" placeholder="예: 회사 기준 보정"></div>
           </div>
-          <div class="field" style="margin-bottom:0;"><label>메모</label><input type="text" id="g-memo" placeholder="예: 회사 기준 보정"></div>
           <button type="submit" class="submit-btn settings-addbtn-topright" id="grantSubmitBtn" style="width:auto;">추가</button>
           <div style="text-align:center;"><button type="button" id="grantCancelEditBtn" class="del-btn" style="display:none;">취소</button></div>
         </form>
@@ -6554,9 +6576,10 @@ function calcAttendanceSummary(monthStr){
   const monthSpecialDays = monthUsage
     .filter(u => ['포상휴가','경조사휴가','기타휴가'].includes(u.type))
     .reduce((s,u)=>s+(Number(u.days)||0), 0);
-  // 재택 이력(달력·이력표)은 항상 실제 사용일(date) 기준으로 그 달에 보여줌 - "몇 월 한도에서 차감됐는지"와
-  // "실제로 언제 재택을 썼는지"는 다를 수 있어서(당겨쓰기), 한도 계산은 아래 monthRemoteQuotaUsed로 따로 셈
-  const monthRemote = attendance.remoteEntries.filter(r => r.date.startsWith(monthStr));
+  // 재택 이력(달력·이력표·"이번달 재택근무" 건수)은 기본적으로 실제 사용일(date) 기준으로 그 달에 보여주되,
+  // 당겨쓰기(advance) 항목은 실제로는 그 달 한도(creditMonth)에서 차감되는 것이므로 사용일이 지난 달이어도
+  // 이번 달 재택 횟수에 같이 포함시킴(예: 8월에 미리 썼지만 9월 한도에서 차감되면 "9월 재택근무" 건수에 포함)
+  const monthRemote = attendance.remoteEntries.filter(r => r.date.startsWith(monthStr) || (r.advance && remoteCreditMonthOf(r) === monthStr));
   // 정기재택 월 한도(월 6회)에서 실제로 차감되는 개수 - 당겨쓰기 항목은 실제 사용일이 아니라 미리 배정된
   // creditMonth 기준으로 그 달 한도에서 빠짐(특별재택은 한도가 없어 애초에 집계 대상이 아님)
   const monthRemoteQuotaUsed = attendance.remoteEntries.filter(r => !r.bonus && remoteCreditMonthOf(r) === monthStr).length;
@@ -6579,7 +6602,6 @@ function calcExpenseSummary(monthStr){
   const monthlyLimit = workdays * dailyAmount;
   const lunchMonth = expense.lunchEntries.filter(e => e.date.startsWith(monthStr));
   const lunchSpend = lunchMonth.reduce((s,e)=>s+Number(e.amount||0),0);
-  const naverPay = Math.max(0, monthlyLimit - lunchSpend);
   const lunchOver = Math.max(0, lunchSpend - monthlyLimit);
   const dinnerMonth = expense.dinnerEntries.filter(e => e.date.startsWith(monthStr));
   const dinnerTotal = dinnerMonth.reduce((s,e)=>s+Number(e.amount||0),0);
@@ -6587,14 +6609,24 @@ function calcExpenseSummary(monthStr){
   const otherExpenseTotal = otherExpenseMonth.reduce((s,e)=>s+Number(e.amount||0),0);
   const taxiMonth = (expense.taxiEntries||[]).filter(e => e.date.startsWith(monthStr));
   const taxiTotal = taxiMonth.reduce((s,e)=>s+Number(e.amount||0),0);
+  // 차액정산은 등록할 때 "경비청구액"과 "네이버페이" 중 어디에 반영할지 고를 수 있음(settleTo) - 안 골랐던
+  // 옛 기록은 기본값인 경비청구액으로 취급함(하위호환)
   const prepaidMonth = (expense.prepaidEntries||[]).filter(e => e.date.startsWith(monthStr));
   const prepaidTotal = prepaidMonth.reduce((s,e)=>s+Number(e.amount||0),0);
+  const prepaidClaimMonth = prepaidMonth.filter(e => e.settleTo !== 'naverpay');
+  const prepaidNaverMonth = prepaidMonth.filter(e => e.settleTo === 'naverpay');
+  const prepaidClaimTotal = prepaidClaimMonth.reduce((s,e)=>s+Number(e.amount||0),0);
+  const prepaidNaverTotal = prepaidNaverMonth.reduce((s,e)=>s+Number(e.amount||0),0);
+  const naverPay = Math.max(0, monthlyLimit - lunchSpend) + prepaidNaverTotal;
+  // 경비청구액 총액(지출결의서 "경비청구액" 박스, 상단 빠른확인 표시에서 공용으로 씀) - 점심·저녁·택시·기타경비 +
+  // 경비청구액으로 반영하기로 한 차액정산만 더함(네이버페이로 반영하기로 한 차액정산은 제외)
+  const claimTotal = Math.max(0, lunchSpend + dinnerTotal + otherExpenseTotal + taxiTotal + prepaidClaimTotal);
   return {
     workdays, weekdays: wd.weekdays, deductedDays: wd.noLunchDays + wd.exclusionCount + wd.remoteNoLunchDays,
     remoteNoLunchDays: wd.remoteNoLunchDays,
     dailyAmount, monthlyLimit, lunchSpend, naverPay, lunchOver, dinnerTotal,
     lunchMonth, dinnerMonth, otherExpenseMonth, otherExpenseTotal, taxiMonth, taxiTotal,
-    prepaidMonth, prepaidTotal
+    prepaidMonth, prepaidTotal, prepaidClaimMonth, prepaidNaverMonth, prepaidClaimTotal, prepaidNaverTotal, claimTotal
   };
 }
 
@@ -6959,6 +6991,10 @@ function renderExpense(){
   const etcTotal = s.dinnerTotal + s.otherExpenseTotal + s.taxiTotal;
   document.getElementById('etcExpenseTotalDisplay').textContent = won(etcTotal);
   document.getElementById('prepaidTotalDisplay').textContent = won(s.prepaidTotal);
+  const quickTotalsEl = document.getElementById('quickExpenseTotalsDisplay');
+  if(quickTotalsEl){
+    quickTotalsEl.innerHTML = `<span>경비청구액 <b style="color:var(--coral);">${won(s.claimTotal)}</b></span><span>네이버페이 <b style="color:var(--navy);">${won(s.naverPay)}</b></span>`;
+  }
 
   // 이 달 전체 내역표는 더 이상 화면에 그대로 노출하지 않고, 카드별 "<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 이력" 버튼을 눌렀을 때만
   // renderExpenseCategoryHistory()가 그 카드에 해당하는 구분만 걸러서 팝업에 보여줌 (아래 함수 참고)
@@ -9366,10 +9402,10 @@ function buildExpenseReportHTML(monthStr){
     || `<tr><td colspan="3" style="text-align:center; color:#888;">사용 내역 없음</td></tr>`;
 
   const prepaidRows = [...s.prepaidMonth].sort((a,b)=> a.date < b.date ? -1 : 1)
-    .map(e=>`<tr><td>${e.date}</td><td class="num">${Number(e.amount)<0 ? '−' : '+'}${won(Math.abs(Number(e.amount)||0))}</td><td>${escHtml(e.memo||'')}</td></tr>`).join('')
-    || `<tr><td colspan="3" style="text-align:center; color:#888;">차액정산 내역 없음</td></tr>`;
+    .map(e=>`<tr><td>${e.date}</td><td class="num">${Number(e.amount)<0 ? '−' : '+'}${won(Math.abs(Number(e.amount)||0))}</td><td>${e.settleTo==='naverpay' ? '네이버페이' : '경비청구액'}</td><td>${escHtml(e.memo||'')}</td></tr>`).join('')
+    || `<tr><td colspan="4" style="text-align:center; color:#888;">차액정산 내역 없음</td></tr>`;
 
-  const cardRequest = Math.max(0, s.lunchSpend + s.dinnerTotal + s.otherExpenseTotal + s.taxiTotal + s.prepaidTotal);
+  const cardRequest = s.claimTotal;
 
   const monthUsageForBreakdown = attendance.leaveUsage.filter(u=>u.date.startsWith(monthStr));
   const bAnnual = monthUsageForBreakdown.filter(u=>u.type==='연차').length;
@@ -9386,9 +9422,9 @@ function buildExpenseReportHTML(monthStr){
     ['기타', bEtc, '일'],
     ['정기재택(식대미포함)', s.remoteNoLunchDays, '일'],
   ].filter(([label, val]) => val > 0);
-  const breakdownChipsHtml = breakdownChipData.map(([label, val, unit]) =>
-    `<span style="display:inline-flex; align-items:center; gap:4px; background:var(--bg); border:1px solid #E4E7F0; border-radius:8px; padding:3px 9px; margin:0 4px 4px 0; font-size:9.5px; font-weight:700; color:var(--ink-soft);">${label} <b style="color:var(--ink); font-family:'IBM Plex Mono',monospace;">${val}${unit}</b></span>`
-  ).join('');
+  // 차감일 세부내역을 따로 줄을 빼지 않고 "차감일3일(연차1일, 미식사 반차1일 ...)"처럼 차감일 칩 하나에
+  // 괄호로 바로 붙여서 보여줌 - 요청에 따라 아래쪽 별도 "차감내역" 줄은 삭제함
+  const deductedBreakdownText = breakdownChipData.map(([label, val, unit]) => `${label}${val}${unit}`).join(', ');
 
   return `
     <div class="doc">
@@ -9403,14 +9439,12 @@ function buildExpenseReportHTML(monthStr){
             <span class="label">경비청구액</span>
             <span class="amount">${won(cardRequest)}</span>
           </div>
-          <p class="doc-note" style="margin:2px 0 0; font-size:9px;">※ 점심식대·저녁식대·택시비·경비 사용분 → 급여계좌로 기준월 익월 10일 현금 지급${s.lunchOver>0 ? `<br>※ 점심식대 한도 초과액 ${won(s.lunchOver)}은 개인 부담분으로 제외됨` : ''}</p>
         </div>
         <div class="total-box" style="--doc-accent:var(--guide-wine); --doc-accent-bg:var(--guide-wine-bg); flex:1; flex-direction:column; align-items:flex-start; gap:4px; margin:0;">
           <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
             <span class="label">네이버페이</span>
             <span class="amount">${won(s.naverPay)}</span>
           </div>
-          <p class="doc-note" style="margin:2px 0 0; font-size:9px;">※ 점심식대 월한도 내 미사용분 → 네이버페이로 별도 지급</p>
         </div>
       </div>
 
@@ -9427,7 +9461,7 @@ function buildExpenseReportHTML(monthStr){
         <span style="font-size:16px; font-weight:800; color:var(--ink-soft); margin:0 4px; display:inline-block; vertical-align:middle;">−</span>
         <div style="display:inline-flex; flex-direction:column; align-items:center; background:var(--coral-bg); color:var(--coral); border-radius:10px; padding:7px 14px; margin:0 4px 6px; vertical-align:middle;">
           <span style="font-size:10px; font-weight:700;">차감일</span>
-          <b style="font-family:'IBM Plex Mono',monospace; font-size:15px; margin-top:2px;">${s.deductedDays}일</b>
+          <b style="font-family:'IBM Plex Mono',monospace; font-size:15px; margin-top:2px;">${s.deductedDays}일${deductedBreakdownText ? `<span style="font-size:10px; font-weight:700; margin-left:3px;">(${deductedBreakdownText})</span>` : ''}</b>
         </div>
         <span style="font-size:16px; font-weight:800; color:var(--ink-soft); margin:0 4px; display:inline-block; vertical-align:middle;">=</span>
         <div style="display:inline-flex; flex-direction:column; align-items:center; background:var(--amber-bg); color:#8A6D1E; border-radius:10px; padding:7px 14px; margin:0 4px 6px; vertical-align:middle;">
@@ -9435,11 +9469,6 @@ function buildExpenseReportHTML(monthStr){
           <b style="font-family:'IBM Plex Mono',monospace; font-size:15px; margin-top:2px;">${s.workdays}일</b>
         </div>
       </div>
-      ${breakdownChipData.length ? `
-      <div style="text-align:right; margin:0 0 20px;">
-        <span style="font-size:9.5px; font-weight:700; color:var(--ink-soft); margin-right:4px;">차감내역</span>
-        ${breakdownChipsHtml}
-      </div>` : ''}
 
       <div style="--doc-accent:var(--amber); --doc-accent-bg:var(--amber-bg);">
         <h2>1. 점심식대 한도 및 사용 내역</h2>
@@ -9479,7 +9508,7 @@ function buildExpenseReportHTML(monthStr){
       <div style="--doc-accent:#64748B; --doc-accent-bg:#E2E8F0;">
         <h2>5. 차액정산</h2>
         <table class="items">
-          <thead><tr><th>일자</th><th class="num">기지급 금액</th><th>내용</th></tr></thead>
+          <thead><tr><th>일자</th><th class="num">기지급 금액</th><th>반영처</th><th>내용</th></tr></thead>
           <tbody>${prepaidRows}</tbody>
         </table>
       </div>` : ''}
@@ -11452,6 +11481,7 @@ function openExpenseRegisterModal(edit){
   document.getElementById('exp-date').value = (edit && edit.date) || todayStr();
   document.getElementById('exp-amount').value = edit && edit.amount !== undefined ? edit.amount : '';
   document.getElementById('exp-desc').value = (edit && edit.desc) || '';
+  document.getElementById('exp-settleto').value = (edit && edit.settleTo) || 'claim';
   updateExpenseAmountLabel();
   document.getElementById('expenseEntrySaveMsg').textContent = '';
   document.getElementById('expenseRegisterModalOverlay').style.display = 'flex';
@@ -11463,6 +11493,9 @@ function closeExpenseRegisterModal(){
 function updateExpenseAmountLabel(){
   const kind = document.getElementById('exp-kind').value;
   document.getElementById('exp-amount-label').textContent = kind==='prepaid' ? '금액 (원) — 차감이면 마이너스로' : '금액 (원)';
+  // "정산방식"(경비청구액/네이버페이 중 어디에 반영할지)은 차액정산(prepaid)일 때만 의미가 있어서 그때만 보여줌
+  const settleField = document.getElementById('exp-settleto-field');
+  if(settleField) settleField.style.display = kind==='prepaid' ? '' : 'none';
 }
 document.getElementById('exp-kind').addEventListener('change', updateExpenseAmountLabel);
 document.getElementById('expenseRegisterBtn').addEventListener('click', ()=> openExpenseRegisterModal(null));
@@ -11479,11 +11512,14 @@ document.getElementById('expenseEntryForm').addEventListener('submit', async (e)
   if(!date || !amount) return;
   const list = EXPENSE_LIST_MAP()[kind];
   const descField = kind==='other' ? 'description' : 'memo';
+  const settleTo = kind==='prepaid' ? (document.getElementById('exp-settleto').value || 'claim') : undefined;
   if(editingExpense.id && editingExpense.kind===kind){
     const en = list.find(x=>x.id===editingExpense.id);
-    if(en){ en.date=date; en.amount=amount; en[descField]=desc; }
+    if(en){ en.date=date; en.amount=amount; en[descField]=desc; if(kind==='prepaid') en.settleTo=settleTo; else delete en.settleTo; }
   } else {
-    list.push({id:genId(), date, amount, [descField]:desc});
+    const item = {id:genId(), date, amount, [descField]:desc};
+    if(kind==='prepaid') item.settleTo = settleTo;
+    list.push(item);
   }
   await saveExpense();
   showCenterToast('저장됐어요'); document.getElementById('expenseEntrySaveMsg').textContent = '저장됨';
@@ -16267,10 +16303,12 @@ function populateDrafterSelect(){
   if(!list.length){ sel.innerHTML = `<option value="">등록된 사람이 없어요</option>`; return; }
   const prevVal = sel.value;
   sel.innerHTML = list.map(email=> `<option value="${escHtml(email)}">${escHtml(resolveNameByEmail(email))}</option>`).join('');
-  if(prevVal && list.some(e=>e.toLowerCase()===prevVal.toLowerCase())){
-    sel.value = list.find(e=>e.toLowerCase()===prevVal.toLowerCase());
-  } else if(currentUserEmail && list.some(e=>e.toLowerCase()===currentUserEmail)){
+  // 기안자는 항상 "지금 로그인한 본인" 계정이 기본으로 나오도록 함 - 이전엔 최초 렌더 시 select의 기본
+  // 선택값(첫 옵션, 예: 회계사)이 prevVal로 굳어버려서 로그인이 끝난 뒤에도 계속 그 사람으로 남는 문제가 있었음
+  if(currentUserEmail && list.some(e=>e.toLowerCase()===currentUserEmail)){
     sel.value = list.find(e=>e.toLowerCase()===currentUserEmail);
+  } else if(prevVal && list.some(e=>e.toLowerCase()===prevVal.toLowerCase())){
+    sel.value = list.find(e=>e.toLowerCase()===prevVal.toLowerCase());
   }
 }
 // 지금 폼에서 "기안자"로 선택된 이메일 - 선택 UI가 아직 안 채워졌거나 값이 없으면 실제 로그인 계정으로 대체함
