@@ -1102,6 +1102,8 @@
   #clPersonalInfoRows table thead th:last-child{ border-top-right-radius:12px; }
   #clPersonalInfoRows table tbody tr:last-child td:first-child{ border-bottom-left-radius:12px; }
   #clPersonalInfoRows table tbody tr:last-child td:last-child{ border-bottom-right-radius:12px; }
+  /* 등록된 항목(홈택스 등) 글자가 왼쪽으로 붙어 보인다는 의견으로 이 표는 항상 가운데 정렬로 통일 */
+  #clPersonalInfoRows table th, #clPersonalInfoRows table td{ text-align:center !important; }
   .cl-subtag-trigger-btn{
     font-family:'Pretendard', sans-serif; font-size:13.5px; text-align:left; cursor:pointer;
     border:1.5px solid var(--border); border-radius:10px; padding:8px 10px;
@@ -1201,7 +1203,7 @@
      "순번·상호명" 같은 헤더 줄이 네비 바로 아래에 계속 보임 */
   #clientsRegularListWrap .table-scroll thead th, #clientsOtherListWrap .table-scroll thead th,
   #clientsTerminatedListWrap .table-scroll thead th{
-    top:var(--tabs-h, 60px);
+    top:var(--top-bar-h, 96px);
   }
   .table-scroll table{box-shadow:none; border-radius:0; table-layout:auto; overflow:visible;}
   .table-scroll th, .table-scroll td{white-space:nowrap; padding:8px 9px; font-size:13px; text-align:center;}
@@ -2241,6 +2243,11 @@
         <div class="field">
           <label>직책 <span style="font-weight:400; color:var(--ink-soft);">(선택)</span></label>
           <input type="text" id="s-position" placeholder="예: 대리">
+        </div>
+        <div class="field">
+          <label>캐릭터 <span style="font-weight:400; color:var(--ink-soft);">(의견 남길 때 이름 옆에 표시돼요)</span></label>
+          <input type="hidden" id="s-avatar" value="">
+          <div id="s-avatar-picker" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
         </div>
         <div class="field">
           <label>생년월일</label>
@@ -4830,6 +4837,30 @@ function leaveAbsenceTime(dateStr, type, subtype){
 }
 
 // ===== 직원(프로필) 관리 =====
+// 직원 등록 시 고를 수 있는 캐릭터(이모지) 세트 - 기안 의견란 등에서 "캐릭터 + 이름 + 의견" 형태로 표시하는 데 씀
+const STAFF_AVATAR_OPTIONS = ['🐱','🐶','🐰','🐻','🦊','🐼','🐯','🐸','🐧','🦁','🐨','🐹','🦉','🐵','🐷','🐙'];
+function renderAvatarPicker(selected){
+  const wrap = document.getElementById('s-avatar-picker');
+  if(!wrap) return;
+  wrap.innerHTML = STAFF_AVATAR_OPTIONS.map(a=>`
+    <button type="button" class="s-avatar-opt" data-avatar="${a}" style="width:34px; height:34px; font-size:17px; border-radius:10px; border:1.5px solid ${a===selected?'var(--indigo)':'var(--border)'}; background:${a===selected?'var(--indigo-bg)':'var(--surface)'}; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:border-color .15s, background .15s;">${a}</button>
+  `).join('');
+  wrap.querySelectorAll('.s-avatar-opt').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const val = btn.dataset.avatar;
+      const cur = document.getElementById('s-avatar').value;
+      document.getElementById('s-avatar').value = (cur === val) ? '' : val; // 다시 누르면 선택 해제
+      renderAvatarPicker(document.getElementById('s-avatar').value);
+    });
+  });
+}
+// resolveNameByEmail과 짝이 되는 함수 - 기안 의견 등에서 이메일로 그 직원의 캐릭터를 찾을 때 씀
+function resolveAvatarByEmail(email){
+  if(!email) return '';
+  const lower = email.toLowerCase();
+  const p = getProfiles().find(x=>(x.email||'').toLowerCase()===lower);
+  return (p && p.avatar) || '';
+}
 let activeProfileId = '';
 function getProfiles(){ try{ const p = localStorage.getItem('worklog_profiles'); return p ? JSON.parse(p) : []; }catch(e){ return []; } }
 // 직원등록 직후엔 로컬에 바로 반영돼서 눈에 보이지만, 여긴 다른 save* 함수들과 달리 gdriveScheduleSync()를
@@ -6121,6 +6152,8 @@ async function loadAll(){
   {
     const curProfile = getProfiles().find(pr=>pr.id===activeProfileId);
     document.getElementById('s-position').value = (curProfile && curProfile.position) || '';
+    document.getElementById('s-avatar').value = (curProfile && curProfile.avatar) || '';
+    renderAvatarPicker(document.getElementById('s-avatar').value);
   }
   renderEmployeeInfoView();
   renderEmployeeInfoHistory();
@@ -6534,6 +6567,21 @@ window.addEventListener('scroll', ()=>{
   apply();
   if(typeof ResizeObserver === 'function'){
     new ResizeObserver(apply).observe(tabsEl);
+  } else {
+    window.addEventListener('resize', apply);
+  }
+})();
+// 사이드바 레이아웃으로 바뀌면서 nav.tabs는 display:none이 돼 높이가 항상 0이 됨(--tabs-h가 무의미해짐) -
+// 실제로 화면 맨 위에 고정돼 떠있는 건 이제 이 아이콘 바(#appTopIconBar)라서, 거래처 표의 sticky 헤더가
+// 그 밑으로 가려지지 않으려면 이 바의 실제 높이만큼 내려서 붙어야 함(안 그러면 헤더가 아이콘 바 뒤에
+// 숨어버려서 스크롤하면 표 헤더가 통째로 사라진 것처럼 보였음)
+(function setupTopBarHeightVar(){
+  const barEl = document.getElementById('appTopIconBar');
+  if(!barEl) return;
+  const apply = () => document.documentElement.style.setProperty('--top-bar-h', barEl.offsetHeight + 'px');
+  apply();
+  if(typeof ResizeObserver === 'function'){
+    new ResizeObserver(apply).observe(barEl);
   } else {
     window.addEventListener('resize', apply);
   }
@@ -8811,36 +8859,50 @@ function renderClPersonalInfoRows(){
         // "그 자리에서 바로 고치는" 느낌이 나게 함(테두리 없는 투명 배경 + 밑줄만) - 행 배경은 그대로 두고
         // 왼쪽에 얇은 인디고 줄만 붙여서 지금 수정 중인 줄이라는 걸 표시함
         const inlineInputStyle = `width:100%; border:none; border-bottom:1.5px solid var(--indigo); border-radius:0; padding:4px 2px; background:transparent; box-sizing:border-box;`;
+        // 메모는 별도 열을 두지 않고(표가 가로로 넘쳐서 스크롤이 생기는 원인이었음), 항목명 밑에 작은
+        // "메모" 토글 링크로 접어두고 눌렀을 때만 입력칸이 펼쳐지게 함 - 이미 메모가 있으면 펼친 채로 보여줌
         return `<tr data-id="${a.id}" style="box-shadow:inset 3px 0 0 var(--indigo);">
-          <td><input type="text" class="cl-pi-inline-label" value="${escHtml(a.label||'')}" ${a.locked?'disabled':''} style="${inlineInputStyle} font-size:13px; font-weight:700;"></td>
+          <td style="text-align:center;">
+            <input type="text" class="cl-pi-inline-label" value="${escHtml(a.label||'')}" ${a.locked?'disabled':''} style="${inlineInputStyle} font-size:13px; font-weight:700; text-align:center;">
+            <button type="button" class="cl-pi-inline-note-toggle" style="border:none; background:none; cursor:pointer; color:var(--ink-soft); font-size:10.5px; font-weight:700; margin-top:4px; padding:0;">${a.note ? '📝 메모 수정' : '+ 메모'}</button>
+            <textarea class="cl-pi-inline-note" rows="2" placeholder="메모" style="display:${a.note ? '' : 'none'}; ${inlineInputStyle} margin-top:4px; font-size:11.5px; font-family:'Pretendard',sans-serif; resize:none; text-align:center;">${escHtml(a.note||'')}</textarea>
+          </td>
           <td>
-            ${a.locked ? '' : `<label style="display:flex; align-items:center; gap:5px; font-size:10.5px; font-weight:700; color:var(--ink-soft); margin-bottom:5px; cursor:pointer;"><input type="checkbox" class="cl-pi-inline-idpw" ${isInfo?'':'checked'} style="width:auto;"> ID/PW로 등록</label>`}
+            ${a.locked ? '' : `<label style="display:flex; align-items:center; justify-content:center; gap:5px; font-size:10.5px; font-weight:700; color:var(--ink-soft); margin-bottom:5px; cursor:pointer;"><input type="checkbox" class="cl-pi-inline-idpw" ${isInfo?'':'checked'} style="width:auto;"> ID/PW로 등록</label>`}
             <div class="cl-pi-inline-idpw-row" style="display:${isInfo?'none':'flex'}; gap:6px; flex-wrap:nowrap; align-items:center;">
               <span style="display:inline-flex; align-items:center; gap:2px; min-width:0; flex:1 1 0;"><span style="flex:0 0 auto; font-size:9px; font-weight:800; color:var(--indigo-deep); background:var(--indigo-bg); padding:1px 4px; border-radius:8px;">ID</span><input type="text" class="cl-pi-inline-id num" value="${escHtml(a.idVal||'')}" style="${inlineInputStyle} width:auto; min-width:0; flex:1 1 0; font-size:11.5px;"></span>
               <span style="display:inline-flex; align-items:center; gap:2px; min-width:0; flex:1 1 0;"><span style="flex:0 0 auto; font-size:9px; font-weight:800; color:var(--coral); background:var(--coral-bg); padding:1px 4px; border-radius:8px;">PW</span><input type="text" class="cl-pi-inline-pw num" value="${escHtml(a.pwVal||'')}" style="${inlineInputStyle} width:auto; min-width:0; flex:1 1 0; font-size:11.5px;"></span>
             </div>
-            <input type="text" class="cl-pi-inline-infoval num" value="${escHtml(isInfo?(a.idVal||''):'')}" placeholder="예: 123456-0000000" style="display:${isInfo?'':'none'}; ${inlineInputStyle} font-size:12.5px;">
+            <input type="text" class="cl-pi-inline-infoval num" value="${escHtml(isInfo?(a.idVal||''):'')}" placeholder="예: 123456-0000000" style="display:${isInfo?'':'none'}; ${inlineInputStyle} font-size:12.5px; text-align:center;">
           </td>
-          <td><textarea class="cl-pi-inline-note" rows="2" style="${inlineInputStyle} min-width:120px; font-size:12px; font-family:'Pretendard',sans-serif; resize:none;">${escHtml(a.note||'')}</textarea></td>
           <td style="white-space:nowrap; text-align:center;">
             ${clPiIconBtn('cl-pi-inline-save', 'save', '저장', a.id)}
             ${clPiIconBtn('cl-pi-inline-cancel', 'cancel', '취소', a.id)}
           </td>
         </tr>`;
       }
+      // 메모는 표에 별도 열로 안 보이고, 있을 때만 항목명 옆에 * 칩으로 표시(마우스 올리면 내용이 툴팁으로 뜸) -
+      // 다른 표(거래처 상세구분 등)에서 쓰는 것과 같은 공용 .chip-star 툴팁 방식을 그대로 재사용함
+      const noteStar = a.note ? `<sup class="chip-star" data-tip="${escHtml(a.note)}" style="cursor:pointer; font-size:12px; font-weight:900; line-height:1; color:${a.locked?'var(--indigo-deep)':'var(--coral)'}; margin-left:2px;">*</sup>` : '';
       return `<tr data-id="${a.id}" style="${a.locked?'background:var(--indigo-bg);':''}">
-        <td style="font-weight:700; color:${a.locked?'var(--indigo-deep)':'var(--ink)'};">${escHtml(a.label||'')}</td>
-        <td>${clPiInfoDisplayHtml(a)}</td>
-        <td style="white-space:pre-wrap; font-size:12px; color:var(--ink-soft); max-width:220px;">${a.note ? linkifyText(a.note) : ''}</td>
-        <td style="white-space:nowrap;">
+        <td style="font-weight:700; color:${a.locked?'var(--indigo-deep)':'var(--ink)'}; text-align:center;">${escHtml(a.label||'')}${noteStar}</td>
+        <td style="text-align:center;">${clPiInfoDisplayHtml(a)}</td>
+        <td style="white-space:nowrap; text-align:center;">
           <button type="button" class="del-btn cl-pi-edit-btn" data-id="${a.id}">수정</button>
           <button type="button" class="del-btn cl-pi-history-btn" data-id="${a.id}" ${(a.history&&a.history.length)?'':'disabled style="opacity:0.4;"'}>이력</button>
           ${a.locked ? '' : `<button type="button" class="del-btn cl-pi-del-btn" data-id="${a.id}">삭제</button>`}
         </td>
       </tr>`;
     }).join('');
-    wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th>항목</th><th>정보</th><th>메모</th><th>관리</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th style="text-align:center;">항목</th><th style="text-align:center;">정보</th><th style="text-align:center;">관리</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
+  wrap.querySelectorAll('.cl-pi-inline-note-toggle').forEach(el=>el.addEventListener('click', e=>{
+    const ta = e.currentTarget.parentElement.querySelector('.cl-pi-inline-note');
+    if(!ta) return;
+    const showing = ta.style.display !== 'none';
+    ta.style.display = showing ? 'none' : '';
+    if(!showing) ta.focus();
+  }));
   wrap.querySelectorAll('.cl-pi-edit-btn').forEach(el=>el.addEventListener('click', e=>{
     clPersonalInfoEditingId = e.currentTarget.dataset.id;
     renderClPersonalInfoRows();
@@ -12869,10 +12931,12 @@ document.getElementById('settingsForm').addEventListener('submit', async (e)=>{
   // 직책은 settings가 아니라 profiles 배열(직원현황 로스터가 읽는 곳)에 저장해야 목록에도 바로 반영됨
   {
     const newPosition = document.getElementById('s-position').value.trim();
+    const newAvatar = document.getElementById('s-avatar').value || '';
     const profiles = getProfiles();
     const curProfile = profiles.find(pr=>pr.id===activeProfileId);
-    if(curProfile && curProfile.position !== newPosition){
+    if(curProfile && (curProfile.position !== newPosition || curProfile.avatar !== newAvatar)){
       curProfile.position = newPosition;
+      curProfile.avatar = newAvatar;
       saveProfiles(profiles);
       renderEmployeeRoster();
     }
@@ -16578,7 +16642,7 @@ function approvalDocTypeChipsHtml(bucket){
   const cur = approvalDocTypeFilter[bucket] || '전체';
   const opts = ['전체', ...APPROVAL_DOC_TYPES];
   return `<div class="approval-doctype-chips" data-bucket="${bucket}" style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-bottom:10px;">
-    ${opts.map(t=>`<button type="button" class="del-btn approval-doctype-chip-btn${t===cur?' active':''}" data-doctype="${escHtml(t)}" style="${t===cur?'background:var(--indigo); color:#fff;':''}">${escHtml(t)}</button>`).join('')}
+    ${opts.map(t=>`<button type="button" class="del-btn approval-doctype-chip-btn${t===cur?' active':''}" data-doctype="${escHtml(t)}" style="${t===cur?'background:var(--indigo); color:#fff;':'background:var(--surface); border:1.5px solid var(--border); color:var(--ink-soft);'}">${escHtml(t)}</button>`).join('')}
   </div>`;
 }
 function bindApprovalDocTypeChips(container, onChange){
@@ -16866,11 +16930,16 @@ function renderApprovalAll(){
 function approvalCommentListHtml(item){
   const list = item.comments || [];
   if(!list.length) return `<div class="hint" style="margin:0 0 10px;">아직 의견이 없어요.</div>`;
-  return `<div style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;">${list.map(c=>`
+  return `<div style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;">${list.map(c=>{
+    // 캐릭터는 의견 등록 당시 저장해둔 값을 기본으로 쓰되, 이메일로 지금 등록된 캐릭터가 있으면 최신 걸로 보여줌
+    // (나중에 캐릭터를 바꾸면 예전 의견에도 새 캐릭터가 반영되게)
+    const avatar = (c.authorEmail && resolveAvatarByEmail(c.authorEmail)) || c.avatar || '';
+    return `
     <div style="background:var(--bg); border-radius:10px; padding:8px 12px; ${c.decision ? 'border-left:3px solid '+(c.decision==='승인' ? 'var(--indigo)' : 'var(--coral)')+';' : ''}">
-      <div style="font-size:11px; color:var(--ink-soft); font-weight:700; margin-bottom:3px;">${escHtml(c.author||'')}${c.decision ? ` · <span style="color:${c.decision==='승인'?'var(--indigo)':'var(--coral)'};">${c.decision}</span>` : ''} · ${escHtml(c.at||'')}</div>
+      <div style="font-size:11px; color:var(--ink-soft); font-weight:700; margin-bottom:3px;">${avatar ? `<span style="font-size:13px; margin-right:2px;">${avatar}</span>` : ''}${escHtml(c.author||'')}${c.decision ? ` · <span style="color:${c.decision==='승인'?'var(--indigo)':'var(--coral)'};">${c.decision}</span>` : ''} · ${escHtml(c.at||'')}</div>
       <div style="font-size:13px; color:var(--ink); white-space:pre-wrap;">${escHtml(c.text||'')}</div>
-    </div>`).join('')}</div>`;
+    </div>`;
+  }).join('')}</div>`;
 }
 // 결재자가 처음 열어보면 "기안" → "검토중"으로 자동 전환(읽음 처리) - 대시보드/전체이력에서 진행상태를 알 수
 // 있게 함. 상태가 실제로 바뀌었으면 true를 돌려줘서 호출부가 저장·배지 갱신을 하도록 함
@@ -16893,55 +16962,59 @@ function approvalDetailBodyHtml(item){
   const drafterName = escHtml(resolveNameByEmail(item.drafterEmail)||item.drafterName||'-');
   const approverName = escHtml(resolveNameByEmail(item.approverEmail)||item.approverName||'-');
   const teamLabel = escHtml([sharedCompanyName, (sharedTeamInfo&&sharedTeamInfo.teamName)].filter(Boolean).join(' ') || '-');
-  const td = 'padding:8px 10px; border:1px solid var(--border); font-size:12.5px;';
+  const td = 'padding:6px 8px; border:1px solid var(--border); font-size:11.5px;';
+  // 업무기안 제목부터 승인/반려 버튼까지 전체를 하나의 카드로 묶어서 배경(패널 색)과 확실히 구분되게 함 -
+  // 예전엔 문서 박스(흰 배경)와 의견/버튼 영역(배경 없이 패널 색 그대로)이 서로 다른 톤이라 어디까지가
+  // 한 묶음인지 잘 안 보였음. 기안자~결재 정보는 "업무기안" 큰 제목과 같은 줄 오른쪽에 작게 배치해서
+  // 제목 영역이 불필요하게 넓은 흰 여백을 차지하지 않게 함
   return `
-    <div style="text-align:center; margin-bottom:10px;"><span class="tag" style="background:var(--surface); color:var(--ink-soft);">${escHtml(item.docType||'일반')}</span> ${approvalStatusTagHtml(item.status, null, item.resubmitCount)}</div>
-    <div style="border:1.5px solid var(--border); border-radius:6px; overflow:hidden; text-align:left; background:#fff;">
-      <div style="padding:22px 20px 16px; text-align:center; border-bottom:3px double var(--navy);">
-        <div style="font-size:21px; font-weight:900; letter-spacing:9px; color:var(--navy);">업&nbsp;무&nbsp;기&nbsp;안</div>
+    <div class="approval-doc-card" style="border:1.5px solid var(--border); border-radius:16px; background:var(--surface); padding:16px 18px 18px; box-shadow:0 1px 2px rgba(29,30,51,0.04);">
+      <div style="text-align:center; margin-bottom:10px;"><span class="tag" style="background:var(--bg); color:var(--ink-soft);">${escHtml(item.docType||'일반')}</span> ${approvalStatusTagHtml(item.status, null, item.resubmitCount)}</div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap; padding-bottom:12px; border-bottom:2px solid var(--navy); margin-bottom:14px;">
+        <div style="font-size:18px; font-weight:900; letter-spacing:6px; color:var(--navy); padding-top:6px; white-space:nowrap;">업&nbsp;무&nbsp;기&nbsp;안</div>
+        <div style="display:flex; gap:0; flex-wrap:wrap; justify-content:flex-end;">
+          <table style="border-collapse:collapse; width:auto; border-radius:0; box-shadow:none; border:none; background:transparent;">
+            <tr><td style="${td} background:var(--bg); font-weight:700;">기안자</td><td style="${td}">${drafterName}</td></tr>
+            <tr><td style="${td} background:var(--bg); font-weight:700;">소속</td><td style="${td}">${teamLabel}</td></tr>
+            <tr><td style="${td} background:var(--bg); font-weight:700;">기안일</td><td style="${td}">${escHtml(item.createdAt||'-')}</td></tr>
+          </table>
+          <table style="border-collapse:collapse; text-align:center; width:auto; border-radius:0; box-shadow:none; border:none; background:transparent;">
+            <tr><td colspan="2" style="${td} background:var(--bg); font-weight:700;">결재</td></tr>
+            <tr>
+              <td style="${td} color:var(--ink-soft); font-weight:700;">신청</td>
+              <td style="${td} color:var(--ink-soft); font-weight:700;">승인</td>
+            </tr>
+            <tr>
+              <td style="${td} font-weight:800; min-width:60px;">${drafterName}</td>
+              <td style="${td} font-weight:800; min-width:60px;">${approverName}</td>
+            </tr>
+          </table>
+        </div>
       </div>
-      <div style="display:flex; flex-wrap:wrap; border-bottom:1px solid var(--border);">
-        <table style="flex:0 1 auto; border-collapse:collapse; width:auto; border-radius:0; box-shadow:none; border:none; background:transparent;">
-          <tr><td style="${td} background:var(--bg); font-weight:700; width:72px;">기안자</td><td style="${td}">${drafterName}</td></tr>
-          <tr><td style="${td} background:var(--bg); font-weight:700;">소속</td><td style="${td}">${teamLabel}</td></tr>
-          <tr><td style="${td} background:var(--bg); font-weight:700;">기안일</td><td style="${td}">${escHtml(item.createdAt||'-')}</td></tr>
-          <tr><td style="${td} background:var(--bg); font-weight:700;">문서종류</td><td style="${td}">${escHtml(item.docType||'일반')}</td></tr>
-        </table>
-        <table style="border-collapse:collapse; text-align:center; flex:0 0 auto; width:auto; border-radius:0; box-shadow:none; border:none; background:transparent;">
-          <tr><td colspan="2" style="${td} background:var(--bg); font-weight:700;">결재</td></tr>
-          <tr>
-            <td style="${td} color:var(--ink-soft); font-weight:700;">신청</td>
-            <td style="${td} color:var(--ink-soft); font-weight:700;">승인</td>
-          </tr>
-          <tr>
-            <td style="${td} font-weight:800; min-width:76px;">${drafterName}</td>
-            <td style="${td} font-weight:800; min-width:76px;">${approverName}</td>
-          </tr>
-        </table>
+      <div style="display:flex; border-bottom:1px solid var(--border); margin-bottom:12px; padding-bottom:12px;">
+        <div style="font-weight:700; width:56px; flex:0 0 auto; font-size:12.5px; color:var(--ink-soft);">제목</div>
+        <div style="flex:1 1 auto; font-size:14.5px; font-weight:800; color:var(--ink);">${escHtml(item.title)}</div>
       </div>
-      <div style="display:flex; border-bottom:1px solid var(--border);">
-        <div style="${td} background:var(--bg); font-weight:700; width:72px; flex:0 0 auto;">제목</div>
-        <div style="${td} flex:1 1 auto; font-size:14.5px; font-weight:800; color:var(--ink);">${escHtml(item.title)}</div>
-      </div>
-      <div style="padding:16px; min-height:80px; font-size:13px; line-height:1.75; white-space:pre-wrap; user-select:text;">${contentHtml}</div>
-      ${attachmentHtml ? `<div style="padding:0 16px 16px; border-top:1px solid var(--border); padding-top:12px;">${attachmentHtml}</div>` : ''}
+      <div style="min-height:80px; font-size:13px; line-height:1.75; white-space:pre-wrap; user-select:text;">${contentHtml}</div>
+      ${attachmentHtml ? `<div style="border-top:1px solid var(--border); padding-top:12px; margin-top:12px;">${attachmentHtml}</div>` : ''}
+      <div style="border-top:1px solid var(--border); margin:16px 0 12px;"></div>
+      <div style="font-weight:800; font-size:12.5px; color:var(--ink);">의견</div>
+      <div style="margin-top:8px;" id="approvalCommentListWrap-${item.id}">${approvalCommentListHtml(item)}</div>
+      ${canComment ? `
+        <div style="display:flex; gap:6px;">
+          <input type="text" class="approval-new-comment" data-id="${item.id}" placeholder="의견을 남겨보세요" style="flex:1; border:1.5px solid var(--border); border-radius:10px; padding:8px 10px; font-size:13px; font-family:'Pretendard',sans-serif; background:var(--bg);">
+          <button type="button" class="del-btn approval-add-comment-btn" data-id="${item.id}" style="background:var(--indigo-bg); color:var(--indigo-deep);">등록</button>
+        </div>
+      ` : ''}
+      ${canDecide ? `
+        <!-- 승인/반려 둘 다 같은 .del-btn 기반에 패딩·글자크기·둥근모서리를 똑같이 맞추고, 색만 달리해서
+             구분되게 함(예전엔 승인이 .submit-btn이라 글자 크기·모서리·그림자가 반려와 서로 달라 짝이 안 맞아 보였음) -->
+        <div style="text-align:center; display:flex; gap:10px; justify-content:center; margin-top:14px;">
+          <button type="button" class="del-btn approval-approve-btn" data-id="${item.id}" style="padding:9px 26px; font-size:13px; border-radius:10px; background:var(--indigo); color:#fff;">승인</button>
+          <button type="button" class="del-btn approval-reject-btn" data-id="${item.id}" style="padding:9px 26px; font-size:13px; border-radius:10px; background:var(--coral-bg); color:var(--coral);">반려</button>
+        </div>
+      ` : ''}
     </div>
-    <div style="margin-top:16px; font-weight:800; font-size:12.5px; color:var(--ink);">의견</div>
-    <div style="margin-top:8px;" id="approvalCommentListWrap-${item.id}">${approvalCommentListHtml(item)}</div>
-    ${canComment ? `
-      <div style="display:flex; gap:6px;">
-        <input type="text" class="approval-new-comment" data-id="${item.id}" placeholder="의견을 남겨보세요" style="flex:1; border:1.5px solid var(--border); border-radius:10px; padding:8px 10px; font-size:13px; font-family:'Pretendard',sans-serif;">
-        <button type="button" class="del-btn approval-add-comment-btn" data-id="${item.id}" style="background:var(--indigo-bg); color:var(--indigo-deep);">등록</button>
-      </div>
-    ` : ''}
-    ${canDecide ? `
-      <!-- 승인/반려 둘 다 같은 .del-btn 기반에 패딩·글자크기·둥근모서리를 똑같이 맞추고, 색만 달리해서
-           구분되게 함(예전엔 승인이 .submit-btn이라 글자 크기·모서리·그림자가 반려와 서로 달라 짝이 안 맞아 보였음) -->
-      <div style="text-align:center; display:flex; gap:10px; justify-content:center; margin-top:14px;">
-        <button type="button" class="del-btn approval-approve-btn" data-id="${item.id}" style="padding:9px 26px; font-size:13px; border-radius:10px; background:var(--indigo); color:#fff;">승인</button>
-        <button type="button" class="del-btn approval-reject-btn" data-id="${item.id}" style="padding:9px 26px; font-size:13px; border-radius:10px; background:var(--coral-bg); color:var(--coral);">반려</button>
-      </div>
-    ` : ''}
   `;
 }
 // approvalDetailBodyHtml이 들어간 영역 안의 이벤트(의견 등록/승인/반려/첨부이미지 로딩)를 한 번에 묶어서 바인딩
@@ -16979,6 +17052,8 @@ async function addApprovalComment(id, decisionLabel){
   item.comments = item.comments || [];
   item.comments.push({
     author: resolveNameByEmail(currentUserEmail) || currentUserEmail || '',
+    authorEmail: currentUserEmail || '',
+    avatar: resolveAvatarByEmail(currentUserEmail) || '',
     at: new Date().toLocaleString('ko-KR'),
     text,
     decision: decisionLabel || null,
@@ -17000,6 +17075,8 @@ async function decideApproval(id, decision){
   item.comments = item.comments || [];
   item.comments.push({
     author: resolveNameByEmail(currentUserEmail) || currentUserEmail || '',
+    authorEmail: currentUserEmail || '',
+    avatar: resolveAvatarByEmail(currentUserEmail) || '',
     at: item.decidedAt,
     text: noteText,
     decision,
@@ -18218,7 +18295,7 @@ function renderEmployeeRoster(){
       : '';
     return `
     <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 12px; background:var(--bg); border-radius:10px; margin-bottom:6px; flex-wrap:wrap; ${terminated ? 'opacity:0.7;' : ''}">
-      <span style="font-size:13px; font-weight:700;">${escHtml(p.name || '(이름 미등록)')}${p.position ? ` <span style="font-weight:600; color:var(--ink-soft); font-size:11.5px;">(${escHtml(p.position)})</span>` : ''}${p.id===activeProfileId ? ' <span class="tag tag-grant">현재 선택</span>' : ''} ${statusTag} ${p.email ? `<span style="color:var(--ink-soft); font-size:11px; font-weight:500;">(${escHtml(p.email)})</span>` : '<span style="color:var(--coral); font-size:11px; font-weight:500;">이메일 미등록</span>'}</span>
+      <span style="font-size:13px; font-weight:700;">${p.avatar ? `${p.avatar} ` : ''}${escHtml(p.name || '(이름 미등록)')}${p.position ? ` <span style="font-weight:600; color:var(--ink-soft); font-size:11.5px;">(${escHtml(p.position)})</span>` : ''}${p.id===activeProfileId ? ' <span class="tag tag-grant">현재 선택</span>' : ''} ${statusTag} ${p.email ? `<span style="color:var(--ink-soft); font-size:11px; font-weight:500;">(${escHtml(p.email)})</span>` : '<span style="color:var(--coral); font-size:11px; font-weight:500;">이메일 미등록</span>'}</span>
       <span style="white-space:nowrap;">
         <button type="button" class="del-btn employee-open-status-btn" data-id="${p.id}">현황</button>
         <button type="button" class="del-btn employee-open-edit-btn" data-id="${p.id}">수정</button>
