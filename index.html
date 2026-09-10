@@ -4097,6 +4097,14 @@
           <input type="file" id="importAllFile" accept="application/json" style="display:none;">
           <span class="save-msg" id="allBackupSaveMsg" style="margin-top:0;"></span>
         </div>
+        <p class="hint" style="margin:6px auto 0;">
+          예전 백업 파일에서 <b>거래처목록·개인정보</b>, 그리고 지금은 삭제되고 없는 계정에 남아있던 <b>입사일·점심식대 한도 이력</b>을 지금 화면에 합쳐 넣고 싶다면 아래 버튼을 써주세요. 직원 목록·근태·경비 등 다른 데이터는 전혀 건드리지 않고, 겹치는 거래처는 정보가 더 많이 채워진 쪽만 남겨요.
+        </p>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center;">
+          <button type="button" id="importClientsOnlyBtn" class="submit-btn" style="width:auto; padding:7px 13px; font-size:12px; background:var(--mint);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg> 백업 파일에서 거래처·개인정보·식대한도 복구</button>
+          <input type="file" id="importClientsOnlyFile" accept="application/json" style="display:none;">
+          <span class="save-msg" id="clientsOnlyBackupSaveMsg" style="margin-top:0;"></span>
+        </div>
       </div>
 
       <div class="settings-box backup-scope-panel" data-backup-scope="one" style="display:none; flex-direction:column; gap:10px; max-width:680px; margin-left:auto; margin-right:auto;">
@@ -18026,6 +18034,115 @@ document.getElementById('importAllFile').addEventListener('change', async (e)=>{
   }catch(err){
     console.error(err);
     document.getElementById('allBackupSaveMsg').textContent = '불러오기 실패 (파일을 확인해주세요)';
+  }
+  e.target.value = '';
+});
+
+// 백업 파일(옛 형식 전 직원 일괄백업 - 직원별로 거래처가 나뉘어 있던 파일이든, 새 형식이든)에서 거래처목록·
+// 개인정보"만" 뽑아서 지금의 공용 저장소와 합침 - 직원목록·근태·경비·회사설정 등 다른 건 전혀 건드리지 않음.
+// "동기화는 됐는데 예전에 입력해둔 거래처가 안 보인다"는 경우, 예전 백업 파일을 여기로 올리면 안전하게 복구할 수 있음
+document.getElementById('importClientsOnlyBtn').addEventListener('click', ()=>{
+  document.getElementById('importClientsOnlyFile').click();
+});
+document.getElementById('importClientsOnlyFile').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const msgEl = document.getElementById('clientsOnlyBackupSaveMsg');
+  try{
+    const text = await file.text();
+    const data = JSON.parse(text);
+    // 백업 파일에서 거래처/개인정보가 나올 수 있는 자리를 전부 모음: 새 형식(shared.clients/personalInfo),
+    // 옛 "전 직원 일괄 백업" 형식(data[프로필id].clients/personalInfo), 옛 "선택 직원 백업" 형식(data.clients/personalInfo)
+    const clientSources = [];
+    const personalSources = [];
+    if(data.shared && data.shared.clients && data.shared.clients.list && data.shared.clients.list.length){
+      clientSources.push({ key:'backup-shared', list: data.shared.clients.list });
+    }
+    if(data.shared && data.shared.personalInfo && data.shared.personalInfo.list && data.shared.personalInfo.list.length){
+      personalSources.push({ key:'backup-shared', list: data.shared.personalInfo.list });
+    }
+    if(data.data && typeof data.data === 'object' && !Array.isArray(data.data)){
+      if(data.data.clients || data.data.personalInfo){
+        // 선택 직원 백업 형식(data 바로 아래에 clients/personalInfo)
+        if(data.data.clients && data.data.clients.list && data.data.clients.list.length) clientSources.push({ key:'backup-one', list: data.data.clients.list });
+        if(data.data.personalInfo && data.data.personalInfo.list && data.data.personalInfo.list.length) personalSources.push({ key:'backup-one', list: data.data.personalInfo.list });
+      } else {
+        // 전 직원 일괄 백업 형식(data[프로필id].clients/personalInfo)
+        Object.keys(data.data).forEach(pid=>{
+          const d = data.data[pid];
+          if(!d) return;
+          if(d.clients && d.clients.list && d.clients.list.length) clientSources.push({ key:`backup-${pid}`, list: d.clients.list });
+          if(d.personalInfo && d.personalInfo.list && d.personalInfo.list.length) personalSources.push({ key:`backup-${pid}`, list: d.personalInfo.list });
+        });
+      }
+    }
+    // 거래처·개인정보 말고도, "전 직원 일괄 백업" 형식이면 지금은 삭제되고 없는 직원(예: 예전 "관리자" 계정처럼)의
+    // 입사일(hireDate)·점심식대 한도 이력(settings.lunchLimitHistory)이 백업 안에 그대로 남아있을 수 있음.
+    // 그 계정 자체는 이제 없으니 자동으로 어디에 넣을지 정할 수 없어서, 지금 남아있는 직원 중 누구에게 합칠지 직접 고르게 함
+    const orphanedLunchSources = [];
+    if(Array.isArray(data.profiles) && data.data && typeof data.data === 'object'){
+      const currentIds = new Set(getProfiles().map(p=>p.id));
+      data.profiles.forEach(p=>{
+        if(currentIds.has(p.id)) return; // 지금도 있는 직원이면 이 복구 대상이 아님(정상적으로 이미 갖고 있음)
+        const d = data.data[p.id];
+        if(!d || !d.settings) return;
+        const hist = (d.settings.lunchLimitHistory||[]).filter(h=>h && typeof h==='object');
+        const hireDate = d.settings.hireDate || '';
+        if(hist.length || hireDate){
+          orphanedLunchSources.push({ profileName: p.name || '(이름 미등록)', hireDate, lunchLimitHistory: hist });
+        }
+      });
+    }
+    if(!clientSources.length && !personalSources.length && !orphanedLunchSources.length){
+      msgEl.textContent = '이 백업 파일엔 복구할 거래처·개인정보·입사일·식대한도가 없어요.';
+      e.target.value = '';
+      return;
+    }
+    const totalClients = clientSources.reduce((n,s)=>n+s.list.length,0);
+    let confirmMsg = `이 백업 파일에서 거래처 ${totalClients}건(개인정보 포함)을 찾았어요. 지금 화면의 거래처목록과 합칠까요?\n\n· 지금 있는 거래처는 지워지지 않아요.\n· 같은 거래처(사업자번호 기준)가 겹치면 정보가 더 많이 채워진 쪽만 남아요.\n· 직원목록·근태·경비·회사설정 등 다른 데이터는 전혀 바뀌지 않아요.`;
+    if(orphanedLunchSources.length){
+      confirmMsg += `\n\n· 지금은 삭제되고 없는 계정(${orphanedLunchSources.map(s=>`"${s.profileName}"`).join(', ')})의 입사일/점심식대 한도 이력도 발견됐어요 - 다음 단계에서 지금 남아있는 직원 중 누구에게 합칠지 직접 골라주세요.`;
+    }
+    const ok = await appConfirm(confirmMsg);
+    if(!ok){ e.target.value=''; return; }
+    if(clientSources.length || personalSources.length){
+      // "지금 화면의 것"도 병합 재료에 포함시켜야 기존 데이터가 사라지지 않고 같이 합쳐짐
+      clientSources.push({ key:'current', list: readSharedClients().list||[] });
+      personalSources.push({ key:'current', list: readSharedPersonalInfo().list||[] });
+      const merged = mergeClientsAndPersonalInfo(clientSources, personalSources);
+      localStorage.setItem('worklog_shared_clients', JSON.stringify(merged.clients));
+      localStorage.setItem('worklog_shared_personalinfo', JSON.stringify(merged.personalInfo));
+      clients = merged.clients;
+      personalInfo = merged.personalInfo;
+    }
+    // 삭제된 계정의 입사일/식대한도를 지금 직원 중 누구에게 합칠지 하나씩 물어봄(잘못 합쳐지지 않도록 반드시 직접 선택하게 함)
+    if(orphanedLunchSources.length){
+      const currentProfiles = getProfiles();
+      const pickList = currentProfiles.map((p,i)=>`${i+1}. ${p.name || '(이름 미등록)'}`).join('\n');
+      for(const src of orphanedLunchSources){
+        const answer = prompt(`백업 파일 속 "${src.profileName}" 계정(지금은 삭제된 직원)의 입사일/점심식대 한도 이력을 지금 직원 중 누구에게 합칠까요?\n\n번호를 입력해주세요(취소하면 이 계정은 건너뜀):\n${pickList}`);
+        if(!answer) continue;
+        const idx = parseInt(answer, 10) - 1;
+        const target = currentProfiles[idx];
+        if(!target){ continue; }
+        const dstSet = readProfileRaw(target.id, 'settings') || { hireDate:'', lunchLimitHistory:[] };
+        if(!dstSet.hireDate && src.hireDate) dstSet.hireDate = src.hireDate;
+        const existingIds = new Set((dstSet.lunchLimitHistory||[]).map(h=>h.id));
+        const newItems = src.lunchLimitHistory.filter(h=>!existingIds.has(h.id));
+        dstSet.lunchLimitHistory = (dstSet.lunchLimitHistory||[]).concat(newItems);
+        localStorage.setItem(`worklog_settings__${target.id}`, JSON.stringify(dstSet));
+        if(activeProfileId === target.id) settings = dstSet;
+      }
+    }
+    if(gdriveAccessToken && gdriveFileId){
+      msgEl.textContent = '복구 완료 · 드라이브에 반영 중...';
+      try{ if(!gdriveFileId) await gdriveEnsureFile(); await gdrivePush(); }catch(err){ console.error('거래처 전용 복구 후 드라이브 반영 실패', err); }
+    }
+    msgEl.textContent = `복구 완료 · 새로고침합니다...`;
+    setTimeout(()=>{ location.reload(); }, 500);
+  }catch(err){
+    console.error(err);
+    msgEl.textContent = '복구 실패 (파일을 확인해주세요)';
   }
   e.target.value = '';
 });
