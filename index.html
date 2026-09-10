@@ -1185,25 +1185,16 @@
      세부항목 열이 붙으면 표가 박스 폭보다 넓어질 수 있어서, 세로는 그대로 두고 가로만 이 박스 안에서 스크롤되게 함
      (그래야 표가 박스 밖으로 튀어나가 보이는 대신 박스 안에서 옆으로 스크롤됨) */
   #filingStatusTableWrap .table-scroll, #reviewStatusTableWrap .table-scroll{ max-height:none; overflow-y:visible; overflow-x:auto; }
-  /* 기장/기타/해지거래처 표는 화면(카드)이 넓어져서 세로로 활용할 공간이 충분해졌으니, 세로 스크롤(max-height)은
-     없애고 페이지 자체 스크롤로 늘어나게 함. 다만 열이 많아 가로로는 여전히 넘칠 수 있어서 가로 스크롤은 남겨둠 */
-  /* overflow-y:visible과 overflow-x:auto를 한 요소에 같이 주면, CSS 스펙상 visible이 auto로 강제 변환돼서
-     (가로 스크롤을 넣으려는 의도와 달리) 이 박스 자신이 세로 스크롤 컨테이너가 돼버리고, 그러면 position:sticky
-     헤더가 "페이지 스크롤"이 아니라 "이 박스 자신의(실제로는 안 일어나는) 스크롤"을 기준으로 붙게 돼서
-     페이지를 내려도 헤더가 안 따라오는 문제가 있었음 - overflow-y를 visible 대신 clip으로 주면 이 강제
-     변환 예외 대상이라(스펙상 clip은 auto로 안 바뀜) 스크롤 컨테이너가 안 만들어지고, sticky가 정상적으로
-     페이지 스크롤을 기준으로 동작함 */
+  /* 기장/기타/해지거래처 표: overflow-x:auto(가로 스크롤)를 주는 순간 CSS 스펙상 overflow-y도 auto/hidden 쪽으로
+     강제 변환돼서 이 박스 자신이 세로 스크롤 컨테이너가 됨 - 그런데 max-height를 없애서(자체 스크롤이 실제로는
+     안 생기게) 페이지 스크롤을 그대로 쓰려고 하면, position:sticky의 기준이 "이 박스의(발생하지 않는) 내부
+     스크롤"이 돼버려서 페이지를 내려도 헤더가 전혀 안 붙거나, 심지어 헤더가 중간 행 위로 겹쳐 보이는 문제가
+     있었음(실제 테스트로 확인). 가로 스크롤 박스 안에서 sticky 헤더가 안정적으로 동작하려면 이 박스 자체가
+     "진짜" 내부 스크롤 컨테이너여야 하므로, 기본 .table-scroll과 동일하게 경계가 있는 max-height를 다시 둬서
+     표 내용만 이 박스 안에서 세로로 스크롤되고 헤더는 그 박스 기준으로 고정되게 함 */
   #clientsRegularListWrap .table-scroll, #clientsOtherListWrap .table-scroll,
   #clientsTerminatedListWrap .table-scroll{
-    max-height:none; overflow-y:clip; overflow-x:auto;
-  }
-  /* 위에서 세로 스크롤(max-height)을 없애고 페이지 자체 스크롤로 바꾸면서, 표 헤더의 sticky 기준이 이 표 안
-     스크롤 박스가 아니라 페이지 전체가 됨 - 그런데 상단 네비(.tabs)도 sticky로 화면 위에 떠 있어서 top:0으로
-     두면 헤더가 네비 밑으로 숨어버려 고정된 게 안 보였음. 네비 높이(--tabs-h)만큼 내려서 붙여야 스크롤해도
-     "순번·상호명" 같은 헤더 줄이 네비 바로 아래에 계속 보임 */
-  #clientsRegularListWrap .table-scroll thead th, #clientsOtherListWrap .table-scroll thead th,
-  #clientsTerminatedListWrap .table-scroll thead th{
-    top:var(--top-bar-h, 96px);
+    max-height:68vh; overflow:auto;
   }
   .table-scroll table{box-shadow:none; border-radius:0; table-layout:auto; overflow:visible;}
   .table-scroll th, .table-scroll td{white-space:nowrap; padding:8px 9px; font-size:13px; text-align:center;}
