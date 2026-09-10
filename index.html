@@ -2411,9 +2411,9 @@
       <div style="font-size:12px; font-weight:800; color:var(--ink-soft);">공지사항 목록</div>
       <div style="display:flex; align-items:center; gap:6px;">
         <button type="button" id="noticeSearchBackBtn" class="notice-back-chip" style="display:none;" title="돌아가기"><span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg></span><span class="notice-back-chip-label">돌아가기</span></button>
-        <button type="button" id="noticeNotifyToggleBtn" class="del-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M13.73 21a2 2 0 0 1-3.46 0"></path><path d="M18.63 13A17.89 17.89 0 0 1 18 8"></path><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"></path><path d="M18 8a6 6 0 0 0-9.33-5"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg> 알림 받기</button>
-        <button type="button" id="noticeSearchToggleBtn" class="del-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> 검색</button>
+        <button type="button" id="noticeNotifyToggleBtn" class="del-btn" style="background:var(--surface); border:1.3px solid var(--border); color:var(--ink);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M13.73 21a2 2 0 0 1-3.46 0"></path><path d="M18.63 13A17.89 17.89 0 0 1 18 8"></path><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"></path><path d="M18 8a6 6 0 0 0-9.33-5"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg> 알림 받기</button>
         <button type="button" id="noticeAddBtn" class="del-btn" style="background:var(--indigo); color:#fff;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 등록</button>
+        <button type="button" id="noticeSearchToggleBtn" class="del-btn" style="background:var(--surface); border:1.3px solid var(--border); color:var(--ink);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> 검색</button>
       </div>
     </div>
     <div id="noticeSearchPanel" style="display:none; background:var(--bg); border-radius:12px; padding:12px; margin-bottom:14px; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;">
@@ -5125,6 +5125,9 @@ function renderNoticeImportantSection(){
   });
 }
 
+// "보기"를 눌렀을 때 팝업 대신 목록 안에서 바로 펼쳐 보이게 함(펼쳐진 공지 id 하나만 기억) - 다른 항목
+// "보기"를 누르거나 같은 항목을 다시 누르면 접힘
+let noticeExpandedId = null;
 function renderNoticeList(){
   renderNoticeImportantSection();
   const wrap = document.getElementById('noticeListWrap');
@@ -5140,7 +5143,8 @@ function renderNoticeList(){
   const rows = list.map(n=>{
     const seq = seqMap.get(n.id) || '-';
     const unread = !read.has(n.id);
-    return `<tr>
+    const expanded = noticeExpandedId === n.id;
+    const mainRow = `<tr>
       <td class="num" style="text-align:center;">${seq}</td>
       <td style="text-align:center;"><span class="tag ${n.scope==='전체' ? 'tag-grant' : 'tag-usage'}">${n.scope || '개인'}</span></td>
       <td style="text-align:center;">${unread ? '<span class="notice-unread-dot">N</span>' : ''}${escHtml(n.title || '(제목 없음)')}</td>
@@ -5151,7 +5155,7 @@ function renderNoticeList(){
           <label class="notice-star-toggle" title="중요표시(즐겨찾기)">
             <input type="checkbox" class="notice-important-check" data-id="${n.id}" ${n.important?'checked':''} ${canSetImportant?'':'disabled'}><svg width="12" height="12" viewBox="0 0 24 24" fill="${n.important?'#F5A524':'none'}" stroke="${n.important?'#F5A524':'currentColor'}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
           </label>
-          <button class="del-btn notice-view-btn" data-id="${n.id}">보기</button>
+          <button class="del-btn notice-view-btn" data-id="${n.id}" style="${expanded?'background:var(--indigo); color:#fff;':''}">${expanded?'닫기':'보기'}</button>
           <button class="del-btn notice-mail-btn" data-id="${n.id}" title="메일로 전달"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg> 메일</button>
           <button class="del-btn notice-history-btn" data-id="${n.id}" title="수정이력">${(n.editHistory&&n.editHistory.length)?`이력(${n.editHistory.length})`:'이력'}</button>
           <button class="del-btn notice-edit-btn" data-id="${n.id}">수정</button>
@@ -5159,8 +5163,19 @@ function renderNoticeList(){
         </div>
       </td>
     </tr>`;
+    if(!expanded) return mainRow;
+    // 펼친 내용 - 예전 팝업(openNoticeViewPopup)에 있던 내용을 그대로 목록 아래 한 줄로 붙여넣음
+    const styleStr = `font-size:${n.size||13.5}px; ${n.bold ? 'font-weight:800;' : ''}`;
+    const contentHtml = n.content ? (noticeContentIsRich(n.content) ? n.content : escHtml(n.content).replace(/\n/g,'<br>')) : '(내용 없음)';
+    const detailRow = `<tr class="notice-detail-row"><td colspan="6" style="padding:0 0 14px; background:var(--surface);">
+      <div style="padding:14px 18px; background:var(--bg); border-radius:10px; margin:0 4px;">
+        <div style="text-align:center; margin-bottom:8px; font-size:11.5px; color:var(--ink-soft);">${escHtml(n.savedAt||'')} · ${escHtml(n.authorName||'-')} · ${n.scope||'개인'} 공지${n.important ? ' · <svg width="11" height="11" viewBox="0 0 24 24" fill="#F5A524" stroke="#F5A524" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>중요' : ''}</div>
+        <div style="white-space:pre-wrap; line-height:1.7; padding:14px; background:var(--surface); border-radius:10px; user-select:text; ${styleStr}">${contentHtml}</div>
+      </div>
+    </td></tr>`;
+    return mainRow + detailRow;
   });
-  renderPaginatedRows(wrap, '<tr><th style="text-align:center;">순번</th><th style="text-align:center;">구분</th><th style="text-align:center;">제목</th><th style="text-align:center;">작성자</th><th style="text-align:center;">작성일시</th><th style="text-align:center;">이력 및 관리</th></tr>', rows, 10);
+  renderPaginatedRows(wrap, '<tr><th style="text-align:center;">순번</th><th style="text-align:center;">구분</th><th style="text-align:center;">제목</th><th style="text-align:center;">작성자</th><th style="text-align:center;">작성일시</th><th style="text-align:center;">이력 및 관리</th></tr>', rows, 5);
   wrap.querySelectorAll('.notice-important-check').forEach(cb=>{
     cb.addEventListener('change', async ()=>{
       const n = sharedNoticeHistory.find(x=>x.id===cb.dataset.id);
@@ -5173,7 +5188,11 @@ function renderNoticeList(){
   wrap.querySelectorAll('.notice-view-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const n = sharedNoticeHistory.find(x=>x.id===btn.dataset.id);
-      if(n) openNoticeViewPopup(n);
+      if(!n) return;
+      noticeExpandedId = (noticeExpandedId === n.id) ? null : n.id;
+      if(noticeExpandedId === n.id) markNoticeRead(n.id);
+      updateNoticeUnreadBadge();
+      renderNoticeList();
     });
   });
   wrap.querySelectorAll('.notice-mail-btn').forEach(btn=>{
