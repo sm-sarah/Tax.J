@@ -8874,9 +8874,9 @@ function renderClPersonalInfoRows(){
         // "메모" 토글 링크로 접어두고 눌렀을 때만 입력칸이 펼쳐지게 함 - 이미 메모가 있으면 펼친 채로 보여줌
         return `<tr data-id="${a.id}" style="box-shadow:inset 3px 0 0 var(--indigo);">
           <td style="text-align:center;">
-            <input type="text" class="cl-pi-inline-label" value="${escHtml(a.label||'')}" ${a.locked?'disabled':''} style="${inlineInputStyle} font-size:13px; font-weight:700; text-align:center;">
-            <button type="button" class="cl-pi-inline-note-toggle" style="border:none; background:none; cursor:pointer; color:var(--ink-soft); font-size:10.5px; font-weight:700; margin-top:4px; padding:0;">${a.note ? '📝 메모 수정' : '+ 메모'}</button>
-            <textarea class="cl-pi-inline-note" rows="2" placeholder="메모" style="display:${a.note ? '' : 'none'}; ${inlineInputStyle} margin-top:4px; font-size:11.5px; font-family:'Pretendard',sans-serif; resize:none; text-align:center;">${escHtml(a.note||'')}</textarea>
+            <input type="text" class="cl-pi-inline-label" value="${escHtml(a.label||'')}" ${a.locked?'disabled':''} style="${inlineInputStyle} display:block; font-size:13px; font-weight:700; text-align:center;">
+            <button type="button" class="cl-pi-inline-note-toggle" style="display:block; width:100%; border:none; background:none; cursor:pointer; color:var(--ink-soft); font-size:10.5px; font-weight:700; margin:4px auto 0; padding:0;">${a.note ? '📝 메모 수정' : '+ 메모'}</button>
+            <textarea class="cl-pi-inline-note" rows="2" placeholder="메모" style="display:${a.note ? 'block' : 'none'}; ${inlineInputStyle} margin-top:4px; font-size:11.5px; font-family:'Pretendard',sans-serif; resize:none; text-align:center;">${escHtml(a.note||'')}</textarea>
           </td>
           <td>
             ${a.locked ? '' : `<label style="display:flex; align-items:center; justify-content:center; gap:5px; font-size:10.5px; font-weight:700; color:var(--ink-soft); margin-bottom:5px; cursor:pointer;"><input type="checkbox" class="cl-pi-inline-idpw" ${isInfo?'':'checked'} style="width:auto;"> ID/PW로 등록</label>`}
@@ -8911,7 +8911,7 @@ function renderClPersonalInfoRows(){
     const ta = e.currentTarget.parentElement.querySelector('.cl-pi-inline-note');
     if(!ta) return;
     const showing = ta.style.display !== 'none';
-    ta.style.display = showing ? 'none' : '';
+    ta.style.display = showing ? 'none' : 'block';
     if(!showing) ta.focus();
   }));
   wrap.querySelectorAll('.cl-pi-edit-btn').forEach(el=>el.addEventListener('click', e=>{
@@ -10029,8 +10029,8 @@ async function attachExpenseReportForMonth(monthStr){
     const fileName = `${y}년 ${Number(m)}월 지출결의서.pdf`;
     const file = new File([blob], fileName, { type:'application/pdf' });
     const draftMeta = {
-      title: document.getElementById('ad-title')?.value.trim() || fileName,
-      drafter: resolveNameByEmail(document.getElementById('ad-drafter')?.value || currentDrafterEmail()),
+      title: document.getElementById('ad-title')?.value.trim() || '지출결의서',
+      drafter: resolveNameByEmail(currentDrafterEmail()) || currentStaffDisplayName() || '-',
       date: todayStr()
     };
     const uploaded = await gdriveUploadApprovalAttachment(file, '지출결의서', draftMeta);
@@ -16442,7 +16442,7 @@ function openApprovalPreviewModal(){
         <table style="border-collapse:collapse; text-align:center; flex:0 0 auto; width:auto; border-radius:0; box-shadow:none; border:none; background:transparent;">
           <tr><td colspan="2" style="${td} background:var(--bg); font-weight:700;">결재</td></tr>
           <tr>
-            <td style="${td} color:var(--ink-soft); font-weight:700;">신청</td>
+            <td style="${td} color:var(--ink-soft); font-weight:700;">기안</td>
             <td style="${td} color:var(--ink-soft); font-weight:700;">승인</td>
           </tr>
           <tr>
@@ -16768,7 +16768,7 @@ function approvalDocTypeChipsHtml(bucket){
   const cur = approvalDocTypeFilter[bucket] || '전체';
   const opts = ['전체', ...APPROVAL_DOC_TYPES];
   return `<div class="approval-doctype-chips" data-bucket="${bucket}" style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-bottom:10px;">
-    ${opts.map(t=>`<button type="button" class="del-btn approval-doctype-chip-btn${t===cur?' active':''}" data-doctype="${escHtml(t)}" style="${t===cur?'background:var(--indigo); color:#fff;':'background:var(--indigo-bg); color:var(--indigo-deep);'}">${escHtml(t)}</button>`).join('')}
+    ${opts.map(t=>`<button type="button" class="del-btn approval-doctype-chip-btn${t===cur?' active':''}" data-doctype="${escHtml(t)}" style="${t===cur?'background:var(--indigo); color:#fff; border:1.5px solid var(--indigo);':'background:var(--indigo-bg); color:var(--indigo-deep); border:1.5px solid var(--indigo);'}">${escHtml(t)}</button>`).join('')}
   </div>`;
 }
 function bindApprovalDocTypeChips(container, onChange){
@@ -16825,7 +16825,7 @@ function applyApprovalSearch(list, bucket){
 // 예전 <input type="date"> 하나만 있던 건 스타일이 겉돌아 보인다는 의견이 있었음
 function approvalSearchBarHtml(bucket){
   const st = getApprovalSearchState(bucket);
-  return `<div class="approval-search-bar" data-bucket="${bucket}" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center; margin-bottom:10px;">
+  return `<div class="approval-search-bar" data-bucket="${bucket}" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end; margin-bottom:10px;">
     <input type="month" class="approval-search-month" value="${escHtml(st.month||'')}" title="기안월로 찾기" style="border:1.5px solid var(--border); border-radius:8px; padding:8px 8px; font-size:12.5px; background:var(--surface); font-family:'Pretendard',sans-serif; color:var(--ink);">
     <div class="field" style="max-width:220px; margin:0;"><input type="text" class="approval-search-q" value="${escHtml(st.q||'')}" placeholder="제목 검색"></div>
     ${(st.month||st.q) ? `<button type="button" class="del-btn approval-search-clear-btn">검색 초기화</button>` : ''}
@@ -17105,29 +17105,30 @@ function approvalDetailBodyHtml(item){
   return `
     <div class="approval-doc-card" style="border:1.5px solid var(--border); border-radius:16px; background:var(--surface); padding:16px 18px 18px; box-shadow:0 1px 2px rgba(29,30,51,0.04);">
       <div style="text-align:center;">
-        <div style="font-size:18px; font-weight:900; letter-spacing:6px; color:var(--navy);">업&nbsp;무&nbsp;기&nbsp;안</div>
-        <div style="margin-top:6px;"><span class="tag" style="background:var(--bg); color:var(--ink-soft);">${escHtml(item.docType||'일반')}</span></div>
+        <div style="font-size:23px; font-weight:900; letter-spacing:8px; color:var(--navy);">업&nbsp;무&nbsp;기&nbsp;안</div>
       </div>
-      <div style="display:flex; justify-content:flex-end; margin-top:10px; gap:0; flex-wrap:wrap; padding-bottom:12px; border-bottom:2px solid var(--navy); margin-bottom:14px;">
-        <table style="border-collapse:collapse; width:auto; border-radius:0; box-shadow:none; border:none; background:transparent;">
-          <tr><td style="${td} background:var(--bg); font-weight:700;">기안자</td><td style="${td}">${drafterName}</td></tr>
-          <tr><td style="${td} background:var(--bg); font-weight:700;">소속</td><td style="${td}">${teamLabel}</td></tr>
-          <tr><td style="${td} background:var(--bg); font-weight:700;">기안일</td><td style="${td}">${escHtml(item.createdAt||'-')}</td></tr>
-        </table>
-        <table style="border-collapse:collapse; text-align:center; width:auto; border-radius:0; box-shadow:none; border:none; background:transparent;">
-          <tr><td colspan="2" style="${td} background:var(--bg); font-weight:700;">결재</td></tr>
-          <tr>
-            <td style="${td} color:var(--ink-soft); font-weight:700;">신청</td>
-            <td style="${td} color:var(--ink-soft); font-weight:700;">승인</td>
-          </tr>
-          <tr>
-            <td style="${td} font-weight:800; min-width:60px;">${drafterName}</td>
-            <td style="${td} font-weight:800; min-width:60px;">${approverName}</td>
-          </tr>
-        </table>
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:12px; gap:8px; flex-wrap:wrap; padding-bottom:12px; border-bottom:2px solid var(--navy); margin-bottom:14px;">
+        <span class="tag" style="background:var(--bg); color:var(--ink-soft);">${escHtml(item.docType||'일반')}</span>
+        <div style="display:flex; gap:0; flex-wrap:wrap;">
+          <table style="border-collapse:collapse; width:auto; border-radius:0; box-shadow:none; border:none; background:transparent;">
+            <tr><td style="${td} background:var(--bg); font-weight:700;">기안자</td><td style="${td}">${drafterName}</td></tr>
+            <tr><td style="${td} background:var(--bg); font-weight:700;">소속</td><td style="${td}">${teamLabel}</td></tr>
+            <tr><td style="${td} background:var(--bg); font-weight:700;">기안일</td><td style="${td}">${escHtml(item.createdAt||'-')}</td></tr>
+          </table>
+          <table style="border-collapse:collapse; text-align:center; width:auto; border-radius:0; box-shadow:none; border:none; background:transparent;">
+            <tr><td colspan="2" style="${td} background:var(--bg); font-weight:700;">결재</td></tr>
+            <tr>
+              <td style="${td} color:var(--ink-soft); font-weight:700;">기안</td>
+              <td style="${td} color:var(--ink-soft); font-weight:700;">승인</td>
+            </tr>
+            <tr>
+              <td style="${td} font-weight:800; min-width:60px;">${drafterName}</td>
+              <td style="${td} font-weight:800; min-width:60px;">${approverName}</td>
+            </tr>
+          </table>
+        </div>
       </div>
       <div style="text-align:center; border-bottom:1px solid var(--border); margin-bottom:12px; padding-bottom:12px;">
-        <div style="font-weight:700; font-size:12px; color:var(--ink-soft); margin-bottom:4px;">제목</div>
         <div style="font-size:14.5px; font-weight:800; color:var(--ink);">${escHtml(item.title)}</div>
       </div>
       <div style="text-align:center; min-height:80px; font-size:13px; line-height:1.75; white-space:pre-wrap; user-select:text;">${contentHtml}</div>
