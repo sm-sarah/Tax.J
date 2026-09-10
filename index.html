@@ -13438,7 +13438,8 @@ function saveFilingSubviewState(){
       reviewType: viewingReviewType,
       reviewItYear: document.getElementById('reviewItYearSelect')?.value || '',
       reviewVatClientId: document.getElementById('reviewVatClientSelect')?.value || '',
-      reviewVatYear: document.getElementById('reviewVatYearSelect')?.value || ''
+      reviewVatYear: document.getElementById('reviewVatYearSelect')?.value || '',
+      docBucket: document.querySelector('.approval-doc-btn.active')?.dataset.approvalDoc || 'new'
     }));
   }catch(e){}
 }
@@ -13506,6 +13507,10 @@ function restoreFilingSubviewState(){
           }
         }
       }
+    } else if(saved.cat === 'doc' && saved.docBucket && saved.docBucket !== 'new'){
+      // 결재(기안) 화면도 마지막으로 보던 함(기안함/결재함/반려함/임시저장함/전체이력)으로 복원함 -
+      // 기본값(HTML상 처음부터 active인 "기안" 작성화면)과 다를 때만 해당 버튼을 다시 눌러줌
+      document.querySelector(`.approval-doc-btn[data-approval-doc="${saved.docBucket}"]`)?.click();
     }
   }catch(e){}
 }
@@ -16537,6 +16542,10 @@ document.querySelectorAll('.approval-doc-btn').forEach(btn=>{
     document.querySelectorAll('.approval-doc-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     const doc = btn.dataset.approvalDoc;
+    // 새로고침해도 결재 메뉴 안에서 마지막으로 보고 있던 함(기안함/결재함/반려함 등)으로 그대로
+    // 돌아오게 기억해둠 - worklog_last_filing_subview에 같이 저장해서 restoreFilingSubviewState가
+    // "결재" 카테고리 복원 시 이 값도 같이 복원하게 함
+    if(typeof saveFilingSubviewState === 'function') saveFilingSubviewState();
     document.querySelectorAll('.approval-panel[data-approval-cat="doc"] > .approval-doc-panel[data-approval-doc]').forEach(p=>{
       p.style.display = (p.dataset.approvalDoc === doc) ? 'block' : 'none';
     });
@@ -16642,7 +16651,7 @@ function approvalDocTypeChipsHtml(bucket){
   const cur = approvalDocTypeFilter[bucket] || '전체';
   const opts = ['전체', ...APPROVAL_DOC_TYPES];
   return `<div class="approval-doctype-chips" data-bucket="${bucket}" style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-bottom:10px;">
-    ${opts.map(t=>`<button type="button" class="del-btn approval-doctype-chip-btn${t===cur?' active':''}" data-doctype="${escHtml(t)}" style="${t===cur?'background:var(--indigo); color:#fff;':'background:var(--surface); border:1.5px solid var(--border); color:var(--ink-soft);'}">${escHtml(t)}</button>`).join('')}
+    ${opts.map(t=>`<button type="button" class="del-btn approval-doctype-chip-btn${t===cur?' active':''}" data-doctype="${escHtml(t)}" style="${t===cur?'background:var(--indigo); color:#fff;':'background:var(--indigo-bg); color:var(--indigo-deep);'}">${escHtml(t)}</button>`).join('')}
   </div>`;
 }
 function bindApprovalDocTypeChips(container, onChange){
@@ -16670,12 +16679,12 @@ function approvalDetailTrHtml(item, colspan){
 // bucket==='all'(전체이력)이면서 관리자 계정이면 문서를 완전히 지울 수 있는 "삭제" 버튼을 같이 보여줌
 // (실제로는 하드 삭제가 아니라 deleteApproval로 상태만 "삭제"로 바꾸는 소프트 삭제 - 전체이력엔 계속 남음)
 // 결재 목록(기안함/반려함/결재함/임시저장함/전체이력) 공용 검색/페이지네이션 상태 - 문서함(bucket)별로 따로
-// 기억함. 검색은 기안일(날짜)과 문서종류·제목(텍스트) 두 가지로 하고, 한 페이지에 10개씩만 보여준 뒤 페이지
+// 기억함. 검색은 기안월과 제목(텍스트) 두 가지로 하고, 한 페이지에 10개씩만 보여준 뒤 페이지
 // 번호로 넘기게 함(문서가 많아지면 한 화면에 다 쌓여서 찾기 힘들다는 의견)
 const APPROVAL_PAGE_SIZE = 10;
 let approvalSearchState = {};
 function getApprovalSearchState(bucket){
-  if(!approvalSearchState[bucket]) approvalSearchState[bucket] = { q:'', date:'', page:1 };
+  if(!approvalSearchState[bucket]) approvalSearchState[bucket] = { q:'', month:'', page:1 };
   return approvalSearchState[bucket];
 }
 // createdAt이 new Date().toLocaleString('ko-KR') 형식("2026. 9. 10. 오후 5:37:30")이라, <input type="date">의
@@ -16688,33 +16697,35 @@ function approvalItemDateStr(item){
 function applyApprovalSearch(list, bucket){
   const st = getApprovalSearchState(bucket);
   let out = list;
-  if(st.date) out = out.filter(item=>approvalItemDateStr(item) === st.date);
+  if(st.month) out = out.filter(item=>approvalItemDateStr(item).startsWith(st.month));
   if(st.q && st.q.trim()){
     const q = st.q.trim().toLowerCase();
-    out = out.filter(item=>(item.docType||'').toLowerCase().includes(q) || (item.title||'').toLowerCase().includes(q));
+    out = out.filter(item=>(item.title||'').toLowerCase().includes(q));
   }
   return out;
 }
+// 기장거래처 검색창(상호/사업자번호/대표자 select + .field 텍스트칸)과 같은 스타일로 맞춰서 표기함 -
+// 예전 <input type="date"> 하나만 있던 건 스타일이 겉돌아 보인다는 의견이 있었음
 function approvalSearchBarHtml(bucket){
   const st = getApprovalSearchState(bucket);
   return `<div class="approval-search-bar" data-bucket="${bucket}" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center; margin-bottom:10px;">
-    <input type="date" class="approval-search-date" value="${escHtml(st.date||'')}" title="기안일로 찾기" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12px; font-family:inherit; color:var(--ink);">
-    <input type="text" class="approval-search-q" value="${escHtml(st.q||'')}" placeholder="문서종류·제목 검색" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 10px; font-size:12px; min-width:170px; font-family:inherit;">
-    ${(st.date||st.q) ? `<button type="button" class="del-btn approval-search-clear-btn">검색 초기화</button>` : ''}
+    <input type="month" class="approval-search-month" value="${escHtml(st.month||'')}" title="기안월로 찾기" style="border:1.5px solid var(--border); border-radius:8px; padding:8px 8px; font-size:12.5px; background:var(--surface); font-family:'Pretendard',sans-serif; color:var(--ink);">
+    <div class="field" style="max-width:220px; margin:0;"><input type="text" class="approval-search-q" value="${escHtml(st.q||'')}" placeholder="제목 검색"></div>
+    ${(st.month||st.q) ? `<button type="button" class="del-btn approval-search-clear-btn">검색 초기화</button>` : ''}
   </div>`;
 }
 function bindApprovalSearchBar(container, onChange){
   if(!container) return;
   const bucket = container.dataset.bucket;
   const st = getApprovalSearchState(bucket);
-  container.querySelector('.approval-search-date')?.addEventListener('change', function(){ st.date = this.value; st.page = 1; onChange(); });
+  container.querySelector('.approval-search-month')?.addEventListener('change', function(){ st.month = this.value; st.page = 1; onChange(); });
   let qTimer = null;
   container.querySelector('.approval-search-q')?.addEventListener('input', function(){
     const val = this.value;
     clearTimeout(qTimer);
     qTimer = setTimeout(()=>{ st.q = val; st.page = 1; onChange(); }, 250);
   });
-  container.querySelector('.approval-search-clear-btn')?.addEventListener('click', ()=>{ st.date=''; st.q=''; st.page=1; onChange(); });
+  container.querySelector('.approval-search-clear-btn')?.addEventListener('click', ()=>{ st.month=''; st.q=''; st.page=1; onChange(); });
 }
 function approvalPaginationHtml(bucket, totalCount){
   const st = getApprovalSearchState(bucket);
@@ -19709,8 +19720,8 @@ try{
   // activateTab을 호출해서 복원함
   if(lastTab && lastTab !== 'home' && restoredGdriveToken && document.getElementById('tab-'+lastTab)){
     activateTab(lastTab, true);
-    // 세무신고(approval) 탭이면 그 안의 세부 화면(신고현황/신고대상/검토표 - 어느 세목, 어느 연도·월/반기,
-    // 검토표면 어느 거래처였는지까지)도 마지막 보던 그대로 복원함
+    // 세무신고(approval) 탭이면 그 안의 세부 화면(신고현황/신고대상/검토표/결재 - 어느 세목, 어느
+    // 연도·월/반기, 검토표면 어느 거래처, 결재면 어느 함이었는지까지)도 마지막 보던 그대로 복원함
     if(lastTab === 'approval' && typeof restoreFilingSubviewState === 'function') restoreFilingSubviewState();
   }
 }catch(e){}
