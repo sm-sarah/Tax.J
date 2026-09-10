@@ -2030,7 +2030,7 @@
           <option value="prepaid">차액정산</option>
         </select>
       </div>
-      <div class="field"><label id="exp-amount-label">금액 (원)</label><input type="number" id="exp-amount" class="num-input" step="1" required></div>
+      <div class="field"><label id="exp-amount-label">금액 (원)</label><input type="text" inputmode="numeric" id="exp-amount" class="num-input" required></div>
       <!-- 차액정산(kind==='prepaid')일 때만 보이는 정산방식 선택 - 이 금액을 경비청구액(지출결의서)에 반영할지,
            네이버페이(점심식대 미사용분과 같은 계좌)에 반영할지 등록할 때 골라둠 -->
       <div class="field" id="exp-settleto-field" style="display:none;"><label>정산방식</label>
@@ -12067,7 +12067,8 @@ function openExpenseRegisterModal(edit){
   document.getElementById('expenseEntrySubmitBtn').textContent = edit && edit.id ? '수정 완료' : '추가';
   document.getElementById('exp-kind').value = (edit && edit.kind) || 'lunch';
   document.getElementById('exp-date').value = (edit && edit.date) || todayStr();
-  document.getElementById('exp-amount').value = edit && edit.amount !== undefined ? edit.amount : '';
+  document.getElementById('exp-amount').value = edit && edit.amount !== undefined ? formatCommaAmountStr(String(edit.amount)) : '';
+  bindCommaAmountInput(document.getElementById('exp-amount'));
   document.getElementById('exp-desc').value = (edit && edit.desc) || '';
   document.getElementById('exp-settleto').value = (edit && edit.settleTo) || 'claim';
   updateExpenseAmountLabel();
@@ -12095,7 +12096,7 @@ document.getElementById('expenseEntryForm').addEventListener('submit', async (e)
   e.preventDefault();
   const kind = document.getElementById('exp-kind').value;
   const date = document.getElementById('exp-date').value;
-  const amount = Number(document.getElementById('exp-amount').value);
+  const amount = parseCommaAmount(document.getElementById('exp-amount').value);
   const desc = document.getElementById('exp-desc').value.trim();
   if(!date || !amount) return;
   const list = EXPENSE_LIST_MAP()[kind];
@@ -13374,6 +13375,39 @@ document.getElementById('savePolicyBtn').addEventListener('click', async ()=>{
 
 function escHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+// 금액 입력칸에 숫자를 입력하는 동안 1,000 단위 구분쉼표(,)를 실시간으로 붙여줘서 자릿수를 한눈에 알아보기
+// 쉽게 함 - type="number"는 콤마를 아예 입력받지 못하므로 text+inputmode=numeric으로 바꾸고, 입력할 때마다
+// 콤마를 빼고 다시 포맷해서 넣어줌(음수 부호 "-"는 선지급 차감처럼 마이너스 금액을 쓰는 칸이 있어 허용).
+// 커서가 항상 맨 끝으로 튀지 않도록, 끝에서부터 몇 글자 떨어져 있었는지를 기억해뒀다가 그대로 復元함
+function parseCommaAmount(str){
+  const cleaned = String(str==null?'':str).replace(/,/g,'').trim();
+  if(cleaned === '' || cleaned === '-') return 0;
+  const n = Number(cleaned);
+  return isNaN(n) ? 0 : n;
+}
+function formatCommaAmountStr(str){
+  const raw = String(str==null?'':str);
+  const neg = raw.trim().startsWith('-');
+  let digits = raw.replace(/[^0-9]/g,'');
+  digits = digits.replace(/^0+(?=\d)/,'');
+  if(!digits) return neg ? '-' : '';
+  const withCommas = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return neg ? '-' + withCommas : withCommas;
+}
+function bindCommaAmountInput(el){
+  if(!el || el.dataset.commaBound) return;
+  el.dataset.commaBound = '1';
+  el.type = 'text';
+  el.setAttribute('inputmode','numeric');
+  if(el.value !== '') el.value = formatCommaAmountStr(el.value);
+  el.addEventListener('input', function(){
+    const before = this.value;
+    const distFromEnd = before.length - (this.selectionEnd==null ? before.length : this.selectionEnd);
+    this.value = formatCommaAmountStr(before);
+    const pos = Math.max(0, this.value.length - distFromEnd);
+    try{ this.setSelectionRange(pos, pos); }catch(e){}
+  });
 }
 
 // 저장/수정/등록 등 "완료됐다"는 걸 알려주는 짧은 알림 - 예전엔 화면 여기저기(버튼 옆 작은 글씨)에 흩어져
