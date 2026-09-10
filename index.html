@@ -7464,7 +7464,7 @@ function renderScheduleList(){
 // 입력하다가 저장하기 직전에 잠겨서, 입력한 내용이 다 날아가고 처음부터 다시 입력해야 하는 문제가 있었음
 // (아래 clientForm 저장 핸들러에서도 저장 직전에 다시 확인해서, 잠겨있으면 그 자리에서 비밀번호만 물어보고
 // 입력값은 그대로 살려서 저장을 이어감 - 처음부터 다시 입력할 필요 없음)
-const SENSITIVE_UNLOCK_MS = 10*60*1000;
+const SENSITIVE_UNLOCK_MS = 60*60*1000;
 let adminSensitiveUnlocked = false;
 let adminSensitiveUnlockTimer = null;
 let adminSensitiveUnlockUntil = null;
@@ -7559,7 +7559,7 @@ function updateAllSensitiveUnlockButtons(){
       unlockBtn.onclick = lockSensitiveView;
     } else {
       unlockBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
-      unlockBtn.title = '잠금해제 (10분간 조회 가능)';
+      unlockBtn.title = '잠금해제 (1시간 동안 조회 가능)';
       unlockBtn.onclick = unlockSensitiveView;
     }
   });
@@ -7644,7 +7644,9 @@ function openClientDetailModal(c){
   // 설립일은 법인에만 있는 개념이라 개인 거래처면 행 자체를 넣지 않음
   const foundingRow = c.entityType !== '개인' ? rowHtml('설립일', c.foundingDate || '-') : '';
   const bizTypeDisplay = c.bizType ? (c.bizTypeCode ? `${c.bizType} (${c.bizTypeCode})` : c.bizType) : '-';
-  let html = group('기본정보', rowHtml('프로그램', programDisplay) + rowHtml('회사코드', c.companyCode || '-') + rowHtml('사업자 상세구분', subTypeDisplay)
+  let html = group('기본정보', rowHtml('사업자구분', c.entityType || '-') + rowHtml('사업자번호', c.bizNo || '-')
+    + (c.entityType === '법인' ? rowHtml('법인등록번호', c.corpRegNo || '-') : '')
+    + rowHtml('프로그램', programDisplay) + rowHtml('회사코드', c.companyCode || '-') + rowHtml('사업자 상세구분', subTypeDisplay)
     + rowHtml('사업장 주소', c.bizAddress || '-') + rowHtml('개업일', c.openDate || '-') + foundingRow + rowHtml('업종', bizTypeDisplay));
 
   // 2) 대표자 (실무자 중 아무도 주연락처로 지정 안 했으면 대표자가 기본 주연락처)
@@ -7669,12 +7671,84 @@ function openClientDetailModal(c){
   }
   html += group('실무자', contactRows);
 
-  // 개인정보(ID/PW)는 표의 🔑 아이콘에서 바로 열 수 있어서 이 추가정보 팝업에서는 중복으로 두지 않음
+  // 4) 수임정보 - 등록 폼의 수임구분/수임료/계약일/수임시작일/진행상황(+해지 시 해지사유·해지일·종료월)
+  const taxTypeDisplay = ['기타','용역대행','단건신고'].includes(c.taxType) && c.taxTypeEtc ? `${c.taxType} (${c.taxTypeEtc})` : (c.taxType || '-');
+  let hireRows = rowHtml('수임구분', taxTypeDisplay) + rowHtml('수임료', c.fee ? Number(c.fee).toLocaleString()+'원' : '-')
+    + rowHtml('계약일', c.contractDate || '-') + rowHtml('수임시작일', c.start || '-') + rowHtml('진행상황', c.status || '-');
+  if(c.status === '해지'){
+    const terminationReasonDisplay = (c.terminationReason === '기타' && c.terminationReasonEtc) ? `기타 (${c.terminationReasonEtc})` : (c.terminationReason || '-');
+    hireRows += rowHtml('해지사유', terminationReasonDisplay) + rowHtml('해지일', c.terminationDate || '-') + rowHtml('종료월', c.terminationMonth || '-');
+  }
+  html += group('수임정보', hireRows);
+
+  // 5) 메모 - 여러 건이면 각각 날짜와 함께 보여줌(메모 아이콘 팝업과 같은 데이터, 여기서도 한 번에 볼 수 있게)
+  const memoList = (c.memos && c.memos.length) ? c.memos : (c.memo ? [{text:c.memo, date:''}] : []);
+  const memoRows = memoList.length
+    ? memoList.map(m=>`<div style="padding:5px 0; font-size:12.5px; border-bottom:1px dashed var(--border);"><div style="color:var(--ink-soft); font-size:10.5px; margin-bottom:2px;">${escHtml(m.date||'')}</div>${linkifyText(m.text||'')}</div>`).join('')
+    : `<div style="padding:5px 0; font-size:12.5px; color:var(--ink-soft);">등록된 메모 없음</div>`;
+  html += group('메모', memoRows);
+
+  // 6) 개인정보(암호화) - 잠겨있으면 이 팝업 안에서 바로 비밀번호를 입력해서 풀 수 있게 함(클릭 한 번으로 전체 조회)
+  html += `<div style="background:var(--bg); border-radius:10px; padding:10px 12px; margin-bottom:10px;">
+    <div style="font-size:11px; font-weight:800; color:var(--indigo-deep); margin-bottom:4px;">개인정보</div>
+    <div id="clientDetailPiWrap"></div>
+  </div>`;
 
   document.getElementById('memoModalBody').innerHTML = `
-    <div style="text-align:center; margin-bottom:12px;"><span class="section-subtitle-label">추가정보</span></div>
+    <div style="text-align:center; margin-bottom:12px;"><span class="section-subtitle-label">${escHtml(c.name||'')} 전체정보</span></div>
     ${html}`;
   document.getElementById('memoModalOverlay').style.display = 'flex';
+  renderClientDetailPersonalInfoSection(c);
+}
+// openClientDetailModal 하단의 "개인정보" 구간 - 잠겨있으면 그 자리에서 바로 비밀번호를 물어보고, 풀리면
+// 홈택스/여신금융협회/대표자 주민번호/통장비밀번호 등 등록된 항목을 전부 ID/PW·정보·비고 형태로 보여줌
+// (renderPersonalInfoEtcList와 같은 데이터·표시 규칙을 그대로 씀)
+async function renderClientDetailPersonalInfoSection(c){
+  const wrap = document.getElementById('clientDetailPiWrap');
+  if(!wrap) return;
+  const admin = !!gdriveAccessToken && isCurrentUserAdmin;
+  const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey && adminSensitiveUnlockUntil && Date.now() < adminSensitiveUnlockUntil;
+  if(!unlocked){
+    wrap.innerHTML = `<div style="text-align:center; padding:8px 0;">
+      <button type="button" id="clientDetailPiUnlockBtn" class="del-btn" style="background:var(--pink-bg, #FCE7F3); color:var(--pink, #DB2777);">🔒 비밀번호 입력하고 보기</button>
+    </div>`;
+    document.getElementById('clientDetailPiUnlockBtn')?.addEventListener('click', async ()=>{
+      if(!admin){ appAlert('관리자 계정으로 로그인한 상태여야 볼 수 있어요.'); return; }
+      await unlockSensitiveView();
+      renderClientDetailPersonalInfoSection(c);
+    });
+    return;
+  }
+  const p = findPersonalInfoForClient(c);
+  let etc = [];
+  if(p && p.sensitiveEnc){
+    try{ const s = await decryptJSON(p.sensitiveEnc, adminCryptoKey); etc = s.etcAccounts || []; }
+    catch(err){ wrap.innerHTML = `<div class="empty-state" style="padding:6px 0;">⚠️ 복호화 실패</div>`; return; }
+  }
+  CL_PERSONAL_INFO_DEFAULT_LABELS.forEach(label=>{
+    if(!etc.some(a=>a.label===label)) etc.unshift({id:'default-'+label, label, idVal:'', pwVal:'', note:'', locked:true});
+  });
+  applyClPersonalInfoForcedTypes(etc);
+  etc.sort((a,b)=>{
+    const wa = CL_PERSONAL_INFO_DEFAULT_LABELS.indexOf(a.label);
+    const wb = CL_PERSONAL_INFO_DEFAULT_LABELS.indexOf(b.label);
+    if(wa===-1 && wb===-1) return 0;
+    if(wa===-1) return 1;
+    if(wb===-1) return -1;
+    return wa - wb;
+  });
+  wrap.innerHTML = etc.map(a=>{
+    const isInfo = a.type === 'info';
+    return `
+    <div class="pi-etc-row" data-id="${a.id}" style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); flex-wrap:wrap;">
+      <span style="font-weight:800; font-size:12.5px; min-width:90px; padding-right:10px; border-right:1px solid var(--border); cursor:default;">${escHtml(a.label||'기타')}</span>
+      ${isInfo
+        ? `<span class="num" style="font-size:14px; letter-spacing:0.05em; cursor:text; user-select:text;">${escHtml(a.idVal||'-')}</span>`
+        : `<span style="font-size:12px; color:var(--ink-soft); cursor:default;">ID</span><span class="num" style="font-size:14px; letter-spacing:0.05em; cursor:text; user-select:text;">${escHtml(a.idVal||'-')}</span>
+      <span style="font-size:12px; color:var(--ink-soft); cursor:default;">PW</span><span class="num" style="font-size:14px; letter-spacing:0.05em; cursor:text; user-select:text;">${escHtml(a.pwVal||'-')}</span>`}
+      ${a.note ? `<span style="font-size:11.5px; color:var(--ink-soft); cursor:default;">비고</span><span style="font-size:11.5px; cursor:text; user-select:text;">${linkifyText(a.note)}</span>` : ''}
+    </div>`;
+  }).join('');
 }
 function closeMemoModal(){
   document.getElementById('memoModalOverlay').style.display = 'none';
@@ -7897,7 +7971,7 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
       <td class="num cvb">${idx+1}</td>${groupNoCell}
       <td class="cvb" style="color:${taxColor}; font-weight:600;">${escHtml(taxTypeDisplay)}</td>
       <td class="cvb" style="color:${entityColor}; font-weight:600;">${escHtml(c.entityType||'-')}</td>
-      <td class="cvb" style="color:${entityColor}; font-weight:800; background:${nameBg};">${escHtml(c.name||'')}${subTagChips}</td>
+      <td class="cvb client-name-cell" data-id="${c.id}" style="color:${entityColor}; font-weight:800; background:${nameBg}; cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px;" title="눌러서 전체 정보 보기">${escHtml(c.name||'')}${subTagChips}</td>
       <td class="num cvb">${escHtml(c.bizNo||'-')}</td>
       <td class="num cvb">${escHtml(c.corpRegNo||'-')}</td>
       <td class="cvb">${escHtml(c.repName||'')}</td>
@@ -7952,6 +8026,15 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
   wrap.querySelectorAll('.client-detail-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const c = clients.list.find(x=>x.id===btn.dataset.id);
+      if(!c) return;
+      openClientDetailModal(c);
+    });
+  });
+  // 상호명을 눌러도 같은 "전체 정보" 팝업이 열리게 함(정보 아이콘과 동일한 동작) - 목록에서 이 회사가 등록할 때
+  // 입력한 모든 사항을 바로 조회할 수 있도록
+  wrap.querySelectorAll('.client-name-cell').forEach(cell=>{
+    cell.addEventListener('click', ()=>{
+      const c = clients.list.find(x=>x.id===cell.dataset.id);
       if(!c) return;
       openClientDetailModal(c);
     });
@@ -8846,7 +8929,7 @@ async function revealCiEncryptedItem(id){
   renderCompanyInfoTeam(); renderCompanyInfoTeamView();
 }
 function ciRevealBtnHtml(id){
-  return `<button type="button" class="ci-reveal-btn" data-reveal-id="${id}" title="눌러서 확인 (10분간 조회 가능)" style="background:none; border:none; cursor:pointer; color:var(--ink-soft); display:inline-flex; align-items:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`;
+  return `<button type="button" class="ci-reveal-btn" data-reveal-id="${id}" title="눌러서 확인 (1시간 동안 조회 가능)" style="background:none; border:none; cursor:pointer; color:var(--ink-soft); display:inline-flex; align-items:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`;
 }
 // wrap 안의 🔒 아이콘 클릭을 revealCiEncryptedItem에 연결 - bindCiRowButtons와 같은 자리에서 같이 불러 씀
 function bindCiRevealButtons(wrap){
@@ -12823,23 +12906,16 @@ async function handleClientFormSubmit(){
     renderClientsOther();
     renderClientsTerminated();
     renderPersonalInfo();
-    // 상세정보/개인정보 팝업에서 "수정"으로 들어왔었다면, 확인 절차 없이 바로 그 거래처가 있는 목록으로
-    // 돌아가서 같은 팝업을 다시 띄워줌. 거래처등록 탭에서 새로 만들거나 직접 들어와 수정한 경우엔
-    // 예전처럼 폼에 남아서 이어서 다른 항목을 고를 수 있게 둠
+    // 예전엔 상세정보/개인정보 팝업에서 "수정"으로 들어왔으면 저장 후 그 팝업을 다시 띄워줬는데, "수정완료
+    // 누르면 팝업 대신 기장거래처 화면이 보이면 좋겠다"는 요청으로 팝업 재오픈은 없애고 그 거래처가 있는
+    // 목록 화면으로만 이동함. 거래처등록 탭에서 새로 만들거나 직접 들어와 수정한 경우엔 예전처럼 폼에
+    // 남아서 이어서 다른 항목을 고를 수 있게 둠
     const reopen = (c && clientPostSaveReopen && clientPostSaveReopen.clientId === c.id) ? clientPostSaveReopen : null;
     clientPostSaveReopen = null;
     if(c && reopen){
       const targetTab = c.status === '해지' ? 'clients-terminated'
         : ['기장대행','신고대리'].includes(c.taxType) ? 'clients-regular' : 'clients-other';
       document.querySelector(`.tab-btn[data-tab="${targetTab}"]`)?.click();
-      setTimeout(()=>{
-        if(reopen.type === 'detail') openClientDetailModal(c);
-        else if(reopen.type === 'personal'){
-          const admin = !!gdriveAccessToken && isCurrentUserAdmin;
-          const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
-          openPersonalInfoEtcModal(c, unlocked);
-        }
-      }, 80);
     } else {
       // 수정 저장 후에는 폼을 비우지 않고, 방금 수정한 내용을 보여준 채로 잠가둠 (신규등록/수정 버튼으로 다음 동작 선택)
       lockClientFormAfterEdit();
@@ -18965,6 +19041,11 @@ async function gdriveLogout(){
     currentUserEmail = null;
     isCurrentUserAdmin = false;
     autoSelectedOwnProfileOnLogin = false;
+    // 로그아웃 시점에 민감정보 잠금해제 상태도 완전히 초기화 - 안 그러면 재접속 후에도 예전에 풀어둔
+    // 상태(잠금해제 유지시간 타이머 포함)가 그대로 남아있어서, "재접속하면 그때부터 1시간"이 아니라
+    // 로그아웃 전 남은 시간이 이어지거나, 심하면 다른 계정으로 다시 로그인해도 열람 가능한 상태로 남을 수 있음
+    if(typeof lockSensitiveView === 'function') lockSensitiveView();
+    if(typeof setClPersonalInfoUnlocked === 'function') setClPersonalInfoUnlocked(false);
     applyPermissionUI();
     updatePolicyLockUI();
     updateQuickConnectBtn();
