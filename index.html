@@ -9994,12 +9994,20 @@ function generateExpenseReportPdfBlob(monthStr){
       return;
     }
     const { jsPDF } = window.jspdf;
-    // 화면 밖(왼쪽으로 아주 멀리)에 실제로 그려서 html2canvas가 캡처할 수 있게 함 - display:none은 캡처가 안 됨
+    // html2canvas/jsPDF.html()은 캡처 대상의 실제 화면 좌표(getBoundingClientRect)를 기준으로 캡처 영역을
+    // 계산하기 때문에, 예전처럼 "왼쪽으로 아주 멀리(-99999px)" 옮겨서 화면 밖에 그리면 좌표 계산이 어긋나
+    // 캡처 결과가 완전히 빈 페이지로 나오는 문제가 있었음(제보: 첨부된 지출결의서 PDF가 아무 내용 없이 흰 페이지만
+    // 나옴). display:none은 아예 캡처가 안 되고, visibility:hidden도 내용 없이 캡처됨 - 그래서 실제 좌표는
+    // 정상적인 화면 위(0,0)에 두되, 바깥을 크기 0 + overflow:hidden인 래퍼로 감싸서 사용자 눈에는 보이지 않으면서
+    // 내부 요소는 정상적으로 레이아웃·렌더링되게 함(캡처 좌표가 뒤틀리지 않음)
     const holder = document.createElement('div');
-    holder.style.cssText = 'position:fixed; left:-99999px; top:0; width:760px; background:#fff; padding:10px;';
+    holder.style.cssText = 'width:760px; background:#fff; padding:10px;';
     holder.innerHTML = buildExpenseReportHTML(monthStr);
-    document.body.appendChild(holder);
-    const cleanup = ()=>{ try{ document.body.removeChild(holder); }catch(e){} };
+    const clipWrap = document.createElement('div');
+    clipWrap.style.cssText = 'position:fixed; top:0; left:0; width:0; height:0; overflow:hidden; z-index:-1;';
+    clipWrap.appendChild(holder);
+    document.body.appendChild(clipWrap);
+    const cleanup = ()=>{ try{ document.body.removeChild(clipWrap); }catch(e){} };
     try{
       const pdf = new jsPDF('p', 'pt', 'a4');
       pdf.html(holder, {
@@ -16389,12 +16397,12 @@ document.querySelectorAll('.ad-rt-align').forEach(btn=>{
 // 있으면 지우지 않고 그 뒤에 이어붙여서 기존에 쓰던 내용은 그대로 유지함. 항상 가운데 정렬로 "- 기안 내용 -"
 // 구분선으로 시작하는 정형화된 틀에 맞춰 넣어줌
 const AD_AUTO_PHRASE = {
-  '일반': '안녕하세요, 아래와 같이 결재 요청드립니다.\n\n검토 후 승인 부탁드립니다. 감사합니다.',
-  '지출결의서': '안녕하세요, 아래 지출건에 대해 결재 요청드립니다.\n\n첨부한 증빙 확인 후 승인 부탁드립니다. 감사합니다.',
-  '휴가': '안녕하세요, 아래와 같이 휴가를 신청합니다.\n\n업무 인수인계는 별도로 안내드리겠습니다. 승인 부탁드립니다.',
-  '부가가치세': '안녕하세요, 아래 거래처의 부가가치세 신고 관련 결재 요청드립니다.\n\n검토 후 승인 부탁드립니다. 감사합니다.',
-  '법인세': '안녕하세요, 아래 거래처의 법인세 신고 관련 결재 요청드립니다.\n\n검토 후 승인 부탁드립니다. 감사합니다.',
-  '종합소득세': '안녕하세요, 아래 거래처의 종합소득세 신고 관련 결재 요청드립니다.\n\n검토 후 승인 부탁드립니다. 감사합니다.'
+  '일반': '아래와 같이 기안을 상신함.',
+  '지출결의서': '아래 지출 건에 대한 결의서를 상신함.',
+  '휴가': '아래 일정으로 휴가를 신청함.',
+  '부가가치세': '아래 거래처의 부가가치세 신고 건을 상신함.',
+  '법인세': '아래 거래처의 법인세 신고 건을 상신함.',
+  '종합소득세': '아래 거래처의 종합소득세 신고 건을 상신함.'
 };
 // 문서종류에 대해 실제로 적용할 기안내용 - 회사에서 직접 수정해둔 값(sharedAutoPhrases)이 있으면 그걸
 // 먼저 쓰고, 없으면 위 하드코딩된 기본값(AD_AUTO_PHRASE)으로 자연스럽게 대체됨(한 번도 수정 안 한 문서종류도 그대로 동작).
