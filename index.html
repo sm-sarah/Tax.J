@@ -1056,6 +1056,14 @@
   }
   .field input:focus, .field select:focus{outline:none; border-color:var(--indigo); background:var(--surface);}
   .field input:disabled, .field select:disabled{background:var(--frame-bg); color:var(--ink-soft); cursor:not-allowed; opacity:0.75;}
+  /* 휴가 기안폼의 날짜칸(input[type=date])이 브라우저 기본 렌더링 때문에 같은 줄의 select들보다 살짝 더 높게
+     보이는 문제 - 높이를 명시적으로 같이 맞추고, 달력 아이콘이 날짜 숫자와 너무 떨어져 보이던 것도 아이콘
+     자체 여백을 줄여서 가깝게 붙임 */
+  #ad-leave-target-row input[type="date"], #ad-leave-target-row select{ height:36px; box-sizing:border-box; }
+  #ad-leave-target-row input[type="date"]::-webkit-calendar-picker-indicator{ margin-left:4px; padding:2px; }
+  /* 기안 상세 팝업 모달(openApprovalDetailModal)에서는 "목록"으로 돌아갈 목록 표 자체가 이 모달 밖에 있어서
+     버튼이 아무 동작도 안 하므로, 이 모달 안에서만 숨김(목록 표 안에서 펼친 상세카드에서는 그대로 보임) */
+  #approvalDetailModalOverlay .approval-back-to-list-btn{ display:none; }
   /* 필드 하나하나를 카드처럼 감싸는 스타일 - 설정 탭의 모든 "등록" 폼(직원휴가/제외일수/점심식대/직원등록/
      특별기간/관리자 이메일 등)에서 공용으로 씀. 처음엔 배경이 페이지 배경(--bg)과 같아서 라벨이 칩 안에
      묻혀 안 보인다는 의견이 있었음 - 박스 배경을 흰색(--surface)으로 바꿔 페이지 배경과 대비를 주고,
@@ -2234,50 +2242,66 @@
     <!-- 입력/수정 -->
     <div id="employeeModalEdit" style="display:none;">
       <form id="settingsForm">
-        <div class="field">
-          <label>이름</label>
-          <input type="text" id="s-name" placeholder="예: 홍길동">
+        <!-- 이름/직책/재직상태는 값 하나하나가 짧아서(이름 두세 글자, 직책 드롭박스, 재직상태 드롭박스)
+             예전처럼 한 줄씩 세로로 넓게 나눌 필요가 없어서 한 줄에 같이 두고, 다른 설정 폼들처럼
+             field-tile(라벨+입력이 카드 하나로 묶이고 밑줄로 구분되는 스타일)로 통일함. 직책은 매번 같은
+             값(회계사/매니저)을 직접 타이핑하는 대신 고르게 하고, 그 외엔 "직접입력"으로 자유롭게 씀 -->
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div class="field field-tile" style="flex:1 1 120px; margin-bottom:0;">
+            <label>이름</label>
+            <input type="text" id="s-name" placeholder="예: 홍길동">
+          </div>
+          <div class="field field-tile" style="flex:1 1 110px; margin-bottom:0;">
+            <label>직책</label>
+            <select id="s-position-select">
+              <option value="회계사">회계사</option>
+              <option value="매니저">매니저</option>
+              <option value="직접입력">직접입력</option>
+            </select>
+          </div>
+          <div class="field field-tile" style="flex:1 1 100px; margin-bottom:0;">
+            <label>재직상태</label>
+            <select id="s-employment-status">
+              <option value="근무중">근무중</option>
+              <option value="퇴사">퇴사</option>
+            </select>
+          </div>
         </div>
-        <div class="field">
-          <label>직책 <span style="font-weight:400; color:var(--ink-soft);">(선택)</span></label>
+        <div class="field" id="s-position-custom-row" style="display:none;">
+          <label>직책 (직접입력)</label>
           <input type="text" id="s-position" placeholder="예: 대리">
         </div>
         <div class="field">
-          <label>캐릭터 <span style="font-weight:400; color:var(--ink-soft);">(의견 남길 때 이름 옆에 표시돼요)</span></label>
+          <label>캐릭터</label>
           <input type="hidden" id="s-avatar" value="">
           <div id="s-avatar-picker" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
         </div>
-        <div class="field">
-          <label>생년월일</label>
-          <div style="display:flex; align-items:center; gap:5px;">
-            <input type="number" id="s-birth-y" placeholder="1995" min="1900" max="2100" class="num-input" style="width:82px;">
-            <span style="font-size:13px; color:var(--ink-soft);">년</span>
-            <input type="number" id="s-birth-m" placeholder="1" min="1" max="12" class="num-input" style="width:52px;">
-            <span style="font-size:13px; color:var(--ink-soft);">월</span>
-            <input type="number" id="s-birth-d" placeholder="1" min="1" max="31" class="num-input" style="width:52px;">
-            <span style="font-size:13px; color:var(--ink-soft);">일</span>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div class="field field-tile" style="flex:1 1 220px; margin-bottom:0;">
+            <label>생년월일</label>
+            <div style="display:flex; align-items:center; gap:5px;">
+              <input type="number" id="s-birth-y" placeholder="1995" min="1900" max="2100" class="num-input" style="width:76px;">
+              <span style="font-size:13px; color:var(--ink-soft);">년</span>
+              <input type="number" id="s-birth-m" placeholder="1" min="1" max="12" class="num-input" style="width:46px;">
+              <span style="font-size:13px; color:var(--ink-soft);">월</span>
+              <input type="number" id="s-birth-d" placeholder="1" min="1" max="31" class="num-input" style="width:46px;">
+              <span style="font-size:13px; color:var(--ink-soft);">일</span>
+            </div>
+          </div>
+          <div class="field field-tile" style="flex:1 1 220px; margin-bottom:0;">
+            <label>입사일 (법정연차 자동계산 기준)</label>
+            <div style="display:flex; align-items:center; gap:5px;">
+              <input type="number" id="s-hire-y" placeholder="2024" min="1980" max="2100" class="num-input" style="width:76px;">
+              <span style="font-size:13px; color:var(--ink-soft);">년</span>
+              <input type="number" id="s-hire-m" placeholder="1" min="1" max="12" class="num-input" style="width:46px;">
+              <span style="font-size:13px; color:var(--ink-soft);">월</span>
+              <input type="number" id="s-hire-d" placeholder="1" min="1" max="31" class="num-input" style="width:46px;">
+              <span style="font-size:13px; color:var(--ink-soft);">일</span>
+            </div>
           </div>
         </div>
-        <div class="field">
-          <label>입사일 (법정연차 자동계산 기준)</label>
-          <div style="display:flex; align-items:center; gap:5px;">
-            <input type="number" id="s-hire-y" placeholder="2024" min="1980" max="2100" class="num-input" style="width:82px;">
-            <span style="font-size:13px; color:var(--ink-soft);">년</span>
-            <input type="number" id="s-hire-m" placeholder="1" min="1" max="12" class="num-input" style="width:52px;">
-            <span style="font-size:13px; color:var(--ink-soft);">월</span>
-            <input type="number" id="s-hire-d" placeholder="1" min="1" max="31" class="num-input" style="width:52px;">
-            <span style="font-size:13px; color:var(--ink-soft);">일</span>
-          </div>
-          <p class="hint" style="text-align:center;">이것만 등록하면 법정휴가는 자동으로 계산돼요.<br>아래 두 항목은 특수한 경우에만 필요한 선택 사항이에요.</p>
-        </div>
+        <p class="hint" style="text-align:center;">이것만 등록하면 법정휴가는 자동으로 계산돼요. 아래 두 항목은 특수한 경우에만 필요한 선택 사항이에요.</p>
 
-        <div class="field">
-          <label>재직상태</label>
-          <select id="s-employment-status">
-            <option value="근무중">근무중</option>
-            <option value="퇴사">퇴사</option>
-          </select>
-        </div>
         <div id="s-resign-fields" style="display:none;">
           <div class="field">
             <label>마지막근무일</label>
@@ -3147,7 +3171,7 @@
   <!-- 거래처관리: 등록/수정 -->
 
   <section id="tab-clients-edit" class="tab-panel">
-    <h2 id="clientFormTitle" class="section-title" style="justify-content:center; font-size:24px;">신규 등록</h2>
+    <h2 id="clientFormTitle" class="section-title" style="justify-content:center; font-size:24px;">신규 거래처 등록</h2>
     <div class="settings-box" style="max-width:680px;">
       <!-- novalidate: 이 폼의 날짜칸들(계약일·수임시작일·해지일)은 min="2015-01-01"처럼 범위 제한이 걸려있고,
            공유드라이브 링크칸은 type="url"이라 "http(s)://"로 시작하지 않으면 형식 오류로 처리되는데, 브라우저가
@@ -3161,7 +3185,7 @@
         <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;">
           <div class="field" style="flex:1 1 100%;">
             <label style="display:flex; align-items:center; justify-content:center; min-height:20px; font-size:12px; font-weight:800; color:var(--indigo-deep); letter-spacing:0.04em;">상호명</label>
-            <input type="text" id="cl-name" required placeholder="예: (주)예시상사" style="text-align:center; font-size:19px; font-weight:800; color:var(--ink); padding:12px 14px; border:2px solid var(--indigo-bg); background:var(--indigo-bg);">
+            <input type="text" id="cl-name" required style="text-align:center; font-size:19px; font-weight:800; color:var(--ink); padding:12px 14px; border:2px solid var(--indigo-bg); background:var(--indigo-bg);">
           </div>
         </div>
 
@@ -4698,7 +4722,16 @@ async function saveSharedSpecialPeriods(){ try{ localStorage.setItem('worklog_sh
 async function saveSharedFilingStatus(){ try{ localStorage.setItem('worklog_shared_filingstatus', JSON.stringify(sharedFilingStatus)); }catch(e){ console.error('신고현황 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedReviewStatus(){ try{ localStorage.setItem('worklog_shared_reviewstatus', JSON.stringify(sharedReviewStatus)); }catch(e){ console.error('검토표 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedFilingHelp(){ try{ localStorage.setItem('worklog_shared_filinghelp', JSON.stringify(sharedFilingHelp)); }catch(e){ console.error('신고도움 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedApprovals(){ try{ localStorage.setItem('worklog_shared_approvals', JSON.stringify(sharedApprovals)); }catch(e){ console.error('결재 저장 실패', e); } gdriveScheduleSync(); }
+// 예전엔 checkNewApprovalsForBrowserNotify/checkApprovalDecisionsForBrowserNotify가 loadAll() 안에서만
+// 불려서(페이지를 처음 열 때, 그리고 Drive 동기화로 데이터가 바뀔 때만) - Drive를 연결 안 해둔 브라우저에서는
+// 첫 로딩 이후로 "알림 받기"를 켜놔도 다시는 알림 조건을 확인할 일이 없었음(같은 브라우저에서 새로 기안/결재가
+// 생겨도 알림이 영영 안 오는 원인). 결재 데이터가 바뀌어 저장될 때마다(=지금) 같이 확인하도록 여기서도 호출함
+async function saveSharedApprovals(){
+  try{ localStorage.setItem('worklog_shared_approvals', JSON.stringify(sharedApprovals)); }catch(e){ console.error('결재 저장 실패', e); }
+  gdriveScheduleSync();
+  if(typeof checkNewApprovalsForBrowserNotify === 'function') checkNewApprovalsForBrowserNotify();
+  if(typeof checkApprovalDecisionsForBrowserNotify === 'function') checkApprovalDecisionsForBrowserNotify();
+}
 async function saveSharedTrash(){ try{ localStorage.setItem('worklog_shared_trash', JSON.stringify(sharedTrash)); }catch(e){ console.error('공용 휴지통 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedLunchLimitHistory(){ try{ localStorage.setItem('worklog_shared_lunchlimit', JSON.stringify(sharedLunchLimitHistory)); }catch(e){ console.error('점심식대 한도 저장 실패', e); } gdriveScheduleSync(); }
 // worklog_shared_lunchlimit이 아직 없을 때(업데이트 후 첫 로딩) 한 번만 실행 - 그동안 직원 프로필마다 따로
@@ -4893,13 +4926,42 @@ function leaveAbsenceTime(dateStr, type, subtype){
 }
 
 // ===== 직원(프로필) 관리 =====
-// 직원 등록 시 고를 수 있는 캐릭터(이모지) 세트 - 기안 의견란 등에서 "캐릭터 + 이름 + 의견" 형태로 표시하는 데 씀
-const STAFF_AVATAR_OPTIONS = ['🐱','🐶','🐰','🐻','🦊','🐼','🐯','🐸','🐧','🦁','🐨','🐹','🦉','🐵','🐷','🐙'];
+// 직원 등록 시 고를 수 있는 캐릭터 세트 - 예전엔 컬러 이모지였는데, 앱 안의 다른 아이콘들이 전부 선(line) 스타일
+// 이라 캐릭터만 색깔 이모지로 튀어 보인다는 의견이 있었음. 그래서 값 자체를 이모지 문자가 아니라 이 키
+// 문자열로 바꾸고, 화면에 그릴 때는 항상 staffAvatarIconSvg()로 다른 아이콘들과 같은 선 스타일 SVG를 그림
+// (이미 예전 이모지로 저장돼있던 직원은 이 키 목록에 없는 값이라 staffAvatarIconSvg가 그대로 문자로
+// 보여주는 방식으로 하위호환됨 - 기존 데이터를 건드리지 않음)
+const STAFF_AVATAR_OPTIONS = ['cat','dog','rabbit','bear','fox','panda','tiger','frog','penguin','lion','koala','hamster','owl','monkey','pig','octopus'];
+function staffAvatarIconSvg(key, size){
+  size = size || 18;
+  const s = `width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;"`;
+  const icons = {
+    cat: `<svg ${s}><path d="M5 9 L8 4 L9.5 9"/><path d="M19 9 L16 4 L14.5 9"/><circle cx="12" cy="13" r="7"/><circle cx="9.3" cy="12" r="0.6" fill="currentColor" stroke="none"/><circle cx="14.7" cy="12" r="0.6" fill="currentColor" stroke="none"/><path d="M12 14.5 q-1 1.3 -2.3 0.4 M12 14.5 q1 1.3 2.3 0.4"/></svg>`,
+    dog: `<svg ${s}><path d="M6 8 q-2 3 -1 7"/><path d="M18 8 q2 3 1 7"/><circle cx="12" cy="13" r="7"/><circle cx="9.3" cy="12" r="0.6" fill="currentColor" stroke="none"/><circle cx="14.7" cy="12" r="0.6" fill="currentColor" stroke="none"/><ellipse cx="12" cy="15.3" rx="1.3" ry="1" fill="currentColor" stroke="none"/></svg>`,
+    rabbit: `<svg ${s}><path d="M9 9 L8 2.5"/><path d="M15 9 L16 2.5"/><circle cx="12" cy="14" r="6.5"/><circle cx="9.6" cy="13" r="0.6" fill="currentColor" stroke="none"/><circle cx="14.4" cy="13" r="0.6" fill="currentColor" stroke="none"/><path d="M12 15.3 q-1 1.2 -2 0.3 M12 15.3 q1 1.2 2 0.3"/></svg>`,
+    bear: `<svg ${s}><circle cx="6.6" cy="7" r="2.1"/><circle cx="17.4" cy="7" r="2.1"/><circle cx="12" cy="14" r="7"/><circle cx="9.3" cy="13" r="0.6" fill="currentColor" stroke="none"/><circle cx="14.7" cy="13" r="0.6" fill="currentColor" stroke="none"/><ellipse cx="12" cy="16" rx="1.6" ry="1.2" fill="currentColor" stroke="none"/></svg>`,
+    fox: `<svg ${s}><path d="M4.5 9.5 L8 4 L9.8 9.5 Z"/><path d="M19.5 9.5 L16 4 L14.2 9.5 Z"/><path d="M6 12 Q6 18.5 12 19 Q18 18.5 18 12 Q15 9 12 9 Q9 9 6 12 Z"/><circle cx="9.3" cy="12.3" r="0.6" fill="currentColor" stroke="none"/><circle cx="14.7" cy="12.3" r="0.6" fill="currentColor" stroke="none"/><path d="M12 14.5 L12 16 L10.6 16.6"/></svg>`,
+    panda: `<svg ${s}><circle cx="6.5" cy="6.5" r="2.3"/><circle cx="17.5" cy="6.5" r="2.3"/><circle cx="12" cy="14" r="7"/><ellipse cx="9.2" cy="13" rx="1.4" ry="1.8" fill="currentColor" stroke="none"/><ellipse cx="14.8" cy="13" rx="1.4" ry="1.8" fill="currentColor" stroke="none"/><ellipse cx="12" cy="16" rx="1.2" ry="0.9" fill="currentColor" stroke="none"/></svg>`,
+    tiger: `<svg ${s}><path d="M5 9 L8 4 L9.5 9"/><path d="M19 9 L16 4 L14.5 9"/><circle cx="12" cy="13" r="7"/><path d="M6 10 l1.6 1 M18 10 l-1.6 1 M6.5 15 l1.8 -0.4 M17.5 15 l-1.8 -0.4"/><circle cx="9.3" cy="12" r="0.6" fill="currentColor" stroke="none"/><circle cx="14.7" cy="12" r="0.6" fill="currentColor" stroke="none"/><ellipse cx="12" cy="15" rx="1.3" ry="1" fill="currentColor" stroke="none"/></svg>`,
+    frog: `<svg ${s}><circle cx="8" cy="7.5" r="2.2"/><circle cx="16" cy="7.5" r="2.2"/><circle cx="8" cy="7.5" r="0.7" fill="currentColor" stroke="none"/><circle cx="16" cy="7.5" r="0.7" fill="currentColor" stroke="none"/><path d="M5 13 Q12 9 19 13 Q19 18 12 18.5 Q5 18 5 13 Z"/><path d="M9 16.3 Q12 17.6 15 16.3"/></svg>`,
+    penguin: `<svg ${s}><path d="M12 3.5 C8 3.5 6 8 6 12.5 C6 17.5 8.5 20.5 12 20.5 C15.5 20.5 18 17.5 18 12.5 C18 8 16 3.5 12 3.5 Z"/><path d="M9.3 10.5 Q12 12.2 14.7 10.5"/><circle cx="9.7" cy="8.3" r="0.6" fill="currentColor" stroke="none"/><circle cx="14.3" cy="8.3" r="0.6" fill="currentColor" stroke="none"/><path d="M11 11.3 L13 11.3 L12 12.6 Z" fill="currentColor" stroke="none"/></svg>`,
+    lion: `<svg ${s}><circle cx="12" cy="13" r="5.6"/><circle cx="12" cy="13" r="8.6" stroke-dasharray="2.6 2.4"/><circle cx="9.6" cy="12" r="0.6" fill="currentColor" stroke="none"/><circle cx="14.4" cy="12" r="0.6" fill="currentColor" stroke="none"/><ellipse cx="12" cy="15" rx="1.3" ry="1" fill="currentColor" stroke="none"/></svg>`,
+    koala: `<svg ${s}><circle cx="4.8" cy="12" r="3"/><circle cx="19.2" cy="12" r="3"/><circle cx="12" cy="13" r="6.6"/><circle cx="9.6" cy="12.3" r="0.6" fill="currentColor" stroke="none"/><circle cx="14.4" cy="12.3" r="0.6" fill="currentColor" stroke="none"/><ellipse cx="12" cy="15" rx="1.4" ry="1" fill="currentColor" stroke="none"/></svg>`,
+    hamster: `<svg ${s}><circle cx="6.5" cy="8" r="2.4"/><circle cx="17.5" cy="8" r="2.4"/><circle cx="12" cy="14" r="7"/><circle cx="9.3" cy="13" r="0.6" fill="currentColor" stroke="none"/><circle cx="14.7" cy="13" r="0.6" fill="currentColor" stroke="none"/><ellipse cx="12" cy="16" rx="1.5" ry="1.1" fill="currentColor" stroke="none"/></svg>`,
+    owl: `<svg ${s}><path d="M6 5 L8.5 8.5 M18 5 L15.5 8.5"/><circle cx="12" cy="13" r="7.2"/><circle cx="9" cy="12" r="2.3"/><circle cx="15" cy="12" r="2.3"/><circle cx="9" cy="12" r="0.6" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="0.6" fill="currentColor" stroke="none"/><path d="M12 14.3 L11 16.3 L13 16.3 Z" fill="currentColor" stroke="none"/></svg>`,
+    monkey: `<svg ${s}><circle cx="5.4" cy="12.5" r="2.6"/><circle cx="18.6" cy="12.5" r="2.6"/><circle cx="12" cy="13" r="7"/><ellipse cx="12" cy="14.5" rx="4" ry="3.2"/><circle cx="9.6" cy="13.3" r="0.6" fill="currentColor" stroke="none"/><circle cx="14.4" cy="13.3" r="0.6" fill="currentColor" stroke="none"/><path d="M10.5 16.2 Q12 17 13.5 16.2"/></svg>`,
+    pig: `<svg ${s}><path d="M7 6 L9.5 9"/><path d="M17 6 L14.5 9"/><circle cx="12" cy="14" r="7"/><ellipse cx="12" cy="15" rx="2.3" ry="1.7"/><circle cx="11" cy="15" r="0.4" fill="currentColor" stroke="none"/><circle cx="13" cy="15" r="0.4" fill="currentColor" stroke="none"/><circle cx="9.3" cy="12" r="0.6" fill="currentColor" stroke="none"/><circle cx="14.7" cy="12" r="0.6" fill="currentColor" stroke="none"/></svg>`,
+    octopus: `<svg ${s}><path d="M12 3.5 C7.5 3.5 5 6.5 5 10.5 C5 14 7.3 15.8 9 16.5 M12 3.5 C16.5 3.5 19 6.5 19 10.5 C19 14 16.7 15.8 15 16.5"/><circle cx="9" cy="9.5" r="0.7" fill="currentColor" stroke="none"/><circle cx="15" cy="9.5" r="0.7" fill="currentColor" stroke="none"/><path d="M6 15 q-1 2 -2.5 2.3 M8 16.5 q-0.5 2.2 -2 3 M12 17 q0 2.2 -0.5 3.3 M16 16.5 q0.5 2.2 2 3 M18 15 q1 2 2.5 2.3"/></svg>`,
+  };
+  // 알 수 없는 값(예전에 저장해둔 이모지 문자 등)은 그대로 텍스트로 보여줘서 예전 직원의 캐릭터가
+  // 갑자기 사라지거나 깨져 보이지 않게 함(데이터를 새 키로 바꾸도록 강제하지 않음)
+  return icons[key] || escHtml(key);
+}
 function renderAvatarPicker(selected){
   const wrap = document.getElementById('s-avatar-picker');
   if(!wrap) return;
   wrap.innerHTML = STAFF_AVATAR_OPTIONS.map(a=>`
-    <button type="button" class="s-avatar-opt" data-avatar="${a}" style="width:34px; height:34px; font-size:17px; border-radius:10px; border:1.5px solid ${a===selected?'var(--indigo)':'var(--border)'}; background:${a===selected?'var(--indigo-bg)':'var(--surface)'}; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:border-color .15s, background .15s;">${a}</button>
+    <button type="button" class="s-avatar-opt" data-avatar="${a}" style="width:34px; height:34px; border-radius:10px; border:1.5px solid ${a===selected?'var(--indigo)':'var(--border)'}; background:${a===selected?'var(--indigo-bg)':'var(--surface)'}; color:${a===selected?'var(--indigo-deep)':'var(--ink-soft)'}; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:border-color .15s, background .15s;">${staffAvatarIconSvg(a, 19)}</button>
   `).join('');
   wrap.querySelectorAll('.s-avatar-opt').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -4910,6 +4972,38 @@ function renderAvatarPicker(selected){
     });
   });
 }
+// 직책 드롭박스(회계사/매니저/직접입력)와 실제 저장값(#s-position, 자유 텍스트)을 서로 맞춰주는 함수 -
+// 매번 "대리" 같은 텍스트를 직접 치는 대신 자주 쓰는 두 직책은 바로 고르고, 그 외엔 "직접입력"으로 자유롭게
+// 쓸 수 있게 함. 폼을 열어 기존 값을 채울 때(수정)도 이 함수로 드롭박스 쪽을 실제 값에 맞춰 동기화함
+function syncStaffPositionSelect(){
+  const posEl = document.getElementById('s-position');
+  const selEl = document.getElementById('s-position-select');
+  const rowEl = document.getElementById('s-position-custom-row');
+  if(!posEl || !selEl || !rowEl) return;
+  const val = posEl.value || '';
+  if(val === '회계사' || val === '매니저'){
+    selEl.value = val;
+    rowEl.style.display = 'none';
+  } else if(val === ''){
+    rowEl.style.display = 'none';
+  } else {
+    selEl.value = '직접입력';
+    rowEl.style.display = '';
+  }
+}
+document.getElementById('s-position-select')?.addEventListener('change', function(){
+  const posEl = document.getElementById('s-position');
+  const rowEl = document.getElementById('s-position-custom-row');
+  if(!posEl || !rowEl) return;
+  if(this.value === '직접입력'){
+    rowEl.style.display = '';
+    if(posEl.value === '회계사' || posEl.value === '매니저') posEl.value = '';
+    posEl.focus();
+  } else {
+    rowEl.style.display = 'none';
+    posEl.value = this.value;
+  }
+});
 // resolveNameByEmail과 짝이 되는 함수 - 기안 의견 등에서 이메일로 그 직원의 캐릭터를 찾을 때 씀
 function resolveAvatarByEmail(email){
   if(!email) return '';
@@ -6208,6 +6302,7 @@ async function loadAll(){
   {
     const curProfile = getProfiles().find(pr=>pr.id===activeProfileId);
     document.getElementById('s-position').value = (curProfile && curProfile.position) || '';
+    if(typeof syncStaffPositionSelect === 'function') syncStaffPositionSelect();
     document.getElementById('s-avatar').value = (curProfile && curProfile.avatar) || '';
     renderAvatarPicker(document.getElementById('s-avatar').value);
   }
@@ -8397,7 +8492,7 @@ async function deleteClientById(id){
     document.getElementById('clientForm').querySelector('button[type="submit"]').textContent = '등록';
     document.getElementById('client-cancel').style.display = 'none';
     const delTitleEl = document.getElementById('clientFormTitle');
-    if(delTitleEl) delTitleEl.textContent = '신규 등록';
+    if(delTitleEl) delTitleEl.textContent = '신규 거래처 등록';
   }
   renderClientsRegular();
   renderClientsOther();
@@ -9956,19 +10051,23 @@ function buildExpenseReportHTML(monthStr){
         <div style="flex:1; height:2px; background:var(--guide-teal);"></div>
       </div>
       <div style="text-align:center; margin:0 0 4px;">
-        <div style="display:inline-flex; flex-direction:column; align-items:center; background:#CFEFFB; color:#0B5A78; border-radius:10px; padding:7px 14px; margin:0 4px 6px; vertical-align:middle;">
-          <span style="font-size:10px; font-weight:700;">이달의 근무가능일</span>
-          <b style="font-family:'IBM Plex Mono',monospace; font-size:15px; margin-top:2px;">${s.weekdays}일</b>
+        <!-- html2canvas로 캡처해서 PDF로 뽑을 때 display:inline-flex + flex-direction:column 조합의 박스
+             안쪽 글자(특히 굵은 숫자)가 간헐적으로 아예 안 그려지는(빈 박스로 나오는) 문제가 있었음 -
+             flex를 완전히 빼고 inline-block 박스 + 그 안의 block 줄바꿈(label/value를 각각 div로)으로
+             바꿔서, html2canvas가 항상 안정적으로 그릴 수 있는 단순한 레이아웃으로 교체함 -->
+        <div style="display:inline-block; text-align:center; background:#CFEFFB; color:#0B5A78; border-radius:10px; padding:7px 14px; margin:0 4px 6px; vertical-align:middle;">
+          <div style="font-size:10px; font-weight:700;">이달의 근무가능일</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-weight:800; font-size:15px; margin-top:2px;">${s.weekdays}일</div>
         </div>
         <span style="font-size:16px; font-weight:800; color:var(--ink-soft); margin:0 4px; display:inline-block; vertical-align:middle;">−</span>
-        <div style="display:inline-flex; flex-direction:column; align-items:center; background:var(--coral-bg); color:var(--coral); border-radius:10px; padding:7px 14px; margin:0 4px 6px; vertical-align:middle;">
-          <span style="font-size:10px; font-weight:700;">차감일</span>
-          <b style="font-family:'IBM Plex Mono',monospace; font-size:15px; margin-top:2px;">${s.deductedDays}일${deductedBreakdownText ? `<span style="font-size:10px; font-weight:700; margin-left:3px;">(${deductedBreakdownText})</span>` : ''}</b>
+        <div style="display:inline-block; text-align:center; background:var(--coral-bg); color:var(--coral); border-radius:10px; padding:7px 14px; margin:0 4px 6px; vertical-align:middle;">
+          <div style="font-size:10px; font-weight:700;">차감일</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-weight:800; font-size:15px; margin-top:2px;">${s.deductedDays}일${deductedBreakdownText ? `<span style="font-size:10px; font-weight:700; margin-left:3px;">(${deductedBreakdownText})</span>` : ''}</div>
         </div>
         <span style="font-size:16px; font-weight:800; color:var(--ink-soft); margin:0 4px; display:inline-block; vertical-align:middle;">=</span>
-        <div style="display:inline-flex; flex-direction:column; align-items:center; background:var(--amber-bg); color:#8A6D1E; border-radius:10px; padding:7px 14px; margin:0 4px 6px; vertical-align:middle;">
-          <span style="font-size:10px; font-weight:700;">식대기준일</span>
-          <b style="font-family:'IBM Plex Mono',monospace; font-size:15px; margin-top:2px;">${s.workdays}일</b>
+        <div style="display:inline-block; text-align:center; background:var(--amber-bg); color:#8A6D1E; border-radius:10px; padding:7px 14px; margin:0 4px 6px; vertical-align:middle;">
+          <div style="font-size:10px; font-weight:700;">식대기준일</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-weight:800; font-size:15px; margin-top:2px;">${s.workdays}일</div>
         </div>
       </div>
 
@@ -10290,9 +10389,10 @@ function syncAdLeaveTargetRow(){
   if(startEl && !startEl.value) startEl.value = todayStr();
   syncAdLeaveTypeFields();
 }
-// 휴가 일정 선택칸 내용을 사람이 읽는 문장으로 - "기안 문구"(자동문구) 버튼을 누르면 이 문장이 기안 내용
-// 아래에 자동으로 같이 채워짐
-function adLeaveSummaryText(){
+// 휴가 일정 선택칸 내용을 고정된 표 모양으로 - "+자동문구" 버튼을 누르면 이 표가 기안 내용 아래에 자동으로
+// 같이 채워짐. 문장으로 풀어쓰던 예전 방식은 매번 줄바꿈 위치가 미묘하게 달라 보였는데, 표로 고정해서
+// 항상 같은 스타일로 나오게 함. "휴가 기간"을 "휴가 종류"보다 먼저 보여줌(언제 쉬는지가 먼저 눈에 들어오게)
+function adLeaveSummaryTableHtml(){
   const type = document.getElementById('ad-leave-type')?.value;
   const start = document.getElementById('ad-leave-start')?.value;
   if(!type || !start) return '';
@@ -10304,7 +10404,19 @@ function adLeaveSummaryText(){
     subtypeText = subtypeSel?.selectedOptions[0]?.textContent || '';
   }
   const dateRangeText = (end && end !== start) ? `${start} ~ ${end}` : start;
-  return `휴가 종류: ${type}${subtypeText ? ` (${subtypeText})` : ''}\n휴가 기간: ${dateRangeText}`;
+  const typeText = `${type}${subtypeText ? ` (${subtypeText})` : ''}`;
+  const th = 'padding:6px 16px; border:1px solid var(--border); background:var(--bg); font-weight:700; color:var(--ink-soft); white-space:nowrap;';
+  const td = 'padding:6px 16px; border:1px solid var(--border); color:var(--ink); font-weight:600;';
+  return `<table style="border-collapse:collapse; margin:0 auto;"><tbody>`
+    + `<tr><td style="${th}">휴가 기간</td><td style="${td}">${escHtml(dateRangeText)}</td></tr>`
+    + `<tr><td style="${th}">휴가 종류</td><td style="${td}">${escHtml(typeText)}</td></tr>`
+    + `</tbody></table>`;
+}
+// 휴가 일정 선택칸(종류/세부유형/날짜)을 바꿨는데 이미 "+자동문구"로 기안내용을 채워둔 상태라면, 그 안의
+// 휴가 기간·종류 표도 같이 최신값으로 갈아끼워줌 - 안 그러면 날짜를 바꿔도 기안내용엔 처음 눌렀을 때의
+// 날짜가 그대로 남아있는 문제가 있었음
+function refreshAutoPhraseIfLeaveActive(){
+  if(adAutoPhraseActive && document.getElementById('ad-doctype')?.value === '휴가') applyAdAutoPhrase();
 }
 document.getElementById('ad-doctype')?.addEventListener('change', syncAdLeaveTargetRow);
 document.getElementById('ad-leave-type')?.addEventListener('change', syncAdLeaveTypeFields);
@@ -10359,15 +10471,42 @@ function applyLeaveApprovalToAttendance(item){
     }
     if(!dates.length) dates = [item.leaveStart];
   }
+  const addedIds = [];
   if(dates.length > 1){
     dates.forEach(ds=>{
-      att.leaveUsage.push({ id: genId(), date: ds, type: item.leaveType, subtype: null, days: isSpecial ? 1 : null, memo });
+      const entryId = genId();
+      addedIds.push(entryId);
+      att.leaveUsage.push({ id: entryId, date: ds, type: item.leaveType, subtype: null, days: isSpecial ? 1 : null, memo });
     });
   } else {
-    att.leaveUsage.push({ id: genId(), date: item.leaveStart, type: item.leaveType, subtype: isHalfDayOnly ? (item.leaveSubtype || null) : null, days: isSpecial ? (Number(item.leaveDays)||1) : null, memo });
+    const entryId = genId();
+    addedIds.push(entryId);
+    att.leaveUsage.push({ id: entryId, date: item.leaveStart, type: item.leaveType, subtype: isHalfDayOnly ? (item.leaveSubtype || null) : null, days: isSpecial ? (Number(item.leaveDays)||1) : null, memo });
   }
   localStorage.setItem(`worklog_attendance__${profile.id}`, JSON.stringify(att));
   item.leaveApplied = true;
+  // 나중에 이 기안문이 삭제될 때 근태에 심어둔 항목만 정확히 찾아 지울 수 있도록, 반영한 profile·entry id를
+  // 기안문 자체에 같이 저장해둠(제목을 나중에 고쳐도 memo 문자열 매칭에 의존하지 않게)
+  item.leaveAppliedProfileId = profile.id;
+  item.leaveUsageAppliedIds = addedIds;
+  if(typeof gdriveScheduleSync === 'function') gdriveScheduleSync();
+}
+// applyLeaveApprovalToAttendance의 반대 동작 - 승인되어 근태·캘린더에 반영됐던 휴가 기안문이 삭제될 때
+// 함께 호출해서, 심어뒀던 근태 사용 내역만 정확히 지움(팀캘린더·개인캘린더는 이 근태 데이터를 그대로
+// 읽어서 보여주는 구조라 여기서 지우면 두 화면 모두 자동으로 같이 사라짐)
+function revertLeaveApprovalFromAttendance(item){
+  if(!item || !item.leaveApplied) return;
+  if(typeof readProfileRaw !== 'function') return;
+  const profileId = item.leaveAppliedProfileId;
+  const ids = item.leaveUsageAppliedIds;
+  if(!profileId || !Array.isArray(ids) || !ids.length) return;
+  const att = readProfileRaw(profileId, 'attendance');
+  if(!att || !Array.isArray(att.leaveUsage)) return;
+  att.leaveUsage = att.leaveUsage.filter(u=>!ids.includes(u.id));
+  localStorage.setItem(`worklog_attendance__${profileId}`, JSON.stringify(att));
+  item.leaveApplied = false;
+  item.leaveAppliedProfileId = null;
+  item.leaveUsageAppliedIds = [];
   if(typeof gdriveScheduleSync === 'function') gdriveScheduleSync();
 }
 
@@ -10514,10 +10653,13 @@ function buildCalendarHTML(monthStr){
     [calIconSvg('schedule'), '개인일정', `${scheduleCount}건`, 'var(--indigo)', 'var(--indigo-bg)'],
   ].filter(([icon, label, val]) => parseFloat(val) > 0);
 
+  // html2canvas로 PDF 캡처할 때 inline-flex + flex-direction:column 박스의 내용이 간헐적으로 빈 박스로
+  // 나오는 문제가 있어서(buildExpenseReportHTML의 근무가능일/차감일 박스와 같은 원인), flex를 빼고
+  // inline-block + block 줄바꿈으로 바꿔서 항상 안정적으로 그려지게 함
   const chip = (icon, label, val, color, bg) =>
-    `<div style="display:inline-flex; flex-direction:column; align-items:center; background:${bg}; color:${color}; border-radius:10px; padding:8px 13px; margin:0 6px 6px 0; min-width:64px; vertical-align:middle;">
-      <span style="font-size:10.5px; font-weight:700; white-space:nowrap;">${icon} ${label}</span>
-      <b style="font-family:'IBM Plex Mono',monospace; font-size:16px; margin-top:2px;">${val}</b>
+    `<div style="display:inline-block; text-align:center; background:${bg}; color:${color}; border-radius:10px; padding:8px 13px; margin:0 6px 6px 0; min-width:64px; vertical-align:middle;">
+      <div style="font-size:10.5px; font-weight:700; white-space:nowrap;">${icon} ${label}</div>
+      <div style="font-family:'IBM Plex Mono',monospace; font-weight:800; font-size:16px; margin-top:2px;">${val}</div>
     </div>`;
 
   const chipSmall = (icon, label, val, color, bg) =>
@@ -12845,7 +12987,7 @@ function resetClientFormToNew(){
   document.getElementById('clientSubmitBtn').textContent = '등록';
   document.getElementById('client-cancel').style.display = 'none';
   const clientFormTitleElNew = document.getElementById('clientFormTitle');
-  if(clientFormTitleElNew) clientFormTitleElNew.textContent = '신규 등록';
+  if(clientFormTitleElNew) clientFormTitleElNew.textContent = '신규 거래처 등록';
   document.getElementById('clientForm').reset();
   clContactRows = [{ name:'', phone:'', email:'' }];
   clPrimaryContact = { type:'rep', idx:null };
@@ -12892,7 +13034,7 @@ document.getElementById('client-cancel').addEventListener('click', ()=>{
   document.getElementById('clientForm').querySelector('button[type="submit"]').textContent = '등록';
   document.getElementById('client-cancel').style.display = 'none';
   const cancelTitleEl = document.getElementById('clientFormTitle');
-  if(cancelTitleEl) cancelTitleEl.textContent = '신규 등록';
+  if(cancelTitleEl) cancelTitleEl.textContent = '신규 거래처 등록';
   document.getElementById('clientSaveMsg').textContent = '';
   document.getElementById('clientForm').reset();
   clContactRows = [{ name:'', phone:'', email:'' }];
@@ -16454,8 +16596,8 @@ function populateDrafterSelect(){
   sel.innerHTML = list.map(email=> `<option value="${escHtml(email)}">${escHtml(resolveNameByEmail(email))}</option>`).join('');
   // 기안자는 항상 "지금 로그인한 본인" 계정이 기본으로 나오도록 함 - 이전엔 최초 렌더 시 select의 기본
   // 선택값(첫 옵션, 예: 회계사)이 prevVal로 굳어버려서 로그인이 끝난 뒤에도 계속 그 사람으로 남는 문제가 있었음
-  if(currentUserEmail && list.some(e=>e.toLowerCase()===currentUserEmail)){
-    sel.value = list.find(e=>e.toLowerCase()===currentUserEmail);
+  if(currentUserEmail && list.some(e=>e.toLowerCase()===currentUserEmail.toLowerCase())){
+    sel.value = list.find(e=>e.toLowerCase()===currentUserEmail.toLowerCase());
   } else if(prevVal && list.some(e=>e.toLowerCase()===prevVal.toLowerCase())){
     sel.value = list.find(e=>e.toLowerCase()===prevVal.toLowerCase());
   }
@@ -17283,11 +17425,21 @@ function bindApprovalPagination(container, onChange){
 // 결재 관련 표(기안함/반려함/결재함/임시저장함/전체이력) 전부 같은 열 구성(종류/기안일/기안자/문서제목/결재자/
 // 진행상황/관리)으로 통일함 - 모든 칸이 가운데 정렬(예전엔 문서제목만 가운데였고 나머지는 왼쪽정렬로 남아있어
 // 줄이 안 맞아 보인다는 의견)
+// 기안일 칸에는 시간까지 나오면 글자수가 많아져 좁은 칸에서 짤려 보이므로, 목록 표에서는 날짜까지만
+// 잘라서 보여줌(시간은 문서 상세카드를 열면 어차피 나오므로 목록에서는 굳이 안 보여줘도 됨).
+// createdAt은 new Date().toLocaleString('ko-KR') 형식이라 "오전/오후"가 나오는 지점부터 시간이므로 그 앞까지만 씀
+function approvalDateOnly(str){
+  if(!str) return '';
+  const idx = str.search(/오전|오후/);
+  return (idx > -1 ? str.slice(0, idx) : str).trim();
+}
 function approvalTableHeaderHtml(){
   const c = 'text-align:center;';
   // 종류/기안일/기안자/결재자/진행상황은 들어갈 내용의 글자수가 거의 일정해서 좁게 고정폭으로 두고, 대신 길어질
   // 수 있는 "문서제목"이 남는 공간을 다 가져가도록 폭을 넓힘(표 자체는 table-layout:fixed로 렌더링부에서 고정함)
-  return `<tr><th style="${c} width:70px;">종류</th><th style="${c} width:118px;">기안일</th><th style="${c} width:64px;">기안자</th><th style="${c}">문서제목</th><th style="${c} width:64px;">결재자</th><th style="${c} width:76px;">진행상황</th><th style="${c} width:186px;">관리</th></tr>`;
+  // 진행상황 칸은 "승인완료" 같은 상태 칩 하나만 나올 때도 있지만, 재기안된 문서는 그 옆에 "재기안" 칩이
+  // 하나 더 붙어서 칩 두 개가 나란히 나올 수 있음 - 그런 경우까지 감안해서 넉넉하게 폭을 줌
+  return `<tr><th style="${c} width:100px;">문서종류</th><th style="${c} width:88px;">기안일</th><th style="${c} width:64px;">기안자</th><th style="${c}">문서제목</th><th style="${c} width:64px;">결재자</th><th style="${c} width:128px;">진행상황</th><th style="${c} width:186px;">관리</th></tr>`;
 }
 // bucket별로 다른 관리 버튼 구성 - 기안함/전체이력: 보기(+삭제), 결재함: 보기(+삭제), 기안함(mine): 보기(+회수),
 // 반려함: 보기+재기안, 임시저장함: 보기+(재)기안+삭제
@@ -17334,7 +17486,7 @@ function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
     const expanded = approvalExpandedId === item.id;
     return `<tr${expanded?' style="background:var(--indigo-bg);"':''}>
       <td style="text-align:center; overflow:hidden; text-overflow:ellipsis;"><span class="tag" style="${approvalDocTypeChipStyle(item.docType||'일반')}">${escHtml(item.docType||'일반')}</span></td>
-      <td class="num" style="text-align:center; overflow:hidden; text-overflow:ellipsis;">${escHtml(item.createdAt||'')}</td>
+      <td class="num" style="text-align:center; overflow:hidden; text-overflow:ellipsis;">${escHtml(approvalDateOnly(item.createdAt))}</td>
       <td style="text-align:center; overflow:hidden; text-overflow:ellipsis;">${escHtml(resolveNameByEmail(item.drafterEmail) || item.drafterName || '')}</td>
       <td style="text-align:center; font-weight:700; white-space:normal; word-break:break-word;">${escHtml(item.title)}</td>
       <td style="text-align:center; overflow:hidden; text-overflow:ellipsis;">${escHtml(resolveNameByEmail(item.approverEmail) || item.approverName || '')}</td>
@@ -17344,10 +17496,25 @@ function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
   }).join('');
   const paginationHtml = approvalPaginationHtml(bucket, searched.length);
   const expandedItem = pageItems.find(i=>i.id===approvalExpandedId);
-  const detailHtml = expandedItem ? `<div class="approval-detail-panel" style="padding:14px 4px; background:var(--bg); border-radius:10px; margin-top:12px;">${approvalDetailBodyHtml(expandedItem)}</div>` : '';
+  // "보기"를 누른 문서가 있으면, 칩/검색/표/페이지네이션(=목록)은 통째로 감추고 기안문 상세카드 하나만
+  // 화면 전체를 차지하게 보여줌 - 예전엔 표 아래에 상세카드가 같이 붙어 나와서 위쪽 목록이 계속 자리를
+  // 차지했는데, "보기 누르면 목록은 사라지고 기안문만 보이게 해달라"는 요청으로 아예 분리함. 다시 목록으로
+  // 돌아가는 길은 상세카드 안의 "목록" 버튼(承인/반려 옆) 하나로 통일함
+  if(expandedItem){
+    const detailHtml = `<div class="approval-detail-panel" style="padding:14px 4px; background:var(--bg); border-radius:10px;">${approvalDetailBodyHtml(expandedItem)}</div>`;
+    wrap.innerHTML = detailHtml;
+    const panel = wrap.querySelector('.approval-detail-panel');
+    if(panel) bindApprovalDetailBodyEvents(panel, expandedItem.id, onChange);
+    const backBtn = wrap.querySelector('.approval-back-to-list-btn');
+    if(backBtn) backBtn.addEventListener('click', ()=>{
+      approvalExpandedId = null;
+      if(typeof onChange === 'function') onChange();
+    });
+    return;
+  }
   // 종류/기안일/기안자/결재자/진행상황은 헤더에서 정한 좁은 고정폭을 그대로 지키고, 문서제목만 남는 공간을
   // 다 가져가도록 이 표에 한해 table-layout:fixed를 줌(다른 표들의 기본 table-layout:auto에는 영향 없음)
-  wrap.innerHTML = `${chipsHtml}${searchBarHtml}<div class="table-scroll"><table style="table-layout:fixed;"><thead>${approvalTableHeaderHtml()}</thead><tbody>${rows}</tbody></table></div>${paginationHtml}${detailHtml}`;
+  wrap.innerHTML = `${chipsHtml}${searchBarHtml}<div class="table-scroll"><table style="table-layout:fixed;"><thead>${approvalTableHeaderHtml()}</thead><tbody>${rows}</tbody></table></div>${paginationHtml}`;
   bindApprovalDocTypeChips(wrap.querySelector('.approval-doctype-chips'), onChange);
   bindApprovalSearchBar(wrap.querySelector('.approval-search-bar'), onChange);
   bindApprovalPagination(wrap.querySelector('.approval-pagination'), onChange);
@@ -17380,10 +17547,6 @@ function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
   wrap.querySelectorAll('.approval-delete-draft-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>deleteApprovalDraft(btn.dataset.id));
   });
-  if(expandedItem){
-    const panel = wrap.querySelector('.approval-detail-panel');
-    if(panel) bindApprovalDetailBodyEvents(panel, expandedItem.id);
-  }
 }
 function renderApprovalInbox(){
   renderApprovalTable('approvalInboxWrap', myApprovalInboxList(), '결재 대기 문서가 없습니다.', 'inbox', renderApprovalInbox);
@@ -17425,6 +17588,9 @@ async function deleteApproval(id){
   if(!(await appConfirm('이 기안문을 완전히 삭제할까요? 되돌릴 수 없어요.'))) return;
   const item = (sharedApprovals||[]).find(a=>a.id===id);
   if(!item) return;
+  // 승인된 휴가 기안이라 근태·캘린더에 이미 반영돼 있었다면, 기안문을 삭제할 때 심어뒀던 휴가 사용 내역도
+  // 같이 지워서 삭제된 기안이 팀캘린더·개인캘린더·근태기록에 유령처럼 남지 않게 함
+  if(item.leaveApplied && typeof revertLeaveApprovalFromAttendance === 'function') revertLeaveApprovalFromAttendance(item);
   item.status = '삭제';
   await saveSharedApprovals();
   renderApprovalInbox();
@@ -17488,14 +17654,18 @@ function renderApprovalAll(){
 function approvalCommentListHtml(item){
   const list = item.comments || [];
   if(!list.length) return `<div class="hint" style="margin:0 0 10px;">아직 의견이 없어요.</div>`;
-  return `<div style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;">${list.map(c=>{
+  // 이름(짧고 항상 비슷한 폭) / 의견내용(가장 길어질 수 있으니 남는 폭을 다 가져감) / 시간(고정폭, 항상
+  // 다 보이게)을 한 줄에 나란히 두는 3단 레이아웃으로 바꿈 - 예전엔 "이름·시간" 줄 아래에 내용이 다음
+  // 줄로 내려가는 2단 구성이라 이름/시간 옆에 넓은 빈 공간이 그냥 남았음. 이름은 굵게 강조함
+  return `<div style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">${list.map(c=>{
     // 캐릭터는 의견 등록 당시 저장해둔 값을 기본으로 쓰되, 이메일로 지금 등록된 캐릭터가 있으면 최신 걸로 보여줌
     // (나중에 캐릭터를 바꾸면 예전 의견에도 새 캐릭터가 반영되게)
     const avatar = (c.authorEmail && resolveAvatarByEmail(c.authorEmail)) || c.avatar || '';
     return `
-    <div style="background:var(--bg); border-radius:10px; padding:8px 12px; ${c.decision ? 'border-left:3px solid '+(c.decision==='승인' ? 'var(--indigo)' : 'var(--coral)')+';' : ''}">
-      <div style="font-size:11px; color:var(--ink-soft); font-weight:700; margin-bottom:3px;">${avatar ? `<span style="font-size:13px; margin-right:2px;">${avatar}</span>` : ''}${escHtml(c.author||'')}${c.decision ? ` · <span style="color:${c.decision==='승인'?'var(--indigo)':'var(--coral)'};">${c.decision}</span>` : ''} · ${escHtml(c.at||'')}</div>
-      <div style="font-size:13px; color:var(--ink); white-space:pre-wrap;">${escHtml(c.text||'')}</div>
+    <div style="display:flex; align-items:flex-start; gap:10px; background:var(--bg); border-radius:10px; padding:8px 12px; ${c.decision ? 'border-left:3px solid '+(c.decision==='승인' ? 'var(--indigo)' : 'var(--coral)')+';' : ''}">
+      <div style="flex:0 0 auto; min-width:44px; max-width:90px; font-size:12px; font-weight:800; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-top:1px;">${avatar ? `<span style="margin-right:1px;">${staffAvatarIconSvg(avatar, 13)}</span>` : ''}${escHtml(c.author||'')}</div>
+      <div style="flex:1 1 auto; min-width:0; font-size:13px; color:var(--ink); white-space:pre-wrap; word-break:break-word;">${escHtml(c.text||'')}${c.decision ? ` <span style="font-size:11px; font-weight:800; color:${c.decision==='승인'?'var(--indigo)':'var(--coral)'};">· ${c.decision}</span>` : ''}</div>
+      <div style="flex:0 0 auto; font-size:10.5px; color:var(--ink-soft); white-space:nowrap; padding-top:2px;">${escHtml(c.at||'')}</div>
     </div>`;
   }).join('')}</div>`;
 }
@@ -17563,23 +17733,32 @@ function approvalDetailBodyHtml(item){
           <button type="button" class="del-btn approval-add-comment-btn" data-id="${item.id}" style="background:var(--indigo-bg); color:var(--indigo-deep);">등록</button>
         </div>
       ` : ''}
-      ${canDecide ? `
-        <!-- 승인/반려 둘 다 같은 .del-btn 기반에 패딩·글자크기·둥근모서리를 똑같이 맞추고, 색만 달리해서
-             구분되게 함(예전엔 승인이 .submit-btn이라 글자 크기·모서리·그림자가 반려와 서로 달라 짝이 안 맞아 보였음) -->
-        <div style="text-align:center; display:flex; gap:10px; justify-content:center; margin-top:14px;">
+      <!-- 승인/반려 둘 다 같은 .del-btn 기반에 패딩·글자크기·둥근모서리를 똑같이 맞추고, 색만 달리해서
+           구분되게 함(예전엔 승인이 .submit-btn이라 글자 크기·모서리·그림자가 반려와 서로 달라 짝이 안 맞아 보였음).
+           "보기"를 누르면 위 목록 표 전체가 사라지고 이 상세카드만 보이는 구조로 바뀌었기 때문에, 다시 목록으로
+           돌아갈 수 있게 승인/반려 옆에 "목록" 버튼을 같이 둠(approval-back-to-list-btn 클래스는 렌더러
+           쪽(renderApprovalTable)에서만 바인딩하고, 별도 팝업 모달(openApprovalDetailModal)에서는
+          .approval-back-to-list-btn{display:none}으로 숨김) -->
+      <div style="text-align:center; display:flex; gap:10px; justify-content:center; margin-top:14px;">
+        ${canDecide ? `
           <button type="button" class="del-btn approval-approve-btn" data-id="${item.id}" style="padding:9px 26px; font-size:13px; border-radius:10px; background:var(--indigo); color:#fff;">승인</button>
           <button type="button" class="del-btn approval-reject-btn" data-id="${item.id}" style="padding:9px 26px; font-size:13px; border-radius:10px; background:var(--coral-bg); color:var(--coral);">반려</button>
-        </div>
-      ` : ''}
+        ` : ''}
+        <button type="button" class="del-btn approval-back-to-list-btn" data-id="${item.id}" style="padding:9px 26px; font-size:13px; border-radius:10px; background:var(--bg2, #E5E7EB); color:var(--ink-soft);">목록</button>
+      </div>
     </div>
   `;
 }
-// approvalDetailBodyHtml이 들어간 영역 안의 이벤트(의견 등록/승인/반려/첨부이미지 로딩)를 한 번에 묶어서 바인딩
-function bindApprovalDetailBodyEvents(scopeEl, id){
+// approvalDetailBodyHtml이 들어간 영역 안의 이벤트(의견 등록/승인/반려/첨부이미지 로딩)를 한 번에 묶어서 바인딩.
+// onChange를 넘겨주면(목록 표 안에서 펼친 상세카드) 의견 등록 뒤에 "지금 보고 있는 그 함(bucket)"만 다시
+// 그리고, 안 넘기면(대시보드·알림에서 여는 독립 팝업) 예전처럼 renderApprovalAll()로 대체함 - 예전엔
+// 의견을 남기면 무조건 renderApprovalAll()만 불러서, 전체이력이 아닌 다른 함(결재함 등)을 보고 있을 때
+// 갱신된 목록에서 지금 문서가 페이지 밖으로 밀려나며 상세카드 전체가 통째로 사라져 보이는 문제가 있었음
+function bindApprovalDetailBodyEvents(scopeEl, id, onChange){
   const commentInput = scopeEl.querySelector(`.approval-new-comment[data-id="${id}"]`);
   const commentBtn = scopeEl.querySelector(`.approval-add-comment-btn[data-id="${id}"]`);
-  if(commentBtn) commentBtn.addEventListener('click', ()=>addApprovalComment(id));
-  if(commentInput) commentInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); addApprovalComment(id); } });
+  if(commentBtn) commentBtn.addEventListener('click', ()=>addApprovalComment(id, null, onChange));
+  if(commentInput) commentInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); addApprovalComment(id, null, onChange); } });
   const approveBtn = scopeEl.querySelector(`.approval-approve-btn[data-id="${id}"]`);
   const rejectBtn = scopeEl.querySelector(`.approval-reject-btn[data-id="${id}"]`);
   if(approveBtn) approveBtn.addEventListener('click', ()=>decideApproval(id, '승인'));
@@ -17600,7 +17779,7 @@ function openApprovalDetailModal(id){
   document.getElementById('approvalDetailModalOverlay').style.display = 'flex';
   bindApprovalDetailBodyEvents(document.getElementById('approvalDetailModalBody'), id);
 }
-async function addApprovalComment(id, decisionLabel){
+async function addApprovalComment(id, decisionLabel, onChange){
   const item = (sharedApprovals||[]).find(a=>a.id===id);
   if(!item) return;
   const inputEl = document.querySelector(`.approval-new-comment[data-id="${id}"]`);
@@ -17620,7 +17799,8 @@ async function addApprovalComment(id, decisionLabel){
   if(inputEl) inputEl.value = '';
   document.querySelectorAll(`#approvalCommentListWrap-${id}`).forEach(w=>{ w.innerHTML = approvalCommentListHtml(item); });
   await saveSharedApprovals();
-  renderApprovalAll();
+  if(typeof onChange === 'function') onChange();
+  else renderApprovalAll();
 }
 async function decideApproval(id, decision){
   const item = (sharedApprovals||[]).find(a=>a.id===id);
@@ -18855,7 +19035,7 @@ function renderEmployeeRoster(){
       : '';
     return `
     <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 12px; background:var(--bg); border-radius:10px; margin-bottom:6px; flex-wrap:wrap; ${terminated ? 'opacity:0.7;' : ''}">
-      <span style="font-size:13px; font-weight:700;">${p.avatar ? `${p.avatar} ` : ''}${escHtml(p.name || '(이름 미등록)')}${p.position ? ` <span style="font-weight:600; color:var(--ink-soft); font-size:11.5px;">(${escHtml(p.position)})</span>` : ''}${p.id===activeProfileId ? ' <span class="tag tag-grant">현재 선택</span>' : ''} ${statusTag} ${p.email ? `<span style="color:var(--ink-soft); font-size:11px; font-weight:500;">(${escHtml(p.email)})</span>` : '<span style="color:var(--coral); font-size:11px; font-weight:500;">이메일 미등록</span>'}</span>
+      <span style="font-size:13px; font-weight:700;">${p.avatar ? `${staffAvatarIconSvg(p.avatar, 15)} ` : ''}${escHtml(p.name || '(이름 미등록)')}${p.position ? ` <span style="font-weight:600; color:var(--ink-soft); font-size:11.5px;">(${escHtml(p.position)})</span>` : ''}${p.id===activeProfileId ? ' <span class="tag tag-grant">현재 선택</span>' : ''} ${statusTag} ${p.email ? `<span style="color:var(--ink-soft); font-size:11px; font-weight:500;">(${escHtml(p.email)})</span>` : '<span style="color:var(--coral); font-size:11px; font-weight:500;">이메일 미등록</span>'}</span>
       <span style="white-space:nowrap;">
         <button type="button" class="del-btn employee-open-status-btn" data-id="${p.id}">현황</button>
         <button type="button" class="del-btn employee-open-edit-btn" data-id="${p.id}">수정</button>
