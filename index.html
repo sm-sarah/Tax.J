@@ -3739,6 +3739,22 @@
                   <input type="month" id="ad-expense-month">
                   <p class="hint" id="ad-expense-month-status" style="margin:6px 0 0;"></p>
                 </div>
+                <!-- 부가가치세/법인세/종합소득세로 기안할 때만 보이는 귀속연도·신고대상 거래처 선택칸 - "신고대상"
+                     메뉴에서 그 기간에 신고대상으로 잡혀있는 거래처만 골라 보여줌. 고르면 제목이
+                     "[OOOO년 귀속] 상호명"(법인세·종소세) / "[OOOO년 N기 예정/확정] 상호명"(부가세) 형식으로 자동으로 채워짐 -->
+                <div class="field" id="ad-tax-target-row" style="display:none;">
+                  <label>귀속연도 · 신고대상 거래처 <span style="font-weight:400; color:var(--ink-soft);">(고르면 제목이 자동으로 채워져요)</span></label>
+                  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <select id="ad-tax-year" style="flex:1 1 100px;"></select>
+                    <select id="ad-tax-vat-period" style="flex:1 1 100px; display:none;">
+                      <option value="Q1">1기 예정</option>
+                      <option value="Q2">1기 확정</option>
+                      <option value="Q3">2기 예정</option>
+                      <option value="Q4">2기 확정</option>
+                    </select>
+                    <select id="ad-tax-client" style="flex:2 1 160px;"></select>
+                  </div>
+                </div>
                 <div class="field"><label>제목</label><input type="text" id="ad-title" placeholder="예: 8월 휴가 신청" required></div>
                 <div class="field">
                   <label style="display:flex; align-items:center; justify-content:space-between;">내용
@@ -10088,6 +10104,106 @@ document.getElementById('ad-expense-month')?.addEventListener('change', function
   attachExpenseReportForMonth(this.value);
   syncAdExpenseTitleFor(this.value);
 });
+// 부가가치세/법인세/종합소득세로 기안할 때 귀속연도·신고대상 거래처 선택칸을 보여주고, 값이 바뀔 때마다
+// 제목을 "[OOOO년 귀속] 상호명"(법인세·종소세) / "[OOOO년 N기 예정/확정] 상호명"(부가세) 형식으로 자동으로 채움 -
+// 거래처 목록은 "신고대상" 메뉴에서 이미 그 기간 대상으로 잡아둔 거래처만 보여줘서, 기안 화면에서 다시
+// 대상 여부를 따로 고민하지 않아도 되게 함
+const AD_TAX_DOCTYPE_KEY = { '부가가치세':'부가세', '법인세':'법인세', '종합소득세':'종소세' };
+function adTaxClientListFor(docType, year, vatPeriodQ){
+  const taxTypeKey = AD_TAX_DOCTYPE_KEY[docType];
+  if(!taxTypeKey || typeof filingStatusClientList !== 'function') return [];
+  let list = filingStatusClientList(taxTypeKey);
+  if(taxTypeKey === '부가세' && typeof VAT_QUARTER_TO_TARGET_PERIOD !== 'undefined'){
+    const targetPeriod = VAT_QUARTER_TO_TARGET_PERIOD[vatPeriodQ];
+    list = list.filter(c=>{
+      const status = vatEntryStatus(vatFilingTargetEntry(c.id, year, targetPeriod), targetPeriod, c.entityType);
+      return status === 'target' || status === 'filing';
+    });
+  }
+  return list;
+}
+function populateAdTaxYearSelect(){
+  const sel = document.getElementById('ad-tax-year');
+  if(!sel) return;
+  const prevVal = sel.value;
+  const nowY = Number(todayStr().slice(0,4));
+  const years = [];
+  for(let y=nowY+1; y>=nowY-3; y--) years.push(y);
+  sel.innerHTML = years.map(y=>`<option value="${y}">${y}년</option>`).join('');
+  sel.value = years.some(y=>String(y)===prevVal) ? prevVal : String(nowY);
+}
+function populateAdTaxClientSelect(){
+  const docType = document.getElementById('ad-doctype')?.value;
+  const year = document.getElementById('ad-tax-year')?.value;
+  const vatPeriodQ = document.getElementById('ad-tax-vat-period')?.value || 'Q1';
+  const sel = document.getElementById('ad-tax-client');
+  if(!sel) return;
+  const prevVal = sel.value;
+  const list = adTaxClientListFor(docType, year, vatPeriodQ);
+  sel.innerHTML = list.length
+    ? list.map(c=>`<option value="${escHtml(c.id)}">${escHtml(c.name)}</option>`).join('')
+    : `<option value="">이 기간에 신고대상으로 지정된 거래처가 없어요</option>`;
+  if(list.some(c=>c.id===prevVal)) sel.value = prevVal;
+}
+function syncAdTaxTitle(){
+  const docType = document.getElementById('ad-doctype')?.value;
+  const taxTypeKey = AD_TAX_DOCTYPE_KEY[docType];
+  if(!taxTypeKey) return;
+  const year = document.getElementById('ad-tax-year')?.value;
+  const clientSel = document.getElementById('ad-tax-client');
+  const clientName = clientSel?.selectedOptions[0]?.textContent || '';
+  if(!year || !clientSel?.value || !clientName) return;
+  const titleEl = document.getElementById('ad-title');
+  if(!titleEl) return;
+  if(taxTypeKey === '부가세'){
+    const vatPeriodQ = document.getElementById('ad-tax-vat-period')?.value || 'Q1';
+    titleEl.value = `[${year}년 ${VAT_PERIOD_LABEL[vatPeriodQ]}] ${clientName}`;
+  } else {
+    titleEl.value = `[${year}년 귀속] ${clientName}`;
+  }
+}
+function syncAdTaxTargetRow(){
+  const docType = document.getElementById('ad-doctype')?.value;
+  const row = document.getElementById('ad-tax-target-row');
+  if(!row) return;
+  const taxTypeKey = AD_TAX_DOCTYPE_KEY[docType];
+  row.style.display = taxTypeKey ? '' : 'none';
+  const vatSel = document.getElementById('ad-tax-vat-period');
+  if(vatSel) vatSel.style.display = (docType==='부가가치세') ? '' : 'none';
+  if(!taxTypeKey) return;
+  populateAdTaxYearSelect();
+  populateAdTaxClientSelect();
+  syncAdTaxTitle();
+}
+// 임시저장·반려된 기안을 다시 열 때(수정/재기안), 저장해뒀던 귀속연도·기수·거래처를 선택칸에 그대로
+// 복원함 - 제목은 이미 item.title로 복원돼 있으니 여기서 다시 자동 계산해 덮어쓰지 않음
+function restoreAdTaxTargetFromItem(item){
+  const row = document.getElementById('ad-tax-target-row');
+  const taxTypeKey = AD_TAX_DOCTYPE_KEY[item.docType];
+  if(row) row.style.display = taxTypeKey ? '' : 'none';
+  const vatSel = document.getElementById('ad-tax-vat-period');
+  if(vatSel) vatSel.style.display = (item.docType==='부가가치세') ? '' : 'none';
+  if(!taxTypeKey) return;
+  populateAdTaxYearSelect();
+  const yearEl = document.getElementById('ad-tax-year');
+  if(yearEl && item.taxYear) yearEl.value = item.taxYear;
+  if(vatSel && item.taxVatPeriod) vatSel.value = item.taxVatPeriod;
+  populateAdTaxClientSelect();
+  const clientEl = document.getElementById('ad-tax-client');
+  if(clientEl && item.taxClientId) clientEl.value = item.taxClientId;
+}
+document.getElementById('ad-doctype')?.addEventListener('change', syncAdTaxTargetRow);
+document.getElementById('ad-tax-year')?.addEventListener('change', ()=>{ populateAdTaxClientSelect(); syncAdTaxTitle(); });
+document.getElementById('ad-tax-vat-period')?.addEventListener('change', ()=>{ populateAdTaxClientSelect(); syncAdTaxTitle(); });
+document.getElementById('ad-tax-client')?.addEventListener('change', syncAdTaxTitle);
+// 휴가는 매번 다른 제목을 고민할 필요가 없는 정형화된 신청이라, 문서종류를 휴가로 고르면 제목이 항상
+// "휴가 신청"으로 자동으로 채워지게 함(지출결의서 제목이 정산월에 맞춰 자동으로 채워지는 것과 같은 방식)
+document.getElementById('ad-doctype')?.addEventListener('change', function(){
+  if(this.value === '휴가'){
+    const titleEl = document.getElementById('ad-title');
+    if(titleEl) titleEl.value = '휴가 신청';
+  }
+});
 
 document.getElementById('quickPrintReportBtn').addEventListener('click', ()=>{
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
@@ -16294,6 +16410,11 @@ function saveApprovalDraftForm(status){
   const docType = document.getElementById('ad-doctype')?.value || '일반';
   // 지출결의서일 때만 의미 있는 값 - 나중에 이 기안을 다시 열어(수정/재기안) 정산월 선택칸에 그대로 채워주는 용도
   const expenseMonth = docType === '지출결의서' ? (document.getElementById('ad-expense-month')?.value || '') : '';
+  // 부가가치세/법인세/종합소득세일 때만 의미 있는 값 - 다시 열어(수정/재기안) 귀속연도·기수·거래처 선택칸을 그대로 채워주는 용도
+  const isAdTaxDocType = !!AD_TAX_DOCTYPE_KEY[docType];
+  const taxYear = isAdTaxDocType ? (document.getElementById('ad-tax-year')?.value || '') : '';
+  const taxVatPeriod = (isAdTaxDocType && docType==='부가가치세') ? (document.getElementById('ad-tax-vat-period')?.value || '') : '';
+  const taxClientId = isAdTaxDocType ? (document.getElementById('ad-tax-client')?.value || '') : '';
   const editId = document.getElementById('ad-edit-id').value;
   const msgEl = document.getElementById('approvalDraftSaveMsg');
   if(!title){ if(msgEl) msgEl.textContent = '제목을 입력해주세요'; return false; }
@@ -16310,6 +16431,7 @@ function saveApprovalDraftForm(status){
     existing.drafterEmail = drafterEmail; existing.drafterName = resolveNameByEmail(drafterEmail);
     existing.docType = docType;
     existing.expenseMonth = expenseMonth;
+    existing.taxYear = taxYear; existing.taxVatPeriod = taxVatPeriod; existing.taxClientId = taxClientId;
     existing.status = status;
     if(status === '기안'){
       existing.createdAt = new Date().toLocaleString('ko-KR');
@@ -16320,7 +16442,7 @@ function saveApprovalDraftForm(status){
     }
   } else {
     sharedApprovals.unshift({
-      id: genId(), title, content, attachments, docType, expenseMonth,
+      id: genId(), title, content, attachments, docType, expenseMonth, taxYear, taxVatPeriod, taxClientId,
       drafterEmail,
       drafterName: resolveNameByEmail(drafterEmail),
       approverEmail, approverName: resolveNameByEmail(approverEmail),
@@ -16336,6 +16458,7 @@ function saveApprovalDraftForm(status){
   renderAdAttachUploadedList();
   renderAdAttachLinkRows([]);
   if(typeof syncAdExpenseMonthRow === 'function') syncAdExpenseMonthRow(); // 문서종류가 기본값(일반)으로 리셋됐으니 정산월 칸도 같이 접어줌
+  if(typeof syncAdTaxTargetRow === 'function') syncAdTaxTargetRow();
   document.getElementById('ad-edit-id').value = '';
   const editBadge = document.getElementById('approvalDraftEditBadge');
   if(editBadge) editBadge.style.display = 'none';
@@ -16438,7 +16561,7 @@ function renderAutoPhraseSettings(){
   if(!wrap) return;
   wrap.innerHTML = adDocTypeList().map(docType=>{
     const content = effectiveAutoPhraseContent(docType);
-    return `<div class="settings-box" style="margin-bottom:10px; padding:12px 14px;" data-doctype="${escHtml(docType)}">
+    return `<div class="settings-box" style="margin-bottom:10px; padding:12px 14px; background:var(--bg); border:1.5px solid var(--border); box-shadow:none;" data-doctype="${escHtml(docType)}">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
         <span style="font-weight:800; font-size:13px; color:var(--ink);">${escHtml(docType)}</span>
         <button type="button" class="del-btn auto-phrase-reset-btn" data-doctype="${escHtml(docType)}" style="font-size:10.5px; padding:4px 9px;">기본값</button>
@@ -16708,6 +16831,7 @@ function editApprovalDraft(id){
   if(expenseRowEl) expenseRowEl.style.display = (item.docType === '지출결의서') ? '' : 'none';
   const expenseStatusEl = document.getElementById('ad-expense-month-status');
   if(expenseStatusEl) expenseStatusEl.textContent = '';
+  if(typeof restoreAdTaxTargetFromItem === 'function') restoreAdTaxTargetFromItem(item);
   populateApproverSelect();
   if(item.approverEmail) document.getElementById('ad-approver').value = item.approverEmail;
   if(item.drafterEmail) document.getElementById('ad-drafter').value = item.drafterEmail;
@@ -16748,6 +16872,7 @@ document.querySelectorAll('.approval-doc-btn').forEach(btn=>{
       renderAdAttachUploadedList();
       renderAdAttachLinkRows([]);
       if(typeof syncAdExpenseMonthRow === 'function') syncAdExpenseMonthRow(); // 문서종류가 기본값(일반)으로 리셋됐으니 정산월 칸도 같이 접어줌
+  if(typeof syncAdTaxTargetRow === 'function') syncAdTaxTargetRow();
       document.getElementById('ad-edit-id').value = '';
       const editBadge = document.getElementById('approvalDraftEditBadge');
       if(editBadge) editBadge.style.display = 'none';
@@ -16943,7 +17068,9 @@ function bindApprovalPagination(container, onChange){
 // 줄이 안 맞아 보인다는 의견)
 function approvalTableHeaderHtml(){
   const c = 'text-align:center;';
-  return `<tr><th style="${c}">종류</th><th style="${c}">기안일</th><th style="${c}">기안자</th><th style="${c}">문서제목</th><th style="${c}">결재자</th><th style="${c}">진행상황</th><th></th></tr>`;
+  // 종류/기안일/기안자/결재자/진행상황은 들어갈 내용의 글자수가 거의 일정해서 좁게 고정폭으로 두고, 대신 길어질
+  // 수 있는 "문서제목"이 남는 공간을 다 가져가도록 폭을 넓힘(표 자체는 table-layout:fixed로 렌더링부에서 고정함)
+  return `<tr><th style="${c} width:70px;">종류</th><th style="${c} width:118px;">기안일</th><th style="${c} width:64px;">기안자</th><th style="${c}">문서제목</th><th style="${c} width:64px;">결재자</th><th style="${c} width:76px;">진행상황</th><th style="${c} width:186px;">관리</th></tr>`;
 }
 // bucket별로 다른 관리 버튼 구성 - 기안함/전체이력: 보기(+삭제), 결재함: 보기(+삭제), 기안함(mine): 보기(+회수),
 // 반려함: 보기+재기안, 임시저장함: 보기+(재)기안+삭제
@@ -16989,19 +17116,21 @@ function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
   const rows = pageItems.map(item=>{
     const expanded = approvalExpandedId === item.id;
     return `<tr${expanded?' style="background:var(--indigo-bg);"':''}>
-      <td style="text-align:center;"><span class="tag" style="background:var(--bg); color:var(--ink-soft);">${escHtml(item.docType||'일반')}</span></td>
-      <td class="num" style="text-align:center;">${escHtml(item.createdAt||'')}</td>
-      <td style="text-align:center;">${escHtml(resolveNameByEmail(item.drafterEmail) || item.drafterName || '')}</td>
-      <td style="text-align:center; font-weight:700;">${escHtml(item.title)}</td>
-      <td style="text-align:center;">${escHtml(resolveNameByEmail(item.approverEmail) || item.approverName || '')}</td>
-      <td style="text-align:center;">${approvalStatusTagHtml(item.status, statusCtx, item.resubmitCount)}</td>
-      <td style="text-align:center; white-space:nowrap;">${approvalRowActionsHtml(item, bucket, expanded)}</td>
+      <td style="text-align:center; overflow:hidden; text-overflow:ellipsis;"><span class="tag" style="background:var(--bg); color:var(--ink-soft);">${escHtml(item.docType||'일반')}</span></td>
+      <td class="num" style="text-align:center; overflow:hidden; text-overflow:ellipsis;">${escHtml(item.createdAt||'')}</td>
+      <td style="text-align:center; overflow:hidden; text-overflow:ellipsis;">${escHtml(resolveNameByEmail(item.drafterEmail) || item.drafterName || '')}</td>
+      <td style="text-align:center; font-weight:700; white-space:normal; word-break:break-word;">${escHtml(item.title)}</td>
+      <td style="text-align:center; overflow:hidden; text-overflow:ellipsis;">${escHtml(resolveNameByEmail(item.approverEmail) || item.approverName || '')}</td>
+      <td style="text-align:center; overflow:hidden; text-overflow:ellipsis;">${approvalStatusTagHtml(item.status, statusCtx, item.resubmitCount)}</td>
+      <td style="text-align:center; white-space:normal;"><div style="display:inline-flex; gap:6px; flex-wrap:wrap; justify-content:center;">${approvalRowActionsHtml(item, bucket, expanded)}</div></td>
     </tr>`;
   }).join('');
   const paginationHtml = approvalPaginationHtml(bucket, searched.length);
   const expandedItem = pageItems.find(i=>i.id===approvalExpandedId);
   const detailHtml = expandedItem ? `<div class="approval-detail-panel" style="padding:14px 4px; background:var(--bg); border-radius:10px; margin-top:12px;">${approvalDetailBodyHtml(expandedItem)}</div>` : '';
-  wrap.innerHTML = `${chipsHtml}${searchBarHtml}<div class="table-scroll"><table><thead>${approvalTableHeaderHtml()}</thead><tbody>${rows}</tbody></table></div>${paginationHtml}${detailHtml}`;
+  // 종류/기안일/기안자/결재자/진행상황은 헤더에서 정한 좁은 고정폭을 그대로 지키고, 문서제목만 남는 공간을
+  // 다 가져가도록 이 표에 한해 table-layout:fixed를 줌(다른 표들의 기본 table-layout:auto에는 영향 없음)
+  wrap.innerHTML = `${chipsHtml}${searchBarHtml}<div class="table-scroll"><table style="table-layout:fixed;"><thead>${approvalTableHeaderHtml()}</thead><tbody>${rows}</tbody></table></div>${paginationHtml}${detailHtml}`;
   bindApprovalDocTypeChips(wrap.querySelector('.approval-doctype-chips'), onChange);
   bindApprovalSearchBar(wrap.querySelector('.approval-search-bar'), onChange);
   bindApprovalPagination(wrap.querySelector('.approval-pagination'), onChange);
@@ -17118,6 +17247,7 @@ function resubmitApprovalDraft(id){
   if(expenseRowEl) expenseRowEl.style.display = (item.docType === '지출결의서') ? '' : 'none';
   const expenseStatusEl = document.getElementById('ad-expense-month-status');
   if(expenseStatusEl) expenseStatusEl.textContent = '';
+  if(typeof restoreAdTaxTargetFromItem === 'function') restoreAdTaxTargetFromItem(item);
   populateApproverSelect();
   if(item.approverEmail) document.getElementById('ad-approver').value = item.approverEmail;
   if(item.drafterEmail) document.getElementById('ad-drafter').value = item.drafterEmail;
