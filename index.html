@@ -3057,7 +3057,7 @@
   <!-- 거래처관리: 등록/수정 -->
 
   <section id="tab-clients-edit" class="tab-panel">
-    <h2 class="section-title" style="justify-content:center; font-size:24px;">거래처 등록·수정</h2>
+    <h2 id="clientFormTitle" class="section-title" style="justify-content:center; font-size:24px;">거래처 등록·수정</h2>
     <div class="settings-box" style="max-width:680px;">
       <!-- novalidate: 이 폼의 날짜칸들(계약일·수임시작일·해지일)은 min="2015-01-01"처럼 범위 제한이 걸려있고,
            공유드라이브 링크칸은 type="url"이라 "http(s)://"로 시작하지 않으면 형식 오류로 처리되는데, 브라우저가
@@ -7425,6 +7425,11 @@ function renderScheduleList(){
   });
 }
 
+// 민감정보(거래처 개인정보·사내정보 계정 등) 잠금해제 유지시간 - 너무 짧으면 거래처 수정 폼에 한참
+// 입력하다가 저장하기 직전에 잠겨서, 입력한 내용이 다 날아가고 처음부터 다시 입력해야 하는 문제가 있었음
+// (아래 clientForm 저장 핸들러에서도 저장 직전에 다시 확인해서, 잠겨있으면 그 자리에서 비밀번호만 물어보고
+// 입력값은 그대로 살려서 저장을 이어감 - 처음부터 다시 입력할 필요 없음)
+const SENSITIVE_UNLOCK_MS = 10*60*1000;
 let adminSensitiveUnlocked = false;
 let adminSensitiveUnlockTimer = null;
 let adminSensitiveUnlockUntil = null;
@@ -7485,9 +7490,9 @@ async function unlockSensitiveView(){
     if(!check || check.check !== 'ok') throw new Error('mismatch');
     adminCryptoKey = key;
     adminSensitiveUnlocked = true;
-    adminSensitiveUnlockUntil = Date.now() + 5*60*1000;
+    adminSensitiveUnlockUntil = Date.now() + SENSITIVE_UNLOCK_MS;
     if(adminSensitiveUnlockTimer) clearTimeout(adminSensitiveUnlockTimer);
-    adminSensitiveUnlockTimer = setTimeout(()=>{ lockSensitiveView(); }, 5*60*1000);
+    adminSensitiveUnlockTimer = setTimeout(()=>{ lockSensitiveView(); }, SENSITIVE_UNLOCK_MS);
     updatePersonalInfoFormState();
     updateAllSensitiveUnlockButtons();
     renderPersonalInfo();
@@ -7519,7 +7524,7 @@ function updateAllSensitiveUnlockButtons(){
       unlockBtn.onclick = lockSensitiveView;
     } else {
       unlockBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
-      unlockBtn.title = '잠금해제 (5분간 조회 가능)';
+      unlockBtn.title = '잠금해제 (10분간 조회 가능)';
       unlockBtn.onclick = unlockSensitiveView;
     }
   });
@@ -8092,6 +8097,8 @@ async function populateClientEditForm(c){
   if(typeof resetClPersonalInfoForEdit === 'function') resetClPersonalInfoForEdit();
   document.getElementById('clientForm').querySelector('button[type="submit"]').textContent = '수정 완료';
   document.getElementById('client-cancel').style.display = 'inline-block';
+  const clientFormTitleEl = document.getElementById('clientFormTitle');
+  if(clientFormTitleEl) clientFormTitleEl.textContent = `${c.name || '(이름 없음)'} 수정`;
   unlockClientForm();
   document.getElementById('clientForm').scrollIntoView({behavior:'smooth', block:'center'});
 }
@@ -8108,6 +8115,8 @@ async function deleteClientById(id){
     editingClientId = null;
     document.getElementById('clientForm').querySelector('button[type="submit"]').textContent = '거래처 추가';
     document.getElementById('client-cancel').style.display = 'none';
+    const delTitleEl = document.getElementById('clientFormTitle');
+    if(delTitleEl) delTitleEl.textContent = '거래처 등록';
   }
   renderClientsRegular();
   renderClientsOther();
@@ -8748,7 +8757,7 @@ async function revealCiEncryptedItem(id){
   renderCompanyInfoTeam(); renderCompanyInfoTeamView();
 }
 function ciRevealBtnHtml(id){
-  return `<button type="button" class="ci-reveal-btn" data-reveal-id="${id}" title="눌러서 확인 (5분간 조회 가능)" style="background:none; border:none; cursor:pointer; color:var(--ink-soft); display:inline-flex; align-items:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`;
+  return `<button type="button" class="ci-reveal-btn" data-reveal-id="${id}" title="눌러서 확인 (10분간 조회 가능)" style="background:none; border:none; cursor:pointer; color:var(--ink-soft); display:inline-flex; align-items:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`;
 }
 // wrap 안의 🔒 아이콘 클릭을 revealCiEncryptedItem에 연결 - bindCiRowButtons와 같은 자리에서 같이 불러 씀
 function bindCiRevealButtons(wrap){
@@ -12811,6 +12820,8 @@ function resetClientFormToNew(){
   lastEditedClientId = null;
   document.getElementById('clientSubmitBtn').textContent = '거래처 추가';
   document.getElementById('client-cancel').style.display = 'none';
+  const clientFormTitleElNew = document.getElementById('clientFormTitle');
+  if(clientFormTitleElNew) clientFormTitleElNew.textContent = '거래처 등록';
   document.getElementById('clientForm').reset();
   clContactRows = [{ name:'', phone:'', email:'' }];
   clPrimaryContact = { type:'rep', idx:null };
@@ -12834,6 +12845,11 @@ document.getElementById('clientReEditBtn').addEventListener('click', ()=>{
   editingClientId = lastEditedClientId;
   document.getElementById('clientSubmitBtn').textContent = '수정 완료';
   document.getElementById('client-cancel').style.display = 'inline-block';
+  const reEditTitleEl = document.getElementById('clientFormTitle');
+  if(reEditTitleEl){
+    const reEditClient = clients.list.find(x=>x.id===lastEditedClientId);
+    reEditTitleEl.textContent = `${(reEditClient && reEditClient.name) || '(이름 없음)'} 수정`;
+  }
   if(typeof resetClPersonalInfoForEdit === 'function') resetClPersonalInfoForEdit();
 });
 
@@ -12851,6 +12867,8 @@ document.getElementById('client-cancel').addEventListener('click', ()=>{
   editingClientId = null;
   document.getElementById('clientForm').querySelector('button[type="submit"]').textContent = '거래처 추가';
   document.getElementById('client-cancel').style.display = 'none';
+  const cancelTitleEl = document.getElementById('clientFormTitle');
+  if(cancelTitleEl) cancelTitleEl.textContent = '거래처 등록';
   document.getElementById('clientSaveMsg').textContent = '';
   document.getElementById('clientForm').reset();
   clContactRows = [{ name:'', phone:'', email:'' }];
@@ -19536,9 +19554,9 @@ document.getElementById('resetManagePwForm').addEventListener('submit', async (e
     await gdrivePush();
     adminCryptoKey = newKey;
     adminSensitiveUnlocked = true;
-    adminSensitiveUnlockUntil = Date.now() + 5*60*1000;
+    adminSensitiveUnlockUntil = Date.now() + SENSITIVE_UNLOCK_MS;
     if(adminSensitiveUnlockTimer) clearTimeout(adminSensitiveUnlockTimer);
-    adminSensitiveUnlockTimer = setTimeout(()=>{ lockSensitiveView(); }, 5*60*1000);
+    adminSensitiveUnlockTimer = setTimeout(()=>{ lockSensitiveView(); }, SENSITIVE_UNLOCK_MS);
   } finally {
     gdriveSuspendPull = false;
   }
@@ -19585,9 +19603,9 @@ document.getElementById('changeManagePwForm').addEventListener('submit', async (
     await gdrivePush(); // 예약(2초 디바운스)까지 기다리지 않고 즉시 반영해서 노출 구간을 최대한 줄임
     adminCryptoKey = newKey;
     adminSensitiveUnlocked = true;
-    adminSensitiveUnlockUntil = Date.now() + 5*60*1000;
+    adminSensitiveUnlockUntil = Date.now() + SENSITIVE_UNLOCK_MS;
     if(adminSensitiveUnlockTimer) clearTimeout(adminSensitiveUnlockTimer);
-    adminSensitiveUnlockTimer = setTimeout(()=>{ lockSensitiveView(); }, 5*60*1000);
+    adminSensitiveUnlockTimer = setTimeout(()=>{ lockSensitiveView(); }, SENSITIVE_UNLOCK_MS);
   } finally {
     gdriveSuspendPull = false;
   }
@@ -19623,9 +19641,9 @@ document.getElementById('setManagePwForm').addEventListener('submit', async (e)=
     await gdrivePush(); // 예약(2초 디바운스)까지 기다리지 않고 즉시 반영해서 노출 구간을 최대한 줄임
     adminCryptoKey = newKey;
     adminSensitiveUnlocked = true;
-    adminSensitiveUnlockUntil = Date.now() + 5*60*1000;
+    adminSensitiveUnlockUntil = Date.now() + SENSITIVE_UNLOCK_MS;
     if(adminSensitiveUnlockTimer) clearTimeout(adminSensitiveUnlockTimer);
-    adminSensitiveUnlockTimer = setTimeout(()=>{ lockSensitiveView(); }, 5*60*1000);
+    adminSensitiveUnlockTimer = setTimeout(()=>{ lockSensitiveView(); }, SENSITIVE_UNLOCK_MS);
   } finally {
     gdriveSuspendPull = false;
   }
