@@ -1564,6 +1564,10 @@
 <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
 <!-- 엑셀 일괄 다운로드(기장거래처/전체거래처/회사정보/팀정보 백업)용 - 브라우저에서 바로 .xlsx 파일을 만들어주는 라이브러리 -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- 지출결의서 기안 시 그 달 경비정산 출력물을 PDF로 자동 첨부하는 데 씀(html2canvas로 화면을 캡처하고,
+     jsPDF가 그 캡처본을 여러 페이지 PDF로 이어붙여줌) -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 </head>
 <body>
 <!-- 월 선택용 보조 input(showPicker로 브라우저 기본 달력 팝업을 띄우는 용도) - 근태현황·개인캘린더 두 탭에서
@@ -3736,6 +3740,13 @@
                     <option value="법인세">법인세</option>
                     <option value="종합소득세">종합소득세</option>
                   </select>
+                </div>
+                <!-- 지출결의서로 기안할 때만 보이는 정산월 선택칸 - 고른 달의 경비정산(근태경비) 출력물이
+                     자동으로 PDF로 만들어져 첨부됨(따로 파일 업로드를 안 해도 됨) -->
+                <div class="field" id="ad-expense-month-row" style="display:none;">
+                  <label>정산월 <span style="font-weight:400; color:var(--ink-soft);">(그 달 지출결의서 출력물이 자동으로 첨부돼요)</span></label>
+                  <input type="month" id="ad-expense-month">
+                  <p class="hint" id="ad-expense-month-status" style="margin:6px 0 0;"></p>
                 </div>
                 <div class="field"><label>제목</label><input type="text" id="ad-title" placeholder="예: 8월 휴가 신청" required></div>
                 <div class="field">
@@ -9962,6 +9973,100 @@ function buildExpenseReportHTML(monthStr){
   `;
 }
 
+// ── 지출결의서 기안 시 그 달 경비정산 출력물 자동 첨부 ──
+// 지출결의서는 월별로 정산하니, 8월분 경비정산이면 그 8월 지출결의서 출력물(위 buildExpenseReportHTML과
+// 완전히 같은 내용)이 기안에 자동으로 PDF 파일로 첨부되게 함 - 매번 따로 인쇄해서 파일 업로드칸에 다시
+// 올리지 않아도 되게. html2canvas로 화면 밖에 그려둔 문서를 캡처하고, jsPDF가 그 캡처본을 A4 여러 장으로
+// 이어붙여 PDF Blob을 만들어줌(내용이 길어서 한 페이지를 넘겨도 자동으로 다음 장으로 넘어감).
+function previousMonthStr(){
+  const t = new Date();
+  let y = t.getFullYear(), m = t.getMonth(); // getMonth()는 0-indexed라 이미 "지난달" 숫자
+  if(m === 0){ m = 12; y -= 1; }
+  return `${y}-${String(m).padStart(2,'0')}`;
+}
+function generateExpenseReportPdfBlob(monthStr){
+  return new Promise((resolve, reject)=>{
+    if(typeof window.jspdf === 'undefined' || typeof window.html2canvas === 'undefined'){
+      reject(new Error('PDF 생성 도구를 불러오지 못했어요.'));
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+    // 화면 밖(왼쪽으로 아주 멀리)에 실제로 그려서 html2canvas가 캡처할 수 있게 함 - display:none은 캡처가 안 됨
+    const holder = document.createElement('div');
+    holder.style.cssText = 'position:fixed; left:-99999px; top:0; width:760px; background:#fff; padding:10px;';
+    holder.innerHTML = buildExpenseReportHTML(monthStr);
+    document.body.appendChild(holder);
+    const cleanup = ()=>{ try{ document.body.removeChild(holder); }catch(e){} };
+    try{
+      const pdf = new jsPDF('p', 'pt', 'a4');
+      pdf.html(holder, {
+        x:20, y:20,
+        width:555, // A4(595pt) 폭에서 좌우 여백(20pt씩) 뺀 값
+        windowWidth:760,
+        html2canvas:{ scale:0.75, useCORS:true, backgroundColor:'#ffffff' },
+        callback: (doc)=>{
+          cleanup();
+          try{ resolve(doc.output('blob')); }
+          catch(err){ reject(err); }
+        }
+      });
+    }catch(err){ cleanup(); reject(err); }
+  });
+}
+// 정산월을 고르면(또는 문서종류를 지출결의서로 바꿔 기본 정산월이 채워지면) 그 달 출력물을 만들어 회사
+// 공유 드라이브에 올리고, 업로드 첨부 목록에 자동으로 끼워 넣음 - 이전에 자동으로 붙여둔 파일이 있으면
+// (정산월을 바꿔서 다시 만드는 경우) 먼저 빼고 새로 첨부해서 중복으로 쌓이지 않게 함
+async function attachExpenseReportForMonth(monthStr){
+  const statusEl = document.getElementById('ad-expense-month-status');
+  adUploadedAttachments = adUploadedAttachments.filter(a=>!a.__autoExpenseReport);
+  renderAdAttachUploadedList();
+  if(!monthStr){ if(statusEl) statusEl.textContent = ''; return; }
+  if(!gdriveAccessToken){ if(statusEl) statusEl.textContent = '로그인 후에 자동 첨부할 수 있어요.'; return; }
+  if(statusEl) statusEl.textContent = '지출결의서 생성 중...';
+  try{
+    const blob = await generateExpenseReportPdfBlob(monthStr);
+    const [y,m] = monthStr.split('-');
+    const fileName = `${y}년 ${Number(m)}월 지출결의서.pdf`;
+    const file = new File([blob], fileName, { type:'application/pdf' });
+    const draftMeta = {
+      title: document.getElementById('ad-title')?.value.trim() || fileName,
+      drafter: resolveNameByEmail(document.getElementById('ad-drafter')?.value || currentDrafterEmail()),
+      date: todayStr()
+    };
+    const uploaded = await gdriveUploadApprovalAttachment(file, '지출결의서', draftMeta);
+    uploaded.__autoExpenseReport = true;
+    adUploadedAttachments.push(uploaded);
+    renderAdAttachUploadedList();
+    if(statusEl) statusEl.textContent = `${y}년 ${Number(m)}월 지출결의서가 자동 첨부됐어요.`;
+  }catch(err){
+    console.error('지출결의서 자동 첨부 실패', err);
+    if(statusEl) statusEl.textContent = '자동 첨부에 실패했어요. 파일 업로드로 직접 첨부해주세요.';
+  }
+}
+// 문서종류를 바꿀 때마다 정산월 칸을 보이거나 숨기고, 처음 "지출결의서"를 고른 순간엔 전월을 기본값으로
+// 채워서 바로 자동 첨부를 시작함(대개 전월분을 상신하므로 - 위 마감 배너와 같은 기준)
+function syncAdExpenseMonthRow(){
+  const docType = document.getElementById('ad-doctype')?.value;
+  const row = document.getElementById('ad-expense-month-row');
+  if(!row) return;
+  const show = docType === '지출결의서';
+  row.style.display = show ? '' : 'none';
+  if(!show){
+    const statusEl = document.getElementById('ad-expense-month-status');
+    if(statusEl) statusEl.textContent = '';
+    return;
+  }
+  const monthInput = document.getElementById('ad-expense-month');
+  if(monthInput && !monthInput.value){
+    monthInput.value = previousMonthStr();
+    attachExpenseReportForMonth(monthInput.value);
+  }
+}
+document.getElementById('ad-doctype')?.addEventListener('change', syncAdExpenseMonthRow);
+document.getElementById('ad-expense-month')?.addEventListener('change', function(){
+  attachExpenseReportForMonth(this.value);
+});
+
 document.getElementById('quickPrintReportBtn').addEventListener('click', ()=>{
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
   const calendarHtml = buildCalendarHTML(monthStr).replace('<div class="doc">', '<div class="doc" style="page-break-before:always;">');
@@ -16131,6 +16236,8 @@ function saveApprovalDraftForm(status){
   const attachments = combinedAttachmentsFromForm();
   const approverEmail = document.getElementById('ad-approver').value;
   const docType = document.getElementById('ad-doctype')?.value || '일반';
+  // 지출결의서일 때만 의미 있는 값 - 나중에 이 기안을 다시 열어(수정/재기안) 정산월 선택칸에 그대로 채워주는 용도
+  const expenseMonth = docType === '지출결의서' ? (document.getElementById('ad-expense-month')?.value || '') : '';
   const editId = document.getElementById('ad-edit-id').value;
   const msgEl = document.getElementById('approvalDraftSaveMsg');
   if(!title){ if(msgEl) msgEl.textContent = '제목을 입력해주세요'; return false; }
@@ -16146,6 +16253,7 @@ function saveApprovalDraftForm(status){
     // 기안자도 테스트용으로 바꿔볼 수 있으므로, 임시저장 문서를 다시 열어 고칠 때도 지금 선택된 기안자로 갱신함
     existing.drafterEmail = drafterEmail; existing.drafterName = resolveNameByEmail(drafterEmail);
     existing.docType = docType;
+    existing.expenseMonth = expenseMonth;
     existing.status = status;
     if(status === '기안'){
       existing.createdAt = new Date().toLocaleString('ko-KR');
@@ -16156,7 +16264,7 @@ function saveApprovalDraftForm(status){
     }
   } else {
     sharedApprovals.unshift({
-      id: genId(), title, content, attachments, docType,
+      id: genId(), title, content, attachments, docType, expenseMonth,
       drafterEmail,
       drafterName: resolveNameByEmail(drafterEmail),
       approverEmail, approverName: resolveNameByEmail(approverEmail),
@@ -16171,6 +16279,7 @@ function saveApprovalDraftForm(status){
   adUploadedAttachments = [];
   renderAdAttachUploadedList();
   renderAdAttachLinkRows([]);
+  if(typeof syncAdExpenseMonthRow === 'function') syncAdExpenseMonthRow(); // 문서종류가 기본값(일반)으로 리셋됐으니 정산월 칸도 같이 접어줌
   document.getElementById('ad-edit-id').value = '';
   const editBadge = document.getElementById('approvalDraftEditBadge');
   if(editBadge) editBadge.style.display = 'none';
@@ -16517,6 +16626,13 @@ function editApprovalDraft(id){
   renderAdAttachUploadedList();
   const docTypeEl = document.getElementById('ad-doctype');
   if(docTypeEl) docTypeEl.value = item.docType || '일반';
+  // 정산월 칸도 그때 골랐던 달 그대로 복원함(이미 attachments에 그때 만든 PDF가 들어있으니 다시 만들진 않음)
+  const expenseMonthEl = document.getElementById('ad-expense-month');
+  if(expenseMonthEl) expenseMonthEl.value = item.expenseMonth || '';
+  const expenseRowEl = document.getElementById('ad-expense-month-row');
+  if(expenseRowEl) expenseRowEl.style.display = (item.docType === '지출결의서') ? '' : 'none';
+  const expenseStatusEl = document.getElementById('ad-expense-month-status');
+  if(expenseStatusEl) expenseStatusEl.textContent = '';
   populateApproverSelect();
   if(item.approverEmail) document.getElementById('ad-approver').value = item.approverEmail;
   if(item.drafterEmail) document.getElementById('ad-drafter').value = item.drafterEmail;
@@ -16556,6 +16672,7 @@ document.querySelectorAll('.approval-doc-btn').forEach(btn=>{
       adUploadedAttachments = [];
       renderAdAttachUploadedList();
       renderAdAttachLinkRows([]);
+      if(typeof syncAdExpenseMonthRow === 'function') syncAdExpenseMonthRow(); // 문서종류가 기본값(일반)으로 리셋됐으니 정산월 칸도 같이 접어줌
       document.getElementById('ad-edit-id').value = '';
       const editBadge = document.getElementById('approvalDraftEditBadge');
       if(editBadge) editBadge.style.display = 'none';
@@ -16919,6 +17036,13 @@ function resubmitApprovalDraft(id){
   renderAdAttachUploadedList();
   const docTypeEl = document.getElementById('ad-doctype');
   if(docTypeEl) docTypeEl.value = item.docType || '일반';
+  // 정산월 칸도 그때 골랐던 달 그대로 복원함(이미 attachments에 그때 만든 PDF가 들어있으니 다시 만들진 않음)
+  const expenseMonthEl = document.getElementById('ad-expense-month');
+  if(expenseMonthEl) expenseMonthEl.value = item.expenseMonth || '';
+  const expenseRowEl = document.getElementById('ad-expense-month-row');
+  if(expenseRowEl) expenseRowEl.style.display = (item.docType === '지출결의서') ? '' : 'none';
+  const expenseStatusEl = document.getElementById('ad-expense-month-status');
+  if(expenseStatusEl) expenseStatusEl.textContent = '';
   populateApproverSelect();
   if(item.approverEmail) document.getElementById('ad-approver').value = item.approverEmail;
   if(item.drafterEmail) document.getElementById('ad-drafter').value = item.drafterEmail;
