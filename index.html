@@ -1090,12 +1090,18 @@
     div.cl-pi-row-grid:not(.cl-pi-row){ display:none !important; }
   }
   /* 개인정보 표(항목/정보/메모/관리) - 기본 표 테두리(var(--border), 14% 짙기)가 너무 흐려서 칸 구분이 거의
-     안 보인다는 의견으로, 이 표만 구분선을 눈에 띄게 진하게 줌(가로/세로 모두) */
-  #clPersonalInfoRows table{ border:1.5px solid rgba(29,30,51,0.4) !important; }
+     안 보인다는 의견으로, 이 표만 구분선을 눈에 띄게 진하게 줌(가로/세로 모두). border-collapse:collapse
+     상태에서 칸 테두리를 두껍게 주면 둥근 모서리가 칸 테두리에 네모나게 잘려 보이는 문제가 있어서, 이 표만
+     separate로 바꾸고 맨 바깥 모서리 4곳에 각각 라운드를 다시 지정해줌 */
+  #clPersonalInfoRows table{ border-collapse:separate !important; border-spacing:0 !important; border:1.5px solid rgba(29,30,51,0.4) !important; border-radius:14px !important; }
   #clPersonalInfoRows table th, #clPersonalInfoRows table td{ border-right:1.5px solid rgba(29,30,51,0.28) !important; }
   #clPersonalInfoRows table th:last-child, #clPersonalInfoRows table td:last-child{ border-right:none !important; }
   #clPersonalInfoRows table thead th{ border-bottom:1.5px solid rgba(29,30,51,0.4) !important; }
   #clPersonalInfoRows table tbody td{ border-top:1.5px solid rgba(29,30,51,0.28) !important; }
+  #clPersonalInfoRows table thead th:first-child{ border-top-left-radius:12px; }
+  #clPersonalInfoRows table thead th:last-child{ border-top-right-radius:12px; }
+  #clPersonalInfoRows table tbody tr:last-child td:first-child{ border-bottom-left-radius:12px; }
+  #clPersonalInfoRows table tbody tr:last-child td:last-child{ border-bottom-right-radius:12px; }
   .cl-subtag-trigger-btn{
     font-family:'Pretendard', sans-serif; font-size:13.5px; text-align:left; cursor:pointer;
     border:1.5px solid var(--border); border-radius:10px; padding:8px 10px;
@@ -1179,9 +1185,15 @@
   #filingStatusTableWrap .table-scroll, #reviewStatusTableWrap .table-scroll{ max-height:none; overflow-y:visible; overflow-x:auto; }
   /* 기장/기타/해지거래처 표는 화면(카드)이 넓어져서 세로로 활용할 공간이 충분해졌으니, 세로 스크롤(max-height)은
      없애고 페이지 자체 스크롤로 늘어나게 함. 다만 열이 많아 가로로는 여전히 넘칠 수 있어서 가로 스크롤은 남겨둠 */
+  /* overflow-y:visible과 overflow-x:auto를 한 요소에 같이 주면, CSS 스펙상 visible이 auto로 강제 변환돼서
+     (가로 스크롤을 넣으려는 의도와 달리) 이 박스 자신이 세로 스크롤 컨테이너가 돼버리고, 그러면 position:sticky
+     헤더가 "페이지 스크롤"이 아니라 "이 박스 자신의(실제로는 안 일어나는) 스크롤"을 기준으로 붙게 돼서
+     페이지를 내려도 헤더가 안 따라오는 문제가 있었음 - overflow-y를 visible 대신 clip으로 주면 이 강제
+     변환 예외 대상이라(스펙상 clip은 auto로 안 바뀜) 스크롤 컨테이너가 안 만들어지고, sticky가 정상적으로
+     페이지 스크롤을 기준으로 동작함 */
   #clientsRegularListWrap .table-scroll, #clientsOtherListWrap .table-scroll,
   #clientsTerminatedListWrap .table-scroll{
-    max-height:none; overflow-y:visible; overflow-x:auto;
+    max-height:none; overflow-y:clip; overflow-x:auto;
   }
   /* 위에서 세로 스크롤(max-height)을 없애고 페이지 자체 스크롤로 바꾸면서, 표 헤더의 sticky 기준이 이 표 안
      스크롤 박스가 아니라 페이지 전체가 됨 - 그런데 상단 네비(.tabs)도 sticky로 화면 위에 떠 있어서 top:0으로
@@ -1978,7 +1990,16 @@
         <input type="checkbox" id="clPiFormIsIdpw" checked style="width:auto;"> <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg> ID/PW로 등록 <span style="font-weight:400;">(체크 해제하면 자유 형식으로 내용만 입력)</span>
       </label>
     </div>
-    <div class="field"><label>항목명</label><input type="text" id="clPiFormLabel" placeholder="예: 카드단말기 비밀번호"></div>
+    <div class="field"><label>항목</label>
+      <select id="clPiFormLabelSelect" style="width:100%;">
+        <option value="홈택스">홈택스</option>
+        <option value="여신금융협회">여신금융협회</option>
+        <option value="공동인증서">공동인증서</option>
+        <option value="통장비밀번호">통장비밀번호</option>
+        <option value="__other__">기타</option>
+      </select>
+    </div>
+    <div class="field" id="clPiFormLabelOtherRow" style="display:none;"><label>항목명</label><input type="text" id="clPiFormLabelOther" placeholder="예: 카드단말기 비밀번호"></div>
     <div class="field" id="clPiFormInfoRow" style="display:none;"><label>정보 내용</label><input type="text" id="clPiFormInfoVal" placeholder="예: 123456-0000000"></div>
     <div class="field-row" id="clPiFormIdPwRow" style="display:flex; gap:10px; flex-wrap:wrap;">
       <div class="field" style="flex:1 1 140px;"><label>ID</label><input type="text" id="clPiFormId" placeholder="선택"></div>
@@ -2573,6 +2594,7 @@
               <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="new"><span>기안</span></div>
               <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="draft"><span>임시저장함</span></div>
               <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="mine"><span>기안함</span></div>
+              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="rejected"><span>반려함</span></div>
               <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="inbox"><span>결재함</span></div>
               <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="all"><span>전체이력</span></div>
             </div>
@@ -8682,17 +8704,13 @@ function applyClPersonalInfoForcedTypes(list){
   });
   return list;
 }
-// 4가지 기본 항목(홈택스/여신금융협회/공동인증서/통장비밀번호)은 값이 비어있어도 항상 표에 그대로 나와있고,
-// "수정"을 누르면 그 줄이 바로 입력 가능하게 활성화되는 방식(별도 팝업/다른 스타일의 입력폼 없이) - locked라
-// 항목명 자체는 못 바꾸고 삭제 버튼도 안 보이지만, 값(ID/PW 또는 정보)은 그 자리에서 바로 채우면 됨
+// 4가지 기본 항목(홈택스/여신금융협회/공동인증서/통장비밀번호)은 실제로 "+ 등록"에서 값을 입력해 등록한
+// 것만 표에 나타남(등록 안 한 건 빈 채로 미리 깔아두지 않음). 이미 등록되어 있는 기본 항목은 locked로 표시해
+// 항목명은 못 바꾸고 삭제 버튼도 안 보이게 하되, 값(ID/PW 또는 정보)은 "수정"을 누르면 그 줄이 바로 그
+// 자리에서 입력 가능하게 바뀜(별도 팝업/다른 스타일의 입력폼 없이)
 function ensureClPersonalInfoDefaults(){
-  CL_PERSONAL_INFO_DEFAULT_LABELS.forEach(label=>{
-    if(!clPersonalInfoEntries.some(a=>a.label===label)){
-      clPersonalInfoEntries.unshift({id:genId(), label, idVal:'', pwVal:'', note:'', locked:true});
-    } else {
-      const e = clPersonalInfoEntries.find(a=>a.label===label);
-      if(e) e.locked = true;
-    }
+  clPersonalInfoEntries.forEach(a=>{
+    if(CL_PERSONAL_INFO_DEFAULT_LABELS.includes(a.label)) a.locked = true;
   });
   applyClPersonalInfoForcedTypes(clPersonalInfoEntries);
   // 기본 항목들이 항상 정해진 순서(홈택스→여신금융협회→공동인증서→통장비밀번호)로, 그 외 직접 추가한
@@ -8797,9 +8815,9 @@ function renderClPersonalInfoRows(){
           <td><input type="text" class="cl-pi-inline-label" value="${escHtml(a.label||'')}" ${a.locked?'disabled':''} style="${inlineInputStyle} font-size:13px; font-weight:700;"></td>
           <td>
             ${a.locked ? '' : `<label style="display:flex; align-items:center; gap:5px; font-size:10.5px; font-weight:700; color:var(--ink-soft); margin-bottom:5px; cursor:pointer;"><input type="checkbox" class="cl-pi-inline-idpw" ${isInfo?'':'checked'} style="width:auto;"> ID/PW로 등록</label>`}
-            <div class="cl-pi-inline-idpw-row" style="display:${isInfo?'none':'flex'}; gap:14px; flex-wrap:wrap; align-items:center;">
-              <span style="display:inline-flex; align-items:center; gap:4px; min-width:110px;"><span style="font-size:9.5px; font-weight:800; color:var(--indigo-deep); background:var(--indigo-bg); padding:1px 6px; border-radius:8px;">ID</span><input type="text" class="cl-pi-inline-id num" value="${escHtml(a.idVal||'')}" style="${inlineInputStyle} width:110px; font-size:12.5px;"></span>
-              <span style="display:inline-flex; align-items:center; gap:4px; min-width:110px;"><span style="font-size:9.5px; font-weight:800; color:var(--coral); background:var(--coral-bg); padding:1px 6px; border-radius:8px;">PW</span><input type="text" class="cl-pi-inline-pw num" value="${escHtml(a.pwVal||'')}" style="${inlineInputStyle} width:110px; font-size:12.5px;"></span>
+            <div class="cl-pi-inline-idpw-row" style="display:${isInfo?'none':'flex'}; gap:6px; flex-wrap:nowrap; align-items:center;">
+              <span style="display:inline-flex; align-items:center; gap:2px; min-width:0; flex:1 1 0;"><span style="flex:0 0 auto; font-size:9px; font-weight:800; color:var(--indigo-deep); background:var(--indigo-bg); padding:1px 4px; border-radius:8px;">ID</span><input type="text" class="cl-pi-inline-id num" value="${escHtml(a.idVal||'')}" style="${inlineInputStyle} width:auto; min-width:0; flex:1 1 0; font-size:11.5px;"></span>
+              <span style="display:inline-flex; align-items:center; gap:2px; min-width:0; flex:1 1 0;"><span style="flex:0 0 auto; font-size:9px; font-weight:800; color:var(--coral); background:var(--coral-bg); padding:1px 4px; border-radius:8px;">PW</span><input type="text" class="cl-pi-inline-pw num" value="${escHtml(a.pwVal||'')}" style="${inlineInputStyle} width:auto; min-width:0; flex:1 1 0; font-size:11.5px;"></span>
             </div>
             <input type="text" class="cl-pi-inline-infoval num" value="${escHtml(isInfo?(a.idVal||''):'')}" placeholder="예: 123456-0000000" style="display:${isInfo?'':'none'}; ${inlineInputStyle} font-size:12.5px;">
           </td>
@@ -8875,21 +8893,53 @@ function renderClPersonalInfoRows(){
 }
 // "+ 등록" 팝업(clPiFormModalOverlay)은 새 항목 추가 전용 - 사내정보(설정 > 팀정보) "항목 추가" 팝업과
 // 같은 구성(ID/PW 체크박스, 메모 textarea, 메모-링크 체크박스)
+// 항목 드롭박스에서 기본 4항목 중 하나를 고르면 유형(ID/PW vs 정보)이 자동으로 맞춰지고(공동인증서·통장비밀번호는
+// "정보" 한 칸으로 고정), "기타"를 고르면 항목명을 직접 입력하는 칸이 열리며 ID/PW 여부도 자유롭게 고를 수 있음.
+// 이미 등록되어 있는 기본 항목은 드롭박스에서 빼서 중복 등록을 막음(그 항목은 "수정"으로 값만 바꾸면 됨)
+function clPiFormSyncLabelUI(){
+  const sel = document.getElementById('clPiFormLabelSelect');
+  const isOther = sel.value === '__other__';
+  document.getElementById('clPiFormLabelOtherRow').style.display = isOther ? '' : 'none';
+  const forced = isOther ? null : CL_PERSONAL_INFO_FORCED_TYPE[sel.value];
+  const idpwCheckbox = document.getElementById('clPiFormIsIdpw');
+  if(forced){
+    idpwCheckbox.checked = forced !== 'info';
+    idpwCheckbox.disabled = true;
+  } else if(!isOther){
+    idpwCheckbox.checked = true;
+    idpwCheckbox.disabled = true;
+  } else {
+    idpwCheckbox.disabled = false;
+  }
+  clPiFormSyncTypeUI();
+}
+document.getElementById('clPiFormLabelSelect')?.addEventListener('change', clPiFormSyncLabelUI);
 function clPiFormSyncTypeUI(){
   const isInfo = !document.getElementById('clPiFormIsIdpw').checked;
   document.getElementById('clPiFormIdPwRow').style.display = isInfo ? 'none' : '';
   document.getElementById('clPiFormInfoRow').style.display = isInfo ? '' : 'none';
 }
 document.getElementById('clPiFormIsIdpw')?.addEventListener('change', clPiFormSyncTypeUI);
+function clPiFormRefreshLabelOptions(){
+  const sel = document.getElementById('clPiFormLabelSelect');
+  if(!sel) return;
+  const registered = new Set(clPersonalInfoEntries.map(a=>a.label));
+  Array.from(sel.options).forEach(opt=>{
+    if(opt.value === '__other__') return;
+    opt.disabled = registered.has(opt.value);
+  });
+  const firstEnabled = Array.from(sel.options).find(opt=>!opt.disabled);
+  if(firstEnabled) sel.value = firstEnabled.value;
+}
 function resetClPiForm(){
-  document.getElementById('clPiFormLabel').value = '';
-  document.getElementById('clPiFormIsIdpw').checked = true;
+  clPiFormRefreshLabelOptions();
+  document.getElementById('clPiFormLabelOther').value = '';
   document.getElementById('clPiFormId').value = '';
   document.getElementById('clPiFormPw').value = '';
   document.getElementById('clPiFormInfoVal').value = '';
   document.getElementById('clPiFormNote').value = '';
   document.getElementById('clPiFormNoteIsLink').checked = false;
-  clPiFormSyncTypeUI();
+  clPiFormSyncLabelUI();
   document.getElementById('clPersonalInfoFormTitle').textContent = '항목 추가';
   document.getElementById('clPiFormSubmitBtn').textContent = '저장';
 }
@@ -8908,9 +8958,11 @@ document.getElementById('clPiFormOpenBtn')?.addEventListener('click', ()=>{
 });
 document.getElementById('clPiFormModalClose')?.addEventListener('click', closeClPiFormModal);
 document.getElementById('clPiFormSubmitBtn')?.addEventListener('click', ()=>{
-  const label = document.getElementById('clPiFormLabel').value.trim();
+  const sel = document.getElementById('clPiFormLabelSelect');
+  const isOther = sel.value === '__other__';
+  const label = isOther ? document.getElementById('clPiFormLabelOther').value.trim() : sel.value;
   if(!label){ appAlert('항목명을 입력해주세요.'); return; }
-  if(clPersonalInfoEntries.some(a=>a.label===label)){ appAlert('이미 등록된 항목이에요. 그 항목은 "수정"으로 값을 바꿔주세요.'); return; }
+  if(!isOther && clPersonalInfoEntries.some(a=>a.label===label)){ appAlert('이미 등록된 항목이에요. 그 항목은 "수정"으로 값을 바꿔주세요.'); return; }
   const isInfo = !document.getElementById('clPiFormIsIdpw').checked;
   const type = isInfo ? 'info' : 'idpw';
   const idVal = isInfo ? document.getElementById('clPiFormInfoVal').value.trim() : document.getElementById('clPiFormId').value.trim();
@@ -8918,6 +8970,7 @@ document.getElementById('clPiFormSubmitBtn')?.addEventListener('click', ()=>{
   const note = document.getElementById('clPiFormNote').value.trim();
   const noteIsLink = document.getElementById('clPiFormNoteIsLink').checked;
   clPersonalInfoEntries.push({id:genId(), label, type, idVal, pwVal, note, noteIsLink, locked:false});
+  if(typeof ensureClPersonalInfoDefaults === 'function') ensureClPersonalInfoDefaults();
   renderClPersonalInfoRows();
   // 예전엔 등록 버튼을 눌러도 팝업이 안 닫히고 입력칸만 비워져서, 방금 입력한 내용이 그냥 사라진 것처럼
   // 보인다는 제보가 있었음(사실은 목록엔 저장됐는데 팝업에 가려서 안 보였을 뿐) - 이제 등록/수정이 끝나면
@@ -16293,13 +16346,24 @@ function attachmentListHtml(item){
 // (업로드 시 받아둔 thumbnailLink가 있으면 그걸 먼저 바로 보여주고, 이 무거운 원본 요청은 thumb이 없거나
 // 만료돼 실패했을 때만 대체용으로 씀 - 첨부가 많은 목록에서 매번 원본을 다 받아오는 낭비를 줄임)
 let approvalAttachmentObjectUrls = [];
+// 실시간 동기화(구글 드라이브 폴링) 등으로 같은 상세보기가 자주 다시 그려질 때마다 이미지를 매번 새로
+// 받아오면, 화면이 깜빡이며 계속 로딩되는 것처럼 보이는 문제가 있었음(제보: "미리보기가 자꾸 깜빡깜빡
+// 로딩되는것 같다") - 파일 id별로 한 번 받아온 blob URL을 캐시해두고, 다시 그려질 때는 이 캐시를 즉시
+// 재사용해서 다시 받아오지 않게 함
+let approvalAttachmentBlobCache = {};
 function revokeApprovalAttachmentObjectUrls(){
   approvalAttachmentObjectUrls.forEach(u=>{ try{ URL.revokeObjectURL(u); }catch(e){} });
   approvalAttachmentObjectUrls = [];
+  approvalAttachmentBlobCache = {};
 }
 async function loadApprovalAttachmentImage(imgEl){
   const fileId = imgEl.dataset.fileId;
   if(!fileId || !gdriveAccessToken) return;
+  if(approvalAttachmentBlobCache[fileId]){
+    imgEl.src = approvalAttachmentBlobCache[fileId];
+    imgEl.style.opacity = '1';
+    return;
+  }
   try{
     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`, {
       headers:{ Authorization:`Bearer ${gdriveAccessToken}` }
@@ -16308,13 +16372,19 @@ async function loadApprovalAttachmentImage(imgEl){
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     approvalAttachmentObjectUrls.push(url);
+    approvalAttachmentBlobCache[fileId] = url;
     imgEl.src = url;
     imgEl.style.opacity = '1';
   }catch(e){ console.error('첨부 이미지 불러오기 실패', e); }
 }
 function initApprovalAttachmentImages(scopeEl){
-  // thumb이 없어서 처음부터 빈 채로 표시된 이미지만 원본 요청으로 채워줌 (thumb이 있는 건 이미 바로 떠 있어서 건드릴 필요 없음)
-  (scopeEl||document).querySelectorAll('img.approval-att-img[data-file-id][data-thumb-failed="1"]').forEach(img=>loadApprovalAttachmentImage(img));
+  // thumb이 없어서 처음부터 빈 채로 표시된 이미지만 원본 요청으로 채워줌(thumb이 있는 건 이미 바로 떠 있어서
+  // 건드릴 필요 없음). 이미 캐시된 파일은 opacity를 굳이 내렸다 올리지 않고 바로 보여줘서 깜빡임을 없앰
+  (scopeEl||document).querySelectorAll('img.approval-att-img[data-file-id][data-thumb-failed="1"]').forEach(img=>{
+    const fileId = img.dataset.fileId;
+    if(approvalAttachmentBlobCache[fileId]){ img.src = approvalAttachmentBlobCache[fileId]; img.style.opacity = '1'; return; }
+    loadApprovalAttachmentImage(img);
+  });
 }
 // 첨부파일 업로드 - 회사 공유 드라이브("01.기장대리" > "0004.전자결재첨부" > 문서종류)에 자동 이름을
 // 붙여 올림(gdriveUploadApprovalAttachment). 업로드가 끝나면 adUploadedAttachments 배열에 담아뒀다가
@@ -16535,27 +16605,139 @@ function approvalDetailTrHtml(item, colspan){
 }
 // bucket==='all'(전체이력)이면서 관리자 계정이면 문서를 완전히 지울 수 있는 "삭제" 버튼을 같이 보여줌
 // (실제로는 하드 삭제가 아니라 deleteApproval로 상태만 "삭제"로 바꾸는 소프트 삭제 - 전체이력엔 계속 남음)
-function approvalRowHtml(item, bucket){
-  const canAdminDelete = bucket==='all' && typeof isCurrentUserAdmin!=='undefined' && isCurrentUserAdmin && item.status!=='삭제';
-  // 결재함(inbox)은 결재자 본인이 자기 결재함에서 더 안 볼 문서를 정리할 수 있게 삭제 버튼을 둠(소프트 삭제라
-  // 전체이력엔 그대로 남음)
-  const canInboxDelete = bucket==='inbox' && item.status!=='삭제';
-  const expanded = approvalExpandedId === item.id;
-  const mainRow = `<tr${expanded?' style="background:var(--indigo-bg);"':''}>
-    <td><span class="tag" style="background:var(--bg); color:var(--ink-soft);">${escHtml(item.docType||'일반')}</span></td>
-    <td class="num">${escHtml(item.createdAt||'')}</td>
-    <td>${escHtml(resolveNameByEmail(item.drafterEmail) || item.drafterName || '')}</td>
-    <td style="text-align:center; font-weight:700;">${escHtml(item.title)}</td>
-    <td>${escHtml(resolveNameByEmail(item.approverEmail) || item.approverName || '')}</td>
-    <td>${approvalStatusTagHtml(item.status, null, item.resubmitCount)}</td>
-    <td>
-      <button type="button" class="del-btn approval-view-btn" data-id="${item.id}" style="${expanded?'background:var(--indigo); color:#fff;':''}">${expanded?'닫기':'보기'}</button>
-      ${(canAdminDelete||canInboxDelete) ? `<button type="button" class="del-btn approval-delete-btn" data-id="${item.id}" style="background:var(--coral-bg); color:var(--coral);">삭제</button>` : ''}
-    </td>
-  </tr>`;
-  return expanded ? mainRow + approvalDetailTrHtml(item, 7) : mainRow;
+// 결재 목록(기안함/반려함/결재함/임시저장함/전체이력) 공용 검색/페이지네이션 상태 - 문서함(bucket)별로 따로
+// 기억함. 검색은 기안일(날짜)과 문서종류·제목(텍스트) 두 가지로 하고, 한 페이지에 10개씩만 보여준 뒤 페이지
+// 번호로 넘기게 함(문서가 많아지면 한 화면에 다 쌓여서 찾기 힘들다는 의견)
+const APPROVAL_PAGE_SIZE = 10;
+let approvalSearchState = {};
+function getApprovalSearchState(bucket){
+  if(!approvalSearchState[bucket]) approvalSearchState[bucket] = { q:'', date:'', page:1 };
+  return approvalSearchState[bucket];
 }
-function bindApprovalViewButtons(wrap, rerenderFn){
+// createdAt이 new Date().toLocaleString('ko-KR') 형식("2026. 9. 10. 오후 5:37:30")이라, <input type="date">의
+// YYYY-MM-DD 값과 비교할 수 있게 앞부분(연.월.일)만 뽑아 변환함
+function approvalItemDateStr(item){
+  const m = /^(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\./.exec(item.createdAt||'');
+  if(!m) return '';
+  return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+}
+function applyApprovalSearch(list, bucket){
+  const st = getApprovalSearchState(bucket);
+  let out = list;
+  if(st.date) out = out.filter(item=>approvalItemDateStr(item) === st.date);
+  if(st.q && st.q.trim()){
+    const q = st.q.trim().toLowerCase();
+    out = out.filter(item=>(item.docType||'').toLowerCase().includes(q) || (item.title||'').toLowerCase().includes(q));
+  }
+  return out;
+}
+function approvalSearchBarHtml(bucket){
+  const st = getApprovalSearchState(bucket);
+  return `<div class="approval-search-bar" data-bucket="${bucket}" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center; margin-bottom:10px;">
+    <input type="date" class="approval-search-date" value="${escHtml(st.date||'')}" title="기안일로 찾기" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12px; font-family:inherit; color:var(--ink);">
+    <input type="text" class="approval-search-q" value="${escHtml(st.q||'')}" placeholder="문서종류·제목 검색" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 10px; font-size:12px; min-width:170px; font-family:inherit;">
+    ${(st.date||st.q) ? `<button type="button" class="del-btn approval-search-clear-btn">검색 초기화</button>` : ''}
+  </div>`;
+}
+function bindApprovalSearchBar(container, onChange){
+  if(!container) return;
+  const bucket = container.dataset.bucket;
+  const st = getApprovalSearchState(bucket);
+  container.querySelector('.approval-search-date')?.addEventListener('change', function(){ st.date = this.value; st.page = 1; onChange(); });
+  let qTimer = null;
+  container.querySelector('.approval-search-q')?.addEventListener('input', function(){
+    const val = this.value;
+    clearTimeout(qTimer);
+    qTimer = setTimeout(()=>{ st.q = val; st.page = 1; onChange(); }, 250);
+  });
+  container.querySelector('.approval-search-clear-btn')?.addEventListener('click', ()=>{ st.date=''; st.q=''; st.page=1; onChange(); });
+}
+function approvalPaginationHtml(bucket, totalCount){
+  const st = getApprovalSearchState(bucket);
+  const totalPages = Math.max(1, Math.ceil(totalCount / APPROVAL_PAGE_SIZE));
+  if(totalPages <= 1) return '';
+  let btns = '';
+  for(let p=1; p<=totalPages; p++){
+    btns += `<button type="button" class="del-btn approval-page-btn${p===st.page?' active':''}" data-page="${p}" style="${p===st.page?'background:var(--indigo); color:#fff;':''} min-width:30px;">${p}</button>`;
+  }
+  return `<div class="approval-pagination" data-bucket="${bucket}" style="display:flex; gap:5px; justify-content:center; flex-wrap:wrap; margin-top:10px;">${btns}</div>`;
+}
+function bindApprovalPagination(container, onChange){
+  if(!container) return;
+  container.querySelectorAll('.approval-page-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      getApprovalSearchState(container.dataset.bucket).page = parseInt(btn.dataset.page,10)||1;
+      onChange();
+    });
+  });
+}
+// 결재 관련 표(기안함/반려함/결재함/임시저장함/전체이력) 전부 같은 열 구성(종류/기안일/기안자/문서제목/결재자/
+// 진행상황/관리)으로 통일함 - 모든 칸이 가운데 정렬(예전엔 문서제목만 가운데였고 나머지는 왼쪽정렬로 남아있어
+// 줄이 안 맞아 보인다는 의견)
+function approvalTableHeaderHtml(){
+  const c = 'text-align:center;';
+  return `<tr><th style="${c}">종류</th><th style="${c}">기안일</th><th style="${c}">기안자</th><th style="${c}">문서제목</th><th style="${c}">결재자</th><th style="${c}">진행상황</th><th></th></tr>`;
+}
+// bucket별로 다른 관리 버튼 구성 - 기안함/전체이력: 보기(+삭제), 결재함: 보기(+삭제), 기안함(mine): 보기(+회수),
+// 반려함: 보기+재기안, 임시저장함: 보기+(재)기안+삭제
+function approvalRowActionsHtml(item, bucket, expanded){
+  const viewBtn = `<button type="button" class="del-btn approval-view-btn" data-id="${item.id}" style="${expanded?'background:var(--indigo); color:#fff;':''}">${expanded?'닫기':'보기'}</button>`;
+  if(bucket === 'inbox' || bucket === 'all'){
+    const canAdminDelete = bucket==='all' && typeof isCurrentUserAdmin!=='undefined' && isCurrentUserAdmin && item.status!=='삭제';
+    const canInboxDelete = bucket==='inbox' && item.status!=='삭제';
+    return viewBtn + ((canAdminDelete||canInboxDelete) ? `<button type="button" class="del-btn approval-delete-btn" data-id="${item.id}" style="background:var(--coral-bg); color:var(--coral);">삭제</button>` : '');
+  }
+  if(bucket === 'mine'){
+    return viewBtn + ((item.status==='기안'||item.status==='검토중') ? `<button type="button" class="del-btn approval-recall-btn" data-id="${item.id}" style="background:var(--bg2, #E5E7EB); color:var(--ink-soft);">회수</button>` : '');
+  }
+  if(bucket === 'rejected'){
+    return viewBtn + `<button type="button" class="del-btn approval-resubmit-btn" data-id="${item.id}" style="background:var(--indigo-bg); color:var(--indigo-deep);">재기안</button>`;
+  }
+  if(bucket === 'draft'){
+    return viewBtn + `<button type="button" class="del-btn approval-edit-draft-btn" data-id="${item.id}" style="background:var(--indigo-bg); color:var(--indigo-deep);">(재)기안</button>` +
+      `<button type="button" class="del-btn approval-delete-draft-btn" data-id="${item.id}" style="background:var(--coral-bg); color:var(--coral);">삭제</button>`;
+  }
+  return viewBtn;
+}
+// 공용 렌더러 - 검색+칩+표+페이지네이션을 그리고, "보기"를 누른 문서의 상세 내용은 각 줄 바로 아래가 아니라
+// (페이지 안에서) 표/페이지네이션 전부 아래, 목록의 가장 밑에 한 번만 펼쳐짐(공지사항처럼)
+function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
+  const wrap = document.getElementById(wrapId);
+  if(!wrap) return;
+  const st = getApprovalSearchState(bucket);
+  const chipsHtml = approvalDocTypeChipsHtml(bucket);
+  const searchBarHtml = approvalSearchBarHtml(bucket);
+  const byType = filterByDocType(list, bucket);
+  const searched = applyApprovalSearch(byType, bucket);
+  if(!searched.length){
+    wrap.innerHTML = `${chipsHtml}${searchBarHtml}<div class="empty-state">${list.length ? '조건에 맞는 문서가 없습니다.' : emptyText}</div>`;
+    bindApprovalDocTypeChips(wrap.querySelector('.approval-doctype-chips'), onChange);
+    bindApprovalSearchBar(wrap.querySelector('.approval-search-bar'), onChange);
+    return;
+  }
+  const totalPages = Math.max(1, Math.ceil(searched.length / APPROVAL_PAGE_SIZE));
+  if(st.page > totalPages) st.page = totalPages;
+  const pageItems = searched.slice((st.page-1)*APPROVAL_PAGE_SIZE, st.page*APPROVAL_PAGE_SIZE);
+  const statusCtx = (bucket==='inbox'||bucket==='all') ? null : 'mine';
+  const rows = pageItems.map(item=>{
+    const expanded = approvalExpandedId === item.id;
+    return `<tr${expanded?' style="background:var(--indigo-bg);"':''}>
+      <td style="text-align:center;"><span class="tag" style="background:var(--bg); color:var(--ink-soft);">${escHtml(item.docType||'일반')}</span></td>
+      <td class="num" style="text-align:center;">${escHtml(item.createdAt||'')}</td>
+      <td style="text-align:center;">${escHtml(resolveNameByEmail(item.drafterEmail) || item.drafterName || '')}</td>
+      <td style="text-align:center; font-weight:700;">${escHtml(item.title)}</td>
+      <td style="text-align:center;">${escHtml(resolveNameByEmail(item.approverEmail) || item.approverName || '')}</td>
+      <td style="text-align:center;">${approvalStatusTagHtml(item.status, statusCtx, item.resubmitCount)}</td>
+      <td style="text-align:center; white-space:nowrap;">${approvalRowActionsHtml(item, bucket, expanded)}</td>
+    </tr>`;
+  }).join('');
+  const paginationHtml = approvalPaginationHtml(bucket, searched.length);
+  const expandedItem = pageItems.find(i=>i.id===approvalExpandedId);
+  const detailHtml = expandedItem ? `<div class="approval-detail-panel" style="padding:14px 4px; background:var(--bg); border-radius:10px; margin-top:12px;">${approvalDetailBodyHtml(expandedItem)}</div>` : '';
+  wrap.innerHTML = `${chipsHtml}${searchBarHtml}<div class="table-scroll"><table><thead>${approvalTableHeaderHtml()}</thead><tbody>${rows}</tbody></table></div>${paginationHtml}${detailHtml}`;
+  bindApprovalDocTypeChips(wrap.querySelector('.approval-doctype-chips'), onChange);
+  bindApprovalSearchBar(wrap.querySelector('.approval-search-bar'), onChange);
+  bindApprovalPagination(wrap.querySelector('.approval-pagination'), onChange);
   wrap.querySelectorAll('.approval-view-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const id = btn.dataset.id;
@@ -16567,33 +16749,28 @@ function bindApprovalViewButtons(wrap, rerenderFn){
           renderApprovalAllBadges();
         }
       }
-      if(typeof rerenderFn === 'function') rerenderFn();
+      if(typeof onChange === 'function') onChange();
     });
   });
   wrap.querySelectorAll('.approval-delete-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>deleteApproval(btn.dataset.id));
   });
-  const expandedInWrap = wrap.querySelector(`.approval-detail-row [data-id="${approvalExpandedId}"]`);
-  if(approvalExpandedId && expandedInWrap) bindApprovalDetailBodyEvents(wrap, approvalExpandedId);
-}
-// 결재 관련 표(기안함/반려함/결재함/임시저장함/전체이력) 전부 같은 열 구성(종류/기안일/기안자/문서제목/결재자/
-// 진행상황/관리)으로 통일함 - 예전엔 "기안함"류는 어차피 전부 내 문서라 기안자 칸을 빼는 등 표마다 열이 조금씩
-// 달랐는데, 헷갈린다는 의견으로 전부 같은 순서·이름으로 맞춤. 문서제목만 가운데 정렬(나머지는 기존 그대로)
-function approvalTableHeaderHtml(){
-  return `<tr><th>종류</th><th>기안일</th><th>기안자</th><th style="text-align:center;">문서제목</th><th>결재자</th><th>진행상황</th><th></th></tr>`;
-}
-function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
-  const wrap = document.getElementById(wrapId);
-  if(!wrap) return;
-  const chipsHtml = bucket ? approvalDocTypeChipsHtml(bucket) : '';
-  const filtered = bucket ? filterByDocType(list, bucket) : list;
-  if(!filtered.length){ wrap.innerHTML = `${chipsHtml}<div class="empty-state">${list.length ? '이 종류의 문서가 없습니다.' : emptyText}</div>`; }
-  else{
-    const rows = filtered.map(item=>approvalRowHtml(item, bucket)).join('');
-    wrap.innerHTML = `${chipsHtml}<table><thead>${approvalTableHeaderHtml()}</thead><tbody>${rows}</tbody></table>`;
+  wrap.querySelectorAll('.approval-recall-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>recallApprovalDraft(btn.dataset.id));
+  });
+  wrap.querySelectorAll('.approval-resubmit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>resubmitApprovalDraft(btn.dataset.id));
+  });
+  wrap.querySelectorAll('.approval-edit-draft-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>editApprovalDraft(btn.dataset.id));
+  });
+  wrap.querySelectorAll('.approval-delete-draft-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>deleteApprovalDraft(btn.dataset.id));
+  });
+  if(expandedItem){
+    const panel = wrap.querySelector('.approval-detail-panel');
+    if(panel) bindApprovalDetailBodyEvents(panel, expandedItem.id);
   }
-  bindApprovalViewButtons(wrap, onChange);
-  if(bucket) bindApprovalDocTypeChips(wrap.querySelector('.approval-doctype-chips'), onChange);
 }
 function renderApprovalInbox(){
   renderApprovalTable('approvalInboxWrap', myApprovalInboxList(), '결재 대기 문서가 없습니다.', 'inbox', renderApprovalInbox);
@@ -16601,102 +16778,17 @@ function renderApprovalInbox(){
 // 기안함: 아직 결론 안 났거나(상신·검토중) 승인된, "내가 계속 지켜볼 만한" 문서만 - 반려·회수는 각각 반려함/
 // 임시저장함으로 옮겨가서 여기선 더 이상 안 보임(회수 버튼만 필요할 때 보여줌)
 function renderApprovalMine(){
-  const wrap = document.getElementById('approvalMineWrap');
-  if(!wrap) return;
-  const list = myApprovalMineList();
-  const chipsHtml = approvalDocTypeChipsHtml('mine');
-  const filtered = filterByDocType(list, 'mine');
-  if(!filtered.length){ wrap.innerHTML = `${chipsHtml}<div class="empty-state">${list.length ? '이 종류의 문서가 없습니다.' : '기안한 문서가 없습니다.'}</div>`; bindApprovalDocTypeChips(wrap.querySelector('.approval-doctype-chips'), renderApprovalMine); return; }
-  const rows = filtered.map(item=>{
-    const expanded = approvalExpandedId === item.id;
-    const mainRow = `<tr${expanded?' style="background:var(--indigo-bg);"':''}>
-    <td><span class="tag" style="background:var(--bg); color:var(--ink-soft);">${escHtml(item.docType||'일반')}</span></td>
-    <td class="num">${escHtml(item.createdAt||'')}</td>
-    <td>${escHtml(resolveNameByEmail(item.drafterEmail) || item.drafterName || '')}</td>
-    <td style="text-align:center; font-weight:700;">${escHtml(item.title)}</td>
-    <td>${escHtml(resolveNameByEmail(item.approverEmail) || item.approverName || '')}</td>
-    <td>${approvalStatusTagHtml(item.status, 'mine', item.resubmitCount)}</td>
-    <td>
-      <button type="button" class="del-btn approval-view-btn" data-id="${item.id}" style="${expanded?'background:var(--indigo); color:#fff;':''}">${expanded?'닫기':'보기'}</button>
-      ${(item.status==='기안'||item.status==='검토중') ? `<button type="button" class="del-btn approval-recall-btn" data-id="${item.id}" style="background:var(--bg2, #E5E7EB); color:var(--ink-soft);">회수</button>` : ''}
-    </td>
-  </tr>`;
-    return expanded ? mainRow + approvalDetailTrHtml(item, 7) : mainRow;
-  }).join('');
-  wrap.innerHTML = `${chipsHtml}<table><thead>${approvalTableHeaderHtml()}</thead><tbody>${rows}</tbody></table>`;
-  bindApprovalViewButtons(wrap, renderApprovalMine);
-  bindApprovalDocTypeChips(wrap.querySelector('.approval-doctype-chips'), renderApprovalMine);
-  wrap.querySelectorAll('.approval-recall-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>recallApprovalDraft(btn.dataset.id));
-  });
+  renderApprovalTable('approvalMineWrap', myApprovalMineList(), '기안한 문서가 없습니다.', 'mine', renderApprovalMine);
 }
 // 반려함 - 기안자 본인이 반려받은 문서만 모아서 보여줌(결재자 쪽에서 본 반려 문서는 결재함에 상태=반려로
 // 그대로 보임). 여기서 "재기안"을 누르면 기안 폼에 내용을 그대로 불러와서 고친 뒤 같은 문서로 다시 상신함
 function renderApprovalRejected(){
-  const wrap = document.getElementById('approvalRejectedWrap');
-  if(!wrap) return;
-  const list = myApprovalRejectedList();
-  const chipsHtml = approvalDocTypeChipsHtml('rejected');
-  const filtered = filterByDocType(list, 'rejected');
-  if(!filtered.length){ wrap.innerHTML = `${chipsHtml}<div class="empty-state">${list.length ? '이 종류의 문서가 없습니다.' : '반려된 문서가 없습니다.'}</div>`; bindApprovalDocTypeChips(wrap.querySelector('.approval-doctype-chips'), renderApprovalRejected); return; }
-  const rows = filtered.map(item=>{
-    const expanded = approvalExpandedId === item.id;
-    const mainRow = `<tr${expanded?' style="background:var(--indigo-bg);"':''}>
-    <td><span class="tag" style="background:var(--bg); color:var(--ink-soft);">${escHtml(item.docType||'일반')}</span></td>
-    <td class="num">${escHtml(item.createdAt||'')}</td>
-    <td>${escHtml(resolveNameByEmail(item.drafterEmail) || item.drafterName || '')}</td>
-    <td style="text-align:center; font-weight:700;">${escHtml(item.title)}</td>
-    <td>${escHtml(resolveNameByEmail(item.approverEmail) || item.approverName || '')}</td>
-    <td>${approvalStatusTagHtml(item.status, 'mine')}</td>
-    <td>
-      <button type="button" class="del-btn approval-view-btn" data-id="${item.id}" style="${expanded?'background:var(--indigo); color:#fff;':''}">${expanded?'닫기':'보기'}</button>
-      <button type="button" class="del-btn approval-resubmit-btn" data-id="${item.id}" style="background:var(--indigo-bg); color:var(--indigo-deep);">재기안</button>
-    </td>
-  </tr>`;
-    return expanded ? mainRow + approvalDetailTrHtml(item, 7) : mainRow;
-  }).join('');
-  wrap.innerHTML = `${chipsHtml}<table><thead>${approvalTableHeaderHtml()}</thead><tbody>${rows}</tbody></table>`;
-  bindApprovalViewButtons(wrap, renderApprovalRejected);
-  bindApprovalDocTypeChips(wrap.querySelector('.approval-doctype-chips'), renderApprovalRejected);
-  wrap.querySelectorAll('.approval-resubmit-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>resubmitApprovalDraft(btn.dataset.id));
-  });
+  renderApprovalTable('approvalRejectedWrap', myApprovalRejectedList(), '반려된 문서가 없습니다.', 'rejected', renderApprovalRejected);
 }
 // 임시저장함 - 아직 상신 전인 임시저장 문서, 그리고 스스로 회수한 문서를 모아서 보여주고, 각 행에서 바로
 // 이어서 (재)기안하거나 삭제할 수 있게 함
 function renderApprovalDraftList(){
-  const wrap = document.getElementById('approvalDraftWrap');
-  if(!wrap) return;
-  const list = myApprovalDraftList();
-  const chipsHtml = approvalDocTypeChipsHtml('draft');
-  const filtered = filterByDocType(list, 'draft');
-  if(!filtered.length){ wrap.innerHTML = `${chipsHtml}<div class="empty-state">${list.length ? '이 종류의 문서가 없습니다.' : '임시저장된 기안문이 없습니다.'}</div>`; bindApprovalDocTypeChips(wrap.querySelector('.approval-doctype-chips'), renderApprovalDraftList); return; }
-  const rows = filtered.map(item=>{
-    const expanded = approvalExpandedId === item.id;
-    const mainRow = `<tr${expanded?' style="background:var(--indigo-bg);"':''}>
-    <td><span class="tag" style="background:var(--bg); color:var(--ink-soft);">${escHtml(item.docType||'일반')}</span></td>
-    <td class="num">${escHtml(item.createdAt||'')}</td>
-    <td>${escHtml(resolveNameByEmail(item.drafterEmail) || item.drafterName || '')}</td>
-    <td style="text-align:center; font-weight:700;">${escHtml(item.title)}</td>
-    <td>${escHtml(resolveNameByEmail(item.approverEmail) || item.approverName || '')}</td>
-    <td>${approvalStatusTagHtml(item.status, 'mine')}</td>
-    <td>
-      <button type="button" class="del-btn approval-view-btn" data-id="${item.id}" style="${expanded?'background:var(--indigo); color:#fff;':''}">${expanded?'닫기':'보기'}</button>
-      <button type="button" class="del-btn approval-edit-draft-btn" data-id="${item.id}" style="background:var(--indigo-bg); color:var(--indigo-deep);">(재)기안</button>
-      <button type="button" class="del-btn approval-delete-draft-btn" data-id="${item.id}" style="background:var(--coral-bg); color:var(--coral);">삭제</button>
-    </td>
-  </tr>`;
-    return expanded ? mainRow + approvalDetailTrHtml(item, 7) : mainRow;
-  }).join('');
-  wrap.innerHTML = `${chipsHtml}<table><thead>${approvalTableHeaderHtml()}</thead><tbody>${rows}</tbody></table>`;
-  bindApprovalViewButtons(wrap, renderApprovalDraftList);
-  bindApprovalDocTypeChips(wrap.querySelector('.approval-doctype-chips'), renderApprovalDraftList);
-  wrap.querySelectorAll('.approval-edit-draft-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>editApprovalDraft(btn.dataset.id));
-  });
-  wrap.querySelectorAll('.approval-delete-draft-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>deleteApprovalDraft(btn.dataset.id));
-  });
+  renderApprovalTable('approvalDraftWrap', myApprovalDraftList(), '임시저장된 기안문이 없습니다.', 'draft', renderApprovalDraftList);
 }
 // 기안자가 아직 결론 나지 않은(기안/검토중) 자신의 문서를 스스로 회수함 - 회수하면 결재자는 결재함에서
 // 더 이상 이 문서를 볼 수 없고, 임시저장함으로 옮겨가서 이어서 고치거나 재기안할 수 있음
@@ -16809,7 +16901,7 @@ function approvalDetailBodyHtml(item){
         <div style="font-size:21px; font-weight:900; letter-spacing:9px; color:var(--navy);">업&nbsp;무&nbsp;기&nbsp;안</div>
       </div>
       <div style="display:flex; flex-wrap:wrap; border-bottom:1px solid var(--border);">
-        <table style="flex:1 1 220px; border-collapse:collapse; width:100%; border-radius:0; box-shadow:none; border:none; background:transparent;">
+        <table style="flex:0 1 auto; border-collapse:collapse; width:auto; border-radius:0; box-shadow:none; border:none; background:transparent;">
           <tr><td style="${td} background:var(--bg); font-weight:700; width:72px;">기안자</td><td style="${td}">${drafterName}</td></tr>
           <tr><td style="${td} background:var(--bg); font-weight:700;">소속</td><td style="${td}">${teamLabel}</td></tr>
           <tr><td style="${td} background:var(--bg); font-weight:700;">기안일</td><td style="${td}">${escHtml(item.createdAt||'-')}</td></tr>
