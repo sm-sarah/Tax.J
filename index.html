@@ -4278,6 +4278,12 @@ let sharedFilingStatus = {}; // 결재 > 신고현황: { [taxType]: { [period]: 
 let sharedReviewStatus = {}; // 결재 > 검토표: 신고현황과 완전히 같은 구조지만 원천세/부가세만 다루고, 신고 자체 이력과는 별도 저장소로 관리(신고 전 검토 단계 - 나중에 거래처별 손익보고서에 활용 예정)
 let sharedFilingHelp = {}; // 결재 > 신고도움: { [clientId]: { items: { [itemKey]: {checked, note} } } }
 let sharedApprovals = []; // 결재 > 결재(그룹웨어): [{id, title, content, attachments:[{id,name,mimeType,url,manual}], drafterEmail, drafterName, approverEmail, approverName, status, comment, createdAt, decidedAt}]
+// 직원(프로필) 삭제 휴지통 - 예전엔 pushToTrash()가 지금 로그인한(활성) 프로필의 settings.trash에 넣었는데,
+// "관리자" 프로필 자신을 삭제할 때 하필 관리자가 로그인한 채로 삭제하면 그 복구용 휴지통 항목이 삭제된
+// 관리자 프로필 안에 갇혀버려서(삭제된 프로필은 더 이상 선택할 수 없으니 그 휴지통도 못 여는) 아무도 복원할
+// 수 없는 문제가 있었음("휴지통이 비어있어요" 버그의 실제 원인) - 직원 삭제만큼은 누가 로그인해서 지웠든
+// 항상 볼 수 있는 회사 공용 휴지통(worklog_shared_trash)에 넣도록 분리함
+let sharedTrash = []; // [{id, type:'employee', kind:'profile', label, deletedAt, data:프로필객체}]
 // attachments가 없는 예전 문서는 attachmentLink(콤마로 구분된 링크 문자열)만 갖고 있음 - attachmentListHtml()이 이 경우를 폴백 처리함
 let sharedReviewFigures = {}; // 검토표(원천세) 거래처별 월별 실제 숫자: { [clientId]: { [year]: { [month]: { income:{[fieldKey]:num}, incomeReported:num, tax:{[groupKey]:{tax:num, local:num}}, taxReported:{[근로/일용/사업/기타/이자]:num}, taxReportedLocal:num } } } }
 let sharedReviewMeta = {}; // 검토표(원천세) 거래처별 설정: { [clientId]: { sameMonth:true/false(귀속=지급 동일 여부), payCycle:'매월'|'반기', secondHalfPayCycle:null|'매월'|'반기' } } - 원본 엑셀 '2026 총괄' 시트의 귀속/지급, 신고구분 값과 동일. secondHalfPayCycle은 연중(7월부터) 신고구분이 바뀌는 거래처를 위한 값 - null이면 1~12월 내내 payCycle 그대로, 값이 있으면 7~12월만 그 값을 씀(신고구분 전환은 반기 단위로만 일어나므로 7월 기준 한 번만 지원)
@@ -4347,6 +4353,7 @@ function loadSharedData(){
   try{ sharedReviewStatus = JSON.parse(localStorage.getItem('worklog_shared_reviewstatus') || '{}') || {}; }catch(e){ sharedReviewStatus = {}; }
   try{ sharedFilingHelp = JSON.parse(localStorage.getItem('worklog_shared_filinghelp') || '{}') || {}; }catch(e){ sharedFilingHelp = {}; }
   try{ sharedApprovals = JSON.parse(localStorage.getItem('worklog_shared_approvals') || '[]') || []; }catch(e){ sharedApprovals = []; }
+  try{ sharedTrash = JSON.parse(localStorage.getItem('worklog_shared_trash') || '[]') || []; }catch(e){ sharedTrash = []; }
   try{ sharedReviewFigures = JSON.parse(localStorage.getItem('worklog_shared_reviewfigures') || '{}') || {}; }catch(e){ sharedReviewFigures = {}; }
   try{ sharedReviewMeta = JSON.parse(localStorage.getItem('worklog_shared_reviewmeta') || '{}') || {}; }catch(e){ sharedReviewMeta = {}; }
   try{ sharedFilingTargets = JSON.parse(localStorage.getItem('worklog_shared_filingtargets') || '{}') || {}; }catch(e){ sharedFilingTargets = {}; }
@@ -4363,6 +4370,83 @@ function loadSharedData(){
   if(typeof adminSensitiveUnlocked !== 'undefined' && adminSensitiveUnlocked && JSON.stringify(sharedManageVerifier) !== prevManageVerifierRaw){
     lockSensitiveView();
   }
+  // 거래처목록(clients)·개인정보(personalInfo)는 예전엔 직원 프로필마다 따로 저장돼서, 같은 사람이 여러
+  // 프로필을 쓰거나 프로필을 바꿔 로그인하면 거래처 목록이 통째로 다르게 보이는 문제가 있었음(폴더링크가
+  // 갑자기 사라진 것처럼 보이는 원인 중 하나). 이제는 접속하는 사람과 무관하게 항상 같은 회사 공용
+  // 저장소(worklog_shared_clients/personalinfo)에서 불러옴 - 이 저장소가 아직 없으면(업데이트 후 첫 로딩)
+  // migrateClientsToSharedStore()가 기존에 프로필별로 흩어져 있던 데이터를 한 번만 자동으로 합쳐줌
+  migrateClientsToSharedStore();
+  try{ const cl = localStorage.getItem('worklog_shared_clients'); clients = cl ? JSON.parse(cl) : { list:[] }; }catch(e){ console.error('거래처 불러오기 실패', e); clients = { list:[] }; }
+  try{ const pi = localStorage.getItem('worklog_shared_personalinfo'); personalInfo = pi ? JSON.parse(pi) : { list:[] }; }catch(e){ console.error('개인정보 불러오기 실패', e); personalInfo = { list:[] }; }
+}
+function readSharedClients(){ try{ const v = localStorage.getItem('worklog_shared_clients'); return v ? JSON.parse(v) : { list:[] }; }catch(e){ return { list:[] }; } }
+function readSharedPersonalInfo(){ try{ const v = localStorage.getItem('worklog_shared_personalinfo'); return v ? JSON.parse(v) : { list:[] }; }catch(e){ return { list:[] }; } }
+// 사업자번호(없으면 상호명)가 같은 거래처를 하나로 묶어서 합치고, 그 기준으로 개인정보(personalInfo.list)의
+// clientId도 합쳐진 거래처의 id로 맞춰주는 공용 유틸 - 마이그레이션과 옛 형식 백업파일 복구에서 함께 사용함.
+// clientSources/personalSources: [{ key(원본 구분용 - 프로필id 등), list }]
+function mergeClientsAndPersonalInfo(clientSources, personalSources){
+  const groups = new Map();
+  (clientSources||[]).forEach(src=>{
+    (src.list||[]).forEach(c=>{
+      const key = clientIdentityKey(c) || `name:${normalizeClientName(c.name)}` || `__noid__${src.key}__${c.id}`;
+      if(!groups.has(key)) groups.set(key, []);
+      groups.get(key).push({ src: src.key, client: c });
+    });
+  });
+  const mergedClientList = [];
+  const idMap = {}; // `${srcKey}::${원본id}` -> 합쳐진 거래처 id
+  groups.forEach(entries=>{
+    let best = entries[0];
+    for(let i=1;i<entries.length;i++){
+      const scoreI = clientCompletenessScore(entries[i].client) + (entries[i].client.driveFolder ? 1 : 0);
+      const scoreBest = clientCompletenessScore(best.client) + (best.client.driveFolder ? 1 : 0);
+      if(scoreI > scoreBest) best = entries[i];
+    }
+    entries.forEach(en=>{ idMap[`${en.src}::${en.client.id}`] = best.client.id; });
+    mergedClientList.push(best.client);
+  });
+  const piGroups = new Map();
+  const piScore = (it)=> (it.sensitiveEnc?1:0) + (it.history ? it.history.length : 0) + (it.memo ? 1 : 0);
+  (personalSources||[]).forEach(src=>{
+    (src.list||[]).forEach(item=>{
+      const mergedClientId = idMap[`${src.key}::${item.clientId}`] || item.clientId;
+      const key = mergedClientId || `__noclient__${src.key}__${item.id}`;
+      if(!piGroups.has(key)) piGroups.set(key, []);
+      piGroups.get(key).push({ src: src.key, item });
+    });
+  });
+  const mergedPersonalList = [];
+  piGroups.forEach((entries, mergedClientId)=>{
+    let best = entries[0];
+    for(let i=1;i<entries.length;i++){ if(piScore(entries[i].item) > piScore(best.item)) best = entries[i]; }
+    mergedPersonalList.push({ ...best.item, clientId: mergedClientId });
+  });
+  return { clients: { list: mergedClientList }, personalInfo: { list: mergedPersonalList } };
+}
+// worklog_shared_clients가 아직 없을 때(업데이트 후 첫 로딩) 한 번만 실행 - 그동안 직원 프로필마다
+// 따로 저장돼 있던 거래처목록/개인정보를 모두 모아 위 mergeClientsAndPersonalInfo()로 합쳐서 공용 저장소에 저장함
+function migrateClientsToSharedStore(){
+  if(localStorage.getItem('worklog_shared_clients') !== null) return; // 이미 마이그레이션 됨
+  try{
+    const profiles = getProfiles();
+    const clientSources = [];
+    const personalSources = [];
+    profiles.forEach(p=>{
+      const rawC = readProfileRaw(p.id, 'clients');
+      if(rawC && rawC.list && rawC.list.length) clientSources.push({ key: p.id, list: rawC.list });
+      const rawP = readProfileRaw(p.id, 'personalInfo');
+      if(rawP && rawP.list && rawP.list.length) personalSources.push({ key: p.id, list: rawP.list });
+    });
+    const merged = mergeClientsAndPersonalInfo(clientSources, personalSources);
+    localStorage.setItem('worklog_shared_clients', JSON.stringify(merged.clients));
+    localStorage.setItem('worklog_shared_personalinfo', JSON.stringify(merged.personalInfo));
+    gdriveScheduleSync(); // 합쳐진 결과를 다른 기기들에도 반영되도록 저장 예약
+  }catch(e){
+    console.error('거래처/개인정보 공용 저장소 마이그레이션 실패', e);
+    // 실패해도 최소한 빈 값으로라도 표시해서, 마이그레이션이 계속 반복 시도되며 무한 로그를 남기지 않게 함
+    localStorage.setItem('worklog_shared_clients', JSON.stringify({ list: [] }));
+    localStorage.setItem('worklog_shared_personalinfo', JSON.stringify({ list: [] }));
+  }
 }
 async function saveSharedExclusions(){ try{ localStorage.setItem('worklog_shared_exclusions', JSON.stringify(sharedExclusionDays)); }catch(e){ console.error('공통 제외일 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedWorkHourExceptions(){ try{ localStorage.setItem('worklog_shared_workhours', JSON.stringify(sharedWorkHourExceptions)); }catch(e){ console.error('공통 근무시간 예외 저장 실패', e); } gdriveScheduleSync(); }
@@ -4377,6 +4461,7 @@ async function saveSharedFilingStatus(){ try{ localStorage.setItem('worklog_shar
 async function saveSharedReviewStatus(){ try{ localStorage.setItem('worklog_shared_reviewstatus', JSON.stringify(sharedReviewStatus)); }catch(e){ console.error('검토표 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedFilingHelp(){ try{ localStorage.setItem('worklog_shared_filinghelp', JSON.stringify(sharedFilingHelp)); }catch(e){ console.error('신고도움 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedApprovals(){ try{ localStorage.setItem('worklog_shared_approvals', JSON.stringify(sharedApprovals)); }catch(e){ console.error('결재 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedTrash(){ try{ localStorage.setItem('worklog_shared_trash', JSON.stringify(sharedTrash)); }catch(e){ console.error('공용 휴지통 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedAutoPhrases(){ try{ localStorage.setItem('worklog_shared_autophrases', JSON.stringify(sharedAutoPhrases)); }catch(e){ console.error('자동 문구 설정 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedReviewFigures(){ try{ localStorage.setItem('worklog_shared_reviewfigures', JSON.stringify(sharedReviewFigures)); }catch(e){ console.error('검토표(원천세) 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedReviewMeta(){ try{ localStorage.setItem('worklog_shared_reviewmeta', JSON.stringify(sharedReviewMeta)); }catch(e){ console.error('검토표(원천세) 거래처 설정 저장 실패', e); } gdriveScheduleSync(); }
@@ -4425,39 +4510,38 @@ async function decryptJSON(payload, key){
 async function reencryptAllSensitiveData(oldKey, newKey){
   const profiles = getProfiles();
   let failCount = 0;
-  for(const p of profiles){
-    const rawClients = readProfileRaw(p.id, 'clients') || { list: [] };
-    let clientsChanged = false;
-    for(const c of (rawClients.list||[])){
-      if(c.sensitiveEnc){
-        try{
-          const plain = await decryptJSON(c.sensitiveEnc, oldKey);
-          c.sensitiveEnc = await encryptJSON(plain, newKey);
-          clientsChanged = true;
-        }catch(err){ console.error('재암호화 실패(거래처)', p.id, c.id, err); failCount++; }
-      }
-    }
-    if(clientsChanged){
-      localStorage.setItem(`worklog_clients__${p.id}`, JSON.stringify(rawClients));
-      if(p.id === activeProfileId) clients = rawClients;
-    }
-    const rawPersonal = readProfileRaw(p.id, 'personalInfo') || { list: [] };
-    let personalChanged = false;
-    for(const pi of (rawPersonal.list||[])){
-      if(pi.sensitiveEnc){
-        try{
-          const plain = await decryptJSON(pi.sensitiveEnc, oldKey);
-          pi.sensitiveEnc = await encryptJSON(plain, newKey);
-          personalChanged = true;
-        }catch(err){ console.error('재암호화 실패(개인정보)', p.id, pi.id, err); failCount++; }
-      }
-    }
-    if(personalChanged){
-      localStorage.setItem(`worklog_personalinfo__${p.id}`, JSON.stringify(rawPersonal));
-      if(p.id === activeProfileId) personalInfo = rawPersonal;
+  // 거래처목록/개인정보는 이제 직원별로 따로 저장되지 않고 회사 공용 저장소 하나뿐이라, 프로필마다 반복할 필요 없이 한 번만 처리함
+  const rawClients = readSharedClients();
+  let clientsChanged = false;
+  for(const c of (rawClients.list||[])){
+    if(c.sensitiveEnc){
+      try{
+        const plain = await decryptJSON(c.sensitiveEnc, oldKey);
+        c.sensitiveEnc = await encryptJSON(plain, newKey);
+        clientsChanged = true;
+      }catch(err){ console.error('재암호화 실패(거래처)', c.id, err); failCount++; }
     }
   }
-  // 위에서 다른 직원들의 거래처/개인정보(worklog_clients__*, worklog_personalinfo__*)를 로컬에 직접 썼는데,
+  if(clientsChanged){
+    localStorage.setItem('worklog_shared_clients', JSON.stringify(rawClients));
+    clients = rawClients;
+  }
+  const rawPersonal = readSharedPersonalInfo();
+  let personalChanged = false;
+  for(const pi of (rawPersonal.list||[])){
+    if(pi.sensitiveEnc){
+      try{
+        const plain = await decryptJSON(pi.sensitiveEnc, oldKey);
+        pi.sensitiveEnc = await encryptJSON(plain, newKey);
+        personalChanged = true;
+      }catch(err){ console.error('재암호화 실패(개인정보)', pi.id, err); failCount++; }
+    }
+  }
+  if(personalChanged){
+    localStorage.setItem('worklog_shared_personalinfo', JSON.stringify(rawPersonal));
+    personalInfo = rawPersonal;
+  }
+  // 위에서 거래처/개인정보 공용 저장소(worklog_shared_clients/personalinfo)를 로컬에 직접 썼는데,
   // saveClients()/savePersonalInfo()를 거치지 않는 경로라 그 함수들이 자동으로 걸어주는 동기화 예약이
   // 빠져있었음(재암호화는 됐는데 Drive엔 안 올라가는 문제) - 여기서 한 번 명시적으로 걸어줌
   gdriveScheduleSync();
@@ -5422,8 +5506,31 @@ function pushToTrash(type, kind, label, data){
   settings.trash.unshift({ id: genId(), type, kind, label, deletedAt: new Date().toLocaleString('ko-KR'), data });
   if(settings.trash.length > 300) settings.trash.length = 300; // 너무 오래 쌓이지 않게 상한
 }
+// 직원(프로필) 삭제는 pushToTrash()가 아니라 이 함수로 - 누가 로그인해서 지웠든 항상 같은 공용 휴지통에 쌓여야
+// "삭제한 사람의 계정에 휴지통이 갇히는" 문제(관리자 자신을 삭제하면 복구 불가능해지는 버그)가 생기지 않음
+function pushToSharedTrash(type, kind, label, data){
+  sharedTrash = sharedTrash || [];
+  sharedTrash.unshift({ id: genId(), type, kind, label, deletedAt: new Date().toLocaleString('ko-KR'), data });
+  if(sharedTrash.length > 300) sharedTrash.length = 300;
+}
 
 async function restoreTrashItem(id){
+  // 직원(프로필) 삭제 항목은 개인 휴지통(settings.trash)이 아니라 공용 휴지통(sharedTrash)에 있음
+  const sharedItem = (sharedTrash||[]).find(x=>x.id===id);
+  if(sharedItem){
+    if(sharedItem.type==='employee'){
+      const profiles = getProfiles();
+      profiles.push(sharedItem.data);
+      saveProfiles(profiles);
+      renderProfileSwitcher();
+      renderEmployeeRoster();
+    }
+    sharedTrash = (sharedTrash||[]).filter(x=>x.id!==id);
+    await saveSharedTrash();
+    renderAll();
+    renderTrashModal();
+    return;
+  }
   const item = (settings.trash||[]).find(x=>x.id===id);
   if(!item) return;
   if(item.type==='attendance'){
@@ -5468,16 +5575,24 @@ async function restoreTrashItem(id){
 
 async function permanentlyDeleteTrashItem(id){
   if(!(await appConfirm('완전히 삭제하면 복구할 수 없어요. 계속할까요?'))) return;
+  if((sharedTrash||[]).some(x=>x.id===id)){
+    sharedTrash = (sharedTrash||[]).filter(x=>x.id!==id);
+    await saveSharedTrash();
+    renderTrashModal();
+    return;
+  }
   settings.trash = (settings.trash||[]).filter(x=>x.id!==id);
   await saveSettings();
   renderTrashModal();
 }
 
 async function emptyTrash(){
-  const items = settings.trash || [];
+  const items = [...(settings.trash||[]), ...(sharedTrash||[])];
   if(!items.length) return;
   if(!(await appConfirm(`휴지통에 있는 ${items.length}건을 전부 완전히 삭제할까요? 되돌릴 수 없어요.`))) return;
   settings.trash = [];
+  sharedTrash = [];
+  await saveSharedTrash();
   await saveSettings();
   renderTrashModal();
 }
@@ -5485,7 +5600,8 @@ async function emptyTrash(){
 function renderTrashModal(){
   const wrap = document.getElementById('trashModalBody');
   if(!wrap) return;
-  const items = settings.trash || [];
+  // 직원 삭제 항목(공용 휴지통 sharedTrash)과 나머지 항목(개인 휴지통 settings.trash)을 한 화면에 같이 보여줌
+  const items = [...(settings.trash||[]), ...(sharedTrash||[])];
   const badge = document.getElementById('trashModalBadge');
   if(badge) badge.textContent = `${items.length}건`;
   const emptyBtn = document.getElementById('trashModalEmptyBtn');
@@ -5762,8 +5878,8 @@ async function loadAll(){
   try{ const a = localStorage.getItem(skey('attendance')); if(a) attendance = JSON.parse(a); }catch(e){ console.error('근태 불러오기 실패', e); }
   try{ const ex = localStorage.getItem(skey('expense')); if(ex) expense = JSON.parse(ex); }catch(e){ console.error('경비 불러오기 실패', e); }
   try{ const sc = localStorage.getItem(skey('schedule')); if(sc) schedule = JSON.parse(sc); }catch(e){ console.error('일정 불러오기 실패', e); }
-  try{ const cl = localStorage.getItem(skey('clients')); if(cl) clients = JSON.parse(cl); }catch(e){ console.error('거래처 불러오기 실패', e); }
-  try{ const pi = localStorage.getItem(skey('personalInfo')); if(pi) personalInfo = JSON.parse(pi); }catch(e){ console.error('개인정보 불러오기 실패', e); }
+  // 거래처목록(clients)·개인정보(personalInfo)는 더 이상 직원별로 따로 저장되지 않고 loadSharedData()에서
+  // 회사 공용 저장소(worklog_shared_clients/personalinfo)로부터 함께 불러옴 - 관리자든 직원이든 화면이 달라지면 안 되므로
   loadSharedData();
   normalizeState();
   renderNoticeIfOpen();
@@ -5870,8 +5986,8 @@ async function saveSettings(){ try{ localStorage.setItem(skey('settings'), JSON.
 async function saveAttendance(){ try{ localStorage.setItem(skey('attendance'), JSON.stringify(attendance)); }catch(e){ console.error('근태 저장 실패', e); } gdriveScheduleSync(); }
 async function saveExpense(){ try{ localStorage.setItem(skey('expense'), JSON.stringify(expense)); }catch(e){ console.error('경비 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSchedule(){ try{ localStorage.setItem(skey('schedule'), JSON.stringify(schedule)); }catch(e){ console.error('일정 저장 실패', e); } gdriveScheduleSync(); }
-async function saveClients(){ try{ localStorage.setItem(skey('clients'), JSON.stringify(clients)); }catch(e){ console.error('거래처 저장 실패', e); } gdriveScheduleSync(); }
-async function savePersonalInfo(){ try{ localStorage.setItem(skey('personalInfo'), JSON.stringify(personalInfo)); }catch(e){ console.error('개인정보 저장 실패', e); } gdriveScheduleSync(); }
+async function saveClients(){ try{ localStorage.setItem('worklog_shared_clients', JSON.stringify(clients)); }catch(e){ console.error('거래처 저장 실패', e); } gdriveScheduleSync(); }
+async function savePersonalInfo(){ try{ localStorage.setItem('worklog_shared_personalinfo', JSON.stringify(personalInfo)); }catch(e){ console.error('개인정보 저장 실패', e); } gdriveScheduleSync(); }
 
 // "휴가현황 조회 기준일" 수동 지정 기능("고급 설정")은 폐지되어 항상 오늘 날짜만 사용함 -
 // 예전에 settings.leaveAsOfDate가 저장돼있던 직원이 있어도 더는 참조하지 않음(데이터 자체는 지우지 않고 그대로 둠)
@@ -17841,6 +17957,10 @@ document.getElementById('importAllFile').addEventListener('change', async (e)=>{
     const ok = await appConfirm(`전 직원(${empCount}명)의 근태·경비·개인일정 기록과 회사 공통설정을 전부 이 파일 내용으로 덮어씁니다. 되돌릴 수 없어요. 정말 계속할까요?`);
     if(!ok){ e.target.value=''; return; }
     saveProfiles(data.profiles);
+    // 거래처목록(clients)·개인정보(personalInfo)가 직원별로 들어있는 옛 형식 백업(업데이트 전에 받아둔 파일)이면
+    // 더 이상 쓰지 않는 개인 저장소에 되살리지 않고, 공용 저장소로 합칠 재료로만 모아둠(아래에서 한 번에 처리)
+    const legacyClientSources = [];
+    const legacyPersonalSources = [];
     Object.keys(data.data).forEach(profileId=>{
       const d = data.data[profileId];
       if(!d) return;
@@ -17848,9 +17968,18 @@ document.getElementById('importAllFile').addEventListener('change', async (e)=>{
       if(d.attendance) localStorage.setItem(`worklog_attendance__${profileId}`, JSON.stringify(d.attendance));
       if(d.expense) localStorage.setItem(`worklog_expense__${profileId}`, JSON.stringify(d.expense));
       if(d.schedule) localStorage.setItem(`worklog_schedule__${profileId}`, JSON.stringify(d.schedule));
-      if(d.clients) localStorage.setItem(`worklog_clients__${profileId}`, JSON.stringify(d.clients));
-      if(d.personalInfo) localStorage.setItem(`worklog_personalinfo__${profileId}`, JSON.stringify(d.personalInfo));
+      if(d.clients && d.clients.list && d.clients.list.length) legacyClientSources.push({ key: profileId, list: d.clients.list });
+      if(d.personalInfo && d.personalInfo.list && d.personalInfo.list.length) legacyPersonalSources.push({ key: profileId, list: d.personalInfo.list });
     });
+    // 거래처목록·개인정보 복원: 요즘 백업 형식(shared.clients/personalInfo)이면 그대로, 옛 형식이면 직원별 사본을 중복 정리하며 합침
+    if(data.shared && (data.shared.clients || data.shared.personalInfo)){
+      if(data.shared.clients) localStorage.setItem('worklog_shared_clients', JSON.stringify(data.shared.clients));
+      if(data.shared.personalInfo) localStorage.setItem('worklog_shared_personalinfo', JSON.stringify(data.shared.personalInfo));
+    } else if(legacyClientSources.length || legacyPersonalSources.length){
+      const mergedShared = mergeClientsAndPersonalInfo(legacyClientSources, legacyPersonalSources);
+      localStorage.setItem('worklog_shared_clients', JSON.stringify(mergedShared.clients));
+      localStorage.setItem('worklog_shared_personalinfo', JSON.stringify(mergedShared.personalInfo));
+    }
     if(data.shared){
       sharedExclusionDays = data.shared.exclusionDays || [];
       sharedWorkHourExceptions = data.shared.workHourExceptions || [];
@@ -17922,13 +18051,13 @@ document.getElementById('exportOneBtn').addEventListener('click', async ()=>{
     app: 'monthly-board',
     scope: 'one-employee', // 직원 선택 백업: 이 직원 한 명의 개인데이터만 포함 (회사 공통설정 제외)
     profile,
+    // 거래처목록(clients)·개인정보(personalInfo)는 더 이상 직원별로 따로 저장되지 않고 전 직원 공용 데이터라
+    // "선택 직원 백업"엔 포함하지 않음(공용 데이터는 "전 직원 일괄 백업"에만 들어있음)
     data: {
       settings: readProfileRaw(profileId,'settings'),
       attendance: readProfileRaw(profileId,'attendance'),
       expense: readProfileRaw(profileId,'expense'),
-      schedule: readProfileRaw(profileId,'schedule'),
-      clients: readProfileRaw(profileId,'clients'),
-      personalInfo: readProfileRaw(profileId,'personalInfo')
+      schedule: readProfileRaw(profileId,'schedule')
     }
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
@@ -17966,8 +18095,16 @@ document.getElementById('importOneFile').addEventListener('change', async (e)=>{
     if(d.attendance) localStorage.setItem(`worklog_attendance__${targetId}`, JSON.stringify(d.attendance));
     if(d.expense) localStorage.setItem(`worklog_expense__${targetId}`, JSON.stringify(d.expense));
     if(d.schedule) localStorage.setItem(`worklog_schedule__${targetId}`, JSON.stringify(d.schedule));
-    if(d.clients) localStorage.setItem(`worklog_clients__${targetId}`, JSON.stringify(d.clients));
-    if(d.personalInfo) localStorage.setItem(`worklog_personalinfo__${targetId}`, JSON.stringify(d.personalInfo));
+    // 거래처목록·개인정보가 들어있는 옛 형식 백업 파일이면(요즘 백업은 이 항목이 없음), 그대로 덮어쓰지 않고
+    // 지금의 공용 저장소와 중복 정리하며 합침(다른 직원들이 등록해둔 거래처가 사라지지 않도록)
+    if((d.clients && d.clients.list && d.clients.list.length) || (d.personalInfo && d.personalInfo.list && d.personalInfo.list.length)){
+      const mergedShared = mergeClientsAndPersonalInfo(
+        [{ key:'current', list: readSharedClients().list||[] }, { key:'backup', list:(d.clients&&d.clients.list)||[] }],
+        [{ key:'current', list: readSharedPersonalInfo().list||[] }, { key:'backup', list:(d.personalInfo&&d.personalInfo.list)||[] }]
+      );
+      localStorage.setItem('worklog_shared_clients', JSON.stringify(mergedShared.clients));
+      localStorage.setItem('worklog_shared_personalinfo', JSON.stringify(mergedShared.personalInfo));
+    }
     if(gdriveAccessToken && gdriveFileId){
       document.getElementById('oneBackupSaveMsg').textContent = '복구 완료 · 드라이브에 반영 중...';
       try{ await gdrivePush(); }catch(err){ console.error('직원 선택 복구 후 드라이브 반영 실패', err); }
@@ -18062,7 +18199,8 @@ function renderEmployeeRoster(){
       const target = list.find(x=>x.id===id);
       if(!target) return;
       if(!(await appConfirm(`"${target.name || '(이름 미등록)'}" 직원을 목록에서 삭제할까요?\n(잘못 등록한 경우에만 사용하세요. 퇴사자는 삭제 대신 재직상태를 "퇴사"로 바꿔서 이력을 보존하는 걸 추천해요.)`))) return;
-      pushToTrash('employee', 'profile', `직원 ${target.name || '(이름 미등록)'}`, target);
+      pushToSharedTrash('employee', 'profile', `직원 ${target.name || '(이름 미등록)'}`, target);
+      await saveSharedTrash();
       const remaining = list.filter(x=>x.id!==id);
       recordDeletedProfileId(id);
       saveProfiles(remaining);
@@ -18242,7 +18380,7 @@ document.getElementById('empDataTransferRunBtn')?.addEventListener('click', asyn
   const profiles = getProfiles();
   const srcName = profiles.find(p=>p.id===srcId)?.name || '(이름 미등록)';
   const dstName = profiles.find(p=>p.id===dstId)?.name || '(이름 미등록)';
-  const ok = await appConfirm(`"${srcName}" 계정의 근태(연차·재택·출퇴근)·경비·개인 일정·점심식대 한도 이력·개인정보·거래처목록을 "${dstName}" 계정으로 옮겨 합칠까요?\n\n· 대상 계정에 이미 있던 기록은 지워지지 않고 그대로 남아요(합치기). 겹치는 거래처는 정보가 더 많이 채워진 쪽만 남아요.\n· 대상 계정에 입사일이 비어있으면 원본 계정의 입사일도 같이 채워져요.\n· 이관이 끝나면 원본 계정의 근태·경비·개인 일정·점심식대 한도·개인정보·거래처 "기록"만 비워져요 - "${srcName}" 계정 자체는 삭제되지 않고 그대로 남아요.\n· 되돌릴 수 없어요.`);
+  const ok = await appConfirm(`"${srcName}" 계정의 근태(연차·재택·출퇴근)·경비·개인 일정·점심식대 한도 이력을 "${dstName}" 계정으로 옮겨 합칠까요?\n\n· 대상 계정에 이미 있던 기록은 지워지지 않고 그대로 남아요(합치기).\n· 대상 계정에 입사일이 비어있으면 원본 계정의 입사일도 같이 채워져요.\n· 거래처목록·개인정보는 이제 직원별로 따로 저장되지 않고 전 직원이 함께 보는 공용 데이터라 이관 대상이 아니에요.\n· 이관이 끝나면 원본 계정의 근태·경비·개인 일정·점심식대 한도 "기록"만 비워져요 - "${srcName}" 계정 자체는 삭제되지 않고 그대로 남아요.\n· 되돌릴 수 없어요.`);
   if(!ok) return;
   try{
     const srcAtt = readProfileRaw(srcId, 'attendance') || {};
@@ -18268,49 +18406,19 @@ document.getElementById('empDataTransferRunBtn')?.addEventListener('click', asyn
     // 두 프로필로 쪼개져 있던 경우)엔 대상 계정에 입사일이 비어있으면 원본 계정 값을 그대로 가져와야
     // 연차 자동계산이 정상적으로 되므로, "대상이 비어있을 때만" 채워줌(대상에 이미 값이 있으면 안 건드림)
     if(!mergedSet.hireDate && srcSet.hireDate) mergedSet.hireDate = srcSet.hireDate;
-    // 개인정보(거래처 로그인 계정 등, personalInfo.list)도 근태·경비와 같은 "기록"이라 같은 방식으로 합침
-    const srcPersonal = readProfileRaw(srcId, 'personalInfo') || {};
-    const dstPersonal = readProfileRaw(dstId, 'personalInfo') || {};
-    const mergedPersonal = mergeProfileArrayData(srcPersonal, dstPersonal, ['list'], ()=>({ list:[] }));
-    // 거래처목록(clients.list)은 직원 프로필마다 따로 저장되는 구조라, 같은 사람이 프로필 두 개로 나뉘어
-    // 쓰인 경우 서로 다른 사본을 갖고 있을 수 있음(한쪽엔 있는데 한쪽엔 없는 거래처, 또는 같은 거래처인데
-    // 한쪽만 최신 정보(폴더링크 등)로 갱신된 경우) - 단순히 이어붙이면 같은 거래처가 중복으로 두 줄 생기므로,
-    // "중복 거래처 정리" 기능과 같은 기준(사업자번호 우선, 없으면 상호명)으로 같은 거래처를 하나로 묶고
-    // 그 중 정보가 더 많이 채워진 쪽만 남김
-    const srcClients = readProfileRaw(srcId, 'clients') || {};
-    const dstClients = readProfileRaw(dstId, 'clients') || {};
-    const clientGroups = new Map();
-    [...(srcClients.list||[]), ...(dstClients.list||[])].forEach(c=>{
-      const key = clientIdentityKey(c) || `name:${normalizeClientName(c.name)}` || `__noid__${c.id}`;
-      if(!clientGroups.has(key)) clientGroups.set(key, []);
-      clientGroups.get(key).push(c);
-    });
-    const mergedClientList = [];
-    clientGroups.forEach(group=>{
-      let best = group[0];
-      for(let i=1;i<group.length;i++){
-        const scoreI = clientCompletenessScore(group[i]) + (group[i].driveFolder ? 1 : 0);
-        const scoreBest = clientCompletenessScore(best) + (best.driveFolder ? 1 : 0);
-        if(scoreI > scoreBest) best = group[i];
-      }
-      mergedClientList.push(best);
-    });
-    const mergedClients = { ...(dstClients||{}), list: mergedClientList };
+    // 거래처목록(clients)·개인정보(personalInfo)는 이제 직원 프로필별로 따로 저장되지 않고 전 직원이
+    // 함께 보는 공용 데이터라, 두 계정 사이에 "옮겨 합칠" 대상 자체가 아님(이미 하나뿐이라 항상 같음) - 그래서 이 이관 범위에서 빠짐
     // 대상 계정에 먼저 병합 결과를 저장 - 원본을 비우기 전에 먼저 저장해서, 중간에 실패하더라도
     // 원본 데이터가 사라지는 일(데이터 유실)만은 없게 함
     localStorage.setItem(`worklog_attendance__${dstId}`, JSON.stringify(mergedAtt));
     localStorage.setItem(`worklog_expense__${dstId}`, JSON.stringify(mergedExp));
     localStorage.setItem(`worklog_schedule__${dstId}`, JSON.stringify(mergedSch));
     localStorage.setItem(`worklog_settings__${dstId}`, JSON.stringify(mergedSet));
-    localStorage.setItem(`worklog_personalinfo__${dstId}`, JSON.stringify(mergedPersonal));
-    localStorage.setItem(`worklog_clients__${dstId}`, JSON.stringify(mergedClients));
     // 원본 쪽은 이관 완료 후 비움(같은 기록이 두 계정에 중복으로 남지 않도록) - 직원 정보 자체(이름/이메일 등)는 그대로 유지
     localStorage.setItem(`worklog_attendance__${srcId}`, JSON.stringify({ leaveGrants:[], leaveUsage:[], remoteEntries:[], clockLog:[] }));
     localStorage.setItem(`worklog_expense__${srcId}`, JSON.stringify({ lunchEntries:[], dinnerEntries:[], otherExpenses:[], taxiEntries:[], prepaidEntries:[] }));
     localStorage.setItem(`worklog_schedule__${srcId}`, JSON.stringify({ events:[] }));
     localStorage.setItem(`worklog_settings__${srcId}`, JSON.stringify({ ...srcSet, lunchLimitHistory:[] }));
-    localStorage.setItem(`worklog_personalinfo__${srcId}`, JSON.stringify({ list:[] }));
-    localStorage.setItem(`worklog_clients__${srcId}`, JSON.stringify({ ...(srcClients||{}), list:[] }));
     // 옮겨온(원본 계정의) 기록이 이번 달 것이 아니면 개인캘린더/근태경비 탭이 기본으로 보여주는 "오늘이
     // 속한 달" 화면에는 하나도 안 보여서 이관이 실패한 것처럼 보임 - 옮겨온 기록 중 가장 최근 날짜가
     // 속한 달을 기억해뒀다가, 그 대상 계정(dstId)으로 다음에 화면이 열릴 때 조회월을 그 달로 자동으로
@@ -18323,8 +18431,8 @@ document.getElementById('empDataTransferRunBtn')?.addEventListener('click', asyn
     if(transferFocusMonth) localStorage.setItem(`worklog_transfer_focus_month__${dstId}`, transferFocusMonth);
     // 지금 로그인해 쓰고 있는 계정이 이관 대상/원본 중 하나였다면, 화면에 물려있는 전역
     // attendance/expense/schedule도 같이 갱신해줘야 새로고침 없이 바로 반영됨
-    if(activeProfileId === dstId){ attendance = mergedAtt; expense = mergedExp; schedule = mergedSch; settings = mergedSet; personalInfo = mergedPersonal; clients = mergedClients; }
-    if(activeProfileId === srcId){ attendance = { leaveGrants:[], leaveUsage:[], remoteEntries:[], clockLog:[] }; expense = { lunchEntries:[], dinnerEntries:[], otherExpenses:[], taxiEntries:[], prepaidEntries:[] }; schedule = { events:[] }; settings = { ...srcSet, lunchLimitHistory:[] }; personalInfo = { list:[] }; clients = { ...(srcClients||{}), list:[] }; }
+    if(activeProfileId === dstId){ attendance = mergedAtt; expense = mergedExp; schedule = mergedSch; settings = mergedSet; }
+    if(activeProfileId === srcId){ attendance = { leaveGrants:[], leaveUsage:[], remoteEntries:[], clockLog:[] }; expense = { lunchEntries:[], dinnerEntries:[], otherExpenses:[], taxiEntries:[], prepaidEntries:[] }; schedule = { events:[] }; settings = { ...srcSet, lunchLimitHistory:[] }; }
     // 이 이관은 로컬(이 브라우저)에만 저장하고 끝나면 다른 기기(다른 직원의 로그인)에는 전혀 반영이
     // 안 되는데("아무것도 연동이 안 됐어" 피드백의 원인), 예전엔 드라이브 저장이 실패해도 콘솔에만 로그를
     // 남기고 조용히 넘어가서 사용자가 실패 사실을 알 수 없었음 - 이제 gdriveFileId가 아직 없으면 먼저
@@ -18523,14 +18631,14 @@ function gdriveBuildPayload(){
       settings: readProfileRaw(p.id,'settings'),
       attendance: readProfileRaw(p.id,'attendance'),
       expense: readProfileRaw(p.id,'expense'),
-      schedule: readProfileRaw(p.id,'schedule'),
-      clients: readProfileRaw(p.id,'clients'),
-      personalInfo: readProfileRaw(p.id,'personalInfo')
+      schedule: readProfileRaw(p.id,'schedule')
     };
   });
   return {
     schemaVersion: SCHEMA_VERSION, syncedAt: new Date().toISOString(), profiles, data,
-    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta, filingTargets: sharedFilingTargets, filingCycles: sharedFilingCycles, autoPhrases: sharedAutoPhrases, itFilingStatus: sharedIncomeTaxFilingStatus, vatFilingTargets: sharedVatFilingTargets, vatReviewFigures: sharedVatReviewFigures }
+    // 거래처목록(clients)·개인정보(personalInfo)는 더 이상 직원 프로필별로 따로 저장되지 않고, 회사 전체가
+    // 공유하는 단일 데이터라서 위 per-profile data가 아니라 shared 쪽에 실어 보냄(readSharedClients/readSharedPersonalInfo 참고)
+    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta, filingTargets: sharedFilingTargets, filingCycles: sharedFilingCycles, autoPhrases: sharedAutoPhrases, itFilingStatus: sharedIncomeTaxFilingStatus, vatFilingTargets: sharedVatFilingTargets, vatReviewFigures: sharedVatReviewFigures, clients: readSharedClients(), personalInfo: readSharedPersonalInfo(), trash: sharedTrash }
   };
 }
 
@@ -18752,8 +18860,6 @@ async function gdrivePull(){
       if(d.attendance) localStorage.setItem(`worklog_attendance__${pid}`, JSON.stringify(d.attendance));
       if(d.expense) localStorage.setItem(`worklog_expense__${pid}`, JSON.stringify(d.expense));
       if(d.schedule) localStorage.setItem(`worklog_schedule__${pid}`, JSON.stringify(d.schedule));
-      if(d.clients) localStorage.setItem(`worklog_clients__${pid}`, JSON.stringify(d.clients));
-      if(d.personalInfo) localStorage.setItem(`worklog_personalinfo__${pid}`, JSON.stringify(d.personalInfo));
     });
     if(merged.shared){
       if(merged.shared.exclusionDays) localStorage.setItem('worklog_shared_exclusions', JSON.stringify(merged.shared.exclusionDays));
@@ -18778,6 +18884,9 @@ async function gdrivePull(){
       if(merged.shared.itFilingStatus !== undefined) localStorage.setItem('worklog_shared_itfilingstatus', JSON.stringify(merged.shared.itFilingStatus));
       if(merged.shared.vatFilingTargets !== undefined) localStorage.setItem('worklog_shared_vatfilingtargets', JSON.stringify(merged.shared.vatFilingTargets));
       if(merged.shared.vatReviewFigures !== undefined) localStorage.setItem('worklog_shared_vatreviewfigures', JSON.stringify(merged.shared.vatReviewFigures));
+      if(merged.shared.clients !== undefined) localStorage.setItem('worklog_shared_clients', JSON.stringify(merged.shared.clients));
+      if(merged.shared.personalInfo !== undefined) localStorage.setItem('worklog_shared_personalinfo', JSON.stringify(merged.shared.personalInfo));
+      if(merged.shared.trash !== undefined) localStorage.setItem('worklog_shared_trash', JSON.stringify(merged.shared.trash));
     }
     if(!getActiveProfileId() || !(merged.profiles||[]).find(p=>p.id===getActiveProfileId())){
       if(merged.profiles && merged.profiles.length) setActiveProfileId(merged.profiles[0].id);
