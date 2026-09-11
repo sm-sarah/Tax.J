@@ -3918,27 +3918,27 @@
         </div>
 
         <div class="approval-doc-panel" data-approval-doc="draft" style="display:none;">
-          <p class="hint" style="text-align:center;">아직 상신하지 않고 임시저장해둔 기안문이에요. 이어서 수정하거나 삭제할 수 있어요.</p>
+          <p class="hint" id="approvalDraftHint" style="text-align:center;">아직 상신하지 않고 임시저장해둔 기안문이에요. 이어서 수정하거나 삭제할 수 있어요.</p>
           <div id="approvalDraftWrap"></div>
         </div>
 
         <div class="approval-doc-panel" data-approval-doc="mine" style="display:none;">
-          <p class="hint" style="text-align:center;">내가 상신한 문서와 진행 상태예요. (상신 / 검토중 / 승인) 반려된 문서는 반려함, 임시저장·회수한 문서는 임시저장함에서 볼 수 있어요.</p>
+          <p class="hint" id="approvalMineHint" style="text-align:center;">내가 상신한 문서와 진행 상태예요. (상신 / 검토중 / 승인) 반려된 문서는 반려함, 임시저장·회수한 문서는 임시저장함에서 볼 수 있어요.</p>
           <div id="approvalMineWrap"></div>
         </div>
 
         <div class="approval-doc-panel" data-approval-doc="rejected" style="display:none;">
-          <p class="hint" style="text-align:center;">내가 기안했다가 반려된 문서예요. 내용을 고쳐서 다시 기안할 수 있어요.</p>
+          <p class="hint" id="approvalRejectedHint" style="text-align:center;">내가 기안했다가 반려된 문서예요. 내용을 고쳐서 다시 기안할 수 있어요.</p>
           <div id="approvalRejectedWrap"></div>
         </div>
 
         <div class="approval-doc-panel" data-approval-doc="inbox" style="display:none;">
-          <p class="hint" style="text-align:center;">나에게 결재를 요청한 문서예요. 대기 중인 문서는 승인하거나 반려할 수 있고, 이미 처리한 문서도 상태(대기·승인·반려)와 함께 계속 조회할 수 있어요.</p>
+          <p class="hint" id="approvalInboxHint" style="text-align:center;">나에게 결재를 요청한 문서예요. 대기 중인 문서는 승인하거나 반려할 수 있고, 이미 처리한 문서도 상태(대기·승인·반려)와 함께 계속 조회할 수 있어요.</p>
           <div id="approvalInboxWrap"></div>
         </div>
 
         <div class="approval-doc-panel" data-approval-doc="all" style="display:none;">
-          <p class="hint" style="text-align:center;">회사 전체 결재 이력이에요.</p>
+          <p class="hint" id="approvalAllHint" style="text-align:center;">회사 전체 결재 이력이에요.</p>
           <div id="approvalAllWrap"></div>
         </div>
       </div>
@@ -17839,12 +17839,18 @@ function approvalRowActionsHtml(item, bucket, expanded){
 function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
   const wrap = document.getElementById(wrapId);
   if(!wrap) return;
+  // 각 함(기안함/반려함/결재함/임시저장함/전체이력) 위에 있는 안내 문구(예: "회사 전체 결재 이력이에요.")는
+  // 그 함의 "목록"을 설명하는 글이라, "보기"를 눌러 문서 상세카드 하나만 보이는 상태에서는 맞지 않음(특히
+  // 전체이력의 "회사 전체 결재 이력이에요"는 문서 하나만 보면서도 마치 전체 이력을 보는 것처럼 오해될 수
+  // 있음) - 목록일 때만 보이고, 상세카드가 펼쳐지면 숨김
+  const hintEl = document.getElementById(wrapId.replace('Wrap','Hint'));
   const st = getApprovalSearchState(bucket);
   const chipsHtml = approvalDocTypeChipsHtml(bucket);
   const searchBarHtml = approvalSearchBarHtml(bucket);
   const byType = filterByDocType(list, bucket);
   const searched = applyApprovalSearch(byType, bucket);
   if(!searched.length){
+    if(hintEl) hintEl.style.display = '';
     wrap.innerHTML = `${chipsHtml}${searchBarHtml}<div class="empty-state">${list.length ? '조건에 맞는 문서가 없습니다.' : emptyText}</div>`;
     bindApprovalDocTypeChips(wrap.querySelector('.approval-doctype-chips'), onChange);
     bindApprovalSearchBar(wrap.querySelector('.approval-search-bar'), onChange);
@@ -17879,6 +17885,7 @@ function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
   // 차지했는데, "보기 누르면 목록은 사라지고 기안문만 보이게 해달라"는 요청으로 아예 분리함. 다시 목록으로
   // 돌아가는 길은 상세카드 안의 "목록" 버튼(承인/반려 옆) 하나로 통일함
   if(expandedItem){
+    if(hintEl) hintEl.style.display = 'none';
     const detailHtml = `<div class="approval-detail-panel" style="padding:14px 4px; background:var(--bg); border-radius:10px;">${approvalDetailBodyHtml(expandedItem)}</div>`;
     wrap.innerHTML = detailHtml;
     const panel = wrap.querySelector('.approval-detail-panel');
@@ -17890,6 +17897,7 @@ function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
     });
     return;
   }
+  if(hintEl) hintEl.style.display = '';
   // 종류/기안일/기안자/결재자/진행상황은 헤더에서 정한 좁은 고정폭을 그대로 지키고, 문서제목만 남는 공간을
   // 다 가져가도록 이 표에 한해 table-layout:fixed를 줌(다른 표들의 기본 table-layout:auto에는 영향 없음)
   wrap.innerHTML = `${chipsHtml}${searchBarHtml}<div class="table-scroll"><table style="table-layout:fixed;"><thead>${approvalTableHeaderHtml()}</thead><tbody>${rows}</tbody></table></div>${paginationHtml}`;
@@ -18076,7 +18084,7 @@ function approvalDetailBodyHtml(item){
   return `
     <div class="approval-doc-card" style="border:1.5px solid var(--border); border-radius:16px; background:var(--surface); padding:16px 18px 18px; box-shadow:0 1px 2px rgba(29,30,51,0.04);">
       <div style="text-align:center;">
-        <div style="font-size:23px; font-weight:900; letter-spacing:8px; color:var(--navy);">업&nbsp;무&nbsp;기&nbsp;안</div>
+        <div style="font-size:30px; font-weight:900; letter-spacing:10px; color:var(--navy);">업&nbsp;무&nbsp;기&nbsp;안</div>
         <div style="margin-top:6px;"><span class="tag" style="${approvalDocTypeChipStyle(item.docType||'일반')}">${escHtml(item.docType||'일반')}</span></div>
       </div>
       <div style="display:flex; justify-content:flex-end; margin-top:10px; gap:0; flex-wrap:wrap; padding-bottom:12px; border-bottom:2px solid var(--navy); margin-bottom:14px;">
