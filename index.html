@@ -1206,6 +1206,11 @@
      올렸을 때만 나타나게 함(요청받은 방식) - pointer-events도 같이 꺼서 숨어있는 동안엔 실수로도 안 눌림 */
   .approval-action-danger{ opacity:0; pointer-events:none; transition:opacity .15s; }
   tbody tr:hover .approval-action-danger{ opacity:1; pointer-events:auto; }
+  /* 알림창의 "삭제"도 결재표와 같은 방식 - 평소엔 안 보이다가 그 알림에 마우스를 올렸을 때만 X 아이콘이 나타남.
+     .del-btn(공용 버튼 기본 스타일)보다 나중에 선언돼도 확실히 이기도록 .del-btn과 함께 묶은 선택자를 씀 */
+  .del-btn.notification-del-btn{ flex:0 0 auto; width:26px; height:26px; padding:0; border-radius:8px; background:none; color:var(--ink-soft); display:inline-flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .15s, background .15s, color .15s; }
+  .notification-row:hover .del-btn.notification-del-btn{ opacity:1; pointer-events:auto; }
+  .del-btn.notification-del-btn:hover{ background:var(--coral-bg); color:var(--coral); }
   /* 기장거래처 표는 가로 구분선만으론 열 구분이 잘 안 보인다는 피드백 - 순번~수임시작일 구간(개인정보 상세/아이콘 열 제외)에만 옅은 세로선 추가 */
   .cvb{border-right:1px solid var(--border);}
   /* overflow-x:auto 하나만 주면 브라우저가 overflow-y도 자동으로 auto 취급해서 이 박스 자체가 별도의 스크롤 컨테이너가 되고,
@@ -1243,6 +1248,10 @@
   }
   .table-scroll table{box-shadow:none; border-radius:0; table-layout:auto; overflow:visible;}
   .table-scroll th, .table-scroll td{white-space:nowrap; padding:8px 9px; font-size:13px; text-align:center;}
+  /* 기장/기타/해지거래처 표 - 상호명처럼 글자 수가 들쭉날쭉하고 읽어야 하는 텍스트는 왼쪽 정렬, 수임료처럼
+     금액·숫자는 오른쪽 정렬(자릿수 비교가 쉬움)이 좋다는 의견 - 나머지(구분/번호/날짜)는 기존처럼 가운데 정렬 유지 */
+  .table-scroll .client-name-cell{text-align:left;}
+  .table-scroll .client-fee-cell{text-align:right;}
   .table-scroll td.cell-memo, .table-scroll th.th-memo{white-space:normal; word-break:break-word; min-width:160px;}
   .table-scroll thead th{position:sticky; top:0; z-index:2; box-shadow:0 1px 0 var(--border);}
   /* "이달의 근태내역"/"이달의 개인일정" 팝업은 좁은 폭에 열이 많아 날짜·구분(태그)·일수 같은 짧은 값이
@@ -6216,6 +6225,42 @@ function notificationTimeLabel(n){
   if(isNaN(t.getTime())) return '';
   return t.toLocaleString('ko-KR');
 }
+// notificationTimeLabel()이 돌려주는 "2026. 9. 10. 오후 11:28:54" 같은 ko-KR 문자열을 Date로 되돌려 파싱함
+// (오늘 알림이면 "N분 전"처럼 상대시간으로 보여주기 위해 필요)
+function parseKoDateTimeString(str){
+  if(!str) return null;
+  const m = String(str).match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})\D+(오전|오후)\s*(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if(!m) return null;
+  let h = parseInt(m[5],10);
+  if(m[4]==='오후' && h!==12) h += 12;
+  if(m[4]==='오전' && h===12) h = 0;
+  return new Date(parseInt(m[1],10), parseInt(m[2],10)-1, parseInt(m[3],10), h, parseInt(m[6],10), parseInt(m[7]||'0',10));
+}
+// 초 단위까지 나오면 정보가 너무 많다는 의견 - 오늘 온 알림은 "N분 전"/"N시간 전" 상대시간으로, 그 이전 알림만
+// 날짜+시간(초 제외)으로 보여줌. 문자열 파싱이 안 되는 예외적인 경우엔 끝의 ":초" 부분만이라도 잘라서 보여줌
+function notificationTimeDisplay(n){
+  const raw = notificationTimeLabel(n);
+  if(!raw) return '';
+  const d = parseKoDateTimeString(raw);
+  if(!d || isNaN(d.getTime())) return raw.replace(/:\d{2}(?=\D*$)/, '');
+  const now = new Date();
+  const diffMin = Math.floor((now - d) / 60000);
+  const sameDay = d.toDateString() === now.toDateString();
+  if(diffMin >= 0 && sameDay){
+    if(diffMin < 1) return '방금 전';
+    if(diffMin < 60) return `${diffMin}분 전`;
+    return `${Math.floor(diffMin/60)}시간 전`;
+  }
+  const ampm = d.getHours() < 12 ? '오전' : '오후';
+  let h12 = d.getHours() % 12; if(h12===0) h12 = 12;
+  return `${d.getFullYear()}. ${d.getMonth()+1}. ${d.getDate()}. ${ampm} ${h12}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+// 예전엔 알림 제목 앞에 🖐️/✅/🚫/📢 같은 이모지를 직접 붙였었는데(왼쪽 원형 아이콘과 중복돼 보임), 지금은
+// 새로 쌓이는 알림엔 이모지를 안 붙이지만, 그 전에 이미 저장된 알림엔 이모지가 남아있음 - 저장된 데이터는
+// 손대지 않고, 보여줄 때만 앞에 붙은 이모지를 걸러내서 표시함
+function stripLeadingEmoji(str){
+  return String(str||'').replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}️‍]+\s*/u, '');
+}
 // 알림 종류별 아이콘 - 이모지 대신, 앱 전체에서 쓰는 것과 같은 선(line) 스타일 SVG 픽토그램으로 통일함
 function notificationTypeIconSvg(icon){
   const s = 'width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"';
@@ -6257,20 +6302,22 @@ function renderNotificationListModal(){
   const totalPages = Math.max(1, Math.ceil(all.length / NOTIFICATION_PAGE_SIZE));
   if(notificationListPage > totalPages) notificationListPage = totalPages;
   const pageItems = all.slice((notificationListPage-1)*NOTIFICATION_PAGE_SIZE, notificationListPage*NOTIFICATION_PAGE_SIZE);
+  // 안읽음 표시는 아이콘 밖으로 튀어나온 빨간 점 대신, 줄 전체에 옅은 배경을 깔아서 구분함(Notion 등에서
+  // 흔히 쓰는 방식) - 읽은 알림은 배경 없이 평범하게 보임
+  const closeIconSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
   const rowsHtml = pageItems.map(n=>{
     const isRead = read.has(n.id);
     const c = notificationTypeColor(n.icon);
-    return `<div class="notification-row" data-id="${n.id}" style="display:flex; gap:10px; align-items:flex-start; padding:12px 4px; border-bottom:1px solid var(--border); ${isRead ? 'opacity:0.62;' : ''}">
-      <div style="flex:0 0 auto; position:relative; width:30px; height:30px; border-radius:50%; background:${c.bg}; color:${c.fg}; display:flex; align-items:center; justify-content:center;">
+    return `<div class="notification-row" data-id="${n.id}" style="display:flex; gap:10px; align-items:flex-start; padding:12px 10px; border-radius:10px; border-bottom:1px solid var(--border); ${isRead ? '' : 'background:rgba(91,95,239,0.07);'}">
+      <div style="flex:0 0 auto; width:30px; height:30px; border-radius:50%; background:${c.bg}; color:${c.fg}; display:flex; align-items:center; justify-content:center;">
         ${notificationTypeIconSvg(n.icon)}
-        ${isRead ? '' : '<span style="position:absolute; top:-1px; right:-1px; width:8px; height:8px; border-radius:50%; background:var(--coral); box-shadow:0 0 0 2px var(--surface);"></span>'}
       </div>
       <div style="flex:1 1 auto; min-width:0;">
-        <div style="font-size:11px; color:var(--ink-soft); margin-bottom:6px; display:flex; flex-wrap:wrap; align-items:center; gap:6px;"><span class="tag tag-usage">${escHtml(NOTIFICATION_TYPE_LABEL[n.type]||n.type||'알림')}</span><span>${escHtml(notificationTimeLabel(n))}</span></div>
-        <div style="font-size:13px; font-weight:${isRead?600:800}; color:var(--ink); word-break:break-word; line-height:1.5;">${escHtml(n.title||'')}</div>
+        <div style="font-size:11px; color:var(--ink-soft); margin-bottom:6px; display:flex; flex-wrap:wrap; align-items:center; gap:6px;"><span style="display:inline-block; padding:2px 8px; border-radius:8px; font-size:10.5px; font-weight:800; background:${c.bg}; color:${c.fg};">${escHtml(NOTIFICATION_TYPE_LABEL[n.type]||n.type||'알림')}</span><span>${escHtml(notificationTimeDisplay(n))}</span></div>
+        <div style="font-size:13px; font-weight:${isRead?600:800}; color:var(--ink); word-break:break-word; line-height:1.5;">${escHtml(stripLeadingEmoji(n.title||''))}</div>
         ${n.body ? `<div style="font-size:12px; color:var(--ink-soft); margin-top:4px; word-break:break-word; line-height:1.5;">${escHtml(n.body)}</div>` : ''}
       </div>
-      <button type="button" class="del-btn notification-del-btn" data-id="${n.id}" style="flex:0 0 auto; background:var(--bg2, #E5E7EB); color:var(--ink-soft);">삭제</button>
+      <button type="button" class="del-btn notification-del-btn" data-id="${n.id}" title="삭제" aria-label="삭제">${closeIconSvg}</button>
     </div>`;
   }).join('');
   let pagerHtml = '';
@@ -8567,12 +8614,16 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
     const entityColor = c.entityType === '법인' ? '#0B5A78' : c.entityType === '개인' ? '#BE185D' : 'inherit';
     // 상세구분(성실/면세/간이/간세, 법인은 본점/지점도 포함)은 본점·지점 배지와 같은 스타일의 칩으로 이름 옆에 붙이고,
     // 칩마다 문구가 있으면(직접 입력한 메모, 또는 성실의 귀속연도) 칩 오른쪽 위에 작은 * 를 달아서 마우스를 올리면 보이게 함
+    // 법인/개인 연한 배경색 - 예전엔 상호명 칸 전체에 이 색을 깔았는데("행 배경이 과하다"는 의견으로
+    // 이제 칸 전체 배경 대신 "사업자구분" 칸의 작은 뱃지 하나에만 씀. 옆의 상세구분 칩(subTagChips)도
+    // 예전엔 상호명 칸의 색 배경 위에 얹히는 걸 전제로 반투명 흰색이었는데, 이제 그 배경이 없어져서
+    // 같은 톤의 옅은 색으로 바꿔 계속 잘 보이게 함
+    const entityTint = c.entityType === '법인' ? '#DCEEF5' : c.entityType === '개인' ? '#FCE9F1' : 'transparent';
     const subTagChips = getClientSubTags(c).map(t=>{
       const note = activeSubTagNoteText(t);
       const star = note ? `<sup class="chip-star" data-tip="${escHtml(note)}" style="position:absolute; top:-5px; right:-4px; cursor:pointer; font-size:10px; font-weight:900; line-height:1; color:${entityColor};">*</sup>` : '';
-      return `<span style="position:relative; display:inline-flex; align-items:center; margin-left:5px; padding:1px 7px; border-radius:8px; background:rgba(255,255,255,0.65); font-size:9.5px; font-weight:800; color:${entityColor}; vertical-align:middle;">${escHtml(t.key)}${star}</span>`;
+      return `<span style="position:relative; display:inline-flex; align-items:center; margin-left:5px; padding:1px 7px; border-radius:8px; background:${entityTint}; font-size:9.5px; font-weight:800; color:${entityColor}; vertical-align:middle;">${escHtml(t.key)}${star}</span>`;
     }).join('');
-    const nameBg = c.entityType === '법인' ? '#DCEEF5' : c.entityType === '개인' ? '#FCE9F1' : 'transparent';
     let groupNoCell = '';
     if(showGroupNo){
       let groupNoDisplay = '-';
@@ -8608,12 +8659,12 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
     return `<tr>
       <td class="num cvb">${idx+1}</td>${groupNoCell}
       <td class="cvb" style="color:${taxColor}; font-weight:600;">${escHtml(taxTypeDisplay)}</td>
-      <td class="cvb" style="color:${entityColor}; font-weight:600;">${escHtml(c.entityType||'-')}</td>
-      <td class="cvb client-name-cell" data-id="${c.id}" style="color:${entityColor}; font-weight:800; background:${nameBg}; cursor:pointer;" title="전체정보 보기">${escHtml(c.name||'')}${subTagChips}</td>
+      <td class="cvb">${c.entityType ? `<span style="display:inline-block; padding:2px 9px; border-radius:20px; font-size:11px; font-weight:800; background:${entityTint}; color:${entityColor};">${escHtml(c.entityType)}</span>` : '-'}</td>
+      <td class="cvb client-name-cell" data-id="${c.id}" style="color:${entityColor}; font-weight:800; cursor:pointer;" title="전체정보 보기">${escHtml(c.name||'')}${subTagChips}</td>
       <td class="num cvb">${escHtml(c.bizNo||'-')}</td>
       <td class="num cvb"${c.entityType==='개인' ? ' style="color:#DADCE6;"' : ''}>${escHtml(c.corpRegNo||'-')}</td>
       <td class="cvb">${escHtml(c.repName||'')}</td>
-      <td class="num cvb">${c.fee ? Number(c.fee).toLocaleString() : '-'}</td>
+      <td class="num cvb client-fee-cell">${c.fee ? Number(c.fee).toLocaleString() : '-'}</td>
       <td class="num cvb">${escHtml(c.contractDate||'-')}</td>
       <td class="num cvb">${escHtml(c.start||'-')}</td>${terminationCells}
       <td>${folderBtn}</td>
@@ -9315,7 +9366,9 @@ function renderClPersonalInfoRows(){
   const wrap = document.getElementById('clPersonalInfoRows');
   if(!wrap) return;
   if(!clPersonalInfoEntries.length){
-    wrap.innerHTML = `<div class="empty-state" style="padding:6px 0;">등록된 항목이 없습니다.</div>`;
+    // 이미 연보라 박스(clPersonalInfoSection) 안이라, 그 안에 또 흰 둥근 카드(.empty-state)를 넣으면
+    // 마치 눌러지는 버튼처럼 보인다는 의견 - 카드/그림자 없이 아이콘+텍스트만 담백하게 보여줌
+    wrap.innerHTML = `<div style="text-align:center; padding:10px 0; color:var(--ink-soft); font-size:12.5px; font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> 등록된 항목이 없습니다.</div>`;
   } else {
     const rows = clPersonalInfoEntries.map(a=>{
       const editing = clPersonalInfoEditingId === a.id;
@@ -17782,6 +17835,17 @@ function approvalDocNumber(item){
   const seq = idx > -1 ? idx+1 : sameDay.length+1;
   return `${dateKey.replace(/\./g,'')}-${String(seq).padStart(2,'0')}`;
 }
+// 옆에 이미 "문서종류" 칸(칩)이 따로 있는데, 예전 습관대로 문서 제목 맨 앞에 "[지출결의서]"처럼 같은
+// 문서종류를 대괄호로 또 적어둔 경우가 있어 중복돼 보인다는 의견 - 저장된 제목은 그대로 두고, 표에
+// 보여줄 때만 문서종류와 정확히 일치하는 대괄호 접두어가 있으면 걸러내서 보여줌
+function approvalTitleDisplay(item){
+  const title = item.title || '';
+  const docType = (item.docType||'').trim();
+  if(docType && title.startsWith(`[${docType}]`)){
+    return title.slice(docType.length+2).trim();
+  }
+  return title;
+}
 function approvalTableHeaderHtml(){
   const c = 'text-align:center;';
   // 종류/기안일/기안자/결재자/진행상황은 들어갈 내용의 글자수가 거의 일정해서 좁게 고정폭으로 두고, 대신 길어질
@@ -17871,10 +17935,10 @@ function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
       <td style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}"><span class="tag" style="${approvalDocTypeChipStyle(item.docType||'일반')}">${escHtml(item.docType||'일반')}</span></td>
       <td class="num" style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}">${escHtml(approvalDateShort(item.createdAt))}</td>
       <td style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}">${escHtml(resolveNameByEmail(item.drafterEmail) || item.drafterName || '')}</td>
-      <td style="text-align:left; white-space:normal; word-break:break-word; ${rowBorder}">
+      <td style="text-align:left; vertical-align:middle; white-space:normal; word-break:break-word; padding-left:16px; ${rowBorder}">
         <div style="display:flex; align-items:center; gap:10px; width:100%;">
-          <div style="flex:0 0 auto; padding-right:10px; border-right:1px solid rgba(29,30,51,0.14); font-size:10.5px; font-weight:700; color:var(--ink-soft); letter-spacing:0.02em; white-space:nowrap;">${escHtml(approvalDocNumber(item))}</div>
-          <div style="flex:1 1 auto; min-width:0; font-weight:700;">${escHtml(item.title)}</div>
+          <div style="flex:0 0 auto; padding-right:10px; border-right:1px solid rgba(29,30,51,0.14); font-size:10px; font-weight:600; color:var(--ink-soft); letter-spacing:0.02em; white-space:nowrap;">${escHtml(approvalDocNumber(item))}</div>
+          <div style="flex:1 1 auto; min-width:0; font-size:13.5px; font-weight:800; color:var(--ink);">${escHtml(approvalTitleDisplay(item))}</div>
         </div>
       </td>
       <td style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}">${escHtml(resolveNameByEmail(item.approverEmail) || item.approverName || '')}</td>
