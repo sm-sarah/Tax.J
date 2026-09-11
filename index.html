@@ -1202,6 +1202,10 @@
   tbody tr:hover td{background:rgba(91,95,239,0.055);}
   #clientsRegularListWrap tbody tr:hover td, #clientsOtherListWrp tbody tr:hover td,
   #clientsOtherListWrap tbody tr:hover td, #clientsTerminatedListWrap tbody tr:hover td{background:rgba(91,95,239,0.08);}
+  /* 결재 표의 "삭제" 아이콘처럼 되돌리기 어려운 동작은 평소엔 옅게 있다가, 그 줄에 마우스를 올렸을 때만
+     또렷해지게 함(완전히 숨기지는 않음 - 모바일 등 hover가 없는 환경에서도 항상 눌러서 쓸 수 있어야 하므로) */
+  .approval-action-danger{ opacity:0.5; transition:opacity .15s; }
+  tbody tr:hover .approval-action-danger{ opacity:1; }
   /* 기장거래처 표는 가로 구분선만으론 열 구분이 잘 안 보인다는 피드백 - 순번~수임시작일 구간(개인정보 상세/아이콘 열 제외)에만 옅은 세로선 추가 */
   .cvb{border-right:1px solid var(--border);}
   /* overflow-x:auto 하나만 주면 브라우저가 overflow-y도 자동으로 auto 취급해서 이 박스 자체가 별도의 스크롤 컨테이너가 되고,
@@ -1297,8 +1301,11 @@
   .settings-group-box{ background:var(--indigo-bg); border-radius:12px; padding:12px 14px; }
   .settings-group{
     background:#F1EFFB; border-radius:24px; padding:28px 24px 32px; margin-bottom:26px;
-    text-align:center; box-shadow:0 1px 2px rgba(29,30,51,0.04), 0 10px 24px -18px rgba(29,30,51,0.14);
-    border:1.5px solid var(--border);
+    text-align:center;
+    /* 배경(#F1EFFB)이 페이지 배경(--bg)과 색이 거의 비슷해서 그림자가 있어도 잘 안 보인다는 의견 -
+       배경색은 그대로 두고, 그림자를 더 진하고 넓게 키우고 테두리도 살짝 더 또렷하게 해서 입체감을 살림 */
+    box-shadow:0 2px 5px rgba(29,30,51,0.06), 0 16px 34px -16px rgba(29,30,51,0.24);
+    border:1.5px solid rgba(29,30,51,0.16);
   }
   .settings-group-title{font-size:23px; font-weight:900; color:var(--navy); margin-bottom:4px; letter-spacing:-0.01em;}
   .settings-group-desc{font-size:12px; color:var(--ink-soft); margin-bottom:22px;}
@@ -17785,26 +17792,45 @@ function approvalTableHeaderHtml(){
   // 줄줄이 나오는 문서 제목들(=목록)은 가운데 정렬이면 글자 길이가 제각각이라 오히려 더 들쭉날쭉해 보여서
   // 왼쪽 정렬로 바꿈(renderApprovalTable 쪽 <td> 참고) - 그러면 문서제목 칸만 정렬 방향이 달라 줄이 안 맞아
   // 보일 수 있어서, 아래처럼 각 행 사이 구분선을 좀 더 또렷하게 줘서 줄을 눈으로 쉽게 구분할 수 있게 함
-  return `<tr><th style="${c} width:100px;">문서종류</th><th style="${c} width:118px;">기안일</th><th style="${c} width:64px;">기안자</th><th style="${c}">문서제목</th><th style="${c} width:64px;">결재자</th><th style="${c} width:128px;">진행상황</th><th style="${c} width:186px;">관리</th></tr>`;
+  // "관리" 칸은 텍스트 버튼 대신 아이콘 버튼으로 바꾸면서 필요 폭이 줄어, 186px -> 132px로 좁히고
+  // 남는 공간은 문서제목 쪽(가변폭)으로 자연스럽게 넘어가게 함
+  return `<tr><th style="${c} width:100px;">문서종류</th><th style="${c} width:118px;">기안일</th><th style="${c} width:64px;">기안자</th><th style="${c}">문서제목</th><th style="${c} width:64px;">결재자</th><th style="${c} width:128px;">진행상황</th><th style="${c} width:132px;">관리</th></tr>`;
+}
+// 관리 칸 아이콘들 - 각 아이콘용 line-svg (기존 앱 다른 곳 아이콘들과 같은 획 스타일로 통일)
+const APPROVAL_ACTION_ICON_SVG = {
+  eye: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>',
+  close: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
+  trash: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>',
+  undo: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>',
+  edit: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>'
+};
+// 공용 아이콘 버튼 - 텍스트 라벨 대신 아이콘만 넣고 title로 말풍선 툴팁을 붙임(스크린리더/설명용)
+// danger:true(삭제 등 되돌리기 어려운 동작)면 평소엔 옅게 있다가 그 줄에 마우스를 올렸을 때만 또렷해지는
+// approval-action-danger 클래스를 붙임(완전히 숨기지는 않음 - 모바일 등 hover가 없는 환경에서도 계속 눌러야 하므로)
+function approvalActionIconBtn(cls, dataId, icon, title, bg, fg, danger){
+  return `<button type="button" class="del-btn ${cls}${danger?' approval-action-danger':''}" data-id="${dataId}" title="${escHtml(title)}" aria-label="${escHtml(title)}" style="width:28px; height:28px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:9px; background:${bg}; color:${fg};">${APPROVAL_ACTION_ICON_SVG[icon]}</button>`;
 }
 // bucket별로 다른 관리 버튼 구성 - 기안함/전체이력: 보기(+삭제), 결재함: 보기(+삭제), 기안함(mine): 보기(+회수),
 // 반려함: 보기+재기안, 임시저장함: 보기+(재)기안+삭제
+// 텍스트 버튼("보기"/"삭제" 등) 대신 아이콘 버튼으로 바꿔서 관리 칸이 덜 복잡해 보이게 함(제미나이 피드백 반영) -
+// 다만 "행 전체 클릭으로 열기"는 넣지 않음: 지금도 "보기" 아이콘이 펼치기/닫기 토글 역할을 그대로 하고 있어서,
+// 행 클릭까지 얹으면 오히려 다른 버튼(삭제/회수 등) 클릭과 헷갈릴 수 있음
 function approvalRowActionsHtml(item, bucket, expanded){
-  const viewBtn = `<button type="button" class="del-btn approval-view-btn" data-id="${item.id}" style="${expanded?'background:var(--indigo); color:#fff;':''}">${expanded?'닫기':'보기'}</button>`;
+  const viewBtn = approvalActionIconBtn('approval-view-btn', item.id, expanded?'close':'eye', expanded?'닫기':'보기', expanded?'var(--indigo)':'var(--bg2, #E5E7EB)', expanded?'#fff':'var(--ink-soft)');
   if(bucket === 'inbox' || bucket === 'all'){
     const canAdminDelete = bucket==='all' && typeof isCurrentUserAdmin!=='undefined' && isCurrentUserAdmin && item.status!=='삭제';
     const canInboxDelete = bucket==='inbox' && item.status!=='삭제';
-    return viewBtn + ((canAdminDelete||canInboxDelete) ? `<button type="button" class="del-btn approval-delete-btn" data-id="${item.id}" style="background:var(--coral-bg); color:var(--coral);">삭제</button>` : '');
+    return viewBtn + ((canAdminDelete||canInboxDelete) ? approvalActionIconBtn('approval-delete-btn', item.id, 'trash', '삭제', 'var(--coral-bg)', 'var(--coral)', true) : '');
   }
   if(bucket === 'mine'){
-    return viewBtn + ((item.status==='기안'||item.status==='검토중') ? `<button type="button" class="del-btn approval-recall-btn" data-id="${item.id}" style="background:var(--bg2, #E5E7EB); color:var(--ink-soft);">회수</button>` : '');
+    return viewBtn + ((item.status==='기안'||item.status==='검토중') ? approvalActionIconBtn('approval-recall-btn', item.id, 'undo', '회수', 'var(--bg2, #E5E7EB)', 'var(--ink-soft)') : '');
   }
   if(bucket === 'rejected'){
-    return viewBtn + `<button type="button" class="del-btn approval-resubmit-btn" data-id="${item.id}" style="background:var(--indigo-bg); color:var(--indigo-deep);">재기안</button>`;
+    return viewBtn + approvalActionIconBtn('approval-resubmit-btn', item.id, 'edit', '재기안', 'var(--indigo-bg)', 'var(--indigo-deep)');
   }
   if(bucket === 'draft'){
-    return viewBtn + `<button type="button" class="del-btn approval-edit-draft-btn" data-id="${item.id}" style="background:var(--indigo-bg); color:var(--indigo-deep);">(재)기안</button>` +
-      `<button type="button" class="del-btn approval-delete-draft-btn" data-id="${item.id}" style="background:var(--coral-bg); color:var(--coral);">삭제</button>`;
+    return viewBtn + approvalActionIconBtn('approval-edit-draft-btn', item.id, 'edit', '(재)기안', 'var(--indigo-bg)', 'var(--indigo-deep)') +
+      approvalActionIconBtn('approval-delete-draft-btn', item.id, 'trash', '삭제', 'var(--coral-bg)', 'var(--coral)', true);
   }
   return viewBtn;
 }
