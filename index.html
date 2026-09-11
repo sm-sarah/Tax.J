@@ -2730,16 +2730,8 @@
               <button type="button" class="home-tile-expand-btn" data-expand-target="homeWorkSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
             </div>
             <div class="home-submenu" id="homeWorkSubmenu" style="display:none;">
-              <!-- 원천세: 신고대상/신고현황/검토표 셋 다 있는 유일한 세목이라 세 갈래로 펼쳐짐 -->
-              <div class="home-submenu-item" data-approval-cat-goto="target">
-                <span style="flex:1;">원천세</span>
-                <button type="button" class="home-tile-expand-btn" data-expand-target="homeWorkWithholdingSubmenu" title="세부 메뉴 펼치기/접기">▸</button>
-              </div>
-              <div class="home-submenu-sub" id="homeWorkWithholdingSubmenu" style="display:none;">
-                <div class="home-submenu-leaf" data-approval-cat-goto="target" data-target-type-goto="원천세">신고대상</div>
-                <div class="home-submenu-leaf" data-approval-cat-goto="status" data-filing-type-goto="원천세">신고현황</div>
-                <div class="home-submenu-leaf" data-approval-cat-goto="review" data-review-type-goto="원천세">검토표</div>
-              </div>
+              <!-- 원천세: 신고대상/신고현황/검토표 세 화면을 하나로 합쳐서(원천세 통합) 갈래 없이 바로 이동함 -->
+              <div class="home-submenu-item" data-approval-cat-goto="itall"><span>원천세</span></div>
               <!-- 부가세: 신고대상(1기/2기 예정·확정 기수별)·신고현황·검토표 세 갈래 다 있음 -->
               <div class="home-submenu-item" data-approval-cat-goto="target" data-target-type-goto="부가세">
                 <span style="flex:1;">부가세</span>
@@ -3634,6 +3626,9 @@
       <div class="approval-nav-tree" style="display:none;">
       <div class="policy-category-toggle" id="approvalCatToggle" style="flex-direction:column; align-items:flex-start; gap:4px; margin-bottom:20px;">
         <div class="approval-nav-branch">
+          <button type="button" class="approval-cat-btn" data-approval-cat="itall"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="3" y1="10" x2="21" y2="10"></line></svg> 원천세</button>
+        </div>
+        <div class="approval-nav-branch">
           <button type="button" class="approval-cat-btn active" data-approval-cat="status"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path></svg> 신고현황</button>
           <div class="approval-subtype-branch" id="filingTypeToggle">
             <button type="button" class="filing-type-btn active" data-filing-type="원천세">원천세</button>
@@ -3683,6 +3678,31 @@
       <div class="approval-panels-col">
       <!-- 신고현황: 원천세/부가세/법인세/종소세/결산별 진행상태 (세목 선택 칩은 위 approvalCatToggle 트리 안,
            신고현황 밑에 가지로 붙어있음 - #filingTypeToggle) -->
+      <!-- 원천세(통합): 신고대상/신고현황/검토표 3개로 나뉘어 있던 화면을 거래처 하나의 줄에서 신고대상 체크,
+           신고일자·상태, 급여검증/납부세액검증 버튼까지 한 번에 보이도록 합친 화면. 데이터 저장소는 기존
+           신고대상(sharedFilingTargets)·신고현황(sharedIncomeTaxFilingStatus)과 완전히 동일해서, 예전 화면에
+           입력해둔 내용이 그대로 이어짐. 부가세 등은 아직 기존 3화면 구조를 그대로 쓰므로 그쪽 코드는 건드리지 않음 -->
+      <div class="approval-panel" data-approval-cat="itall" style="display:none;">
+        <h2 class="section-title" style="justify-content:center; font-size:22px; margin:4px 0 14px;">원천세</h2>
+        <div style="display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
+          <select id="itAllYear" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
+          <select id="itAllMonth" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
+          <input type="text" id="itAllSearch" placeholder="거래처 검색" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 10px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px;">
+        </div>
+        <div class="flat-panel" style="max-width:1160px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; gap:8px; flex-wrap:wrap;">
+            <span class="hint" style="font-size:11px; margin:0;">신고대상 체크, 신고일자·메모를 바꾼 뒤 저장 버튼을 눌러주세요. (신고대상 체크는 바로 저장돼요)</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="save-msg" id="itAllSaveMsg" style="margin-top:0; display:inline-block;"></span>
+              <button type="button" id="itAllSaveBtn" title="저장 (바뀐 내용이 있으면 버튼이 빨갛게 표시돼요)" style="flex-shrink:0; width:24px; height:24px; border-radius:50%; border:none; background:var(--indigo); color:#fff; box-shadow:0 4px 10px -3px rgba(29,30,51,0.35); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              </button>
+            </div>
+          </div>
+          <div id="itAllTableWrap"></div>
+        </div>
+      </div>
+
       <div class="approval-panel" data-approval-cat="status">
         <h2 class="section-title" style="justify-content:center; font-size:22px; margin:4px 0 14px;" id="filingStatusTitle">원천세 신고현황</h2>
         <div id="filingPeriodControls" style="display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
@@ -5596,7 +5616,7 @@ function checkNewNoticesForBrowserNotify(){
   const fresh = sharedNoticeHistory.filter(n => !notifiedSet.has(n.id) && (n.authorName||'') !== me);
   fresh.forEach(n=>{
     try{
-      const notif = new Notification(`📢 새 공지: ${n.title || '(제목 없음)'}`, { body: (n.content||'').slice(0,150), tag: 'notice-'+n.id });
+      const notif = new Notification(`새 공지: ${n.title || '(제목 없음)'}`, { body: (n.content||'').slice(0,150), tag: 'notice-'+n.id, icon: notificationIconDataUri('notice') });
       notif.onclick = ()=>{ window.focus(); activateTab('notice', true); setTimeout(()=>openNoticeViewPopup(n), 80); };
     }catch(e){ console.error('알림 표시 실패', e); }
   });
@@ -6378,6 +6398,13 @@ function notificationTimeDisplay(n){
 function stripLeadingEmoji(str){
   return String(str||'').replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}️‍]+\s*/u, '');
 }
+// 알림 목록에서 제목 위에 이미 종류 칩(결재 요청/결재 결과/공지)이 붙어있는데, 제목 자체에도 저장 당시
+// "결재 요청: ", "새 공지: " 같은 접두어가 그대로 들어있어서 "결재 요청" 칩 밑에 "결재 요청: 문서제목"처럼
+// 같은 말이 두 번 나온다는 의견 - 위 stripLeadingEmoji와 같은 방식(저장된 값은 그대로 두고 보여줄 때만
+// 걸러냄)으로, 알려진 접두어만 화면에서 떼어내고 실제 제목(문서제목/공지 제목)만 보이게 함
+function stripRedundantTitlePrefix(str){
+  return String(str||'').replace(/^(새 공지|결재 요청|결재 승인|결재 반려)\s*:\s*/, '');
+}
 // 알림 종류별 아이콘 - 이모지 대신, 앱 전체에서 쓰는 것과 같은 선(line) 스타일 SVG 픽토그램으로 통일함
 function notificationTypeIconSvg(icon){
   const s = 'width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"';
@@ -6394,6 +6421,22 @@ function notificationTypeColor(icon){
   if(icon==='approval-rejected') return { bg:'var(--coral-bg)', fg:'var(--coral)' };
   if(icon==='notice') return { bg:'var(--navy-bg)', fg:'var(--navy)' };
   return { bg:'var(--indigo-bg)', fg:'var(--indigo)' }; // approval-request(결재 요청) 기본
+}
+// 브라우저 OS 알림(new Notification)은 제목이 순수 텍스트라 위 notificationTypeIconSvg를 그대로 못 넣고,
+// 알림 왼쪽에 뜨는 아이콘 이미지(icon 옵션)만 바꿔줄 수 있음 - 그래서 같은 선 모양을 흰색 원 안에 그려서
+// data:image/svg+xml로 만들어 넘김. 예전엔 제목 앞에 🖐️/📢 같은 이모지를 붙였었는데, 앱 안 알림함처럼
+// 이모지 대신 우리 아이콘 스타일로 통일해달라는 요청
+function notificationIconDataUri(icon){
+  const colorHex = { 'approval-request':'#5B5FEF', 'approval-approved':'#0FB88A', 'approval-rejected':'#F0506E', 'notice':'#1E2A5E' }[icon] || '#5B5FEF';
+  const paths = {
+    'approval-request': '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+    'approval-approved': '<circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/>',
+    'approval-rejected': '<circle cx="12" cy="12" r="9"/><path d="m9.5 9.5 5 5"/><path d="m14.5 9.5-5 5"/>',
+    'notice': '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>'
+  };
+  const pathD = paths[icon] || '<circle cx="12" cy="12" r="9"/>';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="32" fill="${colorHex}"/><g transform="translate(16,16)"><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${pathD}</g></g></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 function openNotificationListPopup(){
   notificationListPage = 1;
@@ -6431,7 +6474,7 @@ function renderNotificationListModal(){
       </div>
       <div style="flex:1 1 auto; min-width:0;">
         <div style="font-size:11px; color:var(--ink-soft); margin-bottom:6px; display:flex; flex-wrap:wrap; align-items:center; gap:6px;"><span style="display:inline-block; padding:2px 8px; border-radius:8px; font-size:10.5px; font-weight:800; background:${c.bg}; color:${c.fg};">${escHtml(NOTIFICATION_TYPE_LABEL[n.type]||n.type||'알림')}</span><span>${escHtml(notificationTimeDisplay(n))}</span></div>
-        <div style="font-size:13px; font-weight:${isRead?600:800}; color:var(--ink); word-break:break-word; line-height:1.5;">${escHtml(stripLeadingEmoji(n.title||''))}</div>
+        <div style="font-size:13px; font-weight:${isRead?600:800}; color:var(--ink); word-break:break-word; line-height:1.5;">${escHtml(stripRedundantTitlePrefix(stripLeadingEmoji(n.title||'')))}</div>
         ${n.body ? `<div style="font-size:12px; color:var(--ink-soft); margin-top:4px; word-break:break-word; line-height:1.5;">${escHtml(n.body)}</div>` : ''}
       </div>
       <button type="button" class="del-btn notification-del-btn" data-id="${n.id}" title="삭제" aria-label="삭제">${closeIconSvg}</button>
@@ -14577,7 +14620,8 @@ function saveFilingSubviewState(){
       reviewItYear: document.getElementById('reviewItYearSelect')?.value || '',
       reviewVatClientId: document.getElementById('reviewVatClientSelect')?.value || '',
       reviewVatYear: document.getElementById('reviewVatYearSelect')?.value || '',
-      docBucket: document.querySelector('.approval-doc-btn.active')?.dataset.approvalDoc || 'new'
+      docBucket: document.querySelector('.approval-doc-btn.active')?.dataset.approvalDoc || 'new',
+      itAllYear: itAllYear, itAllMonth: itAllMonth
     }));
   }catch(e){}
 }
@@ -14645,6 +14689,10 @@ function restoreFilingSubviewState(){
           }
         }
       }
+    } else if(saved.cat === 'itall'){
+      if(saved.itAllYear) itAllYear = saved.itAllYear;
+      if(saved.itAllMonth) itAllMonth = saved.itAllMonth;
+      renderIncomeTaxUnified();
     } else if(saved.cat === 'doc' && saved.docBucket && saved.docBucket !== 'new'){
       // 결재(기안) 화면도 마지막으로 보던 함(기안함/결재함/반려함/임시저장함/전체이력)으로 복원함 -
       // 기본값(HTML상 처음부터 active인 "기안" 작성화면)과 다를 때만 해당 버튼을 다시 눌러줌
@@ -15743,6 +15791,138 @@ function renderIncomeTaxFilingStatusTable(){
     });
   });
 }
+
+// ══════════════════════════════════════════════════════════
+// 🧩 원천세(통합) - 신고대상·신고현황·검토표 3개 화면을 따로 오가며 봐야 하고, 신고대상 화면에서
+// 대상으로 지정해야만 신고현황에 나타나는 구조가 번거롭다는 의견 + 검토표(급여/납부세액검증)까지 거래처
+// 목록을 한 번 더 오가야 하는 게 불편하다는 의견 - 거래처 하나당 한 줄에 "신고대상 체크 → (체크하면) 신고일자·
+// 상태·메모 → 급여검증·납부세액검증 버튼"까지 다 모아서, 세 화면을 이 화면 하나로 합침.
+// 데이터는 기존 저장소(sharedFilingTargets/sharedIncomeTaxFilingStatus/검토표는 openReviewItFullscreen이
+// 그대로 씀)를 그대로 재사용하므로, 예전 신고대상/신고현황 화면에 이미 입력해둔 내용이 여기 그대로 이어짐
+// ══════════════════════════════════════════════════════════
+let itAllYear = null, itAllMonth = null, itAllDirty = false;
+function itAllPeriod(){
+  if(!itAllYear) itAllYear = String(Number(todayStr().slice(0,4)));
+  if(!itAllMonth) itAllMonth = String(Number(todayStr().slice(5,7)));
+  return `${itAllYear}-${String(itAllMonth).padStart(2,'0')}`;
+}
+function renderItAllPeriodControls(){
+  const yearSel = document.getElementById('itAllYear');
+  const monthSel = document.getElementById('itAllMonth');
+  if(!yearSel || !monthSel) return;
+  itAllPeriod(); // 기본값(올해/이번달) 보장
+  const nowY = Number(todayStr().slice(0,4));
+  const years = new Set();
+  for(let y = nowY+1; y >= nowY-4; y--) years.add(String(y));
+  years.add(itAllYear);
+  const sortedYears = Array.from(years).sort((a,b)=> Number(b) - Number(a));
+  yearSel.innerHTML = sortedYears.map(y=>`<option value="${y}" ${y===itAllYear?'selected':''}>${y}년 귀속</option>`).join('');
+  monthSel.innerHTML = Array.from({length:12},(_,i)=>i+1).map(m=>`<option value="${m}" ${String(m)===String(itAllMonth)?'selected':''}>${m}월</option>`).join('');
+}
+function itAllSetDirty(v){
+  itAllDirty = v;
+  document.getElementById('itAllSaveBtn')?.classList.toggle('is-dirty', v);
+}
+// 신고대상으로 체크된 지급시기(당월/익월) 하나를 신고일자·지방세일자·상태뱃지·메모까지 한 덩어리로 보여줌
+function itAllTimingBlockHtml(c, period, timingKey){
+  const entry = incomeTaxFilingEntry(period, c.id);
+  const t = entry[timingKey];
+  const timingLabel = timingKey === 'sameMonth' ? '당월귀속·당월지급' : '당월귀속·익월지급';
+  return `<div class="it-all-timing-block" data-client-id="${c.id}" data-timing="${timingKey}" style="display:flex; flex-direction:column; gap:4px; padding:7px 9px; border:1px solid var(--border); border-radius:8px; margin-bottom:5px; background:var(--surface);">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:10.5px; font-weight:800; color:var(--ink-soft); white-space:nowrap;">${timingLabel}</span>
+      <span class="it-all-status-badge">${incomeTaxStatusBadgeHtml(t)}</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
+      <span style="font-size:10px; color:var(--ink-soft); white-space:nowrap;">원천세</span>
+      <input type="date" class="it-all-date-input" data-field="national" value="${t.national||''}" style="border:1.5px solid var(--border); border-radius:6px; padding:2px 4px; font-size:11px;">
+      <span style="font-size:10px; color:var(--ink-soft); white-space:nowrap;">지방세</span>
+      <input type="date" class="it-all-date-input" data-field="local" value="${t.local||''}" style="border:1.5px solid var(--border); border-radius:6px; padding:2px 4px; font-size:11px;">
+    </div>
+    <input type="text" class="it-all-memo-input" value="${escHtml(t.memo||'')}" placeholder="메모" style="width:100%; border:1.5px solid var(--border); border-radius:6px; padding:3px 6px; font-size:11px; font-family:'Pretendard',sans-serif;">
+  </div>`;
+}
+function renderIncomeTaxUnified(){
+  renderItAllPeriodControls();
+  const period = itAllPeriod();
+  const wrap = document.getElementById('itAllTableWrap');
+  if(!wrap) return;
+  const q = (document.getElementById('itAllSearch')?.value || '').trim().toLowerCase();
+  let list = bookkeepingClientList();
+  if(q) list = list.filter(c=>(c.name||'').toLowerCase().includes(q));
+  if(!list.length){ wrap.innerHTML = `<div class="empty-state">${q ? '검색 결과가 없습니다.' : '거래처 없음'}</div>`; return; }
+  const rows = list.map((c, idx)=>{
+    const target = filingTargetEntry(c.id, period);
+    const entityColor = c.entityType === '법인' ? '#0B5A78' : c.entityType === '개인' ? '#BE185D' : 'inherit';
+    const timingsHtml = target.applicable
+      ? [target.sameMonthPay ? itAllTimingBlockHtml(c, period, 'sameMonth') : '', target.nextMonthPay ? itAllTimingBlockHtml(c, period, 'nextMonth') : ''].join('')
+      : `<span class="hint" style="font-size:11px; margin:0;">신고대상이 아니에요</span>`;
+    return `<tr>
+      <td class="num cvb" style="color:var(--ink-soft);">${idx+1}</td>
+      <td class="cvb" style="color:${entityColor}; font-weight:800; white-space:nowrap; vertical-align:top; padding-top:12px;">${escHtml(c.name)} <span style="font-size:10px; color:var(--ink-soft); font-weight:600;">(${effectiveCycleFor(c.id, period)})</span></td>
+      <td class="cvb" style="vertical-align:top; padding-top:10px;">
+        <label style="display:flex; align-items:center; gap:4px; font-size:11px; font-weight:800; cursor:pointer; margin-bottom:4px; white-space:nowrap;"><input type="checkbox" class="it-all-target-check" data-client-id="${c.id}" data-field="applicable" ${target.applicable?'checked':''} style="width:auto; margin:0;"> 신고대상</label>
+        ${target.applicable ? `
+        <label style="display:flex; align-items:center; gap:4px; font-size:10.5px; cursor:pointer; margin-bottom:2px; white-space:nowrap;"><input type="checkbox" class="it-all-target-check" data-client-id="${c.id}" data-field="sameMonthPay" ${target.sameMonthPay?'checked':''} style="width:auto; margin:0;"> 당월지급</label>
+        <label style="display:flex; align-items:center; gap:4px; font-size:10.5px; cursor:pointer; white-space:nowrap;"><input type="checkbox" class="it-all-target-check" data-client-id="${c.id}" data-field="nextMonthPay" ${target.nextMonthPay?'checked':''} style="width:auto; margin:0;"> 익월지급</label>` : ''}
+      </td>
+      <td class="cvb" style="min-width:230px; vertical-align:top; text-align:left; padding:8px;">${timingsHtml}</td>
+      <td class="cvb" style="vertical-align:top; padding-top:10px;"><button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}" data-section="income" title="급여검증 전체화면으로 열기" style="background:var(--surface); color:var(--indigo-deep); font-weight:700; border:1.5px solid var(--indigo-bg); white-space:nowrap;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="8" y1="2" x2="8" y2="6"></line><line x1="16" y1="2" x2="16" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> 급여검증</button></td>
+      <td style="vertical-align:top; padding-top:10px;"><button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}" data-section="tax" title="납부세액검증 전체화면으로 열기" style="background:var(--surface); color:var(--mint); font-weight:700; border:1.5px solid var(--mint-bg); white-space:nowrap;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> 납부세액검증</button></td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<div class="table-scroll" style="max-width:1160px; margin:0 auto;"><table><thead><tr><th class="cvb" style="width:36px;">#</th><th class="cvb">거래처</th><th class="cvb" style="width:130px;">신고대상</th><th class="cvb">신고 현황</th><th class="cvb" style="width:120px;">급여검증</th><th style="width:130px;">납부세액검증</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  wrap.querySelectorAll('.review-it-open-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> openReviewItFullscreen(btn.dataset.clientId, btn.dataset.section));
+  });
+  wrap.querySelectorAll('.it-all-target-check').forEach(cb=>{
+    cb.addEventListener('change', async ()=>{
+      const clientId = cb.dataset.clientId;
+      const entry = filingTargetEntry(clientId, period);
+      entry.marked = true;
+      if(cb.dataset.field === 'applicable'){
+        entry.applicable = cb.checked;
+        if(entry.applicable && !entry.sameMonthPay && !entry.nextMonthPay) entry.sameMonthPay = true;
+      } else {
+        entry[cb.dataset.field] = cb.checked;
+        if(!entry.sameMonthPay && !entry.nextMonthPay){
+          entry[cb.dataset.field] = true; cb.checked = true;
+          appAlert('당월지급/익월지급 중 최소 하나는 선택돼 있어야 해요.');
+        }
+      }
+      await saveSharedFilingTargets(); // 신고대상 여부는 다른 토글들과 같이 바로 저장(신고일자/메모만 별도 저장버튼으로 관리)
+      renderIncomeTaxUnified();
+    });
+  });
+  wrap.querySelectorAll('.it-all-date-input').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const block = inp.closest('.it-all-timing-block');
+      if(!block) return;
+      const entry = incomeTaxFilingEntry(period, block.dataset.clientId);
+      entry[block.dataset.timing][inp.dataset.field] = inp.value || null;
+      itAllSetDirty(true);
+      const badge = block.querySelector('.it-all-status-badge');
+      if(badge) badge.innerHTML = incomeTaxStatusBadgeHtml(entry[block.dataset.timing]);
+    });
+  });
+  wrap.querySelectorAll('.it-all-memo-input').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const block = inp.closest('.it-all-timing-block');
+      if(!block) return;
+      const entry = incomeTaxFilingEntry(period, block.dataset.clientId);
+      entry[block.dataset.timing].memo = inp.value;
+      itAllSetDirty(true);
+    });
+  });
+}
+document.getElementById('itAllYear')?.addEventListener('change', (e)=>{ itAllYear = e.target.value; renderIncomeTaxUnified(); saveFilingSubviewState(); });
+document.getElementById('itAllMonth')?.addEventListener('change', (e)=>{ itAllMonth = e.target.value; renderIncomeTaxUnified(); saveFilingSubviewState(); });
+document.getElementById('itAllSearch')?.addEventListener('input', ()=> renderIncomeTaxUnified());
+document.getElementById('itAllSaveBtn')?.addEventListener('click', async ()=>{
+  await saveSharedIncomeTaxFilingStatus();
+  showCenterToast('저장됐어요');
+  itAllSetDirty(false);
+});
 
 // ══════════════════════════════════════════════════════════
 // 📮 제출현황(원천세): 매월/반기/연간 제출 체크리스트 - 원래 신고현황 화면 안에 있던 것을 별도 메뉴로 분리함.
@@ -17106,7 +17286,8 @@ document.querySelectorAll('.approval-cat-btn').forEach(btn=>{
     if(reviewBranch) reviewBranch.style.display = (cat === 'review') ? 'flex' : 'none';
     if(docBranch) docBranch.style.display = (cat === 'doc') ? 'flex' : 'none';
     if(submitBranch) submitBranch.style.display = (cat === 'submit') ? 'flex' : 'none';
-    if(cat === 'status') renderFilingStatusTable('status');
+    if(cat === 'itall') renderIncomeTaxUnified();
+    else if(cat === 'status') renderFilingStatusTable('status');
     else if(cat === 'target') renderTargetPanel();
     else if(cat === 'submit') renderSubmitStatusTable();
     else if(cat === 'review') renderReviewPanel();
@@ -18658,7 +18839,7 @@ function checkNewApprovalsForBrowserNotify(){
   const fresh = (sharedApprovals||[]).filter(a => !notifiedSet.has(a.id) && (a.approverEmail||'').toLowerCase()===myEmail && a.status==='기안');
   fresh.forEach(a=>{
     try{
-      const notif = new Notification(`🖋️ 결재 요청: ${a.title || '(제목 없음)'}`, { body: `기안자 ${a.drafterName||a.drafterEmail||''}`, tag: 'approval-'+a.id });
+      const notif = new Notification(`결재 요청: ${a.title || '(제목 없음)'}`, { body: `기안자 ${a.drafterName||a.drafterEmail||''}`, tag: 'approval-'+a.id, icon: notificationIconDataUri('approval-request') });
       notif.onclick = ()=>{ window.focus(); openApprovalDetailModal(a.id); };
     }catch(e){ console.error('알림 표시 실패', e); }
   });
@@ -18685,8 +18866,8 @@ function checkApprovalDecisionsForBrowserNotify(){
   const fresh = (sharedApprovals||[]).filter(a => (a.status==='승인' || a.status==='반려') && !notifiedSet.has(a.id+'|'+a.status) && (a.drafterEmail||'').toLowerCase()===myEmail);
   fresh.forEach(a=>{
     try{
-      const label = a.status==='승인' ? '✅ 결재 승인' : '🚫 결재 반려';
-      const notif = new Notification(`${label}: ${a.title || '(제목 없음)'}`, { body: `결재자 ${a.approverName||a.approverEmail||''}${a.comment ? ' · '+a.comment : ''}`, tag: 'approval-decision-'+a.id });
+      const label = a.status==='승인' ? '결재 승인' : '결재 반려';
+      const notif = new Notification(`${label}: ${a.title || '(제목 없음)'}`, { body: `결재자 ${a.approverName||a.approverEmail||''}${a.comment ? ' · '+a.comment : ''}`, tag: 'approval-decision-'+a.id, icon: notificationIconDataUri(a.status==='승인' ? 'approval-approved' : 'approval-rejected') });
       notif.onclick = ()=>{ window.focus(); openApprovalDetailModal(a.id); };
     }catch(e){ console.error('알림 표시 실패', e); }
   });
