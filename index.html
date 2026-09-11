@@ -1280,7 +1280,11 @@
   .tag-excl.lunchparty{background:#FBE3C7; color:#78350F;}
   .tag-excl.party{background:var(--amber-bg); color:var(--amber);}
   .tag-excl.other{background:#EEEFF5; color:#75789A;}
-  .del-btn{background:var(--bg); border:none; color:var(--ink-soft); border-radius:8px; padding:4px 10px; font-size:11px; cursor:pointer; font-weight:700;}
+  /* 흰/투명 박스 위의 회색 배경(var(--bg))만으로는 페이지 배경과 색이 거의 같아서(특히 이번 flat 스타일
+     이후 박스 배경이 투명해진 곳에서는 완전히 같은 색) "칩이 안 보인다"는 의견이 있었음 - 배경을 흰색으로
+     올리고 얇은 테두리를 더해서, 어느 배경 위에 있든(흰 카드/투명 flat 패널/lavender 페이지) 테두리로
+     확실히 구분되게 함 */
+  .del-btn{background:var(--surface); border:1px solid var(--border); color:var(--ink-soft); border-radius:8px; padding:4px 10px; font-size:11px; cursor:pointer; font-weight:700;}
   /* 팝업 "닫기" 버튼 전용 - 기본 .del-btn 톤(연회색)이 팝업 흰 배경과 거의 구분이 안 돼서 "안 보인다"는
      피드백이 반복돼서(처음엔 추가정보 팝업 하나에만 인디고 톤을 따로 입혀 고쳤었는데, 같은 문제가 다른
      팝업들에도 그대로 남아있었음), 모든 팝업의 닫기 버튼이 공통으로 쓰는 클래스로 만들어 한 번에 관리함 -
@@ -1577,9 +1581,11 @@
     display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; flex:0 0 auto;
   }
   .policy-section-head h3{margin:0; font-size:15.5px; font-weight:800; color:var(--ink);}
+  /* 배경이 var(--bg)(페이지 배경색과 완전히 같음)라 왼쪽 색 띠 말고는 거의 안 보인다는 의견이 있어서,
+     흰 배경 + 얇은 전체 테두리로 바꿔서 어느 섹션 색이든 박스 자체가 뚜렷하게 도드라지게 함 */
   .policy-callout{
     display:inline-block; width:auto; max-width:100%; box-sizing:border-box;
-    background:var(--bg); border-left:4px solid var(--sec-color, var(--indigo)); border-radius:8px;
+    background:var(--surface); border:1px solid var(--border); border-left:4px solid var(--sec-color, var(--indigo)); border-radius:8px;
     padding:10px 14px; margin:10px 0; font-size:12.5px; color:var(--ink-soft); font-weight:700;
   }
   .policy-list{margin:0 0 12px; padding-left:22px; font-size:13px; line-height:1.85; color:var(--ink);}
@@ -2199,18 +2205,14 @@
      열려서, 앱을 전체화면 앱처럼 쓸 때 "탭이 하나 더 뜨고 거기서 따로 닫아야" 해서 불편하다는 요청으로,
      구글드라이브 링크는 앱 화면을 벗어나지 않고 이 팝업 안 iframe으로 바로 열리고, 팝업의 "닫기" 버튼
      하나로 원래 화면에 바로 돌아오게 함(openAttachmentPreviewModal 참고). 드라이브가 아닌 임의의
-     외부 링크는 iframe 삽입을 막아둔 사이트가 많아 그냥 기존처럼 새 탭으로 엶 -->
-<div id="attachPreviewModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
-  <div style="background:var(--surface); border-radius:16px; padding:0; width:100%; max-width:920px; height:88vh; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4); position:relative; display:flex; flex-direction:column; overflow:hidden;">
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 16px; border-bottom:1px solid var(--border); flex:0 0 auto;">
-      <span id="attachPreviewModalTitle" style="font-weight:800; font-size:13.5px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
-      <div style="display:flex; align-items:center; gap:6px; flex:0 0 auto;">
-        <a id="attachPreviewModalOpenNew" href="#" target="_blank" rel="noopener" class="del-btn" title="새 탭에서 열기" style="text-decoration:none;">새 탭에서 열기</a>
-        <button type="button" id="attachPreviewModalClose" class="del-btn modal-close-btn">닫기</button>
-      </div>
-    </div>
-    <iframe id="attachPreviewModalFrame" src="" style="flex:1 1 auto; width:100%; border:none; background:var(--bg);"></iframe>
-  </div>
+     외부 링크는 iframe 삽입을 막아둔 사이트가 많아 그냥 기존처럼 새 탭으로 엶.
+     배경을 거의 불투명한 검정(0.92)으로 둬서, 뒤에 어떤 화면(파란 상단바/검정 사이드바 등)이 있든
+     팝업 상하좌우 여백이 항상 똑같이 검게 나오게 함(예전엔 0.45 반투명이라 뒤 배경색이 그대로 비쳐서
+     "위쪽에만 검은 여백이 없어 보인다"는 의견이 있었음). 첨부가 여러 개일 때 openAttachmentPreviewModalMulti로
+     열면 #attachPreviewModalPanels 안에 패널이 나란히 여러 개(최대 3개) 생겨서 동시에 비교해볼 수 있음 -->
+<div id="attachPreviewModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(10,11,20,0.92); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <button type="button" id="attachPreviewModalClose" class="del-btn modal-close-btn" style="position:absolute; top:20px; right:20px; z-index:2;">닫기</button>
+  <div id="attachPreviewModalPanels" style="display:flex; align-items:stretch; justify-content:center; gap:14px; width:100%; height:100%; max-width:1600px;"></div>
 </div>
 <!-- 원천세 신고대상: 거래처 × 월 그리드의 한 칸을 눌렀을 때 뜨는 편집 팝업 -->
 <!-- 앱 전체에서 쓰는 통일된 확인/알림 팝업 - 브라우저 기본 confirm()/appAlert()는 "sm-sarah.github.io 내용:"처럼
@@ -4189,17 +4191,17 @@
            때마다 갱신함.
            팀원별 항목은 예전엔 "➕ 팀원 추가"로 사람을 먼저 등록해야 했는데, 이제 직원정보에 등록된 직원이면
            바로 등록버튼의 "팀원" 대상 선택에서 골라 저장할 수 있어서 그 버튼(과 "기본값 불러오기")은 없앰 -->
-      <div style="text-align:center; margin:22px 0 6px;"><span class="section-subtitle-label" id="ciTeamSectionTitle">공용정보</span></div>
+      <div style="text-align:center; margin:22px 0 14px;"><span class="section-subtitle-label" id="ciTeamSectionTitle">공용정보</span></div>
       <div class="flat-panel" style="position:relative; padding-top:18px;">
         <!-- 예전엔 버튼을 박스 위쪽에 넉넉한 여백(padding-top:46px)을 두고 절대위치로 띄워서, "팀 공용 정보"
              제목과 표 사이에 불필요한 빈 공간이 생겼음 - "관리 버튼을 '팀 공용 정보' 제목 줄 오른쪽에 바싹
              붙여달라"는 요청으로 제목과 버튼을 같은 줄(flex)에 두고 여백을 없앰 -->
-        <div style="display:flex; align-items:center; justify-content:center; position:relative; margin:0 0 6px;">
+        <div style="display:flex; align-items:center; justify-content:center; position:relative; margin:0 0 16px;">
           <span style="font-size:12px; font-weight:800; color:var(--ink-soft); letter-spacing:0.02em;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg> 팀 공용 정보</span>
           <button type="button" id="ciTeamGeneralAddBtn" class="del-btn" style="display:none; position:absolute; right:0; top:50%; transform:translateY(-50%); margin:0; background:var(--indigo); color:#fff;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 등록</button>
         </div>
-        <div id="ciTeamGeneralListWrap" style="margin-bottom:18px;"></div>
-        <div style="text-align:center; margin:10px 0 6px;"><span style="font-size:12px; font-weight:800; color:var(--ink-soft); letter-spacing:0.02em;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M17 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> 팀원별 정보</span></div>
+        <div id="ciTeamGeneralListWrap" style="margin-bottom:24px;"></div>
+        <div style="text-align:center; margin:0 0 16px;"><span style="font-size:12px; font-weight:800; color:var(--ink-soft); letter-spacing:0.02em;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M17 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> 팀원별 정보</span></div>
         <!-- 팀원별 정보는 예전엔 직원정보에 등록된 재직중 직원 전체가 자동으로 나왔는데, "선택한 사람만
              나오게 해달라"는 요청으로 여기서 표시 대상을 직접 골라 sharedTeamInfo.selectedMembers에
              저장함(체크 안 하면 전체 표시가 기본값이라 아무도 안 골라도 예전과 동일하게 동작함) -->
@@ -4455,7 +4457,7 @@
         <button type="button" class="policy-cat-btn backup-scope-btn" data-backup-scope="one">직원선택</button>
       </div>
 
-      <div class="flat-panel backup-scope-panel" data-backup-scope="shared" style="display:flex; flex-direction:column; gap:10px; margin-left:auto; margin-right:auto;">
+      <div class="flat-panel backup-scope-panel" data-backup-scope="shared" style="display:flex; flex-direction:column; gap:10px; max-width:640px; margin-left:auto; margin-right:auto;">
         <p class="hint" style="margin:0 auto;">
           공휴일, 근무시간 예외, 공지사항, 관리자 목록 등 <b>전 직원 공통 설정만</b> 백업·복구해요.<br>
           직원 개개인의 근태·경비 기록은 포함되지 않아요 (그건 각 직원이 본인 설정에서 관리해요).
@@ -4468,7 +4470,7 @@
         </div>
       </div>
 
-      <div class="flat-panel backup-scope-panel" data-backup-scope="all" style="display:none; flex-direction:column; gap:10px; margin-left:auto; margin-right:auto;">
+      <div class="flat-panel backup-scope-panel" data-backup-scope="all" style="display:none; flex-direction:column; gap:10px; max-width:640px; margin-left:auto; margin-right:auto;">
         <p class="hint" style="margin:0 auto;">
           <b>전 직원의 근태·경비·개인일정 + 회사 공통설정을 전부 한 파일로</b> 백업·복구해요.<br>
           이 브라우저가 이미 구글 드라이브와 동기화되어 있다면 모든 직원 데이터를 가지고 있으니, 여기서 회사 전체 백업본을 만들 수 있어요. 복구 시에는 <b>모든 직원 데이터가 파일 내용으로 통째로 교체</b>되니 신중하게 사용해주세요.
@@ -4489,7 +4491,7 @@
         </div>
       </div>
 
-      <div class="flat-panel backup-scope-panel" data-backup-scope="one" style="display:none; flex-direction:column; gap:10px; margin-left:auto; margin-right:auto;">
+      <div class="flat-panel backup-scope-panel" data-backup-scope="one" style="display:none; flex-direction:column; gap:10px; max-width:640px; margin-left:auto; margin-right:auto;">
         <p class="hint" style="margin:0 auto;">
           전 직원이 아니라 <b>한 명만 골라서</b> 그 직원의 근태·경비·개인일정 기록만 백업·복구해요. 회사 공통설정과 다른 직원 데이터는 건드리지 않아요.
         </p>
@@ -4656,6 +4658,7 @@ let sharedExclusionDays = [];   // 공휴일/회식 등 제외일
 let sharedWorkHourExceptions = []; // 조기퇴근 등 근무시간 예외기간
 let sharedNoticeHistory = []; // 전 직원 공지사항 이력 [{id, content, savedAt}], 배열의 0번이 최신
 let sharedNoticeReadState = {}; // 공지사항 읽음 여부 - { [로그인이메일 또는 profile:id]: [공지id, ...] }, 계정 기준으로 기기 간 동기화됨
+let sharedApprovalReadState = {}; // 결재 목록(전체이력 등)의 문서제목 굵게/읽음 여부 - 공지사항 읽음상태와 완전히 같은 방식(계정 기준, 드라이브로 기기 간 동기화됨)
 // 알림(종 아이콘) 목록 - 예전엔 종 아이콘이 공지사항 화면 자체를 여는 버튼이었는데, 공지사항은 이제 사이드바의
 // 일반 메뉴가 됐고 종 아이콘은 "그동안 온 알림들"(새 결재요청/결재결과/새 공지)을 훑어보는 화면으로 바뀜.
 // [{id, type:'approval-new'|'approval-decided'|'notice', title, content, atMs(정렬·한달경과 판단용), at(화면표시용),
@@ -4737,6 +4740,7 @@ function loadSharedData(){
     }catch(e){ /* 이관할 이전 데이터 없음 */ }
   }
   try{ sharedNoticeReadState = JSON.parse(localStorage.getItem('worklog_shared_notice_read') || '{}'); }catch(e){ sharedNoticeReadState = {}; }
+  try{ sharedApprovalReadState = JSON.parse(localStorage.getItem('worklog_shared_approval_read') || '{}'); }catch(e){ sharedApprovalReadState = {}; }
   try{ sharedNotificationLog = JSON.parse(localStorage.getItem('worklog_shared_notifications') || '[]') || []; }catch(e){ sharedNotificationLog = []; }
   try{ sharedNotificationReadState = JSON.parse(localStorage.getItem('worklog_shared_notification_read') || '{}'); }catch(e){ sharedNotificationReadState = {}; }
   try{ sharedAdminEmails = JSON.parse(localStorage.getItem('worklog_shared_admins') || '[]'); }catch(e){ sharedAdminEmails = []; }
@@ -5493,6 +5497,25 @@ function markNoticeRead(id){
   set.add(id);
   sharedNoticeReadState[key] = [...set];
   saveSharedNoticeReadState();
+}
+// 결재 목록(전체이력 등)에서 아직 한 번도 안 열어본 문서제목은 굵게, 한 번이라도 클릭해서 열어본 문서는
+// 일반 굵기로 - 공지사항 읽음과 완전히 같은 방식(계정 기준으로 드라이브에 동기화)이라 함수도 그대로 재사용함
+function getReadApprovalIds(){
+  const arr = sharedApprovalReadState[noticeReadAccountKey()];
+  return new Set(Array.isArray(arr) ? arr : []);
+}
+function saveSharedApprovalReadState(){
+  try{ localStorage.setItem('worklog_shared_approval_read', JSON.stringify(sharedApprovalReadState)); }catch(e){ console.error('결재 읽음상태 저장 실패', e); }
+  gdriveScheduleSync();
+}
+function markApprovalRowRead(id){
+  if(!id) return;
+  const key = noticeReadAccountKey();
+  const set = getReadApprovalIds();
+  if(set.has(id)) return;
+  set.add(id);
+  sharedApprovalReadState[key] = [...set];
+  saveSharedApprovalReadState();
 }
 function unreadNoticeCount(){
   const read = getReadNoticeIds();
@@ -10509,17 +10532,17 @@ function buildExpenseReportHTML(monthStr){
            table/table-cell 레이아웃으로 통째로 바꿈 -->
       <table style="width:auto; margin:0 auto 4px; border-collapse:separate; border-spacing:4px 0;">
         <tr>
-          <td style="text-align:center; background:#CFEFFB; color:#0B5A78; border-radius:10px; padding:7px 14px;">
+          <td style="text-align:center; background:#CFEFFB; color:#0B5A78; border-radius:10px; padding:7px 14px; border:none;">
             <div style="font-size:10px; font-weight:700;">이달의 근무가능일</div>
             <div style="font-family:'IBM Plex Mono',monospace; font-weight:800; font-size:15px; margin-top:2px;">${s.weekdays}일</div>
           </td>
-          <td style="text-align:center; font-size:16px; font-weight:800; color:var(--ink-soft); padding:0 2px;">−</td>
-          <td style="text-align:center; background:var(--coral-bg); color:var(--coral); border-radius:10px; padding:7px 14px;">
+          <td style="text-align:center; font-size:16px; font-weight:800; color:var(--ink-soft); padding:0 2px; border:none; background:transparent;">−</td>
+          <td style="text-align:center; background:var(--coral-bg); color:var(--coral); border-radius:10px; padding:7px 14px; border:none;">
             <div style="font-size:10px; font-weight:700;">차감일</div>
             <div style="font-family:'IBM Plex Mono',monospace; font-weight:800; font-size:15px; margin-top:2px;">${s.deductedDays}일${deductedBreakdownText ? `<span style="font-size:10px; font-weight:700; margin-left:3px;">(${deductedBreakdownText})</span>` : ''}</div>
           </td>
-          <td style="text-align:center; font-size:16px; font-weight:800; color:var(--ink-soft); padding:0 2px;">=</td>
-          <td style="text-align:center; background:var(--amber-bg); color:#8A6D1E; border-radius:10px; padding:7px 14px;">
+          <td style="text-align:center; font-size:16px; font-weight:800; color:var(--ink-soft); padding:0 2px; border:none; background:transparent;">=</td>
+          <td style="text-align:center; background:var(--amber-bg); color:#8A6D1E; border-radius:10px; padding:7px 14px; border:none;">
             <div style="font-size:10px; font-weight:700;">식대기준일</div>
             <div style="font-family:'IBM Plex Mono',monospace; font-weight:800; font-size:15px; margin-top:2px;">${s.workdays}일</div>
           </td>
@@ -10605,7 +10628,11 @@ function generateExpenseReportPdfBlob(monthStr){
     clipper.style.cssText = 'position:fixed; top:0; left:0; width:0; height:0; overflow:hidden; pointer-events:none;';
     const holder = document.createElement('div');
     holder.style.cssText = 'position:absolute; top:0; left:0; width:760px; background:#fff; padding:10px;';
-    holder.innerHTML = buildExpenseReportHTML(monthStr);
+    // 빠른 인쇄(quickPrintReportBtn)와 똑같이, 지출결의서 뒤에 그 달 근태 달력도 이어붙여서 한 PDF
+    // 안에 같이 들어가게 함(근태달력이 자동 첨부에서 빠져있었다는 피드백) - 새 페이지처럼 보이도록 위쪽에
+    // 여백을 넉넉히 둬서 이어붙는 느낌 없이 구분되게 함
+    const calendarHtml = buildCalendarHTML(monthStr).replace('<div class="doc">', '<div class="doc" style="margin-top:42px; padding-top:28px; border-top:2px dashed var(--border);">');
+    holder.innerHTML = buildExpenseReportHTML(monthStr) + calendarHtml;
     clipper.appendChild(holder);
     document.body.appendChild(clipper);
     const cleanup = ()=>{ try{ document.body.removeChild(clipper); }catch(e){} };
@@ -10671,7 +10698,7 @@ async function attachExpenseReportForMonth(monthStr){
     uploaded.__autoExpenseReport = true;
     adUploadedAttachments.push(uploaded);
     renderAdAttachUploadedList();
-    if(statusEl) statusEl.textContent = `${y}년 ${Number(m)}월 지출결의서가 자동 첨부됐어요.`;
+    if(statusEl) statusEl.textContent = `${y}년 ${Number(m)}월 지출결의서(근태 달력 포함)가 자동 첨부됐어요.`;
   }catch(err){
     console.error('지출결의서 자동 첨부 실패', err);
     if(statusEl) statusEl.textContent = '자동 첨부에 실패했어요. 파일 업로드로 직접 첨부해주세요.';
@@ -17560,16 +17587,35 @@ function driveEmbedUrl(url){
 // 돌아오게 함(앱을 전체화면으로 쓸 때 탭이 계속 늘어나는 게 불편하다는 요청) - 드라이브 링크가 아니라
 // iframe으로 못 여는 주소면 그냥 새 탭으로 엶
 function openAttachmentPreviewModal(url, name){
-  const embed = driveEmbedUrl(url);
-  if(!embed){ window.open(url, '_blank', 'noopener'); return; }
-  document.getElementById('attachPreviewModalTitle').textContent = name || url;
-  document.getElementById('attachPreviewModalOpenNew').href = url;
-  document.getElementById('attachPreviewModalFrame').src = embed;
+  openAttachmentPreviewModalMulti([{ url, name }]);
+}
+// 첨부파일이 여러 개일 때, 여러 창을 따로따로 여닫지 않고도 한 화면에 나란히 띄워 비교해볼 수 있게 함
+// (요청: "첨부파일 여러개이면 동시에 여러 보면서 창을 비교해 봐야 할 수도 있는데") - items: [{url, name}, ...].
+// 드라이브 링크가 아니라 iframe으로 못 여는 파일은 비교 패널에 못 넣으니 그냥 새 탭으로 열어주고, 한 번에
+// 너무 많이 열면 각 패널이 너무 좁아지니 최대 3개까지만 나란히 보여줌
+function openAttachmentPreviewModalMulti(items){
+  const panelsWrap = document.getElementById('attachPreviewModalPanels');
+  if(!panelsWrap || !Array.isArray(items) || !items.length) return;
+  const MAX_PANELS = 3;
+  const resolved = items.map(it=>({ url: it.url, name: it.name || it.url, embed: driveEmbedUrl(it.url) }));
+  const embeddable = resolved.filter(r=>r.embed);
+  resolved.filter(r=>!r.embed).forEach(r=> window.open(r.url, '_blank', 'noopener'));
+  if(!embeddable.length) return;
+  const shown = embeddable.slice(0, MAX_PANELS);
+  panelsWrap.innerHTML = shown.map(r => `
+    <div class="attach-preview-panel" style="background:var(--surface); border-radius:16px; padding:0; flex:1 1 0; min-width:0; max-width:920px; height:100%; box-shadow:0 20px 40px -12px rgba(0,0,0,0.6); position:relative; display:flex; flex-direction:column; overflow:hidden;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 16px; border-bottom:1px solid var(--border); flex:0 0 auto; background:var(--surface);">
+        <span style="font-weight:800; font-size:13.5px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml(r.name)}</span>
+        <a href="${escHtml(r.url)}" target="_blank" rel="noopener" class="del-btn" title="새 탭에서 열기" style="text-decoration:none; flex:0 0 auto;">새 탭에서 열기</a>
+      </div>
+      <iframe src="${escHtml(r.embed)}" style="flex:1 1 auto; width:100%; border:none; background:var(--bg);"></iframe>
+    </div>`).join('');
   document.getElementById('attachPreviewModalOverlay').style.display = 'flex';
 }
 function closeAttachmentPreviewModal(){
   document.getElementById('attachPreviewModalOverlay').style.display = 'none';
-  document.getElementById('attachPreviewModalFrame').src = ''; // 계속 백그라운드에서 로드/재생되지 않게 비워줌
+  const panelsWrap = document.getElementById('attachPreviewModalPanels');
+  if(panelsWrap) panelsWrap.innerHTML = ''; // iframe들을 비워서 계속 백그라운드에서 로드/재생되지 않게 함
 }
 document.getElementById('attachPreviewModalClose')?.addEventListener('click', closeAttachmentPreviewModal);
 document.getElementById('attachPreviewModalOverlay')?.addEventListener('click', (e)=>{ if(e.target.id==='attachPreviewModalOverlay') closeAttachmentPreviewModal(); });
@@ -17584,10 +17630,27 @@ function attachmentLinksHtml(attachmentLink){
 // 첨부파일 목록을 미리보기/상세보기에서 보여줌 - item.attachments(배열)가 있으면 그걸 쓰고, 이미지
 // 첨부(mimeType이 image/로 시작하고 드라이브 파일 id를 아는 경우)는 화면 안에 실제 썸네일로 보여줌.
 // item.attachments가 아예 없는(예전 attachmentLink 문자열만 있던) 데이터는 attachmentLinksHtml로 그대로 폴백함
+// 첨부가 여러 개일 때 "비교보기" 버튼 onclick 속성에 배열을 그대로 못 담으니(따옴표 이스케이프 문제),
+// id 하나로 참조해서 openAttachmentPreviewModalMulti에 넘겨줄 수 있게 임시 저장해두는 용도
+let attachmentCompareGroups = {};
+let attachmentCompareGroupSeq = 0;
+function registerAttachmentCompareGroup(items){
+  const gid = 'acg' + (++attachmentCompareGroupSeq);
+  attachmentCompareGroups[gid] = items;
+  return gid;
+}
+function openAttachmentCompareGroup(gid){
+  const items = attachmentCompareGroups[gid];
+  if(items) openAttachmentPreviewModalMulti(items);
+}
 function attachmentListHtml(item){
   if(item && Array.isArray(item.attachments)){
     const list = item.attachments.filter(a=>a && a.url);
     if(!list.length) return '';
+    // 첨부가 2개 이상이면 한 번에 나란히 띄워볼 수 있는 비교보기 버튼을 목록 맨 위에 달아줌
+    const compareBtnHtml = list.length >= 2
+      ? `<button type="button" onclick="openAttachmentCompareGroup('${registerAttachmentCompareGroup(list.map(a=>({url:a.url, name:a.name||a.url})))}')" class="del-btn" style="align-self:flex-start;">🔍 첨부파일 ${list.length}개 나란히 비교보기</button>`
+      : '';
     const rows = list.map(a=>{
       // 파일마다 각각 클릭 가능한 링크(📎 파일명)를 달아줌 - 새 브라우저 탭 대신 앱 안 미리보기 팝업으로 열림(구글드라이브
       // 링크가 아니면 openAttachmentPreviewModal이 알아서 새 탭 열기로 대체함)
@@ -17600,7 +17663,7 @@ function attachmentListHtml(item){
       }
       return fileLink;
     }).join('');
-    return `<div style="margin-top:8px; display:flex; flex-direction:column; gap:10px; align-items:flex-start;">${rows}</div>`;
+    return `<div style="margin-top:8px; display:flex; flex-direction:column; gap:10px; align-items:flex-start;">${compareBtnHtml}${rows}</div>`;
   }
   return attachmentLinksHtml(item && item.attachmentLink);
 }
@@ -18036,7 +18099,7 @@ function approvalTableHeaderHtml(){
   // 보일 수 있어서, 아래처럼 각 행 사이 구분선을 좀 더 또렷하게 줘서 줄을 눈으로 쉽게 구분할 수 있게 함
   // "관리" 칸은 텍스트 버튼 대신 아이콘 버튼으로 바꾸면서 필요 폭이 줄어, 186px -> 132px로 좁히고
   // 남는 공간은 문서제목 쪽(가변폭)으로 자연스럽게 넘어가게 함
-  return `<tr><th style="${c} width:100px;">문서종류</th><th style="${c} width:118px;">기안일</th><th style="${c} width:64px;">기안자</th><th style="${c}">문서제목</th><th style="${c} width:64px;">결재자</th><th style="${c} width:128px;">진행상황</th><th style="${c} width:132px;">관리</th></tr>`;
+  return `<tr><th style="${c} width:100px;">문서종류</th><th style="${c} width:118px;">기안일</th><th style="${c} width:64px;">기안자</th><th style="${c} width:100px;">문서번호</th><th style="${c}">문서제목</th><th style="${c} width:64px;">결재자</th><th style="${c} width:128px;">진행상황</th><th style="${c} width:132px;">관리</th></tr>`;
 }
 // 관리 칸 아이콘들 - 각 아이콘용 line-svg (기존 앱 다른 곳 아이콘들과 같은 획 스타일로 통일)
 const APPROVAL_ACTION_ICON_SVG = {
@@ -18101,8 +18164,12 @@ function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
   if(st.page > totalPages) st.page = totalPages;
   const pageItems = searched.slice((st.page-1)*APPROVAL_PAGE_SIZE, st.page*APPROVAL_PAGE_SIZE);
   const statusCtx = (bucket==='inbox'||bucket==='all') ? null : 'mine';
+  // 한 번이라도 열어본 문서는 제목을 일반 굵기로 낮춰서 "새 문서"와 구분되게 함 - 로그인 계정(이메일) 기준으로
+  // 기억되고 드라이브로 기기 간에도 동기화됨(getReadApprovalIds/markApprovalRowRead 참고)
+  const readIds = getReadApprovalIds();
   const rows = pageItems.map(item=>{
     const expanded = approvalExpandedId === item.id;
+    const isRead = readIds.has(item.id);
     // 행 사이 구분선을 다른 표보다 좀 더 또렷하게 줌(문서제목 칸만 왼쪽 정렬이라 다른 칸과 정렬이 달라
     // 줄이 헷갈릴 수 있어서, 구분선으로 각 문서 줄을 눈에 잘 띄게 나눠줌)
     const rowBorder = 'border-top:1px solid rgba(29,30,51,0.16);';
@@ -18111,12 +18178,8 @@ function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
       <td style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}"><span class="tag" style="${approvalDocTypeChipStyle(item.docType||'일반')}">${escHtml(item.docType||'일반')}</span></td>
       <td class="num" style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}">${escHtml(approvalDateShort(item.createdAt))}</td>
       <td style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}">${escHtml(resolveNameByEmail(item.drafterEmail) || item.drafterName || '')}</td>
-      <td style="text-align:left; vertical-align:middle; white-space:normal; word-break:break-word; padding-left:16px; ${rowBorder}">
-        <div style="display:flex; align-items:center; gap:10px; width:100%;">
-          <div style="flex:0 0 auto; padding-right:10px; border-right:1px solid rgba(29,30,51,0.14); white-space:nowrap;"><span style="font-size:8.5px; font-weight:700; color:var(--ink-soft); opacity:0.75;">문서번호</span><br><span style="font-size:10px; font-weight:600; color:var(--ink-soft); letter-spacing:0.02em;">${escHtml(approvalDocNumber(item))}</span></div>
-          <div style="flex:1 1 auto; min-width:0; font-size:13.5px; font-weight:800; color:var(--ink);">${escHtml(approvalTitleDisplay(item))}</div>
-        </div>
-      </td>
+      <td class="num" style="text-align:center; overflow:hidden; text-overflow:ellipsis; font-size:11px; color:var(--ink-soft); ${rowBorder}">${escHtml(approvalDocNumber(item))}</td>
+      <td style="text-align:left; vertical-align:middle; white-space:normal; word-break:break-word; padding-left:16px; font-size:13.5px; font-weight:${isRead?600:800}; color:var(--ink); ${rowBorder}">${escHtml(approvalTitleDisplay(item))}</td>
       <td style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}">${escHtml(resolveNameByEmail(item.approverEmail) || item.approverName || '')}</td>
       <td style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}">${approvalStatusTagHtml(item.status, statusCtx, item.resubmitCount)}</td>
       <td style="text-align:center; white-space:normal; ${rowBorder}"><div style="display:inline-flex; gap:6px; flex-wrap:wrap; justify-content:center;">${approvalRowActionsHtml(item, bucket, expanded)}</div></td>
@@ -18156,6 +18219,7 @@ function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
       const id = tr.dataset.id;
       approvalExpandedId = (approvalExpandedId === id) ? null : id;
       if(approvalExpandedId === id){
+        markApprovalRowRead(id);
         const item = (sharedApprovals||[]).find(a=>a.id===id);
         if(item && markApprovalViewedIfNeeded(item)){
           await saveSharedApprovals();
@@ -19105,7 +19169,7 @@ document.getElementById('exportSharedBtn').addEventListener('click', async ()=>{
     exportedAt: new Date().toISOString(),
     app: 'monthly-board',
     scope: 'shared', // 관리자용 백업: 회사 공통설정만 포함, 직원 개인데이터는 포함 안 함
-    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, notificationLog: sharedNotificationLog, notificationReadState: sharedNotificationReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta, filingTargets: sharedFilingTargets, filingCycles: sharedFilingCycles, autoPhrases: sharedAutoPhrases, itFilingStatus: sharedIncomeTaxFilingStatus, vatFilingTargets: sharedVatFilingTargets, vatReviewFigures: sharedVatReviewFigures }
+    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, notificationLog: sharedNotificationLog, notificationReadState: sharedNotificationReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, approvalReadState: sharedApprovalReadState, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta, filingTargets: sharedFilingTargets, filingCycles: sharedFilingCycles, autoPhrases: sharedAutoPhrases, itFilingStatus: sharedIncomeTaxFilingStatus, vatFilingTargets: sharedVatFilingTargets, vatReviewFigures: sharedVatReviewFigures }
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -19274,6 +19338,7 @@ document.getElementById('importSharedFile').addEventListener('change', async (e)
     sharedReviewStatus = data.shared.reviewStatus || {};
     sharedFilingHelp = data.shared.filingHelp || {};
     sharedApprovals = data.shared.approvals || [];
+    sharedApprovalReadState = data.shared.approvalReadState || {};
     sharedReviewFigures = data.shared.reviewFigures || {};
     sharedReviewMeta = data.shared.reviewMeta || {};
     sharedFilingTargets = data.shared.filingTargets || {};
@@ -19284,6 +19349,7 @@ document.getElementById('importSharedFile').addEventListener('change', async (e)
     await saveSharedWorkHourExceptions();
     await saveSharedNoticeHistory();
     saveSharedNoticeReadState();
+    saveSharedApprovalReadState();
     await saveSharedAdminEmails();
     await saveSharedAdminNames();
     await saveSharedManagePassword();
@@ -19398,10 +19464,12 @@ document.getElementById('importAllFile').addEventListener('change', async (e)=>{
       sharedReviewStatus = data.shared.reviewStatus || {};
       sharedFilingHelp = data.shared.filingHelp || {};
       sharedApprovals = data.shared.approvals || [];
+      sharedApprovalReadState = data.shared.approvalReadState || {};
       await saveSharedExclusions();
       await saveSharedWorkHourExceptions();
       await saveSharedNoticeHistory();
       saveSharedNoticeReadState();
+      saveSharedApprovalReadState();
       await saveSharedAdminEmails();
       await saveSharedAdminNames();
       await saveSharedManagePassword();
@@ -20155,7 +20223,7 @@ function gdriveBuildPayload(){
     schemaVersion: SCHEMA_VERSION, syncedAt: new Date().toISOString(), profiles, data,
     // 거래처목록(clients)·개인정보(personalInfo)는 더 이상 직원 프로필별로 따로 저장되지 않고, 회사 전체가
     // 공유하는 단일 데이터라서 위 per-profile data가 아니라 shared 쪽에 실어 보냄(readSharedClients/readSharedPersonalInfo 참고)
-    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, notificationLog: sharedNotificationLog, notificationReadState: sharedNotificationReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta, filingTargets: sharedFilingTargets, filingCycles: sharedFilingCycles, autoPhrases: sharedAutoPhrases, itFilingStatus: sharedIncomeTaxFilingStatus, vatFilingTargets: sharedVatFilingTargets, vatReviewFigures: sharedVatReviewFigures, clients: readSharedClients(), personalInfo: readSharedPersonalInfo(), trash: sharedTrash, lunchLimitHistory: sharedLunchLimitHistory }
+    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, notificationLog: sharedNotificationLog, notificationReadState: sharedNotificationReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, approvalReadState: sharedApprovalReadState, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta, filingTargets: sharedFilingTargets, filingCycles: sharedFilingCycles, autoPhrases: sharedAutoPhrases, itFilingStatus: sharedIncomeTaxFilingStatus, vatFilingTargets: sharedVatFilingTargets, vatReviewFigures: sharedVatReviewFigures, clients: readSharedClients(), personalInfo: readSharedPersonalInfo(), trash: sharedTrash, lunchLimitHistory: sharedLunchLimitHistory }
   };
 }
 
@@ -20439,6 +20507,7 @@ async function gdrivePull(){
       if(merged.shared.reviewStatus !== undefined) localStorage.setItem('worklog_shared_reviewstatus', JSON.stringify(merged.shared.reviewStatus));
       if(merged.shared.filingHelp !== undefined) localStorage.setItem('worklog_shared_filinghelp', JSON.stringify(merged.shared.filingHelp));
       if(merged.shared.approvals !== undefined) localStorage.setItem('worklog_shared_approvals', JSON.stringify(merged.shared.approvals));
+      if(merged.shared.approvalReadState !== undefined) localStorage.setItem('worklog_shared_approval_read', JSON.stringify(merged.shared.approvalReadState));
       if(merged.shared.reviewFigures !== undefined) localStorage.setItem('worklog_shared_reviewfigures', JSON.stringify(merged.shared.reviewFigures));
       if(merged.shared.reviewMeta !== undefined) localStorage.setItem('worklog_shared_reviewmeta', JSON.stringify(merged.shared.reviewMeta));
       if(merged.shared.filingTargets !== undefined) localStorage.setItem('worklog_shared_filingtargets', JSON.stringify(merged.shared.filingTargets));
