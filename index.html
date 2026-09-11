@@ -1193,7 +1193,10 @@
   .workdays-box .hint{font-size:11.5px; color:var(--ink-soft); font-weight:500;}
 
   table{width:100%; border-collapse:collapse; background:var(--surface); border-radius:14px; overflow:hidden; box-shadow:0 1px 2px rgba(29,30,51,0.04); border:1px solid var(--border);}
-  thead th{text-align:left; font-size:11.5px; color:var(--indigo-deep); font-weight:800; padding:10px 12px; background:var(--indigo-bg);}
+  /* 표 머리글(헤더)이 진한 인디고톤(보라 배경+파란 글자)이라 시선이 데이터보다 헤더에 먼저 꽂힌다는 의견 -
+     차분한 무채색 회색으로 바꿔서, 눈이 헤더가 아니라 실제 데이터(문서 제목 등)로 먼저 가도록 함.
+     앱 전체 모든 표 헤더에 적용되는 공용 규칙이라 한 곳만 바꾸면 전부 반영됨 */
+  thead th{text-align:left; font-size:11.5px; color:#4B5563; font-weight:800; padding:10px 12px; background:#F9FAFB;}
   tbody td{padding:10px 12px; font-size:13px; border-top:1px solid var(--border);}
   /* 거래처 목록 등 표에서 지금 마우스가 올라가 있는 줄이 어디인지 한눈에 보이도록 행 전체에 은은한 음영을 줌 */
   tbody tr:hover td{background:rgba(91,95,239,0.055);}
@@ -17547,12 +17550,16 @@ document.querySelectorAll('.approval-doc-btn').forEach(btn=>{
 // 결재자가 한 번이라도 열어보면(openApprovalDetailModal에서 자동 전환) "검토중"으로, 승인되면 "승인완료"로 표기함
 // 재기안(resubmitApprovalDraft/편집 후 재상신)으로 반려·회수 상태에서 다시 "기안"으로 돌아온 문서는, 결재자가
 // 이 문서를 예전에 한 번 반려했었다는 걸 알아챌 수 있게 상태 배지 옆에 "재기안" 표를 따로 붙여줌(item.resubmitCount)
+// 결재 상태 칩 색 - "신호등" 규칙으로 통일함: 승인=초록(성공), 검토중/상신=노랑(진행중), 반려=빨강(주의),
+// 회수·임시저장=회색(비활성). 예전엔 승인완료가 tag-grant(노란톤), 검토중이 tag-usage(코랄/빨간톤)라
+// 승인이 "진행중"처럼, 검토중이 "반려"처럼 보일 수 있었음 - 이 컴포넌트에서만 색을 직접 지정해서 바로잡음
+// (tag-grant/tag-usage 클래스 자체는 앱 다른 화면에서도 쓰이므로 거기엔 영향 주지 않음)
 function approvalStatusTagHtml(status, ctx, resubmitCount){
   const resubmitBadge = (resubmitCount && (status==='기안'||status==='검토중')) ? ` <span style="font-size:9.5px; font-weight:800; color:var(--indigo-deep); background:var(--indigo-bg); padding:1px 6px; border-radius:8px; vertical-align:1px;">재기안${resubmitCount>1?' ×'+resubmitCount:''}</span>` : '';
   if(status === '임시저장') return `<span class="tag" style="background:var(--bg2, #E5E7EB); color:var(--ink-soft);">임시저장</span>`;
-  if(status === '승인') return `<span class="tag tag-grant">승인완료</span>` + resubmitBadge;
+  if(status === '승인') return `<span class="tag" style="background:var(--mint-bg); color:var(--mint);">승인완료</span>` + resubmitBadge;
   if(status === '반려') return `<span class="tag" style="background:#FEE2E2; color:#B91C1C;">반려</span>`;
-  if(status === '검토중') return `<span class="tag tag-usage">검토중</span>` + resubmitBadge;
+  if(status === '검토중') return `<span class="tag" style="background:var(--amber-bg); color:var(--amber);">검토중</span>` + resubmitBadge;
   // 회수: 기안자가 스스로 상신을 취소한 상태(반려처럼 다시 기안할 수 있지만, 결재자의 반려가 아니므로
   // 색을 구분해서 슬레이트 톤으로 표시함) / 삭제: 관리자·기안자가 완전히 지운 문서(전체이력엔 그대로 남김)
   if(status === '회수') return `<span class="tag" style="background:#E2E8F0; color:#475569;">회수</span>`;
@@ -17630,11 +17637,13 @@ function approvalDocTypeChipStyle(docType){
   const c = APPROVAL_DOCTYPE_CHIP_COLORS[docType] || { bg:'var(--bg)', color:'var(--ink-soft)' };
   return `background:${c.bg}; color:${c.color};`;
 }
+// 선택 안 된 칩까지 전부 인디고 테두리로 두르면 시선이 분산되고 선이 많아 산만해 보인다는 의견 -
+// 선택된 칩만 진한 색으로 눈에 띄게 두고, 나머지는 테두리 없이 옅은 회색 배경+회색 글자로 존재감을 낮춤
 function approvalDocTypeChipsHtml(bucket){
   const cur = approvalDocTypeFilter[bucket] || '전체';
   const opts = ['전체', ...APPROVAL_DOC_TYPES];
   return `<div class="approval-doctype-chips" data-bucket="${bucket}" style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-bottom:10px;">
-    ${opts.map(t=>`<button type="button" class="del-btn approval-doctype-chip-btn${t===cur?' active':''}" data-doctype="${escHtml(t)}" style="${t===cur?'background:var(--indigo); color:#fff; border:1.5px solid var(--indigo);':'background:var(--indigo-bg); color:var(--indigo-deep); border:1.5px solid var(--indigo);'}">${escHtml(t)}</button>`).join('')}
+    ${opts.map(t=>`<button type="button" class="del-btn approval-doctype-chip-btn${t===cur?' active':''}" data-doctype="${escHtml(t)}" style="${t===cur?'background:var(--indigo); color:#fff; border:1.5px solid var(--indigo);':'background:var(--bg2, #F1F2F6); color:var(--ink-soft); border:1.5px solid transparent;'}">${escHtml(t)}</button>`).join('')}
   </div>`;
 }
 function bindApprovalDocTypeChips(container, onChange){
@@ -17746,7 +17755,9 @@ function approvalTableHeaderHtml(){
   // 수 있는 "문서제목"이 남는 공간을 다 가져가도록 폭을 넓힘(표 자체는 table-layout:fixed로 렌더링부에서 고정함)
   // 진행상황 칸은 "승인완료" 같은 상태 칩 하나만 나올 때도 있지만, 재기안된 문서는 그 옆에 "재기안" 칩이
   // 하나 더 붙어서 칩 두 개가 나란히 나올 수 있음 - 그런 경우까지 감안해서 넉넉하게 폭을 줌
-  return `<tr><th style="${c} width:100px;">문서종류</th><th style="${c} width:88px;">기안일</th><th style="${c} width:64px;">기안자</th><th style="${c}">문서제목</th><th style="${c} width:64px;">결재자</th><th style="${c} width:128px;">진행상황</th><th style="${c} width:186px;">관리</th></tr>`;
+  // 기안일 칸이 88px일 땐 "2026. 9. 11." 같은 날짜가 다 안 들어가 "2026. 9..."처럼 잘려 보이는 문제가 있었음 -
+  // 118px로 넓혀서 날짜가 온전히 다 보이게 함
+  return `<tr><th style="${c} width:100px;">문서종류</th><th style="${c} width:118px;">기안일</th><th style="${c} width:64px;">기안자</th><th style="${c}">문서제목</th><th style="${c} width:64px;">결재자</th><th style="${c} width:128px;">진행상황</th><th style="${c} width:186px;">관리</th></tr>`;
 }
 // bucket별로 다른 관리 버튼 구성 - 기안함/전체이력: 보기(+삭제), 결재함: 보기(+삭제), 기안함(mine): 보기(+회수),
 // 반려함: 보기+재기안, 임시저장함: 보기+(재)기안+삭제
