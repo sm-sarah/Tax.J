@@ -1202,10 +1202,10 @@
   tbody tr:hover td{background:rgba(91,95,239,0.055);}
   #clientsRegularListWrap tbody tr:hover td, #clientsOtherListWrp tbody tr:hover td,
   #clientsOtherListWrap tbody tr:hover td, #clientsTerminatedListWrap tbody tr:hover td{background:rgba(91,95,239,0.08);}
-  /* 결재 표의 "삭제" 아이콘처럼 되돌리기 어려운 동작은 평소엔 옅게 있다가, 그 줄에 마우스를 올렸을 때만
-     또렷해지게 함(완전히 숨기지는 않음 - 모바일 등 hover가 없는 환경에서도 항상 눌러서 쓸 수 있어야 하므로) */
-  .approval-action-danger{ opacity:0.5; transition:opacity .15s; }
-  tbody tr:hover .approval-action-danger{ opacity:1; }
+  /* 결재 표의 "삭제" 아이콘처럼 되돌리기 어려운 동작은 평소엔 완전히 안 보이다가, 그 줄에 마우스를
+     올렸을 때만 나타나게 함(요청받은 방식) - pointer-events도 같이 꺼서 숨어있는 동안엔 실수로도 안 눌림 */
+  .approval-action-danger{ opacity:0; pointer-events:none; transition:opacity .15s; }
+  tbody tr:hover .approval-action-danger{ opacity:1; pointer-events:auto; }
   /* 기장거래처 표는 가로 구분선만으론 열 구분이 잘 안 보인다는 피드백 - 순번~수임시작일 구간(개인정보 상세/아이콘 열 제외)에만 옅은 세로선 추가 */
   .cvb{border-right:1px solid var(--border);}
   /* overflow-x:auto 하나만 주면 브라우저가 overflow-y도 자동으로 auto 취급해서 이 박스 자체가 별도의 스크롤 컨테이너가 되고,
@@ -9882,7 +9882,9 @@ function activeEmployeeNamesForCi(){
   return getProfiles().map(p=>{
     const snap = readProfileRaw(p.id, 'settings') || {};
     return { name: (p.name||'').trim(), position: p.position || '', employmentStatus: snap.employmentStatus || '근무중' };
-  }).filter(p=> p.name && p.employmentStatus !== '퇴사');
+  // 이름이 "관리자"인 프로필은 실제로 "직원 등록"한 직원이 아니라, 직원등록 없이 관리자 계정으로만 로그인해서
+  // 생긴 프로필(예전 방식/편의상 이름을 "관리자"로 써둔 경우)이라 팀원별 정보 카드에는 안 나오게 제외함
+  }).filter(p=> p.name && p.name !== '관리자' && p.employmentStatus !== '퇴사');
 }
 
 async function renderCompanyInfoTeam(wrapId, generalWrapId, showControls){
@@ -9928,7 +9930,7 @@ async function renderCompanyInfoTeam(wrapId, generalWrapId, showControls){
     const bodyHtml = (infoHtml + acctHtml) || `<div class="empty-state" style="padding:10px;">등록된 항목이 없습니다.</div>`;
     const titleLabel = p.title ? `${escHtml(p.person)} <span style="font-weight:600; color:var(--ink-soft); font-size:12px;">(${escHtml(p.title)})</span>` : escHtml(p.person);
     return `
-    <div style="background:var(--bg); border-radius:12px; padding:14px 16px; margin-bottom:14px;">
+    <div style="background:var(--indigo-bg); border-radius:12px; padding:14px 16px; margin-bottom:14px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
         <span style="font-size:13px; font-weight:800; color:var(--navy);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-1a7 7 0 0 1 14 0v1"></path></svg> ${titleLabel}</span>
       </div>
@@ -17805,34 +17807,33 @@ const APPROVAL_ACTION_ICON_SVG = {
   edit: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>'
 };
 // 공용 아이콘 버튼 - 텍스트 라벨 대신 아이콘만 넣고 title로 말풍선 툴팁을 붙임(스크린리더/설명용)
-// danger:true(삭제 등 되돌리기 어려운 동작)면 평소엔 옅게 있다가 그 줄에 마우스를 올렸을 때만 또렷해지는
-// approval-action-danger 클래스를 붙임(완전히 숨기지는 않음 - 모바일 등 hover가 없는 환경에서도 계속 눌러야 하므로)
+// danger:true(삭제 등 되돌리기 어려운 동작)면 평소엔 완전히 투명하게 숨어 있다가, 그 줄에 마우스를
+// 올렸을 때만 나타남(approval-action-danger 클래스, CSS는 renderApprovalTable 위쪽 참고)
 function approvalActionIconBtn(cls, dataId, icon, title, bg, fg, danger){
   return `<button type="button" class="del-btn ${cls}${danger?' approval-action-danger':''}" data-id="${dataId}" title="${escHtml(title)}" aria-label="${escHtml(title)}" style="width:28px; height:28px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:9px; background:${bg}; color:${fg};">${APPROVAL_ACTION_ICON_SVG[icon]}</button>`;
 }
-// bucket별로 다른 관리 버튼 구성 - 기안함/전체이력: 보기(+삭제), 결재함: 보기(+삭제), 기안함(mine): 보기(+회수),
-// 반려함: 보기+재기안, 임시저장함: 보기+(재)기안+삭제
-// 텍스트 버튼("보기"/"삭제" 등) 대신 아이콘 버튼으로 바꿔서 관리 칸이 덜 복잡해 보이게 함(제미나이 피드백 반영) -
-// 다만 "행 전체 클릭으로 열기"는 넣지 않음: 지금도 "보기" 아이콘이 펼치기/닫기 토글 역할을 그대로 하고 있어서,
-// 행 클릭까지 얹으면 오히려 다른 버튼(삭제/회수 등) 클릭과 헷갈릴 수 있음
+// bucket별로 다른 관리 버튼 구성 - 기안함/전체이력: 삭제, 결재함: 삭제, 기안함(mine): 회수, 반려함: 재기안,
+// 임시저장함: (재)기안+삭제
+// "보기" 아이콘은 없앰 - 행 아무 곳이나 클릭하면 문서 상세가 열리도록 바뀌어서(renderApprovalTable의
+// tr 클릭 바인딩 참고) 따로 보기 버튼을 둘 필요가 없어짐. 삭제처럼 되돌리기 어려운 동작만 평소엔 숨겨뒀다가
+// 그 줄에 마우스를 올렸을 때 나타나게 함
 function approvalRowActionsHtml(item, bucket, expanded){
-  const viewBtn = approvalActionIconBtn('approval-view-btn', item.id, expanded?'close':'eye', expanded?'닫기':'보기', expanded?'var(--indigo)':'var(--bg2, #E5E7EB)', expanded?'#fff':'var(--ink-soft)');
   if(bucket === 'inbox' || bucket === 'all'){
     const canAdminDelete = bucket==='all' && typeof isCurrentUserAdmin!=='undefined' && isCurrentUserAdmin && item.status!=='삭제';
     const canInboxDelete = bucket==='inbox' && item.status!=='삭제';
-    return viewBtn + ((canAdminDelete||canInboxDelete) ? approvalActionIconBtn('approval-delete-btn', item.id, 'trash', '삭제', 'var(--coral-bg)', 'var(--coral)', true) : '');
+    return (canAdminDelete||canInboxDelete) ? approvalActionIconBtn('approval-delete-btn', item.id, 'trash', '삭제', 'var(--coral-bg)', 'var(--coral)', true) : '';
   }
   if(bucket === 'mine'){
-    return viewBtn + ((item.status==='기안'||item.status==='검토중') ? approvalActionIconBtn('approval-recall-btn', item.id, 'undo', '회수', 'var(--bg2, #E5E7EB)', 'var(--ink-soft)') : '');
+    return (item.status==='기안'||item.status==='검토중') ? approvalActionIconBtn('approval-recall-btn', item.id, 'undo', '회수', 'var(--bg2, #E5E7EB)', 'var(--ink-soft)') : '';
   }
   if(bucket === 'rejected'){
-    return viewBtn + approvalActionIconBtn('approval-resubmit-btn', item.id, 'edit', '재기안', 'var(--indigo-bg)', 'var(--indigo-deep)');
+    return approvalActionIconBtn('approval-resubmit-btn', item.id, 'edit', '재기안', 'var(--indigo-bg)', 'var(--indigo-deep)');
   }
   if(bucket === 'draft'){
-    return viewBtn + approvalActionIconBtn('approval-edit-draft-btn', item.id, 'edit', '(재)기안', 'var(--indigo-bg)', 'var(--indigo-deep)') +
+    return approvalActionIconBtn('approval-edit-draft-btn', item.id, 'edit', '(재)기안', 'var(--indigo-bg)', 'var(--indigo-deep)') +
       approvalActionIconBtn('approval-delete-draft-btn', item.id, 'trash', '삭제', 'var(--coral-bg)', 'var(--coral)', true);
   }
-  return viewBtn;
+  return '';
 }
 // 공용 렌더러 - 검색+칩+표+페이지네이션을 그리고, "보기"를 누른 문서의 상세 내용은 각 줄 바로 아래가 아니라
 // (페이지 안에서) 표/페이지네이션 전부 아래, 목록의 가장 밑에 한 번만 펼쳐짐(공지사항처럼)
@@ -17865,13 +17866,16 @@ function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
     // 행 사이 구분선을 다른 표보다 좀 더 또렷하게 줌(문서제목 칸만 왼쪽 정렬이라 다른 칸과 정렬이 달라
     // 줄이 헷갈릴 수 있어서, 구분선으로 각 문서 줄을 눈에 잘 띄게 나눠줌)
     const rowBorder = 'border-top:1px solid rgba(29,30,51,0.16);';
-    return `<tr${expanded?' style="background:var(--indigo-bg);"':''}>
+    // 행 아무 곳이나 클릭하면 문서가 열리도록 바뀌어서, 행 전체에 클릭 가능한 느낌(커서)을 줌
+    return `<tr class="approval-row-clickable" data-id="${item.id}" style="cursor:pointer; ${expanded?'background:var(--indigo-bg);':''}">
       <td style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}"><span class="tag" style="${approvalDocTypeChipStyle(item.docType||'일반')}">${escHtml(item.docType||'일반')}</span></td>
       <td class="num" style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}">${escHtml(approvalDateShort(item.createdAt))}</td>
       <td style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}">${escHtml(resolveNameByEmail(item.drafterEmail) || item.drafterName || '')}</td>
       <td style="text-align:left; white-space:normal; word-break:break-word; ${rowBorder}">
-        <div style="font-size:10.5px; font-weight:700; color:var(--ink-soft); letter-spacing:0.02em; margin-bottom:2px;">${escHtml(approvalDocNumber(item))}</div>
-        <div style="font-weight:700;">${escHtml(item.title)}</div>
+        <div style="display:flex; align-items:center; gap:10px; width:100%;">
+          <div style="flex:0 0 auto; padding-right:10px; border-right:1px solid rgba(29,30,51,0.14); font-size:10.5px; font-weight:700; color:var(--ink-soft); letter-spacing:0.02em; white-space:nowrap;">${escHtml(approvalDocNumber(item))}</div>
+          <div style="flex:1 1 auto; min-width:0; font-weight:700;">${escHtml(item.title)}</div>
+        </div>
       </td>
       <td style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}">${escHtml(resolveNameByEmail(item.approverEmail) || item.approverName || '')}</td>
       <td style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}">${approvalStatusTagHtml(item.status, statusCtx, item.resubmitCount)}</td>
@@ -17904,9 +17908,12 @@ function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
   bindApprovalDocTypeChips(wrap.querySelector('.approval-doctype-chips'), onChange);
   bindApprovalSearchBar(wrap.querySelector('.approval-search-bar'), onChange);
   bindApprovalPagination(wrap.querySelector('.approval-pagination'), onChange);
-  wrap.querySelectorAll('.approval-view-btn').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      const id = btn.dataset.id;
+  // "보기" 버튼 대신 행 전체를 누르면 문서가 열리게 함 - 단, 행 안의 삭제/회수/재기안 같은 관리 버튼을
+  // 누른 클릭까지 행 클릭으로 겹쳐 처리되면 안 되므로, 클릭된 지점이 버튼 안이면 무시함
+  wrap.querySelectorAll('.approval-row-clickable').forEach(tr=>{
+    tr.addEventListener('click', async (e)=>{
+      if(e.target.closest('button')) return;
+      const id = tr.dataset.id;
       approvalExpandedId = (approvalExpandedId === id) ? null : id;
       if(approvalExpandedId === id){
         const item = (sharedApprovals||[]).find(a=>a.id===id);
