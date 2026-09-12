@@ -17496,6 +17496,23 @@ const CORP_TAX_BRACKETS_2026 = [
   { range:'200억원 초과 ~ 3,000억원 이하', rate:'22%', localRate:'24.2%' },
   { range:'3,000억원 초과', rate:'25%', localRate:'27.5%' },
 ];
+// 종합소득세율표(누진공제 방식, incomeTaxByBracket과 동일한 구간) - 지방소득세는 국세의 10%라 그만큼 곱해서 실효세율로도 표기함
+const INCOME_TAX_BRACKETS = [
+  { range:'1,400만원 이하', rate:'6%', localRate:'6.6%' },
+  { range:'1,400만원 초과 ~ 5,000만원 이하', rate:'15%', localRate:'16.5%' },
+  { range:'5,000만원 초과 ~ 8,800만원 이하', rate:'24%', localRate:'26.4%' },
+  { range:'8,800만원 초과 ~ 1억5,000만원 이하', rate:'35%', localRate:'38.5%' },
+  { range:'1억5,000만원 초과 ~ 3억원 이하', rate:'38%', localRate:'41.8%' },
+  { range:'3억원 초과 ~ 5억원 이하', rate:'40%', localRate:'44.0%' },
+  { range:'5억원 초과 ~ 10억원 이하', rate:'42%', localRate:'46.2%' },
+  { range:'10억원 초과', rate:'45%', localRate:'49.5%' },
+];
+function taxBracketsFor(entityKind){
+  return entityKind === '법인세' ? CORP_TAX_BRACKETS_2026 : INCOME_TAX_BRACKETS;
+}
+function taxBracketTitleFor(entityKind){
+  return entityKind === '법인세' ? '2026년 귀속 법인세율표' : '종합소득세율표(누진공제)';
+}
 let plFsClientId = null;
 function profitLossEntry(clientId, year){
   sharedProfitLossReports[clientId] = sharedProfitLossReports[clientId] || {};
@@ -17565,41 +17582,72 @@ function diffPlFields(prevFields, nextFields){
   });
   return changes;
 }
-// 법인세율표를 그대로 출력물에 넣을 수 있게 표 HTML로도 준비함(거래처에 보낼 출력물용)
-function corpTaxBracketTableHtml(){
-  const rows = CORP_TAX_BRACKETS_2026.map(b=>`<tr><td class="cvb">${escHtml(b.range)}</td><td class="num cvb">${escHtml(b.rate)}</td><td class="num cvb">${escHtml(b.localRate)}</td></tr>`).join('');
+// 세율표(법인세/종합소득세 공용)를 그대로 출력물에 넣을 수 있게 표 HTML로도 준비함(거래처에 보낼 출력물용)
+function corpTaxBracketTableHtml(entityKind){
+  const rows = taxBracketsFor(entityKind).map(b=>`<tr><td class="cvb">${escHtml(b.range)}</td><td class="num cvb">${escHtml(b.rate)}</td><td class="num cvb">${escHtml(b.localRate)}</td></tr>`).join('');
   return `<div style="margin-top:20px;">
-    <div style="font-size:12px; font-weight:800; color:var(--indigo-deep); margin-bottom:8px;">2026년 귀속 법인세율표</div>
+    <div style="font-size:12px; font-weight:800; color:var(--indigo-deep); margin-bottom:8px;">${escHtml(taxBracketTitleFor(entityKind))}</div>
     <table><thead><tr><th class="cvb">과세표준</th><th class="cvb">세율(국세)</th><th class="cvb">지방소득세 포함 실효세율</th></tr></thead><tbody>${rows}</tbody></table>
   </div>`;
 }
 // 최근 3개년(선택연도 기준 -2년~당해연도) 비교표 - 원본 엑셀에 있던 연도별 트렌드 비교를 간단한 형태로 재현함.
-// 저장된 값이 있는 연도만 채워지고, 없는 연도는 "-"로 비워둠
-function plCompareTableHtml(clientId, year, entityKind){
+// 저장된 값이 있는 연도만 채워지고, 없는 연도는 "-"로 비워둠. 원본 서식에 걸려있던 전년대비 증감(수식) 표시도 재현함
+const PL_COMPARE_ROWS = [
+  { label:'매출액', key:'revenue', raw:true },
+  { label:'매출총이익', key:'grossProfit' },
+  { label:'영업이익', key:'operatingProfit' },
+  { label:'당기순이익', key:'netIncome' },
+  { label:'과세표준', key:'taxBase' },
+  { label:'예상산출세액', key:'calcTax' },
+  { label:'최종 납부할 (예상)세액', key:'finalPayable' },
+];
+function plCompareData(clientId, year, entityKind){
   const years = [Number(year)-2, Number(year)-1, Number(year)];
-  const rows = [
-    { label:'매출액', key:'revenue', raw:true },
-    { label:'매출총이익', key:'grossProfit' },
-    { label:'영업이익', key:'operatingProfit' },
-    { label:'당기순이익', key:'netIncome' },
-    { label:'과세표준', key:'taxBase' },
-    { label:'예상산출세액', key:'calcTax' },
-    { label:'최종 납부할 (예상)세액', key:'finalPayable' },
-  ];
   const dataByYear = years.map(y=>{
     const e = sharedProfitLossReports[clientId] && sharedProfitLossReports[clientId][String(y)];
     if(!e) return null;
     return { revenue:Number(e.revenue)||0, ...plCalc(e, e.entityKind || entityKind) };
   });
+  return { years, dataByYear };
+}
+// 직전년도 대비 증감을 화살표+금액으로 표시(증가:빨강 ▲ / 감소:파랑 ▼) - 두 값이 다 있을 때만 계산함
+function yoyChangeHtml(prevVal, curVal){
+  if(prevVal == null || curVal == null) return '<span style="color:var(--ink-soft);">-</span>';
+  const diff = curVal - prevVal;
+  if(diff === 0) return `<span style="color:var(--ink-soft);">증감없음</span>`;
+  const up = diff > 0;
+  return `<span style="color:${up?'#D1345B':'#2F6FE4'}; font-weight:700;">${up?'▲':'▼'} ${Math.abs(diff).toLocaleString()}</span>`;
+}
+function plCompareTableHtml(clientId, year, entityKind){
+  const { years, dataByYear } = plCompareData(clientId, year, entityKind);
   const header = years.map(y=>`<th class="cvb">${y}년</th>`).join('');
-  const bodyRows = rows.map(row=>{
+  const prevD = dataByYear[1], curD = dataByYear[2];
+  const bodyRows = PL_COMPARE_ROWS.map(row=>{
     const cells = dataByYear.map(d=>`<td class="num cvb">${d ? (d[row.key]||0).toLocaleString() : '-'}</td>`).join('');
-    return `<tr><td class="cvb" style="font-weight:700;">${escHtml(row.label)}</td>${cells}</tr>`;
+    const yoy = (prevD && curD) ? yoyChangeHtml(prevD[row.key]||0, curD[row.key]||0) : '<span style="color:var(--ink-soft);">-</span>';
+    return `<tr><td class="cvb" style="font-weight:700;">${escHtml(row.label)}</td>${cells}<td class="num cvb">${yoy}</td></tr>`;
   }).join('');
   return `<div style="margin-top:28px;">
     <div style="font-size:12px; font-weight:800; color:var(--indigo-deep); margin-bottom:8px;">최근 3개년 비교</div>
-    <table><thead><tr><th class="cvb">구분</th>${header}</tr></thead><tbody>${bodyRows}</tbody></table>
+    <table><thead><tr><th class="cvb">구분</th>${header}<th class="cvb">전년대비</th></tr></thead><tbody>${bodyRows}</tbody></table>
   </div>`;
+}
+// 출력물(거래처 발송용)에도 최근 3개년 비교표를 그대로 넣음 - 인쇄용 스타일이라 cvb/num 클래스 없이 순수 table로 만듦
+function plComparePrintTableHtml(clientId, year, entityKind){
+  const { years, dataByYear } = plCompareData(clientId, year, entityKind);
+  const header = years.map(y=>`<th>${y}년</th>`).join('');
+  const prevD = dataByYear[1], curD = dataByYear[2];
+  const bodyRows = PL_COMPARE_ROWS.map(row=>{
+    const cells = dataByYear.map(d=>`<td style="text-align:right;">${d ? (d[row.key]||0).toLocaleString() : '-'}</td>`).join('');
+    const diffText = (prevD && curD) ? (()=>{
+      const diff = (curD[row.key]||0) - (prevD[row.key]||0);
+      if(diff === 0) return '증감없음';
+      return `${diff>0?'▲':'▼'} ${Math.abs(diff).toLocaleString()}`;
+    })() : '-';
+    return `<tr><td style="font-weight:700;">${escHtml(row.label)}</td>${cells}<td style="text-align:right;">${diffText}</td></tr>`;
+  }).join('');
+  return `<h3>최근 3개년 비교</h3>
+    <table><thead><tr><th>구분</th>${header}<th>전년대비</th></tr></thead><tbody>${bodyRows}</tbody></table>`;
 }
 function plResultRowHtml(label, value, opts){
   opts = opts || {};
@@ -17641,7 +17689,7 @@ function renderProfitLossBody(clientId, year, entityKind){
         ${plResultRowHtml('최종 납부할 (예상)세액', r.finalPayable, {key:'finalPayable', strong:true})}
       </div>
     </div>
-    ${entityKind === '법인세' ? corpTaxBracketTableHtml() : ''}
+    ${corpTaxBracketTableHtml(entityKind)}
     ${plCompareTableHtml(clientId, year, entityKind)}`;
   wrap.querySelectorAll('.pl-money-input').forEach(inp=>{
     inp.addEventListener('input', ()=>{
@@ -17680,18 +17728,22 @@ function populatePlYearSelect(clientId, selectedYear){
   sel.innerHTML = sortedYears.map(y=>`<option value="${y}">${y}년</option>`).join('');
   sel.value = sortedYears.includes(String(selectedYear)) ? String(selectedYear) : String(nowY);
 }
+// 법인/개인 구분 없이 "OO년 귀속 손익보고서"로 통일된 표기(화면 배지, 출력물 부제)에 씀
+function updatePlBadge(year){
+  const badgeEl = document.getElementById('plFsTypeBadge');
+  if(badgeEl) badgeEl.textContent = `${year}년 귀속 손익보고서`;
+}
 function openProfitLossReport(clientId, entityKind, year){
   if(!clientId) return;
   plFsClientId = clientId;
   const client = bookkeepingClientList().find(c=>c.id===clientId);
   const nameEl = document.getElementById('plFsClientName');
   if(nameEl) nameEl.textContent = client ? client.name : '';
-  const badgeEl = document.getElementById('plFsTypeBadge');
-  if(badgeEl) badgeEl.textContent = `${entityKind} 손익보고서`;
   populatePlYearSelect(clientId, year);
   const sel = document.getElementById('plFsYearSelect');
   if(sel) sel.dataset.entityKind = entityKind;
   const y = sel ? sel.value : String(year || todayStr().slice(0,4));
+  updatePlBadge(y);
   renderProfitLossBody(clientId, y, entityKind);
   setPlDirty(false);
   const historyPanel = document.getElementById('plHistoryWrap');
@@ -17705,6 +17757,7 @@ function closeProfitLossReport(){
 document.getElementById('plFsYearSelect')?.addEventListener('change', (e)=>{
   if(!plFsClientId) return;
   renderProfitLossBody(plFsClientId, e.target.value, e.target.dataset.entityKind);
+  updatePlBadge(e.target.value);
   if(document.getElementById('plHistoryWrap')?.style.display !== 'none') renderPlHistoryList();
 });
 document.getElementById('plFsCloseBtn')?.addEventListener('click', closeProfitLossReport);
@@ -17752,42 +17805,50 @@ document.getElementById('plFsRevertBtn')?.addEventListener('click', async ()=>{
 });
 // 손익보고서를 그대로 인쇄창으로 띄워서 거래처에 보낼 수 있게 함 - 지금 화면(저장 여부 상관없이 현재 입력값)
 // 기준으로 출력하는 버튼과, 수정이력의 각 시점 스냅샷을 그대로 출력하는 버튼 두 군데서 공용으로 씀
-function corpTaxBracketPrintTableHtml(){
-  const rows = CORP_TAX_BRACKETS_2026.map(b=>`<tr><td>${escHtml(b.range)}</td><td style="text-align:center;">${escHtml(b.rate)}</td><td style="text-align:center;">${escHtml(b.localRate)}</td></tr>`).join('');
-  return `<h3>2026년 귀속 법인세율표</h3>
+function corpTaxBracketPrintTableHtml(entityKind){
+  const rows = taxBracketsFor(entityKind).map(b=>`<tr><td>${escHtml(b.range)}</td><td style="text-align:center;">${escHtml(b.rate)}</td><td style="text-align:center;">${escHtml(b.localRate)}</td></tr>`).join('');
+  return `<h3>${escHtml(taxBracketTitleFor(entityKind))}</h3>
     <table><thead><tr><th>과세표준</th><th>세율(국세)</th><th>지방소득세 포함 실효세율</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
-function printProfitLossSnapshot(clientName, year, entityKind, fields, savedAt){
+function printProfitLossSnapshot(clientName, year, entityKind, fields, savedAt, clientId){
   const r = plCalc(fields, entityKind);
   const incomeLabel = entityKind === '법인세' ? '각사업연도소득금액' : '종합소득금액';
   const inputRows = PL_INPUT_FIELDS.map(f=>`<tr><td>${escHtml(f.label)}</td><td style="text-align:right;">${(Number(fields[f.key])||0).toLocaleString()}</td></tr>`).join('');
-  const resultRows = [
+  // 온스크린 계산결과 패널과 같은 위치(각사업연도소득금액/종합소득금액, 과세표준, 최종 납부할 세액)에 굵은 구분선을 넣어서
+  // 입력표와 결과표 경계, 결과표 안의 소계 경계가 화면에서 보던 것과 어긋나지 않게 함
+  const resultRowsSpec = [
     ['매출총이익', r.grossProfit], ['영업이익', r.operatingProfit], ['당기순이익', r.netIncome],
-    [incomeLabel, r.totalIncome], ['과세표준', r.taxBase], ['예상산출세액', r.calcTax], ['최종결정세액', r.decidedTax],
-    ['최종종합소득세액(국세)', r.finalNationalTax], ['지방소득세(10%)', r.localTax], ['최종 납부할 (예상)세액', r.finalPayable],
-  ].map(([l,v])=>`<tr><td>${escHtml(l)}</td><td style="text-align:right;">${v.toLocaleString()}${v<0?' (환급)':''}</td></tr>`).join('');
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escHtml(clientName)} ${escHtml(String(year))}년 ${escHtml(entityKind)} 손익보고서</title>
+    [incomeLabel, r.totalIncome, true], ['과세표준', r.taxBase, true], ['예상산출세액', r.calcTax], ['최종결정세액', r.decidedTax],
+    ['최종종합소득세액(국세)', r.finalNationalTax], ['지방소득세(10%)', r.localTax], ['최종 납부할 (예상)세액', r.finalPayable, true],
+  ];
+  const resultRows = resultRowsSpec.map(([l,v,strong], i)=>{
+    const style = strong ? ' style="border-top:2px solid #1D1E33; font-weight:800;"' : '';
+    return `<tr${style}><td${style}>${escHtml(l)}</td><td${style} style="text-align:right;${strong?'border-top:2px solid #1D1E33; font-weight:800;':''}">${v.toLocaleString()}${v<0?' (환급)':''}</td></tr>`;
+  }).join('');
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escHtml(clientName)} ${escHtml(String(year))}년 귀속 손익보고서</title>
     <style>
       body{ font-family:'Pretendard','Malgun Gothic',sans-serif; padding:28px; color:#1D1E33; }
-      h2{ margin:0 0 4px; } h3{ margin:26px 0 8px; font-size:14px; }
-      .meta{ color:#6B7280; font-size:12px; margin-bottom:20px; }
-      table{ border-collapse:collapse; width:100%; margin-bottom:8px; }
+      h2{ margin:0; font-size:20px; text-align:center; } h3{ margin:26px 0 8px; font-size:14px; }
+      .sub{ text-align:center; font-size:13px; color:#6B7280; font-weight:600; margin:6px 0 24px; }
+      table{ border-collapse:collapse; width:100%; }
       td, th{ border:1px solid #D8DAE5; padding:7px 12px; font-size:13px; }
       th{ background:#F1EFFB; }
     </style></head>
     <body>
-      <h2>${escHtml(clientName)} - ${escHtml(String(year))}년 ${escHtml(entityKind)} 손익보고서</h2>
-      <div class="meta">${savedAt ? '저장일시: '+escHtml(savedAt) : '현재 입력 기준(아직 저장 전 값 포함)'}</div>
-      <table><tbody>${inputRows}</tbody></table>
-      <table><tbody>${resultRows}</tbody></table>
-      ${entityKind === '법인세' ? corpTaxBracketPrintTableHtml() : ''}
+      <h2>${escHtml(clientName)}</h2>
+      <div class="sub">${escHtml(String(year))}년 귀속 손익보고서</div>
+      <table><tbody>${inputRows}${resultRows}</tbody></table>
+      ${corpTaxBracketPrintTableHtml(entityKind)}
+      ${clientId ? plComparePrintTableHtml(clientId, year, entityKind) : ''}
+      <script>window.onload = function(){ setTimeout(function(){ try{ window.print(); }catch(e){} }, 150); };<\/script>
     </body></html>`;
-  const w = window.open('', '_blank');
-  if(!w){ showCenterToast('팝업이 차단되어 출력창을 열 수 없어요. 브라우저 팝업 차단을 해제해주세요.'); return; }
-  w.document.write(html);
-  w.document.close();
-  w.focus();
-  setTimeout(()=>{ try{ w.print(); }catch(e){} }, 300);
+  try{
+    const blob = new Blob([html], { type:'text/html' });
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, '_blank');
+    if(!w){ showCenterToast('팝업이 차단되어 출력창을 열 수 없어요. 브라우저 팝업 차단을 해제해주세요.'); URL.revokeObjectURL(url); return; }
+    setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(e){} }, 60000);
+  }catch(e){ showCenterToast('출력창을 여는 중 오류가 발생했어요.'); }
 }
 document.getElementById('plFsPrintBtn')?.addEventListener('click', ()=>{
   if(!plFsClientId) return;
@@ -17795,7 +17856,7 @@ document.getElementById('plFsPrintBtn')?.addEventListener('click', ()=>{
   const year = sel.value, entityKind = sel.dataset.entityKind;
   const entry = profitLossEntry(plFsClientId, year);
   const client = bookkeepingClientList().find(c=>c.id===plFsClientId);
-  printProfitLossSnapshot(client ? client.name : '', year, entityKind, entry, null);
+  printProfitLossSnapshot(client ? client.name : '', year, entityKind, entry, null, plFsClientId);
 });
 // 수정이력 패널 토글 + 목록 렌더링 - 저장할 때마다 남긴 스냅샷을 최신순으로 보여주고, 이전 스냅샷과 달라진
 // 항목을 칩으로 표시함(무엇이 바뀌었는지 한눈에 보이도록). 각 이력의 "출력" 버튼은 그 시점 값 그대로 인쇄함
@@ -17825,7 +17886,7 @@ function renderPlHistoryList(){
     btn.addEventListener('click', ()=>{
       const h = entry.history[Number(btn.dataset.idx)];
       if(!h) return;
-      printProfitLossSnapshot(client ? client.name : '', year, h.entityKind || entityKind, h.fields, h.savedAt);
+      printProfitLossSnapshot(client ? client.name : '', year, h.entityKind || entityKind, h.fields, h.savedAt, plFsClientId);
     });
   });
 }
