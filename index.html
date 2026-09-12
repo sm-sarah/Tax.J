@@ -1231,7 +1231,7 @@
      다른 표들과 달리 내부 스크롤(max-height)을 두지 않고 페이지 자체 스크롤로만 늘어나게 함. 다만 원천세 매월/반기/연간
      세부항목 열이 붙으면 표가 박스 폭보다 넓어질 수 있어서, 세로는 그대로 두고 가로만 이 박스 안에서 스크롤되게 함
      (그래야 표가 박스 밖으로 튀어나가 보이는 대신 박스 안에서 옆으로 스크롤됨) */
-  #filingStatusTableWrap .table-scroll, #reviewStatusTableWrap .table-scroll, #submitStatusTableWrap .table-scroll, #itAllTableWrap .table-scroll{ max-height:none; overflow-y:visible; overflow-x:auto; }
+  #filingStatusTableWrap .table-scroll, #reviewStatusTableWrap .table-scroll, #submitStatusTableWrap .table-scroll, #itAllTableWrap .table-scroll, #vatAllTableWrap .table-scroll{ max-height:none; overflow-y:visible; overflow-x:auto; }
   /* 기장/기타/해지거래처 표: "표 안에 또 스크롤이 생기지 말고, 이미 있는 바깥(페이지) 스크롤만 쓰고 싶다"는
      요청 - max-height로 박스 높이를 제한하고 overflow:auto를 주면 이 박스 자체가 내부 스크롤 컨테이너가
      되어버려서 요청과 반대로 동작하므로, 아예 이 박스에는 높이 제한도 overflow도 주지 않음(overflow:visible).
@@ -2737,16 +2737,8 @@
             <div class="home-submenu" id="homeWorkSubmenu" style="display:none;">
               <!-- 원천세: 신고대상/신고현황/검토표 세 화면을 하나로 합쳐서(원천세 통합) 갈래 없이 바로 이동함 -->
               <div class="home-submenu-item" data-approval-cat-goto="itall"><span>원천세</span></div>
-              <!-- 부가세: 신고대상(1기/2기 예정·확정 기수별)·신고현황·검토표 세 갈래 다 있음 -->
-              <div class="home-submenu-item" data-approval-cat-goto="target" data-target-type-goto="부가세">
-                <span style="flex:1;">부가세</span>
-                <button type="button" class="home-tile-expand-btn" data-expand-target="homeWorkVatSubmenu" title="세부 메뉴 펼치기/접기">▸</button>
-              </div>
-              <div class="home-submenu-sub" id="homeWorkVatSubmenu" style="display:none;">
-                <div class="home-submenu-leaf" data-approval-cat-goto="target" data-target-type-goto="부가세">신고대상</div>
-                <div class="home-submenu-leaf" data-approval-cat-goto="status" data-filing-type-goto="부가세">신고현황</div>
-                <div class="home-submenu-leaf" data-approval-cat-goto="review" data-review-type-goto="부가세">검토표</div>
-              </div>
+              <!-- 부가세: 신고대상/신고현황/검토표 세 화면을 하나로 합쳐서(부가세 통합) 갈래 없이 바로 이동함 -->
+              <div class="home-submenu-item" data-approval-cat-goto="vatall"><span>부가세</span></div>
               <!-- 법인세/종소세/결산: 아직 신고현황만 있어서 펼칠 하위메뉴 없이 바로 이동함 -->
               <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="법인세"><span>법인세</span></div>
               <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="종소세"><span>종소세</span></div>
@@ -3634,6 +3626,9 @@
           <button type="button" class="approval-cat-btn" data-approval-cat="itall"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="3" y1="10" x2="21" y2="10"></line></svg> 원천세</button>
         </div>
         <div class="approval-nav-branch">
+          <button type="button" class="approval-cat-btn" data-approval-cat="vatall"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="3" y1="10" x2="21" y2="10"></line></svg> 부가세</button>
+        </div>
+        <div class="approval-nav-branch">
           <button type="button" class="approval-cat-btn active" data-approval-cat="status"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path></svg> 신고현황</button>
           <div class="approval-subtype-branch" id="filingTypeToggle">
             <button type="button" class="filing-type-btn active" data-filing-type="원천세">원천세</button>
@@ -3681,6 +3676,74 @@
       </div>
 
       <div class="approval-panels-col">
+      <!-- 급여검증/납부세액검증(원천세)·신고검증(부가세) 전체화면 팝업 - 검토표(review) 화면 안에 있으면
+           다른 세목 화면(원천세 통합/부가세 통합)에서 열 때 조상 요소(.approval-panel[data-approval-cat="review"])가
+           display:none이라 팝업 자체도 화면에 그려지지 않는 문제가 있어서, 특정 세목 패널에 속하지 않는
+           이 위치(approval-panels-col 바로 아래, 모든 .approval-panel의 형제)로 옮김 -->
+        <!-- 급여검증/납부세액검증 팝업 - 12개월치를 스크롤 없이 한 화면에서 보려면 가로 폭은 넉넉해야 해서
+             뷰포트 가로폭은 거의 그대로 쓰되, 예전처럼 세로까지 꽉 채운 전체화면은 답답하다는 의견으로
+             세로 높이를 줄이고 화면 가운데로 오도록 바꿈(위아래로 여백이 생겨서 팝업이라는 느낌이 들게) -->
+        <div id="reviewItFullscreenOverlay" style="display:none; position:fixed; inset:0; z-index:900; background:rgba(15,16,30,0.6); padding:14px; align-items:center; justify-content:center;">
+          <div style="background:var(--bg); border-radius:16px; width:100%; max-width:1400px; height:88vh; margin:0 auto; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px -12px rgba(0,0,0,0.4);">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:14px 20px; border-bottom:1.5px solid var(--border); flex-shrink:0;">
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <span id="reviewItFsClientName" style="font-size:16.5px; font-weight:900; color:var(--navy);"></span>
+                <span id="reviewItFsSectionBadge" style="font-size:11px; font-weight:700; color:var(--indigo); background:var(--indigo-bg); border-radius:20px; padding:3px 10px;"></span>
+                <select id="reviewItFsYearSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:5px 7px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12px; font-weight:700;"></select>
+                <div id="reviewItFsMetaWrap" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:11.5px; color:var(--ink-soft);"></div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="hint" style="font-size:11px; margin:0;">숫자를 입력해도 자동 저장되지 않아요 - 저장 버튼을 눌러야 저장돼요.</span>
+                <span class="save-msg" id="reviewItSaveMsg" style="margin-top:0; display:inline-block;"></span>
+                <button type="button" id="reviewItRevertBtn" title="되돌리기 (아직 저장하지 않은 입력 내용을 모두 취소하고 마지막 저장 상태로 되돌려요)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:1.5px solid var(--border); background:var(--surface); color:var(--ink-soft); box-shadow:0 2px 6px -2px rgba(29,30,51,0.2); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                </button>
+                <button type="button" id="reviewItSaveBtn" title="저장 (바뀐 내용이 있으면 버튼이 빨갛게 표시돼요)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:none; background:var(--indigo); color:#fff; box-shadow:0 4px 10px -3px rgba(29,30,51,0.35); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                </button>
+                <button type="button" id="reviewItFsCloseBtn" class="del-btn" style="background:var(--bg); color:var(--ink-soft); font-weight:800;">✕ 닫기</button>
+              </div>
+            </div>
+            <div style="flex:1; overflow:auto; padding:14px 20px;">
+              <div id="reviewItIncomeWrap" class="table-scroll" style="display:none; max-height:none; overflow:visible;"></div>
+              <div id="reviewItTaxWrap" class="table-scroll" style="display:none; max-height:none; overflow:visible;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 부가세 검토표 전체화면 팝업 - 원천세 급여검증/납부세액검증 팝업과 같은 구성. 거래처는 이제 그리드
+             줄의 아이콘으로 이미 정해져서 들어오므로, 원래 있던 거래처 검색·선택 칸은 화면에서 숨기고(로직은
+             그대로 재사용 - openReviewVatFullscreen이 그 select 값을 코드로 지정함) 이름은 원천세 팝업처럼
+             제목에 텍스트로만 보여줌. 나머지(연도 선택/엑셀 불러오기/저장/되돌리기/카드 표)는 완전히 그대로 -->
+        <div id="reviewVatFullscreenOverlay" style="display:none; position:fixed; inset:0; z-index:900; background:rgba(15,16,30,0.6); padding:14px; align-items:center; justify-content:center;">
+          <div style="background:var(--bg); border-radius:16px; width:100%; max-width:1400px; height:88vh; margin:0 auto; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px -12px rgba(0,0,0,0.4);">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:14px 20px; border-bottom:1.5px solid var(--border); flex-shrink:0;">
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <span id="reviewVatFsClientName" style="font-size:16.5px; font-weight:900; color:var(--navy);"></span>
+                <span style="font-size:11px; font-weight:700; color:var(--indigo); background:var(--indigo-bg); border-radius:20px; padding:3px 10px;">신고검증</span>
+                <input type="text" id="reviewVatClientSearch" style="display:none;">
+                <select id="reviewVatClientSelect" style="display:none;"></select>
+                <select id="reviewVatYearSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:5px 7px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12px; font-weight:700;"></select>
+                <button type="button" id="reviewVatImportBtn" class="del-btn" title="기존에 쓰던 부가세 검토표 엑셀 파일(부가가치세 신고자료 통합조회 시트 구조)을 올리면, 이미 입력된 칸은 그대로 두고 빈 칸만 자동으로 채워요"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> 엑셀 불러오기</button>
+                <input type="file" id="reviewVatImportFile" accept=".xlsx,.xls" style="display:none;">
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="hint" style="font-size:11px; margin:0;">숫자를 입력해도 자동 저장되지 않아요 - 저장 버튼을 눌러야 저장돼요.</span>
+                <span class="save-msg" id="reviewVatSaveMsg" style="margin-top:0; display:inline-block;"></span>
+                <button type="button" id="reviewVatRevertBtn" title="되돌리기 (아직 저장하지 않은 입력 내용을 모두 취소하고 마지막 저장 상태로 되돌려요)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:1.5px solid var(--border); background:var(--surface); color:var(--ink-soft); box-shadow:0 2px 6px -2px rgba(29,30,51,0.2); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                </button>
+                <button type="button" id="reviewVatSaveBtn" title="저장 (바뀐 내용이 있으면 버튼이 빨갛게 표시돼요)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:none; background:var(--indigo); color:#fff; box-shadow:0 4px 10px -3px rgba(29,30,51,0.35); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                </button>
+                <button type="button" id="reviewVatFsCloseBtn" class="del-btn" style="background:var(--bg); color:var(--ink-soft); font-weight:800;">✕ 닫기</button>
+              </div>
+            </div>
+            <div style="flex:1; overflow:auto; padding:14px 20px;">
+              <div id="reviewVatCardsWrap" style="max-width:1160px; margin:0 auto;"></div>
+            </div>
+          </div>
+        </div>
       <!-- 신고현황: 원천세/부가세/법인세/종소세/결산별 진행상태 (세목 선택 칩은 위 approvalCatToggle 트리 안,
            신고현황 밑에 가지로 붙어있음 - #filingTypeToggle) -->
       <!-- 원천세(통합): 신고대상/신고현황/검토표 3개로 나뉘어 있던 화면을 거래처 × 1~12월 그리드 하나로 합친
@@ -3712,6 +3775,54 @@
           <div id="itAllDateEditBody"></div>
           <div style="display:flex; justify-content:flex-end; margin-top:12px;">
             <button type="button" id="itAllDateEditSaveBtn" class="del-btn" style="background:var(--indigo); color:#fff; font-weight:700;">저장</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 부가세(통합): 원천세와 같은 방식으로 신고대상/신고현황/검토표 3개 화면을 거래처 × 4개 기수
+           (1기예정/1기확정/2기예정/2기확정) 그리드 하나로 합침. 기수 칸을 누르면 미대상/예정고지 등
+           "직접 신고하지 않는" 상태면 기존 신고대상 등록 팝업(openVatTargetEditModal, 그대로 재사용)이,
+           대상/예정신고대상처럼 "직접 신고하는" 상태면 진행상태·메모를 입력하는 새 팝업(vatAllStatusEditModal)이
+           뜸 - 그 팝업 안에 "신고대상 변경" 버튼을 두어 등록 상태 자체를 바꿀 수도 있게 함. 검증은 부가세엔
+           급여검증/납부세액검증 구분이 없어 "신고검증" 아이콘 하나만 두고, 위에서 새로 만든
+           openReviewVatFullscreen 팝업을 그대로 엶. 데이터 저장소는 기존 신고대상(sharedVatFilingTargets)·
+           신고현황(sharedFilingStatus['부가세'])과 완전히 동일해서, 예전 화면에 입력해둔 내용이 그대로 이어짐 -->
+      <div class="approval-panel" data-approval-cat="vatall" style="display:none;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:6px;">
+          <h2 class="section-title" style="justify-content:flex-start; font-size:22px; margin:0;">부가세</h2>
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <select id="vatAllYear" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
+            <input type="text" id="vatAllSearch" placeholder="거래처 검색" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 10px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px;">
+          </div>
+        </div>
+        <div style="text-align:right; margin-bottom:6px;"><span class="hint" style="font-size:11px; margin:0;">칸을 눌러서 신고대상 여부를 등록하고, 직접 신고하는 기수는 눌러서 진행상태를 입력하세요.</span></div>
+        <div id="vatAllTableWrap"></div>
+      </div>
+      <!-- 진행상태 입력 팝업(부가세 통합) -->
+      <div id="vatAllStatusEditModalOverlay" style="display:none; position:fixed; inset:0; z-index:950; background:rgba(15,16,30,0.6); padding:14px; align-items:center; justify-content:center;">
+        <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:400px; width:100%; max-height:90vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; gap:8px;">
+            <h3 style="margin:0; font-size:15.5px; font-weight:800;"><span id="vatAllStatusEditClientName"></span> · <span id="vatAllStatusEditPeriod" style="color:var(--ink-soft); font-weight:700;"></span></h3>
+            <button type="button" id="vatAllStatusEditCloseBtn" class="del-btn" style="flex-shrink:0;">닫기</button>
+          </div>
+          <div style="text-align:right; margin-bottom:10px;"><button type="button" id="vatAllStatusEditChangeTargetBtn" class="del-btn" style="font-size:11px; background:var(--bg); color:var(--ink-soft);">신고대상 구분 변경</button></div>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div>
+              <label style="display:block; font-size:11.5px; font-weight:700; color:var(--ink-soft); margin-bottom:4px;">진행상태</label>
+              <select id="vatAllStatusEditSelect" style="width:100%; border:1.5px solid var(--border); border-radius:8px; padding:7px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--bg); box-sizing:border-box;">
+                <option value="미확인">미확인</option>
+                <option value="검토중">검토중</option>
+                <option value="기안완료">기안완료</option>
+                <option value="신고완료">신고완료</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block; font-size:11.5px; font-weight:700; color:var(--ink-soft); margin-bottom:4px;">메모</label>
+              <input type="text" id="vatAllStatusEditMemo" placeholder="메모" style="width:100%; border:1.5px solid var(--border); border-radius:8px; padding:7px 8px; font-size:12px; font-family:'Pretendard',sans-serif; background:var(--bg); box-sizing:border-box;">
+            </div>
+          </div>
+          <div style="display:flex; justify-content:flex-end; margin-top:14px;">
+            <button type="button" id="vatAllStatusEditSaveBtn" class="del-btn" style="background:var(--indigo); color:#fff; font-weight:700;">저장</button>
           </div>
         </div>
       </div>
@@ -3833,60 +3944,6 @@
           <div id="reviewItClientListWrap"></div>
         </div>
 
-        <!-- 급여검증/납부세액검증 팝업 - 12개월치를 스크롤 없이 한 화면에서 보려면 가로 폭은 넉넉해야 해서
-             뷰포트 가로폭은 거의 그대로 쓰되, 예전처럼 세로까지 꽉 채운 전체화면은 답답하다는 의견으로
-             세로 높이를 줄이고 화면 가운데로 오도록 바꿈(위아래로 여백이 생겨서 팝업이라는 느낌이 들게) -->
-        <div id="reviewItFullscreenOverlay" style="display:none; position:fixed; inset:0; z-index:900; background:rgba(15,16,30,0.6); padding:14px; align-items:center; justify-content:center;">
-          <div style="background:var(--bg); border-radius:16px; width:100%; max-width:1400px; height:88vh; margin:0 auto; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px -12px rgba(0,0,0,0.4);">
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:14px 20px; border-bottom:1.5px solid var(--border); flex-shrink:0;">
-              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                <span id="reviewItFsClientName" style="font-size:16.5px; font-weight:900; color:var(--navy);"></span>
-                <span id="reviewItFsSectionBadge" style="font-size:11px; font-weight:700; color:var(--indigo); background:var(--indigo-bg); border-radius:20px; padding:3px 10px;"></span>
-                <select id="reviewItFsYearSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:5px 7px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12px; font-weight:700;"></select>
-                <div id="reviewItFsMetaWrap" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:11.5px; color:var(--ink-soft);"></div>
-              </div>
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span class="hint" style="font-size:11px; margin:0;">숫자를 입력해도 자동 저장되지 않아요 - 저장 버튼을 눌러야 저장돼요.</span>
-                <span class="save-msg" id="reviewItSaveMsg" style="margin-top:0; display:inline-block;"></span>
-                <button type="button" id="reviewItRevertBtn" title="되돌리기 (아직 저장하지 않은 입력 내용을 모두 취소하고 마지막 저장 상태로 되돌려요)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:1.5px solid var(--border); background:var(--surface); color:var(--ink-soft); box-shadow:0 2px 6px -2px rgba(29,30,51,0.2); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
-                </button>
-                <button type="button" id="reviewItSaveBtn" title="저장 (바뀐 내용이 있으면 버튼이 빨갛게 표시돼요)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:none; background:var(--indigo); color:#fff; box-shadow:0 4px 10px -3px rgba(29,30,51,0.35); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                </button>
-                <button type="button" id="reviewItFsCloseBtn" class="del-btn" style="background:var(--bg); color:var(--ink-soft); font-weight:800;">✕ 닫기</button>
-              </div>
-            </div>
-            <div style="flex:1; overflow:auto; padding:14px 20px;">
-              <div id="reviewItIncomeWrap" class="table-scroll" style="display:none; max-height:none; overflow:visible;"></div>
-              <div id="reviewItTaxWrap" class="table-scroll" style="display:none; max-height:none; overflow:visible;"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 부가세 검토표: 원본 엑셀(부가가치세 신고자료 통합조회) 구조를 그대로 옮김 - 거래처를 먼저 고르면 그 거래처의
-             1기예정/1기확정/2기예정/2기확정 4개 기수 카드가 쭉 나옴. 각 기수마다 "자료"(세금계산서·카드 등 실제 자료)
-             합계와 "신고서"(실제 신고한 값)를 따로 입력하면 자동으로 비교해서 매출/매입/예정 검증 결과를 보여줌 -->
-        <div id="reviewVatBox" style="display:none;">
-          <div style="display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
-            <input type="text" id="reviewVatClientSearch" placeholder="거래처 검색" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 10px; font-family:'Pretendard',sans-serif; font-size:12.5px; width:140px;">
-            <select id="reviewVatClientSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700; max-width:220px;"></select>
-            <select id="reviewVatYearSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
-            <button type="button" id="reviewVatImportBtn" class="del-btn" title="기존에 쓰던 부가세 검토표 엑셀 파일(부가가치세 신고자료 통합조회 시트 구조)을 올리면, 이미 입력된 칸은 그대로 두고 빈 칸만 자동으로 채워요"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> 엑셀 불러오기</button>
-            <input type="file" id="reviewVatImportFile" accept=".xlsx,.xls" style="display:none;">
-          </div>
-          <div style="display:flex; align-items:center; justify-content:flex-end; gap:8px; max-width:1160px; margin:0 auto 10px;">
-            <span class="hint" style="font-size:11px; margin:0;">숫자를 입력해도 자동 저장되지 않아요 - 저장 버튼을 눌러야 저장돼요.</span>
-            <span class="save-msg" id="reviewVatSaveMsg" style="margin-top:0; display:inline-block;"></span>
-            <button type="button" id="reviewVatRevertBtn" title="되돌리기 (아직 저장하지 않은 입력 내용을 모두 취소하고 마지막 저장 상태로 되돌려요)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:1.5px solid var(--border); background:var(--surface); color:var(--ink-soft); box-shadow:0 2px 6px -2px rgba(29,30,51,0.2); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
-            </button>
-            <button type="button" id="reviewVatSaveBtn" title="저장 (바뀐 내용이 있으면 버튼이 빨갛게 표시돼요)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:none; background:var(--indigo); color:#fff; box-shadow:0 4px 10px -3px rgba(29,30,51,0.35); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-            </button>
-          </div>
-          <div id="reviewVatCardsWrap" style="max-width:1160px; margin:0 auto;"></div>
-        </div>
 
         <!-- 부가세 검토표(옛 버전): 신고현황과 같은 상태/메모 표. 위 reviewVatBox로 화면이 바뀌면서 더 이상
              화면에는 안 보이지만, 예전에 여기 입력해뒀던 데이터가 있을 수 있어 지우지 않고 그대로 남겨둠 -->
@@ -14634,7 +14691,8 @@ function saveFilingSubviewState(){
       reviewVatClientId: document.getElementById('reviewVatClientSelect')?.value || '',
       reviewVatYear: document.getElementById('reviewVatYearSelect')?.value || '',
       docBucket: document.querySelector('.approval-doc-btn.active')?.dataset.approvalDoc || 'new',
-      itAllYear: itAllYear
+      itAllYear: itAllYear,
+      vatAllYear: vatAllYear
     }));
   }catch(e){}
 }
@@ -14705,6 +14763,9 @@ function restoreFilingSubviewState(){
     } else if(saved.cat === 'itall'){
       if(saved.itAllYear) itAllYear = saved.itAllYear;
       renderIncomeTaxUnified();
+    } else if(saved.cat === 'vatall'){
+      if(saved.vatAllYear) vatAllYear = saved.vatAllYear;
+      renderVatAllUnified();
     } else if(saved.cat === 'doc' && saved.docBucket && saved.docBucket !== 'new'){
       // 결재(기안) 화면도 마지막으로 보던 함(기안함/결재함/반려함/임시저장함/전체이력)으로 복원함 -
       // 기본값(HTML상 처음부터 active인 "기안" 작성화면)과 다를 때만 해당 버튼을 다시 눌러줌
@@ -15584,10 +15645,20 @@ document.getElementById('vatTargetEditSaveBtn')?.addEventListener('click', async
   await saveSharedVatFilingTargets();
   document.getElementById('vatTargetEditModalOverlay').style.display = 'none';
   renderVatFilingTargetTable();
+  // 부가세(통합) 그리드나 그 진행상태 팝업에서 이 팝업을 열었을 수도 있어서(같은 팝업을 재사용) 그쪽도 새로고침
+  if(typeof renderVatAllUnified === 'function') renderVatAllUnified();
+  if(typeof vatAllStatusEditCtx !== 'undefined' && vatAllStatusEditCtx.clientId && document.getElementById('vatAllStatusEditModalOverlay')?.style.display === 'flex'){
+    const { clientId, year, period } = vatAllStatusEditCtx;
+    const client = bookkeepingClientList().find(c=>c.id===clientId);
+    const stillFilerCase = client && (vatEntryStatus(vatFilingTargetEntry(clientId, year, period), period, client.entityType) === 'target' || vatEntryStatus(vatFilingTargetEntry(clientId, year, period), period, client.entityType) === 'filing');
+    if(stillFilerCase) openVatAllStatusEditModal(clientId, year, period);
+    else { document.getElementById('vatAllStatusEditModalOverlay').style.display = 'none'; vatAllStatusEditCtx = { clientId:null, year:null, period:null, quarterKey:null }; }
+  }
 });
 document.getElementById('vatTargetEditCloseBtn')?.addEventListener('click', ()=>{
   document.getElementById('vatTargetEditModalOverlay').style.display = 'none';
   renderVatFilingTargetTable();
+  if(typeof renderVatAllUnified === 'function') renderVatAllUnified();
 });
 // 신고대상(부가세) 초기화 - 원천세 신고대상 초기화 버튼과 같은 구성(선택한 해의 전체 거래처·전체 기수를
 // 한 번에 지우고 appConfirm으로 확인받음)
@@ -15990,6 +16061,138 @@ document.getElementById('itAllDateEditSaveBtn')?.addEventListener('click', async
   await saveSharedIncomeTaxFilingStatus();
   showCenterToast('저장됐어요');
   closeItAllDateEditModal();
+});
+
+// ══════════════════════════════════════════════════════════
+// 🧩 부가세(통합) - 원천세(통합)과 같은 방식으로 신고대상·신고현황·검토표를 거래처 × 4개 기수
+// (1기예정/1기확정/2기예정/2기확정) 그리드 하나로 합침. 기존 신고대상(vatFilingTargetEntry/
+// openVatTargetEditModal)·신고현황(sharedFilingStatus['부가세']) 저장소를 그대로 재사용
+// ══════════════════════════════════════════════════════════
+let vatAllYear = null;
+function renderVatAllPeriodControls(){
+  const yearSel = document.getElementById('vatAllYear');
+  if(!yearSel) return;
+  if(!vatAllYear) vatAllYear = String(Number(todayStr().slice(0,4)));
+  const nowY = Number(todayStr().slice(0,4));
+  const years = new Set();
+  for(let y = nowY+1; y >= nowY-4; y--) years.add(String(y));
+  years.add(vatAllYear);
+  const sortedYears = Array.from(years).sort((a,b)=> Number(b) - Number(a));
+  yearSel.innerHTML = sortedYears.map(y=>`<option value="${y}" ${y===vatAllYear?'selected':''}>${y}년</option>`).join('');
+}
+const VAT_ALL_FILING_STATUS_STYLE = {
+  '미확인': { color:'var(--border)', bg:'transparent', text:'var(--ink-soft)' },
+  '검토중': { color:'var(--amber)', bg:'var(--amber-bg)', text:'#8A5A05' },
+  '기안완료': { color:'var(--indigo)', bg:'var(--indigo-bg)', text:'var(--indigo-deep)' },
+  '신고완료': { color:'var(--mint)', bg:'var(--mint-bg)', text:'var(--mint)' }
+};
+// 기수 한 칸의 상태 계산 - 미대상/예정고지처럼 "사무실이 직접 신고하지 않는" 상태는 신고대상 등록 상태 그대로,
+// 대상/예정신고대상처럼 "직접 신고하는" 상태는 신고현황(sharedFilingStatus) 진행상태까지 덧붙임
+function vatAllCellState(client, year, period){
+  const entry = vatFilingTargetEntry(client.id, year, period);
+  const targetStatus = vatEntryStatus(entry, period, client.entityType);
+  const filerCase = (targetStatus === 'target' || targetStatus === 'filing');
+  if(!filerCase) return { targetStatus, filerCase:false };
+  const quarterKey = Object.keys(VAT_QUARTER_TO_TARGET_PERIOD).find(q=>VAT_QUARTER_TO_TARGET_PERIOD[q]===period);
+  const periodKey = `${year}-${quarterKey}`;
+  const filingEntry = (sharedFilingStatus['부가세'] && sharedFilingStatus['부가세'][periodKey] && sharedFilingStatus['부가세'][periodKey][client.id]) || { status:'미확인', memo:'' };
+  return { targetStatus, filerCase:true, quarterKey, periodKey, filingEntry };
+}
+function renderVatAllUnified(){
+  renderVatAllPeriodControls();
+  if(!vatAllYear) vatAllYear = String(Number(todayStr().slice(0,4)));
+  const year = vatAllYear;
+  const wrap = document.getElementById('vatAllTableWrap');
+  if(!wrap) return;
+  const q = (document.getElementById('vatAllSearch')?.value || '').trim().toLowerCase();
+  let list = bookkeepingClientList();
+  if(q) list = list.filter(c=>(c.name||'').toLowerCase().includes(q));
+  if(!list.length){ wrap.innerHTML = `<div class="empty-state">${q ? '검색 결과가 없습니다.' : '거래처 없음'}</div>`; return; }
+  const periodHeaderCells = VAT_TARGET_PERIODS.map(p=>`<th class="cvb">${VAT_TARGET_PERIOD_LABEL[p]}</th>`).join('');
+  const rows = list.map((c, idx)=>{
+    const entityColor = c.entityType === '법인' ? '#0B5A78' : c.entityType === '개인' ? '#BE185D' : 'inherit';
+    const periodCells = VAT_TARGET_PERIODS.map(p=>{
+      const cs = vatAllCellState(c, year, p);
+      let label, style, tip = '';
+      if(!cs.filerCase){
+        label = vatTargetCellLabel(cs.targetStatus, p);
+        style = cs.targetStatus === 'not-target' ? { color:'var(--border)', bg:'transparent', text:'var(--ink-soft)' }
+          : cs.targetStatus === 'notice' ? { color:'var(--guide-teal)', bg:'var(--guide-teal-bg)', text:'var(--guide-teal)' }
+          : { color:'var(--amber)', bg:'var(--amber-bg)', text:'#8A5A05' };
+      } else {
+        label = cs.filingEntry.status;
+        style = VAT_ALL_FILING_STATUS_STYLE[cs.filingEntry.status] || VAT_ALL_FILING_STATUS_STYLE['미확인'];
+        tip = cs.filingEntry.memo || '';
+      }
+      return `<td class="cvb"><button type="button" class="vat-all-cell-btn" data-client-id="${c.id}" data-period="${p}" data-filer="${cs.filerCase?'1':'0'}" title="${escHtml(tip)}" style="width:100%; border:1.5px solid ${style.color}; border-radius:6px; padding:4px 2px; background:${style.bg}; color:${style.text}; font-size:10.5px; font-weight:700; cursor:pointer;">${escHtml(label)}</button></td>`;
+    }).join('');
+    const verifyCell = `<td class="cvb"><button type="button" class="del-btn review-vat-open-btn" data-client-id="${c.id}" title="부가세 신고검증 전체화면으로 열기" style="width:24px; height:24px; padding:0; display:inline-flex; align-items:center; justify-content:center; background:var(--surface); color:var(--indigo-deep); border:1.5px solid var(--indigo-bg); border-radius:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button></td>`;
+    return `<tr>
+      <td class="num cvb" style="color:var(--ink-soft);">${idx+1}</td>
+      <td class="cvb" style="color:${entityColor}; font-weight:800; white-space:nowrap;">${escHtml(c.name)}</td>
+      ${periodCells}${verifyCell}
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th class="cvb">순번</th><th class="cvb">거래처</th>${periodHeaderCells}<th class="cvb" style="width:70px;">검증</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  wrap.querySelectorAll('.review-vat-open-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> openReviewVatFullscreen(btn.dataset.clientId));
+  });
+  wrap.querySelectorAll('.vat-all-cell-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const { clientId, period, filer } = btn.dataset;
+      if(filer === '1') openVatAllStatusEditModal(clientId, vatAllYear, period);
+      else openVatTargetEditModal(clientId, vatAllYear, period);
+    });
+  });
+}
+document.getElementById('vatAllYear')?.addEventListener('change', (e)=>{ vatAllYear = e.target.value; renderVatAllUnified(); saveFilingSubviewState(); });
+document.getElementById('vatAllSearch')?.addEventListener('input', ()=> renderVatAllUnified());
+// 진행상태 입력 팝업(부가세 통합) - "직접 신고하는" 상태(대상/예정신고대상)로 등록된 기수를 눌렀을 때 뜸.
+// "신고대상 구분 변경" 버튼으로 기존 신고대상 팝업(openVatTargetEditModal)을 그 위에 겹쳐 열 수 있음
+let vatAllStatusEditCtx = { clientId:null, year:null, period:null, quarterKey:null };
+function openVatAllStatusEditModal(clientId, year, period){
+  const quarterKey = Object.keys(VAT_QUARTER_TO_TARGET_PERIOD).find(q=>VAT_QUARTER_TO_TARGET_PERIOD[q]===period);
+  vatAllStatusEditCtx = { clientId, year, period, quarterKey };
+  const client = bookkeepingClientList().find(c=>c.id===clientId);
+  const nameEl = document.getElementById('vatAllStatusEditClientName');
+  if(nameEl) nameEl.textContent = client ? client.name : '';
+  const periodEl = document.getElementById('vatAllStatusEditPeriod');
+  if(periodEl) periodEl.textContent = `${year}년 ${VAT_TARGET_PERIOD_LABEL[period]}`;
+  const periodKey = `${year}-${quarterKey}`;
+  sharedFilingStatus['부가세'] = sharedFilingStatus['부가세'] || {};
+  sharedFilingStatus['부가세'][periodKey] = sharedFilingStatus['부가세'][periodKey] || {};
+  const entry = sharedFilingStatus['부가세'][periodKey][clientId] || { status:'미확인', memo:'' };
+  document.getElementById('vatAllStatusEditSelect').value = entry.status || '미확인';
+  document.getElementById('vatAllStatusEditMemo').value = entry.memo || '';
+  document.getElementById('vatAllStatusEditModalOverlay').style.display = 'flex';
+}
+function closeVatAllStatusEditModal(){
+  document.getElementById('vatAllStatusEditModalOverlay').style.display = 'none';
+  vatAllStatusEditCtx = { clientId:null, year:null, period:null, quarterKey:null };
+  renderVatAllUnified();
+}
+document.getElementById('vatAllStatusEditCloseBtn')?.addEventListener('click', closeVatAllStatusEditModal);
+document.getElementById('vatAllStatusEditModalOverlay')?.addEventListener('click', (e)=>{
+  if(e.target.id === 'vatAllStatusEditModalOverlay') closeVatAllStatusEditModal();
+});
+document.getElementById('vatAllStatusEditChangeTargetBtn')?.addEventListener('click', ()=>{
+  const { clientId, year, period } = vatAllStatusEditCtx;
+  if(!clientId) return;
+  openVatTargetEditModal(clientId, year, period);
+});
+document.getElementById('vatAllStatusEditSaveBtn')?.addEventListener('click', async ()=>{
+  const { clientId, year, quarterKey } = vatAllStatusEditCtx;
+  if(!clientId) return;
+  const periodKey = `${year}-${quarterKey}`;
+  sharedFilingStatus['부가세'] = sharedFilingStatus['부가세'] || {};
+  sharedFilingStatus['부가세'][periodKey] = sharedFilingStatus['부가세'][periodKey] || {};
+  const entry = sharedFilingStatus['부가세'][periodKey][clientId] = sharedFilingStatus['부가세'][periodKey][clientId] || { status:'미확인', memo:'' };
+  entry.status = document.getElementById('vatAllStatusEditSelect').value;
+  entry.memo = document.getElementById('vatAllStatusEditMemo').value;
+  entry.updatedAt = new Date().toLocaleString('ko-KR');
+  await saveSharedFilingStatus();
+  showCenterToast('저장됐어요');
+  closeVatAllStatusEditModal();
 });
 
 // ══════════════════════════════════════════════════════════
@@ -17128,6 +17331,29 @@ function renderReviewVatAll(){
 document.getElementById('reviewVatClientSelect')?.addEventListener('change', renderReviewVatAll);
 document.getElementById('reviewVatClientSearch')?.addEventListener('input', populateReviewVatClientSelect);
 document.getElementById('reviewVatYearSelect')?.addEventListener('change', renderReviewVatAll);
+// 부가세 검토표 전체화면 팝업 열기/닫기 - 원천세 급여검증/납부세액검증 팝업과 같은 패턴. 거래처 선택은
+// 화면에서 숨긴 select(reviewVatClientSelect)에 코드로 값만 지정해서, populateReviewVatClientSelect/
+// renderReviewVatAll 등 기존 로직을 하나도 안 건드리고 그대로 재사용함
+function openReviewVatFullscreen(clientId){
+  if(!clientId) return;
+  const client = bookkeepingClientList().find(c=>c.id===clientId);
+  const nameEl = document.getElementById('reviewVatFsClientName');
+  if(nameEl) nameEl.textContent = client ? client.name : '';
+  const searchInp = document.getElementById('reviewVatClientSearch');
+  if(searchInp) searchInp.value = '';
+  populateReviewVatClientSelect(); // 검색어 없이 전체 거래처로 옵션 목록을 채움(그 안에 clientId가 포함되도록)
+  const sel = document.getElementById('reviewVatClientSelect');
+  if(sel) sel.value = clientId;
+  renderReviewVatAll();
+  document.getElementById('reviewVatFullscreenOverlay').style.display = 'flex';
+}
+function closeReviewVatFullscreen(){
+  document.getElementById('reviewVatFullscreenOverlay').style.display = 'none';
+}
+document.getElementById('reviewVatFsCloseBtn')?.addEventListener('click', closeReviewVatFullscreen);
+document.getElementById('reviewVatFullscreenOverlay')?.addEventListener('click', (e)=>{
+  if(e.target.id === 'reviewVatFullscreenOverlay') closeReviewVatFullscreen();
+});
 document.getElementById('reviewVatSaveBtn')?.addEventListener('click', async ()=>{
   await saveSharedVatReviewFigures();
   const msgEl = document.getElementById('reviewVatSaveMsg');
@@ -17355,6 +17581,7 @@ document.querySelectorAll('.approval-cat-btn').forEach(btn=>{
     if(docBranch) docBranch.style.display = (cat === 'doc') ? 'flex' : 'none';
     if(submitBranch) submitBranch.style.display = (cat === 'submit') ? 'flex' : 'none';
     if(cat === 'itall') renderIncomeTaxUnified();
+    else if(cat === 'vatall') renderVatAllUnified();
     else if(cat === 'status') renderFilingStatusTable('status');
     else if(cat === 'target') renderTargetPanel();
     else if(cat === 'submit') renderSubmitStatusTable();
