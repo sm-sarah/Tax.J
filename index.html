@@ -3765,6 +3765,8 @@
               <div style="display:flex; align-items:center; gap:8px;">
                 <span class="hint" style="font-size:11px; margin:0;">숫자를 입력해도 자동 저장되지 않아요 - 저장 버튼을 눌러야 저장돼요.</span>
                 <span class="save-msg" id="plFsSaveMsg" style="margin-top:0; display:inline-block;"></span>
+                <button type="button" id="plFsHistoryBtn" class="del-btn" title="지금까지 저장한 이력을 보고, 예전 시점 내용을 그대로 출력할 수 있어요">수정이력</button>
+                <button type="button" id="plFsPrintBtn" class="del-btn" title="지금 화면에 보이는 내용 그대로 출력해요">🖨 출력</button>
                 <button type="button" id="plFsRevertBtn" title="되돌리기 (아직 저장하지 않은 입력 내용을 모두 취소하고 마지막 저장 상태로 되돌려요)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:1.5px solid var(--border); background:var(--surface); color:var(--ink-soft); box-shadow:0 2px 6px -2px rgba(29,30,51,0.2); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
                 </button>
@@ -3775,6 +3777,12 @@
               </div>
             </div>
             <div style="flex:1; overflow:auto; padding:14px 20px;">
+              <!-- 수정이력 패널 - 저장할 때마다 그 시점 값을 스냅샷으로 남겨서, 언제 뭐가 바뀌었는지 보고 그
+                   시점 내용을 그대로 출력할 수 있게 함(계속 수정되는 자료라 이전 기록과 비교가 필요하다는 요청) -->
+              <div id="plHistoryWrap" style="display:none; margin-bottom:18px; border:1.5px solid var(--border); border-radius:12px; padding:14px 16px;">
+                <div style="font-size:12px; font-weight:800; color:var(--indigo-deep); margin-bottom:10px;">수정이력</div>
+                <div id="plHistoryListWrap"></div>
+              </div>
               <div id="plFsBodyWrap"></div>
             </div>
           </div>
@@ -4280,7 +4288,7 @@
           <div class="flat-row"><div class="flat-row-label">대표번호</div><div class="flat-row-control"><input type="text" id="company-phone-input" placeholder="02-0000-0000" class="flat-input" style="width:100%;"></div></div>
           <div class="flat-row"><div class="flat-row-label">대표팩스</div><div class="flat-row-control"><input type="text" id="company-fax-input" placeholder="02-0000-0000" class="flat-input" style="width:100%;"></div></div>
           <div class="flat-row"><div class="flat-row-label">공유드라이브 폴더 링크 <span style="font-weight:400; color:var(--ink-soft);">(선택)</span></div><div class="flat-row-control"><input type="url" id="company-drive-folder" placeholder="예: https://drive.google.com/drive/folders/..." class="flat-input" style="width:100%;"></div></div>
-          <div style="display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-top:16px;">
+          <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-top:16px;">
             <button type="button" id="companyNameDeleteBtn" class="del-btn" style="display:none;">삭제</button>
             <button type="submit" class="submit-btn" id="companyNameSubmitBtn" style="width:auto; padding:8px 16px;">등록</button>
           </div>
@@ -4293,15 +4301,14 @@
            따로 관리됨. 바뀔 때마다 이력이 남고, 사내정보 > 법인 탭은 조회 전용이라 여기서 관리한 내용이 그대로
            보임(데이터 저장소는 sharedCompanyInfo.corp) -->
       <div style="text-align:center; margin:22px 0 6px;"><span class="section-subtitle-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg> 공용정보</span></div>
-      <!-- 등록/초기화 버튼: 박스 안쪽 위 여백(padding-top)을 만들어서 그 안에 버튼을 넣던 방식 -> 박스 밖,
-           테두리 오른쪽 위 모서리에 걸치도록(반은 박스 위, 반은 박스 안) 옮김 - 버튼이 그 목록과 분리된
-           "박스 자체를 다루는 동작"이라는 게 더 잘 드러나고, 안쪽 여백 없이 표가 박스 위쪽에 바로 붙어서 더 알차 보임 -->
-      <div class="flat-panel" style="position:relative;">
-        <div style="position:absolute; top:0; right:16px; transform:translateY(-50%); display:flex; gap:6px;">
+      <!-- 등록/초기화 버튼: 박스 테두리 오른쪽 위 모서리에 반쯤 걸치게 뒀더니 위치가 어색하다는 의견으로,
+           박스 테두리 "안쪽" 오른쪽 아래로 옮김(목록 밑에 자연스러운 동작 줄로) -->
+      <div class="flat-panel">
+        <div id="ciCorpListWrap"></div>
+        <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:12px;">
           <button type="button" id="ciCorpResetBtn" class="del-btn" style="display:none; background:var(--coral-bg); color:var(--coral);" title="등록된 회사 ID/PW를 전부 지우고 처음부터 다시 등록해요"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg> 초기화</button>
           <button type="button" id="ciCorpAddBtn" class="del-btn" style="display:none; background:var(--indigo); color:#fff;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 등록</button>
         </div>
-        <div id="ciCorpListWrap"></div>
       </div>
 
       <div class="settings-sub-title" id="ssTitle-teamInfo" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M17 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> 팀정보</div>
@@ -4317,7 +4324,7 @@
                바뀜(updateTeamInfoButtons) - 회사정보 쪽 등록/수정/삭제(companyNameSubmitBtn·companyNameDeleteBtn)와
                완전히 같은 패턴: 등록 전엔 큰 파란 버튼(submit-btn) 하나, 등록 후엔 옆의 작은 삭제 칩과 크기를
                맞추려고 수정 버튼도 같은 작은 칩 모양(del-btn)으로 바뀜 -->
-          <div style="display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-top:16px;">
+          <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-top:16px;">
             <button type="button" id="teamInfoDeleteBtn" class="del-btn" style="display:none;">삭제</button>
             <button type="submit" class="submit-btn" id="teamInfoSubmitBtn" style="width:auto; padding:8px 16px;">등록</button>
           </div>
@@ -4334,11 +4341,11 @@
            팀원별 항목은 예전엔 "➕ 팀원 추가"로 사람을 먼저 등록해야 했는데, 이제 직원정보에 등록된 직원이면
            바로 등록버튼의 "팀원" 대상 선택에서 골라 저장할 수 있어서 그 버튼(과 "기본값 불러오기")은 없앰 -->
       <div style="text-align:center; margin:22px 0 6px;"><span class="section-subtitle-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg> 팀 공용 정보</span></div>
-      <div class="flat-panel" style="position:relative;">
-        <div style="position:absolute; top:0; right:16px; transform:translateY(-50%);">
+      <div class="flat-panel">
+        <div id="ciTeamGeneralListWrap"></div>
+        <div style="display:flex; justify-content:flex-end; margin-top:12px;">
           <button type="button" id="ciTeamGeneralAddBtn" class="del-btn" style="display:none; background:var(--indigo); color:#fff;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 등록</button>
         </div>
-        <div id="ciTeamGeneralListWrap"></div>
       </div>
 
       <div style="text-align:center; margin:22px 0 14px;"><span class="section-subtitle-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M17 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> 팀원별 정보</span></div>
@@ -7276,7 +7283,7 @@ function openCalOwnerSwitchPopup(){
     const active = p.id === activeProfileId;
     return `<button type="button" class="cal-owner-switch-row" data-id="${p.id}" style="display:block; width:100%; text-align:left; padding:9px 12px; border:none; border-radius:8px; background:${active ? 'var(--indigo-bg)' : 'transparent'}; color:${active ? 'var(--indigo)' : 'var(--ink)'}; font-weight:${active ? 800 : 600}; font-size:13px; cursor:pointer; margin-bottom:2px;">${active ? '✓ ' : ''}${escHtml(p.name || '(이름 미등록)')}</button>`;
   }).join('');
-  const el = openDraggablePopup({ title: '직원 캘린더 선택', html: rows, width: 260 });
+  const el = openDraggablePopup({ title: '직원선택', html: rows, width: 260 });
   el.classList.add('cal-owner-switch-popup');
   el.querySelectorAll('.cal-owner-switch-row').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
@@ -16792,7 +16799,7 @@ function renderReviewItTaxTable(clientId, year){
       return `<td><input type="text" inputmode="numeric" class="review-it-tax-input" data-month="${month}" data-group="${g.key}" data-sub="tax" value="${cur.tax!=null?Number(cur.tax).toLocaleString():''}" style="width:56px; border:1.5px solid var(--border); border-radius:6px; padding:3px 3px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-align:right;"></td><td><input type="text" inputmode="numeric" class="review-it-tax-input" data-month="${month}" data-group="${g.key}" data-sub="local" value="${cur.local!=null?Number(cur.local).toLocaleString():''}" style="width:56px; border:1.5px solid var(--border); border-radius:6px; padding:3px 3px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-align:right; background:#FAFAFC;"></td>`;
     }).join('');
     return `<tr data-month="${month}">
-      <td class="num cvb" style="font-weight:700;">${month}월</td>
+      <td class="num cvb" style="font-weight:700; width:56px;">${month}월</td>
       ${groupCells}
       <td class="num cvb review-it-tax-total-cell" data-month="${month}" style="font-weight:800; background:var(--indigo-bg);">${reviewItTaxTotal(data).toLocaleString()}</td>
       <td class="num cvb review-it-tax-local-total-cell" data-month="${month}" style="font-weight:800; background:var(--indigo-bg);">${reviewItTaxLocalTotal(data).toLocaleString()}</td>
@@ -16813,7 +16820,7 @@ function renderReviewItTaxTable(clientId, year){
       ? `<td style="border-left:2px solid var(--border);">${reviewItMoneyInputHtml('review-it-tax-reported-local-input', month, {}, data.taxReportedLocal, {width:'88px', bg:'#FFFBEA'})}</td>`
       : `<td style="border-left:2px solid var(--border); text-align:center; color:var(--ink-soft);">-</td>`;
     return `<tr data-month="${month}">
-      <td class="num cvb" style="font-weight:700;">${month}월</td>
+      <td class="num cvb" style="font-weight:700; width:56px;">${month}월</td>
       ${taxReturnCells}
       ${reportedSumCell}
       <td class="review-it-tax-check-cell" data-month="${month}" style="text-align:center; font-size:14px;">${reviewItTaxCheckMark(clientId, year, month, meta)}</td>
@@ -16829,11 +16836,14 @@ function renderReviewItTaxTable(clientId, year){
   // 어디까지가 국세고 어디부터 지방세인지 한눈에 안 들어왔음 - "국세"/"지방세" 대분류 헤더를 새로 얹고,
   // 지방세 쪽 칸 전체에 왼쪽 굵은 구분선 + 옅은 배경을 줘서 국세 덩어리와 뚜렷하게 갈라 보이게 함
   const nationalSpan = REVIEW_TAXRETURN_FIELDS.length + 2; // 유형별 칸 + 합계 + 검증
+  // 귀속월 칸 폭: 두 표가 따로따로면 브라우저가 표마다 알아서 폭을 잡아서(신고서 기준 표는 칸 수가 적어
+  // 귀속월 칸이 더 넓어지는 등) 위아래로 폭이 안 맞았음 - 두 표 모두 같은 고정폭을 줘서 맞춤
+  const monthColStyle = `width:56px;`;
   wrap.innerHTML = `
     <div style="font-size:12px; font-weight:800; color:var(--indigo-deep); margin-bottom:8px;">급여명세서 기준</div>
     <table style="margin-bottom:26px;"><thead>
       <tr>
-        <th class="cvb" rowspan="2">귀속월</th>
+        <th class="cvb" rowspan="2" style="${monthColStyle}">귀속월</th>
         ${headerCells}
         <th class="cvb" rowspan="2">소득세합계<br>(계산)</th><th class="cvb" rowspan="2">지방세합계<br>(계산)</th>
       </tr>
@@ -16842,16 +16852,15 @@ function renderReviewItTaxTable(clientId, year){
     <div style="font-size:12px; font-weight:800; color:var(--indigo-deep); margin-bottom:8px;">신고서 기준</div>
     <table><thead>
       <tr>
-        <th class="cvb" rowspan="3">귀속월</th>
+        <th class="cvb" rowspan="2" style="${monthColStyle}">귀속월</th>
         <th class="cvb" colspan="${nationalSpan}">국세</th>
         <th class="cvb" colspan="2" style="background:var(--indigo-bg);">지방세</th>
       </tr>
       <tr>
-        <th class="cvb" colspan="${REVIEW_TAXRETURN_FIELDS.length}">소득세(신고서) <span style="font-weight:600; font-size:9.5px; color:var(--ink-soft);">— 유형별로 입력, 합계를 소득세합계(계산)과 대조</span></th>
-        <th class="cvb" rowspan="2">합계</th><th class="cvb" rowspan="2">검증</th>
-        <th class="cvb" rowspan="2" style="background:var(--indigo-bg); border-left:2px solid var(--border);">지방세<br>(신고서)</th><th class="cvb" rowspan="2" style="background:var(--indigo-bg);">검증</th>
+        ${taxReturnHeaderCells}
+        <th class="cvb">합계</th><th class="cvb">검증</th>
+        <th class="cvb" style="background:var(--indigo-bg); border-left:2px solid var(--border);">세액</th><th class="cvb" style="background:var(--indigo-bg);">검증</th>
       </tr>
-      <tr>${taxReturnHeaderCells}</tr>
     </thead><tbody>${returnRows}</tbody></table>`;
   wrap.querySelectorAll('.review-it-tax-input').forEach(inp=>{
     inp.addEventListener('input', ()=>{
@@ -17456,10 +17465,10 @@ document.getElementById('reviewVatRevertBtn')?.addEventListener('click', async (
 });
 
 // ── 종소세/법인세 손익보고서: 신고현황 화면의 "손익보고서" 버튼으로 여는 팝업. 매출~영업외비용 등 손익 항목과
-// 세액계산 조정항목(필요경비불산입·타소득금액·소득공제·세액감면·세액공제·기납부세액)만 입력하면, 업로드해주신
-// "★종합소득세 손익 보고서" 엑셀의 계산 흐름(매출총이익→영업이익→당기순이익→종합소득금액→과세표준→
-// 예상산출세액→최종결정세액→최종납부세액)을 그대로 재현해서 예상세액을 자동 계산해줌. 법인세는 그 엑셀에
-// 서식이 없어서 2025년 기준 법인세율(9%/19%/21%/24%, 누진공제 방식)로 계산한 참고용 추정치임을 화면에 안내함
+// 세액계산 조정항목(필요경비불산입·타소득금액·이월결손금·소득공제·세액감면·세액공제·기납부세액)만 입력하면,
+// 업로드해주신 "★종합소득세 손익 보고서" 엑셀의 계산 흐름(매출총이익→영업이익→당기순이익→종합소득금액→
+// (-)이월결손금→과세표준→예상산출세액→최종결정세액→최종납부세액)을 그대로 재현해서 예상세액을 자동 계산해줌.
+// 법인세는 2026년 귀속 기준 법인세율(국세청·세무 전문 매체 공동 확인: 2025년 대비 전 구간 세율 1%p 인상)로 계산함
 const PL_INPUT_FIELDS = [
   { key:'revenue', label:'매출액' },
   { key:'cogs', label:'매출원가' },
@@ -17468,11 +17477,19 @@ const PL_INPUT_FIELDS = [
   { key:'otherExpense', label:'영업외비용' },
   { key:'nonDeductible', label:'필요경비불산입' },
   { key:'otherIncomeAmt', label:'타소득금액' },
+  { key:'lossCarryforward', label:'이월결손금' },
   { key:'incomeDeduction', label:'소득공제' },
   { key:'taxReduction', label:'세액감면' },
   { key:'taxCredit', label:'세액공제' },
   { key:'prepaidTax', label:'기납부세액(국세)' },
   { key:'localPrepaidTax', label:'기납부세액(지방세)' },
+];
+// 2026년 귀속 법인세율표(국세 기준, 지방소득세 10% 별도) - 거래처에 그대로 보여줄 수 있도록 표로도 노출함
+const CORP_TAX_BRACKETS_2026 = [
+  { range:'2억원 이하', rate:'10%', localRate:'11.0%' },
+  { range:'2억원 초과 ~ 200억원 이하', rate:'20%', localRate:'22.0%' },
+  { range:'200억원 초과 ~ 3,000억원 이하', rate:'22%', localRate:'24.2%' },
+  { range:'3,000억원 초과', rate:'25%', localRate:'27.5%' },
 ];
 let plFsClientId = null;
 function profitLossEntry(clientId, year){
@@ -17494,14 +17511,15 @@ function incomeTaxByBracket(base){
   else tax = base*0.45 - 65940000;
   return Math.max(0, Math.round(tax));
 }
-// 법인세는 업로드 엑셀에 서식이 없어서, 2025년 기준 법인세율(9%/19%/21%/24%, 누진공제)로 계산함 - 참고용 추정치
+// 2026년 귀속 법인세율(국세청 안내 + 세무 전문 매체 교차 확인: 2025년 대비 전 구간 1%p 인상 - 9/19/21/24% ->
+// 10/20/22/25%). 누진공제액은 구간 경계값이 그대로라 2025년과 동일(2천만/4.2억/94.2억)함을 직접 검산해서 확인함
 function corpTaxByBracket(base){
   if(!(base > 0)) return 0;
   let tax;
-  if(base <= 200000000) tax = base*0.09;
-  else if(base <= 20000000000) tax = base*0.19 - 20000000;
-  else if(base <= 300000000000) tax = base*0.21 - 420000000;
-  else tax = base*0.24 - 9420000000;
+  if(base <= 200000000) tax = base*0.10;
+  else if(base <= 20000000000) tax = base*0.20 - 20000000;
+  else if(base <= 300000000000) tax = base*0.22 - 420000000;
+  else tax = base*0.25 - 9420000000;
   return Math.max(0, Math.round(tax));
 }
 function plCalc(entry, entityKind){
@@ -17510,7 +17528,7 @@ function plCalc(entry, entityKind){
   const operatingProfit = grossProfit - n('sga');                          // 영업이익
   const netIncome = operatingProfit + n('otherIncome') - n('otherExpense'); // 당기순이익
   const totalIncome = netIncome + n('nonDeductible') + n('otherIncomeAmt'); // 종합소득금액(법인세는 각사업연도소득금액)
-  const taxBase = Math.max(0, totalIncome - n('incomeDeduction'));         // 과세표준
+  const taxBase = Math.max(0, totalIncome - n('lossCarryforward') - n('incomeDeduction')); // 과세표준(이월결손금 먼저 차감)
   const calcTax = entityKind === '법인세' ? corpTaxByBracket(taxBase) : incomeTaxByBracket(taxBase); // 예상산출세액
   const decidedTax = Math.max(0, calcTax - n('taxReduction') - n('taxCredit')); // 최종결정세액
   const finalNationalTax = decidedTax - n('prepaidTax');                   // 최종종합소득세액(국세, 환급이면 음수)
@@ -17519,7 +17537,64 @@ function plCalc(entry, entityKind){
   return { grossProfit, operatingProfit, netIncome, totalIncome, taxBase, calcTax, decidedTax, finalNationalTax, localTax, finalPayable };
 }
 function plMoneyInputHtml(field, value){
-  return `<input type="text" inputmode="numeric" class="pl-money-input" data-field="${field}" value="${value!=null?Number(value).toLocaleString():''}" style="width:150px; border:1.5px solid var(--border); border-radius:8px; padding:6px 9px; font-family:'IBM Plex Mono',monospace; font-size:13px; text-align:right; background:var(--surface);">`;
+  return `<input type="text" inputmode="numeric" class="flat-input pl-money-input" data-field="${field}" value="${value!=null?Number(value).toLocaleString():''}" style="width:100%; text-align:right; font-family:'IBM Plex Mono',monospace; font-size:13px;">`;
+}
+// 손익 항목 입력칸을 이 화면 곳곳(회사정보·팀정보·근무시간 등)에서 쓰는 것과 같은 스타일(테두리 있는 큰 박스
+// 하나(.flat-panel) 안에 줄마다 테두리(.flat-row))로 통일함
+function plFieldRowHtml(field, value){
+  return `<div class="flat-row" style="max-width:none;"><div class="flat-row-label" style="flex:0 0 130px;">${escHtml(field.label)}</div><div class="flat-row-control">${plMoneyInputHtml(field.key, value)}</div></div>`;
+}
+// 손익보고서는 계속 수정되는 자료라 예전 기록과 비교가 필요하다는 요청으로, 저장할 때마다 그 시점 값을
+// 스냅샷으로 남김(수정이력) - 이 두 함수가 스냅샷 생성과, 이전 스냅샷과 비교한 변경 항목 계산을 맡음
+function plFieldsSnapshot(entry){
+  const snap = {};
+  PL_INPUT_FIELDS.forEach(f=>{ snap[f.key] = Number(entry[f.key]) || 0; });
+  return snap;
+}
+function diffPlFields(prevFields, nextFields){
+  const changes = [];
+  PL_INPUT_FIELDS.forEach(f=>{
+    const from = prevFields ? (Number(prevFields[f.key]) || 0) : 0;
+    const to = Number(nextFields[f.key]) || 0;
+    if(from !== to) changes.push({ key:f.key, label:f.label, from, to });
+  });
+  return changes;
+}
+// 법인세율표를 그대로 출력물에 넣을 수 있게 표 HTML로도 준비함(거래처에 보낼 출력물용)
+function corpTaxBracketTableHtml(){
+  const rows = CORP_TAX_BRACKETS_2026.map(b=>`<tr><td class="cvb">${escHtml(b.range)}</td><td class="num cvb">${escHtml(b.rate)}</td><td class="num cvb">${escHtml(b.localRate)}</td></tr>`).join('');
+  return `<div style="margin-top:20px;">
+    <div style="font-size:12px; font-weight:800; color:var(--indigo-deep); margin-bottom:8px;">2026년 귀속 법인세율표</div>
+    <table><thead><tr><th class="cvb">과세표준</th><th class="cvb">세율(국세)</th><th class="cvb">지방소득세 포함 실효세율</th></tr></thead><tbody>${rows}</tbody></table>
+  </div>`;
+}
+// 최근 3개년(선택연도 기준 -2년~당해연도) 비교표 - 원본 엑셀에 있던 연도별 트렌드 비교를 간단한 형태로 재현함.
+// 저장된 값이 있는 연도만 채워지고, 없는 연도는 "-"로 비워둠
+function plCompareTableHtml(clientId, year, entityKind){
+  const years = [Number(year)-2, Number(year)-1, Number(year)];
+  const rows = [
+    { label:'매출액', key:'revenue', raw:true },
+    { label:'매출총이익', key:'grossProfit' },
+    { label:'영업이익', key:'operatingProfit' },
+    { label:'당기순이익', key:'netIncome' },
+    { label:'과세표준', key:'taxBase' },
+    { label:'예상산출세액', key:'calcTax' },
+    { label:'최종 납부할 (예상)세액', key:'finalPayable' },
+  ];
+  const dataByYear = years.map(y=>{
+    const e = sharedProfitLossReports[clientId] && sharedProfitLossReports[clientId][String(y)];
+    if(!e) return null;
+    return { revenue:Number(e.revenue)||0, ...plCalc(e, e.entityKind || entityKind) };
+  });
+  const header = years.map(y=>`<th class="cvb">${y}년</th>`).join('');
+  const bodyRows = rows.map(row=>{
+    const cells = dataByYear.map(d=>`<td class="num cvb">${d ? (d[row.key]||0).toLocaleString() : '-'}</td>`).join('');
+    return `<tr><td class="cvb" style="font-weight:700;">${escHtml(row.label)}</td>${cells}</tr>`;
+  }).join('');
+  return `<div style="margin-top:28px;">
+    <div style="font-size:12px; font-weight:800; color:var(--indigo-deep); margin-bottom:8px;">최근 3개년 비교</div>
+    <table><thead><tr><th class="cvb">구분</th>${header}</tr></thead><tbody>${bodyRows}</tbody></table>
+  </div>`;
 }
 function plResultRowHtml(label, value, opts){
   opts = opts || {};
@@ -17539,9 +17614,12 @@ function renderProfitLossBody(clientId, year, entityKind){
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start;">
       <div>
         <div style="font-size:12px; font-weight:800; color:var(--indigo-deep); margin-bottom:10px;">손익 항목 입력</div>
-        ${PL_INPUT_FIELDS.map(f=>`<div style="display:flex; align-items:center; justify-content:space-between; padding:5px 0; gap:10px;"><span style="font-size:12.5px; color:var(--ink-soft); font-weight:600;">${f.label}</span>${plMoneyInputHtml(f.key, entry[f.key])}</div>`).join('')}
-        <div style="margin-top:12px;">
-          <textarea id="plFsMemo" placeholder="메모" style="width:100%; min-height:56px; resize:none; border:1.5px solid var(--border); border-radius:8px; padding:8px 10px; font-family:'Pretendard',sans-serif; font-size:12px; box-sizing:border-box;">${escHtml(entry.memo||'')}</textarea>
+        <div class="flat-panel" style="padding:16px 18px;">
+          ${PL_INPUT_FIELDS.map(f=>plFieldRowHtml(f, entry[f.key])).join('')}
+          <div class="flat-row" style="max-width:none; align-items:flex-start;">
+            <div class="flat-row-label" style="flex:0 0 130px; padding-top:5px;">메모</div>
+            <div class="flat-row-control"><textarea id="plFsMemo" placeholder="메모" class="flat-input" style="width:100%; min-height:50px; resize:none; box-sizing:border-box; font-family:'Pretendard',sans-serif; font-size:12.5px;">${escHtml(entry.memo||'')}</textarea></div>
+          </div>
         </div>
       </div>
       <div style="background:var(--surface); border:1.5px solid var(--border); border-radius:12px; padding:16px 18px;">
@@ -17556,9 +17634,10 @@ function renderProfitLossBody(clientId, year, entityKind){
         ${plResultRowHtml('최종종합소득세액(국세)', r.finalNationalTax, {key:'finalNationalTax'})}
         ${plResultRowHtml('지방소득세(10%)', r.localTax, {key:'localTax'})}
         ${plResultRowHtml('최종 납부할 (예상)세액', r.finalPayable, {key:'finalPayable', strong:true})}
-        ${entityKind === '법인세' ? `<div class="hint" style="font-size:10.5px; margin-top:10px;">법인세는 업로드해주신 엑셀에 서식이 없어 2025년 기준 법인세율(9%/19%/21%/24%)로 계산한 참고용 추정치예요.</div>` : ''}
       </div>
-    </div>`;
+    </div>
+    ${entityKind === '법인세' ? corpTaxBracketTableHtml() : ''}
+    ${plCompareTableHtml(clientId, year, entityKind)}`;
   wrap.querySelectorAll('.pl-money-input').forEach(inp=>{
     inp.addEventListener('input', ()=>{
       formatMoneyInputLive(inp);
@@ -17610,6 +17689,8 @@ function openProfitLossReport(clientId, entityKind, year){
   const y = sel ? sel.value : String(year || todayStr().slice(0,4));
   renderProfitLossBody(clientId, y, entityKind);
   setPlDirty(false);
+  const historyPanel = document.getElementById('plHistoryWrap');
+  if(historyPanel) historyPanel.style.display = 'none';
   document.getElementById('profitLossReportOverlay').style.display = 'flex';
 }
 function closeProfitLossReport(){
@@ -17619,16 +17700,34 @@ function closeProfitLossReport(){
 document.getElementById('plFsYearSelect')?.addEventListener('change', (e)=>{
   if(!plFsClientId) return;
   renderProfitLossBody(plFsClientId, e.target.value, e.target.dataset.entityKind);
+  if(document.getElementById('plHistoryWrap')?.style.display !== 'none') renderPlHistoryList();
 });
 document.getElementById('plFsCloseBtn')?.addEventListener('click', closeProfitLossReport);
 document.getElementById('profitLossReportOverlay')?.addEventListener('click', (e)=>{
   if(e.target.id === 'profitLossReportOverlay') closeProfitLossReport();
 });
 document.getElementById('plFsSaveBtn')?.addEventListener('click', async ()=>{
+  if(plFsClientId){
+    const sel = document.getElementById('plFsYearSelect');
+    const year = sel.value;
+    const entityKind = sel.dataset.entityKind;
+    const entry = profitLossEntry(plFsClientId, year);
+    entry.history = entry.history || [];
+    const prevSnap = entry.history.length ? entry.history[entry.history.length-1].fields : null;
+    const nextSnap = plFieldsSnapshot(entry);
+    const changes = diffPlFields(prevSnap, nextSnap);
+    // 이전 이력이 없거나(최초 저장) 실제로 바뀐 항목이 있을 때만 새 이력을 남김 - 아무것도 안 바꾸고 그냥
+    // 저장 버튼만 다시 누른 경우엔 의미 없는 중복 이력이 쌓이지 않게 함
+    if(!prevSnap || changes.length){
+      entry.history.push({ id: Date.now()+'-'+Math.random().toString(36).slice(2,7), savedAt: new Date().toLocaleString('ko-KR'), fields: nextSnap, memo: entry.memo||'', entityKind, changes });
+      if(entry.history.length > 30) entry.history.shift();
+    }
+  }
   await saveSharedProfitLossReports();
   const msgEl = document.getElementById('plFsSaveMsg');
   if(msgEl){ showCenterToast('저장됐어요'); msgEl.textContent = '저장됨'; clearTimeout(msgEl._flashT); msgEl._flashT = setTimeout(()=>{ msgEl.textContent=''; }, 1500); }
   setPlDirty(false);
+  if(document.getElementById('plHistoryWrap')?.style.display !== 'none') renderPlHistoryList();
 });
 document.getElementById('plFsRevertBtn')?.addEventListener('click', async ()=>{
   if(!document.getElementById('plFsSaveBtn')?.classList.contains('is-dirty')){
@@ -17645,6 +17744,92 @@ document.getElementById('plFsRevertBtn')?.addEventListener('click', async ()=>{
   }
   const msgEl = document.getElementById('plFsSaveMsg');
   if(msgEl){ msgEl.textContent = '되돌렸어요'; clearTimeout(msgEl._flashT); msgEl._flashT = setTimeout(()=>{ msgEl.textContent=''; }, 1500); }
+});
+// 손익보고서를 그대로 인쇄창으로 띄워서 거래처에 보낼 수 있게 함 - 지금 화면(저장 여부 상관없이 현재 입력값)
+// 기준으로 출력하는 버튼과, 수정이력의 각 시점 스냅샷을 그대로 출력하는 버튼 두 군데서 공용으로 씀
+function corpTaxBracketPrintTableHtml(){
+  const rows = CORP_TAX_BRACKETS_2026.map(b=>`<tr><td>${escHtml(b.range)}</td><td style="text-align:center;">${escHtml(b.rate)}</td><td style="text-align:center;">${escHtml(b.localRate)}</td></tr>`).join('');
+  return `<h3>2026년 귀속 법인세율표</h3>
+    <table><thead><tr><th>과세표준</th><th>세율(국세)</th><th>지방소득세 포함 실효세율</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function printProfitLossSnapshot(clientName, year, entityKind, fields, savedAt){
+  const r = plCalc(fields, entityKind);
+  const incomeLabel = entityKind === '법인세' ? '각사업연도소득금액' : '종합소득금액';
+  const inputRows = PL_INPUT_FIELDS.map(f=>`<tr><td>${escHtml(f.label)}</td><td style="text-align:right;">${(Number(fields[f.key])||0).toLocaleString()}</td></tr>`).join('');
+  const resultRows = [
+    ['매출총이익', r.grossProfit], ['영업이익', r.operatingProfit], ['당기순이익', r.netIncome],
+    [incomeLabel, r.totalIncome], ['과세표준', r.taxBase], ['예상산출세액', r.calcTax], ['최종결정세액', r.decidedTax],
+    ['최종종합소득세액(국세)', r.finalNationalTax], ['지방소득세(10%)', r.localTax], ['최종 납부할 (예상)세액', r.finalPayable],
+  ].map(([l,v])=>`<tr><td>${escHtml(l)}</td><td style="text-align:right;">${v.toLocaleString()}${v<0?' (환급)':''}</td></tr>`).join('');
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escHtml(clientName)} ${escHtml(String(year))}년 ${escHtml(entityKind)} 손익보고서</title>
+    <style>
+      body{ font-family:'Pretendard','Malgun Gothic',sans-serif; padding:28px; color:#1D1E33; }
+      h2{ margin:0 0 4px; } h3{ margin:26px 0 8px; font-size:14px; }
+      .meta{ color:#6B7280; font-size:12px; margin-bottom:20px; }
+      table{ border-collapse:collapse; width:100%; margin-bottom:8px; }
+      td, th{ border:1px solid #D8DAE5; padding:7px 12px; font-size:13px; }
+      th{ background:#F1EFFB; }
+    </style></head>
+    <body>
+      <h2>${escHtml(clientName)} - ${escHtml(String(year))}년 ${escHtml(entityKind)} 손익보고서</h2>
+      <div class="meta">${savedAt ? '저장일시: '+escHtml(savedAt) : '현재 입력 기준(아직 저장 전 값 포함)'}</div>
+      <table><tbody>${inputRows}</tbody></table>
+      <table><tbody>${resultRows}</tbody></table>
+      ${entityKind === '법인세' ? corpTaxBracketPrintTableHtml() : ''}
+    </body></html>`;
+  const w = window.open('', '_blank');
+  if(!w){ showCenterToast('팝업이 차단되어 출력창을 열 수 없어요. 브라우저 팝업 차단을 해제해주세요.'); return; }
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(()=>{ try{ w.print(); }catch(e){} }, 300);
+}
+document.getElementById('plFsPrintBtn')?.addEventListener('click', ()=>{
+  if(!plFsClientId) return;
+  const sel = document.getElementById('plFsYearSelect');
+  const year = sel.value, entityKind = sel.dataset.entityKind;
+  const entry = profitLossEntry(plFsClientId, year);
+  const client = bookkeepingClientList().find(c=>c.id===plFsClientId);
+  printProfitLossSnapshot(client ? client.name : '', year, entityKind, entry, null);
+});
+// 수정이력 패널 토글 + 목록 렌더링 - 저장할 때마다 남긴 스냅샷을 최신순으로 보여주고, 이전 스냅샷과 달라진
+// 항목을 칩으로 표시함(무엇이 바뀌었는지 한눈에 보이도록). 각 이력의 "출력" 버튼은 그 시점 값 그대로 인쇄함
+function renderPlHistoryList(){
+  const listWrap = document.getElementById('plHistoryListWrap');
+  if(!listWrap || !plFsClientId) return;
+  const sel = document.getElementById('plFsYearSelect');
+  const year = sel.value, entityKind = sel.dataset.entityKind;
+  const entry = profitLossEntry(plFsClientId, year);
+  const history = entry.history || [];
+  const client = bookkeepingClientList().find(c=>c.id===plFsClientId);
+  if(!history.length){ listWrap.innerHTML = `<div class="empty-state" style="font-size:12px;">아직 저장 이력이 없어요. 저장 버튼을 누르면 그 시점 값이 이력으로 남아요.</div>`; return; }
+  listWrap.innerHTML = history.slice().reverse().map((h, revIdx)=>{
+    const idx = history.length - 1 - revIdx;
+    const changesHtml = h.changes && h.changes.length
+      ? h.changes.map(c=>`<span style="display:inline-block; background:var(--indigo-bg); color:var(--indigo-deep); border-radius:6px; padding:2px 8px; font-size:10.5px; margin:2px 4px 2px 0;">${escHtml(c.label)} ${c.from.toLocaleString()} → ${c.to.toLocaleString()}</span>`).join('')
+      : `<span style="font-size:11px; color:var(--ink-soft);">최초 등록</span>`;
+    return `<div style="border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
+        <span style="font-size:12px; font-weight:800; color:var(--navy);">${escHtml(h.savedAt)}</span>
+        <button type="button" class="del-btn pl-history-print-btn" data-idx="${idx}" style="font-size:11px; padding:4px 10px;">🖨 출력</button>
+      </div>
+      <div>${changesHtml}</div>
+    </div>`;
+  }).join('');
+  listWrap.querySelectorAll('.pl-history-print-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const h = entry.history[Number(btn.dataset.idx)];
+      if(!h) return;
+      printProfitLossSnapshot(client ? client.name : '', year, h.entityKind || entityKind, h.fields, h.savedAt);
+    });
+  });
+}
+document.getElementById('plFsHistoryBtn')?.addEventListener('click', ()=>{
+  const panel = document.getElementById('plHistoryWrap');
+  if(!panel) return;
+  const show = panel.style.display === 'none';
+  panel.style.display = show ? 'block' : 'none';
+  if(show) renderPlHistoryList();
 });
 
 // ── 부가세 검토표 엑셀 불러오기: 기존에 쓰던 "부가가치세 신고자료 통합조회" 형식 엑셀 파일을 그대로 올리면,
