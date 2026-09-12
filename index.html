@@ -17654,6 +17654,14 @@ function plComparePrintTableHtml(clientId, year, entityKind){
 }
 function plResultRowHtml(label, value, opts){
   opts = opts || {};
+  // 원본 엑셀에서 소계/합계 줄을 색으로 강조하던 것과 같은 느낌을 화면에서도 주기 위해, 맨 마지막 결론
+  // (최종 납부할 세액)은 옅은 테두리 대신 진한 인디고 배경 박스로 한 번 더 강조함(opts.final)
+  if(opts.final){
+    return `<div style="display:flex; align-items:center; justify-content:space-between; padding:10px 12px; margin-top:10px; background:var(--indigo-deep); border-radius:10px;">
+      <span style="font-size:13.5px; font-weight:800; color:#fff;">${label}</span>
+      <span class="pl-result-value" data-key="${opts.key||''}" style="font-family:'IBM Plex Mono',monospace; font-size:15px; font-weight:900; color:${value<0?'#FFB4C6':'#fff'};">${value.toLocaleString()}${value<0?' (환급)':''}</span>
+    </div>`;
+  }
   return `<div style="display:flex; align-items:center; justify-content:space-between; padding:7px 4px; ${opts.strong?'border-top:1.5px solid var(--border); margin-top:4px; padding-top:10px;':''}">
     <span style="font-size:${opts.strong?'13px':'12.5px'}; font-weight:${opts.strong?800:600}; color:${opts.strong?'var(--navy)':'var(--ink-soft)'};">${label}</span>
     <span class="pl-result-value" data-key="${opts.key||''}" style="font-family:'IBM Plex Mono',monospace; font-size:${opts.strong?'14.5px':'13px'}; font-weight:${opts.strong?900:700}; color:${value<0?'#D1345B':(opts.strong?'var(--indigo-deep)':'var(--navy)')};">${value.toLocaleString()}${value<0?' (환급)':''}</span>
@@ -17689,11 +17697,11 @@ function renderProfitLossBody(clientId, year, entityKind){
         ${plResultRowHtml('최종결정세액', r.decidedTax, {key:'decidedTax'})}
         ${plResultRowHtml('최종종합소득세액(국세)', r.finalNationalTax, {key:'finalNationalTax'})}
         ${plResultRowHtml('지방소득세(10%)', r.localTax, {key:'localTax'})}
-        ${plResultRowHtml('최종 납부할 (예상)세액', r.finalPayable, {key:'finalPayable', strong:true})}
+        ${plResultRowHtml('최종 납부할 (예상)세액', r.finalPayable, {key:'finalPayable', final:true})}
       </div>
     </div>
-    ${corpTaxBracketTableHtml(entityKind)}
-    ${plCompareTableHtml(clientId, year, entityKind)}`;
+    ${plCompareTableHtml(clientId, year, entityKind)}
+    ${corpTaxBracketTableHtml(entityKind)}`;
   wrap.querySelectorAll('.pl-money-input').forEach(inp=>{
     inp.addEventListener('input', ()=>{
       formatMoneyInputLive(inp);
@@ -17817,16 +17825,18 @@ function printProfitLossSnapshot(clientName, year, entityKind, fields, savedAt, 
   const r = plCalc(fields, entityKind);
   const incomeLabel = entityKind === '법인세' ? '각사업연도소득금액' : '종합소득금액';
   const inputRows = PL_INPUT_FIELDS.map(f=>`<tr><td>${escHtml(f.label)}</td><td style="text-align:right;">${(Number(fields[f.key])||0).toLocaleString()}</td></tr>`).join('');
-  // 온스크린 계산결과 패널과 같은 위치(각사업연도소득금액/종합소득금액, 과세표준, 최종 납부할 세액)에 굵은 구분선을 넣어서
-  // 입력표와 결과표 경계, 결과표 안의 소계 경계가 화면에서 보던 것과 어긋나지 않게 함
+  // 원본 엑셀에서 소계/합계 줄을 색으로 강조해서 구분되던 것을 재현함 - 중간 소계(종합소득금액·과세표준)는
+  // 옅은 인디고 배경으로, 맨 마지막 결론(최종 납부할 세액)은 진한 배경 위 흰 글씨로 한 번 더 강조해서
+  // 목록 사이에서 한눈에 띄게 함
   const resultRowsSpec = [
     ['매출총이익', r.grossProfit], ['영업이익', r.operatingProfit], ['당기순이익', r.netIncome],
-    [incomeLabel, r.totalIncome, true], ['과세표준', r.taxBase, true], ['예상산출세액', r.calcTax], ['최종결정세액', r.decidedTax],
-    ['최종종합소득세액(국세)', r.finalNationalTax], ['지방소득세(10%)', r.localTax], ['최종 납부할 (예상)세액', r.finalPayable, true],
+    [incomeLabel, r.totalIncome, 'sub'], ['과세표준', r.taxBase, 'sub'], ['예상산출세액', r.calcTax], ['최종결정세액', r.decidedTax],
+    ['최종종합소득세액(국세)', r.finalNationalTax], ['지방소득세(10%)', r.localTax], ['최종 납부할 (예상)세액', r.finalPayable, 'final'],
   ];
-  const resultRows = resultRowsSpec.map(([l,v,strong], i)=>{
-    const style = strong ? ' style="border-top:2px solid #1D1E33; font-weight:800;"' : '';
-    return `<tr${style}><td${style}>${escHtml(l)}</td><td${style} style="text-align:right;${strong?'border-top:2px solid #1D1E33; font-weight:800;':''}">${v.toLocaleString()}${v<0?' (환급)':''}</td></tr>`;
+  const resultRows = resultRowsSpec.map(([l,v,emph])=>{
+    const cellStyle = emph === 'final' ? 'background:#4640D6; color:#fff; font-weight:900; font-size:14px; border-color:#4640D6;'
+      : emph === 'sub' ? 'background:#ECEBFE; color:#4640D6; font-weight:800;' : '';
+    return `<tr><td style="${cellStyle}">${escHtml(l)}</td><td style="text-align:right; ${cellStyle}">${v.toLocaleString()}${v<0?' (환급)':''}</td></tr>`;
   }).join('');
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escHtml(clientName)} ${escHtml(String(year))}년 귀속 손익보고서</title>
     <style>
@@ -17841,9 +17851,13 @@ function printProfitLossSnapshot(clientName, year, entityKind, fields, savedAt, 
       <h2>${escHtml(clientName)}</h2>
       <div class="sub">${escHtml(String(year))}년 귀속 손익보고서</div>
       <table><tbody>${inputRows}${resultRows}</tbody></table>
-      ${corpTaxBracketPrintTableHtml(entityKind)}
       ${clientId ? plComparePrintTableHtml(clientId, year, entityKind) : ''}
-      <script>window.onload = function(){ setTimeout(function(){ try{ window.print(); }catch(e){} }, 150); };<\/script>
+      ${corpTaxBracketPrintTableHtml(entityKind)}
+      <script>
+        window.onload = function(){ setTimeout(function(){ try{ window.print(); }catch(e){} }, 150); };
+        // 인쇄가 끝나거나(인쇄 완료) 취소해도 창을 자동으로 닫아서, 인쇄 후에 빈 탭이 브라우저에 계속 남아있지 않게 함
+        window.onafterprint = function(){ try{ window.close(); }catch(e){} };
+      <\/script>
     </body></html>`;
   try{
     const blob = new Blob([html], { type:'text/html' });
