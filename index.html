@@ -1361,7 +1361,14 @@
      (손익보고서 입력폼 같은 일반 .flat-panel은 그대로 440px 고정폭을 씀 - 거기는 금액 입력칸이 오른쪽
      정렬로 꽉 차야 보기 좋아서 이 fit-content 방식을 적용하면 오히려 더 어색해짐) */
   .flat-panel-narrow{ width:fit-content; max-width:100%; }
-  .flat-panel-narrow .flat-row{ width:fit-content; max-width:100%; margin:0 0 8px; }
+  /* 줄마다 각자 내용 길이만큼만 줄어들게 두면(fit-content) 패널 폭 자체는 가장 긴 줄에 맞게 줄어도, 그보다
+     짧은 줄들의 오른쪽 테두리가 서로 들쭉날쭉해 보임 - 패널 폭은 그대로 가장 긴 줄에 맞춰 줄어들게 두고,
+     각 줄은 그 안에서 100%로 채워서 모든 줄의 오른쪽 테두리가 한 줄로 맞춰지게 함(정렬된 폼처럼 보이게) */
+  .flat-panel-narrow .flat-row{ width:100%; margin:0 0 8px; }
+  /* 줄 폭을 가장 긴 줄에 맞춰 다같이 채웠으니(위 width:100%), 그 안의 입력칸(날짜·구분 등 폭을 따로
+     안 정해준 것들)도 같이 끝까지 채워야 줄 테두리 안쪽에 다시 빈 칸이 생기지 않음 - 일수처럼 일부러
+     좁게 고정해둔 칸(인라인 style="width:70px")은 인라인 지정이 항상 이겨서 그대로 좁게 유지됨 */
+  .flat-panel-narrow .flat-row-control > input, .flat-panel-narrow .flat-row-control > select{ width:100%; }
   /* .submit-btn 기본값인 margin:0 auto는 flex 부모 안에서 "형제 버튼"이 있을 때만(:has(+ button)/button+.submit-btn)
      0으로 리셋되는데, 여기 각 등록/저장 버튼 옆은 버튼이 아니라 <span class="save-msg">라서 그 리셋이 안 먹고
      margin:auto가 flex의 여유 공간을 혼자 다 차지해버림 - 그래서 부모에 justify-content:flex-end를 줘도
@@ -4353,7 +4360,7 @@
 
       <div class="settings-sub-title" id="ssTitle-teamInfo" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M17 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> 팀정보</div>
       <p class="hint" style="text-align:center;">팀의 기본정보를 등록해요.</p>
-      <div class="flat-panel" style="max-width:640px;">
+      <div class="flat-panel flat-panel-narrow">
         <form id="teamInfoForm">
           <div class="flat-row"><div class="flat-row-label">팀명</div><div class="flat-row-control"><input type="text" id="team-info-name" placeholder="예: 1팀" class="flat-input" style="width:100%;"></div></div>
           <div class="flat-row"><div class="flat-row-label">담당회계사</div><div class="flat-row-control"><input type="text" id="team-info-accountant" placeholder="예: 홍길동" class="flat-input" style="width:100%;"></div></div>
@@ -21011,7 +21018,7 @@ function renderEmployeeRoster(){
       ? `<span class="tag tag-usage">퇴사${p.lastWorkDate ? ' · '+p.lastWorkDate : ''}${p.resignReason ? ' · '+p.resignReason : ''}</span>`
       : '';
     return `
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 12px; background:var(--bg); border:1.5px solid var(--border); border-radius:10px; margin-bottom:6px; flex-wrap:wrap; ${terminated ? 'opacity:0.7;' : ''}">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:20px; padding:9px 12px; background:var(--bg); border:1.5px solid var(--border); border-radius:10px; margin:0 auto 6px; width:fit-content; max-width:100%; flex-wrap:wrap; ${terminated ? 'opacity:0.7;' : ''}">
       <span style="font-size:13px; font-weight:700;">${p.avatar ? `${staffAvatarIconSvg(p.avatar, 15)} ` : ''}${escHtml(p.name || '(이름 미등록)')}${p.position ? ` <span style="font-weight:600; color:var(--ink-soft); font-size:11.5px;">(${escHtml(p.position)})</span>` : ''}${p.id===activeProfileId ? ' <span class="tag tag-grant">현재 선택</span>' : ''} ${statusTag} ${p.email ? `<span style="color:var(--ink-soft); font-size:11px; font-weight:500;">(${escHtml(p.email)})</span>` : '<span style="color:var(--coral); font-size:11px; font-weight:500;">이메일 미등록</span>'}</span>
       <span style="white-space:nowrap;">
         <button type="button" class="del-btn employee-open-status-btn" data-id="${p.id}">현황</button>
