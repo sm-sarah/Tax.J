@@ -306,6 +306,13 @@
   }
   .home-dash-table-row > span{ border-bottom:1px dashed var(--border); }
   .home-dash-table-row:last-child > span{ border-bottom:none; }
+  /* 팀캘린더 미리보기 표에서 지난 일정과 다가올 일정이 구분 안 돼서 한눈에 훑기 어렵다는 요청 - 지난
+     일정은 옅게 흐려서 뒤로 물러나 보이게 하고, 오늘 일정은 옅은 강조 배경 + 굵은 날짜로 눈에 띄게 함
+     (다가올 일정은 원래 스타일 그대로 둬서 셋이 자연스럽게 구분됨) */
+  .home-dash-table-row-past > span{ color:var(--ink-soft); opacity:0.55; }
+  .home-dash-table-row-past .home-dash-table-col-date{ color:var(--ink-soft); font-weight:600; }
+  .home-dash-table-row-today > span{ background:var(--indigo-bg); }
+  .home-dash-table-row-today .home-dash-table-col-date{ color:var(--indigo-deep); font-weight:900; }
   .home-dash-table-col-date{ font-weight:700; color:var(--indigo-deep); font-size:13px; white-space:nowrap; text-align:center; }
   /* 결재현황 위젯 전용 - 기안일 하나에 날짜+시간을 같이 보여줌(예전엔 날짜/기안시간 두 칸이었는데 하나로 합침) */
   .home-dash-table-col-draftdate{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft); white-space:nowrap; text-align:center; }
@@ -12193,11 +12200,11 @@ function computeMonthTeamAgenda(monthStr){
     const holidayEntry = (sharedExclusionDays||[]).find(x=>x.date===ds && x.reason==='공휴일');
     if(holidayEntry){
       const info = exclusionBadgeInfo(holidayEntry);
-      items.push({ dateLabel, person:'전체', icon: info.icon || calIconSvg('holiday'), text: info.label || '공휴일' });
+      items.push({ date:ds, dateLabel, person:'전체', icon: info.icon || calIconSvg('holiday'), text: info.label || '공휴일' });
     }
     (sharedExclusionDays||[]).filter(x=>x.date===ds && x.reason!=='공휴일').forEach(x=>{
       const info = exclusionBadgeInfo(x);
-      items.push({ dateLabel, person:'전체', icon: info.icon || calIconSvg('pin'), text: info.label || x.reason });
+      items.push({ date:ds, dateLabel, person:'전체', icon: info.icon || calIconSvg('pin'), text: info.label || x.reason });
     });
     getProfiles().forEach(p=>{
       const s = readProfileRaw(p.id,'settings') || {};
@@ -12205,15 +12212,15 @@ function computeMonthTeamAgenda(monthStr){
       const sch = readProfileRaw(p.id,'schedule') || { events:[] };
       const name = s.employeeName || p.name || '(미등록)';
       (att.leaveUsage||[]).filter(u=>u.date===ds).forEach(u=>{
-        items.push({ dateLabel, person:name, icon:calIconSvg('leave'), text:leaveTeamCalShortType(u.type, u.subtype) });
+        items.push({ date:ds, dateLabel, person:name, icon:calIconSvg('leave'), text:leaveTeamCalShortType(u.type, u.subtype) });
       });
       (att.remoteEntries||[]).filter(r=>r.date===ds).forEach(r=>{
         // 팀캘린더(월간 표)와 동일하게 잔여횟수를 같이 보여줌(그 달 합계가 아니라 누적 순번) - 특별재택은 한도 밖이라 제외
         const cnt = r.bonus ? null : remoteEntryRank(att.remoteEntries, r);
-        items.push({ dateLabel, person:name, icon: r.bonus ? calIconSvg('special') : calIconSvg('remote'), text: r.bonus ? '특별재택' : `정기재택 (${cnt}회/${REGULAR_REMOTE_MONTHLY_QUOTA}회)` });
+        items.push({ date:ds, dateLabel, person:name, icon: r.bonus ? calIconSvg('special') : calIconSvg('remote'), text: r.bonus ? '특별재택' : `정기재택 (${cnt}회/${REGULAR_REMOTE_MONTHLY_QUOTA}회)` });
       });
       (sch.events||[]).filter(e=>e.date===ds && e.shared !== false).forEach(e=>{
-        items.push({ dateLabel, person:name, icon:calIconSvg('schedule'), text: e.type || '일정' });
+        items.push({ date:ds, dateLabel, person:name, icon:calIconSvg('schedule'), text: e.type || '일정' });
       });
     });
   });
@@ -12235,14 +12242,20 @@ function renderDashboardCalendarPreview(){
   }
   // 날짜/대상자/일정을 각자 텍스트가 섞여 나오던 한 줄짜리 목록 대신, 열 제목 + 구분선이 있는 미니 표로 바꿔서
   // 한눈에 훑어보기 쉽게 함(날짜·대상자가 왼쪽에 고정폭으로 정렬되고, 일정 내용만 오른쪽으로 늘어남)
+  // 지난 일정과 다가올 일정이 구분이 안 된다는 요청으로, 오늘 날짜 기준 지난 일정은 흐리게(-past), 오늘
+  // 일정은 옅은 강조 배경(-today)을 얹어서 한눈에 구분되게 함(다가올 일정은 기본 스타일 그대로 둠)
+  const today0 = todayStr();
   const tableHtml = `<div class="home-dash-table-head">
       <span class="home-dash-table-col-date">날짜</span><span class="home-dash-table-col-person">대상자</span><span class="home-dash-table-col-main">일정</span>
     </div>`
-    + items.map(it=>`<div class="home-dash-table-row">
+    + items.map(it=>{
+      const rowClass = it.date < today0 ? ' home-dash-table-row-past' : (it.date === today0 ? ' home-dash-table-row-today' : '');
+      return `<div class="home-dash-table-row${rowClass}">
       <span class="home-dash-table-col-date">${escHtml(it.dateLabel)}</span>
       <span class="home-dash-table-col-person">${escHtml(it.person||'전체')}</span>
       <span class="home-dash-table-col-main">${it.icon} ${escHtml(it.text)}</span>
-    </div>`).join('');
+    </div>`;
+    }).join('');
   body.innerHTML = headerHtml + `<div class="home-dash-card-scroll"><div class="home-dash-table">${tableHtml}</div></div>`;
 }
 // 대시보드 "근태현황" 위젯 - 예전엔 근태경비 탭의 실제 카드(.summary-cards)를 그대로 복제해 축소하는
