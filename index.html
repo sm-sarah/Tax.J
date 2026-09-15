@@ -11892,19 +11892,29 @@ const DASHBOARD_SHAPES = { normal:{label:'기본'}, wide:{label:'가로형'}, ta
 function getDashboardConfig(){
   let order, enabledList, wideList, shapeObj;
   // 대시보드 위젯 배치는 사람마다(연동된 구글 계정마다) 다르게 두고 싶어하는 개인 취향이라, 다른 개인정보들과
-  // 마찬가지로 skey()로 계정별(activeProfileId별)로 따로 저장함 - 예전엔 접미사 없는 공용 키
-  // (worklog_dashboard_*)를 썼어서 이 브라우저의 모든 계정이 같은 배치를 공유하는 버그가 있었음.
-  // 이미 그 공용 키로 저장돼 있던 예전 설정은, 계정별 설정이 아직 없을 때 1회성으로 이어받아 옴(마이그레이션)
-  try{ order = JSON.parse(localStorage.getItem(skey('dashboard_order')) || localStorage.getItem('worklog_dashboard_order') || 'null'); }catch(e){ order = null; }
-  try{ enabledList = JSON.parse(localStorage.getItem(skey('dashboard_enabled')) || localStorage.getItem('worklog_dashboard_enabled') || 'null'); }catch(e){ enabledList = null; }
-  // 위젯 모양(기본/가로형/세로형/크게) - 위치(순서)는 예전부터 있었지만, "위치나 크기를 유도리있게
-  // 조정하고 싶다"는 요청에 맞춰 늘림. 예전엔 가로형(wide) 하나뿐이었는데, 그 시절 데이터
-  // (worklog_dashboard_wide, 배열)가 남아있으면 그 위젯들을 shape:'wide'로 옮겨와서 그대로 이어씀.
-  try{ shapeObj = JSON.parse(localStorage.getItem(skey('dashboard_shape')) || localStorage.getItem('worklog_dashboard_shape') || 'null'); }catch(e){ shapeObj = null; }
-  if(!shapeObj || typeof shapeObj !== 'object'){
-    try{ wideList = JSON.parse(localStorage.getItem('worklog_dashboard_wide') || 'null'); }catch(e){ wideList = null; }
-    shapeObj = {};
-    if(Array.isArray(wideList)) wideList.forEach(k=>{ shapeObj[k] = 'wide'; });
+  // 마찬가지로 계정별로 따로 저장함. 예전엔 이 컴퓨터의 localStorage(skey() 계정별 키)에만 저장돼서
+  // "집에서 배치해둔 게 회사 컴퓨터에서는 안 보인다"는 문제가 즐겨찾기와 똑같이 있었음 - 이제 직원별
+  // settings(gdrive로 계정 따라 동기화됨) 안에 옮겨 담아서 어느 컴퓨터에서 열어도 그대로 보이게 함.
+  // 이 컴퓨터에 예전 방식(계정별 skey, 또는 그보다 더 예전의 접미사 없는 공용 키)으로 저장돼 있던 값이
+  // 있으면 처음 한 번만 이어받아 옴(마이그레이션)
+  if(settings.dashboardWidgetConfig && typeof settings.dashboardWidgetConfig === 'object'){
+    order = settings.dashboardWidgetConfig.order;
+    enabledList = settings.dashboardWidgetConfig.enabled;
+    shapeObj = settings.dashboardWidgetConfig.shape;
+  } else {
+    try{ order = JSON.parse(localStorage.getItem(skey('dashboard_order')) || localStorage.getItem('worklog_dashboard_order') || 'null'); }catch(e){ order = null; }
+    try{ enabledList = JSON.parse(localStorage.getItem(skey('dashboard_enabled')) || localStorage.getItem('worklog_dashboard_enabled') || 'null'); }catch(e){ enabledList = null; }
+    // 위젯 모양(기본/가로형/세로형/크게) - 위치(순서)는 예전부터 있었지만, "위치나 크기를 유도리있게
+    // 조정하고 싶다"는 요청에 맞춰 늘림. 예전엔 가로형(wide) 하나뿐이었는데, 그 시절 데이터
+    // (worklog_dashboard_wide, 배열)가 남아있으면 그 위젯들을 shape:'wide'로 옮겨와서 그대로 이어씀.
+    try{ shapeObj = JSON.parse(localStorage.getItem(skey('dashboard_shape')) || localStorage.getItem('worklog_dashboard_shape') || 'null'); }catch(e){ shapeObj = null; }
+    if(!shapeObj || typeof shapeObj !== 'object'){
+      try{ wideList = JSON.parse(localStorage.getItem('worklog_dashboard_wide') || 'null'); }catch(e){ wideList = null; }
+      shapeObj = {};
+      if(Array.isArray(wideList)) wideList.forEach(k=>{ shapeObj[k] = 'wide'; });
+    }
+    settings.dashboardWidgetConfig = { order: Array.isArray(order) ? order : null, enabled: Array.isArray(enabledList) ? enabledList : null, shape: shapeObj || {} };
+    saveSettings();
   }
   // order/enabled는 이제 고정 영역(clock/calendar/taxSchedule)을 뺀 자유 배치 위젯에만 적용됨 - 예전
   // 데이터에 고정 위젯 키가 섞여 남아있어도 여기서 걸러내서 자유 배치 목록에 실수로 다시 나타나지 않게 함
@@ -11918,11 +11928,8 @@ function getDashboardConfig(){
   return { order, enabled, shape };
 }
 function saveDashboardConfig(order, enabledSet, shapeObj){
-  try{
-    localStorage.setItem(skey('dashboard_order'), JSON.stringify(order));
-    localStorage.setItem(skey('dashboard_enabled'), JSON.stringify(Array.from(enabledSet)));
-    localStorage.setItem(skey('dashboard_shape'), JSON.stringify(shapeObj || {}));
-  }catch(e){}
+  settings.dashboardWidgetConfig = { order, enabled: Array.from(enabledSet), shape: shapeObj || {} };
+  saveSettings();
 }
 // 달력·근태 관련 이모지(🌴🏠🎁⏰🗓️🍻🎌🍱)를 앱 전체에서 쓰는 선 스타일 아이콘으로 통일하기 위한 헬퍼.
 // .cal-badge의 색상 클래스명(leave/remote/special/schedule/party/holiday/lunchparty)과 키를 맞춰서
@@ -18994,8 +19001,11 @@ function applyAdAutoPhrase(){
   const contentHtml = escHtml(content).replace(/\n/g,'<br>');
   let extraHtml = '';
   if(docType === '휴가'){
-    const summary = typeof adLeaveSummaryText === 'function' ? adLeaveSummaryText() : '';
-    if(summary) extraHtml = `<div style="text-align:center;"><br></div><div style="text-align:center;">${escHtml(summary).replace(/\n/g,'<br>')}</div>`;
+    // adLeaveSummaryTableHtml()이 이미 완성된 표 HTML을 돌려주므로(escHtml로 다시 감싸면 태그가 그대로
+    // 글자로 보임), 그대로 끼워넣음 - 예전엔 존재하지 않는 함수명(adLeaveSummaryText)을 부르고 있어서
+    // 매번 조용히 빈 문자열만 돌아오고, 휴가 기간·종류 표가 기안 내용에 전혀 채워지지 않던 버그가 있었음
+    const summaryHtml = typeof adLeaveSummaryTableHtml === 'function' ? adLeaveSummaryTableHtml() : '';
+    if(summaryHtml) extraHtml = `<div style="text-align:center;"><br></div><div style="text-align:center;">${summaryHtml}</div>`;
   } else if(typeof AD_TAX_DOCTYPE_KEY !== 'undefined' && AD_TAX_DOCTYPE_KEY[docType]){
     const clientSel = document.getElementById('ad-tax-client');
     const clientName = clientSel?.selectedOptions[0]?.textContent || '';
