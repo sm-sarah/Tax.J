@@ -12769,7 +12769,7 @@ function renderDashboardApprovalAllPreview(){
     const { date, time } = splitKrDateTime(a.decidedAt || a.createdAt || '');
     return `<div class="home-dash-table-row" data-approval-id="${a.id}" style="cursor:pointer;">
       <span class="home-dash-table-col-draftdate">${escHtml(date)} ${escHtml(time)}</span>
-      <span class="home-dash-table-col-person">${escHtml(resolveNameByEmail(a.drafterEmail)||a.drafterName||'')}</span>
+      <span class="home-dash-table-col-person">${escHtml(displayDrafterName(a))}</span>
       <span class="home-dash-table-col-main">${escHtml(a.title||'(제목 없음)')}</span>
       <span class="home-dash-table-col-person">${escHtml(resolveNameByEmail(a.approverEmail)||a.approverName||'')}</span>
       <span class="home-dash-table-col-status">${typeof approvalStatusTagHtml === 'function' ? approvalStatusTagHtml(a.status) : escHtml(a.status||'')}</span>
@@ -18861,6 +18861,22 @@ function resolveNameByEmail(email){
   if(sharedAdminNames[email]) return sharedAdminNames[email];
   return email;
 }
+// 기안 문서의 "기안자" 이름을 화면에 보여줄 때 전용으로 쓰는 헬퍼. resolveNameByEmail/item.drafterName 둘 다
+// 직원 프로필이 없으면 결국 이메일 문자열 자체를 돌려주는데(옛날 문서엔 이 이메일이 drafterName으로 그대로
+// 저장돼있기도 함), 기안자는 항상 "지금 이 문서를 보고 있는 나 자신"인 경우가 대부분이라 그럴 땐 이 기기에
+// 설정된 개인 표시 이름(currentStaffDisplayName, 예: "accdesk")으로 실시간 보정해서 보여줌
+function displayDrafterName(item){
+  const email = item?.drafterEmail || '';
+  const resolved = resolveNameByEmail(email);
+  const looksUnresolved = (name)=> !name || name.toLowerCase() === email.toLowerCase();
+  if(!looksUnresolved(resolved)) return resolved;
+  if(!looksUnresolved(item?.drafterName)) return item.drafterName;
+  if(email && currentUserEmail && email.toLowerCase() === currentUserEmail.toLowerCase()){
+    const myName = currentStaffDisplayName();
+    if(myName) return myName;
+  }
+  return resolved || item?.drafterName || '-';
+}
 function populateApproverSelect(){
   const sel = document.getElementById('ad-approver');
   if(!sel) return;
@@ -18890,6 +18906,16 @@ function populateDrafterSelect(){
 // 지금 폼에서 "기안자"로 선택된 이메일 - 선택 UI가 아직 안 채워졌거나 값이 없으면 실제 로그인 계정으로 대체함
 function currentDrafterEmail(){
   return document.getElementById('ad-drafter')?.value || currentUserEmail || '';
+}
+// 기안자 표시 이름을 구함 - resolveNameByEmail은 직원 프로필/관리자 등록 이름을 못 찾으면 최후의 수단으로
+// "이메일 문자열 그 자체"를 돌려주는데(예: 아직 직원 프로필에 등록 안 된 계정), 이 값을 그대로 문서에
+// drafterName으로 저장해버리면 "기안자: sunmin2040@gmail.com"처럼 이메일이 이름 자리에 영구히 박제됨.
+// 기안자는 항상 로그인한 본인이므로, 그럴 땐 이 기기에 설정된 개인 표시 이름(currentStaffDisplayName,
+// 예: "accdesk")을 한 번 더 시도해서 이메일 대신 그 이름이 저장되게 함
+function resolveDrafterDisplayName(email){
+  const resolved = resolveNameByEmail(email);
+  if(resolved && resolved.toLowerCase() !== (email||'').toLowerCase()) return resolved;
+  return currentStaffDisplayName() || resolved;
 }
 // 기안 폼 상단 "기안자/소속/기안일"과 "신청→승인" 결재선 표시를 실제 값으로 채움 - 결재자 select를
 // 바꿀 때마다도 다시 불러서 결재선의 "승인" 칸이 선택에 맞춰 바로 갱신되게 함
@@ -19029,7 +19055,7 @@ function saveApprovalDraftForm(status){
     existing.title = title; existing.content = content; existing.attachments = attachments; delete existing.attachmentLink;
     existing.approverEmail = approverEmail; existing.approverName = resolveNameByEmail(approverEmail);
     // 기안자도 테스트용으로 바꿔볼 수 있으므로, 임시저장 문서를 다시 열어 고칠 때도 지금 선택된 기안자로 갱신함
-    existing.drafterEmail = drafterEmail; existing.drafterName = resolveNameByEmail(drafterEmail);
+    existing.drafterEmail = drafterEmail; existing.drafterName = resolveDrafterDisplayName(drafterEmail);
     existing.docType = docType;
     existing.expenseMonth = expenseMonth;
     existing.taxYear = taxYear; existing.taxVatPeriod = taxVatPeriod; existing.taxClientId = taxClientId;
@@ -19048,7 +19074,7 @@ function saveApprovalDraftForm(status){
       id: genId(), title, content, attachments, docType, expenseMonth, taxYear, taxVatPeriod, taxClientId,
       leaveType, leaveStart, leaveEnd, leaveSubtype, leaveDays,
       drafterEmail,
-      drafterName: resolveNameByEmail(drafterEmail),
+      drafterName: resolveDrafterDisplayName(drafterEmail),
       approverEmail, approverName: resolveNameByEmail(approverEmail),
       status, comment:'', comments:[], createdAt: new Date().toLocaleString('ko-KR'), decidedAt:''
     });
@@ -19955,7 +19981,7 @@ function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
     return `<tr class="approval-row-clickable" data-id="${item.id}" style="cursor:pointer; ${expanded?'background:var(--indigo-bg);':''}">
       <td style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}"><span class="tag" style="${approvalDocTypeChipStyle(item.docType||'일반')}">${escHtml(item.docType||'일반')}</span></td>
       <td class="num" style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}">${escHtml(approvalDateShort(item.createdAt))}</td>
-      <td style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}">${escHtml(resolveNameByEmail(item.drafterEmail) || item.drafterName || '')}</td>
+      <td style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}">${escHtml(displayDrafterName(item))}</td>
       <td class="num" style="text-align:center; overflow:hidden; text-overflow:ellipsis; font-size:11px; color:var(--ink-soft); ${rowBorder}">${escHtml(approvalDocNumber(item))}</td>
       <td style="text-align:left; vertical-align:middle; white-space:normal; word-break:break-word; padding-left:16px; font-size:13.5px; font-weight:${isRead?600:800}; color:var(--ink); ${rowBorder} border-left:1px solid var(--border); border-right:1px solid var(--border);">${escHtml(approvalTitleDisplay(item))}</td>
       <td style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}">${escHtml(resolveNameByEmail(item.approverEmail) || item.approverName || '')}</td>
@@ -20180,18 +20206,12 @@ function approvalDetailBodyHtml(item){
   const canComment = myEmail && ((item.drafterEmail||'').toLowerCase()===myEmail || (item.approverEmail||'').toLowerCase()===myEmail || (typeof isCurrentUserAdmin!=='undefined' && isCurrentUserAdmin));
   const attachmentHtml = attachmentListHtml(item);
   const contentHtml = item.content ? (noticeContentIsRich(item.content) ? item.content : escHtml(item.content).replace(/\n/g,'<br>')) : '(내용 없음)';
-  const drafterName = escHtml(resolveNameByEmail(item.drafterEmail)||item.drafterName||'-');
+  const drafterName = escHtml(displayDrafterName(item) || '-');
   const approverName = escHtml(resolveNameByEmail(item.approverEmail)||item.approverName||'-');
   const teamLabel = escHtml([sharedCompanyName, (sharedTeamInfo&&sharedTeamInfo.teamName)].filter(Boolean).join(' ') || '-');
   // 표 테두리를 공용 --border(rgba(29,30,51,0.14))로 두면 흰 배경 위에서 거의 안 보인다는 피드백이 있어서
   // (휴가 표 수정 때와 같은 이유), 이 문서 조회 화면 표에도 더 진한 테두리색을 씀
   const td = 'padding:6px 8px; border:1px solid rgba(29,30,51,0.4); font-size:11.5px;';
-  // 승인/반려 결론이 난 문서는 실제 공문서의 직인(도장)처럼, 결재표 모서리에 겹쳐 찍힌 동그란 스탬프를
-  // 보여줘서 "그냥 화면"이 아니라 "처리 완료된 문서"라는 느낌을 줌 - 아직 결론 안 난 문서(기안/검토중)엔
-  // 찍을 도장이 없으므로 표시하지 않음
-  const stampHtml = (item.status === '승인' || item.status === '반려') ? `
-    <div style="position:absolute; top:-8px; right:-10px; width:54px; height:54px; border-radius:50%; border:2.5px solid ${item.status==='승인' ? 'var(--coral)' : 'var(--ink-soft)'}; color:${item.status==='승인' ? 'var(--coral)' : 'var(--ink-soft)'}; background:rgba(255,255,255,0.85); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:13.5px; letter-spacing:3px; transform:rotate(-13deg); pointer-events:none;">${item.status}</div>
-  ` : '';
   // 업무기안 제목부터 승인/반려 버튼까지 전체를 하나의 카드로 묶어서 배경(패널 색)과 확실히 구분되게 함 -
   // 예전엔 문서 박스(흰 배경)와 의견/버튼 영역(배경 없이 패널 색 그대로)이 서로 다른 톤이라 어디까지가
   // 한 묶음인지 잘 안 보였음. 기안자~결재 정보는 "업무기안" 큰 제목과 같은 줄 오른쪽에 작게 배치해서
@@ -20220,7 +20240,6 @@ function approvalDetailBodyHtml(item){
               <td style="${td} font-weight:800; min-width:60px;">${approverName}</td>
             </tr>
           </table>
-          ${stampHtml}
         </div>
       </div>
       <div style="text-align:center; border-bottom:1px solid var(--border); margin-bottom:12px; padding-bottom:12px;">
