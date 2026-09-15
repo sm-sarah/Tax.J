@@ -324,15 +324,17 @@
      보이는 회색 칩으로 나열했는데, "중요도 상관없이 다 동일한 배경색으로" + "임박한 것만 칩 안에 D-day
      표시"로 바꿔달라는 요청에 맞춰 모든 항목을 같은 slate 톤 칩으로 통일함. D-day가 2주(14일) 이내로
      임박한 항목만 칩 오른쪽에 작은 D-day 배지를 붙여 표시하고, 그 외엔 날짜/제목만 보여줌 */
+  /* 칩 배경이 기존 --guide-slate-bg보다 더 밝아 보이면 좋겠다는 요청 반영 - 다른 화면에서도 쓰는 공용
+     slate 변수는 그대로 두고, 이 위젯 칩에만 더 밝은 하늘색 톤을 따로 씀 */
   .home-dash-tax-chip-row{ display:flex; flex-direction:column; gap:5px; margin-bottom:9px; }
   .home-dash-tax-chip{
-    display:flex; align-items:center; gap:8px; background:var(--guide-slate-bg); border-radius:10px; padding:7px 10px; font-size:11.5px; width:100%; box-sizing:border-box;
+    display:flex; align-items:center; gap:8px; background:#EFF5FC; border-radius:10px; padding:7px 10px; font-size:11.5px; width:100%; box-sizing:border-box;
   }
-  .home-dash-tax-chip-date{ flex:none; font-weight:800; color:var(--guide-slate); font-family:'IBM Plex Mono',monospace; }
+  .home-dash-tax-chip-date{ flex:none; font-weight:800; color:#5B84B8; font-family:'IBM Plex Mono',monospace; }
   .home-dash-tax-chip-title{ flex:1; min-width:0; color:var(--ink-soft); font-weight:600; overflow-wrap:break-word; white-space:normal; line-height:1.35; }
   .home-dash-tax-chip-dday{
     flex:none; font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:900; color:#fff;
-    background:var(--guide-slate); border-radius:20px; padding:3px 8px; white-space:nowrap;
+    background:#6E97C6; border-radius:20px; padding:3px 8px; white-space:nowrap;
   }
   /* 신고현황 바로가기 칩 - 예전엔 위젯 하단에 별도 줄로 있었는데, 제목 줄 오른쪽(원래 "더보기" 링크 자리)에
      바로 붙여서 위젯 세로 공간을 아끼고 더 눈에 잘 띄게 함. 위젯 본문 accent(slate)와 헷갈리지 않도록
@@ -2860,7 +2862,7 @@
               <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-exclusionDays"><span>제외일수</span></div>
               <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-staffLeave"><span>직원휴가</span></div>
               <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-specialPeriod"><span>특별기간</span></div>
-              <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-taxSchedule"><span>세무일정 관리</span></div>
+              <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-taxSchedule"><span>세무일정</span></div>
             </div>
             <div class="home-tile home-tile-plain" data-settings-cat-goto="data" style="--tile-accent:var(--guide-slate);">
               <div class="home-tile-icon">💾</div>
@@ -4619,7 +4621,7 @@
       <div id="taxScheduleCustomListWrap" style="max-width:720px; margin:12px auto 0;"></div>
 
       <p class="hint" style="margin-top:18px;">
-        아래는 앞으로 다가오는 세무일정(기본 제공 + 위에서 등록한 일정)이에요. 특정 회차의 날짜가 실제와 달라지면 "수정"으로 그 회차만 고칠 수 있고, "되돌리기"로 원래 계산된 날짜로 다시 되돌릴 수 있어요.
+        아래는 해당 연도의 세무일정 전체(기본 제공 + 위에서 등록한 일정)예요. 위/아래 연도 버튼으로 다른 연도도 볼 수 있고, 특정 회차의 날짜가 실제와 달라지면 "수정"으로 그 회차만 고칠 수 있어요. "되돌리기"로 원래 계산된 날짜로 다시 되돌릴 수 있어요.
       </p>
       <div id="taxScheduleUpcomingListWrap" style="max-width:720px; margin:12px auto 0;"></div>
     </div>
@@ -14636,23 +14638,26 @@ function renderTaxScheduleCustomList(){
   });
 }
 
-// 다가오는 세무일정 회차 목록(관리자 화면용) - 이번 달부터 monthsAhead개월 앞까지, 기본 제공+등록한 일정을
-// 전부 합쳐서 회차 단위로 나열함(getTaxScheduleForMonth가 이미 override/등록 일정까지 다 반영해서 돌려줌)
-function taxScheduleUpcomingOccurrences(monthsAhead){
-  const now = new Date();
-  let y = now.getFullYear(), m = now.getMonth()+1;
+// 세무일정 회차 목록(관리자 화면용) - 예전엔 이번 달부터 6개월치만 보여줬는데, "그 해 연도 전체가 다
+// 나왔으면 좋겠다"는 요청으로 연도 단위(1~12월 전체)로 바꾸고 이전/다음 연도로 넘겨볼 수 있게 함.
+// 기본 제공+등록한 일정을 다 합쳐서 회차 단위로 나열함(getTaxScheduleForMonth가 이미 override/등록
+// 일정까지 다 반영해서 돌려줌)
+let taxScheduleAdminViewYear = new Date().getFullYear();
+function taxScheduleOccurrencesForYear(year){
   let out = [];
-  for(let i=0; i<monthsAhead; i++){
-    out = out.concat(getTaxScheduleForMonth(y, m));
-    m += 1; if(m>12){ m=1; y+=1; }
-  }
+  for(let m=1; m<=12; m++) out = out.concat(getTaxScheduleForMonth(year, m));
   return out.sort((a,b)=> a.date.localeCompare(b.date));
 }
 function renderTaxScheduleUpcomingList(){
   const wrap = document.getElementById('taxScheduleUpcomingListWrap');
   if(!wrap) return;
-  const items = taxScheduleUpcomingOccurrences(6);
-  if(!items.length){ wrap.innerHTML = `<div class="empty-state">다가오는 일정이 없습니다.</div>`; return; }
+  const year = taxScheduleAdminViewYear;
+  const items = taxScheduleOccurrencesForYear(year);
+  const yearSwitcherHtml = `<div style="display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:10px;">
+    <button type="button" class="del-btn tax-schedule-year-prev-btn">◀ 이전 연도</button>
+    <b style="font-size:13.5px;">${year}년</b>
+    <button type="button" class="del-btn tax-schedule-year-next-btn">다음 연도 ▶</button>
+  </div>`;
   const rows = items.map(it=>{
     const tag = it.overridden ? ' <span style="color:var(--coral); font-weight:700;">(직접수정)</span>' : (it.shifted ? ' <span style="color:var(--ink-soft);">(휴일 순연)</span>' : '');
     const revertBtn = it.overridden ? `<button class="del-btn tax-schedule-revert-btn" data-id="${it.id}">되돌리기</button>` : '';
@@ -14662,7 +14667,12 @@ function renderTaxScheduleUpcomingList(){
       <td><button class="del-btn tax-schedule-override-btn" data-id="${it.id}" data-date="${it.date}" data-title="${escHtml(it.title)}">수정</button> ${revertBtn}</td>
     </tr>`;
   }).join('');
-  wrap.innerHTML = `<table><thead><tr><th>날짜</th><th>일정</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  const listHtml = items.length
+    ? `<table><thead><tr><th>날짜</th><th>일정</th><th></th></tr></thead><tbody>${rows}</tbody></table>`
+    : `<div class="empty-state">${year}년에 해당하는 일정이 없습니다.</div>`;
+  wrap.innerHTML = yearSwitcherHtml + listHtml;
+  wrap.querySelector('.tax-schedule-year-prev-btn')?.addEventListener('click', ()=>{ taxScheduleAdminViewYear -= 1; renderTaxScheduleUpcomingList(); });
+  wrap.querySelector('.tax-schedule-year-next-btn')?.addEventListener('click', ()=>{ taxScheduleAdminViewYear += 1; renderTaxScheduleUpcomingList(); });
   wrap.querySelectorAll('.tax-schedule-override-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const id = btn.dataset.id;
