@@ -11091,6 +11091,12 @@ function syncAdExpenseMonthRow(){
   if(!show){
     const statusEl = document.getElementById('ad-expense-month-status');
     if(statusEl) statusEl.textContent = '';
+    // 지출결의서로 골랐다가 다른 문서종류로 바꾸면, 자동으로 붙었던 그 달 지출결의서 PDF는 더 이상
+    // 맥락에 안 맞는 첨부라 같이 떼어냄(정산월 칸 자체가 사라지니 사용자가 직접 지울 방법도 없었음)
+    if(adUploadedAttachments.some(a=>a.__autoExpenseReport)){
+      adUploadedAttachments = adUploadedAttachments.filter(a=>!a.__autoExpenseReport);
+      renderAdAttachUploadedList();
+    }
     return;
   }
   const monthInput = document.getElementById('ad-expense-month');
@@ -11270,9 +11276,12 @@ function adLeaveSummaryTableHtml(){
   }
   const dateRangeText = (end && end !== start) ? `${start} ~ ${end}` : start;
   const typeText = `${type}${subtypeText ? ` (${subtypeText})` : ''}`;
-  const th = 'padding:6px 16px; border:1px solid var(--border); background:var(--bg); font-weight:700; color:var(--ink-soft); white-space:nowrap;';
-  const td = 'padding:6px 16px; border:1px solid var(--border); color:var(--ink); font-weight:600;';
-  return `<table style="border-collapse:collapse; margin:0 auto;"><tbody>`
+  const th = 'padding:6px 16px; border:1px solid var(--border); background:var(--bg); font-weight:700; color:var(--ink-soft); white-space:nowrap; width:96px;';
+  const td = 'padding:6px 16px; border:1px solid var(--border); color:var(--ink); font-weight:600; width:200px;';
+  // 전역 table{width:100%} 규칙(공용 CSS) 탓에 이 표도 부모 폭 전체로 늘어나 버려서, 값 칸(td) 하나가
+  // 화면 끝까지 쭉 늘어지는 문제가 있었음 - width:auto로 전역 규칙을 덮어쓰고 칸 너비를 직접 지정해서
+  // 실제 공문서 표처럼 내용만큼만 차지하도록 고정함
+  return `<table style="border-collapse:collapse; margin:0 auto; width:auto; table-layout:fixed;"><tbody>`
     + `<tr><td style="${th}">휴가 기간</td><td style="${td}">${escHtml(dateRangeText)}</td></tr>`
     + `<tr><td style="${th}">휴가 종류</td><td style="${td}">${escHtml(typeText)}</td></tr>`
     + `</tbody></table>`;
@@ -19144,7 +19153,7 @@ function openApprovalPreviewModal(){
         <div style="${td} background:var(--bg); font-weight:700; width:72px; flex:0 0 auto;">제목</div>
         <div style="${td} flex:1 1 auto; font-size:14.5px; font-weight:800; color:var(--ink);">${escHtml(title)}</div>
       </div>
-      <div style="padding:16px; min-height:110px; font-size:13px; line-height:1.75; white-space:pre-wrap; user-select:text;">${contentIsEmpty ? '<span style="color:var(--ink-soft);">(내용 없음)</span>' : content}</div>
+      <div style="padding:22px 30px; min-height:110px; font-size:13px; line-height:1.75; white-space:pre-wrap; user-select:text;">${contentIsEmpty ? '<span style="color:var(--ink-soft);">(내용 없음)</span>' : content}</div>
       ${attachments.length ? `<div style="padding:0 16px 16px; border-top:1px solid var(--border); padding-top:12px;">${attachmentListHtml({ attachments })}</div>` : ''}
     </div>
     <div style="text-align:center; margin-top:14px;">
