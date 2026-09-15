@@ -11174,6 +11174,13 @@ async function attachExpenseReportForMonth(monthStr){
       date: todayStr()
     };
     const uploaded = await gdriveUploadApprovalAttachment(file, '지출결의서', draftMeta);
+    // PDF 생성+업로드가 몇 초 걸리는 동안, 그 사이에 사용자가 이미 문서종류를 지출결의서가 아닌 다른
+    // 걸로 바꿔버렸을 수 있음(정산월 칸 자체가 사라진 뒤). 그런 뒤늦은 응답을 그대로 붙이면, 이미 다른
+    // 문서종류로 바뀐 화면에 뜬금없이 지출결의서 PDF가 "안 지워지는" 것처럼 보이는 문제가 있었음 -
+    // 완료된 시점에 여전히 지출결의서이고 정산월도 그대로일 때만 실제로 첨부함
+    const stillRelevant = document.getElementById('ad-doctype')?.value === '지출결의서'
+      && document.getElementById('ad-expense-month')?.value === monthStr;
+    if(!stillRelevant) return;
     uploaded.__autoExpenseReport = true;
     adUploadedAttachments.push(uploaded);
     renderAdAttachUploadedList();
@@ -20802,20 +20809,23 @@ window.addEventListener('appinstalled', ()=>{
 function openPwaInstallPopup(){
   const prev = document.querySelector('.pwa-install-popup');
   if(prev) prev.remove();
+  // 글씨가 흐릿하다는(var(--ink-soft)) 피드백 + 문장이 팝업 폭(300px)에 밀려 단어 중간에서 줄바꿈되던
+  // 문제 - 텍스트를 좀 더 진한 색(var(--ink))·큰 글자로 키우고, 각 문장을 의미 단위로 <br> 끊어서
+  // 배치한 뒤 팝업 폭도 넓혀서 어색한 중간 줄바꿈 없이 문장/구절 단위로 자연스럽게 끊기게 함
   const html = pwaDeferredInstallPrompt
-    ? `<div style="font-size:12.5px; color:var(--ink-soft); line-height:1.7; margin-bottom:14px;">
-        이 화면을 홈 화면(또는 시작 메뉴)에 아이콘으로 설치해요.<br>
-        설치해도 주소·데이터는 지금과 완전히 같고, 브라우저 주소창 없이 앱처럼 바로 열리기만 해요.
+    ? `<div style="font-size:14px; color:var(--ink); line-height:1.85; margin-bottom:16px;">
+        이 화면을 홈 화면(또는 시작 메뉴)에<br>아이콘으로 설치해요.<br><br>
+        설치해도 주소·데이터는 지금과<br>완전히 같고, 브라우저 주소창 없이<br>앱처럼 바로 열리기만 해요.
       </div>
       <div style="text-align:center;"><button type="button" class="submit-btn" id="pwaInstallConfirmBtn" style="width:auto;">설치하기</button></div>`
-    : `<div style="font-size:12.5px; color:var(--ink-soft); line-height:1.7; margin-bottom:14px;">
-        아이폰·아이패드는 자동 설치 대신, 아래 순서로 직접 몇 초면 추가할 수 있어요.<br><br>
+    : `<div style="font-size:14px; color:var(--ink); line-height:1.85; margin-bottom:16px;">
+        아이폰·아이패드는 자동 설치 대신,<br>아래 순서로 직접 몇 초면 추가할 수 있어요.<br><br>
         1. 하단(또는 상단) 공유 버튼을 눌러주세요<br>
         2. "홈 화면에 추가"를 선택해주세요<br>
         3. 오른쪽 위 "추가"를 누르면 끝이에요
       </div>
       <div style="text-align:center;"><button type="button" class="submit-btn" id="pwaInstallCloseOnlyBtn" style="width:auto;">확인</button></div>`;
-  const el = openDraggablePopup({ title: '앱 설치', html, width: 300 });
+  const el = openDraggablePopup({ title: '앱 설치', html, width: 360 });
   el.classList.add('pwa-install-popup');
   el.querySelector('#pwaInstallCloseOnlyBtn')?.addEventListener('click', ()=> el.remove());
   el.querySelector('#pwaInstallConfirmBtn')?.addEventListener('click', async ()=>{
