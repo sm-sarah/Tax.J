@@ -5667,6 +5667,32 @@ function recordDeletedProfileId(id){
     localStorage.setItem('worklog_recent_profile_deletions', JSON.stringify(list));
   }catch(e){}
 }
+// 결재문서 삭제도 직원 삭제와 똑같은 "다른 탭/기기가 아직 예전 목록을 들고 있다가 뭔가 저장하는 순간
+// 방금 지운 문서가 부활하는" 문제가 그대로 생길 수 있어서, 같은 안전장치를 결재문서 삭제에도 적용함
+function getRecentlyDeletedApprovalIds(){
+  try{
+    const raw = JSON.parse(localStorage.getItem('worklog_recent_approval_deletions') || '[]');
+    const now = Date.now();
+    const fresh = raw.filter(e=> e && e.id && (now - e.at) < RECENT_DELETION_TTL_MS);
+    if(fresh.length !== raw.length) localStorage.setItem('worklog_recent_approval_deletions', JSON.stringify(fresh));
+    return fresh;
+  }catch(e){ return []; }
+}
+function recordDeletedApprovalId(id){
+  try{
+    const list = getRecentlyDeletedApprovalIds();
+    if(!list.find(e=>e.id===id)) list.push({id, at: Date.now()});
+    localStorage.setItem('worklog_recent_approval_deletions', JSON.stringify(list));
+  }catch(e){}
+}
+// 휴지통에서 복원하면 방금 지운 목록에서도 빼줘야, 복원 직후 Drive 동기화 때 "최근 삭제"로 오인해서
+// 다시 걸러내는(=복원한 게 도로 사라지는) 일이 없음
+function unrecordDeletedApprovalId(id){
+  try{
+    const list = getRecentlyDeletedApprovalIds().filter(e=>e.id!==id);
+    localStorage.setItem('worklog_recent_approval_deletions', JSON.stringify(list));
+  }catch(e){}
+}
 function getActiveProfileId(){ try{ return localStorage.getItem('worklog_active_profile') || ''; }catch(e){ return ''; } }
 function setActiveProfileId(id){ try{ localStorage.setItem('worklog_active_profile', id); }catch(e){} }
 function skey(base){ return `worklog_${base}__${activeProfileId}`; }
@@ -12780,10 +12806,12 @@ function renderHomeDashboard(){
 // ⭐ 즐겨찾기: 홈 화면이 대시보드로 바뀌면서 예전엔 있던 즐겨찾기 목록이 통째로 빠졌었는데(관련 CSS는 그대로
 // 남아있었음), 세무신고 밑 하위메뉴가 많이 늘어나 자주 쓰는 화면을 매번 펼쳐서 찾기 번거롭다는 의견으로
 // 사이드바 맨 위(Client보다도 위)에 최대 5개까지 등록해두는 자리로 다시 둠 - 이번엔 최상위 메뉴뿐 아니라
-// 가장 하위 메뉴(예: 세무신고>원천세>신고현황)까지 전부 등록 대상. 이 브라우저에만 저장되는 개인 설정이라
-// gdrive 동기화는 하지 않음(대시보드 위젯 설정과 같은 방식).
+// 가장 하위 메뉴(예: 세무신고>원천세>신고현황)까지 전부 등록 대상.
+// 예전엔 이 브라우저에만 저장되는 개인 설정이라 gdrive 동기화를 안 했는데, "집에서 등록한 즐겨찾기가
+// 회사 컴퓨터에서는 안 보인다"는 요청으로 직원별 settings(gdrive로 계정 따라 동기화됨)에 옮겨 담음.
+// 예전 브라우저 전용 저장값(worklog_favorite_menu_items)이 남아있으면 처음 한 번만 settings로 이관함.
 const FAVORITE_MENU_MAX = 5;
-const FAVORITE_MENU_KEY = 'worklog_favorite_menu_items';
+const FAVORITE_MENU_LEGACY_KEY = 'worklog_favorite_menu_items';
 // 즐겨찾기로 등록 가능한 항목 = 사이드바 메뉴 트리 안에서 실제로 어딘가로 이동시키는 data-*-goto 속성을 가진 노드
 const FAVORITE_MENU_SELECTOR = '.home-tile[data-goto], .home-tile[data-settings-cat-goto], .home-submenu-item[data-goto], .home-submenu-item[data-approval-cat-goto], .home-submenu-leaf[data-approval-cat-goto], .home-submenu-item[data-companyinfo-cat-goto], .home-submenu-item[data-policy-cat-goto], .home-submenu-item[data-settings-anchor-goto]';
 // 항목의 정체성 = 그 항목이 실제로 어떻게 동작하는지를 결정하는 data-*goto 속성들의 조합 - HTML을 직접
@@ -12814,10 +12842,19 @@ function favoriteMenuIsLeaf(el){
   return !el.querySelector('.home-tile-expand-btn');
 }
 function getFavoriteMenuItems(){
-  try{ return JSON.parse(localStorage.getItem(FAVORITE_MENU_KEY) || '[]'); }catch(e){ return []; }
+  // settings.favoriteMenuItems가 아직 없는데(이관 전) 이 브라우저에 예전 방식으로 저장해둔 값이 있으면
+  // 처음 한 번만 settings로 옮겨서 이후로는 계정을 따라 다른 컴퓨터에서도 그대로 보이게 함
+  if(!Array.isArray(settings.favoriteMenuItems)){
+    let legacy = [];
+    try{ legacy = JSON.parse(localStorage.getItem(FAVORITE_MENU_LEGACY_KEY) || '[]'); }catch(e){ legacy = []; }
+    settings.favoriteMenuItems = Array.isArray(legacy) ? legacy : [];
+    saveSettings();
+  }
+  return settings.favoriteMenuItems || [];
 }
 function saveFavoriteMenuItems(list){
-  try{ localStorage.setItem(FAVORITE_MENU_KEY, JSON.stringify(list.slice(0, FAVORITE_MENU_MAX))); }catch(e){}
+  settings.favoriteMenuItems = list.slice(0, FAVORITE_MENU_MAX);
+  saveSettings();
 }
 function findFavoriteMenuTarget(key){
   return Array.from(document.querySelectorAll(FAVORITE_MENU_SELECTOR)).find(el=>favoriteMenuKeyOf(el)===key);
@@ -19862,6 +19899,7 @@ async function deleteApproval(id){
   const wasLeaveApplied = !!item.leaveApplied;
   if(wasLeaveApplied && typeof revertLeaveApprovalFromAttendance === 'function') revertLeaveApprovalFromAttendance(item);
   sharedApprovals.splice(idx, 1);
+  recordDeletedApprovalId(item.id);
   pushToSharedTrash('approval', 'doc', item.title || '(제목 없음)', item);
   await saveSharedTrash();
   await saveSharedApprovals();
@@ -22143,6 +22181,9 @@ async function gdrivePull(){
     // 그래도 직원 삭제만큼은 한 번 더 안전장치 - 최근에 지운 직원 id는 병합 결과에 남아있어도 확실히 제거
     const deletedIds = new Set(getRecentlyDeletedProfileIds().map(e=>e.id));
     if(deletedIds.size) merged.profiles = (merged.profiles||[]).filter(p=>!deletedIds.has(p.id));
+    // 결재문서 삭제도 같은 이유로 한 번 더 안전장치 - 최근에 지운 결재문서 id는 병합 결과에 남아있어도 확실히 제거
+    const deletedApprovalIds = new Set(getRecentlyDeletedApprovalIds().map(e=>e.id));
+    if(deletedApprovalIds.size && merged.shared) merged.shared.approvals = (merged.shared.approvals||[]).filter(a=>!deletedApprovalIds.has(a.id));
     if(!gdriveDeepEqual(merged, remote)){
       // 병합 결과가 방금 받아온 원격 내용과 다르면(우리 쪽에만 있던 변경이 있었으면) Drive에도 다시 반영
       lastGdrivePulledSnapshot = null; // 우리가 고친 내용을 다시 밀어올린 뒤, 다음 pull에서도 정상 비교되게 초기화
