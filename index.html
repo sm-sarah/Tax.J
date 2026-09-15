@@ -225,13 +225,15 @@
      훨씬 가지런하게 맞아떨어짐 */
   .home-dashboard-grid{ display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:auto; grid-auto-flow:dense; align-items:stretch; gap:14px; }
   @media (max-width:640px){ .home-dashboard-grid{ grid-template-columns:1fr; } }
-  /* 고정 영역 - 출퇴근/팀캘린더/세무일정은 위젯 설정에서 켜고 끄거나 순서를 바꿀 수 없이 항상 대시보드
-     맨 위, 이 모양 그대로 고정됨("가로폭을 반반으로 줄여서 출퇴근 옆에 고정"이라는 요청). 왼쪽 칸은 출퇴근이
-     그대로 차지하고, 오른쪽 칸(왼쪽과 같은 폭 = 전체의 절반)은 다시 반으로 나눠서 팀캘린더·세무일정을
-     나란히 절반씩(=전체의 1/4씩, 예전 한 칸 폭의 절반) 채움 */
+  /* 고정 영역 - 출퇴근/팀캘린더/결재현황/세무일정 네 위젯은 위젯 설정에서 켜고 끄거나 순서를 바꿀 수 없이
+     항상 대시보드 맨 위, 이 모양 그대로 고정됨. 왼쪽 칸은 출퇴근·팀캘린더를 나란히 절반씩(출퇴근 가로폭을
+     좁혀 팀캘린더와 짝지음) 채우고, 오른쪽 칸(왼쪽과 같은 폭 = 전체의 절반)은 나누지 않고 그대로 세로로
+     쌓아서 결재현황(위)·세무일정(아래)이 예전 반쪽짜리 칸보다 넓은 폭을 그대로 쓰게 함
+     ("오른쪽 빈자리는 가로폭을 늘려서 상하로 결재·세무일정을 배치"라는 요청) */
   .home-dashboard-pinned-row{ display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:stretch; margin-bottom:14px; }
   .home-dashboard-pinned-side{ display:grid; grid-template-columns:1fr 1fr; gap:10px; min-width:0; }
-  .home-dashboard-pinned-side .home-dash-card{ padding:13px 14px; }
+  .home-dashboard-pinned-stack{ display:flex; flex-direction:column; gap:10px; min-width:0; }
+  .home-dashboard-pinned-row .home-dash-card{ padding:13px 14px; }
   @media (max-width:900px){ .home-dashboard-pinned-side{ grid-template-columns:1fr; } }
   @media (max-width:640px){
     .home-dashboard-pinned-row{ grid-template-columns:1fr; }
@@ -1434,6 +1436,8 @@
   /* "엑셀 일괄 다운로드"는 메뉴 이름만으로는 뭘 받는 기능인지(백업복구와 뭐가 다른지) 알기 어렵다는
      요청이 있어서, 위 일괄숨김 규칙의 예외로 이 소제목 바로 다음 안내문단만 다시 보이게 함 */
   #tab-settings #ssTitle-excelbackup + p.hint{ display:block; max-width:none; }
+  /* 백업복구 화면도 자동백업 안내문구가 새로 생겨서 같은 예외 처리 */
+  #tab-settings #ssTitle-backup + p.hint{ display:block; }
   #tab-settings #ssTitle-excelbackup + p.hint span.nowrap-line{ display:block; white-space:nowrap; }
   /* 근태현황/경비정산처럼 옆에 다른 요소(등록 버튼 등)가 있어도 제목이 눈에 띄도록 밑줄 포인트를 줌 */
   .section-title-accent{display:inline-block; padding-bottom:6px; border-bottom:3px solid var(--indigo); border-radius:2px;}
@@ -2791,12 +2795,12 @@
               <button type="button" class="home-tile-expand-btn" data-expand-target="homeWorkDocSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
             </div>
             <div class="home-submenu" id="homeWorkDocSubmenu" style="display:none;">
-              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="new"><span>기안</span></div>
+              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="new"><span>기안작성</span></div>
               <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="draft"><span>임시저장함</span><span id="homeSideApprovalDraftCount" class="approval-doc-badge" style="display:none;"></span></div>
               <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="mine"><span>기안함</span><span id="homeSideApprovalMineCount" class="approval-doc-badge" style="display:none;"></span></div>
               <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="rejected"><span>반려함</span><span id="homeSideApprovalRejectedCount" class="approval-doc-badge" style="display:none;"></span></div>
               <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="inbox"><span>결재함</span><span id="homeSideApprovalInboxCount" class="approval-doc-badge" style="display:none;"></span></div>
-              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="all"><span>전체이력</span></div>
+              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="all"><span>결재현황</span></div>
             </div>
             <div class="home-tile home-tile-plain" data-goto="policy" style="--tile-accent:var(--guide-wine);">
               <div class="home-tile-icon">📘</div>
@@ -3697,12 +3701,12 @@
         <div class="approval-nav-branch">
           <button type="button" class="approval-cat-btn" data-approval-cat="doc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg> 결재</button>
           <div class="approval-subtype-branch" id="approvalDocToggle" style="display:none;">
-            <button type="button" class="approval-doc-btn active" data-approval-doc="new"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg> 기안</button>
+            <button type="button" class="approval-doc-btn active" data-approval-doc="new"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg> 기안작성</button>
             <button type="button" class="approval-doc-btn" data-approval-doc="draft"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> 임시저장함<span id="approvalDraftCount" class="approval-doc-badge" style="display:none;"></span></button>
             <button type="button" class="approval-doc-btn" data-approval-doc="mine"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> 기안함<span id="approvalMineCount" class="approval-doc-badge" style="display:none;"></span></button>
             <button type="button" class="approval-doc-btn" data-approval-doc="rejected"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="9"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> 반려함<span id="approvalRejectedCount" class="approval-doc-badge" style="display:none;"></span></button>
             <button type="button" class="approval-doc-btn" data-approval-doc="inbox"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> 결재함<span id="approvalInboxCount" class="approval-doc-badge" style="display:none;"></span></button>
-            <button type="button" class="approval-doc-btn" data-approval-doc="all"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 16 14"></polyline></svg> 전체이력</button>
+            <button type="button" class="approval-doc-btn" data-approval-doc="all"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 16 14"></polyline></svg> 결재현황</button>
           </div>
         </div>
       </div>
@@ -4651,7 +4655,8 @@
 
       <div class="settings-sub-title" id="ssTitle-backup" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> 백업복구 <span class="badge">관리자 전용</span></div>
       <p class="hint" style="text-align:center;">
-        아래에서 범위를 고른 뒤 백업·복구하세요.
+        아래에서 범위를 고른 뒤 백업·복구하세요.<br>
+        <span style="color:var(--ink-soft);">이것과 별개로, 매일 관리자 계정으로 접속해 저장이 일어날 때 회사 데이터와 이 앱 소스파일이 공유드라이브의 "0004.전자결재첨부 &gt; 자동백업" 폴더에 자동으로 하루 1건씩 저장돼요 (30일 지난 건 자동 정리).</span>
       </p>
       <div class="policy-category-toggle" id="backupScopeToggle" style="margin-bottom:14px;">
         <button type="button" class="policy-cat-btn backup-scope-btn active" data-backup-scope="shared">회사공통</button>
@@ -6425,7 +6430,7 @@ function formatEmployeeSnapshot(sn){
 }
 
 // ===== 휴지통 (근태·경비·일정·거래처·개인정보 삭제 시 바로 지우지 않고 여기로 먼저 이동) =====
-const TRASH_TYPE_LABELS = { attendance:'근태', expense:'경비', schedule:'일정', client:'거래처', personalInfo:'개인정보', policy:'내부규정', employee:'직원', notification:'알림' };
+const TRASH_TYPE_LABELS = { attendance:'근태', expense:'경비', schedule:'일정', client:'거래처', personalInfo:'개인정보', policy:'내부규정', employee:'직원', notification:'알림', approval:'결재문서' };
 
 function pushToTrash(type, kind, label, data){
   settings.trash = settings.trash || [];
@@ -6455,6 +6460,19 @@ async function restoreTrashItem(id){
       sharedNotificationLog.unshift(sharedItem.data);
       await saveSharedNotificationLog();
       updateNotificationUnreadBadge();
+    } else if(sharedItem.type==='approval'){
+      // 휴가 기안이 삭제되면서 근태·캘린더에서 되돌려졌던 휴가 사용 내역까지는 자동으로 다시 심지 않음
+      // (복원은 드물고, 잘못 되돌리면 오히려 근태 기록이 꼬일 수 있어서) - 필요하면 복원 후 수동으로 다시 신청해야 함
+      sharedApprovals = sharedApprovals || [];
+      sharedApprovals.push(sharedItem.data);
+      await saveSharedApprovals();
+      if(typeof renderApprovalInbox === 'function') renderApprovalInbox();
+      if(typeof renderApprovalMine === 'function') renderApprovalMine();
+      if(typeof renderApprovalRejected === 'function') renderApprovalRejected();
+      if(typeof renderApprovalDraftList === 'function') renderApprovalDraftList();
+      if(typeof renderApprovalAll === 'function') renderApprovalAll();
+      if(typeof renderApprovalAllBadges === 'function') renderApprovalAllBadges();
+      if(typeof renderDashboardApprovalAllPreview === 'function') renderDashboardApprovalAllPreview();
     }
     sharedTrash = (sharedTrash||[]).filter(x=>x.id!==id);
     await saveSharedTrash();
@@ -11786,17 +11804,19 @@ const DASHBOARD_WIDGET_DEFS = {
   clock:       { label:'출퇴근', mandatory:true, accent:'var(--indigo)' },
   calendar:    { label:'팀캘린더', mandatory:true, accent:'var(--mint)' },
   attendance:  { label:'근태현황', accent:'var(--coral)' },
-  approval:    { label:'결재현황', accent:'var(--indigo)' },
+  // 결재현황도 출퇴근/팀캘린더/세무일정처럼 항상 고정 표시되는 4번째 고정 위젯으로 옮김(예전엔 자유
+  // 배치 영역에서 켜고 끌 수 있었음) - "이 4개는 고정 위젯이면 좋겠다"는 요청
+  approval:    { label:'결재현황', mandatory:true, accent:'var(--indigo)' },
   notice:      { label:'공지사항', accent:'var(--guide-wine)' },
   taxSchedule: { label:'세무일정', mandatory:true, accent:'var(--guide-slate)' },
 };
-// 출퇴근/팀캘린더/세무일정은 "위젯 설정"에서 켜고 끄거나 순서를 바꿀 수 있는 자유 배치 영역이 아니라,
-// 항상 대시보드 맨 위에 출퇴근 옆에 나란히 고정되는 "고정 영역"(pinned row)에 따로 그려짐 - 아래
-// order/enabled는 그 아래 자유 배치 영역(결재현황/공지사항/근태현황 + 앞으로 늘어날 위젯들)에만 적용됨
-const DASHBOARD_PINNED_WIDGET_KEYS = ['clock','calendar','taxSchedule'];
+// 출퇴근/팀캘린더/결재현황/세무일정은 "위젯 설정"에서 켜고 끄거나 순서를 바꿀 수 있는 자유 배치 영역이
+// 아니라, 항상 대시보드 맨 위에 고정되는 "고정 영역"(pinned row)에 따로 그려짐 - 아래 order/enabled는
+// 그 아래 자유 배치 영역(공지사항/근태현황 + 앞으로 늘어날 위젯들)에만 적용됨
+const DASHBOARD_PINNED_WIDGET_KEYS = ['clock','calendar','approval','taxSchedule'];
 const DASHBOARD_FLEXIBLE_WIDGET_KEYS = Object.keys(DASHBOARD_WIDGET_DEFS).filter(k=>!DASHBOARD_PINNED_WIDGET_KEYS.includes(k));
 const DASHBOARD_WIDGET_DEFAULT_ORDER = [...DASHBOARD_FLEXIBLE_WIDGET_KEYS];
-const DASHBOARD_WIDGET_DEFAULT_ENABLED = ['approval','notice'];
+const DASHBOARD_WIDGET_DEFAULT_ENABLED = ['notice'];
 // 위젯 모양 4종 - 기본(1칸) / wide(가로 전체) / tall(세로 2행) / big(가로 전체+세로 2행)
 const DASHBOARD_SHAPES = { normal:{label:'기본'}, wide:{label:'가로형'}, tall:{label:'세로형'}, big:{label:'크게'} };
 function getDashboardConfig(){
@@ -11907,13 +11927,14 @@ function renderHomeDashboardGrid(){
   const pinnedRow = document.getElementById('homeDashboardPinnedRow');
   const grid = document.getElementById('homeDashboardGrid');
   if(!pinnedRow && !grid) return;
-  // 고정 영역(출퇴근+팀캘린더+세무일정) - 위젯 설정과 무관하게 항상 이 셋을 이 순서·이 모양으로 그림.
-  // 팀캘린더/세무일정은 .home-dashboard-pinned-side 안에서 다시 반씩 나뉘어 출퇴근 옆에 나란히 붙음
+  // 고정 영역(출퇴근+팀캘린더+결재현황+세무일정) - 위젯 설정과 무관하게 항상 이 넷을 이 순서·이 모양으로
+  // 그림. 왼쪽 칸은 출퇴근·팀캘린더가 .home-dashboard-pinned-side 안에서 반씩 나란히 붙고, 오른쪽 칸은
+  // 나누지 않고 .home-dashboard-pinned-stack 안에서 결재현황(위)·세무일정(아래)이 세로로 쌓임
   if(pinnedRow){
-    pinnedRow.innerHTML = `${dashboardWidgetHtml('clock','normal')}
-      <div class="home-dashboard-pinned-side">${dashboardWidgetHtml('calendar','normal')}${dashboardWidgetHtml('taxSchedule','normal')}</div>`;
+    pinnedRow.innerHTML = `<div class="home-dashboard-pinned-side">${dashboardWidgetHtml('clock','normal')}${dashboardWidgetHtml('calendar','normal')}</div>
+      <div class="home-dashboard-pinned-stack">${dashboardWidgetHtml('approval','normal')}${dashboardWidgetHtml('taxSchedule','normal')}</div>`;
   }
-  // 그 아래 자유 배치 영역 - 결재현황/공지사항/근태현황(+ 앞으로 늘어날 위젯들)은 예전처럼 ⚙ 위젯 설정에서
+  // 그 아래 자유 배치 영역 - 공지사항/근태현황(+ 앞으로 늘어날 위젯들)은 예전처럼 ⚙ 위젯 설정에서
   // 켜고 끄거나 순서·모양을 자유롭게 바꿀 수 있음
   const cfg = getDashboardConfig();
   const keys = cfg.order.filter(k=>cfg.enabled.has(k));
@@ -11923,6 +11944,13 @@ function renderHomeDashboardGrid(){
       if(e.target.closest('.home-dash-toggle') || e.target.closest('.home-dash-list-row')) return;
       const target = document.querySelector(`.tab-btn[data-tab="${card.dataset.goto}"]`);
       if(target) target.click();
+      // 결재현황 카드는 "업무" 탭(data-tab="approval") 안에 신고현황/제출현황/결재 등 여러 하위 화면이
+      // 섞여있어서, 탭만 열면 마지막으로 보던 하위 화면(예: 부가가치세 신고현황)이 그대로 보이는 문제가
+      // 있었음 - 여기서 결재 하위탭(doc)과 전체이력(결재현황)까지 이어서 눌러줘서 항상 결재현황 목록으로 감
+      if(card.dataset.goto === 'approval'){
+        document.querySelector('.approval-cat-btn[data-approval-cat="doc"]')?.click();
+        document.querySelector('.approval-doc-btn[data-approval-doc="all"]')?.click();
+      }
     });
   });
   document.getElementById('dashNoticeCard')?.addEventListener('click', (e)=>{
@@ -11941,14 +11969,13 @@ function renderDashboardConfigPreview(){
   const wrap = document.getElementById('dashboardConfigPreview');
   if(!wrap || !dashboardConfigDraft) return;
   const { order, enabled, shape } = dashboardConfigDraft;
-  // 실제 대시보드는 고정 영역이 "출퇴근(가로 절반) + 팀캘린더·세무일정(나머지 절반을 다시 반씩)"으로
-  // 배치되는데, 예전엔 이 셋을 그냥 순서대로 나열해서 미리보기 2열 그리드에서 출퇴근·팀캘린더가 한 줄에
-  // 짝지어지고 세무일정만 다음 줄에 혼자 남아 실제 모양과 다르게 보였음 - 출퇴근은 wide로 줄 전체를
-  // 혼자 차지하게 하고, 팀캘린더·세무일정은 그 다음 줄에 나란히 반반으로 짝지어지게 함
+  // 실제 대시보드는 고정 영역이 "출퇴근·팀캘린더(왼쪽 절반을 다시 반씩) + 결재현황·세무일정(오른쪽
+  // 절반에 위아래로 쌓임)"으로 배치됨 - 미리보기도 2열 그리드라 이 넷을 순서대로(출퇴근/팀캘린더/
+  // 결재현황/세무일정) 그냥 나열하면 첫 줄이 출퇴근·팀캘린더, 둘째 줄이 결재현황·세무일정으로 자연스럽게
+  // 실제 배치와 같은 모양이 됨(별도 wide 처리 불필요)
   const pinnedHtml = DASHBOARD_PINNED_WIDGET_KEYS.map(k=>{
     const def = DASHBOARD_WIDGET_DEFS[k];
-    const shapeCls = k === 'clock' ? ' wide' : '';
-    return `<div class="dashboard-config-preview-box${shapeCls}" style="--accent:${def.accent}; opacity:0.6;" title="항상 고정 표시돼요">${escHtml(def.label)}</div>`;
+    return `<div class="dashboard-config-preview-box" style="--accent:${def.accent}; opacity:0.6;" title="항상 고정 표시돼요">${escHtml(def.label)}</div>`;
   }).join('');
   const keys = order.filter(k=>enabled.has(k));
   const flexHtml = keys.map(k=>{
@@ -12669,13 +12696,13 @@ function bindDashboardTaxScheduleShortcuts(){
 function renderHomeDashboard(){
   renderHomeDashboardGrid();
   const cfg = getDashboardConfig();
-  // 출퇴근/팀캘린더/세무일정은 위젯 설정과 무관하게 항상 고정 표시되는 영역이라(cfg.enabled에는
-  // 이제 이 셋이 아예 들어있지 않음 - getDashboardConfig() 참고) 조건 없이 항상 채움
+  // 출퇴근/팀캘린더/결재현황/세무일정은 위젯 설정과 무관하게 항상 고정 표시되는 영역이라(cfg.enabled에는
+  // 이제 이 넷이 아예 들어있지 않음 - getDashboardConfig() 참고) 조건 없이 항상 채움
   renderDashboardClockCard();
   renderDashboardCalendarPreview();
+  renderDashboardApprovalAllPreview();
   renderDashboardTaxSchedulePreview();
   if(cfg.enabled.has('attendance')) renderDashboardAttendancePreview();
-  if(cfg.enabled.has('approval')) renderDashboardApprovalAllPreview();
   if(cfg.enabled.has('notice')) renderDashboardImportantNotices();
 }
 
@@ -19251,8 +19278,8 @@ function approvalDetailTrHtml(item, colspan){
     <div style="padding:14px 18px; background:var(--bg); border-radius:10px; margin:0 4px;">${approvalDetailBodyHtml(item)}</div>
   </td></tr>`;
 }
-// bucket==='all'(전체이력)이면서 관리자 계정이면 문서를 완전히 지울 수 있는 "삭제" 버튼을 같이 보여줌
-// (실제로는 하드 삭제가 아니라 deleteApproval로 상태만 "삭제"로 바꾸는 소프트 삭제 - 전체이력엔 계속 남음)
+// 관리자 계정이거나 본인이 기안한 문서면(canDeleteApprovalItem) "삭제" 버튼을 같이 보여줌 - deleteApproval이
+// 실제로 sharedApprovals에서 빼내 휴지통으로 옮기므로, 삭제하면 결재현황을 포함한 모든 목록에서 사라짐
 // 결재 목록(기안함/반려함/결재함/임시저장함/전체이력) 공용 검색/페이지네이션 상태 - 문서함(bucket)별로 따로
 // 기억함. 검색은 기안월과 제목(텍스트) 두 가지로 하고, 한 페이지에 10개씩만 보여준 뒤 페이지
 // 번호로 넘기게 함(문서가 많아지면 한 화면에 다 쌓여서 찾기 힘들다는 의견)
@@ -19411,22 +19438,31 @@ const APPROVAL_ACTION_ICON_SVG = {
 function approvalActionIconBtn(cls, dataId, icon, title, bg, fg, danger){
   return `<button type="button" class="del-btn approval-icon-btn ${cls}${danger?' approval-action-danger':''}" data-id="${dataId}" title="${escHtml(title)}" aria-label="${escHtml(title)}" style="width:28px; height:28px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:9px; --icon-bg:${bg}; --icon-fg:${fg};">${APPROVAL_ACTION_ICON_SVG[icon]}</button>`;
 }
-// bucket별로 다른 관리 버튼 구성 - 기안함/전체이력: 삭제, 결재함: 삭제, 기안함(mine): 회수, 반려함: 재기안,
+// bucket별로 다른 관리 버튼 구성 - 기안함/결재함/전체이력: 삭제(권한 있으면), 기안함(mine): 회수, 반려함: 재기안+삭제,
 // 임시저장함: (재)기안+삭제
 // "보기" 아이콘은 없앰 - 행 아무 곳이나 클릭하면 문서 상세가 열리도록 바뀌어서(renderApprovalTable의
 // tr 클릭 바인딩 참고) 따로 보기 버튼을 둘 필요가 없어짐. 삭제처럼 되돌리기 어려운 동작만 평소엔 숨겨뒀다가
 // 그 줄에 마우스를 올렸을 때 나타나게 함
+// 삭제 권한: 관리자는 어느 함에서든 아무 문서나 지울 수 있고, 일반 직원은 자신이 기안한 문서만 지울 수 있음
+// (예전엔 결재자가 자기 결재함(inbox)에 온 문서를 기안자와 무관하게 지울 수 있었는데, "직원은 본인이
+// 기안한 것만 삭제 가능"으로 좁힘 - 결재자로서 할 수 있는 건 승인/반려/의견뿐, 삭제는 기안자 권한임)
+function canDeleteApprovalItem(item){
+  const admin = typeof isCurrentUserAdmin!=='undefined' && isCurrentUserAdmin;
+  if(admin) return true;
+  const myEmail = (currentUserEmail||'').toLowerCase();
+  return !!myEmail && (item.drafterEmail||'').toLowerCase() === myEmail;
+}
 function approvalRowActionsHtml(item, bucket, expanded){
+  const deleteBtnHtml = canDeleteApprovalItem(item) ? approvalActionIconBtn('approval-delete-btn', item.id, 'trash', '삭제', 'var(--coral-bg)', 'var(--coral)', true) : '';
   if(bucket === 'inbox' || bucket === 'all'){
-    const canAdminDelete = bucket==='all' && typeof isCurrentUserAdmin!=='undefined' && isCurrentUserAdmin && item.status!=='삭제';
-    const canInboxDelete = bucket==='inbox' && item.status!=='삭제';
-    return (canAdminDelete||canInboxDelete) ? approvalActionIconBtn('approval-delete-btn', item.id, 'trash', '삭제', 'var(--coral-bg)', 'var(--coral)', true) : '';
+    return deleteBtnHtml;
   }
   if(bucket === 'mine'){
-    return (item.status==='기안'||item.status==='검토중') ? approvalActionIconBtn('approval-recall-btn', item.id, 'undo', '회수', 'var(--bg2, #E5E7EB)', 'var(--ink-soft)') : '';
+    const recallBtnHtml = (item.status==='기안'||item.status==='검토중') ? approvalActionIconBtn('approval-recall-btn', item.id, 'undo', '회수', 'var(--bg2, #E5E7EB)', 'var(--ink-soft)') : '';
+    return recallBtnHtml + deleteBtnHtml;
   }
   if(bucket === 'rejected'){
-    return approvalActionIconBtn('approval-resubmit-btn', item.id, 'edit', '재기안', 'var(--indigo-bg)', 'var(--indigo-deep)');
+    return approvalActionIconBtn('approval-resubmit-btn', item.id, 'edit', '재기안', 'var(--indigo-bg)', 'var(--indigo-deep)') + deleteBtnHtml;
   }
   if(bucket === 'draft'){
     return approvalActionIconBtn('approval-edit-draft-btn', item.id, 'edit', '(재)기안', 'var(--indigo-bg)', 'var(--indigo-deep)') +
@@ -19574,24 +19610,31 @@ async function recallApprovalDraft(id){
   renderApprovalAll();
   renderApprovalAllBadges();
 }
-// 반려/삭제와 달리 진짜로 배열에서 지워버리는 deleteApprovalDraft(임시저장 전용)와는 다르게, 이미 상신 이력이
-// 있는 문서를 지울 때는 상태만 "삭제"로 바꿔서 전체이력엔 그대로 남기는 소프트 삭제로 처리함.
-// 관리자는 전체이력에서 아무 문서나, 결재자는 자기 결재함의 문서를, 기안자 본인은 자신의 문서를 이 함수로 지움
+// 예전엔 배열에서 지우지 않고 상태만 "삭제"로 바꿔서 전체이력에 "삭제" 배지로 계속 남기는 소프트 삭제였는데,
+// "삭제하면 휴지통으로 들어가고 모든 목록에서 사라지게 해달라"는 요청으로 바꿈 - 이제 sharedApprovals에서
+// 완전히 빼내면서 공용 휴지통(sharedTrash)에 통째로 옮겨 담아, 필요하면 설정 > 데이터 > 휴지통에서
+// 복원할 수 있게 함(직원 삭제·알림 삭제와 같은 방식 - pushToSharedTrash 참고)
+// 권한: 관리자는 어느 함에서든, 일반 직원은 자신이 기안한 문서만 지울 수 있음(canDeleteApprovalItem)
 async function deleteApproval(id){
-  if(!(await appConfirm('이 기안문을 완전히 삭제할까요? 되돌릴 수 없어요.'))) return;
-  const item = (sharedApprovals||[]).find(a=>a.id===id);
-  if(!item) return;
+  const idx = (sharedApprovals||[]).findIndex(a=>a.id===id);
+  if(idx < 0) return;
+  const item = sharedApprovals[idx];
+  if(!canDeleteApprovalItem(item)){ appAlert('이 문서를 삭제할 권한이 없어요. 본인이 기안한 문서만 삭제할 수 있어요.'); return; }
+  if(!(await appConfirm('이 기안문을 삭제할까요? 휴지통으로 이동하고, 필요하면 복원할 수 있어요.'))) return;
   // 승인된 휴가 기안이라 근태·캘린더에 이미 반영돼 있었다면, 기안문을 삭제할 때 심어뒀던 휴가 사용 내역도
   // 같이 지워서 삭제된 기안이 팀캘린더·개인캘린더·근태기록에 유령처럼 남지 않게 함
   const wasLeaveApplied = !!item.leaveApplied;
   if(wasLeaveApplied && typeof revertLeaveApprovalFromAttendance === 'function') revertLeaveApprovalFromAttendance(item);
-  item.status = '삭제';
+  sharedApprovals.splice(idx, 1);
+  pushToSharedTrash('approval', 'doc', item.title || '(제목 없음)', item);
+  await saveSharedTrash();
   await saveSharedApprovals();
   renderApprovalInbox();
   renderApprovalMine();
   renderApprovalRejected();
   renderApprovalDraftList();
   renderApprovalAll();
+  if(typeof renderDashboardApprovalAllPreview === 'function') renderDashboardApprovalAllPreview();
   // 휴가 반영을 되돌린 경우, 지금 화면에 떠 있을 수 있는 개인캘린더·팀캘린더·근태현황도 바로 다시 그려서
   // 삭제한 기안의 휴가가 그 화면들에 계속 남아있지 않게 함
   if(wasLeaveApplied){
@@ -21718,11 +21761,90 @@ async function gdrivePush(retrying){
     try{ localStorage.removeItem('worklog_gdrive_pending_push'); }catch(e){}
     setGdriveMergeBaseline(payload); // 방금 이 내용을 Drive에 그대로 반영했으니, 다음 병합 기준점도 이걸로 갱신
     lastGdrivePulledSnapshot = JSON.stringify(payload); // 방금 올린 내용과 100% 같은 걸 다시 받아오면(다음 pull) 재작업 안 하게
+    // 저장이 방금 성공했으니, 이 참에 오늘 자동백업이 아직 안 됐으면 같이 진행함(실패해도 저장 자체 결과에는
+    // 영향 안 주도록 기다리지 않고 그냥 흘려보냄 - await 안 함)
+    maybeRunDailyGdriveBackup(payload);
     return true;
   }catch(e){
     console.error('Drive 저장 실패', e);
     gdriveSetStatus('저장 실패: ' + e.message);
     return false;
+  }
+}
+
+// ── 자동 백업: 회사 공유 드라이브("01.기장대리") > "0004.전자결재첨부" 폴더 안에 "자동백업" 폴더를 만들어,
+// 하루에 한 번(그 날 첫 저장 시점) 그 시점의 회사 데이터 스냅샷과 지금 열려있는 앱(index.html) 소스를 그대로
+// 따로 저장해둠 - 업무기안 첨부파일이 이미 쓰고 있는 같은 경로(resolveApprovalAttachmentFolder) 아래라
+// 폴더 탐색/생성 결과가 그대로 캐시 재사용됨. 실수로 데이터가 잘못 저장되거나 파일이 깨지는 경우를 대비한
+// 보험용이라, 평소 화면(백업복구·엑셀 다운로드 등)에는 노출하지 않고 조용히 백그라운드에서만 동작함.
+// 관리자 계정으로 로그인해서 실제 저장이 일어날 때만 실행되고(일반 직원 계정으로는 시도 안 함), 하루 1회
+// 제한은 localStorage 날짜 플래그로 관리함. 30일 지난 백업은 자동으로 정리해서 무한정 쌓이지 않게 함.
+const GDRIVE_BACKUP_FOLDER_NAME = '자동백업'; // resolveApprovalAttachmentFolder(docType)의 docType 자리에 그대로 넘겨서, "0004.전자결재첨부" 바로 아래에 이 이름의 폴더가 생기게 함
+const GDRIVE_BACKUP_KEEP_DAYS = 30;
+let gdriveBackupInFlight = false;
+function gdriveBackupDateStr(d){
+  d = d || new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+async function maybeRunDailyGdriveBackup(payload){
+  try{
+    if(!gdriveAccessToken || !isCurrentUserAdmin) return; // 관리자 계정에서 실제 저장이 일어날 때만 - 일반 직원 계정은 백업 폴더 쓰기 권한이 없을 수 있고, 여러 계정이 동시에 중복 백업하는 것도 방지
+    const todayStr = gdriveBackupDateStr();
+    if(localStorage.getItem('worklog_gdrive_last_backup_date') === todayStr) return; // 오늘 이미 백업함
+    if(gdriveBackupInFlight) return; // 짧은 시간에 저장이 여러 번 겹쳐 일어나도 중복 실행 방지
+    gdriveBackupInFlight = true;
+    // 낙관적으로 먼저 오늘 날짜를 기록함(같은 브라우저에서 저장이 연달아 일어나도 중복 백업 안 하도록) -
+    // 실제로 실패하면 catch에서 다시 지워서 다음 저장/로그인 때 재시도되게 함
+    localStorage.setItem('worklog_gdrive_last_backup_date', todayStr);
+    const folderId = await resolveApprovalAttachmentFolder(GDRIVE_BACKUP_FOLDER_NAME);
+    // 1) 데이터 백업 - 거래처·직원·회사정보 등 저장소 전체 스냅샷을 새 파일로(기존 파일을 덮어쓰지 않고 매일 따로)
+    const dataPayload = payload || gdriveBuildPayload();
+    const dataMetadata = JSON.stringify({ name:`taxj-data-${todayStr}.json`, mimeType:'application/json', parents:[folderId] });
+    const dataRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id', {
+      method:'POST',
+      headers:{ Authorization:`Bearer ${gdriveAccessToken}`, 'Content-Type':'multipart/related; boundary=taxjboundary' },
+      body: gdriveBuildMultipartBody(dataPayload, dataMetadata)
+    });
+    if(!dataRes.ok) throw new Error(`데이터 백업 실패 (${dataRes.status})`);
+    // 2) 앱 소스파일 백업 - 지금 이 브라우저에 실제로 열려있는 index.html 페이지를 그대로 저장(누가 언제
+    // 배포했는지와 무관하게, 그 시점에 실제로 운영 중이던 버전 그대로 남음)
+    const htmlSource = '<!doctype html>\n' + document.documentElement.outerHTML;
+    const htmlBoundary = 'taxjbackupsrc';
+    const htmlMetadata = JSON.stringify({ name:`taxj-source-${todayStr}.html`, mimeType:'text/html', parents:[folderId] });
+    const htmlBody = new Blob([
+      `--${htmlBoundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${htmlMetadata}\r\n--${htmlBoundary}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n`,
+      htmlSource,
+      `\r\n--${htmlBoundary}--`
+    ]);
+    const htmlRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id', {
+      method:'POST',
+      headers:{ Authorization:`Bearer ${gdriveAccessToken}`, 'Content-Type':`multipart/related; boundary=${htmlBoundary}` },
+      body: htmlBody
+    });
+    if(!htmlRes.ok) throw new Error(`소스파일 백업 실패 (${htmlRes.status})`);
+    gdriveCleanupOldBackups(folderId).catch(e=>console.error('오래된 자동백업 정리 실패', e));
+  }catch(e){
+    console.error('일일 자동백업 실패', e);
+    try{ localStorage.removeItem('worklog_gdrive_last_backup_date'); }catch(e2){}
+  }finally{
+    gdriveBackupInFlight = false;
+  }
+}
+// 자동백업 폴더 안에서 30일보다 오래된 파일만 지움 - 매일 데이터+소스 2개씩 쌓이므로 한 달치(약 60개) 정도만
+// 남기고 그 이전 것들은 자동 정리함(계속 쌓여서 공유 드라이브 용량을 잡아먹지 않도록)
+async function gdriveCleanupOldBackups(folderId){
+  const cutoff = Date.now() - GDRIVE_BACKUP_KEEP_DAYS*24*60*60*1000;
+  const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&driveId=${APPROVAL_ATTACHMENT_DRIVE_ID}&corpora=drive&supportsAllDrives=true&includeItemsFromAllDrives=true&fields=files(id,createdTime)&pageSize=300`, {
+    headers:{ Authorization:`Bearer ${gdriveAccessToken}` }
+  });
+  if(!res.ok) return;
+  const data = await res.json();
+  const old = (data.files||[]).filter(f=> f.createdTime && new Date(f.createdTime).getTime() < cutoff);
+  for(const f of old){
+    await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?supportsAllDrives=true`, {
+      method:'DELETE', headers:{ Authorization:`Bearer ${gdriveAccessToken}` }
+    }).catch(()=>{});
   }
 }
 
