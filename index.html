@@ -83,13 +83,27 @@
     padding-right:22px; border-right:1.5px solid var(--border);
   }
   .app-main{ flex:1 1 300px; min-width:0; }
+  /* 모바일 메뉴 펼치기 버튼 - 넓은 화면에서는 사이드바가 항상 보여서 필요 없으므로 기본은 숨김 */
+  .mobile-sidebar-toggle{
+    display:none; align-items:center; justify-content:center; gap:7px; width:100%;
+    background:var(--surface); color:var(--ink); border:1.5px solid var(--border); border-radius:12px;
+    padding:11px; font-family:'Pretendard',sans-serif; font-size:13.5px; font-weight:700; cursor:pointer;
+    margin-bottom:12px; box-shadow:0 1px 2px rgba(29,30,51,0.04);
+  }
+  .mobile-sidebar-toggle svg{ flex:none; }
   @media (max-width:700px){
     .app-shell{ flex-direction:column; gap:18px; }
+    .mobile-sidebar-toggle{ display:flex; }
+    /* 메뉴 목록이 항상 화면 맨 위에 통째로 펼쳐져 있어서 본문을 보려면 매번 길게 스크롤해야 한다는
+       요청으로, 모바일에서는 기본을 접어두고(위 버튼을 눌러야만 펼쳐짐) 화면에 들어오자마자 바로
+       대시보드/본문부터 보이게 함 */
     .app-sidebar{
+      display:none !important;
       width:100%; flex-basis:auto; position:static;
       max-height:none; overflow-y:visible;
       border-right:none; padding-right:0; border-bottom:1.5px solid var(--border); padding-bottom:16px;
     }
+    .app-sidebar.mobile-sidebar-open{ display:flex !important; }
     .app-main{ flex-basis:100%; }
   }
   /* 홈~휴지통 아이콘 줄을 사이드바(카드 배경 .app 안쪽) 흐름에서 아예 빼내서, 카드 밖 페이지 배경 위에
@@ -239,10 +253,19 @@
   .home-dashboard-pinned-stack .home-dash-card{ height:230px; }
   .home-dashboard-pinned-stack .home-dash-card-body{ min-height:0; overflow-y:auto; }
   .home-dashboard-pinned-row .home-dash-card{ padding:13px 14px; }
+  /* 근태현황·공지사항도 칩/목록 개수에 따라 카드 세로폭이 들쭉날쭉해 보인다는 요청 - 결재현황·세무일정과
+     같은 방식(230px 고정 + 본문 스크롤)으로 맞춤. 다만 위젯 설정에서 일부러 세로형/큰 모양으로 키운
+     경우는 그 의도를 존중해서 고정하지 않음 */
+  #homeDashboardGrid .home-dash-card[data-goto="attendance"]:not(.home-dash-card-tall):not(.home-dash-card-big),
+  #homeDashboardGrid #dashNoticeCard:not(.home-dash-card-tall):not(.home-dash-card-big){ height:230px; }
+  #homeDashboardGrid .home-dash-card[data-goto="attendance"] .home-dash-card-body,
+  #homeDashboardGrid #dashNoticeCard .home-dash-card-body{ min-height:0; overflow-y:auto; }
   @media (max-width:900px){ .home-dashboard-pinned-side{ grid-template-columns:1fr; } }
+  /* 예전엔 여기서 pinned-side를 다시 1fr 1fr(2열)로 되돌려놔서, 정작 화면이 제일 좁은 휴대폰에서
+     출퇴근·팀캘린더가 나란히 2열로 눌려 "출퇴근" 세 글자가 세로로 줄바꿈될 만큼 비좁아 보였음 - 좁을수록
+     더 넓게 펼쳐 보여야 하는데 거꾸로였던 것이라, 900px 규칙(1열)을 그대로 이어받게 이 줄을 없앰 */
   @media (max-width:640px){
     .home-dashboard-pinned-row{ grid-template-columns:1fr; }
-    .home-dashboard-pinned-side{ grid-template-columns:1fr 1fr; }
   }
   .home-dash-card{
     background:var(--surface); border-radius:16px; padding:16px 18px; min-height:0;
@@ -2653,6 +2676,14 @@
 
   <!-- 넓은 화면(900px~)용 고정 사이드바. 안의 홈 아이콘·유틸리티 아이콘·메뉴 목록은 위 nav와 홈 화면에
        원래 있던 실제 엘리먼트를 relocateSidebarNodes()가 그대로 옮겨오는 자리라서 처음엔 비어있음 -->
+  <!-- 모바일(700px 이하)에서 메뉴 전체 목록이 항상 화면 맨 위에 펼쳐져 있어서 본문을 보려면 매번 길게
+       스크롤해야 한다는 불편이 있었음 - 이 버튼은 모바일에서만 보이고, 눌러야만 메뉴 목록이 펼쳐지게(기본
+       접힘) 해서 화면에 들어오면 바로 대시보드 내용부터 보이게 함. 넓은 화면에서는 사이드바가 항상 보이는
+       그대로라 이 버튼은 CSS로 숨김 -->
+  <button type="button" id="mobileSidebarToggle" class="mobile-sidebar-toggle">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+    <span>메뉴</span>
+  </button>
   <div class="app-shell">
     <aside class="app-sidebar" id="appSidebar"></aside>
     <div class="app-main">
@@ -5138,6 +5169,28 @@ async function saveSharedExclusions(){ try{ localStorage.setItem('worklog_shared
 async function saveSharedWorkHourExceptions(){ try{ localStorage.setItem('worklog_shared_workhours', JSON.stringify(sharedWorkHourExceptions)); }catch(e){ console.error('공통 근무시간 예외 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedNoticeHistory(){ try{ localStorage.setItem('worklog_shared_notice_history', JSON.stringify(sharedNoticeHistory)); }catch(e){ console.error('공지사항 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedNotificationLog(){ try{ localStorage.setItem('worklog_shared_notifications', JSON.stringify(sharedNotificationLog)); }catch(e){ console.error('알림 저장 실패', e); } gdriveScheduleSync(); }
+// 기안(결재문서)이나 공지를 지우면, 거기서 나왔던 알림함(종 아이콘) 항목도 같이 지워서 이미 없어진 문서의
+// 알림이 알림함에 유령처럼 계속 남아있지 않게 함. 결재 알림의 relatedId는 "기안id"(결재 요청) 또는
+// "기안id|상태"(결재 결과 - 반려 후 재기안하면 상태별로 여러 건 쌓일 수 있어서 startsWith로 같이 잡음) 형태임
+function removeNotificationLogEntriesForApproval(approvalId){
+  if(!approvalId || !Array.isArray(sharedNotificationLog)) return;
+  const before = sharedNotificationLog.length;
+  sharedNotificationLog = sharedNotificationLog.filter(n => n.relatedId !== approvalId && !String(n.relatedId||'').startsWith(approvalId+'|'));
+  if(sharedNotificationLog.length !== before){ saveSharedNotificationLog(); updateNotificationUnreadBadge(); refreshNotificationListModalIfOpen(); }
+}
+function removeNotificationLogEntriesForNotice(noticeId){
+  if(!noticeId || !Array.isArray(sharedNotificationLog)) return;
+  const before = sharedNotificationLog.length;
+  sharedNotificationLog = sharedNotificationLog.filter(n => n.relatedId !== noticeId);
+  if(sharedNotificationLog.length !== before){ saveSharedNotificationLog(); updateNotificationUnreadBadge(); refreshNotificationListModalIfOpen(); }
+}
+// 알림함 팝업은 전용 오버레이가 따로 없고 여러 안내창이 같이 쓰는 memoModal을 재사용하므로, 지금 떠있는
+// memoModal이 "알림" 팝업이 맞을 때만(다른 안내창이 우연히 떠있을 때 잘못 덮어쓰지 않도록) 다시 그려줌
+function refreshNotificationListModalIfOpen(){
+  if(document.getElementById('memoModalOverlay')?.style.display === 'flex' && document.getElementById('memoModalTitle')?.textContent === '알림'){
+    renderNotificationListModal();
+  }
+}
 async function saveSharedNotificationReadState(){ try{ localStorage.setItem('worklog_shared_notification_read', JSON.stringify(sharedNotificationReadState)); }catch(e){ console.error('알림 읽음상태 저장 실패', e); } gdriveScheduleSync(); }
 
 // 알림함 - 종 아이콘 눌렀을 때 보이는 "알림 목록"의 데이터 계층. 예전엔 브라우저 데스크톱 알림(Notification)을
@@ -6059,6 +6112,7 @@ function renderNoticeList(){
       if(!(await appConfirm('이 공지를 삭제할까요?'))) return;
       sharedNoticeHistory = sharedNoticeHistory.filter(x=>x.id!==btn.dataset.id);
       await saveSharedNoticeHistory();
+      removeNotificationLogEntriesForNotice(btn.dataset.id);
       renderNoticeList();
     });
   });
@@ -6718,6 +6772,29 @@ function notificationIconDataUri(icon){
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="32" fill="${colorHex}"/><g transform="translate(16,16)"><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${pathD}</g></g></svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
+// 알림함에 이미 와있는 항목을 골라서, 그 실제 제목·내용 그대로 이 기기·브라우저에 브라우저 알림을
+// "다시" 띄워줌(가짜 테스트 문구가 아니라 진짜 그 알림 내용) - 휴대폰에서 처음 왔을 때 못 봤거나, 알림이
+// 제대로 오는지 다시 한번 확인하고 싶을 때 씀. 새 공지/결재 알림(checkNewNoticesForBrowserNotify 등)의
+// "이미 보낸 알림" 중복방지 로직과는 무관하게, 누를 때마다 그냥 다시 띄움
+async function resendNotificationById(id){
+  const n = (sharedNotificationLog||[]).find(x=>x.id===id);
+  if(!n){ appAlert('이 알림을 찾을 수 없어요.'); return; }
+  if(typeof Notification === 'undefined'){ appAlert('이 브라우저(기기)는 알림 기능을 지원하지 않아요.'); return; }
+  if(Notification.permission === 'denied'){
+    appAlert('브라우저 알림 권한이 차단되어 있어요. 주소창 왼쪽의 자물쇠(사이트 정보) 아이콘에서 이 사이트의 알림 권한을 허용한 뒤 다시 시도해주세요.');
+    return;
+  }
+  const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+  if(perm !== 'granted'){ appAlert('알림 권한이 허용되지 않았어요.'); return; }
+  try{
+    const title = stripRedundantTitlePrefix(stripLeadingEmoji(n.title||'알림'));
+    const notif = new Notification(title, { body: n.body||'', tag: 'resend-'+n.id+'-'+Date.now(), icon: notificationIconDataUri(n.icon) });
+    notif.onclick = ()=>{ window.focus(); };
+    showCenterToast('알림을 다시 보냈어요');
+  }catch(e){
+    appAlert('알림을 띄우는 데 실패했어요: ' + (e && e.message ? e.message : e));
+  }
+}
 function openNotificationListPopup(){
   notificationListPage = 1;
   document.getElementById('memoModalTitle').textContent = '알림';
@@ -6745,6 +6822,9 @@ function renderNotificationListModal(){
   // 안읽음 표시는 아이콘 밖으로 튀어나온 빨간 점 대신, 줄 전체에 옅은 배경을 깔아서 구분함(Notion 등에서
   // 흔히 쓰는 방식) - 읽은 알림은 배경 없이 평범하게 보임
   const closeIconSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+  // 알림함에 이미 온 알림을 그 내용 그대로 이 기기에 다시 한번 브라우저 알림으로 띄워주는 버튼 - 휴대폰에서
+  // 처음 왔을 때 못 봤거나, 알림이 잘 오는지 다시 확인하고 싶을 때 씀
+  const resendIconSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>';
   const rowsHtml = pageItems.map(n=>{
     const isRead = read.has(n.id);
     const c = notificationTypeColor(n.icon);
@@ -6757,7 +6837,10 @@ function renderNotificationListModal(){
         <div style="font-size:13px; font-weight:${isRead?600:800}; color:var(--ink); word-break:break-word; line-height:1.5;">${escHtml(stripRedundantTitlePrefix(stripLeadingEmoji(n.title||'')))}</div>
         ${n.body ? `<div style="font-size:12px; color:var(--ink-soft); margin-top:4px; word-break:break-word; line-height:1.5;">${escHtml(n.body)}</div>` : ''}
       </div>
-      <button type="button" class="del-btn notification-del-btn" data-id="${n.id}" title="삭제" aria-label="삭제">${closeIconSvg}</button>
+      <span style="flex:0 0 auto; display:flex; gap:4px;">
+        <button type="button" class="del-btn notification-resend-btn" data-id="${n.id}" title="알림 다시 보내기" aria-label="알림 다시 보내기">${resendIconSvg}</button>
+        <button type="button" class="del-btn notification-del-btn" data-id="${n.id}" title="삭제" aria-label="삭제">${closeIconSvg}</button>
+      </span>
     </div>`;
   }).join('');
   let pagerHtml = '';
@@ -6782,9 +6865,15 @@ function bindNotificationListModalEvents(body){
       renderNotificationListModal();
     });
   });
+  body.querySelectorAll('.notification-resend-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      resendNotificationById(btn.dataset.id);
+    });
+  });
   body.querySelectorAll('.notification-row').forEach(row=>{
     row.addEventListener('click', (e)=>{
-      if(e.target.closest('.notification-del-btn')) return;
+      if(e.target.closest('.notification-del-btn') || e.target.closest('.notification-resend-btn')) return;
       markNotificationRead(row.dataset.id);
       renderNotificationListModal();
     });
@@ -11283,12 +11372,15 @@ function adLeaveSummaryTableHtml(){
   }
   const dateRangeText = (end && end !== start) ? `${start} ~ ${end}` : start;
   const typeText = `${type}${subtypeText ? ` (${subtypeText})` : ''}`;
-  const th = 'padding:6px 16px; border:1px solid var(--border); background:var(--bg); font-weight:700; color:var(--ink-soft); white-space:nowrap; width:96px;';
-  const td = 'padding:6px 16px; border:1px solid var(--border); color:var(--ink); font-weight:600; width:200px;';
+  // 표 테두리를 공용 --border(rgba(29,30,51,0.14))로 두면 흰 배경 위에서 거의 안 보인다는 피드백이 있어서,
+  // 이 표에만 더 진한 테두리색을 따로 줌
+  const tableBorder = 'rgba(29,30,51,0.4)';
+  const th = `padding:6px 16px; border:1px solid ${tableBorder}; background:var(--bg); font-weight:700; color:var(--ink-soft); white-space:nowrap; width:96px;`;
+  const td = `padding:6px 16px; border:1px solid ${tableBorder}; color:var(--ink); font-weight:600; width:200px;`;
   // 전역 table{width:100%} 규칙(공용 CSS) 탓에 이 표도 부모 폭 전체로 늘어나 버려서, 값 칸(td) 하나가
   // 화면 끝까지 쭉 늘어지는 문제가 있었음 - width:auto로 전역 규칙을 덮어쓰고 칸 너비를 직접 지정해서
   // 실제 공문서 표처럼 내용만큼만 차지하도록 고정함
-  return `<table style="border-collapse:collapse; margin:0 auto; width:auto; table-layout:fixed;"><tbody>`
+  return `<table style="border-collapse:collapse; margin:0 auto; width:auto; table-layout:fixed; border:1px solid ${tableBorder};"><tbody>`
     + `<tr><td style="${th}">휴가 기간</td><td style="${td}">${escHtml(dateRangeText)}</td></tr>`
     + `<tr><td style="${th}">휴가 종류</td><td style="${td}">${escHtml(typeText)}</td></tr>`
     + `</tbody></table>`;
@@ -11753,6 +11845,9 @@ function activateTab(tabName, pushHistory){
   if(pushHistory){
     try{ history.pushState({ tab: tabName }, '', location.pathname + location.search); }catch(e){}
   }
+  // 모바일에서 메뉴를 펼쳐서 항목을 골랐으면, 펼쳐둔 메뉴를 자동으로 다시 접어서 바로 본문이 보이게 함
+  // (넓은 화면에선 사이드바가 항상 보이는 상태라 이 클래스가 있고 없고는 영향 없음)
+  document.getElementById('appSidebar')?.classList.remove('mobile-sidebar-open');
   // 이전 화면에서 아래로 스크롤한 상태로 사이드바의 다른 메뉴를 클릭하면, 화면 내용은 바뀌었는데
   // 스크롤 위치는 그대로 남아있어서 새 메뉴의 내용이 중간부터(심지어 그 화면엔 없는 위치까지) 보이는
   // 문제가 있었음 - 탭이 바뀔 때마다 항상 맨 위에서부터 보이도록 스크롤을 초기화함
@@ -12628,7 +12723,7 @@ function renderDashboardApprovalAllPreview(){
   const badge = document.getElementById('dashApprovalCountBadge');
   if(badge){
     let myPending = 0;
-    try{ myPending = typeof myApprovalInboxList === 'function' ? myApprovalInboxList().length : 0; }catch(e){ myPending = 0; }
+    try{ myPending = typeof myApprovalPendingInboxCount === 'function' ? myApprovalPendingInboxCount() : 0; }catch(e){ myPending = 0; }
     if(myPending > 0){ badge.textContent = myPending + '건 대기'; badge.style.display = 'inline-flex'; }
     else badge.style.display = 'none';
   }
@@ -13010,6 +13105,12 @@ function relocateSidebarNodes(){
   if(homeMenuCol) sidebar.appendChild(homeMenuCol);
 }
 relocateSidebarNodes();
+// 모바일 메뉴 펼치기/접기 버튼 - 기본은 접힘(CSS의 .app-sidebar 기본 display:none)이고, 눌러야만
+// 사이드바에 mobile-sidebar-open 클래스가 붙어 목록이 펼쳐짐. 넓은 화면에서는 이 버튼 자체가 안 보이므로
+// 클래스 유무와 무관하게 항상 사이드바가 보임
+document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
+  document.getElementById('appSidebar')?.classList.toggle('mobile-sidebar-open');
+});
 
 // ===== 팝업(오버레이) 전부 자리 이동 가능하게 하기 =====
 // "뒤에 작업하고 있던 화면이 보여야 할 수도 있다"는 요청으로, 팝업 박스의 빈 공간(제목 주변 등)을
@@ -19524,6 +19625,14 @@ function myApprovalInboxList(){
       return (b.createdAt||'').localeCompare(a.createdAt||'');
     });
 }
+// "대기" 배지(대시보드 결재현황 옆 "N건 대기", 사이드바/상단 결재 빨간 동그라미)는 실제로 아직 결론 안 난
+// 문서만 세야 하는데, 위 myApprovalInboxList()는 상태와 무관하게 전부 돌려주도록 일부러 바뀐 함수라(결재함
+// 목록 자체는 승인·반려된 것도 같이 보여주려는 의도) 그 length를 그대로 "대기 건수"로 쓰면 이미 승인·반려된
+// 문서까지 대기중으로 잘못 세는 문제가 있었음(예: 결재함에 승인완료 문서 1건뿐인데도 "1건 대기"로 표시) -
+// 배지 전용으로 진짜 대기중(기안/검토중) 건수만 따로 셈
+function myApprovalPendingInboxCount(){
+  return myApprovalInboxList().filter(a=>a.status==='기안' || a.status==='검토중').length;
+}
 function myApprovalDoneList(){
   const myEmail = (currentUserEmail||'').toLowerCase();
   return (sharedApprovals||[]).filter(a=>a.status==='승인' && ((a.drafterEmail||'').toLowerCase()===myEmail || (a.approverEmail||'').toLowerCase()===myEmail));
@@ -19940,6 +20049,7 @@ async function deleteApproval(id){
   if(wasLeaveApplied && typeof revertLeaveApprovalFromAttendance === 'function') revertLeaveApprovalFromAttendance(item);
   sharedApprovals.splice(idx, 1);
   recordDeletedApprovalId(item.id);
+  removeNotificationLogEntriesForApproval(item.id);
   pushToSharedTrash('approval', 'doc', item.title || '(제목 없음)', item);
   await saveSharedTrash();
   await saveSharedApprovals();
@@ -20049,7 +20159,15 @@ function approvalDetailBodyHtml(item){
   const drafterName = escHtml(resolveNameByEmail(item.drafterEmail)||item.drafterName||'-');
   const approverName = escHtml(resolveNameByEmail(item.approverEmail)||item.approverName||'-');
   const teamLabel = escHtml([sharedCompanyName, (sharedTeamInfo&&sharedTeamInfo.teamName)].filter(Boolean).join(' ') || '-');
-  const td = 'padding:6px 8px; border:1px solid var(--border); font-size:11.5px;';
+  // 표 테두리를 공용 --border(rgba(29,30,51,0.14))로 두면 흰 배경 위에서 거의 안 보인다는 피드백이 있어서
+  // (휴가 표 수정 때와 같은 이유), 이 문서 조회 화면 표에도 더 진한 테두리색을 씀
+  const td = 'padding:6px 8px; border:1px solid rgba(29,30,51,0.4); font-size:11.5px;';
+  // 승인/반려 결론이 난 문서는 실제 공문서의 직인(도장)처럼, 결재표 모서리에 겹쳐 찍힌 동그란 스탬프를
+  // 보여줘서 "그냥 화면"이 아니라 "처리 완료된 문서"라는 느낌을 줌 - 아직 결론 안 난 문서(기안/검토중)엔
+  // 찍을 도장이 없으므로 표시하지 않음
+  const stampHtml = (item.status === '승인' || item.status === '반려') ? `
+    <div style="position:absolute; top:-8px; right:-10px; width:54px; height:54px; border-radius:50%; border:2.5px solid ${item.status==='승인' ? 'var(--coral)' : 'var(--ink-soft)'}; color:${item.status==='승인' ? 'var(--coral)' : 'var(--ink-soft)'}; background:rgba(255,255,255,0.85); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:13.5px; letter-spacing:3px; transform:rotate(-13deg); pointer-events:none;">${item.status}</div>
+  ` : '';
   // 업무기안 제목부터 승인/반려 버튼까지 전체를 하나의 카드로 묶어서 배경(패널 색)과 확실히 구분되게 함 -
   // 예전엔 문서 박스(흰 배경)와 의견/버튼 영역(배경 없이 패널 색 그대로)이 서로 다른 톤이라 어디까지가
   // 한 묶음인지 잘 안 보였음. 기안자~결재 정보는 "업무기안" 큰 제목과 같은 줄 오른쪽에 작게 배치해서
@@ -20060,28 +20178,31 @@ function approvalDetailBodyHtml(item){
         <div style="font-size:30px; font-weight:900; letter-spacing:10px; color:var(--navy);">업&nbsp;무&nbsp;기&nbsp;안</div>
         <div style="margin-top:6px;"><span class="tag" style="${approvalDocTypeChipStyle(item.docType||'일반')}">${escHtml(item.docType||'일반')}</span></div>
       </div>
-      <div style="display:flex; justify-content:flex-end; margin-top:10px; gap:0; flex-wrap:wrap; padding-bottom:12px; border-bottom:2px solid var(--navy); margin-bottom:14px;">
+      <div style="display:flex; justify-content:flex-end; margin-top:10px; gap:0; flex-wrap:wrap; padding-bottom:12px; border-bottom:3px double var(--navy); margin-bottom:14px;">
         <table style="border-collapse:collapse; width:auto; border-radius:0; box-shadow:none; border:none; background:transparent;">
           <tr><td style="${td} background:var(--bg); font-weight:700;">기안자</td><td style="${td}">${drafterName}</td></tr>
           <tr><td style="${td} background:var(--bg); font-weight:700;">소속</td><td style="${td}">${teamLabel}</td></tr>
           <tr><td style="${td} background:var(--bg); font-weight:700;">기안일</td><td style="${td}">${escHtml(item.createdAt||'-')}</td></tr>
         </table>
-        <table style="border-collapse:collapse; text-align:center; width:auto; border-radius:0; box-shadow:none; border:none; background:transparent;">
-          <tr><td colspan="2" style="${td} background:var(--bg); font-weight:700;">결재</td></tr>
-          <tr>
-            <td style="${td} color:var(--ink-soft); font-weight:700;">기안</td>
-            <td style="${td} color:var(--ink-soft); font-weight:700;">승인</td>
-          </tr>
-          <tr>
-            <td style="${td} font-weight:800; min-width:60px;">${drafterName}</td>
-            <td style="${td} font-weight:800; min-width:60px;">${approverName}</td>
-          </tr>
-        </table>
+        <div style="position:relative;">
+          <table style="border-collapse:collapse; text-align:center; width:auto; border-radius:0; box-shadow:none; border:none; background:transparent;">
+            <tr><td colspan="2" style="${td} background:var(--bg); font-weight:700;">결재</td></tr>
+            <tr>
+              <td style="${td} color:var(--ink-soft); font-weight:700;">기안</td>
+              <td style="${td} color:var(--ink-soft); font-weight:700;">승인</td>
+            </tr>
+            <tr>
+              <td style="${td} font-weight:800; min-width:60px;">${drafterName}</td>
+              <td style="${td} font-weight:800; min-width:60px;">${approverName}</td>
+            </tr>
+          </table>
+          ${stampHtml}
+        </div>
       </div>
       <div style="text-align:center; border-bottom:1px solid var(--border); margin-bottom:12px; padding-bottom:12px;">
         <div style="font-size:14.5px; font-weight:800; color:var(--ink);">${escHtml(item.title)}</div>
       </div>
-      <div style="text-align:center; min-height:80px; font-size:13px; line-height:1.75; white-space:pre-wrap; user-select:text;">${contentHtml}</div>
+      <div style="text-align:center; min-height:80px; font-size:13px; line-height:1.75; white-space:pre-wrap; user-select:text; padding:8px 20px;">${contentHtml}</div>
       ${attachmentHtml ? `<div style="border-top:1px solid var(--border); padding-top:12px; margin-top:12px;">${attachmentHtml}</div>` : ''}
       <div style="border-top:1px solid var(--border); margin:16px 0 12px;"></div>
       <div style="font-weight:800; font-size:12.5px; color:var(--ink);">의견</div>
@@ -20205,8 +20326,11 @@ function renderApprovalAllBadges(){
   const rejectedList = myApprovalRejectedList();
   const navBadge = document.getElementById('approvalPendingBadge');
   if(navBadge){
-    navBadge.style.display = inboxList.length>0 ? 'flex' : 'none';
-    navBadge.textContent = String(inboxList.length);
+    // 이 빨간 동그라미도 이름 그대로 "대기중" 건수를 보여주는 자리라, 결재함 전체 건수(승인·반려 포함)가
+    // 아니라 실제로 아직 결론 안 난 것만 셈(위 myApprovalPendingInboxCount 주석 참고)
+    const pendingCount = typeof myApprovalPendingInboxCount === 'function' ? myApprovalPendingInboxCount() : 0;
+    navBadge.style.display = pendingCount>0 ? 'flex' : 'none';
+    navBadge.textContent = String(pendingCount);
   }
   const setPill = (elId, count)=>{
     const el = document.getElementById(elId);
