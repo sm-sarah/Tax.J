@@ -4089,7 +4089,7 @@
                 <input type="hidden" id="ad-edit-id" value="">
                 <div style="display:grid; grid-template-columns:84px 1fr; border:1.5px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:12px; font-size:12px;">
                   <div style="padding:7px 10px; background:var(--bg); font-weight:700; color:var(--ink-soft); border-bottom:1px solid var(--border); border-right:1px solid var(--border);">기안자</div>
-                  <div style="padding:0 4px; border-bottom:1px solid var(--border);"><select id="ad-drafter" title="테스트용 - 기안자를 원하는 사람으로 바꿔볼 수 있어요" style="width:100%; border:none; background:transparent; font-family:inherit; font-size:12px; font-weight:700; color:var(--ink); padding:7px 6px;"></select></div>
+                  <div style="padding:0 4px; border-bottom:1px solid var(--border);"><select id="ad-drafter" disabled style="width:100%; border:none; background:transparent; font-family:inherit; font-size:12px; font-weight:700; color:var(--ink); padding:7px 6px; opacity:1; -webkit-text-fill-color:var(--ink);"></select></div>
                   <div style="padding:7px 10px; background:var(--bg); font-weight:700; color:var(--ink-soft); border-bottom:1px solid var(--border); border-right:1px solid var(--border);">소속</div>
                   <div style="padding:7px 10px; border-bottom:1px solid var(--border);" id="adMetaTeam">-</div>
                   <div style="padding:7px 10px; background:var(--bg); font-weight:700; color:var(--ink-soft); border-right:1px solid var(--border);">기안일</div>
@@ -18738,22 +18738,16 @@ function populateApproverSelect(){
   populateDrafterSelect();
   updateApprovalDraftMeta();
 }
-// 기안자도 테스트 시뮬레이션용으로 원하는 사람을 골라볼 수 있게 함(원래는 항상 로그인한 본인 고정) -
-// 결재자와 같은 방식으로 직원+관리자 전체 목록(noticeAllRecipientEmails)에서 고르고, 기본값은 지금 로그인한 본인
+// 기안자는 항상 "지금 로그인한 본인"으로 고정됨 - 예전엔 테스트 목적으로 결재자처럼 전체 직원 목록에서
+// 아무나 골라볼 수 있게 열어뒀었는데(<select disabled> 아님, 실사용 가능한 드롭다운이었음), 실제 서비스에서
+// 그 값이 남아있으면 본인이 로그인했는데도 다른 직원 이름으로 기안자가 표시되는 것처럼 보여 혼란을 줌 -
+// 기안 문서에 누가 작성했는지는 신뢰할 수 있어야 하는 정보라 아예 본인 계정 하나만 나오도록 잠금
 function populateDrafterSelect(){
   const sel = document.getElementById('ad-drafter');
   if(!sel) return;
-  const list = noticeAllRecipientEmails();
-  if(!list.length){ sel.innerHTML = `<option value="">등록된 사람이 없어요</option>`; return; }
-  const prevVal = sel.value;
-  sel.innerHTML = list.map(email=> `<option value="${escHtml(email)}">${escHtml(resolveNameByEmail(email))}</option>`).join('');
-  // 기안자는 항상 "지금 로그인한 본인" 계정이 기본으로 나오도록 함 - 이전엔 최초 렌더 시 select의 기본
-  // 선택값(첫 옵션, 예: 회계사)이 prevVal로 굳어버려서 로그인이 끝난 뒤에도 계속 그 사람으로 남는 문제가 있었음
-  if(currentUserEmail && list.some(e=>e.toLowerCase()===currentUserEmail.toLowerCase())){
-    sel.value = list.find(e=>e.toLowerCase()===currentUserEmail.toLowerCase());
-  } else if(prevVal && list.some(e=>e.toLowerCase()===prevVal.toLowerCase())){
-    sel.value = list.find(e=>e.toLowerCase()===prevVal.toLowerCase());
-  }
+  const email = currentUserEmail || '';
+  sel.innerHTML = email ? `<option value="${escHtml(email)}">${escHtml(resolveNameByEmail(email) || currentStaffDisplayName() || email)}</option>` : `<option value="">-</option>`;
+  sel.value = email;
 }
 // 지금 폼에서 "기안자"로 선택된 이메일 - 선택 UI가 아직 안 채워졌거나 값이 없으면 실제 로그인 계정으로 대체함
 function currentDrafterEmail(){
