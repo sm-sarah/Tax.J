@@ -320,31 +320,20 @@
   .home-dash-card[data-goto="teamcalendar"]{ align-self:stretch; }
   .home-dash-card[data-goto="teamcalendar"] .home-dash-card-body{ display:flex; flex-direction:column; min-height:0; }
   .home-dash-card-scroll{ flex:1; min-height:0; overflow-y:auto; }
-  /* 세무일정 위젯 - 날짜/항목이 쭉 나열되는 표 대신, 출퇴근 카드처럼 가장 가까운 기한 하나를 D-day로 크게
-     강조하고(hero), 그 다음 기한들은 작은 알약 칩으로만 보여줘서 "표"보다 "카드"에 가까운 느낌으로 바꿈.
-     맨 아래엔 원천세·부가세·종소세·법인세 신고현황으로 바로 가는 작은 바로가기도 둠 */
-  /* D-day 히어로는 "아래 이어지는 일정들보다 더 급한 것"이라 강조색을 따로 씀 - 그 아래 칩 목록은
-     원래 쓰던 slate 톤 그대로 두고, 여기만 코랄(--coral)로 바꿔서 한눈에 구분되게 함 */
-  .home-dash-tax-hero{
-    display:flex; align-items:center; gap:12px; background:var(--coral-bg); border-radius:14px;
-    padding:11px 13px; margin-bottom:9px;
-  }
-  .home-dash-tax-hero-dday{
-    flex:none; font-family:'IBM Plex Mono',monospace; font-size:16px; font-weight:900; color:#fff;
-    background:var(--coral); border-radius:10px; padding:8px 6px; text-align:center; min-width:50px;
-  }
-  .home-dash-tax-hero-info{ min-width:0; }
-  .home-dash-tax-hero-date{ font-size:11.5px; font-weight:700; color:var(--coral); margin-bottom:2px; }
-  .home-dash-tax-hero-title{ font-size:13.5px; font-weight:800; color:var(--ink); line-height:1.4; }
-  /* 예전엔 칩들을 가로로 나열(flex-wrap)하면서 제목에 max-width:130px + 말줄임표를 줘서 "신고,납..."처럼
-     내용이 잘려 보였음 - 카드 가로폭을 다 쓸 수 있게 칩을 세로로 한 줄씩 쌓고, 제목은 너비 제한 없이
-     남는 공간을 전부 차지하도록 바꿈(날짜만 좌측에 고정폭, 제목은 flex:1로 나머지 전부) */
+  /* 세무일정 위젯 - 예전엔 가장 가까운 기한 하나만 코랄색 D-day 히어로로 크게 강조하고 나머지는 거의 안
+     보이는 회색 칩으로 나열했는데, "중요도 상관없이 다 동일한 배경색으로" + "임박한 것만 칩 안에 D-day
+     표시"로 바꿔달라는 요청에 맞춰 모든 항목을 같은 slate 톤 칩으로 통일함. D-day가 2주(14일) 이내로
+     임박한 항목만 칩 오른쪽에 작은 D-day 배지를 붙여 표시하고, 그 외엔 날짜/제목만 보여줌 */
   .home-dash-tax-chip-row{ display:flex; flex-direction:column; gap:5px; margin-bottom:9px; }
   .home-dash-tax-chip{
-    display:flex; align-items:center; gap:8px; background:var(--bg); border-radius:10px; padding:6px 10px; font-size:11.5px; width:100%; box-sizing:border-box;
+    display:flex; align-items:center; gap:8px; background:var(--guide-slate-bg); border-radius:10px; padding:7px 10px; font-size:11.5px; width:100%; box-sizing:border-box;
   }
   .home-dash-tax-chip-date{ flex:none; font-weight:800; color:var(--guide-slate); font-family:'IBM Plex Mono',monospace; }
   .home-dash-tax-chip-title{ flex:1; min-width:0; color:var(--ink-soft); font-weight:600; overflow-wrap:break-word; white-space:normal; line-height:1.35; }
+  .home-dash-tax-chip-dday{
+    flex:none; font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:900; color:#fff;
+    background:var(--guide-slate); border-radius:20px; padding:3px 8px; white-space:nowrap;
+  }
   /* 신고현황 바로가기 칩 - 예전엔 위젯 하단에 별도 줄로 있었는데, 제목 줄 오른쪽(원래 "더보기" 링크 자리)에
      바로 붙여서 위젯 세로 공간을 아끼고 더 눈에 잘 띄게 함. 위젯 본문 accent(slate)와 헷갈리지 않도록
      teal 톤으로 살짝 다르게 줌 */
@@ -1868,7 +1857,7 @@
               <option value="remote">재택근무</option>
             </select>
           </div>
-          <div class="field field-tile" style="flex:1 1 120px; background:rgba(91,95,239,0.05);"><label>시작일</label><input type="date" id="u-date" required min="2015-01-01" max="2099-12-31"></div>
+          <div class="field field-tile" style="flex:1 1 120px; background:rgba(91,95,239,0.05);"><label id="u-date-label">시작일</label><input type="date" id="u-date" required min="2015-01-01" max="2099-12-31"></div>
           <div class="field field-tile" id="endDateField" style="flex:1 1 120px; background:rgba(91,95,239,0.05); display:none;">
             <label>종료일</label>
             <input type="date" id="u-end-date" min="2015-01-01" max="2099-12-31">
@@ -1881,6 +1870,16 @@
               <option value="포상휴가">포상휴가 (연차 차감 없음)</option>
               <option value="경조사휴가">경조사휴가 (연차 차감 없음)</option>
               <option value="기타휴가">기타휴가 (연차 차감 없음)</option>
+            </select>
+          </div>
+          <!-- 재택근무는 예전에 "특별재택"·"식대기준일수에서 제외" 체크박스 두 개를 따로 켜고 끄는 방식이라
+               둘을 동시에 체크하는 것처럼 의미 없는 조합도 가능했음 - 정기재택/정기재택(식대제외)/특별재택
+               세 가지 중 하나만 고르는 select 하나로 합쳐서 재택 등록 화면을 "종류 + 재택일"만으로 단순화함 -->
+          <div class="field field-tile" id="remoteTypeField" style="display:none; flex:1 1 170px; background:rgba(91,95,239,0.05);"><label>재택 종류</label>
+            <select id="r-type">
+              <option value="regular">정기재택</option>
+              <option value="regular-nolunch">정기재택 (식대제외)</option>
+              <option value="bonus">특별재택 (월 한도 미포함)</option>
             </select>
           </div>
         </div>
@@ -1912,14 +1911,8 @@
             <option value="3">사망(형제자매) · 3일</option>
           </select>
         </div>
-        <div class="field" id="remoteBonusField" style="display:none; flex-direction:row; align-items:center; gap:6px;">
-          <input type="checkbox" id="r-bonus" style="width:auto;">
-          <label for="r-bonus" style="margin:0; font-size:11.5px;">특별재택 (월 한도 미포함)</label>
-        </div>
-        <div class="field" id="remoteNoLunchField" style="display:none; flex-direction:row; align-items:center; gap:6px; background:var(--amber-bg); border-radius:8px; padding:8px 10px;">
-          <input type="checkbox" id="r-nolunch" style="width:auto;">
-          <label for="r-nolunch" style="margin:0; font-size:11.5px; color:#8A6D1E; font-weight:700;">이 날은 식대기준일수에서 제외 (점심식대 계산에서 빠짐)</label>
-        </div>
+        <!-- 당겨쓰기는 재택근무 전용으로만 남김("휴가는 당일 체크만 있으면 된다"는 요청으로 휴가 쪽 당겨쓰기
+             입력은 없앰 - kind==='leave'면 updateAdvanceFieldVisibility가 항상 숨기고 체크를 꺼둠) -->
         <div class="field" id="advanceField" style="display:none; flex-direction:row; align-items:center; gap:6px; background:var(--indigo-bg); border-radius:8px; padding:8px 10px;">
           <input type="checkbox" id="u-advance" style="width:auto;">
           <label for="u-advance" id="advanceFieldLabel" style="margin:0; font-size:11.5px; color:var(--indigo-deep); font-weight:700;">당겨쓰기</label>
@@ -2867,6 +2860,7 @@
               <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-exclusionDays"><span>제외일수</span></div>
               <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-staffLeave"><span>직원휴가</span></div>
               <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-specialPeriod"><span>특별기간</span></div>
+              <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-taxSchedule"><span>세무일정 관리</span></div>
             </div>
             <div class="home-tile home-tile-plain" data-settings-cat-goto="data" style="--tile-accent:var(--guide-slate);">
               <div class="home-tile-icon">💾</div>
@@ -4592,6 +4586,42 @@
         </div>
       </div>
       <div id="specialPeriodListWrap" style="max-width:720px; margin:12px auto 0;"></div>
+
+      <div class="settings-sub-title" id="ssTitle-taxSchedule" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="3" y1="10" x2="21" y2="10"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="16" y1="2" x2="16" y2="6"></line></svg> 세무일정 관리 <span class="badge">대시보드 세무일정 위젯 · 관리자만 수정 가능</span></div>
+      <p class="hint">
+        대시보드 세무일정 위젯에 보이는 신고기한을 직접 관리해요.<br>
+        <b>일정 등록</b>은 4대보험 보수총액신고·지급명세서 제출처럼 기본 제공 세목 외의 일정을, 반복 방식(매년/매월/한 번만)에 맞게 새로 등록해요.<br>
+        <b>아래 목록의 날짜 수정</b>은 임시공휴일 지정 등으로 특정 회차의 기한만 급하게 조정해야 할 때, 그 회차 하나만 직접 고치는 기능이에요(세목 자체나 다른 회차엔 영향 없음).
+      </p>
+      <div class="flat-panel flat-panel-narrow">
+        <form id="taxScheduleCustomForm" style="display:flex; flex-direction:column; gap:8px;">
+          <div class="flat-row"><div class="flat-row-label">일정명</div><div class="flat-row-control"><input type="text" id="ts-title" placeholder="예: 4대보험 보수총액신고" class="flat-input" style="width:100%;"></div></div>
+          <div class="flat-row"><div class="flat-row-label">반복</div><div class="flat-row-control">
+            <select id="ts-recurrence" class="flat-input">
+              <option value="annual">매년 (특정 월·일)</option>
+              <option value="monthly">매월 (특정 일)</option>
+              <option value="once">한 번만 (특정 날짜)</option>
+            </select>
+          </div></div>
+          <div class="flat-row" id="ts-annual-fields"><div class="flat-row-label">월 · 일</div><div class="flat-row-control">
+            <input type="number" id="ts-month" class="num-input flat-input" min="1" max="12" style="width:55px;" placeholder="월">
+            <input type="number" id="ts-day" class="num-input flat-input" min="1" max="31" style="width:55px;" placeholder="일">
+          </div></div>
+          <div class="flat-row" id="ts-monthly-fields" style="display:none;"><div class="flat-row-label">매월 며칠</div><div class="flat-row-control"><input type="number" id="ts-day-monthly" class="num-input flat-input" min="1" max="31" style="width:55px;"></div></div>
+          <div class="flat-row" id="ts-once-fields" style="display:none;"><div class="flat-row-label">날짜</div><div class="flat-row-control"><input type="date" id="ts-date" min="2015-01-01" max="2099-12-31" class="flat-input"></div></div>
+          <div style="display:flex; gap:8px; justify-content:center; align-items:center; margin-top:6px;">
+            <button type="button" id="taxScheduleCustomCancelBtn" class="del-btn" style="display:none;">취소</button>
+            <button type="submit" class="submit-btn" id="taxScheduleCustomSubmitBtn" style="width:auto;">등록</button>
+          </div>
+        </form>
+        <div style="text-align:center;"><span class="save-msg" id="taxScheduleCustomMsg"></span></div>
+      </div>
+      <div id="taxScheduleCustomListWrap" style="max-width:720px; margin:12px auto 0;"></div>
+
+      <p class="hint" style="margin-top:18px;">
+        아래는 앞으로 다가오는 세무일정(기본 제공 + 위에서 등록한 일정)이에요. 특정 회차의 날짜가 실제와 달라지면 "수정"으로 그 회차만 고칠 수 있고, "되돌리기"로 원래 계산된 날짜로 다시 되돌릴 수 있어요.
+      </p>
+      <div id="taxScheduleUpcomingListWrap" style="max-width:720px; margin:12px auto 0;"></div>
     </div>
 
     <div class="settings-group settings-flat" data-settings-cat="data" style="display:none;">
@@ -4939,6 +4969,10 @@ let sharedVatFilingTargets = {};
 //   reportPurchase:{taxInvoice,invoice,prelimMissing,etc,disallowed,deemed,manual}, reportPrelim,
 //   filingStatus, taxPay, deadline, approval, note } } } }
 let sharedVatReviewFigures = {};
+// 세무일정 관리: 기본 제공 항목의 특정 회차(연-월)만 날짜를 직접 고쳐둔 값 - { [ruleId:YYYY-MM]: 'YYYY-MM-DD' }
+let sharedTaxScheduleOverrides = {};
+// 세무일정 관리: 회사가 직접 등록한 일정 - [{id, title, recurrence:'once'|'monthly'|'annual', date, day, month}]
+let sharedTaxScheduleCustomItems = [];
 function loadSharedData(){
   try{ sharedExclusionDays = JSON.parse(localStorage.getItem('worklog_shared_exclusions') || '[]'); }catch(e){ sharedExclusionDays = []; }
   // 예전 '회식' 하나였던 사유를 '점심회식'/'저녁회식'으로 분리하면서, 기존 데이터는 기존 차감 동작과 동일하게 '점심회식'으로 이관
@@ -4995,6 +5029,8 @@ function loadSharedData(){
   try{ sharedIncomeTaxFilingStatus = JSON.parse(localStorage.getItem('worklog_shared_itfilingstatus') || '{}') || {}; }catch(e){ sharedIncomeTaxFilingStatus = {}; }
   try{ sharedVatFilingTargets = JSON.parse(localStorage.getItem('worklog_shared_vatfilingtargets') || '{}') || {}; }catch(e){ sharedVatFilingTargets = {}; }
   try{ sharedVatReviewFigures = JSON.parse(localStorage.getItem('worklog_shared_vatreviewfigures') || '{}') || {}; }catch(e){ sharedVatReviewFigures = {}; }
+  try{ sharedTaxScheduleOverrides = JSON.parse(localStorage.getItem('worklog_shared_taxschedule_overrides') || '{}') || {}; }catch(e){ sharedTaxScheduleOverrides = {}; }
+  try{ sharedTaxScheduleCustomItems = JSON.parse(localStorage.getItem('worklog_shared_taxschedule_custom') || '[]') || []; }catch(e){ sharedTaxScheduleCustomItems = []; }
   const prevManageVerifierRaw = JSON.stringify(sharedManageVerifier);
   try{ sharedManageSalt = localStorage.getItem('worklog_shared_managesalt') || ''; }catch(e){ sharedManageSalt = ''; }
   try{ const v = localStorage.getItem('worklog_shared_manageverifier'); sharedManageVerifier = v ? JSON.parse(v) : null; }catch(e){ sharedManageVerifier = null; }
@@ -5252,6 +5288,8 @@ async function saveSharedFilingCycles(){ try{ localStorage.setItem('worklog_shar
 async function saveSharedIncomeTaxFilingStatus(){ try{ localStorage.setItem('worklog_shared_itfilingstatus', JSON.stringify(sharedIncomeTaxFilingStatus)); }catch(e){ console.error('원천세 신고현황 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedVatFilingTargets(){ try{ localStorage.setItem('worklog_shared_vatfilingtargets', JSON.stringify(sharedVatFilingTargets)); }catch(e){ console.error('신고대상(부가세) 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedVatReviewFigures(){ try{ localStorage.setItem('worklog_shared_vatreviewfigures', JSON.stringify(sharedVatReviewFigures)); }catch(e){ console.error('검토표(부가세) 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedTaxScheduleOverrides(){ try{ localStorage.setItem('worklog_shared_taxschedule_overrides', JSON.stringify(sharedTaxScheduleOverrides)); }catch(e){ console.error('세무일정 수정 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedTaxScheduleCustomItems(){ try{ localStorage.setItem('worklog_shared_taxschedule_custom', JSON.stringify(sharedTaxScheduleCustomItems)); }catch(e){ console.error('세무일정 등록항목 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSharedManagePassword(){
   try{
     localStorage.setItem('worklog_shared_managesalt', sharedManageSalt);
@@ -7097,6 +7135,8 @@ async function loadAll(){
   renderExclusionList();
   renderWorkHourExceptions();
   renderSpecialPeriods();
+  renderTaxScheduleCustomList();
+  renderTaxScheduleUpcomingList();
   {
     const std = settings.standardWorkHours || {};
     document.getElementById('wh-std-h1-start').value = std.h1Start || '09:30';
@@ -7919,7 +7959,8 @@ function renderAllLeaveHistory(){
       if(en.subtype) document.getElementById('u-subtype').value = en.subtype;
       if(en.days) document.getElementById('u-days').value = en.days;
       document.getElementById('u-memo').value = en.memo || '';
-      document.getElementById('u-advance').checked = !!en.advance;
+      // 휴가 폼에서는 당겨쓰기 입력이 빠져서 u-advance가 항상 숨겨진 채 체크 해제된 상태이고(updateAdvanceFieldVisibility),
+      // 여기서 더 건드리지 않음 - 기존 en.advance 값은 수정 저장 시에도 그대로 유지됨
       document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '수정 완료';
       document.getElementById('usage-cancel').style.display = 'inline-block';
       document.getElementById('leaveHistoryModalOverlay').style.display = 'none';
@@ -8013,7 +8054,8 @@ function renderAttendance(){
         if(en.subtype) document.getElementById('u-subtype').value = en.subtype;
         if(en.days) document.getElementById('u-days').value = en.days;
         document.getElementById('u-memo').value = en.memo || '';
-        document.getElementById('u-advance').checked = !!en.advance;
+        // 휴가 폼에는 당겨쓰기 입력이 없어져서(updateAdvanceFieldVisibility가 항상 숨김) 여기서 따로 채우지 않음 -
+        // 기존 en.advance 값은 건드리지 않고 그대로 유지됨
         document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '수정 완료';
         document.getElementById('usage-cancel').style.display = 'inline-block';
         document.getElementById('calAttendanceHistoryModalOverlay').style.display = 'none';
@@ -8027,9 +8069,9 @@ function renderAttendance(){
         document.getElementById('u-date').value = en.date;
         document.getElementById('u-end-date').value = '';
         document.getElementById('u-memo').value = en.memo || '';
-        document.getElementById('r-bonus').checked = !!en.bonus;
-        document.getElementById('r-bonus').dispatchEvent(new Event('change'));
-        document.getElementById('r-nolunch').checked = !!en.noLunch;
+        // 특별재택 체크 + 식대제외 체크 두 개로 나뉘어 있던 걸 재택 종류 select 하나로 합침(en 데이터 구조는 그대로)
+        document.getElementById('r-type').value = en.bonus ? 'bonus' : (en.noLunch ? 'regular-nolunch' : 'regular');
+        document.getElementById('r-type').dispatchEvent(new Event('change'));
         document.getElementById('u-advance').checked = !!en.advance;
         document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '수정 완료';
         document.getElementById('usage-cancel').style.display = 'inline-block';
@@ -12603,18 +12645,21 @@ function renderDashboardImportantNotices(){
 // ※ 성실신고확인 연장, 지방세 등 세부 예외까지는 다 담지 못했으니 참고용으로 쓰고 정확한 기한은 홈택스에서
 // 한 번 더 확인하는 걸 권장함(위젯 안내문구로도 표시)
 const TAX_SCHEDULE_ANNUAL = [
-  { month:1,  day:25, title:'부가가치세 2기 확정신고·납부' },
-  { month:2,  day:10, title:'면세사업자 사업장현황신고' },
-  { month:3,  day:10, title:'근로소득 연말정산·지급명세서 제출' },
-  { month:3,  day:31, title:'법인세 신고·납부(12월 결산법인)' },
-  { month:4,  day:25, title:'부가가치세 1기 예정신고·납부(법인)' },
-  { month:5,  day:31, title:'종합소득세 확정신고·납부' },
-  { month:6,  day:30, title:'종합소득세 신고(성실신고확인대상자)' },
-  { month:7,  day:25, title:'부가가치세 1기 확정신고·납부' },
-  { month:8,  day:31, title:'법인세 중간예납' },
-  { month:10, day:25, title:'부가가치세 2기 예정신고·납부(법인)' },
-  { month:11, day:30, title:'종합소득세 중간예납' },
+  { id:'vat2-final',        month:1,  day:25, title:'부가가치세 2기 확정신고·납부' },
+  { id:'exempt-biz-status', month:2,  day:10, title:'면세사업자 사업장현황신고' },
+  { id:'yearend-settle',    month:3,  day:10, title:'근로소득 연말정산·지급명세서 제출' },
+  { id:'corp-tax',          month:3,  day:31, title:'법인세 신고·납부(12월 결산법인)' },
+  { id:'vat1-prelim',       month:4,  day:25, title:'부가가치세 1기 예정신고·납부(법인)' },
+  { id:'income-tax-final',  month:5,  day:31, title:'종합소득세 확정신고·납부' },
+  { id:'income-tax-sincere',month:6,  day:30, title:'종합소득세 신고(성실신고확인대상자)' },
+  { id:'vat1-final',        month:7,  day:25, title:'부가가치세 1기 확정신고·납부' },
+  { id:'corp-tax-midterm',  month:8,  day:31, title:'법인세 중간예납' },
+  { id:'vat2-prelim',       month:10, day:25, title:'부가가치세 2기 예정신고·납부(법인)' },
+  { id:'income-tax-midterm',month:11, day:30, title:'종합소득세 중간예납' },
 ];
+// 매달 반복되는 원천세·4대보험료 신고분도 위 연간 규칙과 똑같이 id를 붙여서(관리 화면에서 날짜를 수정할
+// 때 "이 규칙의 이 달 회차"를 정확히 짚어낼 수 있어야 함) 하나의 목록으로 다룸
+const TAX_SCHEDULE_MONTHLY = { id:'withholding-monthly', day:10, title:'원천세·4대보험료 신고·납부(전월분)' };
 // 신고기한이 토·일요일이거나 등록된 공휴일과 겹치면 다음 영업일로 하루씩 밀어서 계산함
 function taxScheduleShiftToBusinessDay(dateStr){
   let d = parseDate(dateStr);
@@ -12627,14 +12672,44 @@ function taxScheduleShiftToBusinessDay(dateStr){
   }
   return fmt(d);
 }
+// 특정 규칙(ruleId)의 특정 회차(연-월)에 대해 담당자가 날짜를 직접 고쳐둔 값이 있으면 그 값을 씀 - 임시공휴일이
+// 급하게 지정되거나 대체공휴일이 생겨서 국세청 기준 계산과 실제 기한이 달라지는 드문 경우를 위한 예외
+function taxScheduleOverrideKey(ruleId, year, month){ return `${ruleId}:${year}-${String(month).padStart(2,'0')}`; }
 function getTaxScheduleForMonth(year, month){
-  const items = [{ day:10, title:'원천세·4대보험료 신고·납부(전월분)' }];
-  TAX_SCHEDULE_ANNUAL.filter(r=>r.month===month).forEach(r=> items.push({ day:r.day, title:r.title }));
-  return items.map(it=>{
+  const items = [TAX_SCHEDULE_MONTHLY];
+  TAX_SCHEDULE_ANNUAL.filter(r=>r.month===month).forEach(r=> items.push(r));
+  const built = items.map(it=>{
     const raw = `${year}-${String(month).padStart(2,'0')}-${String(it.day).padStart(2,'0')}`;
-    const shifted = taxScheduleShiftToBusinessDay(raw);
-    return { title:it.title, date:shifted, shifted: shifted !== raw };
-  }).sort((a,b)=>a.date.localeCompare(b.date));
+    const overrideKey = taxScheduleOverrideKey(it.id, year, month);
+    const overrideDate = (sharedTaxScheduleOverrides||{})[overrideKey];
+    const date = overrideDate || taxScheduleShiftToBusinessDay(raw);
+    return { id:overrideKey, title:it.title, date, shifted: !overrideDate && date !== raw, overridden: !!overrideDate, kind:'built-in', ruleId:it.id };
+  });
+  const custom = getCustomTaxScheduleItemsForMonth(year, month);
+  return built.concat(custom).sort((a,b)=>a.date.localeCompare(b.date));
+}
+// 회사가 직접 등록한 일정(4대보험 보수총액신고, 지급명세서 제출, 수기 등록한 한 번짜리 일정 등) 중 그 달에
+// 해당하는 것만 뽑아서 날짜를 계산함 - 매월/매년 반복 항목은 기본 제공 일정과 똑같이 개별 회차 단위로 날짜를
+// 직접 고칠 수 있고(override), 한 번짜리(once) 항목은 등록해둔 날짜를 그대로 씀(고치려면 항목 자체를 수정)
+function getCustomTaxScheduleItemsForMonth(year, month){
+  const mm = String(month).padStart(2,'0');
+  const lastDay = new Date(year, month, 0).getDate(); // 그 달 마지막 날 - 매월 반복 항목의 day가 31처럼 없는 날짜를 가리켜도 안전하게 마지막 날로 맞춤
+  return (sharedTaxScheduleCustomItems||[]).map(it=>{
+    let raw = null, shiftable = false;
+    if(it.recurrence === 'once'){
+      if(it.date && it.date.slice(0,7) === `${year}-${mm}`) raw = it.date;
+    } else if(it.recurrence === 'monthly'){
+      raw = `${year}-${mm}-${String(Math.min(it.day, lastDay)).padStart(2,'0')}`;
+      shiftable = true;
+    } else if(it.recurrence === 'annual'){
+      if(it.month === month){ raw = `${year}-${mm}-${String(Math.min(it.day, lastDay)).padStart(2,'0')}`; shiftable = true; }
+    }
+    if(!raw) return null;
+    const overrideKey = taxScheduleOverrideKey(`custom:${it.id}`, year, month);
+    const overrideDate = (sharedTaxScheduleOverrides||{})[overrideKey];
+    const date = overrideDate || (shiftable ? taxScheduleShiftToBusinessDay(raw) : raw);
+    return { id:overrideKey, title:it.title, date, shifted: !overrideDate && shiftable && date !== raw, overridden: !!overrideDate, kind:'custom', customId:it.id, recurrence:it.recurrence };
+  }).filter(Boolean);
 }
 // 이번 달 남은 기한이 count개보다 적으면(월말이라 대부분 지난 경우) 다음 달 것까지 이어붙여서, 위젯이
 // "이번 달엔 다 지났어요"로 텅 비어 보이는 대신 항상 다가오는 기한을 볼 수 있게 함
@@ -12661,24 +12736,18 @@ function renderDashboardTaxSchedulePreview(){
   } else {
     const today = todayStr();
     const ddayOf = (ds)=> Math.round((parseDate(ds) - parseDate(today)) / 86400000);
-    const [next, ...rest] = items;
-    const nextDday = ddayOf(next.date);
-    const ddayLabel = nextDday === 0 ? 'D-DAY' : `D-${nextDday}`;
-    const nextMd = `${Number(next.date.slice(5,7))}월 ${Number(next.date.slice(8,10))}일`;
-    const shiftNote = next.shifted ? ' <span style="font-weight:600;">(휴일 순연)</span>' : '';
-    const restHtml = rest.map(it=>{
+    // 중요도 상관없이 모든 항목을 같은 배경색 칩으로 나열하되, D-day가 2주(14일) 이내로 임박한 항목만
+    // 칩 오른쪽에 D-day 배지를 붙여서 눈에 띄게 함(예전처럼 가장 가까운 것 하나만 따로 큰 히어로로
+    // 강조하지 않음 - "혹 그 다음 항목이 더 급할 수도 있는데 안 보인다"는 지적 반영)
+    const rowsHtml = items.map(it=>{
       const md = `${Number(it.date.slice(5,7))}/${Number(it.date.slice(8,10))}`;
-      return `<div class="home-dash-tax-chip"><span class="home-dash-tax-chip-date">${md}</span><span class="home-dash-tax-chip-title">${escHtml(it.title)}</span></div>`;
+      const dday = ddayOf(it.date);
+      const ddayLabel = dday === 0 ? 'D-DAY' : (dday > 0 ? `D-${dday}` : '');
+      const ddayHtml = (dday <= 14 && ddayLabel) ? `<span class="home-dash-tax-chip-dday">${ddayLabel}</span>` : '';
+      const shiftNote = it.shifted ? ' <span style="font-weight:600;">(휴일 순연)</span>' : '';
+      return `<div class="home-dash-tax-chip"><span class="home-dash-tax-chip-date">${md}</span><span class="home-dash-tax-chip-title">${escHtml(it.title)}${shiftNote}</span>${ddayHtml}</div>`;
     }).join('');
-    body.innerHTML = `
-      <div class="home-dash-tax-hero">
-        <div class="home-dash-tax-hero-dday">${ddayLabel}</div>
-        <div class="home-dash-tax-hero-info">
-          <div class="home-dash-tax-hero-date">${nextMd}${shiftNote}</div>
-          <div class="home-dash-tax-hero-title">${escHtml(next.title)}</div>
-        </div>
-      </div>
-      ${restHtml ? `<div class="home-dash-tax-chip-row">${restHtml}</div>` : ''}`;
+    body.innerHTML = `<div class="home-dash-tax-chip-row">${rowsHtml}</div>`;
   }
 }
 // 세무일정 위젯 제목 줄에 붙는 신고현황 바로가기 칩 - 위젯 자체가 꺼져있으면 DOM에 없을 수 있으니
@@ -13114,9 +13183,10 @@ document.getElementById('grantCancelEditBtn').addEventListener('click', ()=>{
 
 const uKindSelect = document.getElementById('u-kind');
 const uTypeSelect = document.getElementById('u-type');
+const uDateLabel = document.getElementById('u-date-label');
 const leaveTypeField = document.getElementById('leaveTypeField');
-const remoteBonusField = document.getElementById('remoteBonusField');
-const remoteNoLunchField = document.getElementById('remoteNoLunchField');
+const remoteTypeField = document.getElementById('remoteTypeField');
+const rTypeSelect = document.getElementById('r-type');
 const halfdaySubtypeField = document.getElementById('halfdaySubtypeField');
 const uSubtypeSelect = document.getElementById('u-subtype');
 const specialDaysField = document.getElementById('specialDaysField');
@@ -13124,8 +13194,6 @@ const familyPresetField = document.getElementById('familyPresetField');
 const familyPresetSelect = document.getElementById('u-familypreset');
 const SPECIAL_LEAVE_TYPES = ['포상휴가','경조사휴가','기타휴가'];
 const PERIOD_ENABLED_TYPES = ['연차', '포상휴가', '경조사휴가', '기타휴가'];
-// 당겨쓰기(선차감) 대상 - 연차를 실제로 차감하는 유형(연차/반차/반반차)에서만 의미가 있음(포상·경조사·기타는 연차 차감이 없어서 당겨쓸 게 없음)
-const DEDUCTING_LEAVE_TYPES = ['연차','반차','반반차'];
 const HALF_SUBTYPE_OPTIONS = [
   { value:'오후반차_식사O', text:'오후반차 (점심 먹고 퇴근)' },
   { value:'오전반차', text:'오전반차 (14:00 출근, 점심 X)' },
@@ -13136,11 +13204,19 @@ const QUARTER_SUBTYPE_OPTIONS = [
   { value:'점심연장', text:'점심연장 (11:00~14:00 이석)' },
   { value:'조기퇴근', text:'조기퇴근 (16:00 / 하반기 15:30)' }
 ];
-// 시작일 하나만 쓸지(당일) 종료일까지 범위로 쓸지 - 종류(휴가/재택)와 휴가일 때는 세부구분에 따라 범위 지원 여부가 갈림
+// 시작일 하나만 쓸지(당일) 종료일까지 범위로 쓸지 - "종류와 재택일로만 구성해달라"는 요청으로 재택근무는
+// 항상 하루짜리 단건 등록으로 단순화하고(당일 체크·종료일 자체를 안 보여줌), 범위 등록은 휴가에서만
+// 세부구분(연차/포상휴가 등)에 따라 지원함
 function updateEndDateVisibility(){
   const kind = uKindSelect.value;
+  if(kind === 'remote'){
+    document.getElementById('singleDayField').style.display = 'none';
+    document.getElementById('endDateField').style.display = 'none';
+    document.getElementById('u-end-date').value = '';
+    return;
+  }
   const type = uTypeSelect.value;
-  const allowRange = kind === 'remote' ? true : PERIOD_ENABLED_TYPES.includes(type);
+  const allowRange = PERIOD_ENABLED_TYPES.includes(type);
   document.getElementById('singleDayField').style.display = allowRange ? 'flex' : 'none';
   const singleDay = document.getElementById('u-single-day').checked;
   const show = allowRange && !singleDay;
@@ -13166,31 +13242,28 @@ function updateUsageTypeFields(){
   updateAdvanceFieldVisibility();
   updateEndDateVisibility();
 }
-// 당겨쓰기 체크박스는 종류(휴가/재택)와 세부유형에 따라 보이거나 숨겨지고, 라벨 문구도 그에 맞게 바뀜
+// 당겨쓰기는 이제 재택근무 전용 - "휴가는 당일 체크만 있으면 된다"는 요청으로 휴가 쪽 당겨쓰기 입력은
+// 없앴고(기존에 당겨쓰기로 등록된 휴가 기록은 이력에 계속 정상 표시됨), 재택근무는 종류가 "특별재택"이면
+// 애초에 한도가 없어 당겨쓸 게 없으므로 그때만 숨김
 function updateAdvanceFieldVisibility(){
   const kind = uKindSelect.value;
   const advanceField = document.getElementById('advanceField');
   const advanceLabel = document.getElementById('advanceFieldLabel');
   if(kind === 'leave'){
-    const show = DEDUCTING_LEAVE_TYPES.includes(uTypeSelect.value);
-    advanceField.style.display = show ? 'flex' : 'none';
-    advanceLabel.textContent = `당겨쓰기 (아직 발생하지 않은 다음 연차에서 미리 차감, 최대 ${LEAVE_ADVANCE_MAX_DAYS}일)`;
-    if(!show) document.getElementById('u-advance').checked = false;
-  } else {
-    const bonus = document.getElementById('r-bonus').checked;
-    advanceField.style.display = bonus ? 'none' : 'flex';
-    advanceLabel.textContent = '당겨쓰기 (다음 달 이후 재택 한도에서 미리 차감, 한도 없음)';
-    if(bonus) document.getElementById('u-advance').checked = false;
-    // 식대기준일수 제외 체크는 정기재택에만 의미가 있음(특별재택은 애초에 한도 밖이라 이 계산과 무관)
-    remoteNoLunchField.style.display = bonus ? 'none' : 'flex';
-    if(bonus) document.getElementById('r-nolunch').checked = false;
+    advanceField.style.display = 'none';
+    document.getElementById('u-advance').checked = false;
+    return;
   }
+  const isBonus = rTypeSelect.value === 'bonus';
+  advanceField.style.display = isBonus ? 'none' : 'flex';
+  advanceLabel.textContent = '당겨쓰기 (다음 달 이후 재택 한도에서 미리 차감, 한도 없음)';
+  if(isBonus) document.getElementById('u-advance').checked = false;
 }
 function updateUsageKindFields(){
   const kind = uKindSelect.value;
+  if(uDateLabel) uDateLabel.textContent = kind === 'remote' ? '재택일' : '시작일';
   leaveTypeField.style.display = kind === 'leave' ? 'flex' : 'none';
-  remoteBonusField.style.display = kind === 'remote' ? 'flex' : 'none';
-  if(kind === 'leave') remoteNoLunchField.style.display = 'none';
+  remoteTypeField.style.display = kind === 'remote' ? 'flex' : 'none';
   if(kind === 'leave'){
     updateUsageTypeFields();
   } else {
@@ -13203,7 +13276,7 @@ function updateUsageKindFields(){
 }
 uKindSelect.addEventListener('change', updateUsageKindFields);
 uTypeSelect.addEventListener('change', updateUsageTypeFields);
-document.getElementById('r-bonus').addEventListener('change', updateAdvanceFieldVisibility);
+rTypeSelect.addEventListener('change', updateAdvanceFieldVisibility);
 document.getElementById('u-single-day').addEventListener('change', updateEndDateVisibility);
 updateUsageKindFields();
 familyPresetSelect.addEventListener('change', ()=>{
@@ -13225,8 +13298,7 @@ function resetUsageFormEditState(){
   document.getElementById('u-memo').value = '';
   document.getElementById('u-end-date').value = '';
   document.getElementById('u-single-day').checked = true;
-  document.getElementById('r-bonus').checked = false;
-  document.getElementById('r-nolunch').checked = false;
+  rTypeSelect.value = 'regular';
   document.getElementById('u-advance').checked = false;
   updateAdvanceFieldVisibility();
   updateEndDateVisibility();
@@ -13238,7 +13310,6 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
   const date = document.getElementById('u-date').value;
   const endDate = document.getElementById('u-end-date').value;
   const memo = document.getElementById('u-memo').value.trim();
-  const advanceChecked = document.getElementById('u-advance').checked;
   if(!date) return;
 
   if(kind === 'leave'){
@@ -13246,11 +13317,10 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
     const subtype = (type === '반차' || type === '반반차') ? document.getElementById('u-subtype').value : null;
     const isSpecial = SPECIAL_LEAVE_TYPES.includes(type);
     const days = isSpecial ? (Number(document.getElementById('u-days').value) || 1) : null;
-    const useAdvance = DEDUCTING_LEAVE_TYPES.includes(type) && advanceChecked;
 
-    // 범위(연차 여러 날)로 등록할 땐 등록될 날짜를 먼저 다 정해서, 당겨쓰기 검증(잔여 연차 확인)을 그 범위
-    // 전체 차감분을 합산해 한번에 확인함 - 하루씩 따로 확인하면 뒤쪽 날짜로 갈수록 앞선 날짜에서 이미 써버린
-    // 만큼을 반영 못 해서 실제보다 넉넉하게 잘못 통과시켜버림
+    // 범위(연차 여러 날)로 등록할 땐 등록될 날짜를 먼저 다 정해서, 잔여 연차 확인을 그 범위 전체 차감분을
+    // 합산해 한번에 확인함 - 하루씩 따로 확인하면 뒤쪽 날짜로 갈수록 앞선 날짜에서 이미 써버린 만큼을
+    // 반영 못 해서 실제보다 넉넉하게 잘못 통과시켜버림
     let dates = [date];
     if((type === '연차' || isSpecial) && endDate && endDate > date){
       dates = [];
@@ -13265,19 +13335,17 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
     if(perDayDeduct > 0 && dates.length){
       const lastDate = dates[dates.length-1];
       const projected = projectRemainLeaveAfter(lastDate, perDayDeduct * dates.length, editingUsageId || null);
-      if(!useAdvance && projected < 0){
-        appAlert(`잔여 연차가 부족해요. (등록 시 예상 잔여: ${projected}일)\n다음 연차에서 미리 당겨쓰려면 "당겨쓰기"를 체크해주세요.`);
-        return;
-      }
-      if(useAdvance && projected < -LEAVE_ADVANCE_MAX_DAYS){
-        appAlert(`당겨쓰기는 최대 ${LEAVE_ADVANCE_MAX_DAYS}일까지만 가능해요. (등록 시 예상 잔여: ${projected}일)`);
+      if(projected < 0){
+        appAlert(`잔여 연차가 부족해요. (등록 시 예상 잔여: ${projected}일)`);
         return;
       }
     }
 
     if(editingUsageId){
+      // 당겨쓰기는 이 폼에서 더 이상 입력받지 않으므로(en.advance) 건드리지 않고 그대로 둠 - 예전에
+      // 당겨쓰기로 등록됐던 휴가를 수정해도 그 표시가 갑자기 사라지지 않게 하기 위함
       const en = attendance.leaveUsage.find(x=>x.id===editingUsageId);
-      if(en){ en.date=date; en.type=type; en.subtype=subtype; en.days=days; en.memo=memo; en.advance = useAdvance || undefined; }
+      if(en){ en.date=date; en.type=type; en.subtype=subtype; en.days=days; en.memo=memo; }
       showCenterToast('수정됐어요'); document.getElementById('usageSaveMsg').textContent = '수정됨';
       resetUsageFormEditState();
       closeCalRegisterModal();
@@ -13290,11 +13358,11 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
     let addedCount = 0;
     if(dates.length > 1){
       dates.forEach(ds=>{
-        attendance.leaveUsage.push({id:genId(), date:ds, type, subtype:null, days: isSpecial ? 1 : null, memo, advance: useAdvance || undefined});
+        attendance.leaveUsage.push({id:genId(), date:ds, type, subtype:null, days: isSpecial ? 1 : null, memo});
         addedCount++;
       });
     } else {
-      attendance.leaveUsage.push({id:genId(), date, type, subtype, days, memo, advance: useAdvance || undefined});
+      attendance.leaveUsage.push({id:genId(), date, type, subtype, days, memo});
       addedCount = 1;
     }
     await saveAttendance();
@@ -13305,9 +13373,11 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
     closeCalRegisterModal();
     renderAll();
   } else {
-    const bonus = document.getElementById('r-bonus').checked;
-    const noLunch = !bonus && document.getElementById('r-nolunch').checked;
-    const useAdvance = !bonus && advanceChecked;
+    // 재택근무는 "종류(정기재택/정기재택(식대제외)/특별재택) + 재택일" 단건 등록으로 단순화함(범위 등록 없음)
+    const rType = rTypeSelect.value;
+    const bonus = rType === 'bonus';
+    const noLunch = rType === 'regular-nolunch';
+    const useAdvance = !bonus && document.getElementById('u-advance').checked;
 
     if(editingRemoteId){
       const en = attendance.remoteEntries.find(x=>x.id===editingRemoteId);
@@ -13325,34 +13395,16 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
       return;
     }
 
-    let addedCount = 0;
-    const pushRemoteEntry = (ds)=>{
-      const entry = { id:genId(), date:ds, memo, bonus, noLunch: noLunch || undefined };
-      // 당겨쓰기는 실제 사용일과 무관하게 "아직 여유가 남은 가장 가까운 미래 달"의 재택 한도에서 차감되도록
-      // creditMonth를 미리 배정함(한도가 없으니 계속 다음 달로 넘어가며 찾음) - 범위로 여러 날 등록하면 먼저
-      // push된 항목이 반영된 상태에서 다음 항목의 배정 달을 다시 찾으므로, 여러 건이 자동으로 순서대로 배분됨
-      if(useAdvance){ entry.advance = true; entry.creditMonth = nextAvailableRemoteCreditMonth(monthAfter(ds)); }
-      attendance.remoteEntries.push(entry);
-      addedCount++;
-    };
-    if(endDate && endDate > date){
-      let cur = parseDate(date);
-      const end = parseDate(endDate);
-      while(cur <= end){
-        const dow = cur.getDay();
-        if(dow !== 0 && dow !== 6) pushRemoteEntry(fmt(cur));
-        cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate()+1);
-      }
-    } else {
-      pushRemoteEntry(date);
-    }
+    const entry = { id:genId(), date, memo, bonus, noLunch: noLunch || undefined };
+    // 당겨쓰기는 실제 사용일과 무관하게 "아직 여유가 남은 가장 가까운 미래 달"의 재택 한도에서 차감되도록
+    // creditMonth를 미리 배정함(한도가 없으니 계속 다음 달로 넘어가며 찾음)
+    if(useAdvance){ entry.advance = true; entry.creditMonth = nextAvailableRemoteCreditMonth(monthAfter(date)); }
+    attendance.remoteEntries.push(entry);
     await saveAttendance();
-    document.getElementById('usageSaveMsg').textContent = addedCount > 1 ? `${addedCount}일 추가됨 (주말 제외)` : '추가됨';
+    document.getElementById('usageSaveMsg').textContent = '추가됨';
     setTimeout(()=>document.getElementById('usageSaveMsg').textContent='',1800);
     document.getElementById('u-memo').value='';
-    document.getElementById('u-end-date').value='';
-    document.getElementById('r-bonus').checked = false;
-    document.getElementById('r-nolunch').checked = false;
+    rTypeSelect.value = 'regular';
     document.getElementById('u-advance').checked = false;
     closeCalRegisterModal();
     renderAll();
@@ -14464,6 +14516,180 @@ document.getElementById('addSpecialPeriodBtn')?.addEventListener('click', async 
   renderSpecialPeriods();
   renderAdminCalendar();
 });
+
+// 세무일정 관리 (설정 > 복지) - 등록: 기본 제공 세목 외의 일정(4대보험 보수총액신고, 지급명세서 제출, 수기 일정 등)을
+// 반복 방식(매년/매월/한 번만)으로 새로 등록함. 수정 중인 항목이 있으면 editingTaxScheduleCustomId에 id를 담아두고
+// 폼을 그 값으로 채워 재사용(취소하면 다시 새 등록 모드로 돌아감)
+let editingTaxScheduleCustomId = null;
+function updateTaxScheduleCustomFields(){
+  const rec = document.getElementById('ts-recurrence')?.value;
+  const annualEl = document.getElementById('ts-annual-fields');
+  const monthlyEl = document.getElementById('ts-monthly-fields');
+  const onceEl = document.getElementById('ts-once-fields');
+  if(!annualEl) return;
+  annualEl.style.display = rec==='annual' ? '' : 'none';
+  monthlyEl.style.display = rec==='monthly' ? '' : 'none';
+  onceEl.style.display = rec==='once' ? '' : 'none';
+}
+document.getElementById('ts-recurrence')?.addEventListener('change', updateTaxScheduleCustomFields);
+function resetTaxScheduleCustomForm(){
+  editingTaxScheduleCustomId = null;
+  const form = document.getElementById('taxScheduleCustomForm');
+  if(form) form.reset();
+  const recSel = document.getElementById('ts-recurrence');
+  if(recSel) recSel.value = 'annual';
+  updateTaxScheduleCustomFields();
+  const submitBtn = document.getElementById('taxScheduleCustomSubmitBtn');
+  if(submitBtn) submitBtn.textContent = '등록';
+  const cancelBtn = document.getElementById('taxScheduleCustomCancelBtn');
+  if(cancelBtn) cancelBtn.style.display = 'none';
+}
+document.getElementById('taxScheduleCustomForm')?.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const title = document.getElementById('ts-title').value.trim();
+  const recurrence = document.getElementById('ts-recurrence').value;
+  const msgEl = document.getElementById('taxScheduleCustomMsg');
+  const showMsg = (m)=>{ msgEl.textContent = m; setTimeout(()=>msgEl.textContent='',2200); };
+  if(!title){ showMsg('일정명을 입력해주세요.'); return; }
+  const entry = { title, recurrence };
+  if(recurrence === 'once'){
+    const date = document.getElementById('ts-date').value;
+    if(!date){ showMsg('날짜를 입력해주세요.'); return; }
+    entry.date = date;
+  } else if(recurrence === 'monthly'){
+    const day = Number(document.getElementById('ts-day-monthly').value);
+    if(!day || day<1 || day>31){ showMsg('며칠인지 1~31 사이로 입력해주세요.'); return; }
+    entry.day = day;
+  } else if(recurrence === 'annual'){
+    const month = Number(document.getElementById('ts-month').value);
+    const day = Number(document.getElementById('ts-day').value);
+    if(!month || month<1 || month>12 || !day || day<1 || day>31){ showMsg('월·일을 정확히 입력해주세요.'); return; }
+    entry.month = month; entry.day = day;
+  }
+  sharedTaxScheduleCustomItems = sharedTaxScheduleCustomItems || [];
+  if(editingTaxScheduleCustomId){
+    const idx = sharedTaxScheduleCustomItems.findIndex(x=>x.id===editingTaxScheduleCustomId);
+    if(idx>=0) sharedTaxScheduleCustomItems[idx] = { ...sharedTaxScheduleCustomItems[idx], ...entry };
+  } else {
+    sharedTaxScheduleCustomItems.push({ id:genId(), ...entry });
+  }
+  await saveSharedTaxScheduleCustomItems();
+  showMsg(editingTaxScheduleCustomId ? '수정됐어요' : '등록됐어요');
+  resetTaxScheduleCustomForm();
+  renderTaxScheduleCustomList();
+  renderTaxScheduleUpcomingList();
+  if(typeof renderDashboardTaxSchedulePreview === 'function') renderDashboardTaxSchedulePreview();
+});
+document.getElementById('taxScheduleCustomCancelBtn')?.addEventListener('click', resetTaxScheduleCustomForm);
+
+function renderTaxScheduleCustomList(){
+  const wrap = document.getElementById('taxScheduleCustomListWrap');
+  if(!wrap) return;
+  const list = [...(sharedTaxScheduleCustomItems||[])].sort((a,b)=> (a.title||'').localeCompare(b.title||'', 'ko'));
+  if(!list.length){
+    wrap.innerHTML = `<div class="empty-state">등록된 일정이 없습니다.</div>`;
+    return;
+  }
+  const recLabel = (it)=>{
+    if(it.recurrence==='once') return `${it.date} (한 번만)`;
+    if(it.recurrence==='monthly') return `매월 ${it.day}일`;
+    if(it.recurrence==='annual') return `매년 ${it.month}월 ${it.day}일`;
+    return '';
+  };
+  const rows = list.map(it=>`<tr>
+    <td>${escHtml(it.title||'')}</td>
+    <td class="num">${recLabel(it)}</td>
+    <td><button class="del-btn tax-schedule-custom-edit-btn" data-id="${it.id}">수정</button> <button class="del-btn tax-schedule-custom-del-btn" data-id="${it.id}">삭제</button></td>
+  </tr>`).join('');
+  wrap.innerHTML = `<table><thead><tr><th>일정명</th><th>반복</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.querySelectorAll('.tax-schedule-custom-del-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!(await appConfirm('이 일정을 삭제할까요? 이 일정의 회차별 날짜수정 이력도 함께 정리돼요.'))) return;
+      const id = btn.dataset.id;
+      sharedTaxScheduleCustomItems = (sharedTaxScheduleCustomItems||[]).filter(x=>x.id!==id);
+      const prefix = `custom:${id}:`;
+      sharedTaxScheduleOverrides = sharedTaxScheduleOverrides || {};
+      Object.keys(sharedTaxScheduleOverrides).forEach(k=>{ if(k.startsWith(prefix)) delete sharedTaxScheduleOverrides[k]; });
+      await saveSharedTaxScheduleCustomItems();
+      await saveSharedTaxScheduleOverrides();
+      if(editingTaxScheduleCustomId === id) resetTaxScheduleCustomForm();
+      renderTaxScheduleCustomList();
+      renderTaxScheduleUpcomingList();
+      if(typeof renderDashboardTaxSchedulePreview === 'function') renderDashboardTaxSchedulePreview();
+    });
+  });
+  wrap.querySelectorAll('.tax-schedule-custom-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const it = (sharedTaxScheduleCustomItems||[]).find(x=>x.id===btn.dataset.id);
+      if(!it) return;
+      editingTaxScheduleCustomId = it.id;
+      document.getElementById('ts-title').value = it.title || '';
+      document.getElementById('ts-recurrence').value = it.recurrence;
+      updateTaxScheduleCustomFields();
+      if(it.recurrence==='once') document.getElementById('ts-date').value = it.date || '';
+      if(it.recurrence==='monthly') document.getElementById('ts-day-monthly').value = it.day || '';
+      if(it.recurrence==='annual'){ document.getElementById('ts-month').value = it.month || ''; document.getElementById('ts-day').value = it.day || ''; }
+      document.getElementById('taxScheduleCustomSubmitBtn').textContent = '수정 저장';
+      document.getElementById('taxScheduleCustomCancelBtn').style.display = '';
+      document.getElementById('ts-title').scrollIntoView({behavior:'smooth', block:'center'});
+    });
+  });
+}
+
+// 다가오는 세무일정 회차 목록(관리자 화면용) - 이번 달부터 monthsAhead개월 앞까지, 기본 제공+등록한 일정을
+// 전부 합쳐서 회차 단위로 나열함(getTaxScheduleForMonth가 이미 override/등록 일정까지 다 반영해서 돌려줌)
+function taxScheduleUpcomingOccurrences(monthsAhead){
+  const now = new Date();
+  let y = now.getFullYear(), m = now.getMonth()+1;
+  let out = [];
+  for(let i=0; i<monthsAhead; i++){
+    out = out.concat(getTaxScheduleForMonth(y, m));
+    m += 1; if(m>12){ m=1; y+=1; }
+  }
+  return out.sort((a,b)=> a.date.localeCompare(b.date));
+}
+function renderTaxScheduleUpcomingList(){
+  const wrap = document.getElementById('taxScheduleUpcomingListWrap');
+  if(!wrap) return;
+  const items = taxScheduleUpcomingOccurrences(6);
+  if(!items.length){ wrap.innerHTML = `<div class="empty-state">다가오는 일정이 없습니다.</div>`; return; }
+  const rows = items.map(it=>{
+    const tag = it.overridden ? ' <span style="color:var(--coral); font-weight:700;">(직접수정)</span>' : (it.shifted ? ' <span style="color:var(--ink-soft);">(휴일 순연)</span>' : '');
+    const revertBtn = it.overridden ? `<button class="del-btn tax-schedule-revert-btn" data-id="${it.id}">되돌리기</button>` : '';
+    return `<tr>
+      <td class="num">${it.date}${tag}</td>
+      <td>${escHtml(it.title)}</td>
+      <td><button class="del-btn tax-schedule-override-btn" data-id="${it.id}" data-date="${it.date}" data-title="${escHtml(it.title)}">수정</button> ${revertBtn}</td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<table><thead><tr><th>날짜</th><th>일정</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.querySelectorAll('.tax-schedule-override-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.dataset.id;
+      const curDate = btn.dataset.date;
+      const title = btn.dataset.title;
+      const input = prompt(`"${title}" 일정의 이 회차 날짜를 직접 지정해요.\n(임시공휴일 지정 등으로 기한이 급하게 바뀌었을 때만 사용하세요 - 이 회차에만 적용되고 다른 회차나 세목 자체엔 영향 없어요)\n\nYYYY-MM-DD 형식으로 입력해주세요:`, curDate);
+      if(input === null) return;
+      const newDate = input.trim();
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(newDate)){ appAlert('날짜 형식이 올바르지 않아요. YYYY-MM-DD 형식으로 입력해주세요.'); return; }
+      sharedTaxScheduleOverrides = sharedTaxScheduleOverrides || {};
+      sharedTaxScheduleOverrides[id] = newDate;
+      await saveSharedTaxScheduleOverrides();
+      renderTaxScheduleUpcomingList();
+      if(typeof renderDashboardTaxSchedulePreview === 'function') renderDashboardTaxSchedulePreview();
+    });
+  });
+  wrap.querySelectorAll('.tax-schedule-revert-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!(await appConfirm('직접 지정한 날짜를 지우고 원래 계산된 날짜로 되돌릴까요?'))) return;
+      const id = btn.dataset.id;
+      if(sharedTaxScheduleOverrides) delete sharedTaxScheduleOverrides[id];
+      await saveSharedTaxScheduleOverrides();
+      renderTaxScheduleUpcomingList();
+      if(typeof renderDashboardTaxSchedulePreview === 'function') renderDashboardTaxSchedulePreview();
+    });
+  });
+}
 
 document.getElementById('lunchLimitForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
@@ -21576,7 +21802,7 @@ function gdriveBuildPayload(){
     schemaVersion: SCHEMA_VERSION, syncedAt: new Date().toISOString(), profiles, data,
     // 거래처목록(clients)·개인정보(personalInfo)는 더 이상 직원 프로필별로 따로 저장되지 않고, 회사 전체가
     // 공유하는 단일 데이터라서 위 per-profile data가 아니라 shared 쪽에 실어 보냄(readSharedClients/readSharedPersonalInfo 참고)
-    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, notificationLog: sharedNotificationLog, notificationReadState: sharedNotificationReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, approvalReadState: sharedApprovalReadState, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta, profitLossReports: sharedProfitLossReports, filingTargets: sharedFilingTargets, filingCycles: sharedFilingCycles, autoPhrases: sharedAutoPhrases, itFilingStatus: sharedIncomeTaxFilingStatus, vatFilingTargets: sharedVatFilingTargets, vatReviewFigures: sharedVatReviewFigures, clients: readSharedClients(), personalInfo: readSharedPersonalInfo(), trash: sharedTrash, lunchLimitHistory: sharedLunchLimitHistory }
+    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, notificationLog: sharedNotificationLog, notificationReadState: sharedNotificationReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, approvalReadState: sharedApprovalReadState, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta, profitLossReports: sharedProfitLossReports, filingTargets: sharedFilingTargets, filingCycles: sharedFilingCycles, autoPhrases: sharedAutoPhrases, itFilingStatus: sharedIncomeTaxFilingStatus, vatFilingTargets: sharedVatFilingTargets, vatReviewFigures: sharedVatReviewFigures, clients: readSharedClients(), personalInfo: readSharedPersonalInfo(), trash: sharedTrash, lunchLimitHistory: sharedLunchLimitHistory, taxScheduleOverrides: sharedTaxScheduleOverrides, taxScheduleCustomItems: sharedTaxScheduleCustomItems }
   };
 }
 
@@ -21953,6 +22179,8 @@ async function gdrivePull(){
       if(merged.shared.personalInfo !== undefined) localStorage.setItem('worklog_shared_personalinfo', JSON.stringify(merged.shared.personalInfo));
       if(merged.shared.trash !== undefined) localStorage.setItem('worklog_shared_trash', JSON.stringify(merged.shared.trash));
       if(merged.shared.lunchLimitHistory !== undefined) localStorage.setItem('worklog_shared_lunchlimit', JSON.stringify(merged.shared.lunchLimitHistory));
+      if(merged.shared.taxScheduleOverrides !== undefined) localStorage.setItem('worklog_shared_taxschedule_overrides', JSON.stringify(merged.shared.taxScheduleOverrides));
+      if(merged.shared.taxScheduleCustomItems !== undefined) localStorage.setItem('worklog_shared_taxschedule_custom', JSON.stringify(merged.shared.taxScheduleCustomItems));
     }
     if(!getActiveProfileId() || !(merged.profiles||[]).find(p=>p.id===getActiveProfileId())){
       if(merged.profiles && merged.profiles.length) setActiveProfileId(merged.profiles[0].id);
