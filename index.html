@@ -9042,6 +9042,7 @@ function closeMemoModal(){
   document.getElementById('memoModalOverlay').style.display = 'none';
   document.getElementById('memoModalOverlay').dataset.noBackdropClose = '';
   if(typeof revokeApprovalAttachmentObjectUrls === 'function') revokeApprovalAttachmentObjectUrls(); // 기안 미리보기의 이미지 첨부 object URL 정리
+  if(typeof applyApprovalPreviewScale === 'function') window.removeEventListener('resize', applyApprovalPreviewScale); // 기안 미리보기 축소 리스너 정리
 }
 document.getElementById('memoModalClose').addEventListener('click', closeMemoModal);
 document.getElementById('memoModalOverlay').addEventListener('click', (e)=>{
@@ -19285,6 +19286,19 @@ document.getElementById('autoPhraseSettingsSaveBtn')?.addEventListener('click', 
 // "상신하기"를 눌러도 되고, 닫고 폼으로 돌아가 더 수정해도 됨
 // 미리보기가 너무 밋밋하고 정형화가 안 돼 있다는 피드백으로, 실제 그룹웨어 기안문 양식(제목 상단 중앙 +
 // 기안자/소속/기안일/문서종류 표 + 신청·승인 결재란 표 + 제목줄 + 본문 박스)에 맞춰 완전히 새로 짬
+function applyApprovalPreviewScale(){
+  const wrap = document.getElementById('approvalPreviewScaleWrap');
+  const card = document.getElementById('approvalPreviewCard');
+  if(!wrap || !card) return;
+  card.style.transform = 'none';
+  wrap.style.height = 'auto';
+  const wrapW = wrap.clientWidth;
+  const cardW = card.offsetWidth; // 440(고정폭) - 카드 자체는 항상 이 폭 기준으로 그려짐
+  const scale = Math.min(1, wrapW / cardW);
+  card.style.transform = `scale(${scale})`;
+  card.style.transformOrigin = 'top left';
+  wrap.style.height = (card.offsetHeight * scale) + 'px';
+}
 function openApprovalPreviewModal(){
   const title = document.getElementById('ad-title').value.trim();
   if(!title){ appAlert('제목을 입력해주세요.'); return; }
@@ -19303,7 +19317,8 @@ function openApprovalPreviewModal(){
   const td = 'padding:8px 10px; border:1px solid var(--border); font-size:12.5px;';
   document.getElementById('memoModalTitle').textContent = '기안 미리보기';
   document.getElementById('memoModalBody').innerHTML = `
-    <div class="approval-doc-card" style="border:1.5px solid var(--border); border-radius:6px; overflow:hidden; text-align:left; background:#fff;">
+    <div id="approvalPreviewScaleWrap" style="overflow:hidden;">
+    <div class="approval-doc-card" id="approvalPreviewCard" style="width:440px; border:1.5px solid var(--border); border-radius:6px; overflow:hidden; text-align:left; background:#fff;">
       <div style="padding:22px 20px 16px; text-align:center; border-bottom:3px double var(--navy);">
         <div style="font-size:21px; font-weight:900; letter-spacing:9px; color:var(--navy);">업&nbsp;무&nbsp;기&nbsp;안</div>
       </div>
@@ -19333,11 +19348,17 @@ function openApprovalPreviewModal(){
       <div style="padding:22px 30px; min-height:110px; font-size:13px; line-height:1.75; white-space:pre-wrap; user-select:text;">${contentIsEmpty ? '<span style="color:var(--ink-soft);">(내용 없음)</span>' : content}</div>
       ${attachments.length ? `<div style="padding:0 16px 16px; border-top:1px solid var(--border); padding-top:12px;">${attachmentListHtml({ attachments })}</div>` : ''}
     </div>
+    </div>
     <div style="text-align:center; margin-top:14px;">
       <button type="button" id="approvalPreviewSubmitBtn" class="submit-btn" style="width:auto; padding:9px 20px;">이대로 상신하기</button>
     </div>`;
   document.getElementById('memoModalOverlay').style.display = 'flex';
   initApprovalAttachmentImages(document.getElementById('memoModalBody'));
+  // 팝업이 좁은 창에서 440px보다 좁아지면, 결재표가 아래로 줄바꿈되는 대신 문서 카드 전체를
+  // 원래 비율 그대로 축소(scale)해서 보여줌 - "화면 배율을 낮춰서 그대로 보이게" 요청 반영
+  applyApprovalPreviewScale();
+  window.removeEventListener('resize', applyApprovalPreviewScale);
+  window.addEventListener('resize', applyApprovalPreviewScale);
   document.getElementById('approvalPreviewSubmitBtn').addEventListener('click', async ()=>{
     closeMemoModal();
     const ok = saveApprovalDraftForm('기안');
