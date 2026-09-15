@@ -5680,14 +5680,21 @@ function gdriveMergeArrayById(baseArr, localArr, remoteArr){
   order.forEach(id=>{
     const b = baseMap.get(id), l = localMap.get(id), r = remoteMap.get(id);
     if(l === undefined && r === undefined) return;
+    // 진짜 핵심 버그였던 부분: b(baseline)에 이 id가 없다는 건 "이 기기가 예전에 지웠다"가 아니라
+    // "이 기기가 마지막으로 동기화한 이후에 다른 기기에서(또는 내가 방금 이 기기에서) 새로 만든 항목이라
+    // 이 기기의 baseline이 아직 그 항목을 몰랐던 것"일 뿐임. 예전엔 b===undefined면 무조건 "양쪽 다 몰랐던
+    // 항목이니 지워도 됨" 취급해서, 다른 PC에서 방금 새로 등록한 거래처가 하필 그 시점에 이 기기에서
+    // 다른 항목을 같이 고치는 바람에(=배열 전체가 "충돌"로 판정) 병합 결과에서 통째로 사라져버렸음 -
+    // 심지어 그 사라진 결과가 다시 드라이브에 그대로 덮어써질 수도 있어서 데이터 유실 위험이 있었음.
+    // "진짜로 지운 것"으로 인정하는 건 baseline에 실제로 있었고, 남아있는 쪽이 baseline과 그대로 같을 때뿐임
     if(l === undefined){
-      if(b === undefined || gdriveDeepEqual(r, b)) return; // 로컬 삭제를 존중 (혹은 원격도 그 항목을 몰랐음)
-      result.push(r); // 원격에서 그 사이 수정함 - 유실 방지 위해 살림
+      if(b !== undefined && gdriveDeepEqual(r, b)) return; // baseline에 있던 걸 로컬에서 지웠고 원격도 그대로 - 삭제 존중
+      result.push(r); // 원격에만 새로 생겼거나, 그 사이 원격에서 수정됨 - 유실 방지 위해 살림
       return;
     }
     if(r === undefined){
-      if(b === undefined || gdriveDeepEqual(l, b)) return; // 원격 삭제를 존중
-      result.push(l); // 로컬에서 그 사이 수정함 - 살림
+      if(b !== undefined && gdriveDeepEqual(l, b)) return; // baseline에 있던 걸 원격에서 지웠고 로컬도 그대로 - 삭제 존중
+      result.push(l); // 로컬에만 새로 생겼거나, 그 사이 로컬에서 수정됨 - 유실 방지 위해 살림
       return;
     }
     result.push(gdriveMergeValue(b, l, r));
