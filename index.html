@@ -1043,8 +1043,10 @@
   .client-memo-item{ padding:5px 0; border-bottom:1px dashed var(--border); }
   .client-memo-item summary{ cursor:pointer; list-style:none; display:flex; align-items:center; gap:5px; color:var(--ink-soft); font-size:10.5px; outline:none; }
   .client-memo-item summary::-webkit-details-marker{ display:none; }
-  .client-memo-item summary::before{ content:'▸'; display:inline-block; font-size:9px; transition:transform 0.15s; }
-  .client-memo-item[open] summary::before{ transform:rotate(90deg); }
+  /* 화살표를 글자(▸)로 넣었더니 폰트에 따라 점처럼 뭉개져 보인다는 의견으로, 다른 곳(잠금 아이콘 등)과
+     같은 방식인 인라인 SVG 화살표로 바꿈 - summary 안의 svg.client-memo-arrow에 직접 붙임 */
+  .client-memo-item summary svg.client-memo-arrow{ flex-shrink:0; transition:transform 0.15s; }
+  .client-memo-item[open] summary svg.client-memo-arrow{ transform:rotate(90deg); }
   .client-memo-item .client-memo-body{ margin-top:4px; padding-left:14px; font-size:12.5px; color:var(--ink); }
   .tab-group-label{
     font-weight:800; font-size:12.5px; color:var(--navy);
@@ -2193,6 +2195,18 @@
     <div id="allLeaveHistoryWrap"></div>
   </div>
 </div>
+<!-- "잔여 연차" 카드를 누르면 뜨는 휴가이력(leaveHistoryModalOverlay)과 똑같은 구성의 재택근무 이력 팝업 -
+     "이번달 재택근무" 카드를 눌러야만 뜸(renderAllRemoteHistory 참고) -->
+<div id="remoteHistoryModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:640px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="position:relative; text-align:center; margin-bottom:6px;">
+      <div style="font-weight:800; font-size:17px; color:var(--ink);">재택근무 이력</div>
+      <button type="button" id="remoteHistoryModalClose" class="del-btn modal-close-btn" style="position:absolute; right:0; top:50%; transform:translateY(-50%);">닫기</button>
+    </div>
+    <p class="hint" style="margin:0 0 10px;">과거·미래 상관없이 저장된 재택근무 기록을 전부 최신순으로 보여줘요. 잘못 입력한 게 있으면 여기서 바로 수정·삭제할 수 있어요.</p>
+    <div id="allRemoteHistoryWrap"></div>
+  </div>
+</div>
 <div id="leaveAsOfModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:420px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
     <div style="position:relative; text-align:center; margin-bottom:6px;">
@@ -3050,7 +3064,7 @@
         </div>
         <div class="card-sub" id="monthUsedDetailDisplay"></div>
       </div>
-      <div class="card card-mint card-hero">
+      <div class="card card-mint card-hero" id="monthRemoteCard" title="클릭하면 재택근무 이력(전체 기간)을 볼 수 있어요" style="cursor:pointer;">
         <div class="card-label">이번달 재택근무</div>
         <div class="card-icon-value">
           <div class="card-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:#fff;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></div>
@@ -4273,7 +4287,7 @@
                   <div id="ad-attach-msg" class="hint" style="margin:0;"></div>
                   <div id="ad-attach-uploaded-list" style="display:flex; flex-direction:column; gap:4px; margin-top:6px;"></div>
                 </div>
-                <div class="field"><label>결재자 (회계사)</label>
+                <div class="field"><label>결재자</label>
                   <select id="ad-approver" required></select>
                 </div>
                 <div style="text-align:center; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
@@ -7879,6 +7893,17 @@ document.getElementById('leaveAsOfIconBtn')?.addEventListener('click', ()=>{
   document.getElementById('leave-query-date').value = '';
   document.getElementById('leaveAsOfModalOverlay').style.display = 'flex';
 });
+// "이번달 재택근무" 카드도 "잔여 연차" 카드와 똑같이 카드 전체 클릭으로 이력(재택근무 이력, 전체 기간)을 봄
+document.getElementById('monthRemoteCard')?.addEventListener('click', ()=>{
+  renderAllRemoteHistory();
+  document.getElementById('remoteHistoryModalOverlay').style.display = 'flex';
+});
+document.getElementById('remoteHistoryModalClose').addEventListener('click', ()=>{
+  document.getElementById('remoteHistoryModalOverlay').style.display = 'none';
+});
+document.getElementById('remoteHistoryModalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'remoteHistoryModalOverlay') e.currentTarget.style.display = 'none';
+});
 document.getElementById('leaveAsOfModalClose').addEventListener('click', ()=>{
   document.getElementById('leaveAsOfModalOverlay').style.display = 'none';
 });
@@ -8276,6 +8301,102 @@ function renderAllLeaveHistory(){
       document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '수정 완료';
       document.getElementById('usage-cancel').style.display = 'inline-block';
       document.getElementById('leaveHistoryModalOverlay').style.display = 'none';
+      openCalRegisterModal('usage');
+    });
+  });
+}
+
+// "이번달 재택근무" 카드를 눌렀을 때 뜨는 전체 기간 재택근무 이력 - 위 renderAllLeaveHistory()와 같은 구성
+// (연도별로 묶어서 접고 펼침, 최신순). 재택은 휴가와 달리 보통 하루 단위 단건이라 연속 기간을 묶지는 않음
+function renderAllRemoteHistory(){
+  const wrap = document.getElementById('allRemoteHistoryWrap');
+  if(!wrap) return;
+  if(!(attendance.remoteEntries||[]).length){
+    wrap.innerHTML = `<div class="empty-state">저장된 재택근무 기록이 없습니다.</div>`;
+    return;
+  }
+  const entries = [...attendance.remoteEntries].sort((a,b)=> a.date < b.date ? 1 : -1); // 최신순
+  const currentYear = (document.getElementById('monthSelect').value || todayStr()).slice(0,4);
+
+  const byYear = {};
+  entries.forEach(en=>{
+    const y = en.date.slice(0,4);
+    (byYear[y] = byYear[y] || []).push(en);
+  });
+  const years = Object.keys(byYear).sort((a,b)=> b.localeCompare(a)); // 최신 연도부터
+
+  const buildRows = (list) => list.map(en=>{
+    // 태그 구성(정기재택/특별재택 + 당겨씀/식대제외)은 renderAttendance()의 이번달 근태 기록 표와 동일하게 맞춤
+    const advTag = en.advance ? ` <span style="color:var(--indigo-deep); font-weight:800; display:inline-flex; align-items:center; gap:2px;">${advIconTag()}${remoteCreditMonthOf(en)} 한도차감</span>` : '';
+    const noLunchTag = (en.bonus || en.noLunch) ? ` <span style="color:#8A6D1E; font-weight:800;">${calIconSvg('lunchparty')} 식대제외</span>` : '';
+    const label = `${en.bonus ? '특별재택' : '정기재택'}${advTag}${noLunchTag}`;
+    return `<tr>
+      <td class="num">${en.date}</td>
+      <td>${label}</td>
+      <td>${escHtml(en.memo || '')}</td>
+      <td style="white-space:nowrap;"><button class="del-btn all-remote-edit-btn" data-id="${en.id}">수정</button><button class="del-btn all-remote-del-btn" data-id="${en.id}">삭제</button></td>
+    </tr>`;
+  }).join('');
+
+  const sections = years.map(y=>{
+    const isOpen = y === currentYear;
+    return `
+      <div style="margin-bottom:10px;">
+        <button type="button" class="year-toggle-btn" data-year="${y}" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:${isOpen ? 'var(--indigo-bg)' : 'var(--bg)'}; color:${isOpen ? 'var(--indigo-deep)' : 'var(--ink-soft)'}; border:none; border-left:3px solid ${isOpen ? 'var(--indigo)' : 'transparent'}; border-radius:8px; padding:9px 10px; font-weight:800; font-size:12.5px; cursor:pointer;">
+          ${y}년 <span style="font-weight:600; font-size:11px; opacity:0.85;">(${byYear[y].length}건)</span>
+          <span style="margin-left:auto; font-size:11px;">${isOpen ? '▲' : '▼'}</span>
+        </button>
+        <div class="year-table-wrap" data-year="${y}" style="display:${isOpen ? 'block' : 'none'}; margin-top:8px;">
+          <table><thead><tr><th>날짜</th><th>구분</th><th>메모</th><th></th></tr></thead><tbody>${buildRows(byYear[y])}</tbody></table>
+        </div>
+      </div>`;
+  }).join('');
+
+  wrap.innerHTML = sections;
+
+  wrap.querySelectorAll('.year-toggle-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const y = btn.dataset.year;
+      const tableWrap = wrap.querySelector(`.year-table-wrap[data-year="${y}"]`);
+      const nowOpen = tableWrap.style.display !== 'none';
+      tableWrap.style.display = nowOpen ? 'none' : 'block';
+      btn.style.background = nowOpen ? 'var(--bg)' : 'var(--indigo-bg)';
+      btn.style.color = nowOpen ? 'var(--ink-soft)' : 'var(--indigo-deep)';
+      btn.style.borderLeftColor = nowOpen ? 'transparent' : 'var(--indigo)';
+      btn.querySelector('span[style*="margin-left"]').textContent = nowOpen ? '▼' : '▲';
+    });
+  });
+  wrap.querySelectorAll('.all-remote-del-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.dataset.id;
+      const target = attendance.remoteEntries.find(x=>x.id===id);
+      attendance.remoteEntries = attendance.remoteEntries.filter(x=>x.id!==id);
+      if(target) pushToTrash('attendance', 'remote', `재택근무 ${target.date||''}${target.memo?' · '+target.memo:''}`, target);
+      await saveAttendance();
+      await saveSettings();
+      renderAll();
+      renderAllRemoteHistory();
+    });
+  });
+  wrap.querySelectorAll('.all-remote-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.dataset.id;
+      const en = attendance.remoteEntries.find(x=>x.id===id);
+      if(!en) return;
+      const kindSelect = document.getElementById('u-kind');
+      kindSelect.disabled = true;
+      editingRemoteId = id;
+      kindSelect.value = 'remote';
+      kindSelect.dispatchEvent(new Event('change'));
+      document.getElementById('u-date').value = en.date;
+      document.getElementById('u-end-date').value = '';
+      document.getElementById('u-memo').value = en.memo || '';
+      document.getElementById('r-type').value = en.bonus ? 'bonus' : (en.noLunch ? 'regular-nolunch' : 'regular');
+      document.getElementById('r-type').dispatchEvent(new Event('change'));
+      document.getElementById('u-advance').checked = !!en.advance;
+      document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '수정 완료';
+      document.getElementById('usage-cancel').style.display = 'inline-block';
+      document.getElementById('remoteHistoryModalOverlay').style.display = 'none';
       openCalRegisterModal('usage');
     });
   });
@@ -9091,8 +9212,9 @@ function openClientDetailModal(c){
   // 날짜(제목) 줄만 먼저 보이고 눌러야 내용이 펼쳐지는 <details>/<summary> 방식으로 바꿈(각 항목은 기본
   // 접힌 상태 - 브라우저 네이티브 토글이라 별도 JS 없이 동작함)
   const memoList = (c.memos && c.memos.length) ? c.memos : (c.memo ? [{text:c.memo, date:''}] : []);
+  const memoArrowSvg = `<svg class="client-memo-arrow" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>`;
   const memoRows = memoList.length
-    ? memoList.map(m=>`<details class="client-memo-item"><summary>${escHtml(m.date||'(날짜 없음)')}</summary><div class="client-memo-body">${linkifyText(m.text||'')}</div></details>`).join('')
+    ? memoList.map(m=>`<details class="client-memo-item"><summary>${memoArrowSvg}${escHtml(m.date||'(날짜 없음)')}</summary><div class="client-memo-body">${linkifyText(m.text||'')}</div></details>`).join('')
     : `<div style="padding:5px 0; font-size:12.5px; color:var(--ink-soft); text-align:center;">등록된 메모 없음</div>`;
   html += group('메모', memoRows);
 
@@ -11457,11 +11579,13 @@ function syncAdTaxTitle(){
   if(!year || !clientSel?.value || !clientName) return;
   const titleEl = document.getElementById('ad-title');
   if(!titleEl) return;
+  // 제목만 보고는 부가세/법인세/종소세 중 뭔지 구분이 안 된다는 의견으로, 끝에 세목 정식명칭(docType 자체가
+  // 이미 "부가가치세"/"법인세"/"종합소득세" 정식명칭임)을 붙임
   if(taxTypeKey === '부가세'){
     const vatPeriodQ = document.getElementById('ad-tax-vat-period')?.value || 'Q1';
-    titleEl.value = `[${year}년 ${VAT_PERIOD_LABEL[vatPeriodQ]}] ${clientName}`;
+    titleEl.value = `[${year}년 ${VAT_PERIOD_LABEL[vatPeriodQ]}] ${clientName} ${docType}`;
   } else {
-    titleEl.value = `[${year}년 귀속] ${clientName}`;
+    titleEl.value = `[${year}년 귀속] ${clientName} ${docType}`;
   }
 }
 function syncAdTaxTargetRow(){
@@ -19362,10 +19486,12 @@ function applyAdAutoPhrase(){
     const summaryHtml = typeof adLeaveSummaryTableHtml === 'function' ? adLeaveSummaryTableHtml() : '';
     if(summaryHtml) extraHtml = `<div style="text-align:center;"><br></div><div style="text-align:center;">${summaryHtml}</div>`;
   } else if(typeof AD_TAX_DOCTYPE_KEY !== 'undefined' && AD_TAX_DOCTYPE_KEY[docType]){
+    // "거래처: OOO" 줄은 제목에 이미 거래처명이 들어가 있어서 중복이라는 의견으로 뺐고, "결재 특이사항"도
+    // 그냥 "특이사항"으로 줄임 - 이제 빈 특이사항 줄 하나만 남음
     const clientSel = document.getElementById('ad-tax-client');
     const clientName = clientSel?.selectedOptions[0]?.textContent || '';
     if(clientName && clientSel.value){
-      extraHtml = `<div style="text-align:center;"><br></div><div style="text-align:center;">거래처: ${escHtml(clientName)}</div><div style="text-align:center;"><br></div><div style="text-align:center;">결재 특이사항: </div>`;
+      extraHtml = `<div style="text-align:center;"><br></div><div style="text-align:center;">특이사항: </div>`;
     }
   }
   // 누를 때마다 이어붙이면(예전 방식) 여러 번 누르면 같은 문구가 중복으로 계속 쌓이는 문제가 있었음 -
@@ -19493,7 +19619,7 @@ function openApprovalPreviewModal(){
   document.getElementById('memoModalBox')?.classList.remove('memo-modal-box-wide');
   document.getElementById('memoModalBody').innerHTML = `
     <div id="approvalPreviewScaleWrap" style="overflow:hidden;">
-    <div class="approval-doc-card" id="approvalPreviewCard" style="width:800px; border:1.5px solid var(--border); border-radius:16px; background:var(--surface); padding:32px 18px 18px; box-shadow:0 1px 2px rgba(29,30,51,0.04); min-height:800px; box-sizing:border-box; display:flex; flex-direction:column;">
+    <div class="approval-doc-card" id="approvalPreviewCard" style="width:800px; border:1.5px solid var(--border); border-radius:16px; background:var(--surface); padding:32px 18px 18px; box-shadow:0 1px 2px rgba(29,30,51,0.04); min-height:620px; box-sizing:border-box; display:flex; flex-direction:column;">
       ${docVisual}
     </div>
     </div>
@@ -20467,10 +20593,11 @@ function approvalDetailBodyHtml(item){
     title: escHtml(item.title), contentHtml, attachmentHtml
   });
   // 세로폭을 A4 비율(aspect-ratio:210/297)로 완전히 고정했더니, 휴가신청처럼 내용이 짧은 기안은 내용 위아래로
-  // 빈 공간이 너무 많이 남는다는 의견으로, "무조건 이 비율" 대신 "최소 이 정도는 되게(min-height)"로 바꿈 -
-  // 짧은 문서는 예전보다 덜 길어지고, 내용이 긴 문서는 그대로 더 길어짐(flex라 자연스럽게 늘어남)
+  // 빈 공간이 너무 많이 남는다는 의견으로, "무조건 이 비율" 대신 "최소 이 정도는 되게(min-height)"로 바꿨고,
+  // 그래도 아직 여유가 많다는 후속 의견으로 최소 높이를 한 번 더 줄임(800px → 620px) - 짧은 문서는 더
+  // 짧아지고, 내용이 긴 문서는 그대로 더 길어짐(flex라 자연스럽게 늘어남)
   return `
-    <div class="approval-doc-card" style="border:1.5px solid var(--border); border-radius:16px; background:var(--surface); padding:32px 18px 18px; box-shadow:0 1px 2px rgba(29,30,51,0.04); max-width:800px; margin:0 auto; min-height:800px; box-sizing:border-box; display:flex; flex-direction:column;">
+    <div class="approval-doc-card" style="border:1.5px solid var(--border); border-radius:16px; background:var(--surface); padding:32px 18px 18px; box-shadow:0 1px 2px rgba(29,30,51,0.04); max-width:800px; margin:0 auto; min-height:620px; box-sizing:border-box; display:flex; flex-direction:column;">
       ${docVisual}
       <div style="border-top:1px solid var(--border); margin:16px 0 12px;"></div>
       <div style="font-weight:800; font-size:12.5px; color:var(--ink);">의견</div>
