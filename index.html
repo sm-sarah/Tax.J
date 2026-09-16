@@ -6248,25 +6248,10 @@ document.getElementById('s-photo-file')?.addEventListener('change', function(){
   const reader = new FileReader();
   reader.onload = (e)=>{
     const img = new Image();
-    img.onload = ()=>{
-      const side = Math.min(img.width, img.height);
-      const sx = (img.width - side) / 2, sy = (img.height - side) / 2; // 가운데를 정사각형으로 잘라냄
-      const canvas = document.createElement('canvas');
-      canvas.width = STAFF_PHOTO_SIZE; canvas.height = STAFF_PHOTO_SIZE;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, sx, sy, side, side, 0, 0, STAFF_PHOTO_SIZE, STAFF_PHOTO_SIZE);
-      // JPEG는 투명(alpha)을 지원하지 않아서, 배경이 투명한 사진을 그대로 JPEG로 저장하면 투명한 부분이
-      // 검은색/흰색으로 칠해져버림 - 그래서 실제로 투명한 픽셀이 있는 사진만 PNG로 저장해서 투명을 그대로
-      // 살리고, 투명이 없는 보통 사진은 용량이 작은 JPEG로 저장함
-      let hasAlpha = false;
-      try{
-        const data = ctx.getImageData(0, 0, STAFF_PHOTO_SIZE, STAFF_PHOTO_SIZE).data;
-        for(let i = 3; i < data.length; i += 4){ if(data[i] < 255){ hasAlpha = true; break; } }
-      }catch(err){ /* getImageData가 막혀도(예: CORS) 그냥 JPEG로 진행 */ }
-      const dataUrl = hasAlpha ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.82);
-      document.getElementById('s-photo').value = dataUrl;
-      renderPhotoPreview(dataUrl);
-    };
+    // 예전엔 사진 가운데를 무조건 자동으로 정사각형 크롭했는데, 사람 얼굴이 가운데가 아닌 사진이면 원하는
+    // 부분이 아니라 배경이 잘려서 프로필로 들어가는 문제가 있었음 - 이제 업로드 직후 크롭 팝업을 띄워서
+    // 끌어서 위치를 맞추고 슬라이더로 확대/축소해서 원하는 영역을 직접 골라 저장할 수 있게 함
+    img.onload = ()=> openPhotoCropModal(img);
     img.onerror = ()=> appAlert('이미지를 읽을 수 없어요. 다른 파일로 시도해주세요.');
     img.src = e.target.result;
   };
@@ -6277,6 +6262,144 @@ document.getElementById('s-photo-remove-btn')?.addEventListener('click', ()=>{
   document.getElementById('s-photo').value = '';
   renderPhotoPreview('');
 });
+// ===== 프로필 사진 크롭(위치/확대 조절) 팝업 =====
+// 프레임(원형으로 잘려 보이는 정사각형 영역) 한 변의 CSS 픽셀 크기 - 최종 저장 해상도(STAFF_PHOTO_SIZE)와는
+// 별개로, 화면에 보여주고 손으로 조작하는 크기임
+const PHOTO_CROP_BOX = 260;
+let photoCropState = null;
+function buildPhotoCropOverlay(){
+  if(document.getElementById('photoCropOverlay')) return;
+  const el = document.createElement('div');
+  el.id = 'photoCropOverlay';
+  el.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(15,16,30,0.82); z-index:10060; align-items:center; justify-content:center; padding:20px;';
+  el.innerHTML = `
+    <div style="background:var(--surface); border-radius:16px; padding:20px; width:100%; max-width:340px; text-align:center; box-shadow:0 12px 44px rgba(0,0,0,0.4);">
+      <div style="font-weight:800; font-size:14px; margin-bottom:10px; color:var(--navy);">사진에서 프로필로 쓸 부분을 골라주세요</div>
+      <div id="photoCropContainer" style="position:relative; width:${PHOTO_CROP_BOX}px; height:${PHOTO_CROP_BOX}px; margin:0 auto; overflow:hidden; border-radius:50%; background:#15162a; cursor:grab; touch-action:none;">
+        <img id="photoCropImg" style="position:absolute; user-select:none; -webkit-user-drag:none; pointer-events:none; max-width:none; max-height:none;">
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; margin-top:14px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; color:var(--ink-soft);"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.35-4.35"></path></svg>
+        <input type="range" id="photoCropZoom" min="0" max="100" value="0" style="flex:1;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; color:var(--ink-soft);"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.35-4.35"></path></svg>
+      </div>
+      <p class="hint" style="margin-top:6px; font-size:11px;">사진을 끌어서 위치를 맞추고, 슬라이더로 확대/축소해보세요</p>
+      <div style="display:flex; gap:8px; margin-top:16px;">
+        <button type="button" id="photoCropCancelBtn" class="del-btn" style="flex:1; margin:0;">취소</button>
+        <button type="button" id="photoCropConfirmBtn" class="submit-btn" style="flex:1; margin:0;">이 부분으로 설정</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+
+  const container = el.querySelector('#photoCropContainer');
+  const imgEl = el.querySelector('#photoCropImg');
+  const zoomEl = el.querySelector('#photoCropZoom');
+
+  function applyPos(){
+    const s = photoCropState;
+    if(!s) return;
+    imgEl.style.width = s.imgW + 'px';
+    imgEl.style.height = s.imgH + 'px';
+    imgEl.style.left = s.left + 'px';
+    imgEl.style.top = s.top + 'px';
+  }
+  function clampPos(){
+    const s = photoCropState;
+    s.left = Math.min(0, Math.max(PHOTO_CROP_BOX - s.imgW, s.left));
+    s.top = Math.min(0, Math.max(PHOTO_CROP_BOX - s.imgH, s.top));
+  }
+  function setScale(newScale){
+    const s = photoCropState;
+    newScale = Math.max(s.minScale, Math.min(s.minScale * 4, newScale));
+    const oldW = s.imgW, oldH = s.imgH;
+    // 프레임 정가운데가 가리키던 사진 속 위치(비율)를 확대/축소 후에도 그대로 유지함
+    const rx = (PHOTO_CROP_BOX / 2 - s.left) / oldW;
+    const ry = (PHOTO_CROP_BOX / 2 - s.top) / oldH;
+    s.scale = newScale;
+    s.imgW = s.naturalW * newScale;
+    s.imgH = s.naturalH * newScale;
+    s.left = PHOTO_CROP_BOX / 2 - rx * s.imgW;
+    s.top = PHOTO_CROP_BOX / 2 - ry * s.imgH;
+    clampPos();
+    applyPos();
+  }
+  let dragging = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
+  function pointerDown(x, y){
+    if(!photoCropState) return;
+    dragging = true; startX = x; startY = y; startLeft = photoCropState.left; startTop = photoCropState.top;
+    container.style.cursor = 'grabbing';
+  }
+  function pointerMove(x, y){
+    if(!dragging || !photoCropState) return;
+    photoCropState.left = startLeft + (x - startX);
+    photoCropState.top = startTop + (y - startY);
+    clampPos();
+    applyPos();
+  }
+  function pointerUp(){ dragging = false; container.style.cursor = 'grab'; }
+  container.addEventListener('mousedown', (e)=>{ pointerDown(e.clientX, e.clientY); e.preventDefault(); });
+  window.addEventListener('mousemove', (e)=>{ if(dragging) pointerMove(e.clientX, e.clientY); });
+  window.addEventListener('mouseup', pointerUp);
+  container.addEventListener('touchstart', (e)=>{ const t = e.touches[0]; pointerDown(t.clientX, t.clientY); }, { passive:true });
+  container.addEventListener('touchmove', (e)=>{ const t = e.touches[0]; pointerMove(t.clientX, t.clientY); e.preventDefault(); }, { passive:false });
+  container.addEventListener('touchend', pointerUp);
+  zoomEl.addEventListener('input', ()=>{
+    const s = photoCropState;
+    if(!s) return;
+    const frac = Number(zoomEl.value) / 100; // 0(최소, cover)~1(최대 확대)
+    setScale(s.minScale + frac * (s.minScale * 3));
+  });
+  el.querySelector('#photoCropCancelBtn').addEventListener('click', closePhotoCropModal);
+  el.querySelector('#photoCropConfirmBtn').addEventListener('click', confirmPhotoCrop);
+  el._applyPos = applyPos;
+}
+function openPhotoCropModal(img){
+  buildPhotoCropOverlay();
+  const el = document.getElementById('photoCropOverlay');
+  document.getElementById('photoCropImg').src = img.src;
+  const minScale = PHOTO_CROP_BOX / Math.min(img.naturalWidth, img.naturalHeight);
+  photoCropState = {
+    img, naturalW: img.naturalWidth, naturalH: img.naturalHeight,
+    minScale, scale: minScale,
+    imgW: img.naturalWidth * minScale, imgH: img.naturalHeight * minScale,
+    left: 0, top: 0
+  };
+  photoCropState.left = (PHOTO_CROP_BOX - photoCropState.imgW) / 2;
+  photoCropState.top = (PHOTO_CROP_BOX - photoCropState.imgH) / 2;
+  const zoomEl = document.getElementById('photoCropZoom');
+  if(zoomEl) zoomEl.value = 0;
+  el.style.display = 'flex';
+  el._applyPos();
+}
+function closePhotoCropModal(){
+  const el = document.getElementById('photoCropOverlay');
+  if(el) el.style.display = 'none';
+  photoCropState = null;
+}
+function confirmPhotoCrop(){
+  const s = photoCropState;
+  if(!s) return;
+  // 화면에 보이던 원형 프레임(PHOTO_CROP_BOX) 영역을 원본 사진의 실제 픽셀 좌표로 환산해서 그만큼만 잘라냄
+  const origX = (-s.left) / s.scale;
+  const origY = (-s.top) / s.scale;
+  const origSize = PHOTO_CROP_BOX / s.scale;
+  const canvas = document.createElement('canvas');
+  canvas.width = STAFF_PHOTO_SIZE; canvas.height = STAFF_PHOTO_SIZE;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(s.img, origX, origY, origSize, origSize, 0, 0, STAFF_PHOTO_SIZE, STAFF_PHOTO_SIZE);
+  // JPEG는 투명(alpha)을 지원하지 않아서, 배경이 투명한 사진을 그대로 JPEG로 저장하면 투명한 부분이
+  // 검은색/흰색으로 칠해져버림 - 그래서 실제로 투명한 픽셀이 있는 사진만 PNG로 저장해서 투명을 그대로
+  // 살리고, 투명이 없는 보통 사진은 용량이 작은 JPEG로 저장함
+  let hasAlpha = false;
+  try{
+    const data = ctx.getImageData(0, 0, STAFF_PHOTO_SIZE, STAFF_PHOTO_SIZE).data;
+    for(let i = 3; i < data.length; i += 4){ if(data[i] < 255){ hasAlpha = true; break; } }
+  }catch(err){ /* getImageData가 막혀도(예: CORS) 그냥 JPEG로 진행 */ }
+  const dataUrl = hasAlpha ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.82);
+  document.getElementById('s-photo').value = dataUrl;
+  renderPhotoPreview(dataUrl);
+  closePhotoCropModal();
+}
 // 직책 드롭박스(회계사/매니저/직접입력)와 실제 저장값(#s-position, 자유 텍스트)을 서로 맞춰주는 함수 -
 // 매번 "대리" 같은 텍스트를 직접 치는 대신 자주 쓰는 두 직책은 바로 고르고, 그 외엔 "직접입력"으로 자유롭게
 // 쓸 수 있게 함. 폼을 열어 기존 값을 채울 때(수정)도 이 함수로 드롭박스 쪽을 실제 값에 맞춰 동기화함
