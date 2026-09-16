@@ -1036,6 +1036,9 @@
   .floating-popup-header button{ cursor:pointer; }
   .floating-popup-body{padding:16px; max-height:70vh; overflow-y:auto;}
   .floating-popup table th, .floating-popup table td{text-align:center;}
+  /* 기안 미리보기처럼 memoModal(기본 max-width:480px, 공지사항/안내창 등과 공용)을 더 넓게 써야 하는
+     경우에만 열 때 붙였다가 닫을 때 떼는 오버라이드 클래스 - 다른 memoModal 용도(공지사항 등)는 그대로 480px 유지 */
+  .memo-modal-box-wide{ max-width:900px !important; }
   .tab-group-label{
     font-weight:800; font-size:12.5px; color:var(--navy);
     letter-spacing:0.01em; padding:0 8px 0 0; white-space:nowrap;
@@ -2297,7 +2300,7 @@
   </div>
 </div>
 <div id="memoModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
-  <div style="background:var(--surface); border-radius:16px; padding:16px 22px 20px; max-width:480px; width:100%; max-height:70vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4); position:relative;">
+  <div id="memoModalBox" style="background:var(--surface); border-radius:16px; padding:16px 22px 20px; max-width:480px; width:100%; max-height:70vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4); position:relative;">
     <!-- 이 팝업(법정연차 자동부여 일정, 식대기준일수 계산법 등 memoModal을 재사용하는 모든 안내창)의 닫기 버튼 대비색은
          이제 모든 팝업이 공통으로 쓰는 .modal-close-btn 클래스에서 나옴(과거엔 이 팝업에만 인디고 톤을 따로
          입혔었는데, 다른 팝업들에서도 "안 보인다"는 피드백이 반복돼서 클래스 하나로 통일함) -->
@@ -9111,6 +9114,8 @@ function closeMemoModal(){
   document.getElementById('memoModalOverlay').dataset.noBackdropClose = '';
   if(typeof revokeApprovalAttachmentObjectUrls === 'function') revokeApprovalAttachmentObjectUrls(); // 기안 미리보기의 이미지 첨부 object URL 정리
   if(typeof applyApprovalPreviewScale === 'function') window.removeEventListener('resize', applyApprovalPreviewScale); // 기안 미리보기 축소 리스너 정리
+  document.getElementById('memoModalBox')?.classList.remove('memo-modal-box-wide'); // 기안 미리보기가 넓혀둔 팝업 폭을 다음 용도(공지사항 등)를 위해 원래대로 되돌림
+  approvalPreviewZoomed = false; // 다음에 미리보기를 다시 열 때는 항상 축소(맞춤) 상태로 시작
 }
 document.getElementById('memoModalClose').addEventListener('click', closeMemoModal);
 document.getElementById('memoModalOverlay').addEventListener('click', (e)=>{
@@ -19357,10 +19362,19 @@ document.getElementById('autoPhraseSettingsSaveBtn')?.addEventListener('click', 
 // "상신하기"를 눌러도 되고, 닫고 폼으로 돌아가 더 수정해도 됨
 // 미리보기가 너무 밋밋하고 정형화가 안 돼 있다는 피드백으로, 실제 그룹웨어 기안문 양식(제목 상단 중앙 +
 // 기안자/소속/기안일/문서종류 표 + 신청·승인 결재란 표 + 제목줄 + 본문 박스)에 맞춰 완전히 새로 짬
+let approvalPreviewZoomed = false; // "실제 크기로 보기" 토글 상태 - true면 축소 없이 800px 원본 그대로, 팝업이 스크롤됨
 function applyApprovalPreviewScale(){
   const wrap = document.getElementById('approvalPreviewScaleWrap');
   const card = document.getElementById('approvalPreviewCard');
   if(!wrap || !card) return;
+  if(approvalPreviewZoomed){
+    // 축소 없이 실제 크기(800px) 그대로 보여주고, 다 안 들어가면 팝업 박스(memoModalBox)가 알아서 스크롤됨
+    card.style.transform = 'none';
+    wrap.style.overflow = 'visible';
+    wrap.style.height = 'auto';
+    return;
+  }
+  wrap.style.overflow = 'hidden';
   card.style.transform = 'none';
   wrap.style.height = 'auto';
   const wrapW = wrap.clientWidth;
@@ -19397,13 +19411,16 @@ function openApprovalPreviewModal(){
   // 예전엔 미리보기가 실제 상세보기와 다른(더 단순한) 전용 레이아웃을 따로 갖고 있었는데, "그냥 진짜
   // 기안문 그대로 조회되게" 요청으로 실제 상세보기와 완전히 같은 문서 모양(approvalDocVisualHtml)을 쓰고,
   // 그 대신 카드 폭을 실제 크기(800px) 그대로 고정해서 좁은 팝업 안에서는 scale(축소)로 다 보이게 함
+  approvalPreviewZoomed = false; // 열 때마다 항상 "화면에 맞춤(축소)" 상태로 시작
+  document.getElementById('memoModalBox')?.classList.add('memo-modal-box-wide'); // 팝업 자체 폭을 넓혀서(900px) 축소를 덜 해도 되게 함
   document.getElementById('memoModalBody').innerHTML = `
     <div id="approvalPreviewScaleWrap" style="overflow:hidden;">
     <div class="approval-doc-card" id="approvalPreviewCard" style="width:800px; border:1.5px solid var(--border); border-radius:16px; background:var(--surface); padding:32px 18px 18px; box-shadow:0 1px 2px rgba(29,30,51,0.04); aspect-ratio:210/297; box-sizing:border-box; display:flex; flex-direction:column;">
       ${docVisual}
     </div>
     </div>
-    <div style="text-align:center; margin-top:14px;">
+    <div style="text-align:center; margin-top:14px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+      <button type="button" id="approvalPreviewZoomBtn" class="del-btn" style="padding:9px 18px; font-size:13px; border-radius:10px; background:#E5E7EB; color:var(--ink-soft); font-weight:700;">🔍 실제 크기로 보기</button>
       <button type="button" id="approvalPreviewSubmitBtn" class="submit-btn" style="width:auto; padding:9px 20px;">이대로 상신하기</button>
     </div>`;
   document.getElementById('memoModalOverlay').style.display = 'flex';
@@ -19413,6 +19430,13 @@ function openApprovalPreviewModal(){
   applyApprovalPreviewScale();
   window.removeEventListener('resize', applyApprovalPreviewScale);
   window.addEventListener('resize', applyApprovalPreviewScale);
+  // "너무 작아서 내용이 안보이는데 돋보기 버튼 기능같은거 있나" 요청으로 추가 - 누르면 축소 없이 실제
+  // 문서 크기(800px) 그대로 보여주고, 다 안 들어가면 팝업 박스가 스크롤됨. 다시 누르면 원래대로 화면에 맞춰 축소
+  document.getElementById('approvalPreviewZoomBtn').addEventListener('click', ()=>{
+    approvalPreviewZoomed = !approvalPreviewZoomed;
+    document.getElementById('approvalPreviewZoomBtn').textContent = approvalPreviewZoomed ? '↩ 화면에 맞춰 보기' : '🔍 실제 크기로 보기';
+    applyApprovalPreviewScale();
+  });
   document.getElementById('approvalPreviewSubmitBtn').addEventListener('click', async ()=>{
     closeMemoModal();
     const ok = saveApprovalDraftForm('기안');
