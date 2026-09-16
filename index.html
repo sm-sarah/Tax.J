@@ -5008,6 +5008,39 @@
         </div>
       </div>
 
+      <!-- 지금까지는 새 index.html 파일(수정된 앱 소스코드 자체)을 받으면, GitHub(sm-sarah/Tax.J) 저장소 업로드
+           화면에 매번 사람이 직접 들어가서 올려야 했음 - "그걸 이 앱 안에서 바로 할 수 없냐"는 요청으로 추가함.
+           GitHub REST API(Contents API)를 이 브라우저에서 직접 호출해서, 골라둔 index.html 파일을 그 저장소의
+           index.html에 바로 커밋함(성공하면 GitHub Pages로 몇 초~몇 분 안에 자동 반영됨). 저장소에 쓰기 권한이
+           있는 개인 액세스 토큰(PAT)이 있어야 하고, 그 토큰은 팀 전체와 공유되는 드라이브가 아니라 이 브라우저의
+           localStorage에만 저장됨(다른 기기/계정에는 안 보임 - 기기마다 따로 입력해야 함) -->
+      <div class="settings-sub-title" id="ssTitle-githubdeploy" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg> GitHub 배포 <span class="badge">관리자 전용</span></div>
+      <p class="hint" style="text-align:center;">
+        Claude가 드린 새 index.html 파일을 고르면, GitHub 업로드 화면에 직접 들어가지 않아도 이 저장소(sm-sarah/Tax.J)의 index.html에 바로 반영돼요.<br>
+        <span style="color:var(--ink-soft);">저장소에 쓰기 권한이 있는 <a href="https://github.com/settings/tokens" target="_blank" rel="noopener">개인 액세스 토큰(PAT)</a>이 한 번 필요해요(이 저장소 하나에만 쓸 수 있게 "Only select repositories"로 좁혀서 만드는 걸 추천해요). 토큰은 이 기기의 브라우저에만 저장되고, 다른 직원이나 다른 기기와는 공유되지 않아요.</span>
+      </p>
+      <div class="flat-panel" style="max-width:480px; display:flex; flex-direction:column; gap:10px;">
+        <div class="field" style="margin:0;">
+          <label>Personal Access Token</label>
+          <div style="display:flex; gap:6px;">
+            <input type="password" id="githubDeployToken" placeholder="ghp_..." style="flex:1 1 auto;" autocomplete="off">
+            <button type="button" id="githubDeployTokenSaveBtn" class="del-btn" style="white-space:nowrap;">저장</button>
+          </div>
+          <span class="hint" id="githubDeployTokenStatus" style="display:block; margin-top:4px;"></span>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:center;">
+          <label class="del-btn" id="githubDeployFileLabel" style="cursor:pointer; background:var(--indigo-bg); color:var(--indigo-deep); white-space:nowrap;">
+            📄 index.html 파일 선택
+            <input type="file" id="githubDeployFile" accept=".html,text/html" style="display:none;">
+          </label>
+          <span id="githubDeployFileName" style="font-size:12px; color:var(--ink-soft);">선택된 파일 없음</span>
+        </div>
+        <div style="text-align:center;">
+          <button type="button" id="githubDeployBtn" class="submit-btn" style="width:auto; padding:9px 18px;" disabled><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg> GitHub에 배포</button>
+        </div>
+        <span class="save-msg" id="githubDeployMsg" style="margin-top:0; text-align:center;"></span>
+      </div>
+
       <!-- 위 백업복구(JSON)는 앱 안으로 그대로 복구할 수 있는 완전한 백업이고, 여기 엑셀 다운로드는 그거랑 별개로
            거래처 목록·회사정보·팀정보를 사람이 바로 열어보거나 다른 곳에 활용하기 좋은 엑셀 형태로 한 번에 받는 기능 -
            기장거래처/전체거래처/회사정보/팀정보 네 가지를 시트 하나씩으로 담은 파일 하나를 만들어줌 -->
@@ -8889,10 +8922,10 @@ function renderAllRemoteHistory(){
     const noLunchTag = (en.bonus || en.noLunch) ? ` <span style="color:#8A6D1E; font-weight:800;">${calIconSvg('lunchparty')} 식대제외</span>` : '';
     const label = `${en.bonus ? '특별재택' : '정기재택'}${advTag}${noLunchTag}`;
     return `<tr>
-      <td class="num">${en.date}</td>
-      <td>${label}</td>
-      <td>${escHtml(en.memo || '')}</td>
-      <td style="white-space:nowrap;"><button class="del-btn all-remote-edit-btn" data-id="${en.id}">수정</button><button class="del-btn all-remote-del-btn" data-id="${en.id}">삭제</button></td>
+      <td class="num" style="text-align:center;">${en.date}</td>
+      <td style="text-align:center;">${label}</td>
+      <td style="text-align:center;">${escHtml(en.memo || '')}</td>
+      <td style="white-space:nowrap; text-align:center;"><button class="del-btn all-remote-edit-btn" data-id="${en.id}">수정</button><button class="del-btn all-remote-del-btn" data-id="${en.id}">삭제</button></td>
     </tr>`;
   }).join('');
 
@@ -8907,7 +8940,7 @@ function renderAllRemoteHistory(){
           <span style="margin-left:auto; font-size:11px;">${isOpen ? '▲' : '▼'}</span>
         </button>
         <div class="year-table-wrap" data-month="${m}" style="display:${isOpen ? 'block' : 'none'}; margin-top:8px;">
-          <table><thead><tr><th>날짜</th><th>구분</th><th>메모</th><th></th></tr></thead><tbody>${buildRows(byMonth[m])}</tbody></table>
+          <table><thead><tr><th style="text-align:center;">날짜</th><th style="text-align:center;">구분</th><th style="text-align:center;">메모</th><th style="text-align:center;">관리</th></tr></thead><tbody>${buildRows(byMonth[m])}</tbody></table>
         </div>
       </div>`;
   }).join('');
@@ -22765,6 +22798,98 @@ document.querySelectorAll('.backup-scope-btn').forEach(btn=>{
     if(btn.dataset.backupScope === 'all' && !pointInTimeBackupListLoaded) loadPointInTimeBackupList();
   });
 });
+
+// ══════════════════════════════════════════════════════════
+// 🚀 GitHub 배포: 새 index.html 파일을 고르면 GitHub(sm-sarah/Tax.J) 저장소의 index.html에 바로 커밋함
+// (GitHub Contents API를 이 브라우저에서 직접 호출 - 드라이브 백업과는 전혀 무관한, 별개의 수동 배포 기능).
+// 토큰은 이 기기의 localStorage에만 저장되고 다른 사람·기기와 공유되지 않음
+// ══════════════════════════════════════════════════════════
+const GITHUB_DEPLOY_REPO_OWNER = 'sm-sarah';
+const GITHUB_DEPLOY_REPO_NAME = 'Tax.J';
+const GITHUB_DEPLOY_FILE_PATH = 'index.html';
+const GITHUB_DEPLOY_TOKEN_KEY = 'worklog_github_pat';
+let githubDeploySelectedFile = null;
+
+function githubDeployUpdateBtnState(){
+  const btn = document.getElementById('githubDeployBtn');
+  if(!btn) return;
+  const hasToken = !!(localStorage.getItem(GITHUB_DEPLOY_TOKEN_KEY) || '').trim();
+  btn.disabled = !(hasToken && githubDeploySelectedFile);
+}
+function githubDeployRefreshTokenStatus(){
+  const statusEl = document.getElementById('githubDeployTokenStatus');
+  if(!statusEl) return;
+  const saved = (localStorage.getItem(GITHUB_DEPLOY_TOKEN_KEY) || '').trim();
+  statusEl.textContent = saved ? `토큰 저장됨 (이 기기에만) · 끝 4자리 ...${saved.slice(-4)}` : '아직 저장된 토큰이 없어요.';
+  githubDeployUpdateBtnState();
+}
+document.getElementById('githubDeployTokenSaveBtn')?.addEventListener('click', ()=>{
+  const input = document.getElementById('githubDeployToken');
+  const val = (input.value || '').trim();
+  if(!val){ appAlert('토큰을 입력해주세요.'); return; }
+  localStorage.setItem(GITHUB_DEPLOY_TOKEN_KEY, val);
+  input.value = '';
+  githubDeployRefreshTokenStatus();
+});
+document.getElementById('githubDeployFile')?.addEventListener('change', function(){
+  githubDeploySelectedFile = this.files && this.files[0] ? this.files[0] : null;
+  const nameEl = document.getElementById('githubDeployFileName');
+  if(nameEl) nameEl.textContent = githubDeploySelectedFile ? githubDeploySelectedFile.name : '선택된 파일 없음';
+  githubDeployUpdateBtnState();
+});
+// 문자열(UTF-8, 한글 포함)을 GitHub Contents API가 요구하는 base64로 안전하게 변환
+function utf8ToBase64(str){
+  return btoa(unescape(encodeURIComponent(str)));
+}
+document.getElementById('githubDeployBtn')?.addEventListener('click', async ()=>{
+  const msgEl = document.getElementById('githubDeployMsg');
+  const token = (localStorage.getItem(GITHUB_DEPLOY_TOKEN_KEY) || '').trim();
+  if(!token || !githubDeploySelectedFile){ return; }
+  const ok = await appConfirm(`"${githubDeploySelectedFile.name}" 파일을 GitHub(${GITHUB_DEPLOY_REPO_OWNER}/${GITHUB_DEPLOY_REPO_NAME})의 index.html에 바로 커밋할까요?\n\n반영되면 몇 초~몇 분 안에 실제 서비스 화면에도 그대로 적용돼요.`, { okText:'네, 배포할게요', cancelText:'취소' });
+  if(!ok) return;
+  const btn = document.getElementById('githubDeployBtn');
+  btn.disabled = true;
+  try{
+    if(msgEl) msgEl.textContent = '파일 읽는 중...';
+    const content = await githubDeploySelectedFile.text();
+    const apiBase = `https://api.github.com/repos/${GITHUB_DEPLOY_REPO_OWNER}/${GITHUB_DEPLOY_REPO_NAME}/contents/${GITHUB_DEPLOY_FILE_PATH}`;
+    const headers = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' };
+    if(msgEl) msgEl.textContent = '기존 파일 정보 확인 중...';
+    const getRes = await fetch(apiBase, { headers });
+    if(!getRes.ok){
+      if(getRes.status === 401) throw new Error('토큰이 유효하지 않아요. 저장소 쓰기 권한이 있는 토큰인지 확인해주세요.');
+      if(getRes.status === 404) throw new Error('저장소 또는 파일 경로를 찾을 수 없어요.');
+      throw new Error(`GitHub 조회 실패 (${getRes.status})`);
+    }
+    const cur = await getRes.json();
+    if(msgEl) msgEl.textContent = 'GitHub에 커밋하는 중...';
+    const putRes = await fetch(apiBase, {
+      method: 'PUT',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: `Tax.J 업데이트 (${new Date().toLocaleString('ko-KR')})`,
+        content: utf8ToBase64(content),
+        sha: cur.sha
+      })
+    });
+    if(!putRes.ok){
+      const errBody = await putRes.json().catch(()=>({}));
+      throw new Error(errBody.message || `GitHub 커밋 실패 (${putRes.status})`);
+    }
+    if(msgEl) msgEl.textContent = '배포 완료! 잠시 후 실제 서비스 화면에 반영돼요.';
+    githubDeploySelectedFile = null;
+    const nameEl = document.getElementById('githubDeployFileName');
+    if(nameEl) nameEl.textContent = '선택된 파일 없음';
+    const fileInput = document.getElementById('githubDeployFile');
+    if(fileInput) fileInput.value = '';
+  }catch(err){
+    console.error('GitHub 배포 실패', err);
+    if(msgEl) msgEl.textContent = '배포 실패: ' + (err && err.message ? err.message : err);
+  }finally{
+    githubDeployUpdateBtnState();
+  }
+});
+githubDeployRefreshTokenStatus();
 
 // 백업 파일(옛 형식 전 직원 일괄백업 - 직원별로 거래처가 나뉘어 있던 파일이든, 새 형식이든)에서 거래처목록·
 // 개인정보"만" 뽑아서 지금의 공용 저장소와 합침 - 직원목록·근태·경비·회사설정 등 다른 건 전혀 건드리지 않음.
