@@ -55,7 +55,12 @@
     color:var(--ink);
     font-family:'Pretendard','Noto Sans KR',sans-serif;
     padding:26px 18px 64px;
-    overflow-x:hidden;
+    /* 예전엔 여기도 overflow-x:hidden을 따로 줬는데, body에 overflow-x를 하나라도 주면(overflow-y는
+       기본값 visible이라도) CSS 스펙상 overflow-y가 auto로 강제 승격되면서 body 자신이 별도의 스크롤
+       컨테이너가 되어버림 - 그러면 맨 위 홈~휴지통 아이콘 줄(#appTopIconBar)의 position:sticky가 실제
+       스크롤이 일어나는 html(뷰포트) 기준이 아니라, 스크롤이 전혀 안 되는 body 기준으로 계산되면서
+       스크롤해도 화면 위에 붙어있지 않고 그냥 같이 밀려 올라가버리는 문제가 있었음. 가로 스크롤 방지는
+       위쪽 html{overflow-x:hidden}만으로 이미 충분해서, body 쪽은 빼고 기본값(visible)을 그대로 둠 */
   }
   /* 앱 전체를 배경(연한 라벤더)과 구분되는 큰 테두리 하나로 감싸서, 사이드바·상단 요소부터
      각 화면의 입력/조회 레이아웃까지 전부 이 하나의 프레임 안에서 보이게 함 */
@@ -290,8 +295,11 @@
      "크게"는 폭 전체(가로형처럼)+2행을 함께 차지해서 눈에 띄게 큰 카드가 됨 */
   .home-dashboard-grid .home-dash-card-tall{ grid-row:span 2; }
   .home-dashboard-grid .home-dash-card-big{ grid-column:1 / -1; grid-row:span 2; }
-  .home-dash-card[data-goto]{ cursor:pointer; transition:transform 0.15s, box-shadow 0.15s; }
-  .home-dash-card[data-goto]:hover{ transform:translateY(-2px); box-shadow:0 3px 8px rgba(29,30,51,0.06), 0 12px 24px -14px rgba(29,30,51,0.26); }
+  /* "카드 아무데나 눌러도 그 탭으로 이동"했었는데, 안에 화살표(전/다음 달)처럼 카드 안에서 눌러야 하는
+     요소들이 생기면서 실수로 화면이 자꾸 다른 탭으로 튕기는 문제가 있었음 - 이제 카드 전체는 더 이상
+     클릭 대상이 아니고, "바로가기/더보기" 링크(.home-dash-card-link)를 눌렀을 때만 이동함(아래) */
+  .home-dash-card-link{ cursor:pointer; }
+  .home-dash-card-link:hover{ text-decoration:underline; }
   /* 그냥 텍스트 라벨만 있던 밋밋한 제목에 카드 성격을 바로 알려주는 작은 컬러 아이콘 배지를 붙여서
      대시보드 전체가 좀 더 표정 있고 정돈된 느낌이 나게 함(위젯마다 accent 색으로 구분) */
   /* 제목 줄만 아이콘 배지를 붙였더니 여전히 "그냥 텍스트 한 줄"처럼 밋밋하다는 피드백 - 본문과
@@ -1466,6 +1474,15 @@
   /* .flat-row는 자체 padding(8px 12px)이 있어서 라벨이 그만큼 안쪽에서 시작하는데, .flat-subhead는 그 padding이
      없어서 같은 세로줄의 줄 라벨들보다 12px 더 왼쪽에서 시작해 "튀어나와" 보였음 - 좌우 padding을 맞춰줌 */
   .flat-subhead{ font-size:12px; font-weight:800; color:var(--indigo-deep); margin:18px 0 2px; padding:0 12px; }
+  /* 설정 > 알림에서 쓰는 iOS 스타일 켜고/끄기 스위치 - 켜면 오른쪽으로 동그라미가 옮겨가고 배경이 인디고로
+     바뀌고, 끄면 왼쪽에 회색으로 있는 흔한 모바일 앱 알림 토글 모양. 실제 체크박스는 투명하게 숨기고(접근성
+     위해 완전히 없애지는 않음), 그 옆 트랙(.ios-toggle-track)을 라벨처럼 보이게 그려서 클릭도 그대로 먹음 */
+  .ios-toggle{ position:relative; display:inline-flex; width:40px; height:23px; flex-shrink:0; cursor:pointer; }
+  .ios-toggle input{ position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; }
+  .ios-toggle .ios-toggle-track{ position:absolute; inset:0; background:var(--border); border-radius:999px; transition:background-color .18s; pointer-events:none; }
+  .ios-toggle .ios-toggle-track::before{ content:''; position:absolute; width:17px; height:17px; left:3px; top:3px; background:#fff; border-radius:50%; box-shadow:0 1px 3px rgba(29,30,51,0.3); transition:transform .18s; }
+  .ios-toggle input:checked + .ios-toggle-track{ background:var(--indigo); }
+  .ios-toggle input:checked + .ios-toggle-track::before{ transform:translateX(17px); }
   .flat-input{ border:none; border-bottom:1.5px solid var(--border); border-radius:0; background:transparent; padding:5px 2px; font-family:'Pretendard',sans-serif; transition:border-color .15s; }
   .flat-input:focus{ border-bottom-color:var(--indigo); background:transparent; box-shadow:none; }
   .settings-flat .empty-state{ background:transparent; box-shadow:none; border:1px solid rgba(29,30,51,0.16); }
@@ -1510,6 +1527,8 @@
   #tab-settings #ssTitle-excelbackup + p.hint{ display:block; max-width:none; }
   /* 백업복구 화면도 자동백업 안내문구가 새로 생겨서 같은 예외 처리 */
   #tab-settings #ssTitle-backup + p.hint{ display:block; }
+  /* 알림 설정 화면도 "꺼도 알림함엔 남는다"처럼 토글 하나만 봐서는 알기 어려운 동작이 있어서 같은 예외 처리 */
+  #tab-settings #ssTitle-notifications + p.hint{ display:block; }
   #tab-settings #ssTitle-excelbackup + p.hint span.nowrap-line{ display:block; white-space:nowrap; }
   /* 근태현황/경비정산처럼 옆에 다른 요소(등록 버튼 등)가 있어도 제목이 눈에 띄도록 밑줄 포인트를 줌 */
   .section-title-accent{display:inline-block; padding-bottom:6px; border-bottom:3px solid var(--indigo); border-radius:2px;}
@@ -2337,9 +2356,15 @@
     <!-- 이 팝업(법정연차 자동부여 일정, 식대기준일수 계산법 등 memoModal을 재사용하는 모든 안내창)의 닫기 버튼 대비색은
          이제 모든 팝업이 공통으로 쓰는 .modal-close-btn 클래스에서 나옴(과거엔 이 팝업에만 인디고 톤을 따로
          입혔었는데, 다른 팝업들에서도 "안 보인다"는 피드백이 반복돼서 클래스 하나로 통일함) -->
-    <button type="button" id="memoModalClose" class="del-btn modal-close-btn" style="position:absolute; top:14px; right:16px; font-size:11.5px; padding:4px 11px;">닫기</button>
-    <div style="text-align:center; margin-bottom:18px; padding:2px 46px 0;">
+    <button type="button" id="memoModalClose" class="del-btn modal-close-btn" style="position:absolute; top:14px; right:16px; font-size:11.5px; padding:4px 11px; z-index:6;">닫기</button>
+    <!-- 거래처 상세정보 팝업(openClientDetailModal)처럼 내용이 길어서 스크롤이 필요한 경우, 스크롤해도
+         상호명·수정/이력/삭제 아이콘 줄이 화면에서 사라지지 않고 계속 보이면 좋겠다는 요청으로, 이 제목
+         묶음 전체를 sticky로 스크롤 컨테이너(#memoModalBox) 맨 위에 고정함. #memoModalTitleExtra는
+         평소엔 비어있고(다른 안내 팝업엔 영향 없음), openClientDetailModal에서만 아이콘 버튼 줄을 여기에
+         채워 넣음 - 팝업을 닫을 때(closeMemoModal) 항상 비워서 다음에 여는 다른 팝업에 남아있지 않게 함 -->
+    <div id="memoModalTitleWrap" style="position:sticky; top:0; z-index:5; background:var(--surface); text-align:center; margin:0 -22px 18px; padding:2px 68px 10px;">
       <span id="memoModalTitle" style="display:inline-block; font-weight:800; font-size:19px; color:var(--ink);"></span>
+      <div id="memoModalTitleExtra"></div>
     </div>
     <div id="memoModalBody" style="font-size:13px; color:var(--ink); line-height:1.6;"></div>
   </div>
@@ -2971,6 +2996,7 @@
               <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-staffLeave"><span>직원휴가</span></div>
               <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-specialPeriod"><span>특별기간</span></div>
               <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-taxSchedule"><span>세무일정</span></div>
+              <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-notifications"><span>알림</span></div>
             </div>
             <div class="home-tile home-tile-plain" data-settings-cat-goto="data" style="--tile-accent:var(--guide-slate);">
               <div class="home-tile-icon">💾</div>
@@ -3462,18 +3488,15 @@
            오래된 거래처를 수정할 때 이 문제로 "분명히 입력하고 수정완료를 눌렀는데 반영이 안 되는" 현상이
            있었음. 폼 자체 검증(novalidate)은 끄고, 실제 필수값(상호명) 체크는 아래 JS 제출 로직에서 그대로 함 -->
       <form id="clientForm" novalidate>
-        <!-- 상호명은 이 폼 전체의 주인공인데, 다른 일반 입력칸과 똑같은 스타일이라 혼자 떨어져 있으니
-             비중이 없어 보인다는 의견으로, 크고 굵은 글씨의 가운데 정렬 입력칸으로 따로 강조함 -->
-        <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;">
-          <div class="field" style="flex:1 1 100%;">
-            <label style="display:flex; align-items:center; justify-content:center; min-height:20px; font-size:12px; font-weight:800; color:var(--indigo-deep); letter-spacing:0.04em;">상호명</label>
-            <input type="text" id="cl-name" required style="text-align:center; font-size:19px; font-weight:800; color:var(--ink); padding:12px 14px; border:2px solid var(--indigo-bg); background:var(--indigo-bg);">
-          </div>
-        </div>
-
+        <!-- 기본정보/대표자 정보/실무자 정보/수임정보/메모/개인정보 구획을 예전엔 var(--bg) 배경색으로
+             구분했는데, 이 색이 카드 바깥 배경(--frame-bg)과 거의 차이가 없어서 구획끼리 경계가 잘 안
+             보인다는 요청으로, 배경은 주변과 같게(투명) 두고 대신 테두리선으로만 구획을 나눔 -->
         <div style="text-align:center; margin-bottom:12px;"><span class="section-subtitle-label">기본정보</span></div>
-        <div style="background:var(--bg); border-radius:10px; padding:14px 16px 6px; margin-bottom:14px;">
+        <div style="background:transparent; border:1.5px solid var(--border); border-radius:10px; padding:14px 16px 6px; margin-bottom:14px;">
+        <!-- 상호명은 예전엔 위에 따로 떨어져 나와 크게 강조되어 있었는데, 다른 항목들과 스타일이 달라서
+             오히려 혼자 붕 떠 보인다는 요청으로, 다른 입력칸들과 똑같은 스타일로 구분 왼쪽 자리로 옮김 -->
         <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
+          <div class="field" style="flex:1 1 160px;"><label>상호명</label><input type="text" id="cl-name" required placeholder="예: (주)테스트"></div>
           <div class="field" style="flex:1 1 110px;"><label style="display:flex; align-items:center; min-height:20px;">구분</label>
             <select id="cl-entity-type">
               <option value="법인">법인</option>
@@ -3505,7 +3528,7 @@
         </div>
 
         <div style="text-align:center; margin-bottom:12px;"><span class="section-subtitle-label">대표자 정보</span></div>
-        <div style="background:var(--bg); border-radius:10px; padding:14px 16px; margin-bottom:14px;">
+        <div style="background:transparent; border:1.5px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:14px;">
           <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
             <div class="field" style="flex:1 1 150px;"><label style="display:flex; align-items:center; gap:6px;">대표자 <span class="cl-primary-check-label" style="display:inline-flex; align-items:center; gap:3px; font-weight:800; font-size:10.5px; color:var(--indigo-deep); cursor:pointer;"><input type="checkbox" class="cl-primary-check" id="cl-primary-rep" style="width:13px; height:13px; margin:0; cursor:pointer; accent-color:var(--indigo-deep);"> 주연락처</span></label><input type="text" id="cl-rep-name" placeholder="예: 홍길동"></div>
             <!-- 주민번호는 암호화된 개인정보 구간이 아니라 여기 평문으로 바로 입력·조회함(요청에 따라 보안 없이) -->
@@ -3518,7 +3541,7 @@
         </div>
 
         <div style="text-align:center; margin-bottom:12px;"><span class="section-subtitle-label">실무자 정보</span></div>
-        <div style="background:var(--bg); border-radius:10px; padding:14px 16px 6px; margin-bottom:14px;">
+        <div style="background:transparent; border:1.5px solid var(--border); border-radius:10px; padding:14px 16px 6px; margin-bottom:14px;">
           <div style="text-align:right; margin-bottom:10px;">
             <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-soft); font-weight:700; cursor:pointer;">
               <input type="checkbox" id="cl-contact-same-as-rep" style="width:15px; height:15px; cursor:pointer;">
@@ -3531,7 +3554,7 @@
         </div>
 
         <div style="text-align:center; margin-bottom:12px;"><span class="section-subtitle-label">수임정보</span></div>
-        <div style="background:var(--bg); border-radius:10px; padding:14px 16px 6px; margin-bottom:14px;">
+        <div style="background:transparent; border:1.5px solid var(--border); border-radius:10px; padding:14px 16px 6px; margin-bottom:14px;">
         <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
           <div class="field" style="flex:1 1 200px;"><label>수임구분</label>
             <select id="cl-taxtype">
@@ -3600,14 +3623,14 @@
         </div>
 
         <div style="text-align:center; margin-bottom:12px;"><span class="section-subtitle-label">메모</span></div>
-        <div style="background:var(--bg); border-radius:10px; padding:14px 16px 6px; margin-bottom:14px;">
+        <div style="background:transparent; border:1.5px solid var(--border); border-radius:10px; padding:14px 16px 6px; margin-bottom:14px;">
         <div class="field"><label>메모 <span style="font-weight:400; color:var(--ink-soft);">(여러 건 추가할 수 있어요)</span></label></div>
         <div id="cl-memo-list"></div>
         <button type="button" id="cl-memo-add-btn" class="del-btn" style="margin:2px 0 10px;">+ 메모 추가</button>
         </div>
 
         <div style="text-align:center; margin-top:26px; padding-top:20px; border-top:1.5px dashed var(--border); margin-bottom:12px;"><span class="section-subtitle-label">개인정보</span></div>
-        <div id="clPersonalInfoSection" style="background:var(--bg); border-radius:10px; padding:14px 16px; margin-bottom:14px;">
+        <div id="clPersonalInfoSection" style="background:transparent; border:1.5px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:14px;">
           <div id="clPersonalInfoLockNotice" style="text-align:center; padding:10px; display:none;">
             <button type="button" id="clPersonalInfoUnlockBtn" title="비밀번호 입력하고 수정" style="border:none; background:var(--pink-bg, #FCE7F3); color:var(--pink, #DB2777); width:40px; height:40px; border-radius:50%; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 7a5 5 0 113.61 4.804l-1.903 1.903A1 1 0 019 14H8v1a1 1 0 01-1 1H6v1a1 1 0 01-1 1H3a1 1 0 01-1-1v-2a1 1 0 01.293-.707L8.196 8.39A5.002 5.002 0 018 7zm5-3a.75.75 0 000 1.5A1.5 1.5 0 0114.5 7 .75.75 0 0016 7a3 3 0 00-3-3z" clip-rule="evenodd"/></svg></button>
           </div>
@@ -4253,9 +4276,9 @@
                 <div class="field">
                   <label style="display:flex; align-items:center; justify-content:space-between;">내용
                     <span style="display:flex; align-items:center; gap:5px;">
-                      <!-- 문서종류를 고르면 그에 맞는 인사말/맺음말 문구를 내용칸에 바로 채워주는 버튼 - 매번
-                           "안녕하세요, ~ 관련하여 결재 요청드립니다" 같은 문장을 처음부터 치지 않아도 되게 함 -->
-                      <button type="button" id="ad-auto-phrase-btn" style="border:none; background:transparent; color:var(--indigo); font-size:10.5px; font-weight:700; cursor:pointer; text-decoration:underline;">+자동문구</button>
+                      <!-- 예전엔 "+자동문구" 버튼을 직접 눌러야만 문서종류별 기본 문구가 채워졌는데, 버튼을
+                           누르는 걸 깜빡하기 쉽고 번거롭다는 요청으로 없앰 - 이제 문서종류를 고르는 즉시
+                           (그리고 바꿀 때마다) applyAdAutoPhrase()가 자동으로 내용칸을 채움(아래 스크립트) -->
                       <!-- 문서종류별 기안 문구(기안내용)를 직접 수정할 수 있는 설정 팝업을 여는 톱니바퀴 버튼 -->
                       <button type="button" id="ad-auto-phrase-settings-btn" title="기안문구 설정" style="border:none; background:transparent; color:var(--ink-soft); cursor:pointer; padding:2px; display:flex; align-items:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
                     </span>
@@ -4268,6 +4291,11 @@
                     <button type="button" class="del-btn ad-rt-btn" data-cmd="underline" title="밑줄" style="text-decoration:underline; padding:4px 9px;">U</button>
                     <span style="width:1px; height:16px; background:var(--border);"></span>
                     <button type="button" class="del-btn ad-rt-btn" data-cmd="insertUnorderedList" title="목록" style="padding:4px 9px;">• 목록</button>
+                    <span style="width:1px; height:16px; background:var(--border);"></span>
+                    <!-- 휴가 일정 표/세무 신고대상·특이사항 표를 지금 커서 위치에 다시(또는 추가로) 끼워넣는
+                         버튼 - 문서종류를 바꿀 때 자동으로 채워지는 것과 별개로, 표를 실수로 지웠거나 하나 더
+                         넣고 싶을 때 씀(문서종류가 휴가·부가가치세·법인세·종합소득세일 때만 동작함) -->
+                    <button type="button" class="del-btn" id="ad-insert-box-btn" title="지금 문서종류에 맞는 표를 커서 위치에 끼워넣어요" style="padding:4px 9px; font-size:11px;">⊞ 표 삽입</button>
                     <span style="width:1px; height:16px; background:var(--border);"></span>
                     <button type="button" class="del-btn ad-rt-align" data-align="left" title="왼쪽 정렬" style="padding:4px 7px; display:flex; align-items:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="15" y2="12"></line><line x1="3" y1="18" x2="18" y2="18"></line></svg></button>
                     <button type="button" class="del-btn ad-rt-align" data-align="center" title="가운데 정렬" style="padding:4px 7px; display:flex; align-items:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="6" y1="12" x2="18" y2="12"></line><line x1="4.5" y1="18" x2="19.5" y2="18"></line></svg></button>
@@ -4719,6 +4747,35 @@
         아래는 해당 연도의 세무일정 전체(기본 제공 + 위에서 등록한 일정)예요. 위/아래 연도 버튼으로 다른 연도도 볼 수 있고, 특정 회차의 날짜가 실제와 달라지면 "수정"으로 그 회차만 고칠 수 있어요. "되돌리기"로 원래 계산된 날짜로 다시 되돌릴 수 있어요.
       </p>
       <div id="taxScheduleUpcomingListWrap" style="max-width:720px; margin:12px auto 0;"></div>
+
+      <!-- 알림 종류별로 푸시를 받을지 한곳에서 켜고 끄는 메뉴 - 공지사항/결재 등 각 화면에도 알림이 오긴
+           하지만, "여기저기 안 가고 한 군데서 전체적으로 설정하고 싶다"는 요청으로 새로 추가함. 내 계정
+           기준으로만 켜고 끌 수 있어서(다른 직원 알림 설정은 안 건드림), 로그인한 이메일(currentUserEmail)
+           기준으로 sharedNotificationPrefs[내 이메일]을 읽고 씀 -->
+      <div class="settings-sub-title" id="ssTitle-notifications" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> 알림 <span class="badge">내 계정 기준 · 이 기기뿐 아니라 등록된 모든 기기에 적용</span></div>
+      <p class="hint">
+        기기(브라우저)별로 처음 한 번 "알림 받기" 동의가 따로 필요해요. 아래에서 끄면, 이미 알림을 받도록 설정해둔 기기가 여러 대여도 전부 그 종류의 알림을 받지 않아요(알림함에는 그대로 남아요).
+      </p>
+      <div class="flat-panel flat-panel-narrow">
+        <div class="flat-row">
+          <div class="flat-row-label" style="flex:1 1 auto;">공지사항 등록</div>
+          <div class="flat-row-control" style="flex:0 0 auto; justify-content:flex-end;">
+            <label class="ios-toggle"><input type="checkbox" class="notif-pref-toggle" data-category="notice"><span class="ios-toggle-track"></span></label>
+          </div>
+        </div>
+        <div class="flat-row">
+          <div class="flat-row-label" style="flex:1 1 auto;">결재 요청이 나에게 왔을 때</div>
+          <div class="flat-row-control" style="flex:0 0 auto; justify-content:flex-end;">
+            <label class="ios-toggle"><input type="checkbox" class="notif-pref-toggle" data-category="approvalNew"><span class="ios-toggle-track"></span></label>
+          </div>
+        </div>
+        <div class="flat-row">
+          <div class="flat-row-label" style="flex:1 1 auto;">내 기안이 승인·반려됐을 때</div>
+          <div class="flat-row-control" style="flex:0 0 auto; justify-content:flex-end;">
+            <label class="ios-toggle"><input type="checkbox" class="notif-pref-toggle" data-category="approvalDecision"><span class="ios-toggle-track"></span></label>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="settings-group settings-flat" data-settings-cat="data" style="display:none;">
@@ -5039,6 +5096,11 @@ let sharedOpsPolicyHistory = [];  // 운영지침 이력
 // 토큰을 이메일별로 저장해둠 [{id, email, token, updatedAt}]. 회사 공용 저장소라 어느 기기에서 로그인해도
 // (관리자가 "누구한테 보낼지" 조회할 때) 최신 토큰을 찾을 수 있음. registerPushToken()/sendPushForLogEntry() 참고
 let sharedPushTokens = [];
+// 알림 종류별로 푸시를 받을지 말지 - 이메일별로 저장 [email: {notice, approvalNew, approvalDecision}].
+// 값이 없는 항목은 기본 "받음"으로 취급함(notificationCategoryEnabled 참고) - 그래야 이 기능이 생기기 전부터
+// 쓰던 계정들도 따로 설정 안 하면 예전처럼 계속 알림을 받음. 회사 공용 저장소(pushTokens와 같은 자리)에 둬서,
+// 알림을 실제로 보내는 쪽(나와 다른 사람 브라우저 아무나)이 "받는 사람이 그 종류를 꺼뒀는지"를 바로 조회할 수 있음
+let sharedNotificationPrefs = {};
 // attachments가 없는 예전 문서는 attachmentLink(콤마로 구분된 링크 문자열)만 갖고 있음 - attachmentListHtml()이 이 경우를 폴백 처리함
 let sharedReviewFigures = {}; // 검토표(원천세) 거래처별 월별 실제 숫자: { [clientId]: { [year]: { [month]: { income:{[fieldKey]:num}, incomeReported:num, tax:{[groupKey]:{tax:num, local:num}}, taxReported:{[근로/일용/사업/기타/이자]:num}, taxReportedLocal:num } } } }
 let sharedReviewMeta = {}; // 검토표(원천세) 거래처별 설정: { [clientId]: { sameMonth:true/false(귀속=지급 동일 여부), payCycle:'매월'|'반기', secondHalfPayCycle:null|'매월'|'반기' } } - 원본 엑셀 '2026 총괄' 시트의 귀속/지급, 신고구분 값과 동일. secondHalfPayCycle은 연중(7월부터) 신고구분이 바뀌는 거래처를 위한 값 - null이면 1~12월 내내 payCycle 그대로, 값이 있으면 7~12월만 그 값을 씀(신고구분 전환은 반기 단위로만 일어나므로 7월 기준 한 번만 지원)
@@ -5177,8 +5239,36 @@ function loadSharedData(){
   try{ sharedTeamPolicyHistory = JSON.parse(localStorage.getItem('worklog_shared_teampolicyhistory') || '[]') || []; }catch(e){ sharedTeamPolicyHistory = []; }
   try{ sharedOpsPolicyHistory = JSON.parse(localStorage.getItem('worklog_shared_opspolicyhistory') || '[]') || []; }catch(e){ sharedOpsPolicyHistory = []; }
   try{ sharedPushTokens = JSON.parse(localStorage.getItem('worklog_shared_pushtokens') || '[]') || []; }catch(e){ sharedPushTokens = []; }
+  try{ sharedNotificationPrefs = JSON.parse(localStorage.getItem('worklog_shared_notificationprefs') || '{}') || {}; }catch(e){ sharedNotificationPrefs = {}; }
 }
 async function saveSharedPushTokens(){ try{ localStorage.setItem('worklog_shared_pushtokens', JSON.stringify(sharedPushTokens)); }catch(e){ console.error('푸시 토큰 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedNotificationPrefs(){ try{ localStorage.setItem('worklog_shared_notificationprefs', JSON.stringify(sharedNotificationPrefs)); }catch(e){ console.error('알림 설정 저장 실패', e); } gdriveScheduleSync(); }
+// 알림 종류(category: 'notice'|'approvalNew'|'approvalDecision')별로 이 이메일이 푸시를 받을지 - 설정한 적
+// 없으면(값이 없으면) 기본 true(받음)
+function notificationCategoryEnabled(email, category){
+  const key = (email||'').toLowerCase();
+  const p = sharedNotificationPrefs[key];
+  if(!p || p[category] === undefined) return true;
+  return !!p[category];
+}
+// 설정 > 알림 화면의 켜고/끄기 스위치들을 지금 로그인한 내 이메일 기준 저장값으로 맞춰줌 - loadAll()에서
+// (로그인/동기화 직후) 호출됨. 다른 기기에서 설정을 바꾼 뒤 이 기기에서 동기화됐을 때도 최신값으로 보이게
+// 매번 다시 그림(체크 상태만 바꾸는 거라 가볍게 자주 불러도 괜찮음)
+function renderNotificationPrefsUI(){
+  const myEmail = (currentUserEmail||'').toLowerCase();
+  document.querySelectorAll('.notif-pref-toggle').forEach(cb=>{
+    cb.checked = notificationCategoryEnabled(myEmail, cb.dataset.category);
+  });
+}
+document.querySelectorAll('.notif-pref-toggle').forEach(cb=>{
+  cb.addEventListener('change', ()=>{
+    const myEmail = (currentUserEmail||'').toLowerCase();
+    if(!myEmail) return;
+    sharedNotificationPrefs[myEmail] = sharedNotificationPrefs[myEmail] || {};
+    sharedNotificationPrefs[myEmail][cb.dataset.category] = cb.checked;
+    saveSharedNotificationPrefs();
+  });
+});
 function readSharedClients(){ try{ const v = localStorage.getItem('worklog_shared_clients'); return v ? JSON.parse(v) : { list:[] }; }catch(e){ return { list:[] }; } }
 function readSharedPersonalInfo(){ try{ const v = localStorage.getItem('worklog_shared_personalinfo'); return v ? JSON.parse(v) : { list:[] }; }catch(e){ return { list:[] }; } }
 // 이력을 카테고리('hr'=인사지침/'ops'=운영지침)별로 읽고 쓰는 공용 헬퍼 - 실제 저장소는 각각
@@ -5427,27 +5517,39 @@ async function registerPushToken(){
     const token = await messaging.getToken({ vapidKey: FIREBASE_VAPID_KEY, serviceWorkerRegistration: reg });
     if(!token) return;
     sharedPushTokens = sharedPushTokens || [];
-    const existing = sharedPushTokens.find(t=>(t.email||'').toLowerCase()===email && t.token===token);
+    // 토큰은 기기(브라우저)마다 다르게 발급되므로, 같은 사람이 여러 기기(사무실 PC·집 PC·휴대폰 등)에서
+    // 각각 "알림 받기"를 켜두면 그 기기 수만큼 토큰이 나란히 쌓여서 전부 다 알림을 받게 함. 예전엔 이메일
+    // 기준으로 예전 기기 토큰을 지우고 최신 것 하나만 남겨서 "가장 최근에 켠 기기만 알림 온다"는 문제가
+    // 있었는데, 여러 기기에서 다 받고 싶다는 게 당연한 기대라 그 기기만 골라 지우던 로직을 없앰
+    const existing = sharedPushTokens.find(t=>t.token===token);
     if(existing){
+      existing.email = email; // 같은 기기에서 이메일이 바뀐 경우(다른 계정으로 로그인)에도 최신 이메일로 갱신
       existing.updatedAt = new Date().toISOString();
     } else {
-      // 같은 사람이 예전 기기/브라우저에서 등록해둔 오래된 토큰은 지우고 최신 것만 남김(끝없이 쌓이지 않게)
-      sharedPushTokens = sharedPushTokens.filter(t=>(t.email||'').toLowerCase()!==email);
       sharedPushTokens.push({ id: genId(), email, token, updatedAt: new Date().toISOString() });
     }
+    // 대신, 90일 넘게 갱신이 안 된(오랫동안 켜본 적 없는 = 더 이상 안 쓰는 기기일 가능성이 큰) 토큰은
+    // 조용히 정리해서 무한정 쌓이지 않게 함
+    const staleCutoff = Date.now() - 90*24*60*60*1000;
+    sharedPushTokens = sharedPushTokens.filter(t=> t.updatedAt && new Date(t.updatedAt).getTime() > staleCutoff);
     await saveSharedPushTokens();
   }catch(e){ console.error('푸시 토큰 등록 실패(무시하고 계속)', e); }
 }
 // 알림함(sharedNotificationLog)에 실제로 "새로" 쌓일 때만 호출됨(pushNotificationLogEntry의 중복방지를 통과한
 // 경우) - 대상자가 등록해둔 토큰이 있으면 Cloud Function에 발송을 요청함. targetEmail이 '*'(전체공지)이면
 // 나 자신은 빼고 나머지 전원에게 보냄
+// entry.type('notice'/'approval-new'/'approval-decision')을 설정(설정>알림) 쪽 카테고리 키로 바꿔줌
+const NOTIFICATION_TYPE_TO_CATEGORY = { 'notice':'notice', 'approval-new':'approvalNew', 'approval-decision':'approvalDecision' };
 async function sendPushForLogEntry(entry){
   try{
     if(!entry || !entry.targetEmail || !(sharedPushTokens||[]).length) return;
     const myEmail = (currentUserEmail||'').toLowerCase();
-    const targets = entry.targetEmail === '*'
+    const category = NOTIFICATION_TYPE_TO_CATEGORY[entry.type];
+    let targets = entry.targetEmail === '*'
       ? sharedPushTokens.filter(t=>t.token && (t.email||'').toLowerCase() !== myEmail)
       : sharedPushTokens.filter(t=>t.token && (t.email||'').toLowerCase() === (entry.targetEmail||'').toLowerCase());
+    // 설정 > 알림에서 이 종류를 꺼둔 사람에게는 (알림함엔 그대로 남지만) 푸시만 안 보냄
+    if(category) targets = targets.filter(t=>notificationCategoryEnabled(t.email, category));
     if(!targets.length) return;
     await fetch(PUSH_SEND_ENDPOINT, {
       method: 'POST',
@@ -7598,6 +7700,7 @@ async function loadAll(){
     document.getElementById('h1MonthLabel').textContent = h1EndMonth;
     document.getElementById('h2MonthLabel').textContent = Number(h1EndMonth) + 1;
   }
+  renderNotificationPrefsUI();
 }
 
 async function saveSettings(){ try{ localStorage.setItem(skey('settings'), JSON.stringify(settings)); syncProfileName(); }catch(e){ console.error('설정 저장 실패', e); } gdriveScheduleSync(); }
@@ -9359,15 +9462,15 @@ function openClientDetailModal(c){
   // 하드코딩돼 있어서 소제목 스타일을 바꿔도 여기만 안 바뀌는 문제가 있었음)
   html += group('개인정보', '<div id="clientDetailPiWrap"></div>');
 
-  document.getElementById('memoModalBody').innerHTML = `
-    <div style="display:flex; align-items:center; justify-content:flex-end; margin-bottom:12px;">
-      <div style="display:flex; gap:10px;">
-        <button type="button" id="clientDetailEditBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="수정" style="color:var(--navy); background:transparent; border:none; padding:2px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>
-        <button type="button" id="clientDetailHistoryBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="이력" style="color:var(--ink-soft); background:transparent; border:none; padding:2px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 16 14"></polyline></svg></button>
-        <button type="button" id="clientDetailDeleteBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="삭제" style="color:var(--coral); background:transparent; border:none; padding:2px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
-      </div>
-    </div>
-    ${html}`;
+  // 상호명(제목)+수정/이력/삭제 아이콘 줄을 스크롤해도 안 사라지도록 memoModalBody가 아니라, sticky로
+  // 고정되는 #memoModalTitleExtra 쪽에 채워넣음(위 memoModalTitleWrap 설명 참고)
+  document.getElementById('memoModalTitleExtra').innerHTML = `
+    <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-top:8px;">
+      <button type="button" id="clientDetailEditBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="수정" style="color:var(--navy); background:transparent; border:none; padding:2px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>
+      <button type="button" id="clientDetailHistoryBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="이력" style="color:var(--ink-soft); background:transparent; border:none; padding:2px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 16 14"></polyline></svg></button>
+      <button type="button" id="clientDetailDeleteBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="삭제" style="color:var(--coral); background:transparent; border:none; padding:2px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
+    </div>`;
+  document.getElementById('memoModalBody').innerHTML = html;
   document.getElementById('memoModalOverlay').style.display = 'flex';
   renderClientDetailPersonalInfoSection(c);
   document.getElementById('clientDetailHistoryBtn')?.addEventListener('click', ()=>{
@@ -9448,6 +9551,8 @@ async function renderClientDetailPersonalInfoSection(c){
 function closeMemoModal(){
   document.getElementById('memoModalOverlay').style.display = 'none';
   document.getElementById('memoModalOverlay').dataset.noBackdropClose = '';
+  const titleExtra = document.getElementById('memoModalTitleExtra');
+  if(titleExtra) titleExtra.innerHTML = ''; // 거래처 상세정보 팝업의 수정/이력/삭제 아이콘 줄이 다음에 여는 다른 안내 팝업에 그대로 남아있지 않도록 매번 비움
   if(typeof revokeApprovalAttachmentObjectUrls === 'function') revokeApprovalAttachmentObjectUrls(); // 기안 미리보기의 이미지 첨부 object URL 정리
   if(typeof applyApprovalPreviewScale === 'function') window.removeEventListener('resize', applyApprovalPreviewScale); // 기안 미리보기 축소 리스너 정리
   document.getElementById('memoModalBox')?.classList.remove('memo-modal-box-wide'); // 기안 미리보기가 넓혀둔 팝업 폭을 다음 용도(공지사항 등)를 위해 원래대로 되돌림
@@ -11755,9 +11860,9 @@ function restoreAdTaxTargetFromItem(item){
   if(clientEl && item.taxClientId) clientEl.value = item.taxClientId;
 }
 document.getElementById('ad-doctype')?.addEventListener('change', syncAdTaxTargetRow);
-document.getElementById('ad-tax-year')?.addEventListener('change', ()=>{ populateAdTaxClientSelect(); syncAdTaxTitle(); });
-document.getElementById('ad-tax-vat-period')?.addEventListener('change', ()=>{ populateAdTaxClientSelect(); syncAdTaxTitle(); });
-document.getElementById('ad-tax-client')?.addEventListener('change', syncAdTaxTitle);
+document.getElementById('ad-tax-year')?.addEventListener('change', ()=>{ populateAdTaxClientSelect(); syncAdTaxTitle(); refreshAutoPhraseIfTaxActive(); });
+document.getElementById('ad-tax-vat-period')?.addEventListener('change', ()=>{ populateAdTaxClientSelect(); syncAdTaxTitle(); refreshAutoPhraseIfTaxActive(); });
+document.getElementById('ad-tax-client')?.addEventListener('change', ()=>{ syncAdTaxTitle(); refreshAutoPhraseIfTaxActive(); });
 // 휴가는 매번 다른 제목을 고민할 필요가 없는 정형화된 신청이라, 문서종류를 휴가로 고르면 제목이 항상
 // "휴가 신청"으로 자동으로 채워지게 함(지출결의서 제목이 정산월에 맞춰 자동으로 채워지는 것과 같은 방식)
 document.getElementById('ad-doctype')?.addEventListener('change', function(){
@@ -11864,11 +11969,18 @@ function adTaxSummaryTableHtml(){
     + `<tr><td style="${th}">특이사항</td><td style="${tdNote}">&nbsp;</td></tr>`
     + `</tbody></table>`;
 }
-// 휴가 일정 선택칸(종류/세부유형/날짜)을 바꿨는데 이미 "+자동문구"로 기안내용을 채워둔 상태라면, 그 안의
-// 휴가 기간·종류 표도 같이 최신값으로 갈아끼워줌 - 안 그러면 날짜를 바꿔도 기안내용엔 처음 눌렀을 때의
+// 휴가 일정 선택칸(종류/세부유형/날짜)을 바꾸면, 기안내용은 이제 항상 자동으로 채워지는 상태이므로 그 안의
+// 휴가 기간·종류 표도 같이 최신값으로 갈아끼워줌 - 안 그러면 날짜를 바꿔도 기안내용엔 처음 채워졌을 때의
 // 날짜가 그대로 남아있는 문제가 있었음
 function refreshAutoPhraseIfLeaveActive(){
-  if(adAutoPhraseActive && document.getElementById('ad-doctype')?.value === '휴가') applyAdAutoPhrase();
+  if(document.getElementById('ad-doctype')?.value === '휴가') applyAdAutoPhrase();
+}
+// 부가세/법인세/종소세 등 세무 관련 필드(연도/기간/거래처)를 바꾸면, 기안내용은 이제 항상 자동으로
+// 채워지는 상태이므로 그 안의 세무 신고대상 표도 같이 최신값으로 갈아끼워줌 (휴가 쪽의
+// refreshAutoPhraseIfLeaveActive와 동일한 목적)
+function refreshAutoPhraseIfTaxActive(){
+  const docType = document.getElementById('ad-doctype')?.value;
+  if(typeof AD_TAX_DOCTYPE_KEY !== 'undefined' && AD_TAX_DOCTYPE_KEY[docType]) applyAdAutoPhrase();
 }
 document.getElementById('ad-doctype')?.addEventListener('change', syncAdLeaveTargetRow);
 document.getElementById('ad-leave-type')?.addEventListener('change', syncAdLeaveTypeFields);
@@ -12620,9 +12732,14 @@ function renderHomeDashboardGrid(){
   const cfg = getDashboardConfig();
   const keys = cfg.order.filter(k=>cfg.enabled.has(k));
   if(grid) grid.innerHTML = keys.map(k=>dashboardWidgetHtml(k, cfg.shape[k])).join('');
-  document.querySelectorAll('#homeDashboardPinnedRow .home-dash-card[data-goto], #homeDashboardGrid .home-dash-card[data-goto]').forEach(card=>{
-    card.addEventListener('click', (e)=>{
-      if(e.target.closest('.home-dash-toggle') || e.target.closest('.home-dash-list-row')) return;
+  // 예전엔 카드 어디를 눌러도(화살표·목록 줄 포함) 그 탭으로 이동했는데, 카드 안에 눌러야 하는 요소(팀캘린더
+  // 전/다음 달 화살표 등)가 생기면서 실수로 화면이 계속 다른 탭으로 튕기는 문제가 있었음 - "바로가기/더보기"
+  // 링크를 눌렀을 때만 이동하도록 바꿈(카드 본문을 눌러도 더 이상 이동하지 않음)
+  document.querySelectorAll('#homeDashboardPinnedRow .home-dash-card[data-goto] > .home-dash-card-title > .home-dash-card-link').forEach(linkEl=>{
+    linkEl.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const card = linkEl.closest('.home-dash-card[data-goto]');
+      if(!card) return;
       const target = document.querySelector(`.tab-btn[data-tab="${card.dataset.goto}"]`);
       if(target) target.click();
       // 결재현황 카드는 "업무" 탭(data-tab="approval") 안에 신고현황/제출현황/결재 등 여러 하위 화면이
@@ -12634,8 +12751,23 @@ function renderHomeDashboardGrid(){
       }
     });
   });
-  document.getElementById('dashNoticeCard')?.addEventListener('click', (e)=>{
-    if(e.target.closest('[data-notice-id]')) return;
+  document.querySelectorAll('#homeDashboardGrid .home-dash-card[data-goto] > .home-dash-card-title > .home-dash-card-link').forEach(linkEl=>{
+    linkEl.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const card = linkEl.closest('.home-dash-card[data-goto]');
+      if(!card) return;
+      const target = document.querySelector(`.tab-btn[data-tab="${card.dataset.goto}"]`);
+      if(target) target.click();
+      if(card.dataset.goto === 'approval'){
+        document.querySelector('.approval-cat-btn[data-approval-cat="doc"]')?.click();
+        document.querySelector('.approval-doc-btn[data-approval-doc="all"]')?.click();
+      }
+    });
+  });
+  // 공지사항 카드는 goto 탭 버튼이 따로 없어서(공지사항은 tab-btn이 아니라 activateTab을 직접 호출) 위와
+  // 별도로 처리 - 역시 "더보기" 링크를 눌렀을 때만 이동함
+  document.querySelector('#dashNoticeCard > .home-dash-card-title > .home-dash-card-link')?.addEventListener('click', (e)=>{
+    e.stopPropagation();
     activateTab('notice', true);
   });
   bindDashboardTaxScheduleShortcuts();
@@ -12819,24 +12951,23 @@ function renderDashboardCalendarPreview(monthStr){
   // 여백을 더 줘서 카드 제목(.home-dash-card-title)과 비슷하게 이 표 전용 소제목처럼 보이게 함
   const headerHtml = `<div style="display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:11px; padding-bottom:9px; border-bottom:1.5px solid color-mix(in srgb, var(--accent, var(--mint)) 25%, var(--border));">
       <button type="button" class="cal-nav-arrow" id="dashCalPrevBtn" title="이전 달" style="width:20px; height:20px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
-      <span style="font-size:15.5px; font-weight:800; color:var(--ink); min-width:68px; text-align:center;">${Number(monthStr.slice(5,7))}월 팀 일정</span>
+      <span style="font-size:15.5px; font-weight:800; color:var(--ink); min-width:112px; text-align:center;">${monthStr.slice(0,4)}년 ${Number(monthStr.slice(5,7))}월 팀 일정</span>
       <button type="button" class="cal-nav-arrow" id="dashCalNextBtn" title="다음 달" style="width:20px; height:20px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
     </div>`;
   // 이 카드 전체(.home-dash-card[data-goto])에는 "어디를 눌러도 팀캘린더 탭으로 이동"하는 클릭 핸들러가
   // 따로 걸려있어서(renderHomeDashboardGrid 참고), 화살표를 눌렀을 때 그 클릭이 부모까지 그대로 전파되면
-  // 월만 바뀌는 게 아니라 곧바로 팀캘린더 탭으로 튕겨버리는 문제가 있었음 - stopPropagation으로 막음
+  // 월만 바뀌는 게 아니라 곧바로 팀캘린더 탭으로 튕겨버리는 문제가 있었음 - stopPropagation으로 막음.
+  // 예전엔 new Date(...).setMonth()+toISOString()으로 월을 계산했는데, toISOString()이 KST(UTC+9) 로컬
+  // 시각을 UTC로 바꾸면서 날짜가 하루/한달 밀리는 문제가 있어서(화살표를 누를 때마다 1달씩이 아니라
+  // 3,5,7월처럼 들쭉날쭉 넘어가 보였음), 타임존 변환이 아예 없는 문자열 기반 monthAfter/monthBefore로 바꿈
   const bindDashCalNav = ()=>{
     document.getElementById('dashCalPrevBtn')?.addEventListener('click', (e)=>{
       e.stopPropagation();
-      const d = new Date(dashCalendarMonth+'-01T00:00:00');
-      d.setMonth(d.getMonth()-1);
-      renderDashboardCalendarPreview(d.toISOString().slice(0,7));
+      renderDashboardCalendarPreview(monthBefore(dashCalendarMonth));
     });
     document.getElementById('dashCalNextBtn')?.addEventListener('click', (e)=>{
       e.stopPropagation();
-      const d = new Date(dashCalendarMonth+'-01T00:00:00');
-      d.setMonth(d.getMonth()+1);
-      renderDashboardCalendarPreview(d.toISOString().slice(0,7));
+      renderDashboardCalendarPreview(monthAfter(dashCalendarMonth));
     });
   };
   const items = (typeof getProfiles === 'function') ? computeMonthTeamAgenda(monthStr) : [];
@@ -13265,10 +13396,9 @@ function renderDashboardApprovalAllPreview(){
   body.innerHTML = `<div class="home-dash-table">${headHtml}${rowsHtml}</div>`;
   body.querySelectorAll('.home-dash-table-row').forEach(row=>{
     row.addEventListener('click', (e)=>{
+      // 예전엔 줄을 클릭하면 결재 탭으로도 같이 이동시켰는데, 대시보드에서는 "바로가기" 링크를 눌렀을 때만
+      // 탭 이동하고 나머지 영역 클릭은 그 자리에서 상세 모달만 열리게 해달라는 요청으로 탭 이동 부분을 뺌
       e.stopPropagation();
-      document.querySelector('.tab-btn[data-tab="approval"]')?.click();
-      document.querySelector('.approval-cat-btn[data-approval-cat="doc"]')?.click();
-      document.querySelector('.approval-doc-btn[data-approval-doc="all"]')?.click();
       if(typeof openApprovalDetailModal === 'function') openApprovalDetailModal(row.dataset.approvalId);
     });
   });
@@ -19637,6 +19767,23 @@ document.querySelectorAll('.ad-rt-align').forEach(btn=>{
     if(cmd) document.execCommand(cmd, false, null);
   });
 });
+// "⊞ 표 삽입" 버튼 - 문서종류에 맞는 표(휴가 일정 표 또는 세무 신고대상·특이사항 표)를 통째로 다시 채우는
+// 게 아니라, 지금 커서가 있는 자리에 그 표 하나만 추가로 끼워넣음(자동으로 채워진 걸 손으로 지웠거나,
+// 표를 하나 더 넣고 싶을 때 씀)
+document.getElementById('ad-insert-box-btn')?.addEventListener('mousedown', (e)=>e.preventDefault());
+document.getElementById('ad-insert-box-btn')?.addEventListener('click', ()=>{
+  const docType = document.getElementById('ad-doctype')?.value || '일반';
+  let boxHtml = '';
+  if(docType === '휴가'){
+    boxHtml = typeof adLeaveSummaryTableHtml === 'function' ? adLeaveSummaryTableHtml() : '';
+  } else if(typeof AD_TAX_DOCTYPE_KEY !== 'undefined' && AD_TAX_DOCTYPE_KEY[docType]){
+    boxHtml = typeof adTaxSummaryTableHtml === 'function' ? adTaxSummaryTableHtml() : '';
+  }
+  if(!boxHtml){ appAlert('지금 문서종류·선택 상태에서는 넣을 수 있는 표가 없어요.'); return; }
+  const contentEl = document.getElementById('ad-content');
+  contentEl.focus();
+  document.execCommand('insertHTML', false, `<div style="text-align:center;"><br></div><div style="text-align:center;">${boxHtml}</div><div style="text-align:center;"><br></div>`);
+});
 // 문서종류별로 자주 쓰는 기안 문구(기안내용)를 미리 준비해두고, 버튼 한 번으로 내용칸에 채워줌 - 이미 내용이
 // 있으면 지우지 않고 그 뒤에 이어붙여서 기존에 쓰던 내용은 그대로 유지함. 항상 가운데 정렬로 "- 기안 내용 -"
 // 구분선으로 시작하는 정형화된 틀에 맞춰 넣어줌
@@ -19669,11 +19816,14 @@ function effectiveAutoPhraseContent(docType){
   }
   return AD_AUTO_PHRASE[docType] || AD_AUTO_PHRASE['일반'];
 }
-// "+자동문구" 버튼 - 누르면 매번 이어붙이지 않고, 항상 "가운데 정렬 + '- 기안 내용 -' 구분줄로 시작하는"
-// 정해진 틀로 내용칸을 통째로 채움. 문서종류가 휴가면 고른 휴가 일정 표를, 세무신고 3종(부가세·법인세·종소세)이면
-// 신고대상·특이사항 표(adTaxSummaryTableHtml)를 그 아래에 같이 채워줌. adAutoPhraseActive를 true로 켜두면, 이후
-// 문서종류를 바꿀 때 이 버튼을 다시 자동으로 눌러서 새 문서종류에 맞는 문구로 갈아끼워줌
-let adAutoPhraseActive = false;
+// 문서종류를 고르면(또는 바꾸면) 그 즉시 자동으로 내용칸을 채움 - 항상 "가운데 정렬 + '- 기안 내용 -'
+// 구분줄로 시작하는" 정해진 틀로 통째로 채우고, 문서종류가 휴가면 고른 휴가 일정 표를, 세무신고 3종
+// (부가세·법인세·종소세)이면 신고대상·특이사항 표(adTaxSummaryTableHtml)를 그 아래에 같이 채워줌.
+// 예전엔 "+자동문구" 버튼을 직접 눌러야만 채워지고, 한 번이라도 손으로 고치면 문서종류를 바꿔도 더는
+// 안 바뀌게 꺼지는 방식이었는데, 버튼을 누르는 걸 깜빡하기 쉽다는 요청으로 그 버튼과 on/off 스위치를
+// 없애고 문서종류가 바뀔 때마다 항상 새로 채우는 방식으로 단순화함(그래서 문서종류를 다 정한 뒤에
+// 내용을 손으로 보태는 순서로 쓰는 걸 권장 - 문서종류를 다시 바꾸면 그 사이 손으로 쓴 내용은 새 틀로
+// 덮어써짐)
 function applyAdAutoPhrase(){
   const docType = document.getElementById('ad-doctype')?.value || '일반';
   const content = effectiveAutoPhraseContent(docType);
@@ -19696,17 +19846,13 @@ function applyAdAutoPhrase(){
   // 누를 때마다 이어붙이면(예전 방식) 여러 번 누르면 같은 문구가 중복으로 계속 쌓이는 문제가 있었음 -
   // "+자동문구"는 항상 정해진 틀 하나로 통째로 채우는 버튼이라, 매번 처음부터 다시 씀(이어붙이지 않음)
   contentEl.innerHTML = `<div style="text-align:center;">- 기안 내용 -</div><div style="text-align:center;"><br></div><div style="text-align:center;">${contentHtml}</div>${extraHtml}`;
-  adAutoPhraseActive = true;
 }
-document.getElementById('ad-auto-phrase-btn')?.addEventListener('click', applyAdAutoPhrase);
-// 자동문구로 채운 뒤에 직접 내용을 손으로 고치면, 더는 "자동으로 유지되는 문구"가 아니므로 문서종류를
-// 바꿔도 더 이상 덮어쓰지 않게 꺼둠(사용자가 손댄 내용을 문서종류 변경만으로 날려버리지 않기 위함)
-document.getElementById('ad-content')?.addEventListener('input', ()=>{ adAutoPhraseActive = false; });
-// 자동문구를 이미 한 번 넣어둔 상태에서 문서종류를 바꾸면, 그 문서종류에 맞는 자동문구로 다시 갈아끼워줌 -
+// 예전엔 "+자동문구" 버튼을 눌러야만 채워지고, 한 번 손으로 고치면 문서종류를 바꿔도 더 이상 갱신되지
+// 않았음 - 버튼을 없애고, 문서종류를 바꿀 때마다 항상(무조건) 새로 채우는 방식으로 단순화함
 // 반드시 정산월/세무대상 거래처/휴가 일정 선택칸들이 새 문서종류에 맞춰 먼저 갱신된 뒤에 실행되도록,
 // 그 선택칸들을 채우는 다른 change 리스너들보다 나중에(스크립트 아래쪽에서) 등록함
 document.getElementById('ad-doctype')?.addEventListener('change', function(){
-  if(adAutoPhraseActive) applyAdAutoPhrase();
+  applyAdAutoPhrase();
 });
 // 기안문구 설정 팝업 - 문서종류마다 기안내용을 직접 수정하고 저장할 수 있게 함(회사 공통설정이라
 // 저장하면 전 직원에게 똑같이 적용됨). "기본값"은 항목별로 하드코딩된 기본 문구로 되돌림
@@ -22752,7 +22898,7 @@ function gdriveBuildPayload(){
     schemaVersion: SCHEMA_VERSION, syncedAt: new Date().toISOString(), profiles, data,
     // 거래처목록(clients)·개인정보(personalInfo)는 더 이상 직원 프로필별로 따로 저장되지 않고, 회사 전체가
     // 공유하는 단일 데이터라서 위 per-profile data가 아니라 shared 쪽에 실어 보냄(readSharedClients/readSharedPersonalInfo 참고)
-    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, notificationLog: sharedNotificationLog, notificationReadState: sharedNotificationReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, approvalReadState: sharedApprovalReadState, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta, profitLossReports: sharedProfitLossReports, filingTargets: sharedFilingTargets, filingCycles: sharedFilingCycles, autoPhrases: sharedAutoPhrases, itFilingStatus: sharedIncomeTaxFilingStatus, vatFilingTargets: sharedVatFilingTargets, vatReviewFigures: sharedVatReviewFigures, clients: readSharedClients(), personalInfo: readSharedPersonalInfo(), trash: sharedTrash, lunchLimitHistory: sharedLunchLimitHistory, taxScheduleOverrides: sharedTaxScheduleOverrides, taxScheduleCustomItems: sharedTaxScheduleCustomItems, teamPolicyHistory: sharedTeamPolicyHistory, opsPolicyHistory: sharedOpsPolicyHistory, pushTokens: sharedPushTokens }
+    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, notificationLog: sharedNotificationLog, notificationReadState: sharedNotificationReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, approvalReadState: sharedApprovalReadState, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta, profitLossReports: sharedProfitLossReports, filingTargets: sharedFilingTargets, filingCycles: sharedFilingCycles, autoPhrases: sharedAutoPhrases, itFilingStatus: sharedIncomeTaxFilingStatus, vatFilingTargets: sharedVatFilingTargets, vatReviewFigures: sharedVatReviewFigures, clients: readSharedClients(), personalInfo: readSharedPersonalInfo(), trash: sharedTrash, lunchLimitHistory: sharedLunchLimitHistory, taxScheduleOverrides: sharedTaxScheduleOverrides, taxScheduleCustomItems: sharedTaxScheduleCustomItems, teamPolicyHistory: sharedTeamPolicyHistory, opsPolicyHistory: sharedOpsPolicyHistory, pushTokens: sharedPushTokens, notificationPrefs: sharedNotificationPrefs }
   };
 }
 
@@ -23153,6 +23299,7 @@ async function gdrivePull(){
       if(merged.shared.teamPolicyHistory !== undefined) localStorage.setItem('worklog_shared_teampolicyhistory', JSON.stringify(merged.shared.teamPolicyHistory));
       if(merged.shared.opsPolicyHistory !== undefined) localStorage.setItem('worklog_shared_opspolicyhistory', JSON.stringify(merged.shared.opsPolicyHistory));
       if(merged.shared.pushTokens !== undefined) localStorage.setItem('worklog_shared_pushtokens', JSON.stringify(merged.shared.pushTokens));
+      if(merged.shared.notificationPrefs !== undefined) localStorage.setItem('worklog_shared_notificationprefs', JSON.stringify(merged.shared.notificationPrefs));
     }
     if(!getActiveProfileId() || !(merged.profiles||[]).find(p=>p.id===getActiveProfileId())){
       if(merged.profiles && merged.profiles.length) setActiveProfileId(merged.profiles[0].id);
