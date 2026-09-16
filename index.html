@@ -12814,19 +12814,26 @@ function renderDashboardCalendarPreview(monthStr){
   dashCalendarMonth = monthStr || todayStr().slice(0,7);
   monthStr = dashCalendarMonth;
   // 제목을 목록 위 가운데로 두고, 좌우에 전/다음 달 화살표를 붙여서 이번 달 외의 일정도 위젯 안에서 바로
-  // 넘겨볼 수 있게 함(예전엔 이번 달 고정 + "바로가기"로 팀캘린더 탭까지 가야만 다른 달을 볼 수 있었음)
-  const headerHtml = `<div style="display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:8px;">
+  // 넘겨볼 수 있게 함(예전엔 이번 달 고정 + "바로가기"로 팀캘린더 탭까지 가야만 다른 달을 볼 수 있었음).
+  // 제목 줄이 바로 아래 표(날짜/대상자/일정 헤더)와 너무 붙어 보인다는 피드백으로, 얇은 구분선(밑줄)과
+  // 여백을 더 줘서 카드 제목(.home-dash-card-title)과 비슷하게 이 표 전용 소제목처럼 보이게 함
+  const headerHtml = `<div style="display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:11px; padding-bottom:9px; border-bottom:1.5px solid color-mix(in srgb, var(--accent, var(--mint)) 25%, var(--border));">
       <button type="button" class="cal-nav-arrow" id="dashCalPrevBtn" title="이전 달" style="width:20px; height:20px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
       <span style="font-size:15.5px; font-weight:800; color:var(--ink); min-width:68px; text-align:center;">${Number(monthStr.slice(5,7))}월 팀 일정</span>
       <button type="button" class="cal-nav-arrow" id="dashCalNextBtn" title="다음 달" style="width:20px; height:20px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
     </div>`;
+  // 이 카드 전체(.home-dash-card[data-goto])에는 "어디를 눌러도 팀캘린더 탭으로 이동"하는 클릭 핸들러가
+  // 따로 걸려있어서(renderHomeDashboardGrid 참고), 화살표를 눌렀을 때 그 클릭이 부모까지 그대로 전파되면
+  // 월만 바뀌는 게 아니라 곧바로 팀캘린더 탭으로 튕겨버리는 문제가 있었음 - stopPropagation으로 막음
   const bindDashCalNav = ()=>{
-    document.getElementById('dashCalPrevBtn')?.addEventListener('click', ()=>{
+    document.getElementById('dashCalPrevBtn')?.addEventListener('click', (e)=>{
+      e.stopPropagation();
       const d = new Date(dashCalendarMonth+'-01T00:00:00');
       d.setMonth(d.getMonth()-1);
       renderDashboardCalendarPreview(d.toISOString().slice(0,7));
     });
-    document.getElementById('dashCalNextBtn')?.addEventListener('click', ()=>{
+    document.getElementById('dashCalNextBtn')?.addEventListener('click', (e)=>{
+      e.stopPropagation();
       const d = new Date(dashCalendarMonth+'-01T00:00:00');
       d.setMonth(d.getMonth()+1);
       renderDashboardCalendarPreview(d.toISOString().slice(0,7));
