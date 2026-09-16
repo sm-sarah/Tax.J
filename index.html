@@ -14477,8 +14477,10 @@ function getCustomTaxScheduleItemsForMonth(year, month){
 // 일정까지 미리 당겨와 보이는 문제가 있었음("9월 중순인데 벌써 10월 말 일정이 뜬다"는 지적) - 이제는
 // 개수를 채우는 대신 "오늘부터 한 달 뒤까지"라는 날짜 범위로만 잘라서, 그 범위 안의 일정만 보여줌
 function nextTaxScheduleItems(){
-  const today = todayStr();
   const now = new Date();
+  // 시작은 "오늘"이 아니라 "이번 달 1일"부터 - 이번 달에 이미 지난 기한(예: 9월 중순인데 9/10 원천세)도
+  // 계속 같이 보이게 함("현재월의 세무일정부터 나오게 해달라"는 요청). 끝은 그대로 오늘로부터 한 달 뒤까지
+  const windowStartStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
   const windowEndDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   windowEndDate.setMonth(windowEndDate.getMonth()+1);
   const windowEndStr = fmt(windowEndDate);
@@ -14488,7 +14490,7 @@ function nextTaxScheduleItems(){
     items = items.concat(getTaxScheduleForMonth(cy, cm));
     cm += 1; if(cm > 12){ cm = 1; cy += 1; }
   }
-  return items.filter(it=> it.date >= today && it.date <= windowEndStr).sort((a,b)=>a.date.localeCompare(b.date));
+  return items.filter(it=> it.date >= windowStartStr && it.date <= windowEndStr).sort((a,b)=>a.date.localeCompare(b.date));
 }
 // 신고현황(원천세/부가세/종소세/법인세)은 여기서 진행 건수를 다시 집계하지 않고, 사이드바와 똑같은 방식으로
 // 결재 탭의 해당 세목 신고현황 화면으로 바로 이동만 시켜줌 - "다 안 보여줘도 바로가기만 있으면 된다"는 요청
