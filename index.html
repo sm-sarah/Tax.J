@@ -4775,6 +4775,12 @@
             <label class="ios-toggle"><input type="checkbox" class="notif-pref-toggle" data-category="approvalDecision"><span class="ios-toggle-track"></span></label>
           </div>
         </div>
+        <div class="flat-row">
+          <div class="flat-row-label" style="flex:1 1 auto;">팀캘린더에 새 일정이 등록됐을 때</div>
+          <div class="flat-row-control" style="flex:0 0 auto; justify-content:flex-end;">
+            <label class="ios-toggle"><input type="checkbox" class="notif-pref-toggle" data-category="teamSchedule"><span class="ios-toggle-track"></span></label>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -5539,7 +5545,7 @@ async function registerPushToken(){
 // 경우) - 대상자가 등록해둔 토큰이 있으면 Cloud Function에 발송을 요청함. targetEmail이 '*'(전체공지)이면
 // 나 자신은 빼고 나머지 전원에게 보냄
 // entry.type('notice'/'approval-new'/'approval-decision')을 설정(설정>알림) 쪽 카테고리 키로 바꿔줌
-const NOTIFICATION_TYPE_TO_CATEGORY = { 'notice':'notice', 'approval-new':'approvalNew', 'approval-decision':'approvalDecision' };
+const NOTIFICATION_TYPE_TO_CATEGORY = { 'notice':'notice', 'approval-new':'approvalNew', 'approval-decision':'approvalDecision', 'team-schedule':'teamSchedule' };
 async function sendPushForLogEntry(entry){
   try{
     if(!entry || !entry.targetEmail || !(sharedPushTokens||[]).length) return;
@@ -6352,6 +6358,31 @@ function checkNewNoticesForBrowserNotify(){
   });
   localStorage.setItem('worklog_notified_notice_ids', JSON.stringify(sharedNoticeHistory.map(n=>n.id).slice(0,500)));
 }
+// 팀캘린더에 공유로 등록된 일정(개인캘린더에서 "공유" 체크한 일정)도 공지사항·결재처럼 알림함/푸시로 알려달라는
+// 요청으로 추가함 - 일정은 공지/결재와 달리 회사 공용 저장소가 아니라 직원별 프로필 데이터(schedule)에 각자
+// 흩어져 있어서, computeMonthTeamAgenda()와 같은 방식으로 전 직원의 schedule.events를 훑어서 찾아냄.
+// 지난 일정까지 전부 훑으면 이 기능이 생긴 순간 과거 일정이 알림으로 한꺼번에 쏟아지므로, 오늘 이후(오늘
+// 포함) 일정만 대상으로 함. pushNotificationLogEntry 자체가 중복(이미 알림함에 있는 건) 방지를 하므로,
+// 동기화될 때마다 반복 호출해도 매번 새로 알림이 쌓이진 않음
+function checkNewTeamScheduleForBrowserNotify(){
+  if(typeof getProfiles !== 'function') return;
+  const me0 = currentStaffDisplayName();
+  const today0 = todayStr();
+  getProfiles().forEach(p=>{
+    const s = readProfileRaw(p.id,'settings') || {};
+    const sch = readProfileRaw(p.id,'schedule') || { events:[] };
+    const name = s.employeeName || p.name || '(미등록)';
+    if(name === me0) return; // 내가 등록한 일정은 나에게 알리지 않음(등록한 사람 본인은 이미 알고 있음)
+    (sch.events||[]).filter(e=>e.shared !== false && e.date >= today0).forEach(e=>{
+      pushNotificationLogEntry({
+        type:'team-schedule', icon:'team-schedule',
+        title:`팀 일정 등록: ${e.type || '일정'}`,
+        body:`${name} · ${shortDateLabel(e.date)}${e.memo ? ' · '+e.memo : ''}`,
+        targetEmail:'*', relatedId:e.id, eventAt:e.date
+      });
+    });
+  });
+}
 // 공지사항을 메일로 전달할 때 기본으로 채워둘 수신자(전 직원 + 관리자 이메일, 중복 제거) - Gmail 창에서 실제 보낼 사람만 남기고 지우면 됨
 function noticeAllRecipientEmails(){
   const profileEmails = getProfiles().map(p=>(p.email||'').trim()).filter(Boolean);
@@ -7111,7 +7142,7 @@ async function emptyTrash(){
 // 나눠서 봄(공지사항/결재 목록과 같은, 최근 걸 앞으로 두는 구성)
 const NOTIFICATION_PAGE_SIZE = 10;
 let notificationListPage = 1;
-const NOTIFICATION_TYPE_LABEL = { 'approval-new':'결재 요청', 'approval-decision':'결재 결과', 'notice':'공지' };
+const NOTIFICATION_TYPE_LABEL = { 'approval-new':'결재 요청', 'approval-decision':'결재 결과', 'notice':'공지', 'team-schedule':'팀 일정' };
 // eventAt(실제 기안/결정/공지 시각)이 있으면 그대로 쓰고, 옛날 방식으로 남아있던 항목만 createdAt(알림이
 // 처음 기록된 시각)으로라도 보여줌 - fixNotificationLogEntries()가 로딩 때 대부분 eventAt으로 보정해줌
 function notificationTimeLabel(n){
@@ -7170,7 +7201,8 @@ function notificationTypeIconSvg(icon){
     'approval-request': `<svg ${s}><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
     'approval-approved': `<svg ${s}><circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/></svg>`,
     'approval-rejected': `<svg ${s}><circle cx="12" cy="12" r="9"/><path d="m9.5 9.5 5 5"/><path d="m14.5 9.5-5 5"/></svg>`,
-    'notice': `<svg ${s}><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>`
+    'notice': `<svg ${s}><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>`,
+    'team-schedule': `<svg ${s}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>`
   };
   return icons[icon] || `<svg ${s}><circle cx="12" cy="12" r="9"/></svg>`;
 }
@@ -7178,6 +7210,7 @@ function notificationTypeColor(icon){
   if(icon==='approval-approved') return { bg:'var(--mint-bg)', fg:'var(--mint)' };
   if(icon==='approval-rejected') return { bg:'var(--coral-bg)', fg:'var(--coral)' };
   if(icon==='notice') return { bg:'var(--navy-bg)', fg:'var(--navy)' };
+  if(icon==='team-schedule') return { bg:'var(--guide-slate-bg)', fg:'var(--guide-slate)' };
   return { bg:'var(--indigo-bg)', fg:'var(--indigo)' }; // approval-request(결재 요청) 기본
 }
 // 브라우저 OS 알림(new Notification)은 제목이 순수 텍스트라 위 notificationTypeIconSvg를 그대로 못 넣고,
@@ -7185,12 +7218,13 @@ function notificationTypeColor(icon){
 // data:image/svg+xml로 만들어 넘김. 예전엔 제목 앞에 🖐️/📢 같은 이모지를 붙였었는데, 앱 안 알림함처럼
 // 이모지 대신 우리 아이콘 스타일로 통일해달라는 요청
 function notificationIconDataUri(icon){
-  const colorHex = { 'approval-request':'#5B5FEF', 'approval-approved':'#0FB88A', 'approval-rejected':'#F0506E', 'notice':'#1E2A5E' }[icon] || '#5B5FEF';
+  const colorHex = { 'approval-request':'#5B5FEF', 'approval-approved':'#0FB88A', 'approval-rejected':'#F0506E', 'notice':'#1E2A5E', 'team-schedule':'#3D5A80' }[icon] || '#5B5FEF';
   const paths = {
     'approval-request': '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
     'approval-approved': '<circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/>',
     'approval-rejected': '<circle cx="12" cy="12" r="9"/><path d="m9.5 9.5 5 5"/><path d="m14.5 9.5-5 5"/>',
-    'notice': '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>'
+    'notice': '<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>',
+    'team-schedule': '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/>'
   };
   const pathD = paths[icon] || '<circle cx="12" cy="12" r="9"/>';
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="32" fill="${colorHex}"/><g transform="translate(16,16)"><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${pathD}</g></g></svg>`;
@@ -7598,6 +7632,7 @@ async function loadAll(){
   renderNoticeIfOpen();
   checkNewApprovalsForBrowserNotify();
   checkApprovalDecisionsForBrowserNotify();
+  checkNewTeamScheduleForBrowserNotify();
   updateNotificationUnreadBadge();
   await saveSettings();
   await saveAttendance();
@@ -7706,7 +7741,14 @@ async function loadAll(){
 async function saveSettings(){ try{ localStorage.setItem(skey('settings'), JSON.stringify(settings)); syncProfileName(); }catch(e){ console.error('설정 저장 실패', e); } gdriveScheduleSync(); }
 async function saveAttendance(){ try{ localStorage.setItem(skey('attendance'), JSON.stringify(attendance)); }catch(e){ console.error('근태 저장 실패', e); } gdriveScheduleSync(); }
 async function saveExpense(){ try{ localStorage.setItem(skey('expense'), JSON.stringify(expense)); }catch(e){ console.error('경비 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSchedule(){ try{ localStorage.setItem(skey('schedule'), JSON.stringify(schedule)); }catch(e){ console.error('일정 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSchedule(){
+  try{ localStorage.setItem(skey('schedule'), JSON.stringify(schedule)); }catch(e){ console.error('일정 저장 실패', e); }
+  gdriveScheduleSync();
+  // saveSharedApprovals()와 같은 이유 - 이 브라우저에서 방금 바뀐 일정을 계기로도 알림 조건을 바로 한 번
+  // 확인해둠(같은 계정으로 여러 기기를 쓰는 경우 등을 대비). 정작 다른 직원에게 알림이 가는 시점은
+  // 그 직원 쪽 브라우저가 동기화될 때(loadAll)이지만, 함수 자체는 중복 발송 방지가 있어 여러 번 불러도 안전함
+  if(typeof checkNewTeamScheduleForBrowserNotify === 'function') checkNewTeamScheduleForBrowserNotify();
+}
 async function saveClients(){ try{ localStorage.setItem('worklog_shared_clients', JSON.stringify(clients)); }catch(e){ console.error('거래처 저장 실패', e); } gdriveScheduleSync(); }
 async function savePersonalInfo(){ try{ localStorage.setItem('worklog_shared_personalinfo', JSON.stringify(personalInfo)); }catch(e){ console.error('개인정보 저장 실패', e); } gdriveScheduleSync(); }
 
@@ -13209,14 +13251,23 @@ function renderDashboardClockCard(){
   });
   // 출근/퇴근은 한 번 잘못 찍으면 되돌리기로 취소는 되지만, 애초에 실수로 찍는 일 자체를 줄이도록
   // 누르는 순간 실행하지 않고 "출근하시겠습니까?" 확인을 한 번 거치게 함
-  document.getElementById('dashClockInBtn')?.addEventListener('click', async ()=>{
-    if(!(await appConfirm('출근하시겠습니까?'))) return;
+  // 느린 화면(특히 모바일)에서 확인창이 뜨기 전에 버튼을 연달아 누르면, 두 번째 클릭이 같은 확인창을
+  // 다시 열면서 첫 번째 클릭의 await가 응답을 못 받고 묶여버리는 문제가 있었음(직원이 "여러 번 눌렀는데
+  // 저장이 안 되어있다"고 한 것도 이 증상으로 추정) - 버튼을 누른 즉시(확인창 뜨기 전에) 비활성화해서
+  // 같은 버튼이 두 번 눌리는 것 자체를 막음. 재활성화는 renderDashboardClockCard()가 카드를 다시 그리면서
+  // (확인/취소 어느 쪽이든) 버튼을 새로 만들어주므로 따로 안 해도 됨
+  document.getElementById('dashClockInBtn')?.addEventListener('click', async function(){
+    if(this.disabled) return;
+    this.disabled = true;
+    if(!(await appConfirm('출근하시겠습니까?'))){ this.disabled = false; return; }
     todayClockEntry(true).checkIn = nowHHMM();
     await saveAttendance();
     renderDashboardClockCard();
   });
-  document.getElementById('dashClockOutBtn')?.addEventListener('click', async ()=>{
-    if(!(await appConfirm('퇴근하시겠습니까?'))) return;
+  document.getElementById('dashClockOutBtn')?.addEventListener('click', async function(){
+    if(this.disabled) return;
+    this.disabled = true;
+    if(!(await appConfirm('퇴근하시겠습니까?'))){ this.disabled = false; return; }
     todayClockEntry(true).checkOut = nowHHMM();
     await saveAttendance();
     renderDashboardClockCard();
@@ -15812,6 +15863,13 @@ function _appConfirmOpen(message, opts){
   const okBtn = document.getElementById('appConfirmModalOkBtn');
   const cancelBtn = document.getElementById('appConfirmModalCancelBtn');
   if(!overlay || !msgEl || !okBtn || !cancelBtn){ return Promise.resolve(true); }
+  // 이 팝업은 전역에서 하나만 쓰는 싱글턴이라, 앞서 연 확인창이 아직 답을 받기 전에(예: 느린 화면에서
+  // 버튼을 연달아 눌러 확인창이 다시 열리는 경우) 또 열리면 _appConfirmResolve가 새 걸로 덮어써져서
+  // 앞의 await가 영원히 안 풀리는 문제가 있었음(예: 출퇴근 버튼을 여러 번 누르면 그중 앞선 클릭의
+  // "저장" 코드가 응답을 영원히 못 받아 실행이 안 되고, 정작 사용자 눈엔 마지막 확인창 하나만 보여서
+  // 분명히 눌렀는데 저장이 안 된 것처럼 보이는 원인 중 하나) - 새로 열기 전에 이전 확인은 취소(false)로
+  // 먼저 끝내서 절대 방치되지 않게 함
+  if(_appConfirmResolve) _appConfirmClose(false);
   msgEl.textContent = message == null ? '' : String(message);
   okBtn.textContent = opts.okText || '확인';
   cancelBtn.textContent = opts.cancelText || '취소';
