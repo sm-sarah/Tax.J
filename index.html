@@ -3063,7 +3063,7 @@
         <button type="button" id="expenseRegisterBtn" class="del-btn" style="background:var(--coral-bg); color:var(--coral);" title="경비 등록"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 경비</button>
       </div>
       <div style="display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; margin-bottom:18px;">
-        <span style="justify-self:end; font-size:11.5px; font-weight:700; color:var(--indigo-deep); white-space:nowrap; background:var(--indigo-bg); border-radius:999px; padding:4px 10px;">이번달 근무가능일수 <span class="num" id="workdaysAutoValue" style="font-size:12px; font-weight:800; color:var(--indigo-deep);">-</span></span>
+        <span style="justify-self:end; font-size:11.5px; font-weight:700; color:var(--indigo-deep); white-space:nowrap; background:var(--indigo-bg); border-radius:999px; padding:4px 10px;">이번달 식대기준일수 <span class="num" id="workdaysAutoValue" style="font-size:12px; font-weight:800; color:var(--indigo-deep);">-</span></span>
         <div class="settings-group-title section-title-accent" style="font-size:19px; margin:0; white-space:nowrap;">경비정산</div>
         <div></div>
       </div>
@@ -5063,6 +5063,18 @@ function loadSharedData(){
   let exclusionsMigrated = false;
   sharedExclusionDays.forEach(x=>{ if(x.reason==='회식'){ x.reason='점심회식'; exclusionsMigrated = true; } });
   if(exclusionsMigrated){ try{ localStorage.setItem('worklog_shared_exclusions', JSON.stringify(sharedExclusionDays)); }catch(e){} }
+  // 직원(관리자 포함) 프로필에 예전 컬러 이모지 아바타가 그대로 남아있으면, 다른 아이콘들과 달리 선(line)
+  // 스타일이 아니라 이모지 문자 그대로 튀어 보임(staffAvatarIconSvg는 새 아이콘 키가 아닌 값을 하위호환으로
+  // 그대로 문자 렌더링함) - 그냥 비우면 아이콘이 아예 없어져 버리므로, 선 아이콘 목록에 없는 값은 기본 선
+  // 아이콘(STAFF_AVATAR_DEFAULT)으로 바꿔서 전부 선 스타일로 통일함(다시 고르고 싶으면 직원정보에서 직접 변경)
+  try{
+    const profilesForAvatarCleanup = getProfiles();
+    let avatarsCleaned = false;
+    profilesForAvatarCleanup.forEach(p=>{
+      if(p.avatar && !STAFF_AVATAR_OPTIONS.includes(p.avatar)){ p.avatar = STAFF_AVATAR_DEFAULT; avatarsCleaned = true; }
+    });
+    if(avatarsCleaned) saveProfiles(profilesForAvatarCleanup);
+  }catch(e){ console.error('예전 아바타 이모지 정리 실패', e); }
   try{ sharedWorkHourExceptions = JSON.parse(localStorage.getItem('worklog_shared_workhours') || '[]'); }catch(e){ sharedWorkHourExceptions = []; }
   try{ sharedNoticeHistory = JSON.parse(localStorage.getItem('worklog_shared_notice_history') || '[]'); }catch(e){ sharedNoticeHistory = []; }
   if(!sharedNoticeHistory.length){
@@ -5597,6 +5609,8 @@ function leaveAbsenceTime(dateStr, type, subtype){
 // (이미 예전 이모지로 저장돼있던 직원은 이 키 목록에 없는 값이라 staffAvatarIconSvg가 그대로 문자로
 // 보여주는 방식으로 하위호환됨 - 기존 데이터를 건드리지 않음)
 const STAFF_AVATAR_OPTIONS = ['cat','dog','rabbit','bear','fox','panda','tiger','frog','penguin','lion','koala','hamster','owl','monkey','pig','octopus','star','heart','sun','moon','cloud','leaf','flower','coffee','music','rocket','gift','bolt','diamond','smile','camera'];
+// 예전 이모지 아바타를 자동으로 선 아이콘으로 바꿔줄 때 쓰는 기본값 - 특정 캐릭터를 강요하는 느낌이 덜하도록 사람 얼굴에 가까운 smile을 기본으로 씀
+const STAFF_AVATAR_DEFAULT = 'smile';
 function staffAvatarIconSvg(key, size){
   size = size || 18;
   const s = `width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;"`;
@@ -7850,10 +7864,10 @@ function calcWorkdays(monthStr){
 }
 function renderWorkdaysSuggestion(){
   const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
-  // 상단 칩에는 '식대기준일수'(차감 다 반영된 값) 대신, 훨씬 직관적인 '근무가능일수'(주말·공휴일만 제외)를 보여줌 -
-  // 세부 차감 내역(점심 미섭취 휴가·회식 등)은 옆의 ℹ️ 버튼 팝업(openWorkdaysCalcInfoModal)에서 계산식으로 확인 가능
-  const { weekdays } = calcWorkdays(monthStr);
-  document.getElementById('workdaysAutoValue').textContent = weekdays + '일';
+  // 상단 칩에 실제 점심식대 계산에 쓰이는 '식대기준일수'(차감 다 반영된 값)를 보여줌 - 세부 차감 내역(점심
+  // 미섭취 휴가·회식 등)은 옆의 ℹ️ 버튼 팝업(openWorkdaysCalcInfoModal)에서 계산식으로 확인 가능
+  const { workdays } = calcWorkdays(monthStr);
+  document.getElementById('workdaysAutoValue').textContent = workdays + '일';
 }
 // 제외일수(노란 "−" 항목)에 실제로 뭐가 얼마나 들어갔는지 종류별로 집계 - 계산식 설명 대신 이걸 보여주면 훨씬 직관적임
 function calcWorkdaysExclusionBreakdown(monthStr){
@@ -20328,7 +20342,7 @@ function approvalDetailBodyHtml(item){
   // 한 묶음인지 잘 안 보였음. 기안자~결재 정보는 "업무기안" 큰 제목과 같은 줄 오른쪽에 작게 배치해서
   // 제목 영역이 불필요하게 넓은 흰 여백을 차지하지 않게 함
   return `
-    <div class="approval-doc-card" style="border:1.5px solid var(--border); border-radius:16px; background:var(--surface); padding:32px 18px 18px; box-shadow:0 1px 2px rgba(29,30,51,0.04); max-width:800px; margin:0 auto;">
+    <div class="approval-doc-card" style="border:1.5px solid var(--border); border-radius:16px; background:var(--surface); padding:32px 18px 18px; box-shadow:0 1px 2px rgba(29,30,51,0.04); max-width:800px; margin:0 auto; aspect-ratio:210/297; box-sizing:border-box; display:flex; flex-direction:column;">
       <div style="text-align:center;">
         <div style="font-size:34px; font-weight:900; letter-spacing:10px; color:var(--navy);">업&nbsp;무&nbsp;기&nbsp;안</div>
         <!-- 문서종류 칩: 문서종류별 색(민트/코랄 등) 대신 무채색(네이비/회색 톤)으로 통일 -->
@@ -20361,10 +20375,12 @@ function approvalDetailBodyHtml(item){
           </table>
         </div>
       </div>
-      <div style="text-align:center; border-bottom:1px solid var(--border); margin-bottom:12px; padding-bottom:12px;">
+      <!-- 기안문 제목(item.title)이 정보표/결재란 밑에서 밑줄 하나로만 구분돼 눈에 잘 안 띈다는 의견으로,
+           카드 좌우 패딩(18px)만큼 좌우로 뻗치는 옅은 리본형 그라데이션 배경을 줘서 눈에 띄게 함 -->
+      <div style="text-align:center; margin:0 -18px 16px; padding:12px 18px; background:linear-gradient(to right, transparent, var(--bg) 15%, var(--bg) 85%, transparent);">
         <div style="font-size:14.5px; font-weight:800; color:var(--ink);">${escHtml(item.title)}</div>
       </div>
-      <div class="approval-doc-content" style="text-align:center; min-height:150px; font-size:13px; line-height:1.75; white-space:pre-wrap; user-select:text; padding:28px 20px;">${contentHtml}</div>
+      <div class="approval-doc-content" style="text-align:center; min-height:150px; font-size:13px; line-height:1.75; white-space:pre-wrap; user-select:text; padding:28px 20px; flex:1 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box;">${contentHtml}</div>
       ${attachmentHtml ? `<div style="border-top:1px solid var(--border); padding-top:12px; margin-top:12px;">${attachmentHtml}</div>` : ''}
       <div style="border-top:1px solid var(--border); margin:16px 0 12px;"></div>
       <div style="font-weight:800; font-size:12.5px; color:var(--ink);">의견</div>
