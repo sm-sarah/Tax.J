@@ -14786,12 +14786,17 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
   // 거라(브라우저가 REAL_WIDTH/PC_VIEW_WIDTH 배율로 전체를 줄여서 표시), 사이드바 메뉴 줄에 CSS로
   // 11px 패딩을 줘도 화면에는 그 축소 배율만큼 더 작게(예: 0.3배면 3px) 보여서 터치 영역이 전혀
   // 안 늘어난 것과 같았음(이게 바로 "PC 보기 껐다 켜도 팝업이 똑같이 난다"는 증상의 원인) - 실제 화면에서
-  // 손가락 터치 영역이 항상 최소 ~12px는 되도록, 그 축소 배율의 역수만큼 패딩값을 미리 키워서 축소되고
-  // 나면 딱 맞는 크기가 되게 계산함. PC 보기가 꺼져있을 때(원래 모바일 레이아웃, 축소 없음)는 그냥 11px
+  // 손가락 터치 영역이 항상 최소 ~7px는 되도록, 그 축소 배율의 역수만큼 패딩값을 미리 키워서 축소되고
+  // 나면 딱 맞는 크기가 되게 계산함. PC 보기가 꺼져있을 때(원래 모바일 레이아웃, 축소 없음)는 그냥 11px.
+  // 처음엔 목표를 12px로 잡았더니 축소 배율이 큰 기기(휴대폰)에서 계산된 패딩이 40px 넘게 나와서
+  // 메뉴 한 줄 한 줄이 지나치게 두꺼워 보인다는 의견 - 목표를 7px로 낮추고, 그래도 계산값이 과하게
+  // 커지는 극단적인 경우를 막기 위해 위아래 8~18px 사이로 한도를 둠(너무 작으면 다시 팝업이 나고,
+  // 너무 크면 메뉴가 두꺼워 보이므로 그 사이에서 균형을 잡음)
   function touchPadPx(on){
     if(!on || !REAL_WIDTH) return 11;
     const scale = REAL_WIDTH / PC_VIEW_WIDTH;
-    return Math.round(12 / Math.max(scale, 0.05));
+    const raw = Math.round(7 / Math.max(scale, 0.05));
+    return Math.min(18, Math.max(8, raw));
   }
   function applyPcViewMode(on){
     if(viewportMeta) viewportMeta.setAttribute('content', on ? `width=${PC_VIEW_WIDTH}` : 'width=device-width, initial-scale=1.0');
