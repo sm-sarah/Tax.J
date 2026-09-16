@@ -5133,6 +5133,7 @@ function loadSharedData(){
   migrateClientsToSharedStore();
   try{ const cl = localStorage.getItem('worklog_shared_clients'); clients = cl ? JSON.parse(cl) : { list:[] }; }catch(e){ console.error('거래처 불러오기 실패', e); clients = { list:[] }; }
   try{ const pi = localStorage.getItem('worklog_shared_personalinfo'); personalInfo = pi ? JSON.parse(pi) : { list:[] }; }catch(e){ console.error('개인정보 불러오기 실패', e); personalInfo = { list:[] }; }
+  recoverMissingClientMemoAndPersonalInfo();
   // 내부규정(인사지침/운영지침)도 거래처·개인정보와 같은 이유로 회사 공용 저장소에서만 불러옴 - 아직 없으면
   // (업데이트 후 첫 로딩) migratePolicyHistoryToSharedStore()가 프로필별로 흩어져 있던 이력을 한 번만 합쳐줌
   migratePolicyHistoryToSharedStore();
@@ -5241,6 +5242,74 @@ function migrateClientsToSharedStore(){
     // 실패해도 최소한 빈 값으로라도 표시해서, 마이그레이션이 계속 반복 시도되며 무한 로그를 남기지 않게 함
     localStorage.setItem('worklog_shared_clients', JSON.stringify({ list: [] }));
     localStorage.setItem('worklog_shared_personalinfo', JSON.stringify({ list: [] }));
+  }
+}
+// "거래처 상세정보(메모/개인정보)가 사라졌다"는 문의로 확인해보니, migrateClientsToSharedStore()가
+// 프로필별로 중복돼있던 같은 거래처 중 "가장 정보가 많이 채워진 1건"만 남기고 나머지는 버리는 방식이라,
+// 하필 버려진 사본에만 메모/개인정보가 적혀있던 경우 그대로 사라질 수 있었음(사업자번호 등 기본정보는
+// 남은 사본에도 있으니 목록엔 정상으로 보이지만, 메모·개인정보만 빈 것처럼 보이는 이유).
+// 이 함수는 그 손실을 되돌리기 위해, 아직 지운 적 없어서 각 직원 프로필 자리에 그대로 남아있는 옛 원본
+// 데이터를 다시 훑어서, 지금 공용 거래처엔 메모/개인정보가 비어있는데 옛 원본엔 있는 경우에만 채워 넣음
+// (이미 값이 있으면 절대 덮어쓰지 않음 - 그 사이 다시 입력한 내용을 지우지 않기 위함). 딱 한 번만 실행됨.
+function recoverMissingClientMemoAndPersonalInfo(){
+  if(localStorage.getItem('worklog_client_memo_pi_recovery_v1') !== null) return; // 이미 복구 시도함
+  try{
+    const profiles = getProfiles();
+    let changedClients = false, changedPi = false;
+    profiles.forEach(p=>{
+      const rawC = readProfileRaw(p.id, 'clients');
+      const rawList = (rawC && rawC.list) || [];
+      rawList.forEach(oldC=>{
+        const key = clientIdentityKey(oldC);
+        if(!key) return;
+        const cur = (clients.list||[]).find(x=>clientIdentityKey(x)===key);
+        if(!cur) return;
+        const oldMemos = (oldC.memos && oldC.memos.length) ? oldC.memos : (oldC.memo ? [{ id: genId(), text: oldC.memo, date: '' }] : []);
+        const curHasMemo = (cur.memos && cur.memos.length) || cur.memo;
+        if(!curHasMemo && oldMemos.length){
+          cur.memos = oldMemos;
+          cur.memo = oldMemos.map(m=>m.text).join(' / ');
+          changedClients = true;
+        }
+      });
+      const rawP = readProfileRaw(p.id, 'personalInfo');
+      const rawPiList = (rawP && rawP.list) || [];
+      rawPiList.forEach(oldPi=>{
+        // 옛 personalInfo 항목의 clientId는 그 프로필 안의 옛 거래처 id를 가리키므로, 같은 프로필의 옛
+        // 거래처 목록에서 사업자번호(없으면 이름)로 지금 공용 거래처를 다시 찾아 연결해야 함
+        const oldClientMatch = rawList.find(x=>x.id===oldPi.clientId);
+        let curClient = null;
+        if(oldClientMatch){
+          const key = clientIdentityKey(oldClientMatch);
+          curClient = key ? (clients.list||[]).find(x=>clientIdentityKey(x)===key) : null;
+        }
+        if(!curClient && oldPi.name){
+          curClient = (clients.list||[]).find(x=>normalizeClientName(x.name)===normalizeClientName(oldPi.name));
+        }
+        if(!curClient) return;
+        const existingPi = findPersonalInfoForClient(curClient);
+        const hasData = existingPi && (existingPi.sensitiveEnc || (existingPi.history && existingPi.history.length) || existingPi.memo);
+        const oldHasData = oldPi.sensitiveEnc || (oldPi.history && oldPi.history.length) || oldPi.memo;
+        if(!hasData && oldHasData){
+          if(existingPi){
+            existingPi.sensitiveEnc = oldPi.sensitiveEnc || existingPi.sensitiveEnc;
+            existingPi.history = (oldPi.history && oldPi.history.length) ? oldPi.history : existingPi.history;
+            existingPi.memo = oldPi.memo || existingPi.memo;
+          } else {
+            personalInfo.list = personalInfo.list || [];
+            personalInfo.list.push({ ...oldPi, id: genId(), clientId: curClient.id });
+          }
+          changedPi = true;
+        }
+      });
+    });
+    if(changedClients) localStorage.setItem('worklog_shared_clients', JSON.stringify(clients));
+    if(changedPi) localStorage.setItem('worklog_shared_personalinfo', JSON.stringify(personalInfo));
+    if(changedClients || changedPi) gdriveScheduleSync(); // 복구된 결과를 다른 기기들에도 반영되도록 저장 예약
+  }catch(e){
+    console.error('거래처 메모/개인정보 복구 실패', e);
+  } finally {
+    localStorage.setItem('worklog_client_memo_pi_recovery_v1', '1');
   }
 }
 async function saveSharedExclusions(){ try{ localStorage.setItem('worklog_shared_exclusions', JSON.stringify(sharedExclusionDays)); }catch(e){ console.error('공통 제외일 저장 실패', e); } gdriveScheduleSync(); }
