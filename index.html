@@ -8871,14 +8871,17 @@ function renderAllRemoteHistory(){
     return;
   }
   const entries = [...attendance.remoteEntries].sort((a,b)=> a.date < b.date ? 1 : -1); // 최신순
-  const currentYear = (document.getElementById('monthSelect').value || todayStr()).slice(0,4);
+  // 예전엔 연도 단위로만 묶어서 접고 펼쳤는데, 재택근무는 한 해에도 건수가 많아서(월 6회 정기재택 등)
+  // 연도 하나를 펼치면 스크롤이 아주 길어지는 문제가 있었음 - 월 단위로 더 잘게 묶고, 지금 보고있는
+  // 월(달력에서 고른 조회월)만 기본으로 펼치고 나머지는 접어서 원하는 달을 바로 찾기 쉽게 함
+  const currentMonthKey = (document.getElementById('monthSelect').value || todayStr()).slice(0,7);
 
-  const byYear = {};
+  const byMonth = {};
   entries.forEach(en=>{
-    const y = en.date.slice(0,4);
-    (byYear[y] = byYear[y] || []).push(en);
+    const m = en.date.slice(0,7);
+    (byMonth[m] = byMonth[m] || []).push(en);
   });
-  const years = Object.keys(byYear).sort((a,b)=> b.localeCompare(a)); // 최신 연도부터
+  const months = Object.keys(byMonth).sort((a,b)=> b.localeCompare(a)); // 최신 연월부터
 
   const buildRows = (list) => list.map(en=>{
     // 태그 구성(정기재택/특별재택 + 당겨씀/식대제외)은 renderAttendance()의 이번달 근태 기록 표와 동일하게 맞춤
@@ -8893,16 +8896,18 @@ function renderAllRemoteHistory(){
     </tr>`;
   }).join('');
 
-  const sections = years.map(y=>{
-    const isOpen = y === currentYear;
+  const sections = months.map(m=>{
+    const isOpen = m === currentMonthKey;
+    const [yy, mm] = m.split('-');
+    const label = `${yy}년 ${parseInt(mm,10)}월`;
     return `
       <div style="margin-bottom:10px;">
-        <button type="button" class="year-toggle-btn" data-year="${y}" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:${isOpen ? 'var(--indigo-bg)' : 'var(--bg)'}; color:${isOpen ? 'var(--indigo-deep)' : 'var(--ink-soft)'}; border:none; border-left:3px solid ${isOpen ? 'var(--indigo)' : 'transparent'}; border-radius:8px; padding:9px 10px; font-weight:800; font-size:12.5px; cursor:pointer;">
-          ${y}년 <span style="font-weight:600; font-size:11px; opacity:0.85;">(${byYear[y].length}건)</span>
+        <button type="button" class="year-toggle-btn" data-month="${m}" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:${isOpen ? 'var(--indigo-bg)' : 'var(--bg)'}; color:${isOpen ? 'var(--indigo-deep)' : 'var(--ink-soft)'}; border:none; border-left:3px solid ${isOpen ? 'var(--indigo)' : 'transparent'}; border-radius:8px; padding:9px 10px; font-weight:800; font-size:12.5px; cursor:pointer;">
+          ${label} <span style="font-weight:600; font-size:11px; opacity:0.85;">(${byMonth[m].length}건)</span>
           <span style="margin-left:auto; font-size:11px;">${isOpen ? '▲' : '▼'}</span>
         </button>
-        <div class="year-table-wrap" data-year="${y}" style="display:${isOpen ? 'block' : 'none'}; margin-top:8px;">
-          <table><thead><tr><th>날짜</th><th>구분</th><th>메모</th><th></th></tr></thead><tbody>${buildRows(byYear[y])}</tbody></table>
+        <div class="year-table-wrap" data-month="${m}" style="display:${isOpen ? 'block' : 'none'}; margin-top:8px;">
+          <table><thead><tr><th>날짜</th><th>구분</th><th>메모</th><th></th></tr></thead><tbody>${buildRows(byMonth[m])}</tbody></table>
         </div>
       </div>`;
   }).join('');
@@ -8911,8 +8916,8 @@ function renderAllRemoteHistory(){
 
   wrap.querySelectorAll('.year-toggle-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const y = btn.dataset.year;
-      const tableWrap = wrap.querySelector(`.year-table-wrap[data-year="${y}"]`);
+      const m = btn.dataset.month;
+      const tableWrap = wrap.querySelector(`.year-table-wrap[data-month="${m}"]`);
       const nowOpen = tableWrap.style.display !== 'none';
       tableWrap.style.display = nowOpen ? 'none' : 'block';
       btn.style.background = nowOpen ? 'var(--bg)' : 'var(--indigo-bg)';
