@@ -724,20 +724,24 @@
     .home-section-label{font-size:11.5px; padding:5px 12px;}
     .home-tile{padding:9px 12px; gap:9px;}
     .home-tile-title{font-size:12.5px;}
-    /* 모바일에서 메뉴 줄 간격이 좁아서(위 .home-tile-plain은 6px 패딩) 옆 줄이나 즐겨찾기 "+" 빈 자리를
-       잘못 눌러 엉뚱한 팝업(즐겨찾기 추가 목록)이 뜬다는 의견 - 터치 영역을 넉넉히 키워서 오탭을 줄임 */
-    .home-tile.home-tile-plain{padding-top:11px; padding-bottom:11px;}
-    .home-fav-slot-empty{padding-top:11px; padding-bottom:11px;}
     .home-section-row + .home-section-row{margin-top:6px;}
-    /* 위 .home-tile.home-tile-plain은 이미 터치 영역을 넉넉히 키웠지만, 그 아코디언 안쪽의 하위메뉴 줄
-       (.home-submenu-item/.home-submenu-leaf - 예: 결재 하위의 "기안작성"/"임시저장함")은 그대로 6px
-       패딩이라 모바일에서 줄 사이가 너무 좁아서, 두 줄의 터치 영역이 맞닿거나 겹쳐 보여 브라우저가
-       "이 중 어느 걸 누르셨나요?" 식의 모호한 터치 팝업(두 메뉴 이름이 같이 뜨는 팝업)을 띄우는 원인이었음.
-       하위메뉴 줄도 상위 메뉴와 같은 방식으로 터치 영역을 키우고, 줄 사이에 살짝 여백을 둬서 인접한 줄의
-       터치 영역이 서로 닿지 않게 함 */
-    .home-submenu-item, .home-submenu-leaf{padding-top:11px; padding-bottom:11px; margin-bottom:2px; border-radius:8px;}
-    .home-submenu-item:last-child, .home-submenu-leaf:last-child{margin-bottom:0;}
   }
+  /* 아래 터치 영역 넉넉히 키우는 규칙들은 원래 "@media (max-width:560px)"(화면이 실제로 좁을 때)에만
+     걸려있었는데, "PC 화면처럼 보기" 모드(휴대폰에서도 뷰포트를 1400px로 강제해서 데스크탑 배치를 그대로
+     축소해서 보는 기본 모드 - 아래 IIFE의 applyPcViewMode 참고)에서는 뷰포트가 항상 1400px로 잡혀서 이
+     조건이 절대 만족되지 않았음. 그래서 사이드바 글자가 화면엔 작게 보이는데도(축소 표시라서) 이 CSS가
+     하나도 적용되지 못해 터치 영역이 여전히 좁았고, 인접한 두 메뉴줄의 터치 영역이 맞닿아 브라우저가
+     "이 중 어느 걸 누르셨나요?" 하는 모호한 터치 팝업을 계속 띄웠던 것 - PC 보기를 껐다 켜도 똑같이
+     재현됨. 화면 폭이 아니라 "터치 기기인지"(포인터가 coarse인지)로 직접 판단하는 .is-touch-device
+     클래스(문서 로드 시 이미 붙여줌) 기준으로 옮겨서, PC 보기 모드로 축소해서 보고 있어도 항상 적용되게 함.
+     패딩값 자체도 고정 11px이 아니라 --touch-pad 변수를 씀 - PC 보기 모드일 땐 그 축소 배율의 역수만큼
+     미리 커진 값이 담겨있어서(위 IIFE의 touchPadPx 참고), 축소되고 나면 결과적으로 항상 실제 화면에서
+     비슷한 크기의 터치 영역이 되게 함 */
+  :root{ --touch-pad:11px; }
+  .is-touch-device .home-tile.home-tile-plain{padding-top:var(--touch-pad); padding-bottom:var(--touch-pad);}
+  .is-touch-device .home-fav-slot-empty{padding-top:var(--touch-pad); padding-bottom:var(--touch-pad);}
+  .is-touch-device .home-submenu-item, .is-touch-device .home-submenu-leaf{padding-top:var(--touch-pad); padding-bottom:var(--touch-pad); margin-bottom:calc(var(--touch-pad) * 0.18); border-radius:8px;}
+  .is-touch-device .home-submenu-item:last-child, .is-touch-device .home-submenu-leaf:last-child{margin-bottom:0;}
   .month-picker label{font-size:10px; color:var(--indigo-deep); font-weight:700;}
   .month-picker input{
     font-family:'IBM Plex Mono', monospace; font-size:12.5px; font-weight:700;
@@ -9830,6 +9834,17 @@ function renderCalendar(){
       // "N회/6회" 사용 회차를 같이 보여줌 - 요청: "개인캘린더에도 정기재택 횟수 표기가 되게해줘"
       badges += rInfo.bonus ? `<span class="cal-badge special">${calIconSvg('special')} 특별재택${rAdvSuffix}</span>` : `<span class="cal-badge remote">${calIconSvg('remote')} 정기재택 (${remoteEntryRank(attendance.remoteEntries, rInfo)}회/${REGULAR_REMOTE_MONTHLY_QUOTA}회)${rAdvSuffix}</span>`;
     }
+    // 설정 > 복리후생 > 특별기간(sharedSpecialPeriods)은 팀캘린더(renderAdminCalendar)에만 그려주고
+    // 개인캘린더(이 함수)에는 애초에 빠져있었음 - 모바일/PC 문제가 아니라 이 화면 자체에 이 로직이 없었던
+    // 것 - 팀캘린더와 똑같은 방식(기간 내내 이어지는 칩)으로 개인캘린더에도 그려줌
+    (sharedSpecialPeriods||[]).filter(sp => dateStr >= sp.startDate && dateStr <= sp.endDate).forEach(sp=>{
+      const isStart = dateStr === sp.startDate || dow === 0;
+      const isEnd = dateStr === sp.endDate || dow === 6;
+      const radiusStyle = `border-radius:${isStart?'8px':'0'} ${isEnd?'8px':'0'} ${isEnd?'8px':'0'} ${isStart?'8px':'0'};`;
+      const marginStyle = `margin-left:${!isStart?'-9px':'0'}; margin-right:${!isEnd?'-9px':'0'};`;
+      const label = isStart ? `${calIconSvg('pin')} 특별기간) ${escHtml(sp.content)}` : '&nbsp;';
+      badges += `<span class="cal-badge schedule cal-badge-span" style="display:block; text-align:${isStart?'left':'center'}; ${radiusStyle} ${marginStyle} position:relative; z-index:1;">${label}</span>`;
+    });
     // 공휴일(추석 등)도 다른 배지들과 같은 pill 스타일로 통일 - 예전엔 날짜 옆에 작은 빨간 글자로만 붙어서 이질적으로 보였음
     (exclusionByDate[dateStr]||[]).forEach(x=>{
       const cls = x.reason==='공휴일' ? 'holiday' : x.reason==='점심회식' ? 'lunchparty' : x.reason==='저녁회식' ? 'party' : 'other';
@@ -14765,9 +14780,22 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
   // 지금 기기의 실제 폭(width=device-width일 때의 innerWidth, 아직 덮어쓰기 전이라 진짜 값)과 1400 중
   // 더 큰 쪽을 씀. 좁은 휴대폰(세로)은 여전히 1400으로 축소되어 "PC 화면처럼" 보이고, 이미 1400보다 넓은
   // 기기(가로모드 태블릿 등)는 그 실제 폭을 그대로 써서 확대·잘림 없이 데스크탑 레이아웃이 그대로 맞게 나옴
-  const PC_VIEW_WIDTH = Math.max(1400, window.innerWidth || 0);
+  const REAL_WIDTH = window.innerWidth || 0; // width=device-width일 때의 진짜 화면 폭(덮어쓰기 전에 미리 기억)
+  const PC_VIEW_WIDTH = Math.max(1400, REAL_WIDTH || 0);
+  // PC 보기 모드는 실제 화면(REAL_WIDTH)에 PC_VIEW_WIDTH짜리 캔버스를 그려서 그만큼 축소해 보여주는
+  // 거라(브라우저가 REAL_WIDTH/PC_VIEW_WIDTH 배율로 전체를 줄여서 표시), 사이드바 메뉴 줄에 CSS로
+  // 11px 패딩을 줘도 화면에는 그 축소 배율만큼 더 작게(예: 0.3배면 3px) 보여서 터치 영역이 전혀
+  // 안 늘어난 것과 같았음(이게 바로 "PC 보기 껐다 켜도 팝업이 똑같이 난다"는 증상의 원인) - 실제 화면에서
+  // 손가락 터치 영역이 항상 최소 ~12px는 되도록, 그 축소 배율의 역수만큼 패딩값을 미리 키워서 축소되고
+  // 나면 딱 맞는 크기가 되게 계산함. PC 보기가 꺼져있을 때(원래 모바일 레이아웃, 축소 없음)는 그냥 11px
+  function touchPadPx(on){
+    if(!on || !REAL_WIDTH) return 11;
+    const scale = REAL_WIDTH / PC_VIEW_WIDTH;
+    return Math.round(12 / Math.max(scale, 0.05));
+  }
   function applyPcViewMode(on){
     if(viewportMeta) viewportMeta.setAttribute('content', on ? `width=${PC_VIEW_WIDTH}` : 'width=device-width, initial-scale=1.0');
+    document.documentElement.style.setProperty('--touch-pad', `${touchPadPx(on)}px`);
     if(pcViewBtn){
       pcViewBtn.title = on ? '컴퓨터 화면처럼 보는 중 · 눌러서 휴대폰 화면으로 돌아가기' : '눌러서 컴퓨터 화면처럼 보기(확대해서 필요한 부분 보기)';
       pcViewBtn.classList.toggle('pc-view-active', on);
@@ -24756,6 +24784,16 @@ document.getElementById('addAdminEmailForm').addEventListener('submit', async (e
   renderAdminEmailList();
   emailInput.value = '';
   nameInput.value = '';
+  // 관리자 이름을 여기서 등록/수정해도 결재자 선택박스나 기안함/결재함 목록, 공지사항 작성자 표시는
+  // 그 화면을 새로 열기 전까지 예전 값(이메일 그대로)을 그대로 들고 있어서, 데이터 연동이 안 된 것처럼
+  // 보인다는 의견 - 이름이 쓰이는 화면들을 지금 바로 다시 그려서 즉시 반영되게 함
+  if(typeof populateApproverSelect === 'function') populateApproverSelect();
+  if(typeof renderApprovalDraftList === 'function') renderApprovalDraftList();
+  if(typeof renderApprovalInbox === 'function') renderApprovalInbox();
+  if(typeof renderApprovalMine === 'function') renderApprovalMine();
+  if(typeof renderApprovalRejected === 'function') renderApprovalRejected();
+  if(typeof renderApprovalAll === 'function') renderApprovalAll();
+  if(typeof renderNoticeList === 'function') renderNoticeList();
 });
 
 // 설정 > 회사 카테고리의 "회사 정보" 폼 필드 <-> 사내정보 법인탭 "기본정보" 표 연동용 고정 라벨
