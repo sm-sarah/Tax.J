@@ -2450,7 +2450,7 @@
     <div id="clockEditMsg" class="hint" style="text-align:center; min-height:14px; color:var(--coral); font-weight:700;"></div>
     <div style="text-align:center; margin-top:10px; display:flex; justify-content:center; gap:8px;">
       <button type="button" id="clockEditSaveBtn" class="submit-btn" style="width:auto; padding:8px 18px;">저장</button>
-      <button type="button" id="clockEditCancelBtn" class="del-btn modal-close-btn">취소</button>
+      <button type="button" id="clockEditCancelBtn" class="del-btn">취소</button>
     </div>
   </div>
 </div>
@@ -2704,7 +2704,9 @@
      가운데로 재배치되면서 마우스 위치와 모서리가 어긋나 화면 밖으로 밀려나 보이는 문제가 있었음(리사이즈 도중
      매 프레임 재중앙정렬 vs 드래그 좌표가 서로 충돌) - 위쪽을 고정 기준점으로 두고 아래로만 커지게 바꿔서 해결 -->
 <div id="trashModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:9999; align-items:flex-start; justify-content:center; padding:5vh 20px 20px;">
-  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:90vw; width:600px; height:min(85vh, 640px); max-height:90vh; min-width:340px; min-height:240px; overflow:auto; resize:both; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+  <!-- 기본 크기가 너무 작아서 열자마자 매번 모서리를 끌어 키워야 한다는 요청으로, 시작 크기 자체를
+       키움(600×640 → 900×780) -->
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:92vw; width:900px; height:min(85vh, 780px); max-height:92vh; min-width:340px; min-height:240px; overflow:auto; resize:both; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
     <div style="display:grid; grid-template-columns:1fr auto 1fr; align-items:start; gap:10px; margin-bottom:6px;">
       <div></div>
       <div style="text-align:center;">
@@ -4537,6 +4539,7 @@
           <div class="flat-row"><div class="flat-row-label">세무관리번호</div><div class="flat-row-control"><input type="text" id="team-info-taxmgmtno" placeholder="세무관리번호 입력" class="flat-input" style="width:100%;"></div></div>
           <div class="flat-row"><div class="flat-row-label">세무관리 비밀번호</div><div class="flat-row-control"><input type="text" id="team-info-taxmgmtpw" placeholder="세무관리 비밀번호 입력" class="flat-input" style="width:100%;"></div></div>
           <div class="flat-row"><div class="flat-row-label">내선번호</div><div class="flat-row-control"><input type="text" id="team-info-extno" placeholder="예: 02-000-0000 착신 (*72+번호) / 해제 (*73)" class="flat-input" style="width:100%;"></div></div>
+          <div class="flat-row"><div class="flat-row-label">웹주소</div><div class="flat-row-control"><input type="text" id="team-info-weburl" placeholder="예: https://..." class="flat-input" style="width:100%;"></div></div>
           <!-- 아직 아무것도 등록 안 했을 땐 "등록" 버튼 하나만, 이미 등록돼 있으면 "수정" + "삭제" 두 개로
                바뀜(updateTeamInfoButtons) - 회사정보 쪽 등록/수정/삭제(companyNameSubmitBtn·companyNameDeleteBtn)와
                완전히 같은 패턴: 등록 전엔 큰 파란 버튼(submit-btn) 하나, 등록 후엔 옆의 작은 삭제 칩과 크기를
@@ -4801,8 +4804,19 @@
            기준으로 sharedNotificationPrefs[내 이메일]을 읽고 씀 -->
       <div class="settings-sub-title" id="ssTitle-notifications" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> 알림 <span class="badge">내 계정 기준 · 이 기기뿐 아니라 등록된 모든 기기에 적용</span></div>
       <p class="hint">
-        기기(브라우저)별로 처음 한 번 "알림 받기" 동의가 따로 필요해요. 아래에서 끄면, 이미 알림을 받도록 설정해둔 기기가 여러 대여도 전부 그 종류의 알림을 받지 않아요(알림함에는 그대로 남아요).
+        기기(브라우저)별로 처음 한 번 "알림 받기" 동의가 따로 필요해요. 아래 종류별 스위치는 이미 알림을 받도록 동의해둔 기기에서 그 종류의 알림을 받을지만 정하는 거라, 동의 자체가 안 되어 있으면 스위치를 껐다 켜도 알림이 오지 않아요. 이 기기에서 아직 동의하지 않았다면 바로 아래 버튼으로 먼저 켜주세요(휴대폰이면 휴대폰에서, PC면 PC에서 각각 따로 눌러야 해요).
       </p>
+      <div class="flat-panel flat-panel-narrow" style="margin-bottom:10px;">
+        <div class="flat-row" style="align-items:center;">
+          <div class="flat-row-label" style="flex:1 1 auto;">
+            이 기기(지금 보고 있는 이 브라우저)의 알림 동의
+            <div class="hint" style="margin:4px 0 0;" id="settingsPushRegisterStatus">확인 중...</div>
+          </div>
+          <div class="flat-row-control" style="flex:0 0 auto;">
+            <button type="button" id="settingsPushRegisterBtn" class="del-btn" style="background:var(--indigo); color:#fff; white-space:nowrap;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> 이 기기에서 알림 켜기</button>
+          </div>
+        </div>
+      </div>
       <div class="flat-panel flat-panel-narrow">
         <div class="flat-row">
           <div class="flat-row-label" style="flex:1 1 auto;">공지사항 등록</div>
@@ -5125,7 +5139,7 @@ let sharedManageSalt = ''; // PBKDF2 솔트(base64, 비밀값 아님) - 거래�
 let sharedManageVerifier = null; // 관리비밀번호 검증용 - 비밀번호 자체는 절대 저장 안하고, 그 비밀번호로 암호화한 검증용 토큰만 저장
 let sharedCompanyInfo = { corp: [], team: [], teamGeneral: [], personal: [] }; // 사내정보(법인/팀) - corp·team·teamGeneral의 ID/PW는 sensitiveEnc로 암호화되어 저장. teamGeneral은 특정 팀원이 아닌 "팀 총괄" 기본정보
 let sharedCompanyName = ''; // 회사(법인)명 - 사내정보 섹션 제목 등에 쓰임, 관리자가 직접 입력
-let sharedTeamInfo = { teamName: '', accountant: '', taxMgmtNo: '', taxMgmtPw: '', note: '' }; // 설정 > 회사 > 팀정보
+let sharedTeamInfo = { teamName: '', accountant: '', taxMgmtNo: '', taxMgmtPw: '', extNo: '', webUrl: '', note: '' }; // 설정 > 회사 > 팀정보
 let sharedSpecialPeriods = []; // 설정 > 복지 > 특별기간 설정: [{id, startDate, endDate, content}], 팀캘린더에 "특별기간) content" 칩으로 표시됨
 let sharedFilingStatus = {}; // 결재 > 신고현황: { [taxType]: { [period]: { [clientId]: {status, memo, updatedAt} } } } (세목: 원천세/부가세/법인세/종소세/결산)
 let sharedReviewStatus = {}; // 결재 > 검토표: 신고현황과 완전히 같은 구조지만 원천세/부가세만 다루고, 신고 자체 이력과는 별도 저장소로 관리(신고 전 검토 단계 - 나중에 거래처별 손익보고서에 활용 예정)
@@ -5312,6 +5326,7 @@ function renderNotificationPrefsUI(){
   document.querySelectorAll('.notif-pref-toggle').forEach(cb=>{
     cb.checked = notificationCategoryEnabled(myEmail, cb.dataset.category);
   });
+  updateSettingsPushRegisterStatus();
 }
 document.querySelectorAll('.notif-pref-toggle').forEach(cb=>{
   cb.addEventListener('change', ()=>{
@@ -5321,6 +5336,54 @@ document.querySelectorAll('.notif-pref-toggle').forEach(cb=>{
     sharedNotificationPrefs[myEmail][cb.dataset.category] = cb.checked;
     saveSharedNotificationPrefs();
   });
+});
+// 위 종류별 스위치(sharedNotificationPrefs)는 "이미 동의된 기기"에서 어떤 종류를 받을지만 정할 뿐, 이 기기가
+// 실제로 푸시를 받을 수 있는 상태(권한 허용 + FCM 토큰 등록)인지는 전혀 알려주지 않아서 "스위치를 껐다 켜도
+// 안 온다"는 혼란으로 이어짐(공지/결재 화면에 각각 있는 "알림 받기" 버튼을 이 기기에서 따로 눌러야만 실제로
+// 등록됨). 설정 화면에서 이 기기의 실제 상태를 바로 보여주고, 한 번에 동의+등록까지 끝낼 수 있게 여기에도
+// 같은 기능의 버튼을 둠(누르면 공지·결재 알림 둘 다 이 기기에서 켜짐 - 개별 화면 버튼과 동일한 상태를 공유)
+function updateSettingsPushRegisterStatus(){
+  const statusEl = document.getElementById('settingsPushRegisterStatus');
+  const btn = document.getElementById('settingsPushRegisterBtn');
+  if(!statusEl || !btn) return;
+  if(typeof Notification === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)){
+    statusEl.textContent = '이 브라우저는 푸시 알림을 지원하지 않아요. (아이폰이면 Safari에서 바로 여는 대신, 홈 화면에 앱으로 추가한 뒤 그 아이콘으로 열어야 알림이 지원돼요)';
+    btn.style.display = 'none';
+    return;
+  }
+  btn.style.display = '';
+  if(Notification.permission === 'denied'){
+    statusEl.textContent = '이 기기에서 알림 권한이 차단돼 있어요. 브라우저의 사이트 설정에서 알림을 허용으로 바꾼 뒤 다시 눌러주세요.';
+    btn.textContent = '알림 켜는 방법 보기';
+  } else if(Notification.permission === 'granted' && noticeNotifyEnabled() && approvalNotifyEnabled()){
+    statusEl.textContent = '이 기기는 알림을 받을 수 있게 등록돼 있어요.';
+    btn.textContent = '다시 등록(문제 해결용)';
+  } else {
+    statusEl.textContent = '이 기기에서는 아직 알림을 켜지 않았어요. 폰이라면 폰에서, PC라면 PC에서 각 기기마다 한 번씩 눌러야 해요.';
+    btn.textContent = '이 기기에서 알림 켜기';
+  }
+}
+document.getElementById('settingsPushRegisterBtn')?.addEventListener('click', async ()=>{
+  if(typeof Notification === 'undefined'){ appAlert('이 브라우저는 알림 기능을 지원하지 않아요. 아이폰이면 홈 화면에 앱으로 추가한 뒤 그 아이콘으로 열어보세요.'); return; }
+  if(Notification.permission === 'denied'){
+    appAlert('브라우저 알림 권한이 차단되어 있어요. 주소창 왼쪽 자물쇠(사이트 정보) 아이콘 또는 브라우저 설정에서 이 사이트의 알림을 허용으로 바꾼 뒤 다시 눌러주세요.');
+    return;
+  }
+  if(Notification.permission !== 'granted'){
+    const proceed = await appConfirm('알림을 받으려면 다음 확인 창에서 "허용"을 눌러야 해요.\n\n· 이 사이트의 브라우저 알림 권한을 허용해주세요.\n· 휴대폰이라면, 휴대폰 자체의 설정(설정 앱) > 알림에서도 이 브라우저(또는 설치된 앱)의 알림이 꺼져있지 않은지 확인해주세요.\n· 아이폰은 Safari로 바로 열었을 때는 알림이 지원되지 않아요 - 홈 화면에 앱으로 추가한 뒤 그 아이콘으로 열어야 해요.', { okText:'확인, 허용할게요', cancelText:'취소' });
+    if(!proceed) return;
+  }
+  const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+  if(perm !== 'granted'){ appAlert('알림 권한이 허용되지 않았어요.'); updateSettingsPushRegisterStatus(); return; }
+  localStorage.setItem(NOTICE_NOTIFY_KEY, '1');
+  localStorage.setItem(APPROVAL_NOTIFY_KEY, '1');
+  try{ localStorage.setItem('worklog_notified_notice_ids', JSON.stringify((sharedNoticeHistory||[]).map(x=>x.id))); }catch(e){}
+  try{ localStorage.setItem('worklog_notified_approval_ids', JSON.stringify((sharedApprovals||[]).map(x=>x.id))); }catch(e){}
+  if(typeof updateNoticeNotifyBtn === 'function') updateNoticeNotifyBtn();
+  if(typeof updateApprovalNotifyBtn === 'function') updateApprovalNotifyBtn();
+  await registerPushToken();
+  updateSettingsPushRegisterStatus();
+  appAlert('이 기기에서 알림을 켰어요. 새 공지·결재 요청·결재 결과 알림이 이 기기로 와요.');
 });
 function readSharedClients(){ try{ const v = localStorage.getItem('worklog_shared_clients'); return v ? JSON.parse(v) : { list:[] }; }catch(e){ return { list:[] }; } }
 function readSharedPersonalInfo(){ try{ const v = localStorage.getItem('worklog_shared_personalinfo'); return v ? JSON.parse(v) : { list:[] }; }catch(e){ return { list:[] }; } }
@@ -6190,6 +6253,27 @@ function unrecordDeletedApprovalId(id){
     localStorage.setItem('worklog_recent_approval_deletions', JSON.stringify(list));
   }catch(e){}
 }
+// 결재 승인/반려도 똑같은 문제가 생길 수 있음 - 내가 방금 승인을 눌렀는데, 다른 탭/기기가 아직 예전 상태
+// (검토중)를 들고 있다가 그 사이에 뭔가 저장을 하면(=push는 항상 그 시점의 로컬 내용을 그대로 덮어쓰므로)
+// 방금 내린 결정이 도로 검토중으로 되돌아가 보일 수 있음. 결재 결정을 내릴 때마다 일정 시간 "최근 결재
+// 결정"으로 기록해두고, Drive에서 불러올 때마다(gdrivePull) 병합 결과가 이 기록보다 오래된 상태로 되어
+// 있으면 즉시 최근 결정으로 다시 맞춰줌(직원·공지사항 삭제 부활 방지와 같은 원리)
+function getRecentApprovalDecisions(){
+  try{
+    const raw = JSON.parse(localStorage.getItem('worklog_recent_approval_decisions') || '[]');
+    const now = Date.now();
+    const fresh = raw.filter(e=> e && e.id && (now - e.at) < RECENT_DELETION_TTL_MS);
+    if(fresh.length !== raw.length) localStorage.setItem('worklog_recent_approval_decisions', JSON.stringify(fresh));
+    return fresh;
+  }catch(e){ return []; }
+}
+function recordApprovalDecision(id, status){
+  try{
+    const list = getRecentApprovalDecisions().filter(e=>e.id!==id);
+    list.push({id, status, at: Date.now()});
+    localStorage.setItem('worklog_recent_approval_decisions', JSON.stringify(list));
+  }catch(e){}
+}
 // 공지사항 삭제할 때도 직원·결재문서와 똑같은 문제(지운 직후 다른 기기/탭이 아직 들고 있던 예전 목록이
 // Drive 동기화로 다시 올라가면서 방금 지운 게 되살아남)가 있었는데, 이 안전장치가 그 항목에만 없어서
 // "삭제해도 계속 나타난다"는 문제로 이어졌음. 매번 이렇게 목록마다 똑같은 함수쌍을 손으로 새로 만들다
@@ -6208,6 +6292,14 @@ function recordDeletedId(storageKey, id){
   try{
     const list = getRecentlyDeletedIds(storageKey);
     if(!list.find(e=>e.id===id)) list.push({id, at: Date.now()});
+    localStorage.setItem(storageKey, JSON.stringify(list));
+  }catch(e){}
+}
+// 휴지통에서 복원하면(unrecordDeletedApprovalId가 결재문서에 대해 하는 것과 같은 이유로) "최근 삭제" 목록에서도
+// 빼줘야, 복원 직후 Drive 동기화 때 "최근 삭제"로 오인해서 다시 걸러내는(=복원한 게 도로 사라지는) 일이 없음
+function unrecordDeletedId(storageKey, id){
+  try{
+    const list = getRecentlyDeletedIds(storageKey).filter(e=>e.id!==id);
     localStorage.setItem(storageKey, JSON.stringify(list));
   }catch(e){}
 }
@@ -6597,10 +6689,15 @@ function renderNoticeList(){
   });
   wrap.querySelectorAll('.notice-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
-      if(!(await appConfirm('이 공지를 삭제할까요?'))) return;
+      if(!(await appConfirm('이 공지를 삭제할까요? (휴지통으로 이동해서 나중에 복원할 수 있어요)'))) return;
+      const n = sharedNoticeHistory.find(x=>x.id===btn.dataset.id);
       recordDeletedNoticeId(btn.dataset.id); // 삭제 직후 동기화로 되살아나지 않도록 "최근 삭제" 목록에 기록해둠
+      // 다른 삭제 항목들(거래처·결재문서 등)처럼 공지사항도 바로 영구삭제하지 않고 휴지통으로 먼저 보냄 -
+      // 예전엔 여기만 이 단계가 빠져있어서 "삭제해도 휴지통에 안 보인다"는 문제가 있었음
+      if(n) pushToSharedTrash('notice', '', n.title||'공지사항', n);
       sharedNoticeHistory = sharedNoticeHistory.filter(x=>x.id!==btn.dataset.id);
       await saveSharedNoticeHistory();
+      if(n) await saveSharedTrash();
       removeNotificationLogEntriesForNotice(btn.dataset.id);
       renderNoticeList();
       if(typeof renderDashboardImportantNotices === 'function') renderDashboardImportantNotices();
@@ -7055,7 +7152,7 @@ function formatEmployeeSnapshot(sn){
 }
 
 // ===== 휴지통 (근태·경비·일정·거래처·개인정보 삭제 시 바로 지우지 않고 여기로 먼저 이동) =====
-const TRASH_TYPE_LABELS = { attendance:'근태', expense:'경비', schedule:'일정', client:'거래처', personalInfo:'개인정보', policy:'내부규정', employee:'직원', notification:'알림', approval:'결재문서' };
+const TRASH_TYPE_LABELS = { attendance:'근태', expense:'경비', schedule:'일정', client:'거래처', personalInfo:'개인정보', policy:'내부규정', employee:'직원', notification:'알림', approval:'결재문서', notice:'공지사항' };
 
 function pushToTrash(type, kind, label, data){
   settings.trash = settings.trash || [];
@@ -7098,6 +7195,13 @@ async function restoreTrashItem(id){
       if(typeof renderApprovalAll === 'function') renderApprovalAll();
       if(typeof renderApprovalAllBadges === 'function') renderApprovalAllBadges();
       if(typeof renderDashboardApprovalAllPreview === 'function') renderDashboardApprovalAllPreview();
+    } else if(sharedItem.type==='notice'){
+      sharedNoticeHistory = sharedNoticeHistory || [];
+      sharedNoticeHistory.unshift(sharedItem.data);
+      unrecordDeletedId('worklog_recent_notice_deletions', sharedItem.data.id); // 복원 직후 "최근 삭제" 목록에서도 빼야 동기화 때 다시 걸러지지 않음
+      await saveSharedNoticeHistory();
+      if(typeof renderNoticeList === 'function') renderNoticeList();
+      if(typeof renderDashboardImportantNotices === 'function') renderDashboardImportantNotices();
     } else if(sharedItem.type==='client'){
       clients.list.push(sharedItem.data);
       await saveClients();
@@ -11056,12 +11160,15 @@ function buildCorpBasicInfoTable(infoList, companyName, admin, showControls){
 // 정보가 아니라는 요청으로 다른 항목들과 마찬가지로 그냥 평문으로 보여줌(입력할 때도 team-info-taxmgmtpw가
 // type="text"라 마스킹 없이 그대로 입력함)
 function buildTeamBasicInfoTable(teamInfo){
+  const webUrl = (teamInfo && teamInfo.webUrl) || '';
   const rows = [
     ['담당회계사', (teamInfo && teamInfo.accountant) || ''],
     ['세무관리번호', (teamInfo && teamInfo.taxMgmtNo) || ''],
     ['세무관리 비밀번호', (teamInfo && teamInfo.taxMgmtPw) || ''],
-    ['내선번호', (teamInfo && teamInfo.extNo) || '']
-  ].filter(([,v])=>v.trim());
+    ['내선번호', (teamInfo && teamInfo.extNo) || ''],
+    // 회사정보의 "폴더 링크"와 같은 방식으로, 눌러서 바로 새 탭으로 열 수 있는 링크로 보여줌
+    ['웹주소', webUrl ? {html:`<a href="${escHtml(webUrl)}" target="_blank" rel="noopener">${escHtml(webUrl)}</a>`} : '']
+  ].filter(([,v])=> (typeof v === 'object' ? true : v.trim()));
   const title = (teamInfo && teamInfo.teamName) || '팀명 미등록';
   return buildProfileDocHtml(title, 'TEAM PROFILE', rows, '설정 > 팀정보에서 등록해보세요.');
 }
@@ -12078,13 +12185,20 @@ function refreshAutoPhraseIfTaxActive(){
   if(typeof AD_TAX_DOCTYPE_KEY !== 'undefined' && AD_TAX_DOCTYPE_KEY[docType]) applyAdAutoPhrase();
 }
 document.getElementById('ad-doctype')?.addEventListener('change', syncAdLeaveTargetRow);
-document.getElementById('ad-leave-type')?.addEventListener('change', syncAdLeaveTypeFields);
-document.getElementById('ad-leave-start')?.addEventListener('change', syncAdLeaveTypeFields);
+// 휴가종류·세부유형·기간(시작/종료)·일수를 바꾸면, 기안 내용 안의 휴가 기간·종류 표도 같이 최신값으로
+// 갈아끼워줘야 하는데(refreshAutoPhraseIfLeaveActive), 예전엔 이 함수가 정의만 되어있고 정작 change
+// 리스너 어디에도 연결이 안 돼있어서 - 예를 들어 연차에서 반반차로 바꿔도 표는 처음 값(연차) 그대로
+// 남아있는 버그가 있었음. syncAdLeaveTypeFields로 선택칸 UI를 먼저 갱신한 뒤에 이어서 호출함
+document.getElementById('ad-leave-type')?.addEventListener('change', ()=>{ syncAdLeaveTypeFields(); refreshAutoPhraseIfLeaveActive(); });
+document.getElementById('ad-leave-subtype')?.addEventListener('change', refreshAutoPhraseIfLeaveActive);
+document.getElementById('ad-leave-start')?.addEventListener('change', ()=>{ syncAdLeaveTypeFields(); refreshAutoPhraseIfLeaveActive(); });
 document.getElementById('ad-leave-end')?.addEventListener('change', function(){
   if(this.value && document.getElementById('ad-leave-start') && !document.getElementById('ad-leave-start').value){
     document.getElementById('ad-leave-start').value = this.value;
   }
+  refreshAutoPhraseIfLeaveActive();
 });
+document.getElementById('ad-leave-days')?.addEventListener('input', refreshAutoPhraseIfLeaveActive);
 // 임시저장·반려된 휴가 기안을 다시 열 때(수정/재기안), 저장해뒀던 휴가 종류·기간을 선택칸에 그대로 복원함
 function restoreAdLeaveFromItem(item){
   const row = document.getElementById('ad-leave-target-row');
@@ -13372,7 +13486,10 @@ function renderClockHistoryTable(){
   const wrap = document.getElementById('clockHistoryTableWrap');
   if(!wrap) return;
   const monthStr = document.getElementById('clockHistoryMonth')?.value || todayStr().slice(0,7);
-  const log = (attendance.clockLog||[]).filter(e=>e.date && e.date.startsWith(monthStr)).sort((a,b)=>a.date.localeCompare(b.date));
+  // 사무실/재택 배지만 눌러보고 실제로 출근 도장은 안 찍은 날에도 clockLog에 빈 기록(출근/퇴근 없이 근무지만
+  // 있는 상태)이 남는데, 그런 날까지 이 표에 나오면 "출근일수 0일인데 왜 목록엔 며칠씩 나오지" 하고 헷갈리게
+  // 됨 - 실제로 출근 도장을 찍은(checkIn이 있는) 날만 표에 보여줌
+  const log = (attendance.clockLog||[]).filter(e=>e.date && e.date.startsWith(monthStr) && e.checkIn).sort((a,b)=>a.date.localeCompare(b.date));
   let totalMin = 0, dayCount = 0;
   const rows = log.map(e=>{
     const mins = clockMinutesForEntry(e);
@@ -13855,6 +13972,10 @@ function addFavoriteMenuItem(el){
   renderFavoritesBar();
 }
 function removeFavoriteMenuItem(key){
+  // 직원 삭제·결재문서 삭제와 똑같은 이유(다른 탭/기기가 아직 예전 즐겨찾기 목록을 들고 있다가 뭔가 저장하는
+  // 순간 방금 지운 항목이 Drive 동기화로 되살아남)로, 지운 직후 "최근 삭제" 목록에 기록해둠 - gdrivePull에서
+  // 이 목록에 있는 항목은 병합 결과에 남아있어도 확실히 걸러냄
+  recordDeletedId('worklog_recent_favorite_deletions', key);
   saveFavoriteMenuItems(getFavoriteMenuItems().filter(f=>f.key!==key));
   renderFavoritesBar();
 }
@@ -13964,22 +14085,33 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
 // 휴대폰(특히 홈 화면에 설치한 앱)으로 접속하면 사이드바가 접히고 표가 좁아져서 보기 불편하다는 요청으로,
 // 뷰포트 메타태그의 width를 컴퓨터 폭(1400)으로 강제 지정해서 PC에서 보던 레이아웃 그대로 화면에 축소해
 // 띄우고(모바일 브라우저의 "데스크탑 사이트로 보기"와 동일한 원리), 필요한 부분은 손가락으로 확대해서
-// 보게 함. 기기가 터치 포인터를 쓰면(=휴대폰/태블릿으로 추정) 토글 버튼을 보여주고, 켠 상태는 다음 접속
-// 때도(설치된 앱 포함) 그대로 유지되도록 localStorage에 저장해둠.
+// 보게 함. 처음엔 "켜야만 되는" 토글이었는데, "휴대폰 화면도 그냥 처음부터 컴퓨터랑 똑같이 나오면
+// 되지 않냐"는 요청으로 기본값을 뒤집음 - 이제 터치 기기(휴대폰/태블릿)는 따로 안 눌러도 처음부터 이
+// 모드로 시작하고, 한 번이라도 직접 꺼본 적이 있을 때만("0"으로 저장된 적 있음) 다음에도 꺼진 채로 시작함.
+// 그래도 예전처럼 좁은 화면에 맞춘 모바일 레이아웃을 보고 싶을 때가 있을 수 있어서, 버튼은 그대로 남겨둬서
+// 이 기본 모드를 언제든 끄고 켤 수 있게 함.
 (function(){
   const TOUCH_DEVICE = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
   if(TOUCH_DEVICE) document.documentElement.classList.add('is-touch-device');
   const PC_VIEW_KEY = 'worklog_pc_view_on_mobile';
   const viewportMeta = document.querySelector('meta[name="viewport"]');
   const pcViewBtn = document.getElementById('pcViewToggleBtn');
+  // 폭을 1400으로 못박아두면, 그보다 실제 화면이 더 넓은 가로모드 태블릿 같은 기기에서는 브라우저가
+  // 오히려 그 좁은 폭 기준으로 확대해서 보여주다가 오른쪽이 화면 밖으로 밀려 잘려 보이는 문제가 있었음 -
+  // 지금 기기의 실제 폭(width=device-width일 때의 innerWidth, 아직 덮어쓰기 전이라 진짜 값)과 1400 중
+  // 더 큰 쪽을 씀. 좁은 휴대폰(세로)은 여전히 1400으로 축소되어 "PC 화면처럼" 보이고, 이미 1400보다 넓은
+  // 기기(가로모드 태블릿 등)는 그 실제 폭을 그대로 써서 확대·잘림 없이 데스크탑 레이아웃이 그대로 맞게 나옴
+  const PC_VIEW_WIDTH = Math.max(1400, window.innerWidth || 0);
   function applyPcViewMode(on){
-    if(viewportMeta) viewportMeta.setAttribute('content', on ? 'width=1400' : 'width=device-width, initial-scale=1.0');
+    if(viewportMeta) viewportMeta.setAttribute('content', on ? `width=${PC_VIEW_WIDTH}` : 'width=device-width, initial-scale=1.0');
     if(pcViewBtn){
-      pcViewBtn.title = on ? '휴대폰 화면으로 돌아가기' : '컴퓨터 화면처럼 보기(확대해서 필요한 부분 보기)';
+      pcViewBtn.title = on ? '컴퓨터 화면처럼 보는 중 · 눌러서 휴대폰 화면으로 돌아가기' : '눌러서 컴퓨터 화면처럼 보기(확대해서 필요한 부분 보기)';
       pcViewBtn.classList.toggle('pc-view-active', on);
     }
   }
-  let pcViewOn = localStorage.getItem(PC_VIEW_KEY) === '1';
+  // 아직 한 번도 건드린 적 없으면(저장된 값이 없으면) 기본은 켜짐. 명시적으로 "0"을 저장해둔 적이 있을
+  // 때만 꺼진 채로 시작함
+  let pcViewOn = localStorage.getItem(PC_VIEW_KEY) !== '0';
   applyPcViewMode(pcViewOn);
   pcViewBtn?.addEventListener('click', ()=>{
     pcViewOn = !pcViewOn;
@@ -19750,7 +19882,10 @@ function populateApproverSelect(){
   // 등록된 이름을 못 찾을 때만 이메일로 대체해서 보여주므로(등록 안 된 예외 상황 대비), 평소엔 이름만 나옴.
   // 맨 앞에 빈 옵션을 하나 둬서, 예전처럼 관리자 목록 중 첫 번째가 자동으로 골라진 채 시작하지 않고
   // (결재자를 안 골랐는데 이미 누가 정해진 것처럼 보였던 문제) 사용자가 직접 골라야만 값이 채워지게 함
-  sel.innerHTML = `<option value="">결재자를 선택해주세요</option>` + list.map(email=> `<option value="${escHtml(email)}">${escHtml(resolveNameByEmail(email))}</option>`).join('');
+  // "결재자를 선택해주세요"는 아직 아무것도 안 골랐을 때만 보여주는 안내문구일 뿐, 실제로 고를 수 있는
+  // 항목이 아니므로 disabled+hidden을 줘서 드롭다운을 열었을 때 진짜 결재자 이름들 사이에 선택 가능한
+  // 항목처럼 함께 나열되지 않게 함(가장 처음엔 이 옵션이 자동 선택된 채로 화면에 보이는 건 그대로 유지됨)
+  sel.innerHTML = `<option value="" disabled hidden>결재자를 선택해주세요</option>` + list.map(email=> `<option value="${escHtml(email)}">${escHtml(resolveNameByEmail(email))}</option>`).join('');
   if(list.includes(prevVal)) sel.value = prevVal;
   populateDrafterSelect();
   updateApprovalDraftMeta();
@@ -19952,6 +20087,11 @@ function saveApprovalDraftForm(status){
   renderAdAttachLinkRows([]);
   if(typeof syncAdExpenseMonthRow === 'function') syncAdExpenseMonthRow(); // 문서종류가 기본값(일반)으로 리셋됐으니 정산월 칸도 같이 접어줌
   if(typeof syncAdTaxTargetRow === 'function') syncAdTaxTargetRow();
+  // 위 두 줄과 똑같은 이유로 휴가 일정 선택칸도 다시 접어줘야 하는데 빠져있었음 - form.reset()은 select
+  // 값만 기본값(일반)으로 되돌릴 뿐 'change' 이벤트를 발생시키지 않아서, syncAdLeaveTargetRow가 실행되지
+  // 않아 방금 전까지 "휴가"였을 때 펼쳐져 있던 휴가 일정 칸이 문서종류가 "일반"으로 바뀐 뒤에도 화면에
+  // 그대로 남아있는 버그가 있었음
+  if(typeof syncAdLeaveTargetRow === 'function') syncAdLeaveTargetRow();
   document.getElementById('ad-edit-id').value = '';
   const editBadge = document.getElementById('approvalDraftEditBadge');
   if(editBadge) editBadge.style.display = 'none';
@@ -20535,6 +20675,8 @@ document.querySelectorAll('.approval-doc-btn').forEach(btn=>{
       renderAdAttachLinkRows([]);
       if(typeof syncAdExpenseMonthRow === 'function') syncAdExpenseMonthRow(); // 문서종류가 기본값(일반)으로 리셋됐으니 정산월 칸도 같이 접어줌
   if(typeof syncAdTaxTargetRow === 'function') syncAdTaxTargetRow();
+      // form.reset()은 'change' 이벤트를 안 일으켜서 휴가 일정 칸도 같은 이유로 따로 다시 접어줘야 함(위 참고)
+      if(typeof syncAdLeaveTargetRow === 'function') syncAdLeaveTargetRow();
       document.getElementById('ad-edit-id').value = '';
       const editBadge = document.getElementById('approvalDraftEditBadge');
       if(editBadge) editBadge.style.display = 'none';
@@ -21293,6 +21435,7 @@ async function decideApproval(id, decision){
   const noteText = (commentEl?.value || '').trim();
   item.status = decision;
   item.decidedAt = new Date().toLocaleString('ko-KR');
+  recordApprovalDecision(id, decision); // 다른 탭/기기와의 동기화 과정에서 이 결정이 도로 검토중으로 되돌아가지 않도록 기록
   item.comments = item.comments || [];
   item.comments.push({
     author: resolveNameByEmail(currentUserEmail) || currentUserEmail || '',
@@ -22145,6 +22288,7 @@ async function buildBulkExcelWorkbook(sheets){
       ['세무관리번호', sharedTeamInfo.taxMgmtNo||''],
       ['세무관리비밀번호', sharedTeamInfo.taxMgmtPw||''],
       ['내선번호', sharedTeamInfo.extNo||''],
+      ['웹주소', sharedTeamInfo.webUrl||''],
       ['메모', sharedTeamInfo.note||'']
     ];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(tiRows), '팀정보');
@@ -23474,9 +23618,26 @@ async function gdrivePull(){
     // 결재문서 삭제도 같은 이유로 한 번 더 안전장치 - 최근에 지운 결재문서 id는 병합 결과에 남아있어도 확실히 제거
     const deletedApprovalIds = new Set(getRecentlyDeletedApprovalIds().map(e=>e.id));
     if(deletedApprovalIds.size && merged.shared) merged.shared.approvals = (merged.shared.approvals||[]).filter(a=>!deletedApprovalIds.has(a.id));
+    // 결재 승인/반려도 같은 이유로 한 번 더 안전장치 - 방금 내가 내린 결정이 병합 결과에서 도로 예전 상태로
+    // 되돌아가 있으면(다른 탭/기기의 예전 데이터가 그 사이에 덮어썼다면) 확실히 최근 결정으로 다시 맞춤
+    const recentApprovalDecisions = getRecentApprovalDecisions();
+    if(recentApprovalDecisions.length && merged.shared && merged.shared.approvals){
+      const decisionMap = new Map(recentApprovalDecisions.map(d=>[d.id, d.status]));
+      merged.shared.approvals = merged.shared.approvals.map(a=>{
+        const decided = decisionMap.get(a.id);
+        return (decided && a.status !== decided) ? { ...a, status: decided } : a;
+      });
+    }
     // 공지사항 삭제도 같은 이유로 한 번 더 안전장치 - 최근에 지운 공지 id는 병합 결과에 남아있어도 확실히 제거
     const deletedNoticeIds = new Set(getRecentlyDeletedNoticeIds().map(e=>e.id));
     if(deletedNoticeIds.size && merged.shared) merged.shared.noticeHistory = (merged.shared.noticeHistory||[]).filter(n=>!deletedNoticeIds.has(n.id));
+    // 즐겨찾기 삭제도 같은 이유로 한 번 더 안전장치 - 이건 개인 설정(settings.favoriteMenuItems)이라 내 프로필
+    // 데이터(merged.data[activeProfileId])에만 적용. 다른 탭/기기에 남아있던 예전 즐겨찾기 목록이 그 사이에
+    // 저장되면서 방금 지운 항목이 병합 결과에 다시 섞여 들어와도 여기서 확실히 걸러냄
+    const deletedFavoriteKeys = new Set(getRecentlyDeletedIds('worklog_recent_favorite_deletions').map(e=>e.id));
+    if(deletedFavoriteKeys.size && merged.data && merged.data[activeProfileId] && merged.data[activeProfileId].settings && Array.isArray(merged.data[activeProfileId].settings.favoriteMenuItems)){
+      merged.data[activeProfileId].settings.favoriteMenuItems = merged.data[activeProfileId].settings.favoriteMenuItems.filter(f=>!deletedFavoriteKeys.has(f.key));
+    }
     // 근무시간 예외/점심한도 이력/공휴일(제외일)/특별기간/관리자 이메일도 같은 이유로 같은 안전장치 적용 -
     // "삭제했는데 동기화하면 다시 나타난다"는 문제가 공지사항에서만 보고됐을 뿐, 구조가 같은 다른 공용
     // 목록에도 똑같이 있을 수 있는 문제라 한꺼번에 같이 막아둠
@@ -23743,11 +23904,13 @@ function populateTeamInfoInput(){
   const taxMgmtNoEl = document.getElementById('team-info-taxmgmtno');
   const taxMgmtPwEl = document.getElementById('team-info-taxmgmtpw');
   const extNoEl = document.getElementById('team-info-extno');
+  const webUrlEl = document.getElementById('team-info-weburl');
   if(nameEl) nameEl.value = (sharedTeamInfo && sharedTeamInfo.teamName) || '';
   if(accountantEl) accountantEl.value = (sharedTeamInfo && sharedTeamInfo.accountant) || '';
   if(taxMgmtNoEl) taxMgmtNoEl.value = (sharedTeamInfo && sharedTeamInfo.taxMgmtNo) || '';
   if(taxMgmtPwEl) taxMgmtPwEl.value = (sharedTeamInfo && sharedTeamInfo.taxMgmtPw) || '';
   if(extNoEl) extNoEl.value = (sharedTeamInfo && sharedTeamInfo.extNo) || '';
+  if(webUrlEl) webUrlEl.value = (sharedTeamInfo && sharedTeamInfo.webUrl) || '';
   updateCiTeamSectionHeading();
   updateTeamInfoButtons();
 }
@@ -23766,7 +23929,7 @@ function updateCiTeamSectionHeading(){
 function updateTeamInfoButtons(){
   const submitBtn = document.getElementById('teamInfoSubmitBtn');
   const deleteBtn = document.getElementById('teamInfoDeleteBtn');
-  const hasData = !!(sharedTeamInfo && (sharedTeamInfo.teamName || sharedTeamInfo.accountant || sharedTeamInfo.taxMgmtNo || sharedTeamInfo.taxMgmtPw || sharedTeamInfo.extNo));
+  const hasData = !!(sharedTeamInfo && (sharedTeamInfo.teamName || sharedTeamInfo.accountant || sharedTeamInfo.taxMgmtNo || sharedTeamInfo.taxMgmtPw || sharedTeamInfo.extNo || sharedTeamInfo.webUrl));
   if(submitBtn){
     submitBtn.textContent = hasData ? '수정' : '등록';
     submitBtn.classList.toggle('submit-btn', !hasData);
@@ -23785,6 +23948,7 @@ document.getElementById('teamInfoForm')?.addEventListener('submit', async (e)=>{
     taxMgmtNo: document.getElementById('team-info-taxmgmtno').value.trim(),
     taxMgmtPw: document.getElementById('team-info-taxmgmtpw').value.trim(),
     extNo: document.getElementById('team-info-extno').value.trim(),
+    webUrl: document.getElementById('team-info-weburl').value.trim(),
     selectedMembers: sharedTeamInfo.selectedMembers
   };
   await saveSharedTeamInfo();
@@ -23795,7 +23959,7 @@ document.getElementById('teamInfoForm')?.addEventListener('submit', async (e)=>{
 });
 document.getElementById('teamInfoDeleteBtn')?.addEventListener('click', async ()=>{
   if(!(await appConfirm('등록된 팀정보를 전부 삭제할까요?'))) return;
-  sharedTeamInfo = { teamName:'', accountant:'', taxMgmtNo:'', taxMgmtPw:'', extNo:'', selectedMembers: sharedTeamInfo.selectedMembers };
+  sharedTeamInfo = { teamName:'', accountant:'', taxMgmtNo:'', taxMgmtPw:'', extNo:'', webUrl:'', selectedMembers: sharedTeamInfo.selectedMembers };
   await saveSharedTeamInfo();
   populateTeamInfoInput();
   showCenterToast('삭제됐어요'); document.getElementById('teamInfoSaveMsg').textContent = '삭제됨';
