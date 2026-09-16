@@ -1293,6 +1293,10 @@
   tbody tr:hover td{background:rgba(91,95,239,0.055);}
   #clientsRegularListWrap tbody tr:hover td, #clientsOtherListWrp tbody tr:hover td,
   #clientsOtherListWrap tbody tr:hover td, #clientsTerminatedListWrap tbody tr:hover td{background:rgba(91,95,239,0.08);}
+  /* 상호명 칸을 누르면 전체정보 팝업이 뜨는데, 줄 전체가 똑같은 음영으로 밝아지니 "여기(상호명)를 눌러야
+     열린다"는 게 잘 안 보인다는 지적이 있었음 - 그 줄에 마우스를 올렸을 때 상호명 칸만 더 진한 인디고
+     톤으로 따로 강조해서, 클릭 가능한 곳이라는 게 한눈에 보이게 함 */
+  tbody tr:hover td.client-name-cell{background:var(--indigo-bg) !important;}
   /* 결재 표의 "삭제" 아이콘처럼 되돌리기 어려운 동작은 평소엔 완전히 안 보이다가, 그 줄에 마우스를
      올렸을 때만 나타나게 함(요청받은 방식) - pointer-events도 같이 꺼서 숨어있는 동안엔 실수로도 안 눌림 */
   .approval-action-danger{ opacity:0; pointer-events:none; transition:opacity .15s; }
@@ -4342,7 +4346,7 @@
                 </div>
                 <div class="field"><label>제목</label><input type="text" id="ad-title" placeholder="예: 8월 휴가 신청" required></div>
                 <div class="field">
-                  <label style="display:flex; align-items:center; justify-content:space-between;">서식설정
+                  <label style="display:flex; align-items:center; justify-content:space-between;">서식
                     <span style="display:flex; align-items:center; gap:5px;">
                       <!-- 예전엔 "+자동문구" 버튼을 직접 눌러야만 문서종류별 기본 문구가 채워졌는데, 버튼을
                            누르는 걸 깜빡하기 쉽고 번거롭다는 요청으로 없앰 - 이제 문서종류를 고르는 즉시
@@ -4351,44 +4355,40 @@
                       <button type="button" id="ad-auto-phrase-settings-btn" title="기안문구 설정" style="border:none; background:transparent; color:var(--ink-soft); cursor:pointer; padding:2px; display:flex; align-items:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
                     </span>
                   </label>
-                  <!-- 서식 툴바: 굵게/기울임/밑줄/목록/글자색 - 드래그로 선택한 부분에만 적용됨(공지사항 리치텍스트
-                       편집기와 같은 방식으로 execCommand 사용). mousedown에서 선택영역이 풀리지 않도록 preventDefault 처리 -->
-                  <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:6px; padding:6px 8px; background:var(--bg); border-radius:10px;">
-                    <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-                      <select id="ad-rt-font" title="글씨체" style="height:26px; font-size:11px; border-radius:7px; border:1.3px solid var(--border); background:var(--surface); color:var(--ink); padding:0 6px;">
-                        <option value="'Pretendard',sans-serif">기본체</option>
-                        <option value="'Noto Serif KR',serif">명조체</option>
-                        <option value="'IBM Plex Mono',monospace">고정폭</option>
-                      </select>
-                      <span style="width:1px; height:16px; background:var(--border);"></span>
-                      <button type="button" class="del-btn ad-rt-btn" data-cmd="bold" title="굵게" style="font-weight:900; padding:4px 9px;">B</button>
-                      <button type="button" class="del-btn ad-rt-btn" data-cmd="italic" title="기울임" style="font-style:italic; padding:4px 9px;">I</button>
-                      <button type="button" class="del-btn ad-rt-btn" data-cmd="underline" title="밑줄" style="text-decoration:underline; padding:4px 9px;">U</button>
-                      <span style="width:1px; height:16px; background:var(--border);"></span>
-                      <button type="button" class="del-btn ad-rt-btn" data-cmd="insertUnorderedList" title="목록" style="padding:4px 9px;">• 목록</button>
-                      <span style="width:1px; height:16px; background:var(--border);"></span>
-                      <!-- 휴가 일정 표/세무 신고대상·특이사항 표를 지금 커서 위치에 다시(또는 추가로) 끼워넣는
-                           버튼 - 문서종류를 바꿀 때 자동으로 채워지는 것과 별개로, 표를 실수로 지웠거나 하나 더
-                           넣고 싶을 때 씀(문서종류가 휴가·부가가치세·법인세·종합소득세일 때만 동작함) -->
-                      <button type="button" class="del-btn" id="ad-insert-box-btn" title="지금 문서종류에 맞는 표를 커서 위치에 끼워넣어요" style="padding:4px 9px; font-size:11px;">⊞ 표 삽입</button>
-                      <span style="width:1px; height:16px; background:var(--border);"></span>
-                      <button type="button" class="del-btn ad-rt-align" data-align="left" title="왼쪽 정렬" style="padding:4px 7px; display:flex; align-items:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="15" y2="12"></line><line x1="3" y1="18" x2="18" y2="18"></line></svg></button>
-                      <button type="button" class="del-btn ad-rt-align" data-align="center" title="가운데 정렬" style="padding:4px 7px; display:flex; align-items:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="6" y1="12" x2="18" y2="12"></line><line x1="4.5" y1="18" x2="19.5" y2="18"></line></svg></button>
-                      <button type="button" class="del-btn ad-rt-align" data-align="right" title="오른쪽 정렬" style="padding:4px 7px; display:flex; align-items:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="9" y1="12" x2="21" y2="12"></line><line x1="6" y1="18" x2="21" y2="18"></line></svg></button>
-                    </div>
-                    <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-                      <button type="button" class="del-btn ad-rt-color" data-color="#DC2626" title="빨강" style="background:#DC2626; width:16px; height:16px; padding:0; border-radius:50%;"></button>
-                      <button type="button" class="del-btn ad-rt-color" data-color="#EA580C" title="주황" style="background:#EA580C; width:16px; height:16px; padding:0; border-radius:50%;"></button>
-                      <button type="button" class="del-btn ad-rt-color" data-color="#D97706" title="황토" style="background:#D97706; width:16px; height:16px; padding:0; border-radius:50%;"></button>
-                      <button type="button" class="del-btn ad-rt-color" data-color="#16A34A" title="초록" style="background:#16A34A; width:16px; height:16px; padding:0; border-radius:50%;"></button>
-                      <button type="button" class="del-btn ad-rt-color" data-color="#2563EB" title="파랑" style="background:#2563EB; width:16px; height:16px; padding:0; border-radius:50%;"></button>
-                      <button type="button" class="del-btn ad-rt-color" data-color="#7C3AED" title="보라" style="background:#7C3AED; width:16px; height:16px; padding:0; border-radius:50%;"></button>
-                      <button type="button" class="del-btn ad-rt-color" data-color="#334155" title="진회색" style="background:#334155; width:16px; height:16px; padding:0; border-radius:50%;"></button>
-                      <label class="del-btn" title="다른 색상" style="width:16px; height:16px; padding:0; border-radius:50%; overflow:hidden; position:relative; cursor:pointer; background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);">
-                        <input type="color" id="ad-rt-color-custom" style="position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; border:none; padding:0;">
-                      </label>
-                      <button type="button" class="del-btn ad-rt-color" data-color="" title="색상 지우기" style="background:var(--surface); width:16px; height:16px; padding:0; border-radius:50%; border:1.5px solid var(--border); position:relative;"><span style="position:absolute; inset:0; border-top:1.5px solid var(--coral); transform:rotate(45deg);"></span></button>
-                    </div>
+                  <!-- 서식 툴바: 굵게/기울임/밑줄/목록/표삽입/정렬/글자색을 전부 한 줄에 넣어달라는 요청으로,
+                       글씨체 선택칸 폭을 줄이고, 목록·표삽입은 글자 라벨 없이 아이콘만(대신 title 속성으로
+                       마우스를 올리면 설명이 뜸) 두고, 색상도 자주 쓰는 빨강·파랑 2개 + 자체선택(색상피커) +
+                       지우기 4개로만 줄여서 한 줄에 다 들어가게 함. 드래그로 선택한 부분에만 적용됨(공지사항
+                       리치텍스트 편집기와 같은 방식으로 execCommand 사용). mousedown에서 선택영역이 풀리지
+                       않도록 preventDefault 처리 -->
+                  <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:6px; padding:6px 8px; background:var(--bg); border-radius:10px;">
+                    <select id="ad-rt-font" title="글씨체" style="height:26px; width:52px; font-size:11px; border-radius:7px; border:1.3px solid var(--border); background:var(--surface); color:var(--ink); padding:0 3px;">
+                      <option value="'Pretendard',sans-serif">기본체</option>
+                      <option value="'Noto Serif KR',serif">명조체</option>
+                      <option value="'IBM Plex Mono',monospace">고정폭</option>
+                    </select>
+                    <span style="width:1px; height:16px; background:var(--border);"></span>
+                    <button type="button" class="del-btn ad-rt-btn" data-cmd="bold" title="굵게" style="font-weight:900; padding:4px 9px;">B</button>
+                    <button type="button" class="del-btn ad-rt-btn" data-cmd="italic" title="기울임" style="font-style:italic; padding:4px 9px;">I</button>
+                    <button type="button" class="del-btn ad-rt-btn" data-cmd="underline" title="밑줄" style="text-decoration:underline; padding:4px 9px;">U</button>
+                    <span style="width:1px; height:16px; background:var(--border);"></span>
+                    <button type="button" class="del-btn ad-rt-btn" data-cmd="insertUnorderedList" title="목록" style="padding:5px 7px; display:flex; align-items:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="6" x2="20" y2="6"></line><line x1="9" y1="12" x2="20" y2="12"></line><line x1="9" y1="18" x2="20" y2="18"></line><circle cx="4.5" cy="6" r="1.3" fill="currentColor" stroke="none"></circle><circle cx="4.5" cy="12" r="1.3" fill="currentColor" stroke="none"></circle><circle cx="4.5" cy="18" r="1.3" fill="currentColor" stroke="none"></circle></svg></button>
+                    <!-- 휴가 일정 표/세무 신고대상·특이사항 표를 지금 커서 위치에 다시(또는 추가로) 끼워넣는
+                         버튼 - 문서종류를 바꿀 때 자동으로 채워지는 것과 별개로, 표를 실수로 지웠거나 하나 더
+                         넣고 싶을 때 씀. 문서종류에 전용 표가 있으면 그걸, 없으면(일반·지출결의서 등) 직접 채워
+                         쓸 수 있는 빈 표를 대신 넣어줘서 문서종류와 상관없이 항상 동작함 -->
+                    <button type="button" class="del-btn" id="ad-insert-box-btn" title="표 삽입" style="padding:5px 7px; display:flex; align-items:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1.5"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="12" y1="3" x2="12" y2="21"></line></svg></button>
+                    <span style="width:1px; height:16px; background:var(--border);"></span>
+                    <button type="button" class="del-btn ad-rt-align" data-align="left" title="왼쪽 정렬" style="padding:4px 7px; display:flex; align-items:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="15" y2="12"></line><line x1="3" y1="18" x2="18" y2="18"></line></svg></button>
+                    <button type="button" class="del-btn ad-rt-align" data-align="center" title="가운데 정렬" style="padding:4px 7px; display:flex; align-items:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="6" y1="12" x2="18" y2="12"></line><line x1="4.5" y1="18" x2="19.5" y2="18"></line></svg></button>
+                    <button type="button" class="del-btn ad-rt-align" data-align="right" title="오른쪽 정렬" style="padding:4px 7px; display:flex; align-items:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="9" y1="12" x2="21" y2="12"></line><line x1="6" y1="18" x2="21" y2="18"></line></svg></button>
+                    <span style="width:1px; height:16px; background:var(--border);"></span>
+                    <button type="button" class="del-btn ad-rt-color" data-color="#DC2626" title="빨강" style="background:#DC2626; width:16px; height:16px; padding:0; border-radius:50%;"></button>
+                    <button type="button" class="del-btn ad-rt-color" data-color="#2563EB" title="파랑" style="background:#2563EB; width:16px; height:16px; padding:0; border-radius:50%;"></button>
+                    <label class="del-btn" title="다른 색상" style="width:16px; height:16px; padding:0; border-radius:50%; overflow:hidden; position:relative; cursor:pointer; background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);">
+                      <input type="color" id="ad-rt-color-custom" style="position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; border:none; padding:0;">
+                    </label>
+                    <button type="button" class="del-btn ad-rt-color" data-color="" title="색상 지우기" style="background:var(--surface); width:16px; height:16px; padding:0; border-radius:50%; border:1.5px solid var(--border); position:relative;"><span style="position:absolute; inset:0; border-top:1.5px solid var(--coral); transform:rotate(45deg);"></span></button>
                   </div>
                   <label style="display:block; margin:0 0 4px;">내용</label>
                   <div id="ad-content" contenteditable="true" data-placeholder="결재 내용을 적어주세요" style="width:100%; min-height:120px; max-height:40vh; overflow-y:auto; font-family:'Pretendard',sans-serif; font-size:13px; line-height:1.6; border:1.5px solid transparent; border-radius:10px; padding:10px; background:var(--bg); color:var(--ink);"></div>
@@ -9798,7 +9798,7 @@ function openClientDetailModal(c){
   // 지적이 있었음 - 상호명과 같은 줄, 오른쪽 위 구석(닫기 버튼 바로 아래)에 작게 붙여서 "이 문서에 대한
   // 관리 버튼"처럼 보이게 함(가운데 큰 상호명 글자와 겹치지 않도록 absolute로 뺌)
   document.getElementById('memoModalTitleExtra').innerHTML = `
-    <div style="position:absolute; top:32px; right:14px; display:flex; align-items:center; gap:6px;">
+    <div style="position:absolute; top:42px; right:14px; display:flex; align-items:center; gap:6px;">
       <button type="button" id="clientDetailEditBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="수정" style="color:var(--navy); background:transparent; border:none; padding:2px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>
       <button type="button" id="clientDetailHistoryBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="이력" style="color:var(--ink-soft); background:transparent; border:none; padding:2px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 16 14"></polyline></svg></button>
       <button type="button" id="clientDetailDeleteBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="삭제" style="color:var(--coral); background:transparent; border:none; padding:2px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
