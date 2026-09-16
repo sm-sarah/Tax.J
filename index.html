@@ -6543,6 +6543,24 @@ async function applyScreenViewAs(screen){
     await loadAll();
   }
 }
+// 지금 activeProfileId가 "관리자 자기 자신"이 아닌 다른 직원인지 - 관리자가 다른 직원 화면을 보다가
+// 실수로 등록/수정/삭제를 눌러버리는 걸 막기 위한 확인 팝업에 씀
+function isViewingOtherPerson(){
+  const mine = getMyOwnProfileId();
+  return !!mine && !!activeProfileId && activeProfileId !== mine;
+}
+function getActiveProfileDisplayName(){
+  const p = getProfiles().find(x=>x.id===activeProfileId);
+  return (p && p.name) || '(이름 미등록)';
+}
+// 개인캘린더/근태경비/출퇴근현황처럼 화면마다 "보고 있는 직원"이 달라질 수 있는 곳에서, 실제 등록/수정/삭제
+// 직전에 한 번 더 확인함 - 본인 데이터를 보고 있을 때는 조용히 통과하고(true), 다른 직원 데이터를 보고 있을 때만
+// "OO님 데이터에 적용돼요"라는 안내를 띄워서 실수로 다른 사람 걸 건드리는 걸 막음
+async function confirmOtherPersonAction(actionLabel){
+  if(!isViewingOtherPerson()) return true;
+  const name = getActiveProfileDisplayName();
+  return await appConfirm(`지금 "${name}" 님의 데이터를 보고 있어요. 이 ${actionLabel}은 본인이 아니라 "${name}" 님에게 적용돼요. 계속할까요?`);
+}
 
 function ensureProfileInit(){
   let profiles = getProfiles();
@@ -8397,7 +8415,7 @@ function updateCalHeader(){
     if(titleEl) titleEl.textContent = formatMonthTitle(monthStr);
     const ownerEl = document.getElementById(ownerId);
     if(ownerEl){
-      ownerEl.textContent = currentStaffDisplayName();
+      ownerEl.textContent = getActiveProfileDisplayName();
       // 관리자만 이 라벨을 눌러서 다른 직원으로 바로 전환할 수 있게(상단에 항상 떠있던 직원선택 칩을 없앤 대신)
       ownerEl.style.cursor = canSwitch ? 'pointer' : 'default';
       ownerEl.title = canSwitch ? switchTitle : '';
@@ -9316,6 +9334,7 @@ function renderExpenseCategoryHistory(kinds){
   });
   wrap.querySelectorAll('.expense-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
+      if(!(await confirmOtherPersonAction('경비 삭제'))) return;
       const kind = btn.dataset.kind, id = btn.dataset.id;
       let target = null;
       if(kind==='lunch'){ target = expense.lunchEntries.find(x=>x.id===id); expense.lunchEntries = expense.lunchEntries.filter(x=>x.id!==id); }
@@ -9653,6 +9672,7 @@ function renderScheduleList(){
   });
   wrap.querySelectorAll('.schedule-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
+      if(!(await confirmOtherPersonAction('일정 삭제'))) return;
       const target = schedule.events.find(x=>x.id===btn.dataset.id);
       schedule.events = schedule.events.filter(x=>x.id!==btn.dataset.id);
       if(target) pushToTrash('schedule', 'event', `${target.date||''} ${target.type||'일정'}${target.memo?' · '+target.memo:''}`, target);
@@ -13776,7 +13796,7 @@ function updateClockHistoryHeader(){
   const ownerEl = document.getElementById('clockCalOwnerLabel');
   if(ownerEl){
     const canSwitch = !!gdriveAccessToken && isCurrentUserAdmin;
-    ownerEl.textContent = currentStaffDisplayName();
+    ownerEl.textContent = getActiveProfileDisplayName();
     ownerEl.style.cursor = canSwitch ? 'pointer' : 'default';
     ownerEl.title = canSwitch ? '눌러서 다른 직원으로 전환' : '';
   }
@@ -13885,6 +13905,7 @@ document.getElementById('clockEditSaveBtn')?.addEventListener('click', async ()=
   const entry = (attendance.clockLog||[]).find(e=>e.date===clockEditTargetDate);
   const msgEl = document.getElementById('clockEditMsg');
   if(!entry) return;
+  if(!(await confirmOtherPersonAction('출퇴근 기록 수정'))) return;
   const reason = (document.getElementById('clockEditReason')?.value || '').trim();
   if(!reason){
     if(msgEl) msgEl.textContent = '수정 사유를 반드시 입력해야 저장할 수 있어요.';
@@ -13913,6 +13934,7 @@ document.getElementById('clockEditSaveBtn')?.addEventListener('click', async ()=
 });
 async function deleteClockLogEntry(dateStr){
   if(!(await appConfirm(`${dateStr} 출퇴근 기록을 삭제할까요? (휴지통으로 이동해서 나중에 복원할 수 있어요)`))) return;
+  if(!(await confirmOtherPersonAction('출퇴근 기록 삭제'))) return;
   const target = (attendance.clockLog||[]).find(e=>e.date===dateStr);
   if(target) pushToTrash('attendance', 'clockLog', `출퇴근기록 ${target.date||''}`, target);
   attendance.clockLog = (attendance.clockLog||[]).filter(e=>e.date!==dateStr);
@@ -14946,6 +14968,7 @@ document.getElementById('expenseRegisterModalOverlay').addEventListener('click',
 });
 document.getElementById('expenseEntryForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
+  if(!(await confirmOtherPersonAction(editingExpense.id ? '경비 수정' : '경비 등록'))) return;
   const kind = document.getElementById('exp-kind').value;
   const date = document.getElementById('exp-date').value;
   const amount = parseCommaAmount(document.getElementById('exp-amount').value);
@@ -15160,6 +15183,7 @@ function dedupeClients(){
 
 document.getElementById('scheduleForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
+  if(!(await confirmOtherPersonAction(editingScheduleId ? '일정 수정' : '일정 등록'))) return;
   const date = document.getElementById('sc-date').value;
   const startTime = document.getElementById('sc-start').value;
   const endTime = document.getElementById('sc-end').value;
