@@ -5007,6 +5007,11 @@ let sharedTrash = []; // [{id, type:'employee', kind:'profile', label, deletedAt
 // 점심식대 한도는 직원 개인 사정이 아니라 팀 전체에 동일하게 적용되는 회사 공통 기준이라, settings(직원별)가
 // 아니라 여기(공용)에 둠 - [{id, effectiveDate:'YYYY-MM-DD', dailyAmount}]
 let sharedLunchLimitHistory = [];
+// 내부규정(인사지침/운영지침) 이력도 예전엔 직원 프로필별로(settings.teamPolicyHistory/opsPolicyHistory) 따로
+// 저장돼서, 어느 프로필로 로그인했는지에 따라 규정 내용/이력이 다르게 보이는 문제가 있었음(거래처·개인정보와
+// 같은 원인의 버그). 회사 규정은 당연히 회사 전체가 공유해야 하는 데이터라, 이제 회사 공용 저장소로 이관함
+let sharedTeamPolicyHistory = []; // 인사지침 이력 [{id, content, editedDate, effectiveDate, pinnedAsCurrent}]
+let sharedOpsPolicyHistory = [];  // 운영지침 이력
 // attachments가 없는 예전 문서는 attachmentLink(콤마로 구분된 링크 문자열)만 갖고 있음 - attachmentListHtml()이 이 경우를 폴백 처리함
 let sharedReviewFigures = {}; // 검토표(원천세) 거래처별 월별 실제 숫자: { [clientId]: { [year]: { [month]: { income:{[fieldKey]:num}, incomeReported:num, tax:{[groupKey]:{tax:num, local:num}}, taxReported:{[근로/일용/사업/기타/이자]:num}, taxReportedLocal:num } } } }
 let sharedReviewMeta = {}; // 검토표(원천세) 거래처별 설정: { [clientId]: { sameMonth:true/false(귀속=지급 동일 여부), payCycle:'매월'|'반기', secondHalfPayCycle:null|'매월'|'반기' } } - 원본 엑셀 '2026 총괄' 시트의 귀속/지급, 신고구분 값과 동일. secondHalfPayCycle은 연중(7월부터) 신고구분이 바뀌는 거래처를 위한 값 - null이면 1~12월 내내 payCycle 그대로, 값이 있으면 7~12월만 그 값을 씀(신고구분 전환은 반기 단위로만 일어나므로 7월 기준 한 번만 지원)
@@ -5126,9 +5131,49 @@ function loadSharedData(){
   migrateClientsToSharedStore();
   try{ const cl = localStorage.getItem('worklog_shared_clients'); clients = cl ? JSON.parse(cl) : { list:[] }; }catch(e){ console.error('거래처 불러오기 실패', e); clients = { list:[] }; }
   try{ const pi = localStorage.getItem('worklog_shared_personalinfo'); personalInfo = pi ? JSON.parse(pi) : { list:[] }; }catch(e){ console.error('개인정보 불러오기 실패', e); personalInfo = { list:[] }; }
+  // 내부규정(인사지침/운영지침)도 거래처·개인정보와 같은 이유로 회사 공용 저장소에서만 불러옴 - 아직 없으면
+  // (업데이트 후 첫 로딩) migratePolicyHistoryToSharedStore()가 프로필별로 흩어져 있던 이력을 한 번만 합쳐줌
+  migratePolicyHistoryToSharedStore();
+  try{ sharedTeamPolicyHistory = JSON.parse(localStorage.getItem('worklog_shared_teampolicyhistory') || '[]') || []; }catch(e){ sharedTeamPolicyHistory = []; }
+  try{ sharedOpsPolicyHistory = JSON.parse(localStorage.getItem('worklog_shared_opspolicyhistory') || '[]') || []; }catch(e){ sharedOpsPolicyHistory = []; }
 }
 function readSharedClients(){ try{ const v = localStorage.getItem('worklog_shared_clients'); return v ? JSON.parse(v) : { list:[] }; }catch(e){ return { list:[] }; } }
 function readSharedPersonalInfo(){ try{ const v = localStorage.getItem('worklog_shared_personalinfo'); return v ? JSON.parse(v) : { list:[] }; }catch(e){ return { list:[] }; } }
+// 이력을 카테고리('hr'=인사지침/'ops'=운영지침)별로 읽고 쓰는 공용 헬퍼 - 실제 저장소는 각각
+// sharedTeamPolicyHistory/sharedOpsPolicyHistory 배열이고, 나머지 코드(등록/수정/삭제/이력팝업)는 이 헬퍼만 통해서 접근함
+function getPolicyHistoryArr(cat){ return cat === 'ops' ? sharedOpsPolicyHistory : sharedTeamPolicyHistory; }
+function setPolicyHistoryArr(cat, arr){ if(cat === 'ops'){ sharedOpsPolicyHistory = arr; } else { sharedTeamPolicyHistory = arr; } }
+async function saveSharedTeamPolicyHistory(){ try{ localStorage.setItem('worklog_shared_teampolicyhistory', JSON.stringify(sharedTeamPolicyHistory)); }catch(e){ console.error('인사지침 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedOpsPolicyHistory(){ try{ localStorage.setItem('worklog_shared_opspolicyhistory', JSON.stringify(sharedOpsPolicyHistory)); }catch(e){ console.error('운영지침 저장 실패', e); } gdriveScheduleSync(); }
+async function savePolicyHistoryArr(cat){ return cat === 'ops' ? saveSharedOpsPolicyHistory() : saveSharedTeamPolicyHistory(); }
+// worklog_shared_teampolicyhistory가 아직 없을 때(업데이트 후 첫 로딩) 한 번만 실행 - 그동안 직원 프로필마다
+// 따로 저장돼 있던 인사지침/운영지침 이력 중, 항목이 가장 많이 쌓여있는(=가장 실제로 쓰이던) 프로필의
+// 이력을 공용 저장소의 시작값으로 씀(자연스러운 병합 기준키가 없는 자유서식 텍스트라 거래처처럼 항목별로
+// 합치기 어려워, 가장 충실한 한 벌을 고르는 방식으로 처리함)
+function migratePolicyHistoryToSharedStore(){
+  if(localStorage.getItem('worklog_shared_teampolicyhistory') !== null) return; // 이미 마이그레이션 됨
+  try{
+    const profiles = getProfiles();
+    let bestTeam = [], bestOps = [];
+    profiles.forEach(p=>{
+      const raw = readProfileRaw(p.id, 'settings') || {};
+      let teamHist = raw.teamPolicyHistory || [];
+      if(!teamHist.length && raw.teamPolicy && raw.teamPolicy.content){
+        teamHist = [{ id: genId(), content: raw.teamPolicy.content, editedDate: raw.teamPolicy.lastEditedDate || todayStr(), effectiveDate: raw.teamPolicy.effectiveDate || '2026-07-01' }];
+      }
+      const opsHist = raw.opsPolicyHistory || [];
+      if(teamHist.length > bestTeam.length) bestTeam = teamHist;
+      if(opsHist.length > bestOps.length) bestOps = opsHist;
+    });
+    localStorage.setItem('worklog_shared_teampolicyhistory', JSON.stringify(bestTeam));
+    localStorage.setItem('worklog_shared_opspolicyhistory', JSON.stringify(bestOps));
+    gdriveScheduleSync(); // 합쳐진 결과를 다른 기기들에도 반영되도록 저장 예약
+  }catch(e){
+    console.error('내부규정 공용 저장소 마이그레이션 실패', e);
+    localStorage.setItem('worklog_shared_teampolicyhistory', JSON.stringify([]));
+    localStorage.setItem('worklog_shared_opspolicyhistory', JSON.stringify([]));
+  }
+}
 // 사업자번호(없으면 상호명)가 같은 거래처를 하나로 묶어서 합치고, 그 기준으로 개인정보(personalInfo.list)의
 // clientId도 합쳐진 거래처의 id로 맞춰주는 공용 유틸 - 마이그레이션과 옛 형식 백업파일 복구에서 함께 사용함.
 // clientSources/personalSources: [{ key(원본 구분용 - 프로필id 등), list }]
@@ -6646,6 +6691,17 @@ async function restoreTrashItem(id){
       if(typeof renderApprovalAll === 'function') renderApprovalAll();
       if(typeof renderApprovalAllBadges === 'function') renderApprovalAllBadges();
       if(typeof renderDashboardApprovalAllPreview === 'function') renderDashboardApprovalAllPreview();
+    } else if(sharedItem.type==='client'){
+      clients.list.push(sharedItem.data);
+      await saveClients();
+    } else if(sharedItem.type==='personalInfo'){
+      personalInfo.list.push(sharedItem.data);
+      await savePersonalInfo();
+    } else if(sharedItem.type==='policy'){
+      const cat = sharedItem.kind;
+      setPolicyHistoryArr(cat, [...(getPolicyHistoryArr(cat)||[]), sharedItem.data]);
+      await savePolicyHistoryArr(cat);
+      renderPolicyDetail();
     }
     sharedTrash = (sharedTrash||[]).filter(x=>x.id!==id);
     await saveSharedTrash();
@@ -6677,10 +6733,11 @@ async function restoreTrashItem(id){
     personalInfo.list.push(item.data);
     await savePersonalInfo();
   } else if(item.type==='policy'){
-    const key = policyHistoryKey(item.kind);
-    settings[key] = settings[key] || [];
-    settings[key].push(item.data);
-    await saveSettings();
+    // 이 브랜치는 이 개편 이전에 개인(프로필별) 휴지통에 이미 들어가 있던 예전 항목을 복원할 때만 탐(그때는
+    // pushToTrash로 개인 휴지통에 쌓였음) - 복원 결과는 지금 방식대로 회사 공용 저장소에 반영함
+    const cat = item.kind;
+    setPolicyHistoryArr(cat, [...(getPolicyHistoryArr(cat)||[]), item.data]);
+    await savePolicyHistoryArr(cat);
     renderPolicyDetail();
   } else if(item.type==='employee'){
     const profiles = getProfiles();
@@ -7155,23 +7212,17 @@ function normalizeState(){
   settings.standardWorkHours = settings.standardWorkHours || { h1Start:'09:30', h1End:'17:30', h2Start:'09:30', h2End:'17:00', lunchStart:'11:30', lunchEnd:'13:00', h1EndMonth:7 };
   if(!settings.standardWorkHours.h1EndMonth) settings.standardWorkHours.h1EndMonth = 7;
 
-  // 지침(정책) 이력 구조 보장 - 구버전 단일 teamPolicy 객체를 이력 1건으로 이관
-  settings.teamPolicyHistory = settings.teamPolicyHistory || [];
-  if(!settings.teamPolicyHistory.length && settings.teamPolicy && settings.teamPolicy.content){
-    settings.teamPolicyHistory.push({
-      id: genId(),
-      content: settings.teamPolicy.content,
-      editedDate: settings.teamPolicy.lastEditedDate || todayStr(),
-      effectiveDate: settings.teamPolicy.effectiveDate || '2026-07-01'
-    });
-  }
+  // 내부규정(인사지침/운영지침) 이력은 더 이상 프로필별로 저장하지 않고 회사 공용 저장소
+  // (sharedTeamPolicyHistory/sharedOpsPolicyHistory, loadSharedData 참고)에서만 관리함 - 예전 프로필별
+  // 잔여 데이터는 더 헷갈리지 않도록 정리만 해둠(공용 저장소로의 이관은 migratePolicyHistoryToSharedStore가 처리)
   delete settings.teamPolicy;
-  settings.opsPolicyHistory = settings.opsPolicyHistory || [];
+  delete settings.teamPolicyHistory;
+  delete settings.opsPolicyHistory;
 }
 
 function getCurrentPolicy(cat){
   cat = cat || 'hr';
-  const hist = settings[policyHistoryKey(cat)] || [];
+  const hist = getPolicyHistoryArr(cat) || [];
   if(!hist.length) return { content: policyDefaultText(cat), editedDate:'', effectiveDate:'2026-07-01' };
   return sortPolicyHistoryByEffective(hist)[0];
 }
@@ -9454,7 +9505,9 @@ async function deleteClientById(id){
   if(!(await appConfirm('이 거래처를 삭제할까요? (휴지통으로 이동해서 나중에 복원할 수 있어요)'))) return;
   const target = clients.list.find(x=>x.id===id);
   clients.list = clients.list.filter(x=>x.id!==id);
-  if(target) pushToTrash('client', 'client', `${target.name||'(이름 없음)'}${target.repName?' · '+target.repName:''}`, target);
+  // 거래처는 특정 직원 개인 데이터가 아니라 회사 공용 데이터라, 삭제했을 때 휴지통도 로그인한 프로필의
+  // 개인 휴지통이 아니라 공용 휴지통(sharedTrash)에 넣어야 어느 기기/계정으로 들어가든 똑같이 보임
+  if(target) pushToSharedTrash('client', 'client', `${target.name||'(이름 없음)'}${target.repName?' · '+target.repName:''}`, target);
   await saveClients();
   await saveSettings();
   if(editingClientId === id){
@@ -9570,7 +9623,8 @@ function bindPersonalInfoRowEvents(wrap, unlocked){
       if(!p) return;
       if(!(await appConfirm('이 개인정보를 삭제할까요? (휴지통으로 이동해서 나중에 복원할 수 있어요)'))) return;
       personalInfo.list = personalInfo.list.filter(x=>x.id!==p.id);
-      pushToTrash('personalInfo', 'personalInfo', `${p.name||'(이름 없음)'}${p.repName?' · '+p.repName:''}`, p);
+      // 개인정보도 거래처와 마찬가지로 회사 공용 데이터라 공용 휴지통으로
+      pushToSharedTrash('personalInfo', 'personalInfo', `${p.name||'(이름 없음)'}${p.repName?' · '+p.repName:''}`, p);
       await savePersonalInfo();
       renderPersonalInfo();
     });
@@ -15124,13 +15178,12 @@ document.getElementById('savePolicyBtn').addEventListener('click', async ()=>{
   const pd = document.getElementById('pol-d').value;
   const effectiveDate = (py && pm && pd) ? `${py}-${String(pm).padStart(2,'0')}-${String(pd).padStart(2,'0')}` : '';
   const cat = viewingPolicyCategory;
-  const key = policyHistoryKey(cat);
-  settings[key] = settings[key] || [];
+  const hist = getPolicyHistoryArr(cat) || [];
   const pinNow = document.getElementById('pol-current-apply').checked;
-  if(pinNow) settings[key].forEach(h=>{ h.pinnedAsCurrent = false; });
+  if(pinNow) hist.forEach(h=>{ h.pinnedAsCurrent = false; });
   const editedDate = todayStr();
   if(editingPolicyHistoryId){
-    const entry = settings[key].find(h=>h.id===editingPolicyHistoryId);
+    const entry = hist.find(h=>h.id===editingPolicyHistoryId);
     if(entry){
       entry.content = content;
       entry.effectiveDate = effectiveDate;
@@ -15139,11 +15192,12 @@ document.getElementById('savePolicyBtn').addEventListener('click', async ()=>{
     }
     document.getElementById('policySaveMsg').textContent = `${policyCategoryLabel(cat)} 수정됨`;
   } else {
-    settings[key].push({ id:genId(), content, editedDate, effectiveDate, pinnedAsCurrent: pinNow });
+    hist.push({ id:genId(), content, editedDate, effectiveDate, pinnedAsCurrent: pinNow });
     document.getElementById('policySaveMsg').textContent = `${policyCategoryLabel(cat)} 등록됨`;
   }
   editingPolicyHistoryId = null;
-  await saveSettings();
+  setPolicyHistoryArr(cat, hist);
+  await savePolicyHistoryArr(cat);
   renderPolicyDetail();
   setTimeout(()=>{ closePolicyRegisterModal(); }, 700);
 });
@@ -20648,6 +20702,19 @@ async function fetchCurrentUserEmail(){
   }catch(e){ console.error('사용자 정보 조회 실패', e); }
 }
 
+// 관리자 계정인데 직원으로 등록돼있지 않은 경우(직원등록 없이 관리자 계정으로만 로그인) 이메일에 묶인
+// 개인 프로필을 자동으로 하나 만들어줌 - 일반 직원은 로그인 이메일과 일치하는 프로필이 항상 있어서 로그인할
+// 때마다 자동으로 그 프로필에 고정되는데, 등록 안 된 관리자는 묶일 프로필 자체가 없어서 "지금 선택된
+// 프로필"이 기기마다 마지막으로 눌러둔 값(로컬 상태)에 따라 달라지는 문제가 있었음(근태/경비 같은 개인데이터
+// 화면에서 이게 그대로 드러남). 이름은 기존에 수동으로 만들어 쓰던 관례와 같게 "관리자"로 둬서, 팀원카드 등
+// 실제 "직원" 목록에는 안 섞이게 함(activeEmployeeNamesForCi 등 기존 예외처리가 이 이름을 그대로 걸러줌)
+function createOwnAdminProfile(email){
+  const profiles = getProfiles();
+  const profile = { id: genId(), name: '관리자', email };
+  profiles.push(profile);
+  saveProfiles(profiles);
+  return profile;
+}
 function applyPermissionUI(){
   const signedIn = !!gdriveAccessToken;
   const admin = signedIn && isCurrentUserAdmin;
@@ -20704,12 +20771,19 @@ function applyPermissionUI(){
       // 본인 것으로 맞춰지게 함 - 단, 그 이후 관리자가 다른 직원으로 직접 바꾼 선택까지 매번 되돌리면
       // 안 되므로(예: 토큰 만료 후 조용한 재연결 때마다 강제로 되돌아가면 불편함) 로그인당 한 번만 적용
       if(admin && currentUserEmail && !autoSelectedOwnProfileOnLogin){
-        const myProfile = getProfiles().find(p=>(p.email||'').toLowerCase() === currentUserEmail);
-        if(myProfile){
-          activeProfileId = myProfile.id;
-          localStorage.setItem('worklog_active_profile', activeProfileId);
-          profileSelectEl.value = activeProfileId;
+        let myProfile = getProfiles().find(p=>(p.email||'').toLowerCase() === currentUserEmail);
+        let justCreated = false;
+        if(!myProfile){ myProfile = createOwnAdminProfile(currentUserEmail); justCreated = true; }
+        activeProfileId = myProfile.id;
+        localStorage.setItem('worklog_active_profile', activeProfileId);
+        if(justCreated){
+          // 방금 만든 프로필이라 드롭다운에 아직 옵션 자체가 없음 - 목록을 먼저 다시 그려서 옵션을 만든 뒤 선택함.
+          // 근태/경비처럼 프로필에 딸린 다른 화면들도 이 프로필 기준으로 다시 그려져야 해서 loadAll()도 같이
+          // 흘려보냄(로그인 처리 중이라 여기서 완료를 기다리진 않음 - 끝나면 관련 화면이 알아서 갱신됨)
+          renderProfileSwitcher();
+          if(typeof loadAll === 'function') loadAll();
         }
+        profileSelectEl.value = activeProfileId;
       }
     } else {
       const myProfile = getProfiles().find(p=>(p.email||'').toLowerCase() === currentUserEmail);
@@ -20931,7 +21005,7 @@ updatePwaInstallBtnVisibility();
 
 // 내부규정 탭의 "<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 이력" 칩 - 적용일자 / 적용여부(체크) / 이력관리(내용보기·개정전후비교·삭제) 팝업
 function policyHistoryPopupBodyHtml(cat){
-  const histAsc = settings[policyHistoryKey(cat)] || [];
+  const histAsc = getPolicyHistoryArr(cat) || [];
   const hist = sortPolicyHistoryByEffective(histAsc);
   if(!hist.length) return `<div class="empty-state">저장된 이력이 없습니다.</div>`;
   const admin = !!gdriveAccessToken && isCurrentUserAdmin;
@@ -20952,9 +21026,8 @@ function policyHistoryPopupBodyHtml(cat){
 function bindPolicyHistoryPopupEvents(container, cat){
   container.querySelectorAll('.policy-pop-active-check').forEach(cb=>{
     cb.addEventListener('change', async ()=>{
-      const key = policyHistoryKey(cat);
-      (settings[key]||[]).forEach(h=>{ h.pinnedAsCurrent = (h.id === cb.dataset.id); });
-      await saveSettings();
+      (getPolicyHistoryArr(cat)||[]).forEach(h=>{ h.pinnedAsCurrent = (h.id === cb.dataset.id); });
+      await savePolicyHistoryArr(cat);
       renderPolicyDetail();
       container.querySelector('.floating-popup-body').innerHTML = policyHistoryPopupBodyHtml(cat);
       bindPolicyHistoryPopupEvents(container, cat);
@@ -20962,7 +21035,7 @@ function bindPolicyHistoryPopupEvents(container, cat){
   });
   container.querySelectorAll('.policy-pop-view-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const histAsc = settings[policyHistoryKey(cat)] || [];
+      const histAsc = getPolicyHistoryArr(cat) || [];
       const entry = histAsc.find(h=>h.id === btn.dataset.id);
       if(!entry) return;
       const effLabel = entry.effectiveDate ? `(${entry.effectiveDate.replace(/-/g,'.')}개정)` : '(적용일자 -)';
@@ -20971,7 +21044,7 @@ function bindPolicyHistoryPopupEvents(container, cat){
   });
   container.querySelectorAll('.policy-pop-edit-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const histAsc = settings[policyHistoryKey(cat)] || [];
+      const histAsc = getPolicyHistoryArr(cat) || [];
       const entry = histAsc.find(h=>h.id === btn.dataset.id);
       if(!entry) return;
       container.remove(); // 이력 팝업을 닫아야 그 아래(z-index가 더 낮은) 수정 팝업이 가려지지 않음
@@ -20980,7 +21053,7 @@ function bindPolicyHistoryPopupEvents(container, cat){
   });
   container.querySelectorAll('.policy-pop-diff-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const histAsc = settings[policyHistoryKey(cat)] || [];
+      const histAsc = getPolicyHistoryArr(cat) || [];
       const hist = sortPolicyHistoryByEffective(histAsc);
       const idx = hist.findIndex(h=>h.id === btn.dataset.id);
       if(idx < 0 || idx+1 >= hist.length) return;
@@ -20996,14 +21069,15 @@ function bindPolicyHistoryPopupEvents(container, cat){
   container.querySelectorAll('.policy-pop-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       if(!(await appConfirm('정말 삭제하시겠습니까?'))) return;
-      const key = policyHistoryKey(cat);
-      const entry = (settings[key]||[]).find(x=>x.id===btn.dataset.id);
+      const entry = (getPolicyHistoryArr(cat)||[]).find(x=>x.id===btn.dataset.id);
       if(entry){
         const effLabel = entry.effectiveDate ? `(${entry.effectiveDate.replace(/-/g,'.')}개정)` : '';
-        pushToTrash('policy', cat, `${policyCategoryLabel(cat)} ${effLabel}`, entry);
+        // 내부규정도 거래처·개인정보와 같은 이유로 회사 공용 휴지통에 넣음 - 누가 어느 기기로 지웠든
+        // 항상 같은 휴지통에서 복원할 수 있어야 함(개인 프로필 휴지통에 넣으면 지운 사람의 프로필에 갇힘)
+        pushToSharedTrash('policy', cat, `${policyCategoryLabel(cat)} ${effLabel}`, entry);
       }
-      settings[key] = (settings[key]||[]).filter(x=>x.id!==btn.dataset.id);
-      await saveSettings();
+      setPolicyHistoryArr(cat, (getPolicyHistoryArr(cat)||[]).filter(x=>x.id!==btn.dataset.id));
+      await savePolicyHistoryArr(cat);
       renderPolicyDetail();
       container.querySelector('.floating-popup-body').innerHTML = policyHistoryPopupBodyHtml(cat);
       bindPolicyHistoryPopupEvents(container, cat);
@@ -22222,7 +22296,7 @@ function gdriveBuildPayload(){
     schemaVersion: SCHEMA_VERSION, syncedAt: new Date().toISOString(), profiles, data,
     // 거래처목록(clients)·개인정보(personalInfo)는 더 이상 직원 프로필별로 따로 저장되지 않고, 회사 전체가
     // 공유하는 단일 데이터라서 위 per-profile data가 아니라 shared 쪽에 실어 보냄(readSharedClients/readSharedPersonalInfo 참고)
-    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, notificationLog: sharedNotificationLog, notificationReadState: sharedNotificationReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, approvalReadState: sharedApprovalReadState, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta, profitLossReports: sharedProfitLossReports, filingTargets: sharedFilingTargets, filingCycles: sharedFilingCycles, autoPhrases: sharedAutoPhrases, itFilingStatus: sharedIncomeTaxFilingStatus, vatFilingTargets: sharedVatFilingTargets, vatReviewFigures: sharedVatReviewFigures, clients: readSharedClients(), personalInfo: readSharedPersonalInfo(), trash: sharedTrash, lunchLimitHistory: sharedLunchLimitHistory, taxScheduleOverrides: sharedTaxScheduleOverrides, taxScheduleCustomItems: sharedTaxScheduleCustomItems }
+    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, notificationLog: sharedNotificationLog, notificationReadState: sharedNotificationReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, approvalReadState: sharedApprovalReadState, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta, profitLossReports: sharedProfitLossReports, filingTargets: sharedFilingTargets, filingCycles: sharedFilingCycles, autoPhrases: sharedAutoPhrases, itFilingStatus: sharedIncomeTaxFilingStatus, vatFilingTargets: sharedVatFilingTargets, vatReviewFigures: sharedVatReviewFigures, clients: readSharedClients(), personalInfo: readSharedPersonalInfo(), trash: sharedTrash, lunchLimitHistory: sharedLunchLimitHistory, taxScheduleOverrides: sharedTaxScheduleOverrides, taxScheduleCustomItems: sharedTaxScheduleCustomItems, teamPolicyHistory: sharedTeamPolicyHistory, opsPolicyHistory: sharedOpsPolicyHistory }
   };
 }
 
@@ -22604,6 +22678,8 @@ async function gdrivePull(){
       if(merged.shared.lunchLimitHistory !== undefined) localStorage.setItem('worklog_shared_lunchlimit', JSON.stringify(merged.shared.lunchLimitHistory));
       if(merged.shared.taxScheduleOverrides !== undefined) localStorage.setItem('worklog_shared_taxschedule_overrides', JSON.stringify(merged.shared.taxScheduleOverrides));
       if(merged.shared.taxScheduleCustomItems !== undefined) localStorage.setItem('worklog_shared_taxschedule_custom', JSON.stringify(merged.shared.taxScheduleCustomItems));
+      if(merged.shared.teamPolicyHistory !== undefined) localStorage.setItem('worklog_shared_teampolicyhistory', JSON.stringify(merged.shared.teamPolicyHistory));
+      if(merged.shared.opsPolicyHistory !== undefined) localStorage.setItem('worklog_shared_opspolicyhistory', JSON.stringify(merged.shared.opsPolicyHistory));
     }
     if(!getActiveProfileId() || !(merged.profiles||[]).find(p=>p.id===getActiveProfileId())){
       if(merged.profiles && merged.profiles.length) setActiveProfileId(merged.profiles[0].id);
