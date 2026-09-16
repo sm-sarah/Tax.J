@@ -534,14 +534,14 @@
   .home-dash-card-wide .home-dash-clock-hero-right{ width:auto; }
   .home-dash-card-wide .home-dash-clock-hero-right .home-dash-clock-flow{ justify-content:flex-start; }
   .home-dash-card-wide .home-dash-clock-hero-right .home-dash-clock-mood{ text-align:left; }
-  .home-dash-card-wide .home-dash-clock-hero-right .home-dash-week-bar-wrap{ margin:0 0 12px; max-width:360px; }
+  .home-dash-card-wide .home-dash-clock-hero-right .home-dash-week-bar-wrap{ margin:8px 0 12px; max-width:360px; }
   .home-dash-card-wide .home-dash-clock-hero-right .home-dash-clock-actions{ justify-content:flex-start; }
   @media (max-width:760px){
     .home-dash-card-wide .home-dash-clock-hero{ flex-direction:column; }
     .home-dash-card-wide .home-dash-clock-hero-right{ width:100%; }
     .home-dash-card-wide .home-dash-clock-hero-right .home-dash-clock-flow,
     .home-dash-card-wide .home-dash-clock-hero-right .home-dash-clock-mood{ justify-content:center; text-align:center; }
-    .home-dash-card-wide .home-dash-clock-hero-right .home-dash-week-bar-wrap{ margin:0 auto 12px; }
+    .home-dash-card-wide .home-dash-clock-hero-right .home-dash-week-bar-wrap{ margin:8px auto 12px; }
     .home-dash-card-wide .home-dash-clock-hero-right .home-dash-clock-actions{ justify-content:center; }
   }
   /* 어떤 위젯을 켜고, 순서를 어떻게 두고, 크게로 바꾸면 실제로 화면이 어떻게 배치되는지 글로만 봐서는
@@ -6224,18 +6224,38 @@ function openPhotoLightbox(dataUrl){
   document.getElementById('photoLightboxImg').src = dataUrl;
   el.style.display = 'flex';
 }
+// 사진도 캐릭터도 안 고른 사람에게 보여줄 기본 아이콘 - 카카오톡 등에서 프로필을 안 설정하면 나오는
+// "동그라미 안에 사선 하나"(없음을 뜻하는) 모양과 같은 느낌으로 통일함. 프로필 사진 미리보기의 빈 상태,
+// 직원목록, 댓글/의견 등 이름 옆에 아이콘이 붙는 모든 곳에서 공통으로 씀
+function staffNoAvatarIconSvg(size){
+  size = size || 15;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9.3"></circle><line x1="6.1" y1="17.9" x2="17.9" y2="6.1"></line></svg>`;
+}
+// 이번 수정 팝업을 여는 동안 방금 고른 원본 사진(크롭 전, 아직 압축 안 된 원본 해상도)을 기억해둠 - 미리보기를
+// 다시 눌러서 영역을 재조정할 때, 이미 한 번 크롭·압축된 작은 사진 대신 원본 그대로 다시 잘라낼 수 있게 함.
+// 폼을 닫거나 다른 직원으로 넘어가면(loadAll) 초기화됨
+let currentEditRawPhotoImg = null;
 function renderPhotoPreview(dataUrl){
   const box = document.getElementById('s-photo-preview');
   const removeBtn = document.getElementById('s-photo-remove-btn');
   if(!box) return;
   if(dataUrl){
     box.innerHTML = `<img src="${dataUrl}" style="width:100%; height:100%; object-fit:cover;">`;
-    box.style.cursor = 'zoom-in';
-    box.onclick = ()=>openPhotoLightbox(dataUrl);
+    box.style.cursor = 'pointer';
+    box.title = '눌러서 사진 영역을 다시 조정';
+    // 미리보기를 누르면(사진을 다시 올리지 않아도) 바로 크롭 팝업이 다시 열려서 위치/확대를 재조정할 수 있음 -
+    // 이번에 새로 고른 파일이면 원본 그대로, 이미 저장돼있던 사진이면 그 사진으로 다시 크롭함
+    box.onclick = ()=>{
+      if(currentEditRawPhotoImg){ openPhotoCropModal(currentEditRawPhotoImg); return; }
+      const img = new Image();
+      img.onload = ()=> openPhotoCropModal(img);
+      img.src = dataUrl;
+    };
     if(removeBtn) removeBtn.style.display = '';
   } else {
-    box.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-1a7 7 0 0 1 14 0v1"></path></svg>`;
+    box.innerHTML = `<span style="color:var(--ink-soft);">${staffNoAvatarIconSvg(26)}</span>`;
     box.style.cursor = 'default';
+    box.title = '';
     box.onclick = null;
     if(removeBtn) removeBtn.style.display = 'none';
   }
@@ -6251,7 +6271,7 @@ document.getElementById('s-photo-file')?.addEventListener('change', function(){
     // 예전엔 사진 가운데를 무조건 자동으로 정사각형 크롭했는데, 사람 얼굴이 가운데가 아닌 사진이면 원하는
     // 부분이 아니라 배경이 잘려서 프로필로 들어가는 문제가 있었음 - 이제 업로드 직후 크롭 팝업을 띄워서
     // 끌어서 위치를 맞추고 슬라이더로 확대/축소해서 원하는 영역을 직접 골라 저장할 수 있게 함
-    img.onload = ()=> openPhotoCropModal(img);
+    img.onload = ()=>{ currentEditRawPhotoImg = img; openPhotoCropModal(img); };
     img.onerror = ()=> appAlert('이미지를 읽을 수 없어요. 다른 파일로 시도해주세요.');
     img.src = e.target.result;
   };
@@ -6438,6 +6458,25 @@ function resolveAvatarByEmail(email){
   const lower = email.toLowerCase();
   const p = getProfiles().find(x=>(x.email||'').toLowerCase()===lower);
   return (p && p.avatar) || '';
+}
+// 위와 짝 - 이메일로 그 직원이 올려둔 프로필 사진(있다면)을 찾음. 사진이 없으면 빈 문자열을 돌려주고,
+// 호출하는 쪽에서 캐릭터 아이콘으로 대신 표시함
+function resolvePhotoByEmail(email){
+  if(!email) return '';
+  const lower = email.toLowerCase();
+  const p = getProfiles().find(x=>(x.email||'').toLowerCase()===lower);
+  return (p && p.photo) || '';
+}
+// 이름 옆에 붙는 작은 원형 아이콘 - 프로필 사진을 올려둔 직원은 사진을, 안 올린 직원은 캐릭터 아이콘을,
+// 둘 다 없으면 빈 문자열을 돌려줌. 댓글/의견, 결재선 표처럼 "이름이 보이는 곳"에서 공통으로 씀
+function staffIdentityIconHtml(email, size){
+  size = size || 15;
+  const photo = resolvePhotoByEmail(email);
+  if(photo) return `<img src="${photo}" style="width:${size}px; height:${size}px; border-radius:50%; object-fit:cover; vertical-align:-${Math.round(size*0.28)}px; margin-right:2px;">`;
+  const avatar = resolveAvatarByEmail(email);
+  if(avatar) return `<span style="margin-right:1px;">${staffAvatarIconSvg(avatar, size-2)}</span>`;
+  if(!email) return '';
+  return `<span style="color:var(--ink-soft); margin-right:1px;">${staffNoAvatarIconSvg(size-2)}</span>`;
 }
 let activeProfileId = '';
 function getProfiles(){ try{ const p = localStorage.getItem('worklog_profiles'); return p ? JSON.parse(p) : []; }catch(e){ return []; } }
@@ -6666,7 +6705,7 @@ function skey(base){ return `worklog_${base}__${activeProfileId}`; }
 // 이렇게 하면 사용자 입장에서는 화면마다 독립적으로 보이지만, 쓰기 동작은 항상 지금 보고 있는 화면의
 // 그 사람에게 정확히 적용됨(두 사람 데이터가 동시에 열려있는 게 아니라, 화면을 오갈 때마다 그 화면의
 // 기억된 선택으로 매번 다시 전환하는 방식)
-const VIEWAS_SCREEN_KEYS = { calendar:'worklog_viewas_calendar', attendance:'worklog_viewas_attendance', clockhistory:'worklog_viewas_clockhistory' };
+const VIEWAS_SCREEN_KEYS = { calendar:'worklog_viewas_calendar', attendance:'worklog_viewas_attendance', clockhistory:'worklog_viewas_clockhistory', home:'worklog_viewas_home' };
 function getViewAsProfileId(screen){ try{ return localStorage.getItem(VIEWAS_SCREEN_KEYS[screen]) || ''; }catch(e){ return ''; } }
 function setViewAsProfileId(screen, id){ try{ localStorage.setItem(VIEWAS_SCREEN_KEYS[screen], id || ''); }catch(e){} }
 // 관리자 본인의 프로필 id(자기 구글 이메일과 일치하는 직원 프로필) - 화면마다 기억해둔 선택이 아직 없을 때
@@ -8244,6 +8283,7 @@ async function loadAll(){
     document.getElementById('s-avatar').value = (curProfile && curProfile.avatar) || '';
     renderAvatarPicker(document.getElementById('s-avatar').value);
     document.getElementById('s-photo').value = (curProfile && curProfile.photo) || '';
+    currentEditRawPhotoImg = null; // 다른 직원으로 넘어왔으니 이전에 기억해둔 원본 사진은 더 이상 유효하지 않음
     if(typeof renderPhotoPreview === 'function') renderPhotoPreview(document.getElementById('s-photo').value);
   }
   renderEmployeeInfoView();
@@ -8598,7 +8638,11 @@ function openCalOwnerSwitchPopup(screen){
     // 게 안 먹은 것처럼 보였음 - 팝업은 고르는 즉시 닫고, 화면 갱신은 이어서(비동기로) 진행함
     el.remove();
     await switchToViewAsProfile(screen, id);
-    updateCalHeader();
+    if(screen === 'clockhistory'){
+      if(typeof renderClockHistoryView === 'function') renderClockHistoryView();
+    } else {
+      updateCalHeader();
+    }
     updatePersonalBackupLabel(!!gdriveAccessToken && isCurrentUserAdmin);
   });
 }
@@ -13054,11 +13098,20 @@ async function activateTab(tabName, pushHistory){
   // "직원선택" 팝업(캘린더/근태현황/출퇴근현황에서 다른 직원 것을 보려고 띄우는 팝업)은 다른 메뉴로 넘어가면
   // 의미가 없어지는데 닫기 버튼을 직접 눌러야만 없어졌음 - 탭이 바뀌는 순간 열려있으면 같이 닫아줌
   if(tabName !== currentActiveTabName) document.querySelector('.cal-owner-switch-popup')?.remove();
+  // 관리자가 개인캘린더/근태경비/출퇴근현황에서 다른 직원을 보다가 그 화면을 벗어나면, 기억해둔 "보던 사람"을
+  // 지워서 다음에 이 화면에 다시 들어왔을 때는 항상 본인 계정부터 보이게 함(다른 직원을 계속 보고 있다는
+  // 걸 잊고 실수로 등록/수정하는 걸 막기 위함) - 같은 화면 안에서의 이동(예: 탭은 그대로인 채 월만 바뀜)엔
+  // 영향 없고, 정말 다른 메뉴로 넘어갈 때만 지움
+  if(tabName !== currentActiveTabName && ['calendar','attendance','clockhistory','home'].includes(currentActiveTabName)){
+    setViewAsProfileId(currentActiveTabName, '');
+  }
   currentActiveTabName = tabName;
-  // 개인캘린더/근태경비/출퇴근현황은 화면마다 "마지막으로 봤던 직원"을 따로 기억해두므로, 그 화면에
-  // 들어올 때마다 이 화면 몫으로 기억해둔 사람으로 조용히 다시 맞춰줌(다른 화면에서 딴 사람을 보고
-  // 있었어도 서로 영향 없음) - 아래 여러 탭별 렌더보다 먼저 실행해야 그 렌더들이 최신 데이터를 씀
-  if(tabName === 'calendar' || tabName === 'attendance' || tabName === 'clockhistory'){
+  // 개인캘린더/근태경비/출퇴근현황/홈(출퇴근 카드)은 화면마다 "마지막으로 봤던 직원"을 따로 기억해두므로, 그
+  // 화면에 들어올 때마다 이 화면 몫으로 기억해둔 사람으로 조용히 다시 맞춰줌(다른 화면에서 딴 사람을 보고
+  // 있었어도 서로 영향 없음). 다만 위에서 화면을 나갈 때마다 그 기억을 지우기 때문에, 실제로는 항상
+  // 본인 계정으로 돌아오고, 방금 그 화면에 처음 들어온 경우(예: 새로고침 직후)에만 의미가 있음 -
+  // 아래 여러 탭별 렌더보다 먼저 실행해야 그 렌더들이 최신 데이터를 씀
+  if(tabName === 'calendar' || tabName === 'attendance' || tabName === 'clockhistory' || tabName === 'home'){
     await applyScreenViewAs(tabName);
   }
   if(tabName === 'home'){
@@ -13873,8 +13926,7 @@ function renderDashboardClockCard(){
   document.getElementById('dashClockProfilePick')?.addEventListener('change', async (e)=>{
     const v = e.target.value;
     if(v && v !== activeProfileId){
-      setActiveProfileId(v);
-      await loadAll();
+      await switchToViewAsProfile('home', v);
       renderHomeDashboard();
     }
   });
@@ -14119,7 +14171,7 @@ document.getElementById('clockMonthSelectProxy')?.addEventListener('change', ()=
   hideMonthPickerInput(document.getElementById('clockMonthSelectProxy'));
 });
 document.getElementById('clockMonthSelectProxy')?.addEventListener('blur', (e)=>hideMonthPickerInput(e.currentTarget));
-document.getElementById('clockCalOwnerLabel')?.addEventListener('click', openCalOwnerSwitchPopup);
+document.getElementById('clockCalOwnerLabel')?.addEventListener('click', ()=>openCalOwnerSwitchPopup('clockhistory'));
 
 // 근태관리 탭에 이미 그려져 있는 실제 카드(근태현황 3장 + 경비정산 5장)를 그대로 복제해서 작게 축소해 보여줌 -
 // 숫자만 따로 뽑아 다시 그리는 대신, 진짜 화면 그 자체를 미니 미리보기로 보여달라는 요청에 맞춘 방식.
@@ -20859,7 +20911,7 @@ function openApprovalPreviewModal(){
   // 그 사이 다른 사람이 먼저 제출하면 밀릴 수 있음), 실제 상신했을 때 받을 번호를 거의 그대로 미리 보여줌
   const t = new Date();
   const previewDocNumber = escHtml(approvalDocNumber({ createdAt: t.toISOString() }) || '-');
-  const draftDateShort = escHtml(approvalDateShort(t.toISOString()) || '-');
+  const draftDateShort = escHtml(approvalDateTimeShort(t.toLocaleString('ko-KR')) || '-');
   const docVisual = approvalDocVisualHtml({
     docType, drafterName: escHtml(myName), teamLabel: escHtml(teamLabel), draftDateShort, docNumber: previewDocNumber,
     approverName: escHtml(approverName), title: escHtml(title),
@@ -21439,6 +21491,18 @@ function approvalDateShort(str){
   const pad2 = n => String(n).padStart(2,'0');
   return `${m[1]}.${pad2(m[2])}.${pad2(m[3])}`;
 }
+// 문서 상세보기/미리보기 카드의 "기안일" 칸은 목록표와 달리 폭이 넉넉해서 몇시몇분까지 같이 보여줄 수 있음 -
+// "2026.09.16 오전 10:32" 형태로, ko-KR 로케일 문자열(new Date().toLocaleString('ko-KR'))에서 날짜는
+// approvalDateShort로 다듬고, 오전/오후 뒤의 시:분만 뽑아 이어붙임(초는 표시하지 않음)
+function approvalDateTimeShort(str){
+  const dateShort = approvalDateShort(str);
+  if(!dateShort) return '';
+  const idx = (str||'').search(/오전|오후/);
+  if(idx === -1) return dateShort;
+  const m = str.slice(idx).match(/(오전|오후)\s*(\d{1,2}):(\d{2})/);
+  if(!m) return dateShort;
+  return `${dateShort} ${m[1]} ${m[2]}:${m[3]}`;
+}
 // 문서번호(연월일-순번, 예: 20260903-01) - 같은 날짜에 기안된 문서들 중 등록 순서(id는 생성 시각 기반이라
 // 오래된 순으로 정렬됨)로 01, 02...를 매김. 별도로 저장하지 않고 목록을 그릴 때마다 계산함(문서가 새로
 // 추가/삭제돼도 항상 최신 상태 기준으로 맞게 나오도록 하기 위함)
@@ -21769,12 +21833,13 @@ function approvalCommentListHtml(item){
   // 다 보이게)을 한 줄에 나란히 두는 3단 레이아웃으로 바꿈 - 예전엔 "이름·시간" 줄 아래에 내용이 다음
   // 줄로 내려가는 2단 구성이라 이름/시간 옆에 넓은 빈 공간이 그냥 남았음. 이름은 굵게 강조함
   return `<div style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">${list.map(c=>{
-    // 캐릭터는 의견 등록 당시 저장해둔 값을 기본으로 쓰되, 이메일로 지금 등록된 캐릭터가 있으면 최신 걸로 보여줌
-    // (나중에 캐릭터를 바꾸면 예전 의견에도 새 캐릭터가 반영되게)
-    const avatar = (c.authorEmail && resolveAvatarByEmail(c.authorEmail)) || c.avatar || '';
+    // 캐릭터/사진은 의견 등록 당시 저장해둔 값을 기본으로 쓰되, 이메일로 지금 등록된 사진·캐릭터가 있으면
+    // 최신 걸로 보여줌(나중에 프로필 사진·캐릭터를 바꾸면 예전 의견에도 새 걸로 반영되게) - 사진을 올려둔
+    // 직원은 캐릭터 아이콘 대신 사진이 우선해서 보임
+    const identityIcon = (c.authorEmail && staffIdentityIconHtml(c.authorEmail, 15)) || (c.avatar ? `<span style="margin-right:1px;">${staffAvatarIconSvg(c.avatar, 13)}</span>` : '');
     return `
     <div style="display:flex; align-items:flex-start; gap:10px; background:var(--bg); border-radius:10px; padding:8px 12px; ${c.decision ? 'border-left:3px solid '+(c.decision==='승인' ? 'var(--indigo)' : 'var(--coral)')+';' : ''}">
-      <div style="flex:0 0 auto; min-width:44px; max-width:90px; font-size:12px; font-weight:800; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-top:1px;">${avatar ? `<span style="margin-right:1px;">${staffAvatarIconSvg(avatar, 13)}</span>` : ''}${escHtml(c.author||'')}</div>
+      <div style="flex:0 0 auto; min-width:44px; max-width:90px; font-size:12px; font-weight:800; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-top:1px;">${identityIcon}${escHtml(c.author||'')}</div>
       <div style="flex:1 1 auto; min-width:0; font-size:13px; color:var(--ink); white-space:pre-wrap; word-break:break-word;">${escHtml(c.text||'')}${c.decision ? ` <span style="font-size:11px; font-weight:800; color:${c.decision==='승인'?'var(--indigo)':'var(--coral)'};">· ${c.decision}</span>` : ''}</div>
       <div style="flex:0 0 auto; font-size:10.5px; color:var(--ink-soft); white-space:nowrap; padding-top:2px;">${escHtml(c.at||'')}</div>
     </div>`;
@@ -21842,7 +21907,7 @@ function approvalDetailBodyHtml(item){
   const approverName = escHtml(resolveNameByEmail(item.approverEmail)||item.approverName||'-');
   const teamLabel = escHtml([sharedCompanyName, (sharedTeamInfo&&sharedTeamInfo.teamName)].filter(Boolean).join(' ') || '-');
   const docNumber = escHtml(approvalDocNumber(item) || '-');
-  const draftDateShort = escHtml(approvalDateShort(item.createdAt) || '-');
+  const draftDateShort = escHtml(approvalDateTimeShort(item.createdAt) || '-');
   // 표 테두리를 공용 --border(rgba(29,30,51,0.14))로 두면 흰 배경 위에서 거의 안 보인다는 피드백이 있어서
   // (휴가 표 수정 때와 같은 이유), 이 문서 조회 화면 표에도 더 진한 테두리색을 씀
   const td = 'padding:3px 8px; border:1px solid rgba(29,30,51,0.4); font-size:10.5px;';
@@ -23505,7 +23570,7 @@ function renderEmployeeRoster(){
       : '';
     const avatarTag = p.photo
       ? `<img src="${p.photo}" class="employee-roster-photo" data-id="${p.id}" style="width:34px; height:34px; border-radius:50%; object-fit:cover; vertical-align:-10px; margin-right:5px; cursor:zoom-in;">`
-      : (p.avatar ? `${staffAvatarIconSvg(p.avatar, 15)} ` : '');
+      : (p.avatar ? `${staffAvatarIconSvg(p.avatar, 15)} ` : `<span style="color:var(--ink-soft); vertical-align:-3px; margin-right:3px;">${staffNoAvatarIconSvg(15)}</span>`);
     return `
     <div style="display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:10px; padding:9px 12px; background:var(--bg); border:1.5px solid var(--border); border-radius:10px; margin:0 0 6px; width:100%; box-sizing:border-box; ${terminated ? 'opacity:0.7;' : ''}">
       <span style="font-size:13px; font-weight:700; min-width:0; overflow:hidden; text-overflow:ellipsis;">${avatarTag}${escHtml(p.name || '(이름 미등록)')}${p.position ? ` <span style="font-weight:600; color:var(--ink-soft); font-size:11.5px;">(${escHtml(p.position)})</span>` : ''} ${statusTag} ${p.email ? `<span style="color:var(--ink-soft); font-size:11px; font-weight:500;">(${escHtml(p.email)})</span>` : '<span style="color:var(--coral); font-size:11px; font-weight:500;">이메일 미등록</span>'}</span>
