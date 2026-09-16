@@ -102,6 +102,11 @@
     margin-bottom:12px; box-shadow:0 1px 2px rgba(29,30,51,0.04);
   }
   .mobile-sidebar-toggle svg{ flex:none; }
+  /* PC 화면 보기 토글 버튼 - 화면 폭이 아니라 JS가 기기 특성(터치 포인터)으로 한 번 판단해서 붙여두는
+     html.is-touch-device 클래스로만 노출 여부를 정함(이유는 버튼 옆 HTML 주석 참고) */
+  #pcViewToggleBtn{ display:none; }
+  html.is-touch-device #pcViewToggleBtn{ display:inline-flex; }
+  #pcViewToggleBtn.pc-view-active{ background:var(--indigo) !important; }
   @media (max-width:700px){
     .app-shell{ flex-direction:column; gap:18px; }
     .mobile-sidebar-toggle{ display:flex; }
@@ -508,7 +513,8 @@
   .home-dash-freeform{ display:flex; flex-direction:column; gap:8px; min-height:150px; min-width:0; }
   .home-dash-freeform-head{ display:flex; align-items:center; gap:8px; }
   .home-dash-freeform-title{ font-weight:800; font-size:15.5px; letter-spacing:0.01em; color:var(--ink); }
-  .home-dash-freeform-hero .home-dash-freeform-head{ margin-bottom:4px; }
+  /* "출퇴근" 제목 줄과 아래 비숑 마스코트 사이 여백이 너무 좁다는 요청으로 4px→18px로 넉넉하게 늘림 */
+  .home-dash-freeform-hero .home-dash-freeform-head{ margin-bottom:18px; }
   /* 출퇴근 카드도 이제 다른 위젯처럼 기본은 한 칸 폭이고, "크게" 토글을 켜야 폭 전체를 차지하는 배너가 됨
      (예전엔 항상 전체폭 고정이었는데, 굳이 가로로 길 필요는 없다는 의견으로 다른 위젯과 동일한 폭 규칙을 따름) -
      은은한 그라디언트 패널 + 점무늬 텍스처만은 계속 유지해서 나머지 흰 카드들과 질감 차이는 남김 */
@@ -1291,6 +1297,10 @@
      올렸을 때만 나타나게 함(요청받은 방식) - pointer-events도 같이 꺼서 숨어있는 동안엔 실수로도 안 눌림 */
   .approval-action-danger{ opacity:0; pointer-events:none; transition:opacity .15s; }
   tbody tr:hover .approval-action-danger{ opacity:1; pointer-events:auto; }
+  /* 출퇴근현황 표의 "관리"(수정/삭제) 아이콘도 같은 방식 - 평소엔 안 보이다가 그 줄에 마우스를
+     올렸을 때만 나타나서, 표가 평소엔 아이콘 없이 깔끔하게 보임 */
+  .clock-history-row-actions{ display:inline-flex; gap:4px; opacity:0; pointer-events:none; transition:opacity .15s; }
+  tbody tr:hover .clock-history-row-actions{ opacity:1; pointer-events:auto; }
   /* 결재표 관리 열 아이콘 - 예전엔 항상 회색 원형 배경(pill)이 깔려있었는데, "버튼처럼 보이지만 눌리지 않는
      듯한(비활성 느낌)" 인상을 준다는 피드백으로 평소엔 배경 없이 아이콘만 옅은 회색(#6B7280)으로 보이다가,
      마우스를 올렸을 때만 각 동작의 고유 색(--icon-bg/--icon-fg, approvalActionIconBtn에서 인라인으로 지정)
@@ -2415,6 +2425,35 @@
     </div>
   </div>
 </div>
+<!-- 출퇴근현황 표의 "수정" 팝업 - 출근 도장을 깜빡하고 늦게 찍는 것처럼, 실제 시간으로 사후에 고쳐야 할 때가
+     있어서 출근/퇴근 시간과 근무지를 직접 고칠 수 있게 함. 다만 근태 기록을 아무렇지 않게 고칠 수 있으면
+     신뢰도가 떨어지므로, 반드시 수정 사유를 적어야만 저장되게 막고(미입력 시 저장 자체를 막음), 저장할
+     때마다 무엇이 어떻게 바뀌었는지 그 날짜 기록의 editHistory에 자동으로 남김(사내정보·거래처 등 다른
+     곳의 수정이력과 같은 방식이라 openHistoryModal을 그대로 재사용해서 조회할 수 있음) -->
+<div id="clockEditModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:360px; width:100%; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="text-align:center; margin-bottom:14px;">
+      <div style="font-weight:800; font-size:15px; color:var(--ink);">출퇴근 기록 수정</div>
+      <div id="clockEditDateLabel" style="font-size:12px; font-weight:700; color:var(--ink-soft); margin-top:2px;"></div>
+      <button type="button" id="clockEditHistoryBtn" class="del-btn" style="display:none; margin-top:8px; font-size:11px; padding:4px 10px;">수정이력 보기</button>
+    </div>
+    <div class="field"><label>출근시간</label><input type="time" id="clockEditCheckIn"></div>
+    <div class="field"><label>퇴근시간</label><input type="time" id="clockEditCheckOut"></div>
+    <div class="field">
+      <label>근무지</label>
+      <div id="clockEditStatusGroup" class="home-dash-status-btn-group"></div>
+    </div>
+    <div class="field">
+      <label>수정 사유 <span style="color:var(--coral); font-weight:800;">*필수</span></label>
+      <textarea id="clockEditReason" rows="2" placeholder="예: 출근 도장을 깜빡해서 실제 출근시간으로 수정합니다" style="width:100%; font-family:'Pretendard',sans-serif; font-size:13px; line-height:1.6; border:1.5px solid rgba(29,30,51,0.22); border-radius:10px; padding:8px 10px; background:var(--input-bg); color:var(--ink); resize:none; box-sizing:border-box;"></textarea>
+    </div>
+    <div id="clockEditMsg" class="hint" style="text-align:center; min-height:14px; color:var(--coral); font-weight:700;"></div>
+    <div style="text-align:center; margin-top:10px; display:flex; justify-content:center; gap:8px;">
+      <button type="button" id="clockEditSaveBtn" class="submit-btn" style="width:auto; padding:8px 18px;">저장</button>
+      <button type="button" id="clockEditCancelBtn" class="del-btn modal-close-btn">취소</button>
+    </div>
+  </div>
+</div>
 <div id="filingTargetEditModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:400px; width:100%; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
     <!-- 예전엔 "거래처 · 연월"을 한 줄로 합쳐놔서 거래처명이 잘 안 띄었고, 신고대상 여부도 대상/대상아님
@@ -2712,6 +2751,14 @@
         <!-- 앱 설치(PWA) 아이콘 - beforeinstallprompt를 지원하는 브라우저(크롬·엣지·안드로이드)에서 실제로
              설치 가능할 때만, 또는 iOS Safari(수동 설치 안내용)에서만 JS가 보여줌. 기본은 숨김. -->
         <button type="button" id="pwaInstallBtn" title="이 화면을 앱처럼 홈 화면에 설치할 수 있어요" style="display:none; background:var(--navy); color:#fff; width:38px; height:38px; padding:0; align-items:center; justify-content:center; border-radius:50%; border:none; cursor:pointer; box-shadow:0 4px 10px -3px rgba(29,30,51,0.45);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+        <!-- PC 화면 보기 토글 - 휴대폰(특히 홈 화면에 설치한 앱)에서 보면 사이드바가 접히고 표가 좁게
+             줄어들어 보기 불편하다는 요청으로 추가함. 누르면 뷰포트를 컴퓨터 폭으로 강제 전환해서 PC에서
+             보던 레이아웃 그대로(사이드바+표 전부) 화면에 축소해서 띄우고, 필요한 부분은 손으로 확대해서
+             보게 함(모바일 브라우저의 "데스크탑 사이트로 보기"와 같은 방식). 터치 기기에서만 보이도록
+             CSS는 화면폭이 아니라 html.is-touch-device 클래스로 표시 여부를 정함 - PC 모드를 켜면 레이아웃
+             폭 자체가 넓어져서, 폭 기준(@media)으로 숨김/보임을 정하면 켠 순간 이 버튼이 같이 사라져
+             다시 끌 수 없게 되기 때문 -->
+        <button type="button" id="pcViewToggleBtn" title="컴퓨터 화면처럼 보기" style="background:var(--navy); color:#fff; width:38px; height:38px; padding:0; align-items:center; justify-content:center; border-radius:50%; border:none; cursor:pointer; box-shadow:0 4px 10px -3px rgba(29,30,51,0.45);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></button>
       </div>
       <div class="nav-icon-group" id="navToggleGroup">
         <button type="button" id="toggleManagementBtn" class="tab-btn tg-mgmt-btn" title="Company"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 21v-4h6v4"/><path d="M9 7h.01M9 11h.01M15 7h.01M15 11h.01"/></svg></button>
@@ -9410,9 +9457,15 @@ function openHistoryModal(title, history){
       } else {
         changesHtml = `<div style="font-size:12.5px;">${escHtml(h.changes||'')}</div>`;
       }
+      // 출퇴근 기록 수정처럼 "사유"가 필수로 같이 남는 항목은, 무엇이 바뀌었는지 아래에 사유도 이어서 보여줌
+      // (h.reason이 없는 기존 항목들은 이 줄이 그냥 안 나오므로 다른 데이터의 수정이력엔 영향 없음)
+      const reasonHtml = h.reason
+        ? `<div style="font-size:12px; color:var(--ink-soft); margin-top:6px; padding-top:6px; border-top:1px dashed var(--border);"><b style="color:var(--ink);">사유</b> ${escHtml(h.reason)}</div>`
+        : '';
       return `<div style="background:var(--bg); border-radius:10px; padding:10px 12px; margin-bottom:8px;">
         <div style="font-size:11px; color:var(--ink-soft); font-weight:700; margin-bottom:6px;">${escHtml(h.date||'')}</div>
         ${changesHtml}
+        ${reasonHtml}
       </div>`;
     }).join('');
   }
@@ -13328,12 +13381,21 @@ function renderClockHistoryTable(){
     const [,m,d] = e.date.split('-');
     const dow = ['일','월','화','수','목','금','토'][new Date(e.date+'T00:00:00').getDay()];
     const hrs = mins ? (mins/60).toFixed(1).replace(/\.0$/,'') + 'h' : '-';
+    // "상태"라는 이름이 무슨 의미인지 헷갈린다는 의견으로 "근무지"(사무실/재택)로 이름을 바꿈. 그 옆엔
+    // 수정/삭제 아이콘을 담는 "관리" 칸을 새로 추가하되, 평소엔 숨겨뒀다가(.clock-history-row-actions)
+    // 그 줄에 마우스를 올렸을 때만 나타나게 해서 표가 평소엔 아이콘 없이 깔끔하게 유지됨
     return `<tr>
       <td class="cvb">${Number(m)}/${Number(d)} (${dow})</td>
       <td class="cvb" style="color:#1E9E6C; font-weight:700;">${e.checkIn || '-'}</td>
       <td class="cvb" style="color:#DC4364; font-weight:700;">${e.checkOut || '-'}</td>
       <td class="cvb">${hrs}</td>
       <td class="cvb">${escHtml(e.status||'')}</td>
+      <td>
+        <span class="clock-history-row-actions">
+          <button type="button" class="del-btn client-icon-plain clock-history-edit-btn" data-date="${e.date}" title="수정" style="color:var(--navy); background:transparent; border:none; padding:2px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>
+          <button type="button" class="del-btn client-icon-plain clock-history-del-btn" data-date="${e.date}" title="삭제" style="color:var(--coral); background:transparent; border:none; padding:2px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+        </span>
+      </td>
     </tr>`;
   }).join('');
   const daysEl = document.getElementById('clockHistoryDaysValue');
@@ -13341,9 +13403,103 @@ function renderClockHistoryTable(){
   if(daysEl) daysEl.textContent = `${dayCount}일`;
   if(totalEl) totalEl.textContent = `${(totalMin/60).toFixed(1).replace(/\.0$/,'')}h`;
   wrap.innerHTML = log.length
-    ? `<table><thead><tr><th class="cvb">날짜</th><th class="cvb">출근</th><th class="cvb">퇴근</th><th class="cvb">근무시간</th><th class="cvb">상태</th></tr></thead><tbody>${rows}</tbody></table>`
+    ? `<table><thead><tr><th class="cvb">날짜</th><th class="cvb">출근</th><th class="cvb">퇴근</th><th class="cvb">근무시간</th><th class="cvb">근무지</th><th>관리</th></tr></thead><tbody>${rows}</tbody></table>`
     : `<div class="empty-state">이 달에 기록된 출퇴근이 없어요.</div>`;
+  wrap.querySelectorAll('.clock-history-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>openClockEditModal(btn.dataset.date));
+  });
+  wrap.querySelectorAll('.clock-history-del-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>deleteClockLogEntry(btn.dataset.date));
+  });
   checkClockHistoryMonthHint();
+}
+// ===== 출퇴근현황 표 - 개별 기록 수정/삭제 =====
+// 출근 도장을 깜빡하고 늦게 찍는 것처럼, 사후에 실제 시간으로 고쳐야 할 때를 위한 기능. 근태 기록을
+// 아무렇지 않게 고칠 수 있으면 신뢰도가 떨어지므로, 반드시 수정 사유를 적어야만 저장되게 막고, 저장할
+// 때마다 무엇이 어떻게 바뀌었는지 그 날짜 기록의 editHistory에 자동으로 남김(사내정보·거래처 등 다른
+// 곳의 수정이력과 같은 {date, changes:[{label,before,after}]} 형태라 openHistoryModal을 그대로 재사용함).
+let clockEditTargetDate = null;
+function openClockEditModal(dateStr){
+  const entry = (attendance.clockLog||[]).find(e=>e.date===dateStr);
+  if(!entry) return;
+  clockEditTargetDate = dateStr;
+  const [,m,d] = dateStr.split('-');
+  const dow = ['일','월','화','수','목','금','토'][new Date(dateStr+'T00:00:00').getDay()];
+  const dateLabelEl = document.getElementById('clockEditDateLabel');
+  if(dateLabelEl) dateLabelEl.textContent = `${Number(m)}월 ${Number(d)}일 (${dow})`;
+  const inEl = document.getElementById('clockEditCheckIn');
+  const outEl = document.getElementById('clockEditCheckOut');
+  if(inEl) inEl.value = entry.checkIn || '';
+  if(outEl) outEl.value = entry.checkOut || '';
+  const statusGroup = document.getElementById('clockEditStatusGroup');
+  if(statusGroup){
+    statusGroup.innerHTML = DASH_CLOCK_STATUS_OPTS.map(o=>`<button type="button" class="home-dash-status-btn${(entry.status||'사무실')===o.key?' active':''}" data-status="${o.key}">${o.key}</button>`).join('');
+    statusGroup.querySelectorAll('.home-dash-status-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        statusGroup.querySelectorAll('.home-dash-status-btn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+  }
+  const reasonEl = document.getElementById('clockEditReason');
+  if(reasonEl) reasonEl.value = '';
+  const msgEl = document.getElementById('clockEditMsg');
+  if(msgEl) msgEl.textContent = '';
+  const histBtn = document.getElementById('clockEditHistoryBtn');
+  if(histBtn){
+    const histCount = (entry.editHistory||[]).length;
+    histBtn.style.display = histCount ? 'inline-flex' : 'none';
+    histBtn.textContent = `수정이력 보기 (${histCount})`;
+  }
+  document.getElementById('clockEditModalOverlay').style.display = 'flex';
+}
+document.getElementById('clockEditHistoryBtn')?.addEventListener('click', ()=>{
+  const entry = (attendance.clockLog||[]).find(e=>e.date===clockEditTargetDate);
+  if(!entry) return;
+  // 수정이력 팝업(memoModalOverlay)이 이 수정 팝업과 z-index가 같아서 겹쳐 뜨면 뒤로 가려버림 -
+  // 이력을 보는 동안엔 수정 팝업을 잠시 닫아두고, 다시 고치려면 목록에서 수정 아이콘을 한 번 더 누르면 됨
+  document.getElementById('clockEditModalOverlay').style.display = 'none';
+  openHistoryModal(`${clockEditTargetDate} 출퇴근 기록 수정이력`, entry.editHistory||[]);
+});
+document.getElementById('clockEditCancelBtn')?.addEventListener('click', ()=>{
+  document.getElementById('clockEditModalOverlay').style.display = 'none';
+});
+document.getElementById('clockEditSaveBtn')?.addEventListener('click', async ()=>{
+  const entry = (attendance.clockLog||[]).find(e=>e.date===clockEditTargetDate);
+  const msgEl = document.getElementById('clockEditMsg');
+  if(!entry) return;
+  const reason = (document.getElementById('clockEditReason')?.value || '').trim();
+  if(!reason){
+    if(msgEl) msgEl.textContent = '수정 사유를 반드시 입력해야 저장할 수 있어요.';
+    return;
+  }
+  const newCheckIn = document.getElementById('clockEditCheckIn')?.value || '';
+  const newCheckOut = document.getElementById('clockEditCheckOut')?.value || '';
+  const newStatus = document.getElementById('clockEditStatusGroup')?.querySelector('.home-dash-status-btn.active')?.dataset.status || entry.status || '사무실';
+  const changes = [];
+  if(newCheckIn !== (entry.checkIn||'')) changes.push({ label:'출근시간', before: entry.checkIn||'(없음)', after: newCheckIn||'(없음)' });
+  if(newCheckOut !== (entry.checkOut||'')) changes.push({ label:'퇴근시간', before: entry.checkOut||'(없음)', after: newCheckOut||'(없음)' });
+  if(newStatus !== (entry.status||'사무실')) changes.push({ label:'근무지', before: entry.status||'사무실', after: newStatus });
+  if(!changes.length){
+    if(msgEl) msgEl.textContent = '바뀐 내용이 없어요.';
+    return;
+  }
+  entry.checkIn = newCheckIn;
+  entry.checkOut = newCheckOut;
+  entry.status = newStatus;
+  if(!Array.isArray(entry.editHistory)) entry.editHistory = [];
+  entry.editHistory.unshift({ date: new Date().toLocaleString('ko-KR'), changes, reason });
+  await saveAttendance();
+  document.getElementById('clockEditModalOverlay').style.display = 'none';
+  renderClockHistoryTable();
+  if(typeof renderDashboardClockCard === 'function') renderDashboardClockCard();
+});
+async function deleteClockLogEntry(dateStr){
+  if(!(await appConfirm(`${dateStr} 출퇴근 기록을 삭제할까요? 되돌릴 수 없어요.`))) return;
+  attendance.clockLog = (attendance.clockLog||[]).filter(e=>e.date!==dateStr);
+  await saveAttendance();
+  renderClockHistoryTable();
+  if(typeof renderDashboardClockCard === 'function') renderDashboardClockCard();
 }
 document.getElementById('clockHistoryMonth')?.addEventListener('change', ()=>{ updateClockHistoryHeader(); renderClockHistoryTable(); });
 // 근태경비/개인캘린더 탭과 같은 모양의 화살표·달력아이콘 조작 - 실제 상태는 화면 밖에 숨겨둔 #clockHistoryMonth가 그대로 들고 있음
@@ -13803,6 +13959,34 @@ relocateSidebarNodes();
 document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
   document.getElementById('appSidebar')?.classList.toggle('mobile-sidebar-open');
 });
+
+// ===== PC 화면 보기 토글 =====
+// 휴대폰(특히 홈 화면에 설치한 앱)으로 접속하면 사이드바가 접히고 표가 좁아져서 보기 불편하다는 요청으로,
+// 뷰포트 메타태그의 width를 컴퓨터 폭(1400)으로 강제 지정해서 PC에서 보던 레이아웃 그대로 화면에 축소해
+// 띄우고(모바일 브라우저의 "데스크탑 사이트로 보기"와 동일한 원리), 필요한 부분은 손가락으로 확대해서
+// 보게 함. 기기가 터치 포인터를 쓰면(=휴대폰/태블릿으로 추정) 토글 버튼을 보여주고, 켠 상태는 다음 접속
+// 때도(설치된 앱 포함) 그대로 유지되도록 localStorage에 저장해둠.
+(function(){
+  const TOUCH_DEVICE = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
+  if(TOUCH_DEVICE) document.documentElement.classList.add('is-touch-device');
+  const PC_VIEW_KEY = 'worklog_pc_view_on_mobile';
+  const viewportMeta = document.querySelector('meta[name="viewport"]');
+  const pcViewBtn = document.getElementById('pcViewToggleBtn');
+  function applyPcViewMode(on){
+    if(viewportMeta) viewportMeta.setAttribute('content', on ? 'width=1400' : 'width=device-width, initial-scale=1.0');
+    if(pcViewBtn){
+      pcViewBtn.title = on ? '휴대폰 화면으로 돌아가기' : '컴퓨터 화면처럼 보기(확대해서 필요한 부분 보기)';
+      pcViewBtn.classList.toggle('pc-view-active', on);
+    }
+  }
+  let pcViewOn = localStorage.getItem(PC_VIEW_KEY) === '1';
+  applyPcViewMode(pcViewOn);
+  pcViewBtn?.addEventListener('click', ()=>{
+    pcViewOn = !pcViewOn;
+    localStorage.setItem(PC_VIEW_KEY, pcViewOn ? '1' : '0');
+    applyPcViewMode(pcViewOn);
+  });
+})();
 
 // ===== 팝업(오버레이) 전부 자리 이동 가능하게 하기 =====
 // "뒤에 작업하고 있던 화면이 보여야 할 수도 있다"는 요청으로, 팝업 박스의 빈 공간(제목 주변 등)을
