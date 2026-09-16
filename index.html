@@ -4914,7 +4914,7 @@
       <div class="settings-sub-title" id="ssTitle-backup" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> 백업복구 <span class="badge">관리자 전용</span></div>
       <p class="hint" style="text-align:center;">
         아래에서 범위를 고른 뒤 백업·복구하세요.<br>
-        <span style="color:var(--ink-soft);">이것과 별개로, 매일 관리자 계정으로 접속해 저장이 일어날 때 회사 데이터와 이 앱 소스파일이 공유드라이브의 "0004.전자결재첨부 &gt; 자동백업" 폴더에 자동으로 하루 1건씩 저장돼요 (30일 지난 건 자동 정리).</span>
+        <span style="color:var(--ink-soft);">이것과 별개로, 관리자 계정으로 접속해 저장이 일어날 때마다(최대 3시간에 1건) 회사 데이터와 이 앱 소스파일이 공유드라이브의 "0004.전자결재첨부 &gt; 자동백업" 폴더에 자동으로 저장돼요 (14일 지난 건 자동 정리). 아래 "전체직원" 탭에서 이 시점들을 골라 직접 되돌릴 수 있어요.</span>
       </p>
       <div class="policy-category-toggle" id="backupScopeToggle" style="margin-bottom:14px;">
         <button type="button" class="policy-cat-btn backup-scope-btn active" data-backup-scope="shared">회사공통</button>
@@ -4959,6 +4959,19 @@
           <button type="button" id="importLatestAutoBackupBtn" class="submit-btn" style="width:auto; padding:7px 13px; font-size:12px; background:var(--mint);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg> 자동백업 폴더 최신 파일로 복구</button>
           <span class="save-msg" id="clientsOnlyBackupSaveMsg" style="margin-top:0;"></span>
         </div>
+        <!-- "시점 복구" - 실수로 저장된 내용이 다른 사람 변경을 덮어썼거나, 뭔가 잘못 지워졌을 때 자동백업
+             폴더에 쌓인 과거 시점 중 하나를 직접 골라 전 직원 데이터를 통째로 그 시점으로 되돌릴 수 있게 함.
+             위 "최신 파일로 복구"는 거래처·개인정보만 안전하게 합치는 용도라 되돌릴 수 없는 반면, 이건 그
+             시점 이후의 모든 변경이 사라지는 강력한 전체 복구라 목록에서 시점을 직접 확인하고 고르게 함 -->
+        <p class="hint" style="margin:10px auto 0; padding-top:10px; border-top:1px dashed var(--border); width:100%;">
+          그래도 뭔가 잘못됐다면, 자동백업에 쌓인 과거 시점 중 하나를 직접 골라 <b>전 직원 데이터를 통째로 그 시점으로 되돌릴</b> 수도 있어요. 그 시점 이후의 모든 변경(근태·경비 입력, 결재, 삭제 등)이 사라지니 마지막 수단으로만 쓰세요.
+        </p>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:center;">
+          <select id="pointInTimeBackupSelect" class="flat-input" style="min-width:240px;"><option value="">목록 새로고침을 눌러주세요</option></select>
+          <button type="button" id="pointInTimeRefreshBtn" class="del-btn">목록 새로고침</button>
+          <button type="button" id="pointInTimeRestoreBtn" class="submit-btn" style="width:auto; padding:7px 13px; font-size:12px; background:var(--coral);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M3 12a9 9 0 1 0 2.64-6.36"/><path d="M3 3v6h6"/></svg> 이 시점으로 전체 복구</button>
+        </div>
+        <span class="save-msg" id="pointInTimeBackupMsg" style="margin-top:0;"></span>
       </div>
 
       <div class="flat-panel backup-scope-panel" data-backup-scope="one" style="display:none; flex-direction:column; gap:10px; max-width:640px; margin-left:auto; margin-right:auto;">
@@ -20135,14 +20148,24 @@ function saveApprovalDraftForm(status){
       }
     }
   } else {
-    sharedApprovals.unshift({
+    const newItem = {
       id: genId(), title, content, attachments, docType, expenseMonth, taxYear, taxVatPeriod, taxClientId,
       leaveType, leaveStart, leaveEnd, leaveSubtype, leaveDays,
       drafterEmail,
       drafterName: resolveDrafterDisplayName(drafterEmail),
       approverEmail, approverName: resolveNameByEmail(approverEmail),
       status, comment:'', comments:[], createdAt: new Date().toLocaleString('ko-KR'), decidedAt:''
-    });
+    };
+    sharedApprovals.unshift(newItem);
+  }
+  // 휴가 기안은 결재자의 승인을 기다리지 않고 상신하는 즉시 기안자 본인의 근태·캘린더에 먼저 반영해둠
+  // ("결재가 늦게 날 수도 있으니 일단 캘린더에는 바로 보이면 좋겠다"는 요청) - 나중에 실제로 반려되거나
+  // 이 기안을 회수/삭제하면 그때 심어뒀던 내용만 정확히 다시 빼줌(decideApproval의 반려 처리,
+  // recallApprovalDraft, deleteApproval 참고). 승인 시점에는 이미 반영돼 있으니 applyLeaveApprovalToAttendance의
+  // leaveApplied 가드 덕분에 중복으로 쌓이지 않음
+  if(status === '기안' && docType === '휴가' && typeof applyLeaveApprovalToAttendance === 'function'){
+    const item = existing || sharedApprovals[0];
+    applyLeaveApprovalToAttendance(item);
   }
   saveSharedApprovals();
   if(msgEl) msgEl.textContent = status === '기안' ? '기안 상신 완료' : '임시저장했어요';
@@ -21220,6 +21243,9 @@ async function recallApprovalDraft(id){
   const item = (sharedApprovals||[]).find(a=>a.id===id);
   if(!item) return;
   item.status = '회수';
+  // 휴가는 상신 즉시 근태·캘린더에 먼저 반영해두므로, 회수하면(결재 자체를 무르는 거니까) 미리 반영해뒀던
+  // 내용도 같이 빼줘야 함 - 안 그러면 결재가 더 이상 진행 중이지도 않은 휴가가 캘린더에 계속 남아있게 됨
+  if(typeof revertLeaveApprovalFromAttendance === 'function') revertLeaveApprovalFromAttendance(item);
   await saveSharedApprovals();
   renderApprovalInbox();
   renderApprovalMine();
@@ -21512,9 +21538,11 @@ async function decideApproval(id, decision){
     text: noteText,
     decision,
   });
-  // 휴가 기안이 승인되면, 담당자가 따로 다시 입력하지 않아도 기안자 본인의 근태 기록에 자동으로 반영됨
-  // (그 데이터를 그대로 읽는 팀캘린더·개인캘린더에도 자연히 같이 반영됨)
+  // 휴가는 이제 상신하는 즉시(saveApprovalDraftForm) 근태·캘린더에 먼저 반영해두므로, 승인 시점엔 이미
+  // 반영돼 있는 게 보통임(그래도 혹시 몰라 한 번 더 호출 - leaveApplied 가드가 중복 반영을 막아줌).
+  // 반려되면 그 사이 미리 반영해뒀던 내용을 다시 빼줘야 함(승인 안 난 휴가가 캘린더에 남아있으면 안 되므로)
   if(decision === '승인' && typeof applyLeaveApprovalToAttendance === 'function') applyLeaveApprovalToAttendance(item);
+  if(decision === '반려' && typeof revertLeaveApprovalFromAttendance === 'function') revertLeaveApprovalFromAttendance(item);
   await saveSharedApprovals();
   document.getElementById('approvalDetailModalOverlay').style.display = 'none';
   approvalExpandedId = null; // 결정을 내리면 목록으로 접어서 바뀐 상태를 목록에서 바로 보여줌
@@ -22515,6 +22543,16 @@ document.getElementById('importAllFile').addEventListener('change', async (e)=>{
     const empCount = data.profiles.length;
     const ok = await appConfirm(`전 직원(${empCount}명)의 근태·경비·개인일정 기록과 회사 공통설정을 전부 이 파일 내용으로 덮어씁니다. 되돌릴 수 없어요. 정말 계속할까요?`);
     if(!ok){ e.target.value=''; return; }
+    await restoreFullBackupData(data, document.getElementById('allBackupSaveMsg'));
+  }catch(err){
+    console.error(err);
+    document.getElementById('allBackupSaveMsg').textContent = '불러오기 실패 (파일을 확인해주세요)';
+  }
+  e.target.value = '';
+});
+// 전 직원 일괄 복구의 실제 적용 로직 - 위 "파일에서 복구"와 아래 "자동백업 시점 선택 복구" 둘 다 이 함수
+// 하나로 처리해서, 파일 출처만 다를 뿐 적용 방식(전부 교체 후 Drive에도 반영)은 항상 똑같이 동작함
+async function restoreFullBackupData(data, msgEl){
     saveProfiles(data.profiles);
     // 거래처목록(clients)·개인정보(personalInfo)가 직원별로 들어있는 옛 형식 백업(업데이트 전에 받아둔 파일)이면
     // 더 이상 쓰지 않는 개인 저장소에 되살리지 않고, 공용 저장소로 합칠 재료로만 모아둠(아래에서 한 번에 처리)
@@ -22579,16 +22617,74 @@ document.getElementById('importAllFile').addEventListener('change', async (e)=>{
       setActiveProfileId(data.profiles[0] ? data.profiles[0].id : null);
     }
     if(gdriveAccessToken && gdriveFileId){
-      document.getElementById('allBackupSaveMsg').textContent = '불러오기 완료 · 드라이브에 반영 중...';
-      try{ await gdrivePush(); }catch(err){ console.error('전 직원 일괄 불러오기 후 드라이브 반영 실패', err); }
+      if(msgEl) msgEl.textContent = '복구 완료 · 드라이브에 반영 중...';
+      try{ await gdrivePush(); }catch(err){ console.error('전 직원 일괄 복구 후 드라이브 반영 실패', err); }
     }
-    document.getElementById('allBackupSaveMsg').textContent = '불러오기 완료 · 새로고침합니다...';
+    if(msgEl) msgEl.textContent = '복구 완료 · 새로고침합니다...';
     setTimeout(()=>{ location.reload(); }, 400);
+}
+
+// "시점 복구" - 자동백업 폴더에 쌓인 과거 시점들을 날짜·시각과 함께 목록으로 보여주고, 그중 하나를 골라
+// restoreFullBackupData()로 전 직원 데이터를 통째로 되돌릴 수 있게 함. 매번 자동으로 불러오면 설정 화면을
+//열 때마다 불필요한 Drive API 호출이 생기니, "전체직원" 탭을 처음 열 때 한 번 + "목록 새로고침" 버튼을
+// 눌렀을 때만 조회함
+let pointInTimeBackupListLoaded = false;
+async function loadPointInTimeBackupList(){
+  const sel = document.getElementById('pointInTimeBackupSelect');
+  const msgEl = document.getElementById('pointInTimeBackupMsg');
+  if(!sel) return;
+  if(!gdriveAccessToken){ sel.innerHTML = '<option value="">먼저 구글 드라이브에 연결해주세요</option>'; return; }
+  sel.innerHTML = '<option value="">불러오는 중...</option>';
+  if(msgEl) msgEl.textContent = '';
+  try{
+    const folderId = await resolveApprovalAttachmentFolder(GDRIVE_BACKUP_FOLDER_NAME);
+    const q = encodeURIComponent(`'${folderId}' in parents and trashed=false and name contains 'taxj-data-'`);
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&driveId=${APPROVAL_ATTACHMENT_DRIVE_ID}&corpora=drive&supportsAllDrives=true&includeItemsFromAllDrives=true&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc&pageSize=200`, {
+      headers:{ Authorization:`Bearer ${gdriveAccessToken}` }
+    });
+    if(!res.ok) throw new Error(`목록 조회 실패 (${res.status})`);
+    const listData = await res.json();
+    const files = listData.files || [];
+    if(!files.length){ sel.innerHTML = '<option value="">아직 쌓인 백업이 없어요</option>'; return; }
+    sel.innerHTML = files.map(f=>{
+      const label = new Date(f.modifiedTime).toLocaleString('ko-KR');
+      return `<option value="${f.id}">${escHtml(label)}</option>`;
+    }).join('');
+    pointInTimeBackupListLoaded = true;
   }catch(err){
-    console.error(err);
-    document.getElementById('allBackupSaveMsg').textContent = '불러오기 실패 (파일을 확인해주세요)';
+    console.error('백업 시점 목록 조회 실패', err);
+    sel.innerHTML = '<option value="">목록을 불러오지 못했어요</option>';
+    if(msgEl) msgEl.textContent = '목록 조회 실패: ' + (err && err.message ? err.message : err);
   }
-  e.target.value = '';
+}
+document.getElementById('pointInTimeRefreshBtn')?.addEventListener('click', loadPointInTimeBackupList);
+document.getElementById('pointInTimeRestoreBtn')?.addEventListener('click', async ()=>{
+  const sel = document.getElementById('pointInTimeBackupSelect');
+  const msgEl = document.getElementById('pointInTimeBackupMsg');
+  const fileId = sel && sel.value;
+  if(!fileId){ appAlert('먼저 위 목록에서 복구할 시점을 골라주세요.'); return; }
+  const label = sel.options[sel.selectedIndex].textContent;
+  const ok = await appConfirm(`"${label}" 시점으로 전 직원 데이터를 통째로 되돌릴까요?\n\n이 시점 이후에 생긴 모든 변경(근태·경비 입력, 결재, 삭제·복원 등)이 전부 사라지고 되돌릴 수 없어요.`, { okText:'네, 이 시점으로 되돌릴게요', cancelText:'취소' });
+  if(!ok) return;
+  try{
+    if(msgEl) msgEl.textContent = '백업 파일 받는 중...';
+    const fileRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`, {
+      headers:{ Authorization:`Bearer ${gdriveAccessToken}` }
+    });
+    if(!fileRes.ok) throw new Error(`백업 파일 다운로드 실패 (${fileRes.status})`);
+    const data = await fileRes.json();
+    if(!data.profiles || !data.data) throw new Error('백업 파일 형식이 올바르지 않아요');
+    await restoreFullBackupData(data, msgEl);
+  }catch(err){
+    console.error('시점 복구 실패', err);
+    if(msgEl) msgEl.textContent = '복구 실패: ' + (err && err.message ? err.message : err);
+  }
+});
+// "전체직원" 탭을 처음 열 때 시점 목록을 자동으로 한 번 불러와둠(매번 새로고침 버튼을 누르지 않아도 되게)
+document.querySelectorAll('.backup-scope-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    if(btn.dataset.backupScope === 'all' && !pointInTimeBackupListLoaded) loadPointInTimeBackupList();
+  });
 });
 
 // 백업 파일(옛 형식 전 직원 일괄백업 - 직원별로 거래처가 나뉘어 있던 파일이든, 새 형식이든)에서 거래처목록·
@@ -23576,33 +23672,40 @@ async function gdrivePush(retrying){
 }
 
 // ── 자동 백업: 회사 공유 드라이브("01.기장대리") > "0004.전자결재첨부" 폴더 안에 "자동백업" 폴더를 만들어,
-// 하루에 한 번(그 날 첫 저장 시점) 그 시점의 회사 데이터 스냅샷과 지금 열려있는 앱(index.html) 소스를 그대로
-// 따로 저장해둠 - 업무기안 첨부파일이 이미 쓰고 있는 같은 경로(resolveApprovalAttachmentFolder) 아래라
-// 폴더 탐색/생성 결과가 그대로 캐시 재사용됨. 실수로 데이터가 잘못 저장되거나 파일이 깨지는 경우를 대비한
-// 보험용이라, 평소 화면(백업복구·엑셀 다운로드 등)에는 노출하지 않고 조용히 백그라운드에서만 동작함.
-// 관리자 계정으로 로그인해서 실제 저장이 일어날 때만 실행되고(일반 직원 계정으로는 시도 안 함), 하루 1회
-// 제한은 localStorage 날짜 플래그로 관리함. 30일 지난 백업은 자동으로 정리해서 무한정 쌓이지 않게 함.
+// 일정 간격마다(예전엔 하루 1번이었는데, "특정 시점으로 되돌릴 수 있어야 한다"는 요청으로 훨씬 촘촘하게
+// 바꿈 - 아래 GDRIVE_BACKUP_INTERVAL_MS 참고) 그 시점의 회사 데이터 스냅샷과 지금 열려있는 앱(index.html)
+// 소스를 그대로 따로 저장해둠 - 업무기안 첨부파일이 이미 쓰고 있는 같은 경로(resolveApprovalAttachmentFolder)
+// 아래라 폴더 탐색/생성 결과가 그대로 캐시 재사용됨. 실수로 데이터가 잘못 저장되거나 다른 기기가 방금 만든
+// 변경을 덮어쓰는 경우를 대비한 보험용이라, 평소 화면에는 노출하지 않고 조용히 백그라운드에서만 동작하지만,
+// 설정 > 데이터 > 백업복구 > 전체직원 탭의 "시점 복구"에서 이 폴더에 쌓인 시점들을 직접 골라 되돌릴 수 있음.
+// 관리자 계정으로 로그인해서 실제 저장이 일어날 때만 실행되고(일반 직원 계정으로는 시도 안 함), 간격 제한은
+// localStorage 시각 플래그로 관리함. 보관기한이 지난 백업은 자동으로 정리해서 무한정 쌓이지 않게 함.
 const GDRIVE_BACKUP_FOLDER_NAME = '자동백업'; // resolveApprovalAttachmentFolder(docType)의 docType 자리에 그대로 넘겨서, "0004.전자결재첨부" 바로 아래에 이 이름의 폴더가 생기게 함
-const GDRIVE_BACKUP_KEEP_DAYS = 30;
+const GDRIVE_BACKUP_INTERVAL_MS = 3*60*60*1000; // 3시간마다 최대 1건 - 너무 잦으면 파일이 과하게 쌓이고, 너무 뜸하면 되돌릴 수 있는 시점이 성겨짐
+const GDRIVE_BACKUP_KEEP_DAYS = 14; // 3시간 간격이면 하루 최대 8건×2파일이라, 30일 그대로 두면 파일이 너무 많이 쌓여서 14일로 줄임
 let gdriveBackupInFlight = false;
-function gdriveBackupDateStr(d){
+// 파일명에 쓰는 시각 문자열(YYYY-MM-DD_HHmm) - 예전엔 날짜만 썼는데(taxj-data-2026-09-16.json), 하루에
+// 여러 번 백업하게 되면서 같은 날짜끼리 파일명이 겹치면 안 되므로 시:분까지 넣음
+function gdriveBackupStampStr(d){
   d = d || new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const p = n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
 }
 async function maybeRunDailyGdriveBackup(payload){
   try{
     if(!gdriveAccessToken || !isCurrentUserAdmin) return; // 관리자 계정에서 실제 저장이 일어날 때만 - 일반 직원 계정은 백업 폴더 쓰기 권한이 없을 수 있고, 여러 계정이 동시에 중복 백업하는 것도 방지
-    const todayStr = gdriveBackupDateStr();
-    if(localStorage.getItem('worklog_gdrive_last_backup_date') === todayStr) return; // 오늘 이미 백업함
+    const lastAt = Number(localStorage.getItem('worklog_gdrive_last_backup_at') || 0);
+    if(Date.now() - lastAt < GDRIVE_BACKUP_INTERVAL_MS) return; // 아직 다음 백업 간격이 안 됨
     if(gdriveBackupInFlight) return; // 짧은 시간에 저장이 여러 번 겹쳐 일어나도 중복 실행 방지
     gdriveBackupInFlight = true;
-    // 낙관적으로 먼저 오늘 날짜를 기록함(같은 브라우저에서 저장이 연달아 일어나도 중복 백업 안 하도록) -
+    // 낙관적으로 먼저 지금 시각을 기록함(같은 브라우저에서 저장이 연달아 일어나도 중복 백업 안 하도록) -
     // 실제로 실패하면 catch에서 다시 지워서 다음 저장/로그인 때 재시도되게 함
-    localStorage.setItem('worklog_gdrive_last_backup_date', todayStr);
+    localStorage.setItem('worklog_gdrive_last_backup_at', String(Date.now()));
+    const stamp = gdriveBackupStampStr();
     const folderId = await resolveApprovalAttachmentFolder(GDRIVE_BACKUP_FOLDER_NAME);
-    // 1) 데이터 백업 - 거래처·직원·회사정보 등 저장소 전체 스냅샷을 새 파일로(기존 파일을 덮어쓰지 않고 매일 따로)
+    // 1) 데이터 백업 - 거래처·직원·회사정보 등 저장소 전체 스냅샷을 새 파일로(기존 파일을 덮어쓰지 않고 시점마다 따로)
     const dataPayload = payload || gdriveBuildPayload();
-    const dataMetadata = JSON.stringify({ name:`taxj-data-${todayStr}.json`, mimeType:'application/json', parents:[folderId] });
+    const dataMetadata = JSON.stringify({ name:`taxj-data-${stamp}.json`, mimeType:'application/json', parents:[folderId] });
     const dataRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id', {
       method:'POST',
       headers:{ Authorization:`Bearer ${gdriveAccessToken}`, 'Content-Type':'multipart/related; boundary=taxjboundary' },
@@ -23613,7 +23716,7 @@ async function maybeRunDailyGdriveBackup(payload){
     // 배포했는지와 무관하게, 그 시점에 실제로 운영 중이던 버전 그대로 남음)
     const htmlSource = '<!doctype html>\n' + document.documentElement.outerHTML;
     const htmlBoundary = 'taxjbackupsrc';
-    const htmlMetadata = JSON.stringify({ name:`taxj-source-${todayStr}.html`, mimeType:'text/html', parents:[folderId] });
+    const htmlMetadata = JSON.stringify({ name:`taxj-source-${stamp}.html`, mimeType:'text/html', parents:[folderId] });
     const htmlBody = new Blob([
       `--${htmlBoundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${htmlMetadata}\r\n--${htmlBoundary}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n`,
       htmlSource,
@@ -23627,14 +23730,13 @@ async function maybeRunDailyGdriveBackup(payload){
     if(!htmlRes.ok) throw new Error(`소스파일 백업 실패 (${htmlRes.status})`);
     gdriveCleanupOldBackups(folderId).catch(e=>console.error('오래된 자동백업 정리 실패', e));
   }catch(e){
-    console.error('일일 자동백업 실패', e);
-    try{ localStorage.removeItem('worklog_gdrive_last_backup_date'); }catch(e2){}
+    console.error('자동백업 실패', e);
+    try{ localStorage.removeItem('worklog_gdrive_last_backup_at'); }catch(e2){}
   }finally{
     gdriveBackupInFlight = false;
   }
 }
-// 자동백업 폴더 안에서 30일보다 오래된 파일만 지움 - 매일 데이터+소스 2개씩 쌓이므로 한 달치(약 60개) 정도만
-// 남기고 그 이전 것들은 자동 정리함(계속 쌓여서 공유 드라이브 용량을 잡아먹지 않도록)
+// 자동백업 폴더 안에서 보관기한보다 오래된 파일만 지움 - 계속 쌓여서 공유 드라이브 용량을 잡아먹지 않도록
 async function gdriveCleanupOldBackups(folderId){
   const cutoff = Date.now() - GDRIVE_BACKUP_KEEP_DAYS*24*60*60*1000;
   const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
