@@ -6035,6 +6035,25 @@ function unrecordDeletedApprovalId(id){
     localStorage.setItem('worklog_recent_approval_deletions', JSON.stringify(list));
   }catch(e){}
 }
+// 공지사항 삭제도 직원·결재문서 삭제와 똑같은 "지운 직후 다른 기기/탭이 아직 들고 있던 예전 목록을 Drive에
+// 다시 올리면서 방금 지운 공지가 되살아나는" 문제가 그대로 생길 수 있었는데, 공지사항엔 이 안전장치가
+// 빠져있어서 "삭제해도 계속 나타난다"는 문제로 이어졌음 - 같은 방식으로 안전장치 추가
+function getRecentlyDeletedNoticeIds(){
+  try{
+    const raw = JSON.parse(localStorage.getItem('worklog_recent_notice_deletions') || '[]');
+    const now = Date.now();
+    const fresh = raw.filter(e=> e && e.id && (now - e.at) < RECENT_DELETION_TTL_MS);
+    if(fresh.length !== raw.length) localStorage.setItem('worklog_recent_notice_deletions', JSON.stringify(fresh));
+    return fresh;
+  }catch(e){ return []; }
+}
+function recordDeletedNoticeId(id){
+  try{
+    const list = getRecentlyDeletedNoticeIds();
+    if(!list.find(e=>e.id===id)) list.push({id, at: Date.now()});
+    localStorage.setItem('worklog_recent_notice_deletions', JSON.stringify(list));
+  }catch(e){}
+}
 function getActiveProfileId(){ try{ return localStorage.getItem('worklog_active_profile') || ''; }catch(e){ return ''; } }
 function setActiveProfileId(id){ try{ localStorage.setItem('worklog_active_profile', id); }catch(e){} }
 function skey(base){ return `worklog_${base}__${activeProfileId}`; }
@@ -6385,10 +6404,12 @@ function renderNoticeList(){
   wrap.querySelectorAll('.notice-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       if(!(await appConfirm('이 공지를 삭제할까요?'))) return;
+      recordDeletedNoticeId(btn.dataset.id); // 삭제 직후 동기화로 되살아나지 않도록 "최근 삭제" 목록에 기록해둠
       sharedNoticeHistory = sharedNoticeHistory.filter(x=>x.id!==btn.dataset.id);
       await saveSharedNoticeHistory();
       removeNotificationLogEntriesForNotice(btn.dataset.id);
       renderNoticeList();
+      if(typeof renderDashboardImportantNotices === 'function') renderDashboardImportantNotices();
     });
   });
 }
@@ -12766,14 +12787,38 @@ function computeMonthTeamAgenda(monthStr){
 // 맞추려고 카드를 늘렸는데, 한 주치만으로는 그 늘어난 높이를 못 채워서 허전해 보였음). 목록이 길어질 수
 // 있어서 표 자체에 스크롤을 주고(.home-dash-card-body의 overflow-y:auto, CSS 쪽에서 처리), 더 이상 5건으로
 // 자르지 않고 이번 달 전체를 다 보여줌
-function renderDashboardCalendarPreview(){
+// 대시보드 위젯 안에서 보고 있는 월 - 화살표로 전/다음 달을 넘겨볼 수 있게 함. 홈으로 새로 들어올 때마다
+// (renderDashboardCalendarPreview를 monthStr 없이 부르면) 항상 이번 달로 다시 초기화됨 - 팀캘린더/개인캘린더
+// 탭이 매번 이번 달부터 보이는 것과 같은 방식
+let dashCalendarMonth = todayStr().slice(0,7);
+function renderDashboardCalendarPreview(monthStr){
   const body = document.getElementById('dashCalendarBody');
   if(!body) return;
-  const monthStr = todayStr().slice(0,7);
-  const headerHtml = `<div style="font-size:15.5px; font-weight:800; color:var(--ink); margin-bottom:8px;">${Number(monthStr.slice(5,7))}월 팀 일정</div>`;
+  dashCalendarMonth = monthStr || todayStr().slice(0,7);
+  monthStr = dashCalendarMonth;
+  // 제목을 목록 위 가운데로 두고, 좌우에 전/다음 달 화살표를 붙여서 이번 달 외의 일정도 위젯 안에서 바로
+  // 넘겨볼 수 있게 함(예전엔 이번 달 고정 + "바로가기"로 팀캘린더 탭까지 가야만 다른 달을 볼 수 있었음)
+  const headerHtml = `<div style="display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:8px;">
+      <button type="button" class="cal-nav-arrow" id="dashCalPrevBtn" title="이전 달" style="width:20px; height:20px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+      <span style="font-size:15.5px; font-weight:800; color:var(--ink); min-width:68px; text-align:center;">${Number(monthStr.slice(5,7))}월 팀 일정</span>
+      <button type="button" class="cal-nav-arrow" id="dashCalNextBtn" title="다음 달" style="width:20px; height:20px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+    </div>`;
+  const bindDashCalNav = ()=>{
+    document.getElementById('dashCalPrevBtn')?.addEventListener('click', ()=>{
+      const d = new Date(dashCalendarMonth+'-01T00:00:00');
+      d.setMonth(d.getMonth()-1);
+      renderDashboardCalendarPreview(d.toISOString().slice(0,7));
+    });
+    document.getElementById('dashCalNextBtn')?.addEventListener('click', ()=>{
+      const d = new Date(dashCalendarMonth+'-01T00:00:00');
+      d.setMonth(d.getMonth()+1);
+      renderDashboardCalendarPreview(d.toISOString().slice(0,7));
+    });
+  };
   const items = (typeof getProfiles === 'function') ? computeMonthTeamAgenda(monthStr) : [];
   if(!items.length){
-    body.innerHTML = headerHtml + `<div class="hint" style="margin:0; font-size:11.5px;">이번 달 등록된 팀 일정이 없어요.</div>`;
+    body.innerHTML = headerHtml + `<div class="hint" style="margin:0; font-size:11.5px; text-align:center;">해당 달에 등록된 팀 일정이 없어요.</div>`;
+    bindDashCalNav();
     return;
   }
   // 날짜/대상자/일정을 각자 텍스트가 섞여 나오던 한 줄짜리 목록 대신, 열 제목 + 구분선이 있는 미니 표로 바꿔서
@@ -12793,6 +12838,7 @@ function renderDashboardCalendarPreview(){
     </div>`;
     }).join('');
   body.innerHTML = headerHtml + `<div class="home-dash-card-scroll"><div class="home-dash-table">${tableHtml}</div></div>`;
+  bindDashCalNav();
 }
 // 대시보드 "근태현황" 위젯 - 예전엔 근태경비 탭의 실제 카드(.summary-cards)를 그대로 복제해 축소하는
 // 방식이었는데, 출퇴근 카드와 스타일이 안 맞아서 이 위젯 전용 색칩 3개(잔여연차/이번달 사용/이번달 재택)로
@@ -20593,7 +20639,9 @@ async function deleteApproval(id){
     if(typeof renderAttendance === 'function') renderAttendance();
     if(typeof renderCalendar === 'function') renderCalendar();
     if(typeof renderAdminCalendar === 'function') renderAdminCalendar();
-    if(typeof renderDashboardCalendarPreview === 'function') renderDashboardCalendarPreview();
+    // 여기서는 지금 보고 있던 달을 그대로 유지한 채로만 다시 그림(이번 달로 되돌리지 않음) - 다른 달을
+    // 넘겨보던 중에 삭제 처리로 화면이 도로 이번 달로 튕기면 헷갈리기 때문
+    if(typeof renderDashboardCalendarPreview === 'function') renderDashboardCalendarPreview(dashCalendarMonth);
   }
   renderApprovalAllBadges();
 }
@@ -23012,6 +23060,9 @@ async function gdrivePull(){
     // 결재문서 삭제도 같은 이유로 한 번 더 안전장치 - 최근에 지운 결재문서 id는 병합 결과에 남아있어도 확실히 제거
     const deletedApprovalIds = new Set(getRecentlyDeletedApprovalIds().map(e=>e.id));
     if(deletedApprovalIds.size && merged.shared) merged.shared.approvals = (merged.shared.approvals||[]).filter(a=>!deletedApprovalIds.has(a.id));
+    // 공지사항 삭제도 같은 이유로 한 번 더 안전장치 - 최근에 지운 공지 id는 병합 결과에 남아있어도 확실히 제거
+    const deletedNoticeIds = new Set(getRecentlyDeletedNoticeIds().map(e=>e.id));
+    if(deletedNoticeIds.size && merged.shared) merged.shared.noticeHistory = (merged.shared.noticeHistory||[]).filter(n=>!deletedNoticeIds.has(n.id));
     if(!gdriveDeepEqual(merged, remote)){
       // 병합 결과가 방금 받아온 원격 내용과 다르면(우리 쪽에만 있던 변경이 있었으면) Drive에도 다시 반영
       lastGdrivePulledSnapshot = null; // 우리가 고친 내용을 다시 밀어올린 뒤, 다음 pull에서도 정상 비교되게 초기화
