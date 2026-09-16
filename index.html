@@ -1361,6 +1361,8 @@
   #attendanceLedgerWrap .tag, #scheduleListWrap .tag, #exclusionListWrap .tag{ font-size:10px; padding:2px 7px; white-space:nowrap; }
   .tag{display:inline-block; font-size:11px; padding:3px 10px; border-radius:20px; font-weight:700;}
   .tag-usage{background:var(--coral-bg); color:var(--coral);}
+  /* 휴지통의 "종류" 칩은 근태/경비/일정 등 항목마다 색이 제각각이라 어수선해 보여서, 색 없는 중립 스타일로 통일함 */
+  .tag-neutral{background:var(--bg); color:var(--ink-soft); border:1px solid var(--border);}
   .tag-remote{background:#CFEFFB; color:#0B5A78;}
   .tag-remote-special{background:var(--mint-bg); color:#0A7A55;}
   .tag-grant{background:var(--amber-bg); color:var(--amber);}
@@ -1493,6 +1495,12 @@
   .ios-toggle .ios-toggle-track::before{ content:''; position:absolute; width:17px; height:17px; left:3px; top:3px; background:#fff; border-radius:50%; box-shadow:0 1px 3px rgba(29,30,51,0.3); transition:transform .18s; }
   .ios-toggle input:checked + .ios-toggle-track{ background:var(--indigo); }
   .ios-toggle input:checked + .ios-toggle-track::before{ transform:translateX(17px); }
+  /* 이 기기에서 아직 알림 동의를 안 한 상태에서는 종류별 스위치가 파랗게 "켜짐"으로 보여도 실제로는 안
+     받고 있는 거라 오해를 사서(설정>알림 화면 피드백), 그 상태에선 스위치 자체를 흐리게+비활성으로 눌러서
+     "지금은 안 먹힌다"는 걸 바로 보여주게 함 */
+  .ios-toggle input:disabled + .ios-toggle-track{ opacity:.45; }
+  .ios-toggle input:disabled{ cursor:not-allowed; }
+  .notif-pref-panel-locked .flat-row{ opacity:.55; }
   .flat-input{ border:none; border-bottom:1.5px solid var(--border); border-radius:0; background:transparent; padding:5px 2px; font-family:'Pretendard',sans-serif; transition:border-color .15s; }
   .flat-input:focus{ border-bottom-color:var(--indigo); background:transparent; box-shadow:none; }
   .settings-flat .empty-state{ background:transparent; box-shadow:none; border:1px solid rgba(29,30,51,0.16); }
@@ -4323,7 +4331,7 @@
                 </div>
                 <div class="field"><label>제목</label><input type="text" id="ad-title" placeholder="예: 8월 휴가 신청" required></div>
                 <div class="field">
-                  <label style="display:flex; align-items:center; justify-content:space-between;">서식설정
+                  <label style="display:flex; align-items:center; justify-content:space-between;">내용
                     <span style="display:flex; align-items:center; gap:5px;">
                       <!-- 예전엔 "+자동문구" 버튼을 직접 눌러야만 문서종류별 기본 문구가 채워졌는데, 버튼을
                            누르는 걸 깜빡하기 쉽고 번거롭다는 요청으로 없앰 - 이제 문서종류를 고르는 즉시
@@ -4332,16 +4340,9 @@
                       <button type="button" id="ad-auto-phrase-settings-btn" title="기안문구 설정" style="border:none; background:transparent; color:var(--ink-soft); cursor:pointer; padding:2px; display:flex; align-items:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
                     </span>
                   </label>
-                  <!-- 서식 툴바: 1행(글씨체/굵게/기울임/밑줄/목록/표삽입/정렬), 2행(글자색) - 드래그로 선택한
-                       부분에만 적용됨(공지사항 리치텍스트 편집기와 같은 방식으로 execCommand 사용).
-                       mousedown에서 선택영역이 풀리지 않도록 preventDefault 처리 -->
-                  <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:6px; padding:6px 8px; background:var(--bg); border-radius:10px 10px 0 0;">
-                    <select id="ad-rt-font" title="글씨체" style="height:26px; font-size:11px; border-radius:7px; border:1.3px solid var(--border); background:var(--surface); color:var(--ink); padding:0 6px;">
-                      <option value="'Pretendard',sans-serif">기본체</option>
-                      <option value="'Noto Serif KR',serif">명조체</option>
-                      <option value="'IBM Plex Mono',monospace">고정폭</option>
-                    </select>
-                    <span style="width:1px; height:16px; background:var(--border);"></span>
+                  <!-- 서식 툴바: 굵게/기울임/밑줄/목록/글자색 - 드래그로 선택한 부분에만 적용됨(공지사항 리치텍스트
+                       편집기와 같은 방식으로 execCommand 사용). mousedown에서 선택영역이 풀리지 않도록 preventDefault 처리 -->
+                  <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:6px; padding:6px 8px; background:var(--bg); border-radius:10px;">
                     <button type="button" class="del-btn ad-rt-btn" data-cmd="bold" title="굵게" style="font-weight:900; padding:4px 9px;">B</button>
                     <button type="button" class="del-btn ad-rt-btn" data-cmd="italic" title="기울임" style="font-style:italic; padding:4px 9px;">I</button>
                     <button type="button" class="del-btn ad-rt-btn" data-cmd="underline" title="밑줄" style="text-decoration:underline; padding:4px 9px;">U</button>
@@ -4350,16 +4351,13 @@
                     <span style="width:1px; height:16px; background:var(--border);"></span>
                     <!-- 휴가 일정 표/세무 신고대상·특이사항 표를 지금 커서 위치에 다시(또는 추가로) 끼워넣는
                          버튼 - 문서종류를 바꿀 때 자동으로 채워지는 것과 별개로, 표를 실수로 지웠거나 하나 더
-                         넣고 싶을 때 씀. 문서종류에 맞는 전용 표(휴가·부가가치세·법인세·종합소득세)가 있으면
-                         그걸, 없으면(일반·지출결의서 등) 직접 채워 쓸 수 있는 빈 표를 넣어줌 -->
-                    <button type="button" class="del-btn" id="ad-insert-box-btn" title="표를 커서 위치에 끼워넣어요" style="padding:4px 9px; font-size:11px;">⊞ 표 삽입</button>
+                         넣고 싶을 때 씀(문서종류가 휴가·부가가치세·법인세·종합소득세일 때만 동작함) -->
+                    <button type="button" class="del-btn" id="ad-insert-box-btn" title="지금 문서종류에 맞는 표를 커서 위치에 끼워넣어요" style="padding:4px 9px; font-size:11px;">⊞ 표 삽입</button>
                     <span style="width:1px; height:16px; background:var(--border);"></span>
                     <button type="button" class="del-btn ad-rt-align" data-align="left" title="왼쪽 정렬" style="padding:4px 7px; display:flex; align-items:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="15" y2="12"></line><line x1="3" y1="18" x2="18" y2="18"></line></svg></button>
                     <button type="button" class="del-btn ad-rt-align" data-align="center" title="가운데 정렬" style="padding:4px 7px; display:flex; align-items:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="6" y1="12" x2="18" y2="12"></line><line x1="4.5" y1="18" x2="19.5" y2="18"></line></svg></button>
                     <button type="button" class="del-btn ad-rt-align" data-align="right" title="오른쪽 정렬" style="padding:4px 7px; display:flex; align-items:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="9" y1="12" x2="21" y2="12"></line><line x1="6" y1="18" x2="21" y2="18"></line></svg></button>
-                  </div>
-                  <!-- 색상 줄을 따로 분리함(예전엔 위 서식 줄에 같이 있어서 두 줄로 밀려 보였음) -->
-                  <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:6px; padding:6px 8px; background:var(--bg); border-radius:0 0 10px 10px; border-top:1px solid var(--border);">
+                    <span style="width:1px; height:16px; background:var(--border);"></span>
                     <button type="button" class="del-btn ad-rt-color" data-color="#DC2626" title="빨강" style="background:#DC2626; width:16px; height:16px; padding:0; border-radius:50%;"></button>
                     <button type="button" class="del-btn ad-rt-color" data-color="#EA580C" title="주황" style="background:#EA580C; width:16px; height:16px; padding:0; border-radius:50%;"></button>
                     <button type="button" class="del-btn ad-rt-color" data-color="#D97706" title="황토" style="background:#D97706; width:16px; height:16px; padding:0; border-radius:50%;"></button>
@@ -4372,7 +4370,6 @@
                     </label>
                     <button type="button" class="del-btn ad-rt-color" data-color="" title="색상 지우기" style="background:var(--surface); width:16px; height:16px; padding:0; border-radius:50%; border:1.5px solid var(--border); position:relative;"><span style="position:absolute; inset:0; border-top:1.5px solid var(--coral); transform:rotate(45deg);"></span></button>
                   </div>
-                  <label style="display:block; margin:0 0 4px;">내용</label>
                   <div id="ad-content" contenteditable="true" data-placeholder="결재 내용을 적어주세요" style="width:100%; min-height:120px; max-height:40vh; overflow-y:auto; font-family:'Pretendard',sans-serif; font-size:13px; line-height:1.6; border:1.5px solid transparent; border-radius:10px; padding:10px; background:var(--bg); color:var(--ink);"></div>
                 </div>
                 <div class="field"><label>첨부 <span style="font-weight:400; color:var(--ink-soft);">— 파일을 올리거나, 구글드라이브 등 링크를 붙여넣으세요</span></label>
@@ -4815,20 +4812,19 @@
            기준으로 sharedNotificationPrefs[내 이메일]을 읽고 씀 -->
       <div class="settings-sub-title" id="ssTitle-notifications" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> 알림 <span class="badge">내 계정 기준 · 이 기기뿐 아니라 등록된 모든 기기에 적용</span></div>
       <p class="hint">
-        기기(브라우저)별로 처음 한 번 "알림 받기" 동의가 따로 필요해요. 아래 종류별 스위치는 이미 알림을 받도록 동의해둔 기기에서 그 종류의 알림을 받을지만 정하는 거라, 동의 자체가 안 되어 있으면 스위치를 껐다 켜도 알림이 오지 않아요. 이 기기에서 아직 동의하지 않았다면 바로 아래 버튼으로 먼저 켜주세요(휴대폰이면 휴대폰에서, PC면 PC에서 각각 따로 눌러야 해요).
+        이 기기에서 알림을 받으려면 먼저 아래 버튼으로 한 번 켜야 해요. 휴대폰·PC 등 기기마다 각각 한 번씩 따로 켜야 하고, 아직 안 켠 기기에서는 아래 종류별 스위치를 켜도 알림이 오지 않아요.
       </p>
       <div class="flat-panel flat-panel-narrow" style="margin-bottom:10px;">
-        <div class="flat-row" style="align-items:center;">
-          <div class="flat-row-label" style="flex:1 1 auto;">
-            이 기기(지금 보고 있는 이 브라우저)의 알림 동의
+        <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; padding:16px 14px;">
+          <div>
+            <div style="font-weight:800; font-size:14px; color:var(--ink);">이 기기(지금 보고 있는 이 브라우저)의 알림</div>
             <div class="hint" style="margin:4px 0 0;" id="settingsPushRegisterStatus">확인 중...</div>
           </div>
-          <div class="flat-row-control" style="flex:0 0 auto;">
-            <button type="button" id="settingsPushRegisterBtn" class="del-btn" style="background:var(--indigo); color:#fff; white-space:nowrap;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> 이 기기에서 알림 켜기</button>
-          </div>
+          <button type="button" id="settingsPushRegisterBtn" class="del-btn" style="background:var(--indigo); color:#fff; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:10px 22px; white-space:nowrap;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> 이 기기에서 알림 켜기</button>
         </div>
       </div>
-      <div class="flat-panel flat-panel-narrow">
+      <p class="hint" id="notifCategoryPanelHint" style="display:none;">이 기기에서 알림을 켜야 아래 종류별 설정이 적용돼요.</p>
+      <div class="flat-panel flat-panel-narrow" id="notifCategoryPanel">
         <div class="flat-row">
           <div class="flat-row-label" style="flex:1 1 auto;">공지사항 등록</div>
           <div class="flat-row-control" style="flex:0 0 auto; justify-content:flex-end;">
@@ -5353,25 +5349,39 @@ document.querySelectorAll('.notif-pref-toggle').forEach(cb=>{
 // 안 온다"는 혼란으로 이어짐(공지/결재 화면에 각각 있는 "알림 받기" 버튼을 이 기기에서 따로 눌러야만 실제로
 // 등록됨). 설정 화면에서 이 기기의 실제 상태를 바로 보여주고, 한 번에 동의+등록까지 끝낼 수 있게 여기에도
 // 같은 기능의 버튼을 둠(누르면 공지·결재 알림 둘 다 이 기기에서 켜짐 - 개별 화면 버튼과 동일한 상태를 공유)
+// 이 기기가 아직 등록 안 된 상태에서는 아래 종류별 스위치를 파랗게 "켜짐"으로 놔두면 마치 알림이 이미
+// 오고 있는 것처럼 보여서 혼란을 줌 - 그래서 등록 전엔 스위치를 흐리게+비활성으로 잠가서 "아직 안 켜졌다"는
+// 걸 스위치 자체에서도 보여주고, 등록되면 바로 풀어줌
+function setNotifCategoryPanelLocked(locked){
+  const panel = document.getElementById('notifCategoryPanel');
+  const hint = document.getElementById('notifCategoryPanelHint');
+  if(panel) panel.classList.toggle('notif-pref-panel-locked', locked);
+  if(hint) hint.style.display = locked ? '' : 'none';
+  document.querySelectorAll('.notif-pref-toggle').forEach(cb=>{ cb.disabled = locked; });
+}
 function updateSettingsPushRegisterStatus(){
   const statusEl = document.getElementById('settingsPushRegisterStatus');
   const btn = document.getElementById('settingsPushRegisterBtn');
   if(!statusEl || !btn) return;
   if(typeof Notification === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)){
-    statusEl.textContent = '이 브라우저는 푸시 알림을 지원하지 않아요. (아이폰이면 Safari에서 바로 여는 대신, 홈 화면에 앱으로 추가한 뒤 그 아이콘으로 열어야 알림이 지원돼요)';
+    statusEl.textContent = '이 브라우저는 알림을 지원하지 않아요. (아이폰이면 Safari로 바로 열지 말고, 홈 화면에 앱으로 추가한 뒤 그 아이콘으로 열어야 알림을 지원해요)';
     btn.style.display = 'none';
+    setNotifCategoryPanelLocked(true);
     return;
   }
   btn.style.display = '';
   if(Notification.permission === 'denied'){
-    statusEl.textContent = '이 기기에서 알림 권한이 차단돼 있어요. 브라우저의 사이트 설정에서 알림을 허용으로 바꾼 뒤 다시 눌러주세요.';
+    statusEl.textContent = '알림이 차단돼 있어요. 브라우저의 사이트 설정에서 알림을 허용으로 바꾸고 다시 눌러주세요.';
     btn.textContent = '알림 켜는 방법 보기';
+    setNotifCategoryPanelLocked(true);
   } else if(Notification.permission === 'granted' && noticeNotifyEnabled() && approvalNotifyEnabled()){
-    statusEl.textContent = '이 기기는 알림을 받을 수 있게 등록돼 있어요.';
+    statusEl.textContent = '켜짐 · 이 기기로 알림이 와요.';
     btn.textContent = '다시 등록(문제 해결용)';
+    setNotifCategoryPanelLocked(false);
   } else {
-    statusEl.textContent = '이 기기에서는 아직 알림을 켜지 않았어요. 폰이라면 폰에서, PC라면 PC에서 각 기기마다 한 번씩 눌러야 해요.';
+    statusEl.textContent = '꺼짐 · 아직 이 기기에서 알림을 켜지 않았어요.';
     btn.textContent = '이 기기에서 알림 켜기';
+    setNotifCategoryPanelLocked(true);
   }
 }
 document.getElementById('settingsPushRegisterBtn')?.addEventListener('click', async ()=>{
@@ -7165,24 +7175,67 @@ function formatEmployeeSnapshot(sn){
 // ===== 휴지통 (근태·경비·일정·거래처·개인정보 삭제 시 바로 지우지 않고 여기로 먼저 이동) =====
 const TRASH_TYPE_LABELS = { attendance:'근태', expense:'경비', schedule:'일정', client:'거래처', personalInfo:'개인정보', policy:'내부규정', employee:'직원', notification:'알림', approval:'결재문서', notice:'공지사항' };
 
+// 예전엔 근태·경비·일정 삭제가 "지금 로그인한 프로필"에만 딸린 개인 휴지통(settings.trash)에 들어가서,
+// 계정(프로필)마다 휴지통이 따로 노는 데다가 - 직원 삭제 때와 똑같은 이유로 - 그 프로필 자체가 없어지면
+// 복구 불가능해지는 문제가 있었음. 이제는 전부 pushToSharedTrash로 보내서 회사 전체가 공유하는 휴지통
+// 하나에 모이게 함(계정별로 따로 설정하거나 나눠볼 필요 없게). profileId는 근태/경비/일정처럼 원래
+// 프로필별로 저장되던 데이터를 나중에 "그 프로필"에 정확히 복원하기 위해서만 씀(공지·거래처 등 원래부터
+// 회사 공용이던 데이터는 필요 없어서 undefined로 둠)
 function pushToTrash(type, kind, label, data){
-  settings.trash = settings.trash || [];
-  settings.trash.unshift({ id: genId(), type, kind, label, deletedAt: new Date().toLocaleString('ko-KR'), data });
-  if(settings.trash.length > 300) settings.trash.length = 300; // 너무 오래 쌓이지 않게 상한
+  // 이제 전 직원이 같은 휴지통을 보니까, 누구 기록인지 안 보이면 헷갈림 - 이름을 라벨 앞에 붙여줌
+  const prof = getProfiles().find(p=>p.id===activeProfileId);
+  const profLabel = prof && prof.name ? `[${prof.name}] ` : '';
+  pushToSharedTrash(type, kind, `${profLabel}${label}`, data, activeProfileId);
+  saveSharedTrash();
 }
-// 직원(프로필) 삭제는 pushToTrash()가 아니라 이 함수로 - 누가 로그인해서 지웠든 항상 같은 공용 휴지통에 쌓여야
-// "삭제한 사람의 계정에 휴지통이 갇히는" 문제(관리자 자신을 삭제하면 복구 불가능해지는 버그)가 생기지 않음
-function pushToSharedTrash(type, kind, label, data){
+function pushToSharedTrash(type, kind, label, data, profileId){
   sharedTrash = sharedTrash || [];
-  sharedTrash.unshift({ id: genId(), type, kind, label, deletedAt: new Date().toLocaleString('ko-KR'), data });
+  sharedTrash.unshift({ id: genId(), type, kind, label, deletedAt: new Date().toLocaleString('ko-KR'), data, profileId: profileId || undefined });
   if(sharedTrash.length > 300) sharedTrash.length = 300;
+}
+function writeProfileRaw(profileId, base, value){
+  try{ localStorage.setItem(`worklog_${base}__${profileId}`, JSON.stringify(value)); }catch(e){ console.error('프로필 데이터 저장 실패', e); }
+  gdriveScheduleSync();
 }
 
 async function restoreTrashItem(id){
   // 직원(프로필) 삭제 항목은 개인 휴지통(settings.trash)이 아니라 공용 휴지통(sharedTrash)에 있음
   const sharedItem = (sharedTrash||[]).find(x=>x.id===id);
   if(sharedItem){
-    if(sharedItem.type==='employee'){
+    if(sharedItem.type==='attendance' || sharedItem.type==='expense' || sharedItem.type==='schedule'){
+      // 이 세 종류는 원래 프로필별로 저장되는 데이터라, 삭제됐을 때 로그인했던 프로필(profileId)에 정확히
+      // 되돌려놔야 함 - 복원하는 지금 다른 프로필로 로그인해 있을 수도 있어서, "지금 활성 프로필"이 아니라
+      // 항상 profileId를 기준으로 읽고 씀. 옛날(이 기능 추가 전)에 이미 공용 휴지통에 들어간 직원삭제 외
+      // 항목엔 profileId가 없을 수 있는데, 그런 예전 항목은 지금 활성 프로필로 대신 복원함
+      const targetProfileId = sharedItem.profileId || activeProfileId;
+      const isActive = targetProfileId === activeProfileId;
+      const base = sharedItem.type;
+      const emptyObj = base==='attendance' ? {leaveGrants:[],leaveUsage:[],remoteEntries:[],clockLog:[]}
+        : base==='expense' ? {lunchEntries:[],dinnerEntries:[],otherExpenses:[],taxiEntries:[],prepaidEntries:[]}
+        : {events:[]};
+      const obj = isActive ? (base==='attendance'?attendance:base==='expense'?expense:schedule) : (readProfileRaw(targetProfileId, base) || emptyObj);
+      if(base==='attendance'){
+        if(sharedItem.kind==='grant') obj.leaveGrants.push(sharedItem.data);
+        if(sharedItem.kind==='usage') obj.leaveUsage.push(sharedItem.data);
+        if(sharedItem.kind==='remote') obj.remoteEntries.push(sharedItem.data);
+        if(sharedItem.kind==='clockLog'){ obj.clockLog = obj.clockLog || []; obj.clockLog.push(sharedItem.data); }
+      } else if(base==='expense'){
+        if(sharedItem.kind==='lunch') obj.lunchEntries.push(sharedItem.data);
+        if(sharedItem.kind==='dinner') obj.dinnerEntries.push(sharedItem.data);
+        if(sharedItem.kind==='taxi') obj.taxiEntries.push(sharedItem.data);
+        if(sharedItem.kind==='other') obj.otherExpenses.push(sharedItem.data);
+        if(sharedItem.kind==='prepaid') obj.prepaidEntries.push(sharedItem.data);
+      } else {
+        obj.events.push(sharedItem.data);
+      }
+      if(isActive){
+        if(base==='attendance') await saveAttendance();
+        else if(base==='expense') await saveExpense();
+        else await saveSchedule();
+      } else {
+        writeProfileRaw(targetProfileId, base, obj);
+      }
+    } else if(sharedItem.type==='employee'){
       const profiles = getProfiles();
       profiles.push(sharedItem.data);
       saveProfiles(profiles);
@@ -7237,6 +7290,7 @@ async function restoreTrashItem(id){
     if(item.kind==='grant') attendance.leaveGrants.push(item.data);
     if(item.kind==='usage') attendance.leaveUsage.push(item.data);
     if(item.kind==='remote') attendance.remoteEntries.push(item.data);
+    if(item.kind==='clockLog'){ attendance.clockLog = attendance.clockLog || []; attendance.clockLog.push(item.data); }
     await saveAttendance();
   } else if(item.type==='expense'){
     if(item.kind==='lunch') expense.lunchEntries.push(item.data);
@@ -7536,7 +7590,7 @@ function renderTrashModal(){
     const yearItems = byYear[year];
     const isOpen = idx === 0;
     const rows = yearItems.map(it=>`<tr>
-        <td><span class="tag tag-usage">${escHtml(TRASH_TYPE_LABELS[it.type]||it.type)}</span></td>
+        <td><span class="tag tag-neutral">${escHtml(TRASH_TYPE_LABELS[it.type]||it.type)}</span></td>
         <td>${escHtml(it.label||'')}</td>
         <td class="num" style="white-space:nowrap;">${it.deletedAt}</td>
         <td style="white-space:nowrap;">
@@ -12158,17 +12212,6 @@ function adLeaveSummaryTableHtml(){
     + `<tr><td style="${th}">휴가 종류</td><td style="${td}">${escHtml(typeText)}</td></tr>`
     + `</tbody></table>`;
 }
-// 문서종류에 맞는 전용 표가 없는 경우(일반·지출결의서 등)를 위한 빈 표 - "표는 문서종류 상관없이 넣을 수
-// 있으면 좋겠다"는 요청으로 추가함. 휴가/세무 표와 같은 테두리·칸 스타일을 그대로 써서 하나로 보이게 하고,
-// 칸을 비워둬서(&nbsp;) 클릭하면 바로 타이핑해 채울 수 있게 함
-function adGenericTableHtml(){
-  const tableBorder = '#8A93A8';
-  const th = `padding:7px 16px; border:1px solid ${tableBorder}; background:var(--bg); font-weight:700; color:var(--ink-soft); min-width:70px;`;
-  const td = `padding:7px 16px; border:1px solid ${tableBorder}; color:var(--ink); font-weight:600; min-width:70px;`;
-  const headerRow = `<tr>${['항목','내용','비고'].map(h=>`<td style="${th}">${escHtml(h)}</td>`).join('')}</tr>`;
-  const bodyRow = `<tr>${['&nbsp;','&nbsp;','&nbsp;'].map(v=>`<td style="${td}">${v}</td>`).join('')}</tr>`;
-  return `<table style="border-collapse:collapse; margin:0 auto; width:auto; border:1px solid ${tableBorder};"><tbody>${headerRow}${bodyRow}${bodyRow}</tbody></table>`;
-}
 // 부가가치세/법인세/종합소득세 기안의 "특이사항"을 위 휴가 표(adLeaveSummaryTableHtml)와 같은 표 형식으로
 // 바꿔달라는 요청 - 별도 <input>을 넣는 대신, 이 표 자체가 이미 기안내용(contenteditable) 안에 들어가는
 // 표라 "특이사항" 칸을 그냥 빈 칸으로 두면 클릭해서 바로 타이핑할 수 있음(입력값도 그대로 본문에 저장됨)
@@ -13634,7 +13677,9 @@ document.getElementById('clockEditSaveBtn')?.addEventListener('click', async ()=
   if(typeof renderDashboardClockCard === 'function') renderDashboardClockCard();
 });
 async function deleteClockLogEntry(dateStr){
-  if(!(await appConfirm(`${dateStr} 출퇴근 기록을 삭제할까요? 되돌릴 수 없어요.`))) return;
+  if(!(await appConfirm(`${dateStr} 출퇴근 기록을 삭제할까요? (휴지통으로 이동해서 나중에 복원할 수 있어요)`))) return;
+  const target = (attendance.clockLog||[]).find(e=>e.date===dateStr);
+  if(target) pushToTrash('attendance', 'clockLog', `출퇴근기록 ${target.date||''}`, target);
   attendance.clockLog = (attendance.clockLog||[]).filter(e=>e.date!==dateStr);
   await saveAttendance();
   renderClockHistoryTable();
@@ -20162,17 +20207,6 @@ document.getElementById('ad-rt-color-custom')?.addEventListener('input', functio
   document.execCommand('foreColor', false, this.value);
 });
 document.getElementById('ad-rt-color-custom')?.addEventListener('mousedown', (e)=>e.stopPropagation());
-// 글씨체 선택 - execCommand('fontName')은 브라우저마다 <font face> 처리 방식이 제각각이라, 색상 버튼과 같은
-// 방식으로 선택 영역을 <span style="font-family:...">로 감싸는 게 더 안정적임. document.execCommand의
-// styleWithCSS를 잠깐 켜서 fontName을 CSS(font-family)로 적용되게 함(끝나면 원래대로 꺼서 다른 명령에 영향 없게 함)
-document.getElementById('ad-rt-font')?.addEventListener('mousedown', (e)=>e.stopPropagation());
-document.getElementById('ad-rt-font')?.addEventListener('change', function(){
-  document.getElementById('ad-content').focus();
-  try{ document.execCommand('styleWithCSS', false, true); }catch(e){}
-  document.execCommand('fontName', false, this.value);
-  try{ document.execCommand('styleWithCSS', false, false); }catch(e){}
-  this.selectedIndex = 0; // 다음에 또 다른 글씨체를 바로 고를 수 있게 선택칸을 기본값으로 되돌려둠(계속 "명조체"로 남아있으면 헷갈림)
-});
 // 정렬(왼쪽/가운데/오른쪽) 버튼 - execCommand의 justifyLeft/Center/Right를 그대로 씀
 document.querySelectorAll('.ad-rt-align').forEach(btn=>{
   btn.addEventListener('mousedown', (e)=>e.preventDefault());
@@ -20194,9 +20228,7 @@ document.getElementById('ad-insert-box-btn')?.addEventListener('click', ()=>{
   } else if(typeof AD_TAX_DOCTYPE_KEY !== 'undefined' && AD_TAX_DOCTYPE_KEY[docType]){
     boxHtml = typeof adTaxSummaryTableHtml === 'function' ? adTaxSummaryTableHtml() : '';
   }
-  // 위에서 못 만들었으면(문서종류에 전용 표가 없거나, 있어도 아직 날짜·거래처 등을 안 골라서 비어있으면)
-  // 문서종류와 상관없이 직접 채워 쓸 수 있는 빈 표를 대신 넣어줌
-  if(!boxHtml) boxHtml = adGenericTableHtml();
+  if(!boxHtml){ appAlert('지금 문서종류·선택 상태에서는 넣을 수 있는 표가 없어요.'); return; }
   const contentEl = document.getElementById('ad-content');
   contentEl.focus();
   document.execCommand('insertHTML', false, `<div style="text-align:center;"><br></div><div style="text-align:center;">${boxHtml}</div><div style="text-align:center;"><br></div>`);
@@ -23201,6 +23233,13 @@ async function afterGdriveConnected(){
     await gdrivePull();
     await fetchCurrentUserEmail();
     applyPermissionUI();
+    // 앱을 껐다 켜도(백그라운드) 알림이 오려면 FCM 토큰이 항상 최신이어야 하는데, 예전엔 "알림 받기" 버튼을
+    // 누른 그 순간에만 등록했음 - 그 뒤로 브라우저 데이터 정리·OS 업데이트 등으로 토큰이 조용히 무효화되면
+    // 다시 누르기 전까진 아무도 모르게 푸시가 끊겨 있었음("설정은 켜져 있는데 휴대폰에 알림이 안 오는" 버그의
+    // 주요 원인). 그래서 이미 알림을 켜둔 사람은 로그인(자동 재연결 포함)할 때마다 조용히 토큰을 다시 등록함
+    if(typeof Notification !== 'undefined' && Notification.permission === 'granted' && (noticeNotifyEnabled() || approvalNotifyEnabled())){
+      registerPushToken();
+    }
     await gdrivePush();
     gdriveSetStatus('연결됨 · 방금 동기화함' + (currentUserEmail ? ` (${currentUserEmail}${isCurrentUserAdmin ? ' · 관리자' : ''})` : '') + gdriveSharedDriveMoveWarning + gdriveSharedDriveAccessWarning);
     gdriveUpdateFileLink();
@@ -23477,7 +23516,28 @@ async function gdriveEnsureFile(){
 async function gdrivePush(retrying){
   if(!gdriveAccessToken || !gdriveFileId) return false;
   try{
-    const payload = gdriveBuildPayload();
+    // 예전엔 여기서 바로 "지금 이 기기의 로컬 내용"을 그대로 Drive에 덮어썼음(gdriveBuildPayload()만 호출)
+    // - 그래서 오랫동안 안 켜뒀던 다른 기기/탭이 아주 사소한 것 하나만 저장해도, 그 사이 다른 사람이 만든
+    // 변경(새로 올린 기안문, 방금 비운 휴지통 등) 전체가 그 기기의 오래된 스냅샷에 통째로 덮어써져서
+    // 감쪽같이 사라지는 게 실제로 가능했음("기안이 사라진다"/"휴지통을 비웠는데 다시 채워진다" 버그의 원인).
+    // 이제는 저장 직전에 먼저 원격 최신본을 받아와서 pull과 똑같은 방식(gdriveComputeMerged)으로 병합한
+    // 뒤 그 결과를 올림 - "마지막에 저장 누른 기기가 무조건 이김" 구조를 없애고, 항목 단위로 최신 내용이
+    // 전부 살아남게 함. 원격을 못 받아왔을 때(네트워크 오류 등)만 예전처럼 로컬 내용을 그대로 올림(그래도
+    // 저장 자체는 막히지 않게 하기 위한 최소한의 보완책)
+    let payload = gdriveBuildPayload();
+    try{
+      const getRes = await fetch(`https://www.googleapis.com/drive/v3/files/${gdriveFileId}?alt=media&supportsAllDrives=true`, {
+        headers: { Authorization: `Bearer ${gdriveAccessToken}` }
+      });
+      if(getRes.ok){
+        const remote = await getRes.json();
+        if(remote && remote.profiles){
+          const merged = gdriveComputeMerged(remote);
+          gdriveApplyMergedLocally(merged); // 이 기기의 localStorage도 병합 결과로 맞춰둬서, 다음 화면 갱신 때 최신 내용이 보이게 함
+          payload = merged;
+        }
+      }
+    }catch(e2){ console.error('저장 전 원격 병합 실패(로컬 내용을 그대로 올려요)', e2); }
     const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${gdriveFileId}?uploadType=media&supportsAllDrives=true`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${gdriveAccessToken}`, 'Content-Type': 'application/json' },
@@ -23598,6 +23658,110 @@ async function gdriveCleanupOldBackups(folderId){
 // 눈에 띄게 깜빡였음(마치 새로고침되는 것처럼 보인다는 피드백) - 받아온 내용이 그대로면 다시 그릴
 // 이유가 없으므로 건너뜀
 let lastGdrivePulledSnapshot = null;
+// pull과 push 양쪽에서 똑같이 쓰는 병합 로직으로 뺌 - 예전엔 push가 이 병합 없이 "지금 이 기기 로컬 내용"을
+// 그대로 Drive에 덮어써버려서, 오랫동안 안 켜뒀던 다른 기기/탭이 뭔가 저장하는 순간(자동저장 포함) 그 사이
+// 다른 사람이 만든 변경 전체(방금 올린 기안문, 방금 비운 휴지통 등)를 통째로 덮어써 사라지게 만드는 심각한
+// 데이터 유실이 있었음 - "기안이 올렸는데 사라진다", "휴지통을 비웠는데 다시 채워진다"는 문제가 바로 이것임.
+// 이제 push도 pull과 똑같이 "먼저 원격 최신본을 받아와서 baseline 기준으로 병합 → 그 결과를 저장" 순서로
+// 동작해서, 마지막으로 저장을 누른 기기가 무조건 이기는 게 아니라 항목 단위로 최신 내용이 전부 살아남음
+function gdriveComputeMerged(remote){
+  const localPayload = gdriveBuildPayload();
+  const baseline = getGdriveMergeBaseline();
+  const merged = baseline ? gdriveMergeValue(baseline, localPayload, remote) : remote;
+  // 그래도 직원 삭제만큼은 한 번 더 안전장치 - 최근에 지운 직원 id는 병합 결과에 남아있어도 확실히 제거
+  const deletedIds = new Set(getRecentlyDeletedProfileIds().map(e=>e.id));
+  if(deletedIds.size) merged.profiles = (merged.profiles||[]).filter(p=>!deletedIds.has(p.id));
+  // 결재문서 삭제도 같은 이유로 한 번 더 안전장치 - 최근에 지운 결재문서 id는 병합 결과에 남아있어도 확실히 제거
+  const deletedApprovalIds = new Set(getRecentlyDeletedApprovalIds().map(e=>e.id));
+  if(deletedApprovalIds.size && merged.shared) merged.shared.approvals = (merged.shared.approvals||[]).filter(a=>!deletedApprovalIds.has(a.id));
+  // 결재 승인/반려도 같은 이유로 한 번 더 안전장치 - 방금 내가 내린 결정이 병합 결과에서 도로 예전 상태로
+  // 되돌아가 있으면(다른 탭/기기의 예전 데이터가 그 사이에 덮어썼다면) 확실히 최근 결정으로 다시 맞춤
+  const recentApprovalDecisions = getRecentApprovalDecisions();
+  if(recentApprovalDecisions.length && merged.shared && merged.shared.approvals){
+    const decisionMap = new Map(recentApprovalDecisions.map(d=>[d.id, d.status]));
+    merged.shared.approvals = merged.shared.approvals.map(a=>{
+      const decided = decisionMap.get(a.id);
+      return (decided && a.status !== decided) ? { ...a, status: decided } : a;
+    });
+  }
+  // 공지사항 삭제도 같은 이유로 한 번 더 안전장치 - 최근에 지운 공지 id는 병합 결과에 남아있어도 확실히 제거
+  const deletedNoticeIds = new Set(getRecentlyDeletedNoticeIds().map(e=>e.id));
+  if(deletedNoticeIds.size && merged.shared) merged.shared.noticeHistory = (merged.shared.noticeHistory||[]).filter(n=>!deletedNoticeIds.has(n.id));
+  // 즐겨찾기 삭제도 같은 이유로 한 번 더 안전장치 - 이건 개인 설정(settings.favoriteMenuItems)이라 내 프로필
+  // 데이터(merged.data[activeProfileId])에만 적용. 다른 탭/기기에 남아있던 예전 즐겨찾기 목록이 그 사이에
+  // 저장되면서 방금 지운 항목이 병합 결과에 다시 섞여 들어와도 여기서 확실히 걸러냄
+  const deletedFavoriteKeys = new Set(getRecentlyDeletedIds('worklog_recent_favorite_deletions').map(e=>e.id));
+  if(deletedFavoriteKeys.size && merged.data && merged.data[activeProfileId] && merged.data[activeProfileId].settings && Array.isArray(merged.data[activeProfileId].settings.favoriteMenuItems)){
+    merged.data[activeProfileId].settings.favoriteMenuItems = merged.data[activeProfileId].settings.favoriteMenuItems.filter(f=>!deletedFavoriteKeys.has(f.key));
+  }
+  // 근무시간 예외/점심한도 이력/공휴일(제외일)/특별기간/관리자 이메일도 같은 이유로 같은 안전장치 적용 -
+  // "삭제했는데 동기화하면 다시 나타난다"는 문제가 공지사항에서만 보고됐을 뿐, 구조가 같은 다른 공용
+  // 목록에도 똑같이 있을 수 있는 문제라 한꺼번에 같이 막아둠
+  const deletedWorkHourIds = new Set(getRecentlyDeletedWorkHourIds().map(e=>e.id));
+  if(deletedWorkHourIds.size && merged.shared) merged.shared.workHourExceptions = (merged.shared.workHourExceptions||[]).filter(x=>!deletedWorkHourIds.has(x.id));
+  const deletedLunchLimitIds = new Set(getRecentlyDeletedLunchLimitIds().map(e=>e.id));
+  if(deletedLunchLimitIds.size && merged.shared) merged.shared.lunchLimitHistory = (merged.shared.lunchLimitHistory||[]).filter(x=>!deletedLunchLimitIds.has(x.id));
+  const deletedExclusionIds = new Set(getRecentlyDeletedExclusionIds().map(e=>e.id));
+  if(deletedExclusionIds.size && merged.shared) merged.shared.exclusionDays = (merged.shared.exclusionDays||[]).filter(x=>!deletedExclusionIds.has(x.id));
+  const deletedSpecialPeriodIds = new Set(getRecentlyDeletedSpecialPeriodIds().map(e=>e.id));
+  if(deletedSpecialPeriodIds.size && merged.shared) merged.shared.specialPeriods = (merged.shared.specialPeriods||[]).filter(x=>!deletedSpecialPeriodIds.has(x.id));
+  const deletedAdminEmails = new Set(getRecentlyDeletedAdminEmails().map(e=>e.id));
+  if(deletedAdminEmails.size && merged.shared) merged.shared.adminEmails = (merged.shared.adminEmails||[]).filter(e=>!deletedAdminEmails.has(e));
+  return merged;
+}
+// gdriveComputeMerged()가 만들어낸 병합 결과를 이 기기의 로컬 저장소(localStorage)에도 그대로 반영함 -
+// pull 때는 물론, 이제 push 때도(먼저 병합한 뒤 올리므로) 똑같이 호출해서 이 기기 화면도 항상 병합된
+// 최신 상태를 보게 함
+function gdriveApplyMergedLocally(merged){
+  setGdriveMergeBaseline(merged);
+  saveProfiles(merged.profiles || []);
+  Object.keys(merged.data || {}).forEach(pid=>{
+    const d = merged.data[pid];
+    if(d.settings) localStorage.setItem(`worklog_settings__${pid}`, JSON.stringify(d.settings));
+    if(d.attendance) localStorage.setItem(`worklog_attendance__${pid}`, JSON.stringify(d.attendance));
+    if(d.expense) localStorage.setItem(`worklog_expense__${pid}`, JSON.stringify(d.expense));
+    if(d.schedule) localStorage.setItem(`worklog_schedule__${pid}`, JSON.stringify(d.schedule));
+  });
+  if(merged.shared){
+    if(merged.shared.exclusionDays) localStorage.setItem('worklog_shared_exclusions', JSON.stringify(merged.shared.exclusionDays));
+    if(merged.shared.workHourExceptions) localStorage.setItem('worklog_shared_workhours', JSON.stringify(merged.shared.workHourExceptions));
+    if(merged.shared.noticeHistory) localStorage.setItem('worklog_shared_notice_history', JSON.stringify(merged.shared.noticeHistory));
+    if(merged.shared.noticeReadState !== undefined) localStorage.setItem('worklog_shared_notice_read', JSON.stringify(merged.shared.noticeReadState));
+    if(merged.shared.notificationLog !== undefined) localStorage.setItem('worklog_shared_notifications', JSON.stringify(merged.shared.notificationLog));
+    if(merged.shared.notificationReadState !== undefined) localStorage.setItem('worklog_shared_notification_read', JSON.stringify(merged.shared.notificationReadState));
+    if(merged.shared.adminEmails) localStorage.setItem('worklog_shared_admins', JSON.stringify(merged.shared.adminEmails));
+    if(merged.shared.manageSalt !== undefined) localStorage.setItem('worklog_shared_managesalt', merged.shared.manageSalt);
+    if(merged.shared.manageVerifier !== undefined) localStorage.setItem('worklog_shared_manageverifier', JSON.stringify(merged.shared.manageVerifier));
+    if(merged.shared.companyInfo !== undefined) localStorage.setItem('worklog_shared_companyinfo', JSON.stringify(merged.shared.companyInfo));
+    if(merged.shared.companyName !== undefined) localStorage.setItem('worklog_shared_companyname', merged.shared.companyName);
+    if(merged.shared.teamInfo !== undefined) localStorage.setItem('worklog_shared_teaminfo', JSON.stringify(merged.shared.teamInfo));
+    if(merged.shared.specialPeriods !== undefined) localStorage.setItem('worklog_shared_specialperiods', JSON.stringify(merged.shared.specialPeriods));
+    if(merged.shared.filingStatus !== undefined) localStorage.setItem('worklog_shared_filingstatus', JSON.stringify(merged.shared.filingStatus));
+    if(merged.shared.reviewStatus !== undefined) localStorage.setItem('worklog_shared_reviewstatus', JSON.stringify(merged.shared.reviewStatus));
+    if(merged.shared.filingHelp !== undefined) localStorage.setItem('worklog_shared_filinghelp', JSON.stringify(merged.shared.filingHelp));
+    if(merged.shared.approvals !== undefined) localStorage.setItem('worklog_shared_approvals', JSON.stringify(merged.shared.approvals));
+    if(merged.shared.approvalReadState !== undefined) localStorage.setItem('worklog_shared_approval_read', JSON.stringify(merged.shared.approvalReadState));
+    if(merged.shared.reviewFigures !== undefined) localStorage.setItem('worklog_shared_reviewfigures', JSON.stringify(merged.shared.reviewFigures));
+    if(merged.shared.reviewMeta !== undefined) localStorage.setItem('worklog_shared_reviewmeta', JSON.stringify(merged.shared.reviewMeta));
+    if(merged.shared.profitLossReports !== undefined) localStorage.setItem('worklog_shared_plreports', JSON.stringify(merged.shared.profitLossReports));
+    if(merged.shared.filingTargets !== undefined) localStorage.setItem('worklog_shared_filingtargets', JSON.stringify(merged.shared.filingTargets));
+    if(merged.shared.filingCycles !== undefined) localStorage.setItem('worklog_shared_filingCycles', JSON.stringify(merged.shared.filingCycles));
+    if(merged.shared.autoPhrases !== undefined) localStorage.setItem('worklog_shared_autophrases', JSON.stringify(merged.shared.autoPhrases));
+    if(merged.shared.itFilingStatus !== undefined) localStorage.setItem('worklog_shared_itfilingstatus', JSON.stringify(merged.shared.itFilingStatus));
+    if(merged.shared.vatFilingTargets !== undefined) localStorage.setItem('worklog_shared_vatfilingtargets', JSON.stringify(merged.shared.vatFilingTargets));
+    if(merged.shared.vatReviewFigures !== undefined) localStorage.setItem('worklog_shared_vatreviewfigures', JSON.stringify(merged.shared.vatReviewFigures));
+    if(merged.shared.clients !== undefined) localStorage.setItem('worklog_shared_clients', JSON.stringify(merged.shared.clients));
+    if(merged.shared.personalInfo !== undefined) localStorage.setItem('worklog_shared_personalinfo', JSON.stringify(merged.shared.personalInfo));
+    if(merged.shared.trash !== undefined) localStorage.setItem('worklog_shared_trash', JSON.stringify(merged.shared.trash));
+    if(merged.shared.lunchLimitHistory !== undefined) localStorage.setItem('worklog_shared_lunchlimit', JSON.stringify(merged.shared.lunchLimitHistory));
+    if(merged.shared.taxScheduleOverrides !== undefined) localStorage.setItem('worklog_shared_taxschedule_overrides', JSON.stringify(merged.shared.taxScheduleOverrides));
+    if(merged.shared.taxScheduleCustomItems !== undefined) localStorage.setItem('worklog_shared_taxschedule_custom', JSON.stringify(merged.shared.taxScheduleCustomItems));
+    if(merged.shared.teamPolicyHistory !== undefined) localStorage.setItem('worklog_shared_teampolicyhistory', JSON.stringify(merged.shared.teamPolicyHistory));
+    if(merged.shared.opsPolicyHistory !== undefined) localStorage.setItem('worklog_shared_opspolicyhistory', JSON.stringify(merged.shared.opsPolicyHistory));
+    if(merged.shared.pushTokens !== undefined) localStorage.setItem('worklog_shared_pushtokens', JSON.stringify(merged.shared.pushTokens));
+    if(merged.shared.notificationPrefs !== undefined) localStorage.setItem('worklog_shared_notificationprefs', JSON.stringify(merged.shared.notificationPrefs));
+  }
+}
 async function gdrivePull(){
   if(!gdriveAccessToken || !gdriveFileId) return;
   if(gdriveSuspendPull) return; // 관리비밀번호 저장 등 민감한 로컬 변경이 진행 중 - 지금은 불러오기를 건너뜀
@@ -23641,104 +23805,15 @@ async function gdrivePull(){
     const remoteSnapshot = JSON.stringify(remote);
     if(remoteSnapshot === lastGdrivePulledSnapshot) return; // 지난번 받아온 것과 완전히 동일 - 다시 그릴 필요 없음
     lastGdrivePulledSnapshot = remoteSnapshot;
-    // 여기서부터는 이제 "받아온 걸로 통째로 덮어쓰기"가 아니라, 로컬 전체 데이터와 방금 받아온 원격
-    // 데이터를 baseline(지난번에 실제로 주고받았던 상태) 기준으로 항목 단위 병합함 - 직원목록/근태/경비/
-    // 일정/거래처/원천세 검토표/결재 등 Drive로 오가는 데이터 전체에 똑같이 적용됨.
-    const localPayload = gdriveBuildPayload();
-    const baseline = getGdriveMergeBaseline();
-    const merged = baseline ? gdriveMergeValue(baseline, localPayload, remote) : remote;
-    // 그래도 직원 삭제만큼은 한 번 더 안전장치 - 최근에 지운 직원 id는 병합 결과에 남아있어도 확실히 제거
-    const deletedIds = new Set(getRecentlyDeletedProfileIds().map(e=>e.id));
-    if(deletedIds.size) merged.profiles = (merged.profiles||[]).filter(p=>!deletedIds.has(p.id));
-    // 결재문서 삭제도 같은 이유로 한 번 더 안전장치 - 최근에 지운 결재문서 id는 병합 결과에 남아있어도 확실히 제거
-    const deletedApprovalIds = new Set(getRecentlyDeletedApprovalIds().map(e=>e.id));
-    if(deletedApprovalIds.size && merged.shared) merged.shared.approvals = (merged.shared.approvals||[]).filter(a=>!deletedApprovalIds.has(a.id));
-    // 결재 승인/반려도 같은 이유로 한 번 더 안전장치 - 방금 내가 내린 결정이 병합 결과에서 도로 예전 상태로
-    // 되돌아가 있으면(다른 탭/기기의 예전 데이터가 그 사이에 덮어썼다면) 확실히 최근 결정으로 다시 맞춤
-    const recentApprovalDecisions = getRecentApprovalDecisions();
-    if(recentApprovalDecisions.length && merged.shared && merged.shared.approvals){
-      const decisionMap = new Map(recentApprovalDecisions.map(d=>[d.id, d.status]));
-      merged.shared.approvals = merged.shared.approvals.map(a=>{
-        const decided = decisionMap.get(a.id);
-        return (decided && a.status !== decided) ? { ...a, status: decided } : a;
-      });
-    }
-    // 공지사항 삭제도 같은 이유로 한 번 더 안전장치 - 최근에 지운 공지 id는 병합 결과에 남아있어도 확실히 제거
-    const deletedNoticeIds = new Set(getRecentlyDeletedNoticeIds().map(e=>e.id));
-    if(deletedNoticeIds.size && merged.shared) merged.shared.noticeHistory = (merged.shared.noticeHistory||[]).filter(n=>!deletedNoticeIds.has(n.id));
-    // 즐겨찾기 삭제도 같은 이유로 한 번 더 안전장치 - 이건 개인 설정(settings.favoriteMenuItems)이라 내 프로필
-    // 데이터(merged.data[activeProfileId])에만 적용. 다른 탭/기기에 남아있던 예전 즐겨찾기 목록이 그 사이에
-    // 저장되면서 방금 지운 항목이 병합 결과에 다시 섞여 들어와도 여기서 확실히 걸러냄
-    const deletedFavoriteKeys = new Set(getRecentlyDeletedIds('worklog_recent_favorite_deletions').map(e=>e.id));
-    if(deletedFavoriteKeys.size && merged.data && merged.data[activeProfileId] && merged.data[activeProfileId].settings && Array.isArray(merged.data[activeProfileId].settings.favoriteMenuItems)){
-      merged.data[activeProfileId].settings.favoriteMenuItems = merged.data[activeProfileId].settings.favoriteMenuItems.filter(f=>!deletedFavoriteKeys.has(f.key));
-    }
-    // 근무시간 예외/점심한도 이력/공휴일(제외일)/특별기간/관리자 이메일도 같은 이유로 같은 안전장치 적용 -
-    // "삭제했는데 동기화하면 다시 나타난다"는 문제가 공지사항에서만 보고됐을 뿐, 구조가 같은 다른 공용
-    // 목록에도 똑같이 있을 수 있는 문제라 한꺼번에 같이 막아둠
-    const deletedWorkHourIds = new Set(getRecentlyDeletedWorkHourIds().map(e=>e.id));
-    if(deletedWorkHourIds.size && merged.shared) merged.shared.workHourExceptions = (merged.shared.workHourExceptions||[]).filter(x=>!deletedWorkHourIds.has(x.id));
-    const deletedLunchLimitIds = new Set(getRecentlyDeletedLunchLimitIds().map(e=>e.id));
-    if(deletedLunchLimitIds.size && merged.shared) merged.shared.lunchLimitHistory = (merged.shared.lunchLimitHistory||[]).filter(x=>!deletedLunchLimitIds.has(x.id));
-    const deletedExclusionIds = new Set(getRecentlyDeletedExclusionIds().map(e=>e.id));
-    if(deletedExclusionIds.size && merged.shared) merged.shared.exclusionDays = (merged.shared.exclusionDays||[]).filter(x=>!deletedExclusionIds.has(x.id));
-    const deletedSpecialPeriodIds = new Set(getRecentlyDeletedSpecialPeriodIds().map(e=>e.id));
-    if(deletedSpecialPeriodIds.size && merged.shared) merged.shared.specialPeriods = (merged.shared.specialPeriods||[]).filter(x=>!deletedSpecialPeriodIds.has(x.id));
-    const deletedAdminEmails = new Set(getRecentlyDeletedAdminEmails().map(e=>e.id));
-    if(deletedAdminEmails.size && merged.shared) merged.shared.adminEmails = (merged.shared.adminEmails||[]).filter(e=>!deletedAdminEmails.has(e));
+    // 병합 로직은 gdrivePush()와 공유(gdriveComputeMerged) - 직원목록/근태/경비/일정/거래처/원천세 검토표/
+    // 결재/휴지통 등 Drive로 오가는 데이터 전체에 항목 단위로 똑같이 적용됨
+    const merged = gdriveComputeMerged(remote);
     if(!gdriveDeepEqual(merged, remote)){
       // 병합 결과가 방금 받아온 원격 내용과 다르면(우리 쪽에만 있던 변경이 있었으면) Drive에도 다시 반영
       lastGdrivePulledSnapshot = null; // 우리가 고친 내용을 다시 밀어올린 뒤, 다음 pull에서도 정상 비교되게 초기화
       gdriveScheduleSync();
     }
-    setGdriveMergeBaseline(merged);
-    saveProfiles(merged.profiles || []);
-    Object.keys(merged.data || {}).forEach(pid=>{
-      const d = merged.data[pid];
-      if(d.settings) localStorage.setItem(`worklog_settings__${pid}`, JSON.stringify(d.settings));
-      if(d.attendance) localStorage.setItem(`worklog_attendance__${pid}`, JSON.stringify(d.attendance));
-      if(d.expense) localStorage.setItem(`worklog_expense__${pid}`, JSON.stringify(d.expense));
-      if(d.schedule) localStorage.setItem(`worklog_schedule__${pid}`, JSON.stringify(d.schedule));
-    });
-    if(merged.shared){
-      if(merged.shared.exclusionDays) localStorage.setItem('worklog_shared_exclusions', JSON.stringify(merged.shared.exclusionDays));
-      if(merged.shared.workHourExceptions) localStorage.setItem('worklog_shared_workhours', JSON.stringify(merged.shared.workHourExceptions));
-      if(merged.shared.noticeHistory) localStorage.setItem('worklog_shared_notice_history', JSON.stringify(merged.shared.noticeHistory));
-      if(merged.shared.noticeReadState !== undefined) localStorage.setItem('worklog_shared_notice_read', JSON.stringify(merged.shared.noticeReadState));
-      if(merged.shared.notificationLog !== undefined) localStorage.setItem('worklog_shared_notifications', JSON.stringify(merged.shared.notificationLog));
-      if(merged.shared.notificationReadState !== undefined) localStorage.setItem('worklog_shared_notification_read', JSON.stringify(merged.shared.notificationReadState));
-      if(merged.shared.adminEmails) localStorage.setItem('worklog_shared_admins', JSON.stringify(merged.shared.adminEmails));
-      if(merged.shared.manageSalt !== undefined) localStorage.setItem('worklog_shared_managesalt', merged.shared.manageSalt);
-      if(merged.shared.manageVerifier !== undefined) localStorage.setItem('worklog_shared_manageverifier', JSON.stringify(merged.shared.manageVerifier));
-      if(merged.shared.companyInfo !== undefined) localStorage.setItem('worklog_shared_companyinfo', JSON.stringify(merged.shared.companyInfo));
-      if(merged.shared.companyName !== undefined) localStorage.setItem('worklog_shared_companyname', merged.shared.companyName);
-      if(merged.shared.teamInfo !== undefined) localStorage.setItem('worklog_shared_teaminfo', JSON.stringify(merged.shared.teamInfo));
-      if(merged.shared.specialPeriods !== undefined) localStorage.setItem('worklog_shared_specialperiods', JSON.stringify(merged.shared.specialPeriods));
-      if(merged.shared.filingStatus !== undefined) localStorage.setItem('worklog_shared_filingstatus', JSON.stringify(merged.shared.filingStatus));
-      if(merged.shared.reviewStatus !== undefined) localStorage.setItem('worklog_shared_reviewstatus', JSON.stringify(merged.shared.reviewStatus));
-      if(merged.shared.filingHelp !== undefined) localStorage.setItem('worklog_shared_filinghelp', JSON.stringify(merged.shared.filingHelp));
-      if(merged.shared.approvals !== undefined) localStorage.setItem('worklog_shared_approvals', JSON.stringify(merged.shared.approvals));
-      if(merged.shared.approvalReadState !== undefined) localStorage.setItem('worklog_shared_approval_read', JSON.stringify(merged.shared.approvalReadState));
-      if(merged.shared.reviewFigures !== undefined) localStorage.setItem('worklog_shared_reviewfigures', JSON.stringify(merged.shared.reviewFigures));
-      if(merged.shared.reviewMeta !== undefined) localStorage.setItem('worklog_shared_reviewmeta', JSON.stringify(merged.shared.reviewMeta));
-      if(merged.shared.profitLossReports !== undefined) localStorage.setItem('worklog_shared_plreports', JSON.stringify(merged.shared.profitLossReports));
-      if(merged.shared.filingTargets !== undefined) localStorage.setItem('worklog_shared_filingtargets', JSON.stringify(merged.shared.filingTargets));
-      if(merged.shared.filingCycles !== undefined) localStorage.setItem('worklog_shared_filingCycles', JSON.stringify(merged.shared.filingCycles));
-      if(merged.shared.autoPhrases !== undefined) localStorage.setItem('worklog_shared_autophrases', JSON.stringify(merged.shared.autoPhrases));
-      if(merged.shared.itFilingStatus !== undefined) localStorage.setItem('worklog_shared_itfilingstatus', JSON.stringify(merged.shared.itFilingStatus));
-      if(merged.shared.vatFilingTargets !== undefined) localStorage.setItem('worklog_shared_vatfilingtargets', JSON.stringify(merged.shared.vatFilingTargets));
-      if(merged.shared.vatReviewFigures !== undefined) localStorage.setItem('worklog_shared_vatreviewfigures', JSON.stringify(merged.shared.vatReviewFigures));
-      if(merged.shared.clients !== undefined) localStorage.setItem('worklog_shared_clients', JSON.stringify(merged.shared.clients));
-      if(merged.shared.personalInfo !== undefined) localStorage.setItem('worklog_shared_personalinfo', JSON.stringify(merged.shared.personalInfo));
-      if(merged.shared.trash !== undefined) localStorage.setItem('worklog_shared_trash', JSON.stringify(merged.shared.trash));
-      if(merged.shared.lunchLimitHistory !== undefined) localStorage.setItem('worklog_shared_lunchlimit', JSON.stringify(merged.shared.lunchLimitHistory));
-      if(merged.shared.taxScheduleOverrides !== undefined) localStorage.setItem('worklog_shared_taxschedule_overrides', JSON.stringify(merged.shared.taxScheduleOverrides));
-      if(merged.shared.taxScheduleCustomItems !== undefined) localStorage.setItem('worklog_shared_taxschedule_custom', JSON.stringify(merged.shared.taxScheduleCustomItems));
-      if(merged.shared.teamPolicyHistory !== undefined) localStorage.setItem('worklog_shared_teampolicyhistory', JSON.stringify(merged.shared.teamPolicyHistory));
-      if(merged.shared.opsPolicyHistory !== undefined) localStorage.setItem('worklog_shared_opspolicyhistory', JSON.stringify(merged.shared.opsPolicyHistory));
-      if(merged.shared.pushTokens !== undefined) localStorage.setItem('worklog_shared_pushtokens', JSON.stringify(merged.shared.pushTokens));
-      if(merged.shared.notificationPrefs !== undefined) localStorage.setItem('worklog_shared_notificationprefs', JSON.stringify(merged.shared.notificationPrefs));
-    }
+    gdriveApplyMergedLocally(merged);
     if(!getActiveProfileId() || !(merged.profiles||[]).find(p=>p.id===getActiveProfileId())){
       if(merged.profiles && merged.profiles.length) setActiveProfileId(merged.profiles[0].id);
     }
