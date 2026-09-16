@@ -2639,7 +2639,7 @@
         <div class="field" style="margin-top:14px;">
           <label>프로필 사진 <span style="font-weight:400;">(선택 - 안 올리면 아래 캐릭터가 대신 쓰여요)</span></label>
           <div style="display:flex; align-items:center; gap:12px; justify-content:center; margin-bottom:4px;">
-            <div id="s-photo-preview" style="width:56px; height:56px; border-radius:50%; overflow:hidden; background:var(--indigo-bg); display:flex; align-items:center; justify-content:center; border:1.5px solid var(--border); flex-shrink:0; color:var(--indigo-deep);"></div>
+            <div id="s-photo-preview" style="width:84px; height:84px; border-radius:50%; overflow:hidden; background:var(--indigo-bg); display:flex; align-items:center; justify-content:center; border:1.5px solid var(--border); flex-shrink:0; color:var(--indigo-deep);"></div>
             <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
               <label class="del-btn" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px; width:fit-content; margin:0;">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path></svg> 사진 업로드
@@ -6204,18 +6204,39 @@ function renderAvatarPicker(selected){
   });
 }
 // 프로필 사진 - 캐릭터 아이콘 대신 실제 사진을 올릴 수 있게 함. 원본을 그대로 저장하면 localStorage/Drive
-// 동기화 용량이 금방 커지므로, 캔버스로 정사각형으로 잘라 96x96 정도로 줄이고 jpeg로 압축해서 data URL
-// 형태로만 저장함(용량은 보통 몇 KB~십몇 KB 수준)
-const STAFF_PHOTO_SIZE = 96;
+// 동기화 용량이 금방 커지므로, 캔버스로 정사각형으로 잘라 480x480 정도로 줄이고 jpeg로 압축해서 data URL
+// 형태로만 저장함(작은 목록에는 CSS로 줄여서 보여주고, 눌렀을 때는 이 저장된 크기 그대로 크게 보여줄 수 있음.
+// 용량은 보통 사진 한 장당 수십~백여 KB 수준)
+const STAFF_PHOTO_SIZE = 480;
+// 프로필 사진(목록의 작은 동그라미, 수정 팝업의 미리보기)을 누르면 저장된 사진을 화면 가운데에 크게 띄워주는
+// 공용 라이트박스 - 매번 새 팝업을 만들지 않고 오버레이 하나를 재사용함
+function openPhotoLightbox(dataUrl){
+  if(!dataUrl) return;
+  let el = document.getElementById('photoLightboxOverlay');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'photoLightboxOverlay';
+    el.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(15,16,30,0.82); z-index:10050; align-items:center; justify-content:center; padding:24px; cursor:zoom-out;';
+    el.innerHTML = '<img id="photoLightboxImg" style="max-width:min(92vw,520px); max-height:82vh; border-radius:16px; box-shadow:0 12px 44px rgba(0,0,0,0.45); object-fit:contain;">';
+    el.addEventListener('click', ()=>{ el.style.display = 'none'; });
+    document.body.appendChild(el);
+  }
+  document.getElementById('photoLightboxImg').src = dataUrl;
+  el.style.display = 'flex';
+}
 function renderPhotoPreview(dataUrl){
   const box = document.getElementById('s-photo-preview');
   const removeBtn = document.getElementById('s-photo-remove-btn');
   if(!box) return;
   if(dataUrl){
     box.innerHTML = `<img src="${dataUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+    box.style.cursor = 'zoom-in';
+    box.onclick = ()=>openPhotoLightbox(dataUrl);
     if(removeBtn) removeBtn.style.display = '';
   } else {
     box.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-1a7 7 0 0 1 14 0v1"></path></svg>`;
+    box.style.cursor = 'default';
+    box.onclick = null;
     if(removeBtn) removeBtn.style.display = 'none';
   }
 }
@@ -6234,7 +6255,15 @@ document.getElementById('s-photo-file')?.addEventListener('change', function(){
       canvas.width = STAFF_PHOTO_SIZE; canvas.height = STAFF_PHOTO_SIZE;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, sx, sy, side, side, 0, 0, STAFF_PHOTO_SIZE, STAFF_PHOTO_SIZE);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+      // JPEG는 투명(alpha)을 지원하지 않아서, 배경이 투명한 사진을 그대로 JPEG로 저장하면 투명한 부분이
+      // 검은색/흰색으로 칠해져버림 - 그래서 실제로 투명한 픽셀이 있는 사진만 PNG로 저장해서 투명을 그대로
+      // 살리고, 투명이 없는 보통 사진은 용량이 작은 JPEG로 저장함
+      let hasAlpha = false;
+      try{
+        const data = ctx.getImageData(0, 0, STAFF_PHOTO_SIZE, STAFF_PHOTO_SIZE).data;
+        for(let i = 3; i < data.length; i += 4){ if(data[i] < 255){ hasAlpha = true; break; } }
+      }catch(err){ /* getImageData가 막혀도(예: CORS) 그냥 JPEG로 진행 */ }
+      const dataUrl = hasAlpha ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.82);
       document.getElementById('s-photo').value = dataUrl;
       renderPhotoPreview(dataUrl);
     };
@@ -15957,11 +15986,12 @@ document.getElementById('settingsForm').addEventListener('submit', async (e)=>{
 
   await saveSettings();
   await syncAutoGrants();
-  showCenterToast('저장됐어요'); document.getElementById('settingsSaveMsg').textContent = changed ? '저장됨 (변경이력에 기록됨)' : '저장됨 (변경 사항 없음)';
-  setTimeout(()=>document.getElementById('settingsSaveMsg').textContent='',1800);
+  showCenterToast('저장됐어요');
   renderAll();
   renderEmployeeInfoView();
   renderEmployeeInfoHistory();
+  // 이 폼은 직원정보의 "수정" 팝업 안에서만 쓰이므로, 저장이 끝나면 목록으로 자연스럽게 돌아가도록 팝업을 닫음
+  closeEmployeeModal();
 });
 
 document.getElementById('s-employment-status').addEventListener('change', (e)=>{
@@ -23351,7 +23381,7 @@ function renderEmployeeRoster(){
       ? `<span class="tag tag-usage">퇴사${p.lastWorkDate ? ' · '+p.lastWorkDate : ''}${p.resignReason ? ' · '+p.resignReason : ''}</span>`
       : '';
     const avatarTag = p.photo
-      ? `<img src="${p.photo}" style="width:22px; height:22px; border-radius:50%; object-fit:cover; vertical-align:-6px; margin-right:2px;">`
+      ? `<img src="${p.photo}" class="employee-roster-photo" data-id="${p.id}" style="width:34px; height:34px; border-radius:50%; object-fit:cover; vertical-align:-10px; margin-right:5px; cursor:zoom-in;">`
       : (p.avatar ? `${staffAvatarIconSvg(p.avatar, 15)} ` : '');
     return `
     <div style="display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:10px; padding:9px 12px; background:var(--bg); border:1.5px solid var(--border); border-radius:10px; margin:0 0 6px; width:100%; box-sizing:border-box; ${terminated ? 'opacity:0.7;' : ''}">
@@ -23364,6 +23394,13 @@ function renderEmployeeRoster(){
       </span>
     </div>`;
   }).join('');
+  wrap.querySelectorAll('.employee-roster-photo').forEach(img=>{
+    img.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const pf = visible.find(x=>x.id===img.dataset.id);
+      if(pf && pf.photo) openPhotoLightbox(pf.photo);
+    });
+  });
   wrap.querySelectorAll('.employee-open-edit-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>openEmployeeModal('edit', btn.dataset.id));
   });
