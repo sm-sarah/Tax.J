@@ -6035,25 +6035,39 @@ function unrecordDeletedApprovalId(id){
     localStorage.setItem('worklog_recent_approval_deletions', JSON.stringify(list));
   }catch(e){}
 }
-// 공지사항 삭제도 직원·결재문서 삭제와 똑같은 "지운 직후 다른 기기/탭이 아직 들고 있던 예전 목록을 Drive에
-// 다시 올리면서 방금 지운 공지가 되살아나는" 문제가 그대로 생길 수 있었는데, 공지사항엔 이 안전장치가
-// 빠져있어서 "삭제해도 계속 나타난다"는 문제로 이어졌음 - 같은 방식으로 안전장치 추가
-function getRecentlyDeletedNoticeIds(){
+// 공지사항 삭제할 때도 직원·결재문서와 똑같은 문제(지운 직후 다른 기기/탭이 아직 들고 있던 예전 목록이
+// Drive 동기화로 다시 올라가면서 방금 지운 게 되살아남)가 있었는데, 이 안전장치가 그 항목에만 없어서
+// "삭제해도 계속 나타난다"는 문제로 이어졌음. 매번 이렇게 목록마다 똑같은 함수쌍을 손으로 새로 만들다
+// 하나씩 빠뜨리는 일이 없도록, 이제부터 새로 필요한 목록은 이 공용 함수(storageKey만 다르게)로 재사용함
+// - 위 프로필/결재문서 전용 함수는 이미 안정적으로 쓰이고 있어 그대로 남겨두고, 그 다음부터 생기는 것들만 이걸 씀
+function getRecentlyDeletedIds(storageKey){
   try{
-    const raw = JSON.parse(localStorage.getItem('worklog_recent_notice_deletions') || '[]');
+    const raw = JSON.parse(localStorage.getItem(storageKey) || '[]');
     const now = Date.now();
-    const fresh = raw.filter(e=> e && e.id && (now - e.at) < RECENT_DELETION_TTL_MS);
-    if(fresh.length !== raw.length) localStorage.setItem('worklog_recent_notice_deletions', JSON.stringify(fresh));
+    const fresh = raw.filter(e=> e && e.id !== undefined && e.id !== null && (now - e.at) < RECENT_DELETION_TTL_MS);
+    if(fresh.length !== raw.length) localStorage.setItem(storageKey, JSON.stringify(fresh));
     return fresh;
   }catch(e){ return []; }
 }
-function recordDeletedNoticeId(id){
+function recordDeletedId(storageKey, id){
   try{
-    const list = getRecentlyDeletedNoticeIds();
+    const list = getRecentlyDeletedIds(storageKey);
     if(!list.find(e=>e.id===id)) list.push({id, at: Date.now()});
-    localStorage.setItem('worklog_recent_notice_deletions', JSON.stringify(list));
+    localStorage.setItem(storageKey, JSON.stringify(list));
   }catch(e){}
 }
+const getRecentlyDeletedNoticeIds = ()=> getRecentlyDeletedIds('worklog_recent_notice_deletions');
+const recordDeletedNoticeId = (id)=> recordDeletedId('worklog_recent_notice_deletions', id);
+const getRecentlyDeletedWorkHourIds = ()=> getRecentlyDeletedIds('worklog_recent_workhour_deletions');
+const recordDeletedWorkHourId = (id)=> recordDeletedId('worklog_recent_workhour_deletions', id);
+const getRecentlyDeletedLunchLimitIds = ()=> getRecentlyDeletedIds('worklog_recent_lunchlimit_deletions');
+const recordDeletedLunchLimitId = (id)=> recordDeletedId('worklog_recent_lunchlimit_deletions', id);
+const getRecentlyDeletedExclusionIds = ()=> getRecentlyDeletedIds('worklog_recent_exclusion_deletions');
+const recordDeletedExclusionId = (id)=> recordDeletedId('worklog_recent_exclusion_deletions', id);
+const getRecentlyDeletedSpecialPeriodIds = ()=> getRecentlyDeletedIds('worklog_recent_specialperiod_deletions');
+const recordDeletedSpecialPeriodId = (id)=> recordDeletedId('worklog_recent_specialperiod_deletions', id);
+const getRecentlyDeletedAdminEmails = ()=> getRecentlyDeletedIds('worklog_recent_adminemail_deletions');
+const recordDeletedAdminEmail = (email)=> recordDeletedId('worklog_recent_adminemail_deletions', email);
 function getActiveProfileId(){ try{ return localStorage.getItem('worklog_active_profile') || ''; }catch(e){ return ''; } }
 function setActiveProfileId(id){ try{ localStorage.setItem('worklog_active_profile', id); }catch(e){} }
 function skey(base){ return `worklog_${base}__${activeProfileId}`; }
@@ -8763,6 +8777,7 @@ function renderWorkHourExceptions(){
   wrap.innerHTML = `<table><thead><tr><th>기간</th><th>퇴근시각</th><th>메모</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
   wrap.querySelectorAll('.workhour-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
+      recordDeletedWorkHourId(btn.dataset.id); // 삭제 직후 동기화로 되살아나지 않도록 기록
       sharedWorkHourExceptions = sharedWorkHourExceptions.filter(x=>x.id!==btn.dataset.id);
       await saveSharedWorkHourExceptions();
       renderWorkHourExceptions();
@@ -8795,6 +8810,7 @@ function renderLunchLimitHistory(){
   renderPaginatedRows(wrap, '<tr><th>적용 시작일</th><th style="text-align:right; padding-right:14px;">1일 기준</th><th>상태</th><th></th></tr>', rows, 10);
   wrap.querySelectorAll('.lunch-limit-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
+      recordDeletedLunchLimitId(btn.dataset.id); // 삭제 직후 동기화로 되살아나지 않도록 기록
       sharedLunchLimitHistory = sharedLunchLimitHistory.filter(x=>x.id!==btn.dataset.id);
       await saveSharedLunchLimitHistory();
       renderLunchLimitHistory();
@@ -8836,6 +8852,7 @@ function renderExclusionList(){
   });
   wrap.querySelectorAll('.exclusion-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
+      recordDeletedExclusionId(btn.dataset.id); // 삭제 직후 동기화로 되살아나지 않도록 기록
       sharedExclusionDays = sharedExclusionDays.filter(x=>x.id!==btn.dataset.id);
       await saveSharedExclusions();
       if(editingExclusionId === btn.dataset.id){
@@ -15157,6 +15174,7 @@ function renderSpecialPeriods(){
   wrap.querySelectorAll('.special-period-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       if(!(await appConfirm('이 특별기간을 삭제할까요? 팀캘린더에서도 사라져요.'))) return;
+      recordDeletedSpecialPeriodId(btn.dataset.id); // 삭제 직후 동기화로 되살아나지 않도록 기록
       sharedSpecialPeriods = sharedSpecialPeriods.filter(x=>x.id!==btn.dataset.id);
       await saveSharedSpecialPeriods();
       renderSpecialPeriods();
@@ -21278,6 +21296,7 @@ function renderAdminEmailList(){
   wrap.querySelectorAll('.admin-email-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       if(sharedAdminEmails.length <= 1){ appAlert('마지막 남은 관리자는 삭제할 수 없어요. 먼저 다른 관리자를 추가해주세요.'); return; }
+      recordDeletedAdminEmail(btn.dataset.email); // 삭제 직후 동기화로 되살아나지 않도록 기록
       sharedAdminEmails = sharedAdminEmails.filter(e=>e!==btn.dataset.email);
       delete sharedAdminNames[btn.dataset.email];
       await saveSharedAdminEmails();
@@ -23063,6 +23082,19 @@ async function gdrivePull(){
     // 공지사항 삭제도 같은 이유로 한 번 더 안전장치 - 최근에 지운 공지 id는 병합 결과에 남아있어도 확실히 제거
     const deletedNoticeIds = new Set(getRecentlyDeletedNoticeIds().map(e=>e.id));
     if(deletedNoticeIds.size && merged.shared) merged.shared.noticeHistory = (merged.shared.noticeHistory||[]).filter(n=>!deletedNoticeIds.has(n.id));
+    // 근무시간 예외/점심한도 이력/공휴일(제외일)/특별기간/관리자 이메일도 같은 이유로 같은 안전장치 적용 -
+    // "삭제했는데 동기화하면 다시 나타난다"는 문제가 공지사항에서만 보고됐을 뿐, 구조가 같은 다른 공용
+    // 목록에도 똑같이 있을 수 있는 문제라 한꺼번에 같이 막아둠
+    const deletedWorkHourIds = new Set(getRecentlyDeletedWorkHourIds().map(e=>e.id));
+    if(deletedWorkHourIds.size && merged.shared) merged.shared.workHourExceptions = (merged.shared.workHourExceptions||[]).filter(x=>!deletedWorkHourIds.has(x.id));
+    const deletedLunchLimitIds = new Set(getRecentlyDeletedLunchLimitIds().map(e=>e.id));
+    if(deletedLunchLimitIds.size && merged.shared) merged.shared.lunchLimitHistory = (merged.shared.lunchLimitHistory||[]).filter(x=>!deletedLunchLimitIds.has(x.id));
+    const deletedExclusionIds = new Set(getRecentlyDeletedExclusionIds().map(e=>e.id));
+    if(deletedExclusionIds.size && merged.shared) merged.shared.exclusionDays = (merged.shared.exclusionDays||[]).filter(x=>!deletedExclusionIds.has(x.id));
+    const deletedSpecialPeriodIds = new Set(getRecentlyDeletedSpecialPeriodIds().map(e=>e.id));
+    if(deletedSpecialPeriodIds.size && merged.shared) merged.shared.specialPeriods = (merged.shared.specialPeriods||[]).filter(x=>!deletedSpecialPeriodIds.has(x.id));
+    const deletedAdminEmails = new Set(getRecentlyDeletedAdminEmails().map(e=>e.id));
+    if(deletedAdminEmails.size && merged.shared) merged.shared.adminEmails = (merged.shared.adminEmails||[]).filter(e=>!deletedAdminEmails.has(e));
     if(!gdriveDeepEqual(merged, remote)){
       // 병합 결과가 방금 받아온 원격 내용과 다르면(우리 쪽에만 있던 변경이 있었으면) Drive에도 다시 반영
       lastGdrivePulledSnapshot = null; // 우리가 고친 내용을 다시 밀어올린 뒤, 다음 pull에서도 정상 비교되게 초기화
