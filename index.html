@@ -5866,15 +5866,19 @@ async function sendPushForLogEntry(entry){
     const dupKey = `${entry.type}|${entry.relatedId}|${entry.targetEmail}`;
     // 대기·리모트 확인보다 먼저, 이 기기가 이미 이 사건으로 보낸 적이 있는지부터 확인함(가장 확실한 차단선)
     if(hasSentPushDupKeyLocally(dupKey)) return;
+    if(sentPushDupKeys.has(dupKey)) return;
+    // 바로 아래 대기(0.8~2초)가 끝나기 전에, 같은 기기에서 이 함수가 거의 동시에 또 한 번 실행되는
+    // 경우가 있었음(예: 드라이브 동기화로 데이터를 받아 적용할 때와, 그 직후 다시 저장할 때 둘 다 이
+    // 함수를 부르는 경로가 있어서, 둘 다 "아직 안 보낸 사건"으로 보고 같이 대기를 시작해버림 - 그래서
+    // 대기가 끝난 뒤 둘 다 보내버려서 같은 알림이 정확히 2번 뜨는 원인이었음). 대기를 시작하기 전에
+    // 미리(동기적으로) 이 사건을 "이미 처리 중"으로 찜해둬서, 거의 동시에 들어온 두 번째 호출이 대기
+    // 없이 곧바로 걸리게 함
+    sentPushDupKeys.add(dupKey);
+    markSentPushDupKeyLocally(dupKey);
     // 0.8~2초 사이 무작위로 대기 - 거의 동시에 같은 알림을 만든 다른 기기가 있다면, 그 기기가 먼저
     // 드라이브에 올릴 시간을 벌어줌
     await new Promise(r=>setTimeout(r, 800 + Math.floor(Math.random()*1200)));
-    if(await alreadyPushedRemotely(dupKey)) { markSentPushDupKeyLocally(dupKey); return; }
-    // 위 대기 + 리모트 확인 사이에도(특히 여러 기기가 거의 동시에 이 함수를 타는 경우) 이 기기 안에서
-    // 같은 사건으로 두 번 보내는 걸 한 번 더 막음
-    if(sentPushDupKeys.has(dupKey)) return;
-    sentPushDupKeys.add(dupKey);
-    markSentPushDupKeyLocally(dupKey);
+    if(await alreadyPushedRemotely(dupKey)) return;
     const myEmail = (currentUserEmail||'').toLowerCase();
     const category = NOTIFICATION_TYPE_TO_CATEGORY[entry.type];
     let targets = entry.targetEmail === '*'
@@ -10279,7 +10283,7 @@ function openClientDetailModal(c){
   // 지적이 있었음 - 상호명과 같은 줄, 오른쪽 위 구석(닫기 버튼 바로 아래)에 작게 붙여서 "이 문서에 대한
   // 관리 버튼"처럼 보이게 함(가운데 큰 상호명 글자와 겹치지 않도록 absolute로 뺌)
   document.getElementById('memoModalTitleExtra').innerHTML = `
-    <div style="position:absolute; top:42px; right:14px; display:flex; align-items:center; gap:6px;">
+    <div style="position:absolute; top:48px; right:14px; display:flex; align-items:center; gap:8px;">
       <button type="button" id="clientDetailEditBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="수정" style="color:var(--navy); background:transparent; border:none; padding:2px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>
       <button type="button" id="clientDetailHistoryBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="이력" style="color:var(--ink-soft); background:transparent; border:none; padding:2px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 16 14"></polyline></svg></button>
       <button type="button" id="clientDetailDeleteBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="삭제" style="color:var(--coral); background:transparent; border:none; padding:2px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
@@ -20696,8 +20700,15 @@ function populateApproverSelect(){
   // 알림이 어떻게 오가는지 혼자 시뮬레이션해보고 싶다는 요청으로 이제 본인도 포함한 전체 관리자 목록을 보여줌
   // 실제 사람 이름으로 등록되지 않고 이름이 그냥 "관리자"인 채로 남아있는 계정은(예: 이름을 아직 안
   // 채워둔 관리자 등록) 결재자 목록에서 빼달라는 요청 - 실제 결재를 받을 사람이 아니라 계정 관리용
-  // 자리표시자에 가까워서, 진짜 사람 이름들 사이에 고를 항목으로 섞여 보이면 헷갈림
-  const list = (sharedAdminEmails||[]).filter(email=> resolveNameByEmail(email) !== '관리자');
+  // 자리표시자에 가까워서, 진짜 사람 이름들 사이에 고를 항목으로 섞여 보이면 헷갈림.
+  // 이름이 "관리자"로 등록된 경우뿐 아니라, 아예 이름이 하나도 안 붙어서 resolveNameByEmail이 이메일
+  // 주소를 그대로 돌려주는 경우도 같이 뺌 - 구글 드라이브 접근 권한이 없는 기기/계정은 이름이 등록된
+  // 뒤에도 그 변경사항을 영영 받아볼 수 없어서 이메일 주소가 그대로 노출되는 문제가 있었음("관리자는
+  // 결재자에 안 나오게 해줘" 요청 - 이름이 제대로 안 보이는 관리자 계정은 아예 고를 수 없게 함)
+  const list = (sharedAdminEmails||[]).filter(email=>{
+    const nm = resolveNameByEmail(email);
+    return nm !== '관리자' && nm.toLowerCase() !== (email||'').toLowerCase();
+  });
   if(!list.length){ sel.innerHTML = `<option value="">등록된 관리자가 없어요</option>`; return; }
   const prevVal = sel.value;
   // 결재자 선택 목록에 구글 계정(이메일)이 그대로 노출되던 걸 이름으로만 보이게 함 - resolveNameByEmail이
@@ -20908,6 +20919,24 @@ function saveApprovalDraftForm(status){
   if(status === '기안' && docType === '휴가' && typeof applyLeaveApprovalToAttendance === 'function'){
     const item = existing || sharedApprovals[0];
     applyLeaveApprovalToAttendance(item);
+  }
+  // "결재 승인/반려" 알림과 같은 이유로, "새 결재요청" 알림도 예전엔 결재자(승인해줄 사람)의 기기가
+  // 나중에 스스로 동기화되면서 뒤늦게 감지해야만 만들어졌음(checkNewApprovalsForBrowserNotify가 지금
+  // 로그인된 계정 = 결재자일 때만 걸리는 방식이라서) - 상신하는 이 순간 누구(결재자)에게 알려야 하는지
+  // 이미 다 알고 있으므로 기안자 기기에서 바로 알림을 만들어 보냄(중복방지는 pushNotificationLogEntry가 처리)
+  if(status === '기안'){
+    const submittedItem = existing || sharedApprovals[0];
+    if(submittedItem && submittedItem.approverEmail && (submittedItem.approverEmail||'').toLowerCase() !== (currentUserEmail||'').toLowerCase()){
+      pushNotificationLogEntry({
+        type: 'approval-new', icon: 'approval-request',
+        title: `결재 요청: ${submittedItem.title || '(제목 없음)'}`,
+        body: `기안자 ${submittedItem.drafterName || submittedItem.drafterEmail || ''}`,
+        author: submittedItem.drafterName || submittedItem.drafterEmail || '',
+        targetEmail: submittedItem.approverEmail,
+        relatedId: submittedItem.id,
+        eventAt: submittedItem.createdAt || ''
+      });
+    }
   }
   saveSharedApprovals();
   if(msgEl) msgEl.textContent = status === '기안' ? '기안 상신 완료' : '임시저장했어요';
@@ -22310,6 +22339,27 @@ async function decideApproval(id, decision){
   // 반려되면 그 사이 미리 반영해뒀던 내용을 다시 빼줘야 함(승인 안 난 휴가가 캘린더에 남아있으면 안 되므로)
   if(decision === '승인' && typeof applyLeaveApprovalToAttendance === 'function') applyLeaveApprovalToAttendance(item);
   if(decision === '반려' && typeof revertLeaveApprovalFromAttendance === 'function') revertLeaveApprovalFromAttendance(item);
+  // 승인/반려 알림이 기안자에게 "늦게" 뜬다는 의견 - 예전엔 이 알림을 checkApprovalDecisionsForBrowserNotify()에서만
+  // 만들었는데, 그 함수는 "내가 기안한 문서인지"를 지금 로그인된 계정 기준으로 걸러서 결재자 본인의 기기에서는
+  // (기안자가 아니므로) 아예 걸리지 않고, 기안자 본인의 기기가 나중에 동기화될 때에야 비로소 감지돼서 알림이
+  // 만들어졌음(그래서 기안자 기기가 잠들어있거나 앱이 꺼져있으면 그만큼 늦게 도착). 결재자가 결정을 내리는
+  // 바로 이 순간, 이미 누구(기안자)에게 무슨 결과를 알려야 하는지 다 알고 있으므로 여기서 곧바로 알림을
+  // 만들어 보냄 - pushNotificationLogEntry 자체에 중복방지가 있어서, 나중에 기안자 기기가 동기화되면서
+  // 같은 알림을 또 만들려고 해도 이미 있으면 조용히 무시되어 두 번 안 감
+  if(item.drafterEmail && (item.drafterEmail||'').toLowerCase() !== (currentUserEmail||'').toLowerCase()){
+    const decisionLabel = decision === '승인' ? '결재 승인' : '결재 반려';
+    const decisionIcon = decision === '승인' ? 'approval-approved' : 'approval-rejected';
+    const approverDisplayName = resolveNameByEmail(currentUserEmail) || currentUserEmail || '';
+    pushNotificationLogEntry({
+      type: 'approval-decision', icon: decisionIcon,
+      title: `${decisionLabel}: ${item.title || '(제목 없음)'}`,
+      body: `결재자 ${approverDisplayName}${noteText ? ' · '+noteText : ''}`,
+      author: item.drafterName || item.drafterEmail || '',
+      targetEmail: item.drafterEmail,
+      relatedId: item.id + '|' + item.status,
+      eventAt: item.decidedAt || ''
+    });
+  }
   await saveSharedApprovals();
   document.getElementById('approvalDetailModalOverlay').style.display = 'none';
   approvalExpandedId = null; // 결정을 내리면 목록으로 접어서 바뀐 상태를 목록에서 바로 보여줌
