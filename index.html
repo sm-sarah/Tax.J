@@ -129,11 +129,15 @@
      이유는 위 PC보기 버튼 주석과 같음) 항상 사이드바를 접어두고, 화면 아무 위치에나 띄워둘 수 있는
      동그란 버튼을 눌러서 그 위로 덮어 씌우는 패널로 열게 함 */
   html.is-touch-device .mobile-sidebar-toggle{ display:none !important; }
+  /* 예전엔 화면 왼쪽을 통째로 덮는 긴 패널(+뒤를 어둡게 깔아 "뒤가 비활성화된 것 같다"는 느낌을 주는
+     막)이었는데, 은행앱 챗봇 버튼처럼 누른 자리 근처에 작고 둥근 풍선 모양 메뉴가 뜨는 스타일로 바꿔달라는
+     요청 - 왼쪽 꽉 채운 패널 대신 모서리가 둥근 작은 카드로 바꾸고, 실제 위치(top/left)는 버튼을 누른
+     자리 기준으로 JS(positionFloatingMenuPanel)가 매번 계산해서 인라인 스타일로 넣어줌 */
   html.is-touch-device .app-sidebar{
-    display:none !important; position:fixed !important; top:0; left:0; height:100%;
-    width:min(82vw, 300px); max-height:none; overflow-y:auto; z-index:9600;
-    background:var(--bg); box-shadow:4px 0 24px rgba(0,0,0,0.28);
-    padding:16px 14px; border-right:none; margin:0; gap:14px;
+    display:none !important; position:fixed !important; height:auto; top:0; left:0; right:auto; bottom:auto;
+    width:min(80vw, 300px); max-height:min(64vh, 480px); overflow-y:auto; z-index:9600;
+    background:var(--surface); box-shadow:0 16px 40px -10px rgba(15,16,30,0.35), 0 4px 14px rgba(15,16,30,0.14);
+    padding:14px 12px; border:1px solid var(--border); margin:0; gap:12px; border-radius:20px;
   }
   html.is-touch-device .app-sidebar.mobile-sidebar-open{ display:flex !important; }
   /* 크기를 고정 px 대신 vw(뷰포트 폭 비율)로 잡음 - PC보기 모드는 뷰포트 자체를 1400px 캔버스로
@@ -155,6 +159,10 @@
      있었음. 사이드바보다 한 단계 아래로 되돌림 */
   #floatingMenuBackdrop{ display:none; position:fixed; inset:0; background:rgba(15,16,30,0.42); z-index:9590; }
   #floatingMenuBackdrop.is-open{ display:block; }
+  /* 챗봇 버튼 스타일 풍선 메뉴로 바꾸면서, 뒤 화면을 어둡게 깔던 막도 아예 투명하게 함 - 화면이
+     "비활성화된 것처럼" 보이던 느낌을 없애고, 배경은 계속 또렷하게 보이면서 그 바깥을 탭하면 메뉴만
+     닫히는 동작(backdrop의 click 리스너)은 그대로 유지함 */
+  html.is-touch-device #floatingMenuBackdrop{ background:transparent; }
   /* 홈~휴지통 아이콘 줄을 사이드바(카드 배경 .app 안쪽) 흐름에서 아예 빼내서, 카드 밖 페이지 배경 위에
      독립된 줄로 둠 - 카드와 같은 가운데정렬 폭(max-width)을 써서 화면 크기가 달라져도 카드의 왼쪽 시작선과
      항상 나란히 맞음. 스크롤해도 화면 맨 위에 계속 붙어있도록 sticky로 고정함 */
@@ -466,6 +474,12 @@
   .home-dash-stat-value{ font-size:16px; color:var(--ink); font-weight:800; }
   /* 출퇴근 카드가 다른 3개 카드보다 내용이 적어 아래쪽이 많이 비어보인다는 피드백에 맞춰, 출근→퇴근 시각
      흐름 + 이번 주 누적 근무시간 진행률바 + 근무상태 배지를 더해 공간을 자연스럽게 채우는 "재밌는 스타일"로 구성함 */
+  /* 대시보드에서 지금 몇 시 몇 분 몇 초인지 바로 보고 출퇴근을 찍을 수 있으면 좋겠다는 요청 - 초 단위까지
+     1초마다 갱신되는 작은 시계를 카드 제목 바로 아래에 둠(updateDashClockLiveTime 참고) */
+  .home-dash-clock-livetime{
+    text-align:center; font-size:22px; font-weight:900; color:var(--navy); font-family:'IBM Plex Mono',monospace;
+    letter-spacing:0.02em; margin:2px 0 10px;
+  }
   .home-dash-clock-flow{ display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:4px; }
   .home-dash-clock-flow-item{ text-align:center; }
   .home-dash-clock-flow-label{ font-size:11.5px; color:var(--ink-soft); font-weight:700; margin-bottom:2px; }
@@ -14274,6 +14288,7 @@ function renderDashboardClockCard(){
       ${pickerHtml}
       <button type="button" id="dashClockHistoryBtn" class="home-dash-card-link" style="margin-left:auto; background:none; border:none; cursor:pointer; font-family:inherit;">전체이력 →</button>
     </div>
+    <div class="home-dash-clock-livetime" id="dashClockLiveTime">--:--:--</div>
     <div class="home-dash-clock-hero">
       <div class="home-dash-clock-hero-left">
         <div class="home-dash-mascot-backdrop state-${clockState}"><div class="home-dash-mascot state-${clockState}">${dashMascotSvg(clockState)}</div></div>
@@ -14347,7 +14362,21 @@ function renderDashboardClockCard(){
     await saveAttendance();
     renderDashboardClockCard();
   });
+  updateDashClockLiveTime(); // 카드를 새로 그린 직후, 1초 주기 갱신이 오기 전까지 "--:--:--"로 비어보이지 않게 바로 한 번 채움
 }
+// 출퇴근 카드 제목 아래의 초 단위 실시간 시계 - 1초마다 현재 시각으로 갱신함(카드가 화면에 없을 땐
+// 엘리먼트가 없어서 조용히 아무 일도 안 함). renderDashboardClockCard()가 여러 번 다시 그려져도 setInterval이
+// 중복으로 쌓이지 않도록, 이 함수 자체는 스크립트 로드 시 딱 한 번만 setInterval에 걸어둠(아래 참고)
+function updateDashClockLiveTime(){
+  const el = document.getElementById('dashClockLiveTime');
+  if(!el) return;
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2,'0');
+  const mm = String(now.getMinutes()).padStart(2,'0');
+  const ss = String(now.getSeconds()).padStart(2,'0');
+  el.textContent = `${hh}:${mm}:${ss}`;
+}
+setInterval(updateDashClockLiveTime, 1000);
 // 출퇴근 위젯의 "전체이력" 팝업 - 조회월을 골라 그 달 출퇴근 시각·근무시간을 전부 보여줌
 // 출퇴근현황 조회 화면 - 예전엔 팝업을 여는 함수(openClockHistoryModal)였는데, 이제 탭으로 들어올 때마다
 // activateTab()에서 이 함수를 호출해서 조회월을 채우고 표를 최신 데이터로 그려줌
@@ -15072,13 +15101,44 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
   const backdrop = document.createElement('div');
   backdrop.id = 'floatingMenuBackdrop';
   document.body.appendChild(backdrop);
-  // 사이드바에 mobile-sidebar-open 클래스가 붙고 빠지는 걸 그대로 지켜보다가 배경 어둡게 하는 막(backdrop)도
-  // 같이 켜고 끔 - 이 버튼을 눌러서 열 때뿐 아니라, 메뉴 항목을 눌러 다른 화면으로 넘어가면서 기존 코드가
-  // 알아서 사이드바를 닫는 경우(activateTab 등)에도 따로 손댈 필요 없이 항상 backdrop 상태가 맞게 따라옴
-  const syncBackdrop = ()=> backdrop.classList.toggle('is-open', sidebarEl.classList.contains('mobile-sidebar-open'));
+  // 챗봇 버튼처럼 누른 자리 근처에 풍선 메뉴가 뜨도록, 열릴 때마다 지금 버튼 위치를 기준으로 패널의
+  // top/left를 계산해서 인라인 스타일로 넣어줌 - 버튼이 화면 아래쪽에 있으면 패널이 버튼 위로, 위쪽에
+  // 있으면 버튼 아래로 뜨게 하고, 좌우로는 화면 밖으로 안 나가게 안쪽으로 당김
+  function positionFloatingMenuPanel(){
+    const btnRect = btn.getBoundingClientRect();
+    const panelW = sidebarEl.offsetWidth || 280;
+    const vw = window.innerWidth || 360, vh = window.innerHeight || 640;
+    const GAP = 12;
+    let left = btnRect.left + btnRect.width/2 - panelW/2;
+    left = clamp(left, EDGE_MARGIN, vw - panelW - EDGE_MARGIN);
+    const spaceAbove = btnRect.top - GAP;
+    const spaceBelow = vh - btnRect.bottom - GAP;
+    let top;
+    if(spaceAbove >= 200 || spaceAbove >= spaceBelow){
+      // 버튼 위로 띄우되, 패널이 위쪽 화면 밖으로 넘치면 그만큼 안으로 당김
+      const panelH = Math.min(sidebarEl.scrollHeight || 400, vh*0.64, 480);
+      top = Math.max(EDGE_MARGIN, btnRect.top - GAP - panelH);
+    } else {
+      top = btnRect.bottom + GAP;
+    }
+    sidebarEl.style.left = `${left}px`;
+    sidebarEl.style.top = `${top}px`;
+  }
+  // 사이드바에 mobile-sidebar-open 클래스가 붙고 빠지는 걸 그대로 지켜보다가 배경 막도 같이 켜고 끔(투명해도
+  // 바깥 탭으로 닫는 역할은 여전히 함) - 이 버튼을 눌러서 열 때뿐 아니라, 메뉴 항목을 눌러 다른 화면으로
+  // 넘어가면서 기존 코드가 알아서 사이드바를 닫는 경우(activateTab 등)에도 따로 손댈 필요 없이 항상
+  // backdrop 상태가 맞게 따라오고, 열릴 때마다 위치도 다시 계산됨
+  const syncBackdrop = ()=>{
+    const isOpen = sidebarEl.classList.contains('mobile-sidebar-open');
+    backdrop.classList.toggle('is-open', isOpen);
+    if(isOpen) positionFloatingMenuPanel();
+  };
   new MutationObserver(syncBackdrop).observe(sidebarEl, { attributes:true, attributeFilter:['class'] });
   syncBackdrop();
   backdrop.addEventListener('click', ()=>{ sidebarEl.classList.remove('mobile-sidebar-open'); });
+  window.addEventListener('resize', ()=>{
+    if(sidebarEl.classList.contains('mobile-sidebar-open')) positionFloatingMenuPanel();
+  });
 
   // 화면 맨 가장자리(특히 아래쪽)에는 요즘 휴대폰의 "홈 화면으로 스와이프"/뒤로가기 제스처 영역이
   // 겹쳐있어서, 버튼을 거기 너무 붙여두면 터치가 우리 버튼이 아니라 그 제스처로 먹혀버려 "눌러도 반응이
