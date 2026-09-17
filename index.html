@@ -4986,6 +4986,12 @@
           </div>
         </div>
       </div>
+      <!-- 모바일에서 알림이 두세 번씩 온다는 문제 - 브라우저 저장공간 정리·재설치 등으로 같은 휴대폰이
+           예전 토큰과 새 토큰을 둘 다 등록해둔 채로 남아있는 경우가 원인일 수 있음(등록 자체는 기기마다
+           따로 쌓이게 설계돼 있어서, 정상적으로 여러 기기를 등록한 것과 구분이 잘 안 됨) - 내 이메일로
+           등록된 기기(토큰) 목록을 직접 보고, 더는 안 쓰거나 중복돼 보이는 걸 손으로 지울 수 있게 함 -->
+      <p class="hint" style="margin-top:16px;">아래는 내 계정으로 등록된 기기(알림 토큰) 목록이에요. 실제로는 기기 하나인데 여기 여러 개로 남아있으면(예: 앱을 지웠다 다시 설치한 경우) 그 기기에 알림이 중복으로 뜰 수 있어요 - 오래됐거나 더 안 쓰는 건 지워주세요. 방금 켠 "이 기기"까지 지우면 알림이 다시 꺼지니, 그건 남겨두세요.</p>
+      <div id="myPushDeviceListWrap"></div>
     </div>
 
     <div class="settings-group settings-flat" data-settings-cat="data" style="display:none;">
@@ -5562,6 +5568,37 @@ function updateSettingsPushRegisterStatus(){
     btn.textContent = '이 기기에서 알림 켜기';
     setNotifCategoryPanelLocked(true);
   }
+  renderMyPushDeviceList();
+}
+// 내 이메일로 등록된 토큰(기기) 목록을 그대로 보여주고 지울 수 있게 함 - "이 기기"인지는 로컬에 저장해둔
+// worklog_my_push_token(이 브라우저가 마지막으로 등록한 토큰)과 비교해서 구분해줌
+function renderMyPushDeviceList(){
+  const wrap = document.getElementById('myPushDeviceListWrap');
+  if(!wrap) return;
+  const myEmail = (currentUserEmail||'').toLowerCase();
+  let myToken = null;
+  try{ myToken = localStorage.getItem('worklog_my_push_token'); }catch(e){}
+  const mine = (sharedPushTokens||[]).filter(t=>(t.email||'').toLowerCase()===myEmail).sort((a,b)=> (b.updatedAt||'').localeCompare(a.updatedAt||''));
+  if(!mine.length){ wrap.innerHTML = ''; return; }
+  const rows = mine.map(t=>{
+    const isThis = t.token === myToken;
+    let dateLabel = '';
+    try{ dateLabel = t.updatedAt ? new Date(t.updatedAt).toLocaleString('ko-KR') : ''; }catch(e){}
+    return `<div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-bottom:1px solid var(--border);">
+      <span style="flex:1 1 auto; font-size:12px; color:var(--ink);">${isThis ? '<b>이 기기</b> · ' : ''}마지막 등록 ${escHtml(dateLabel)}</span>
+      <button type="button" class="del-btn my-push-device-del-btn" data-id="${t.id}" style="font-size:11px; padding:4px 10px;">삭제</button>
+    </div>`;
+  }).join('');
+  wrap.innerHTML = `<div style="border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-top:6px;">${rows}</div>`;
+  wrap.querySelectorAll('.my-push-device-del-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!(await appConfirm('이 기기의 알림 등록을 지울까요? 그 기기에는 더 이상 알림이 안 가요.'))) return;
+      sharedPushTokens = (sharedPushTokens||[]).filter(x=>x.id!==btn.dataset.id);
+      await saveSharedPushTokens();
+      renderMyPushDeviceList();
+      showCenterToast('삭제됐어요');
+    });
+  });
 }
 document.getElementById('settingsPushRegisterBtn')?.addEventListener('click', async ()=>{
   if(typeof Notification === 'undefined'){ appAlert('이 브라우저는 알림 기능을 지원하지 않아요. 아이폰이면 홈 화면에 앱으로 추가한 뒤 그 아이콘으로 열어보세요.'); return; }
@@ -5837,6 +5874,20 @@ async function registerPushToken(){
     // 각각 "알림 받기"를 켜두면 그 기기 수만큼 토큰이 나란히 쌓여서 전부 다 알림을 받게 함. 예전엔 이메일
     // 기준으로 예전 기기 토큰을 지우고 최신 것 하나만 남겨서 "가장 최근에 켠 기기만 알림 온다"는 문제가
     // 있었는데, 여러 기기에서 다 받고 싶다는 게 당연한 기대라 그 기기만 골라 지우던 로직을 없앰
+    //
+    // 그런데 모바일에서 "같은 사람 같은 기기인데 알림이 두 번 온다"는 문제가 있었음 - 브라우저 저장공간
+    // 정리, 홈 화면 앱 재설치 등으로 FCM 토큰이 새로 발급되면(모바일 브라우저는 이게 데스크톱보다 훨씬
+    // 자주 있는 것으로 보임) 예전 토큰은 그대로 목록에 남아있고 새 토큰이 하나 더 추가되어, 결국 같은
+    // physical 기기가 토큰을 2개(신규+구) 갖게 됨 - 둘 다 아직 유효해서 푸시를 보내면 그 기기에만 두 번
+    // 뜨는 원인이 됨. 이 기기가 "마지막으로 등록했던 토큰"을 로컬에 기억해두고, 이번에 새로 받은 토큰이
+    // 그것과 다르면(=이 기기의 토큰이 갱신된 것) 예전 토큰을 목록에서 지워서 이 기기가 항상 토큰 1개만
+    // 갖게 함
+    let lastToken = null;
+    try{ lastToken = localStorage.getItem('worklog_my_push_token'); }catch(e){}
+    if(lastToken && lastToken !== token){
+      sharedPushTokens = sharedPushTokens.filter(t=>t.token !== lastToken);
+    }
+    try{ localStorage.setItem('worklog_my_push_token', token); }catch(e){}
     const existing = sharedPushTokens.find(t=>t.token===token);
     if(existing){
       existing.email = email; // 같은 기기에서 이메일이 바뀐 경우(다른 계정으로 로그인)에도 최신 이메일로 갱신
