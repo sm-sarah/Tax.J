@@ -2325,7 +2325,7 @@
   </div>
 </div>
 <div id="leaveHistoryModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
-  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:640px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:760px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
     <div style="position:relative; text-align:center; margin-bottom:6px;">
       <div style="font-weight:800; font-size:17px; color:var(--ink);">휴가이력</div>
       <button type="button" id="leaveHistoryModalClose" class="del-btn modal-close-btn" style="position:absolute; right:0; top:50%; transform:translateY(-50%);">닫기</button>
@@ -8682,8 +8682,10 @@ const REGULAR_REMOTE_MONTHLY_QUOTA = 6;
 // calcAttendanceSummary/calcLeaveAsOf가 같은 방식으로 계산해서 "다음 달 잔여 연차"에도 그대로 반영됨.
 // excludeId를 주면 그 항목 자신은 기존 사용량 계산에서 제외함(수정 시 자기 자신을 이중으로 빼지 않기 위함).
 function projectRemainLeaveAfter(dateStr, extraDays, excludeId){
+  // excludeId는 단일 id(문자열) 또는 id 배열(여러 날짜가 묶인 기간을 한번에 수정할 때) 둘 다 받음
+  const excludeIds = Array.isArray(excludeId) ? excludeId : (excludeId ? [excludeId] : []);
   const totalGranted = getEffectiveGrantsAsOf(dateStr).reduce((s,g)=>s+Number(g.days||0), 0);
-  const totalUsed = attendance.leaveUsage.filter(u => u.date <= dateStr && u.id !== excludeId).reduce((s,u)=>s+leaveDeductDays(u), 0);
+  const totalUsed = attendance.leaveUsage.filter(u => u.date <= dateStr && !excludeIds.includes(u.id)).reduce((s,u)=>s+leaveDeductDays(u), 0);
   return totalGranted - totalUsed - extraDays;
 }
 // 정기재택은 "월 6회" 한도가 매달 새로 리셋되는 방식이라(누적 연차와 다름), 당겨쓰기 항목은 실제 사용일(date)과
@@ -9393,12 +9395,16 @@ function renderAllLeaveHistory(){
     } else {
       label = `${g.type} (${g.totalDays}일, 연차차감 없음)`;
     }
-    const editBtn = g.ids.length===1 ? `<button class="del-btn all-leave-edit-btn" data-id="${g.ids[0]}">수정</button>` : '';
+    // 결재 메뉴 관리 버튼과 같은 구성(수정=편집 아이콘은 항상 보이고, 삭제=휴지통 아이콘은 그 줄에
+    // 마우스를 올렸을 때만 나타남)으로 통일함 - 하루짜리든 여러 날짜가 묶인 기간이든 모두 수정 가능(여러
+    // 날이면 그 기간 전체를 기간 입력 폼으로 열어서 한번에 고침)
+    const editBtn = approvalActionIconBtn('all-leave-edit-btn', g.ids.join(','), 'edit', '수정', 'var(--indigo-bg)', 'var(--indigo-deep)');
+    const delBtn = approvalActionIconBtn('all-leave-del-btn', g.ids.join(','), 'trash', '삭제', 'var(--coral-bg)', 'var(--coral)', true);
     return `<tr>
-      <td class="num">${dateLabel}</td>
-      <td>${escHtml(label)}</td>
+      <td class="num" style="white-space:nowrap;">${dateLabel}</td>
+      <td style="white-space:nowrap;">${escHtml(label)}</td>
       <td>${escHtml(g.memo || '')}</td>
-      <td style="white-space:nowrap;">${editBtn}<button class="del-btn all-leave-del-btn" data-ids="${g.ids.join(',')}">삭제</button></td>
+      <td style="white-space:nowrap; text-align:center;">${editBtn}${delBtn}</td>
     </tr>`;
   }).join('');
 
@@ -9410,8 +9416,8 @@ function renderAllLeaveHistory(){
           ${y}년 <span style="font-weight:600; font-size:11px; opacity:0.85;">(${byYear[y].length}건)</span>
           <span style="margin-left:auto; font-size:11px;">${isOpen ? '▲' : '▼'}</span>
         </button>
-        <div class="year-table-wrap" data-year="${y}" style="display:${isOpen ? 'block' : 'none'}; margin-top:8px;">
-          <table><thead><tr><th>날짜</th><th>구분</th><th>메모</th><th></th></tr></thead><tbody>${buildRows(byYear[y])}</tbody></table>
+        <div class="year-table-wrap" data-year="${y}" style="display:${isOpen ? 'block' : 'none'}; margin-top:8px; overflow-x:auto;">
+          <table><thead><tr><th style="text-align:center;">날짜</th><th style="text-align:center;">구분</th><th style="text-align:center;">메모</th><th></th></tr></thead><tbody>${buildRows(byYear[y])}</tbody></table>
         </div>
       </div>`;
   }).join('');
@@ -9432,7 +9438,7 @@ function renderAllLeaveHistory(){
   });
   wrap.querySelectorAll('.all-leave-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
-      const ids = btn.dataset.ids.split(',');
+      const ids = btn.dataset.id.split(',');
       const targets = attendance.leaveUsage.filter(x=>ids.includes(x.id));
       attendance.leaveUsage = attendance.leaveUsage.filter(x=>!ids.includes(x.id));
       targets.forEach(t=>pushToTrash('attendance','usage', `${t.type||'휴가'} ${t.date||''}${t.memo?' · '+t.memo:''}`, t));
@@ -9443,22 +9449,40 @@ function renderAllLeaveHistory(){
   });
   wrap.querySelectorAll('.all-leave-edit-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const id = btn.dataset.id;
-      const en = attendance.leaveUsage.find(x=>x.id===id);
-      if(!en) return;
+      const ids = btn.dataset.id.split(',');
       const kindSelect = document.getElementById('u-kind');
       kindSelect.disabled = true;
-      document.getElementById('u-single-day').checked = true;
-      editingUsageId = id;
       kindSelect.value = 'leave';
       kindSelect.dispatchEvent(new Event('change'));
-      document.getElementById('u-date').value = en.date;
-      document.getElementById('u-end-date').value = '';
-      document.getElementById('u-type').value = en.type;
-      document.getElementById('u-type').dispatchEvent(new Event('change'));
-      if(en.subtype) document.getElementById('u-subtype').value = en.subtype;
-      if(en.days) document.getElementById('u-days').value = en.days;
-      document.getElementById('u-memo').value = en.memo || '';
+      editingUsageId = null;
+      editingUsageGroupIds = null;
+      if(ids.length === 1){
+        const en = attendance.leaveUsage.find(x=>x.id===ids[0]);
+        if(!en) return;
+        editingUsageId = ids[0];
+        document.getElementById('u-single-day').checked = true;
+        document.getElementById('u-date').value = en.date;
+        document.getElementById('u-end-date').value = '';
+        document.getElementById('u-type').value = en.type;
+        document.getElementById('u-type').dispatchEvent(new Event('change'));
+        if(en.subtype) document.getElementById('u-subtype').value = en.subtype;
+        if(en.days) document.getElementById('u-days').value = en.days;
+        document.getElementById('u-memo').value = en.memo || '';
+      } else {
+        // 여러 날짜가 하나의 기간으로 묶인 그룹(연차/포상휴가/경조사휴가/기타휴가만 이렇게 묶일 수 있음) -
+        // 기존엔 이런 그룹은 수정 버튼이 아예 없어서 삭제 후 다시 등록해야만 했는데, 기간 입력 폼을 그
+        // 시작~끝 날짜로 미리 채워서 한번에 고칠 수 있게 함
+        const entries = attendance.leaveUsage.filter(x=>ids.includes(x.id)).sort((a,b)=> a.date < b.date ? -1 : 1);
+        if(!entries.length) return;
+        editingUsageGroupIds = ids;
+        document.getElementById('u-single-day').checked = false;
+        document.getElementById('u-date').value = entries[0].date;
+        document.getElementById('u-end-date').value = entries[entries.length-1].date;
+        document.getElementById('u-type').value = entries[0].type;
+        document.getElementById('u-type').dispatchEvent(new Event('change'));
+        document.getElementById('u-memo').value = entries[0].memo || '';
+      }
+      updateEndDateVisibility();
       // 휴가 폼에서는 당겨쓰기 입력이 빠져서 u-advance가 항상 숨겨진 채 체크 해제된 상태이고(updateAdvanceFieldVisibility),
       // 여기서 더 건드리지 않음 - 기존 en.advance 값은 수정 저장 시에도 그대로 유지됨
       document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '수정 완료';
@@ -9500,7 +9524,7 @@ function renderAllRemoteHistory(){
       <td class="num" style="text-align:center;">${en.date}</td>
       <td style="text-align:center;">${label}</td>
       <td style="text-align:center;">${escHtml(en.memo || '')}</td>
-      <td style="white-space:nowrap; text-align:center;"><button class="del-btn all-remote-edit-btn" data-id="${en.id}">수정</button><button class="del-btn all-remote-del-btn" data-id="${en.id}">삭제</button></td>
+      <td style="white-space:nowrap; text-align:center;">${approvalActionIconBtn('all-remote-edit-btn', en.id, 'edit', '수정', 'var(--indigo-bg)', 'var(--indigo-deep)')}${approvalActionIconBtn('all-remote-del-btn', en.id, 'trash', '삭제', 'var(--coral-bg)', 'var(--coral)', true)}</td>
     </tr>`;
   }).join('');
 
@@ -9644,19 +9668,21 @@ function renderAttendance(){
       tag = `<span class="tag ${en.bonus ? 'tag-remote-special' : 'tag-remote'}">${en.bonus ? '특별재택' : '정기재택'}${advTag}${noLunchTag}</span>`;
       detail = '-';
     }
-    const editBtn = (en.kind==='usage' || en.kind==='remote') ? `<button class="del-btn attendance-edit-btn" data-kind="${en.kind}" data-id="${en.id}">수정</button>` : '';
+    // 결재 메뉴 관리 버튼과 같은 구성으로 통일함 - 부여(grant) 내역은 수정 기능이 없어서 삭제 아이콘만 나옴
+    const editBtn = (en.kind==='usage' || en.kind==='remote') ? approvalActionIconBtn('attendance-edit-btn', `${en.kind}::${en.id}`, 'edit', '수정', 'var(--indigo-bg)', 'var(--indigo-deep)') : '';
+    const delBtn = approvalActionIconBtn('attendance-del-btn', `${en.kind}::${en.id}`, 'trash', '삭제', 'var(--coral-bg)', 'var(--coral)', true);
     return `<tr>
-      <td class="num">${en.date}</td>
-      <td>${tag}</td>
-      <td class="num">${detail}</td>
+      <td class="num" style="white-space:nowrap; text-align:center;">${en.date}</td>
+      <td style="text-align:center;">${tag}</td>
+      <td class="num" style="white-space:nowrap; text-align:center;">${detail}</td>
       <td>${en.memo || ''}</td>
-      <td style="white-space:nowrap;">${editBtn}<button class="del-btn attendance-del-btn" data-kind="${en.kind}" data-id="${en.id}">삭제</button></td>
+      <td style="white-space:nowrap; text-align:center;">${editBtn}${delBtn}</td>
     </tr>`;
   }).join('');
-  wrap.innerHTML = `<table><thead><tr><th>날짜</th><th>구분</th><th>일수</th><th>메모</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.innerHTML = `<div style="overflow-x:auto;"><table><thead><tr><th style="text-align:center;">날짜</th><th style="text-align:center;">구분</th><th style="text-align:center;">일수</th><th style="text-align:center;">메모</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
   wrap.querySelectorAll('.attendance-edit-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const kind = btn.dataset.kind, id = btn.dataset.id;
+      const [kind, id] = btn.dataset.id.split('::');
       const kindSelect = document.getElementById('u-kind');
       kindSelect.disabled = true;
       document.getElementById('u-single-day').checked = true;
@@ -9701,7 +9727,7 @@ function renderAttendance(){
   });
   wrap.querySelectorAll('.attendance-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
-      const kind = btn.dataset.kind, id = btn.dataset.id;
+      const [kind, id] = btn.dataset.id.split('::');
       let target = null;
       if(kind==='grant'){ target = attendance.leaveGrants.find(x=>x.id===id); attendance.leaveGrants = attendance.leaveGrants.filter(x=>x.id!==id); }
       if(kind==='usage'){ target = attendance.leaveUsage.find(x=>x.id===id); attendance.leaveUsage = attendance.leaveUsage.filter(x=>x.id!==id); }
@@ -9784,20 +9810,19 @@ function renderExpenseCategoryHistory(kinds){
     else tag = `<span class="tag tag-usage">업무경비</span>`;
     const desc = en.kind==='other' ? (en.description || '') : (en.memo || '');
     return `<tr>
-      <td class="num">${en.date}</td>
-      <td>${tag}</td>
-      <td class="num">${won(Number(en.amount)||0)}</td>
+      <td class="num" style="white-space:nowrap; text-align:center;">${en.date}</td>
+      <td style="text-align:center;">${tag}</td>
+      <td class="num" style="white-space:nowrap; text-align:center;">${won(Number(en.amount)||0)}</td>
       <td>${escHtml(desc)}</td>
-      <td style="white-space:nowrap;">
-        <button class="del-btn expense-edit-btn" data-kind="${en.kind}" data-id="${en.id}">수정</button>
-        <button class="del-btn expense-del-btn" data-kind="${en.kind}" data-id="${en.id}">삭제</button>
+      <td style="white-space:nowrap; text-align:center;">
+        ${approvalActionIconBtn('expense-edit-btn', `${en.kind}::${en.id}`, 'edit', '수정', 'var(--indigo-bg)', 'var(--indigo-deep)')}${approvalActionIconBtn('expense-del-btn', `${en.kind}::${en.id}`, 'trash', '삭제', 'var(--coral-bg)', 'var(--coral)', true)}
       </td>
     </tr>`;
   }).join('');
-  wrap.innerHTML = `<table><thead><tr><th>날짜</th><th>구분</th><th>금액</th><th>내용</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.innerHTML = `<div style="overflow-x:auto;"><table><thead><tr><th style="text-align:center;">날짜</th><th style="text-align:center;">구분</th><th style="text-align:center;">금액</th><th style="text-align:center;">내용</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
   wrap.querySelectorAll('.expense-edit-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const kind = btn.dataset.kind, id = btn.dataset.id;
+      const [kind, id] = btn.dataset.id.split('::');
       const listMap = { lunch: expense.lunchEntries, dinner: expense.dinnerEntries, taxi: expense.taxiEntries, other: expense.otherExpenses, prepaid: expense.prepaidEntries };
       const en = listMap[kind].find(x=>x.id===id);
       if(!en) return;
@@ -9807,7 +9832,7 @@ function renderExpenseCategoryHistory(kinds){
   wrap.querySelectorAll('.expense-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       if(!(await confirmOtherPersonAction('경비 삭제'))) return;
-      const kind = btn.dataset.kind, id = btn.dataset.id;
+      const [kind, id] = btn.dataset.id.split('::');
       let target = null;
       if(kind==='lunch'){ target = expense.lunchEntries.find(x=>x.id===id); expense.lunchEntries = expense.lunchEntries.filter(x=>x.id!==id); }
       if(kind==='dinner'){ target = expense.dinnerEntries.find(x=>x.id===id); expense.dinnerEntries = expense.dinnerEntries.filter(x=>x.id!==id); }
@@ -15499,10 +15524,12 @@ familyPresetSelect.addEventListener('change', ()=>{
 });
 
 let editingUsageId = null;
+let editingUsageGroupIds = null; // 휴가이력에서 여러 날짜가 하나의 기간으로 묶인 그룹을 수정할 때 쓰는 id 배열
 let editingRemoteId = null;
 
 function resetUsageFormEditState(){
   editingUsageId = null;
+  editingUsageGroupIds = null;
   editingRemoteId = null;
   uKindSelect.disabled = false;
   document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '등록';
@@ -15546,7 +15573,7 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
     const perDayDeduct = isSpecial ? 0 : leaveDeductDays({type});
     if(perDayDeduct > 0 && dates.length){
       const lastDate = dates[dates.length-1];
-      const projected = projectRemainLeaveAfter(lastDate, perDayDeduct * dates.length, editingUsageId || null);
+      const projected = projectRemainLeaveAfter(lastDate, perDayDeduct * dates.length, editingUsageGroupIds || editingUsageId || null);
       if(projected < 0){
         appAlert(`잔여 연차가 부족해요. (등록 시 예상 잔여: ${projected}일)`);
         return;
@@ -15558,6 +15585,23 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
       // 당겨쓰기로 등록됐던 휴가를 수정해도 그 표시가 갑자기 사라지지 않게 하기 위함
       const en = attendance.leaveUsage.find(x=>x.id===editingUsageId);
       if(en){ en.date=date; en.type=type; en.subtype=subtype; en.days=days; en.memo=memo; }
+      showCenterToast('수정됐어요'); document.getElementById('usageSaveMsg').textContent = '수정됨';
+      resetUsageFormEditState();
+      closeCalRegisterModal();
+      await saveAttendance();
+      renderAll();
+      setTimeout(()=>document.getElementById('usageSaveMsg').textContent='',1800);
+      return;
+    }
+
+    if(editingUsageGroupIds){
+      // 여러 날짜가 묶인 기간(연차/포상휴가/경조사휴가/기타휴가) 수정 - 기존 항목들을 지우고, 새로
+      // 입력된 기간(dates)으로 다시 만듦(각 날짜마다 1일씩, 등록 때와 같은 방식)
+      const groupIds = editingUsageGroupIds;
+      attendance.leaveUsage = attendance.leaveUsage.filter(x=>!groupIds.includes(x.id));
+      dates.forEach(ds=>{
+        attendance.leaveUsage.push({id:genId(), date:ds, type, subtype:null, days: isSpecial ? 1 : null, memo});
+      });
       showCenterToast('수정됐어요'); document.getElementById('usageSaveMsg').textContent = '수정됨';
       resetUsageFormEditState();
       closeCalRegisterModal();
