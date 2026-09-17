@@ -122,6 +122,35 @@
     .app-sidebar.mobile-sidebar-open{ display:flex !important; }
     .app-main{ flex-basis:100%; }
   }
+  /* ===== 터치 기기 전용: 화면에 둥둥 떠서 드래그로 옮길 수 있는 메뉴 버튼 =====
+     "모바일 버전도 상단에 고정돼있잖아, 그거 말고 화면 움직일 때마다 따라다니게" 요청 - 위 상단 고정
+     메뉴 버튼(.mobile-sidebar-toggle)과, PC 보기 모드에서 사이드바가 항상 펼쳐진 채 자리를 차지하던
+     방식을 둘 다 대신해서, 터치 기기에서는 화면 폭이나 PC보기 여부와 무관하게(.is-touch-device 기준 -
+     이유는 위 PC보기 버튼 주석과 같음) 항상 사이드바를 접어두고, 화면 아무 위치에나 띄워둘 수 있는
+     동그란 버튼을 눌러서 그 위로 덮어 씌우는 패널로 열게 함 */
+  html.is-touch-device .mobile-sidebar-toggle{ display:none !important; }
+  html.is-touch-device .app-sidebar{
+    display:none !important; position:fixed !important; top:0; left:0; height:100%;
+    width:min(82vw, 300px); max-height:none; overflow-y:auto; z-index:9600;
+    background:var(--bg); box-shadow:4px 0 24px rgba(0,0,0,0.28);
+    padding:16px 14px; border-right:none; margin:0; gap:14px;
+  }
+  html.is-touch-device .app-sidebar.mobile-sidebar-open{ display:flex !important; }
+  /* 크기를 고정 px 대신 vw(뷰포트 폭 비율)로 잡음 - PC보기 모드는 뷰포트 자체를 1400px 캔버스로
+     강제한 뒤 화면에 맞게 축소해서 보여주는 방식이라(위 PC 보기 IIFE 참고), 고정 px는 그 축소 배율만큼
+     실제 화면에서 작아져 버림. vw는 "그 축소되는 캔버스 폭"에 대한 비율이라 축소되고 나면 항상 실제
+     화면 폭의 일정 비율(약 12%)로 계산돼서, PC보기가 켜져있든 꺼져있든 실제 화면에 보이는 크기가 같음 */
+  #floatingMenuBtn{
+    display:none; position:fixed; width:12.5vw; height:12.5vw; min-width:42px; max-width:56px; min-height:42px; max-height:56px; border-radius:50%;
+    background:var(--indigo); color:#fff; align-items:center; justify-content:center;
+    box-shadow:0 6px 18px -4px rgba(29,30,51,0.5); z-index:9700; cursor:grab;
+    touch-action:none; border:none; user-select:none;
+  }
+  #floatingMenuBtn svg{ width:42%; height:42%; }
+  html.is-touch-device #floatingMenuBtn{ display:flex; }
+  #floatingMenuBtn:active{ cursor:grabbing; }
+  #floatingMenuBackdrop{ display:none; position:fixed; inset:0; background:rgba(15,16,30,0.42); z-index:9550; }
+  #floatingMenuBackdrop.is-open{ display:block; }
   /* 홈~휴지통 아이콘 줄을 사이드바(카드 배경 .app 안쪽) 흐름에서 아예 빼내서, 카드 밖 페이지 배경 위에
      독립된 줄로 둠 - 카드와 같은 가운데정렬 폭(max-width)을 써서 화면 크기가 달라져도 카드의 왼쪽 시작선과
      항상 나란히 맞음. 스크롤해도 화면 맨 위에 계속 붙어있도록 sticky로 고정함 */
@@ -738,7 +767,11 @@
      미리 커진 값이 담겨있어서(위 IIFE의 touchPadPx 참고), 축소되고 나면 결과적으로 항상 실제 화면에서
      비슷한 크기의 터치 영역이 되게 함 */
   :root{ --touch-pad:11px; }
-  .is-touch-device .home-tile.home-tile-plain{padding-top:var(--touch-pad); padding-bottom:var(--touch-pad);}
+  /* 패딩만 키우면 두 줄이 여전히 서로 테두리선(border-bottom)을 딱 맞대고 있어서, 그 경계선 위를 누르면
+     "이 중 어느 걸 누르셨나요?" 팝업이 그대로 재발함(결재/내부규정처럼 나란히 붙은 아코디언 항목에서 확인됨).
+     패딩과 별개로 줄 사이에 진짜 빈 틈(margin)을 둬서 그 경계선 자체를 아예 없애야 함 */
+  .is-touch-device .home-tile.home-tile-plain{padding-top:var(--touch-pad); padding-bottom:var(--touch-pad); margin-bottom:calc(var(--touch-pad) * 0.3); border-bottom:none; border-radius:8px;}
+  .is-touch-device .home-tile.home-tile-plain:last-child{ margin-bottom:0; }
   .is-touch-device .home-fav-slot-empty{padding-top:var(--touch-pad); padding-bottom:var(--touch-pad);}
   .is-touch-device .home-submenu-item, .is-touch-device .home-submenu-leaf{padding-top:var(--touch-pad); padding-bottom:var(--touch-pad); margin-bottom:calc(var(--touch-pad) * 0.18); border-radius:8px;}
   .is-touch-device .home-submenu-item:last-child, .is-touch-device .home-submenu-leaf:last-child{margin-bottom:0;}
@@ -14760,6 +14793,94 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
   document.getElementById('appSidebar')?.classList.toggle('mobile-sidebar-open');
 });
 
+// ===== 화면에 둥둥 떠서 드래그로 옮길 수 있는 메뉴 버튼(터치 기기 전용) =====
+// "모바일 버전도 상단에 고정돼있잖아, 그거 말고 화면 움직일 때마다(스크롤해도) 따라다니게, PC버전을
+// 모바일로 볼 때도" 요청 - 위 상단 고정 메뉴 버튼과, PC보기 모드에서 사이드바가 항상 펼쳐진 채이던
+// 방식을 터치 기기에서는 이 버튼 하나로 대신함. 처음 위치는 화면 오른쪽 아래에 두고, 이후에는 손가락으로
+// 끌어서 옮긴 마지막 위치를 기기에 기억해뒀다가 다음에 켤 때도 그 자리에 그대로 뜨게 함
+(function(){
+  // 아래쪽 "PC 화면 보기 토글" IIFE가 html.is-touch-device 클래스를 붙여주는데, 이 코드가 그보다 먼저
+  // 실행되므로 그 클래스가 아직 안 붙어있을 수 있음 - 같은 판별식(pointer:coarse)을 여기서도 직접 씀
+  const TOUCH_DEVICE = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
+  if(TOUCH_DEVICE) document.documentElement.classList.add('is-touch-device');
+  if(!document.documentElement.classList.contains('is-touch-device')) return;
+  const sidebarEl = document.getElementById('appSidebar');
+  if(!sidebarEl) return;
+  const POS_KEY = 'worklog_floating_menu_pos';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.id = 'floatingMenuBtn';
+  btn.setAttribute('aria-label', '메뉴 열기');
+  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>`;
+  document.body.appendChild(btn);
+  const backdrop = document.createElement('div');
+  backdrop.id = 'floatingMenuBackdrop';
+  document.body.appendChild(backdrop);
+  // 사이드바에 mobile-sidebar-open 클래스가 붙고 빠지는 걸 그대로 지켜보다가 배경 어둡게 하는 막(backdrop)도
+  // 같이 켜고 끔 - 이 버튼을 눌러서 열 때뿐 아니라, 메뉴 항목을 눌러 다른 화면으로 넘어가면서 기존 코드가
+  // 알아서 사이드바를 닫는 경우(activateTab 등)에도 따로 손댈 필요 없이 항상 backdrop 상태가 맞게 따라옴
+  const syncBackdrop = ()=> backdrop.classList.toggle('is-open', sidebarEl.classList.contains('mobile-sidebar-open'));
+  new MutationObserver(syncBackdrop).observe(sidebarEl, { attributes:true, attributeFilter:['class'] });
+  syncBackdrop();
+  backdrop.addEventListener('click', ()=>{ sidebarEl.classList.remove('mobile-sidebar-open'); });
+
+  function clamp(v, min, max){ return Math.min(max, Math.max(min, v)); }
+  function placeBtn(x, y){
+    const w = btn.offsetWidth || 52, h = btn.offsetHeight || 52;
+    x = clamp(x, 6, (window.innerWidth||360) - w - 6);
+    y = clamp(y, 6, (window.innerHeight||640) - h - 6);
+    btn.style.left = `${x}px`;
+    btn.style.top = `${y}px`;
+  }
+  let saved = null;
+  try{ saved = JSON.parse(localStorage.getItem(POS_KEY) || 'null'); }catch(e){ saved = null; }
+  if(saved && typeof saved.x === 'number' && typeof saved.y === 'number'){
+    placeBtn(saved.x, saved.y);
+  } else {
+    placeBtn((window.innerWidth||360) - 68, (window.innerHeight||640) - 140);
+  }
+
+  let dragging = false, moved = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
+  function pointerDown(e){
+    dragging = true; moved = false;
+    const p = e.touches ? e.touches[0] : e;
+    startX = p.clientX; startY = p.clientY;
+    startLeft = parseFloat(btn.style.left) || 0;
+    startTop = parseFloat(btn.style.top) || 0;
+  }
+  function pointerMove(e){
+    if(!dragging) return;
+    const p = e.touches ? e.touches[0] : e;
+    const dx = p.clientX - startX, dy = p.clientY - startY;
+    if(Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+    if(moved){
+      placeBtn(startLeft + dx, startTop + dy);
+      if(e.cancelable) e.preventDefault();
+    }
+  }
+  function pointerUp(){
+    if(!dragging) return;
+    dragging = false;
+    if(moved){
+      const x = parseFloat(btn.style.left) || 0, y = parseFloat(btn.style.top) || 0;
+      try{ localStorage.setItem(POS_KEY, JSON.stringify({x, y})); }catch(e){}
+    } else {
+      // 드래그가 아니라 그냥 탭한 거면 메뉴를 열고 닫음
+      sidebarEl.classList.toggle('mobile-sidebar-open');
+    }
+  }
+  btn.addEventListener('touchstart', pointerDown, { passive:true });
+  btn.addEventListener('touchmove', pointerMove, { passive:false });
+  btn.addEventListener('touchend', pointerUp);
+  btn.addEventListener('mousedown', pointerDown);
+  window.addEventListener('mousemove', pointerMove);
+  window.addEventListener('mouseup', pointerUp);
+  // 화면을 돌리거나(가로/세로) 창 크기가 바뀌어도 버튼이 화면 밖으로 밀려나지 않게 다시 안쪽으로 당겨줌
+  window.addEventListener('resize', ()=>{
+    placeBtn(parseFloat(btn.style.left) || 0, parseFloat(btn.style.top) || 0);
+  });
+})();
+
 // ===== PC 화면 보기 토글 =====
 // 휴대폰(특히 홈 화면에 설치한 앱)으로 접속하면 사이드바가 접히고 표가 좁아져서 보기 불편하다는 요청으로,
 // 뷰포트 메타태그의 width를 컴퓨터 폭(1400)으로 강제 지정해서 PC에서 보던 레이아웃 그대로 화면에 축소해
@@ -14789,14 +14910,14 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
   // 손가락 터치 영역이 항상 최소 ~7px는 되도록, 그 축소 배율의 역수만큼 패딩값을 미리 키워서 축소되고
   // 나면 딱 맞는 크기가 되게 계산함. PC 보기가 꺼져있을 때(원래 모바일 레이아웃, 축소 없음)는 그냥 11px.
   // 처음엔 목표를 12px로 잡았더니 축소 배율이 큰 기기(휴대폰)에서 계산된 패딩이 40px 넘게 나와서
-  // 메뉴 한 줄 한 줄이 지나치게 두꺼워 보인다는 의견 - 목표를 7px로 낮추고, 그래도 계산값이 과하게
-  // 커지는 극단적인 경우를 막기 위해 위아래 8~18px 사이로 한도를 둠(너무 작으면 다시 팝업이 나고,
-  // 너무 크면 메뉴가 두꺼워 보이므로 그 사이에서 균형을 잡음)
+  // 메뉴 한 줄 한 줄이 지나치게 두꺼워 보인다는 의견 - 한 번 낮췄는데도(7px/최대18px) 여전히 두껍다는
+  // 의견으로 한 번 더 낮춤(5px/최대 12px). 이보다 더 낮추면 다시 인접한 줄끼리 터치 영역이 맞닿아
+  // "메뉴 두 개 뜨는 팝업"이 재발할 수 있어서, 이 정도가 안전하게 줄일 수 있는 한계에 가까움
   function touchPadPx(on){
-    if(!on || !REAL_WIDTH) return 11;
+    if(!on || !REAL_WIDTH) return 9;
     const scale = REAL_WIDTH / PC_VIEW_WIDTH;
-    const raw = Math.round(7 / Math.max(scale, 0.05));
-    return Math.min(18, Math.max(8, raw));
+    const raw = Math.round(5 / Math.max(scale, 0.05));
+    return Math.min(12, Math.max(7, raw));
   }
   function applyPcViewMode(on){
     if(viewportMeta) viewportMeta.setAttribute('content', on ? `width=${PC_VIEW_WIDTH}` : 'width=device-width, initial-scale=1.0');
