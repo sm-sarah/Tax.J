@@ -94,6 +94,62 @@
     padding-right:22px; border-right:1.5px solid var(--border);
   }
   .app-main{ flex:1 1 300px; min-width:0; }
+  /* ===== 팝오버(아이콘 레일) 모드 =====
+     "메뉴가 다른 그룹웨어처럼 왼쪽엔 아이콘만 있고, 누르면 그 옆에 하위메뉴가 팝오버로 뜨면 좋겠다"는
+     요청 - 기존 사이드바(.home-menu-col 안의 실제 DOM: 홈타일 클릭, 펼치기 화살표, 즐겨찾기 등)는 전혀
+     복제하거나 새로 만들지 않고, 그대로 둔 채 CSS로 "보여지는 방식"만 바꿈: 넓은 화면(터치 기기 아님)에서는
+     JS(initRailPopoverMode)가 #appSidebar에 rail-mode 클래스를 붙이고, 카테고리 아이콘(.home-section-label)만
+     보이는 좁은 레일로 줄인 뒤, 그 아이콘을 누르면 원래 항상 펼쳐져 있던 .home-tiles 목록을 position:fixed로
+     띄워서 클릭한 아이콘 옆에 팝오버 카드로 보여줌. 하위메뉴가 있는 항목(사내정보/세무신고 등)의 펼치기
+     화살표는 기존과 똑같이 동작(그 팝오버 카드 안에서 아코디언으로 펼쳐짐) - 별도 로직 없이 그대로 재사용됨 */
+  .app-sidebar.rail-mode{ flex:0 0 60px; width:60px; padding-right:0; gap:6px; overflow:visible; align-items:center; }
+  .app-sidebar.rail-mode .home-menu-expand-all-row{ display:none; }
+  .app-rail-utility-row{ display:none; flex-direction:column; gap:6px; margin-bottom:4px; }
+  .app-sidebar.rail-mode .app-rail-utility-row{ display:flex; }
+  .app-rail-utility-btn{
+    width:44px; height:38px; border-radius:12px; border:1.5px solid var(--border); background:var(--surface);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:15px; color:var(--ink-soft);
+    box-shadow:0 1px 2px rgba(29,30,51,0.05);
+  }
+  .app-rail-utility-btn:hover{ background:rgba(29,30,51,0.06); color:var(--ink); }
+  .app-sidebar.rail-mode .home-section-row{ position:static; width:100%; }
+  .app-sidebar.rail-mode .home-section-label{
+    display:flex; align-items:center; justify-content:center; width:44px; height:44px; margin:0 auto;
+    border-radius:14px; background:var(--surface); border:1.5px solid var(--border); cursor:pointer;
+    box-shadow:0 1px 2px rgba(29,30,51,0.05); gap:0; font-size:0; color:var(--ink-soft);
+  }
+  .app-sidebar.rail-mode .home-section-label svg{ width:18px; height:18px; flex-shrink:0; }
+  .app-sidebar.rail-mode .home-section-row.rail-open .home-section-label{ background:var(--indigo); border-color:var(--indigo); color:#fff; }
+  .app-sidebar.rail-mode .home-tiles{ display:none; }
+  .app-sidebar.rail-mode .home-section-row.rail-open .home-tiles{
+    display:flex; flex-direction:column; gap:3px; position:fixed; width:250px; max-height:min(70vh,520px);
+    overflow-y:auto; background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:10px;
+    box-shadow:0 16px 40px -10px rgba(15,16,30,0.28), 0 4px 14px rgba(15,16,30,0.12); z-index:9500;
+  }
+  .app-sidebar.rail-mode .home-section-row#homeFavoritesSection.rail-open .home-tiles{ display:grid; grid-template-columns:repeat(2,1fr); }
+  /* 팝오버 카드 맨 위에 어떤 카테고리인지(Client/Company 등) 작은 제목을 하나 보여줌 */
+  .rail-popover-title{ font-size:11px; font-weight:800; color:var(--ink-soft); padding:2px 6px 6px; border-bottom:1px solid var(--border); margin-bottom:4px; }
+  /* 검색 / 전체메뉴 오버레이 - 레일 모드에서만 쓰이는 전체 화면 덮개 */
+  #railSearchOverlay, #railAllMenuOverlay{
+    display:none; position:fixed; inset:0; background:rgba(15,16,30,0.35); z-index:9700;
+    align-items:flex-start; justify-content:center; padding:8vh 20px 20px;
+  }
+  #railSearchOverlay.is-open, #railAllMenuOverlay.is-open{ display:flex; }
+  .rail-overlay-box{ background:var(--surface); border-radius:20px; padding:18px 20px 22px; width:100%; max-width:460px; max-height:78vh; overflow-y:auto; box-shadow:0 30px 60px -20px rgba(15,16,30,0.4); }
+  .rail-overlay-box.all-mode{ max-width:860px; }
+  .rail-overlay-head{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .rail-overlay-head input{ flex:1; border:1.5px solid var(--border); border-radius:12px; padding:9px 12px; font-size:13.5px; font-family:inherit; }
+  .rail-overlay-close{ background:none; border:none; font-size:18px; cursor:pointer; color:var(--ink-soft); line-height:1; padding:4px; }
+  .rail-search-row{ display:flex; align-items:baseline; gap:6px; padding:8px 10px; border-radius:10px; cursor:pointer; }
+  .rail-search-row:hover{ background:rgba(29,30,51,0.045); }
+  .rail-search-row .rail-search-name{ font-size:13.5px; font-weight:700; color:var(--ink); }
+  .rail-search-row .rail-search-path{ font-size:11px; color:var(--ink-soft); }
+  .rail-allmenu-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+  .rail-allmenu-col-title{ font-size:12px; font-weight:800; color:var(--ink); margin-bottom:6px; }
+  .rail-allmenu-item{ font-size:12.5px; font-weight:600; color:var(--ink-soft); padding:4px 0; cursor:pointer; }
+  .rail-allmenu-item:hover{ color:var(--ink); text-decoration:underline; }
+  .rail-allmenu-sub{ padding-left:12px; font-weight:500; }
+  @media (max-width:900px){ .rail-allmenu-grid{ grid-template-columns:repeat(2,1fr); } }
   /* 모바일 메뉴 펼치기 버튼 - 넓은 화면에서는 사이드바가 항상 보여서 필요 없으므로 기본은 숨김 */
   .mobile-sidebar-toggle{
     display:none; align-items:center; justify-content:center; gap:7px; width:100%;
@@ -15301,6 +15357,220 @@ function relocateSidebarNodes(){
   if(homeMenuCol) sidebar.appendChild(homeMenuCol);
 }
 relocateSidebarNodes();
+
+// ===== 팝오버(아이콘 레일) 모드 =====
+// 넓은 화면(터치 기기 아님)에서는 사이드바를 항상 펼쳐진 아코디언 목록 대신, 아이콘만 있는 좁은 레일로 바꾸고
+// 클릭하면 그 옆에 뜨는 팝오버 카드로 하위 메뉴를 보여줌. 기존 홈타일/펼치기 화살표/즐겨찾기 DOM과 이벤트는
+// 전혀 새로 만들거나 복제하지 않고 그대로 재사용하며, 이 코드는 표시 방식(클래스·위치)만 다룸.
+// 터치 기기(모바일 등)는 이미 별도의 floating-menu 방식이 있으므로 여기서는 건드리지 않음.
+(function(){
+  const sidebar = document.getElementById('appSidebar');
+  const homeMenuCol = document.querySelector('.home-menu-col');
+  if(!sidebar || !homeMenuCol) return;
+
+  function isTouch(){ return window.matchMedia && window.matchMedia('(pointer:coarse)').matches; }
+  function railModeEligible(){ return !isTouch() && window.innerWidth > 700; }
+
+  // 사이드바 맨 위(전체 펼치기 줄 자리)에 검색🔍 / 전체메뉴⊞ 버튼을 하나 추가함 - 레일 모드가 아닐 땐 CSS로 숨겨둠
+  let utilityRow = document.getElementById('railUtilityRow');
+  if(!utilityRow){
+    utilityRow = document.createElement('div');
+    utilityRow.id = 'railUtilityRow';
+    utilityRow.className = 'app-rail-utility-row';
+    utilityRow.innerHTML = `
+      <button type="button" class="app-rail-utility-btn" id="railSearchBtn" title="메뉴 검색">🔍</button>
+      <button type="button" class="app-rail-utility-btn" id="railAllMenuBtn" title="전체메뉴 보기">⊞</button>
+    `;
+    homeMenuCol.insertBefore(utilityRow, homeMenuCol.firstChild);
+  }
+
+  function closeAllPopovers(){
+    document.querySelectorAll('.home-section-row.rail-open').forEach(row=> row.classList.remove('rail-open'));
+  }
+
+  function openPopoverFor(row){
+    const wasOpen = row.classList.contains('rail-open');
+    closeAllPopovers();
+    if(wasOpen) return; // 이미 열려있던 걸 다시 누르면 닫기만 함(토글)
+    row.classList.add('rail-open');
+    const label = row.querySelector('.home-section-label');
+    const tiles = row.querySelector('.home-tiles');
+    if(!label || !tiles) return;
+    const labelRect = label.getBoundingClientRect();
+    const sidebarRect = sidebar.getBoundingClientRect();
+    tiles.style.left = (sidebarRect.right + 8) + 'px';
+    let top = labelRect.top;
+    // 화면 아래로 넘치지 않게 팝오버를 위로 살짝 당겨줌 (실제 높이는 열린 뒤에 재보정)
+    requestAnimationFrame(()=>{
+      const popH = tiles.offsetHeight;
+      const maxTop = window.innerHeight - popH - 12;
+      tiles.style.top = Math.max(10, Math.min(top, maxTop)) + 'px';
+    });
+    tiles.style.top = top + 'px';
+  }
+
+  // 카테고리 아이콘(.home-section-label)을 누르면 팝오버 열기/닫기 - 레일 모드일 때만 동작
+  document.querySelectorAll('.home-section-row').forEach(row=>{
+    const label = row.querySelector('.home-section-label');
+    if(!label) return;
+    label.addEventListener('click', ()=>{
+      if(!sidebar.classList.contains('rail-mode')) return;
+      openPopoverFor(row);
+    });
+  });
+
+  // 팝오버 안의 항목(탭 이동)을 누르면 자연스럽게 팝오버도 같이 닫아줌 - 기존 클릭 핸들러는 그대로 두고 추가로만 반응함
+  document.querySelectorAll('.home-tiles').forEach(tiles=>{
+    tiles.addEventListener('click', (e)=>{
+      if(!sidebar.classList.contains('rail-mode')) return;
+      if(e.target.closest('.home-tile-expand-btn')) return; // 펼치기 화살표는 팝오버를 계속 열어둬야 함
+      if(e.target.closest('.home-tile, .home-submenu-item, .home-submenu-leaf')) closeAllPopovers();
+    });
+  });
+
+  // 팝오버 바깥을 누르면 닫힘
+  document.addEventListener('click', (e)=>{
+    if(!sidebar.classList.contains('rail-mode')) return;
+    if(e.target.closest('.home-section-row')) return;
+    closeAllPopovers();
+  });
+
+  // ── 메뉴 검색: 대분류(Bookmarks~Settings) 안의 모든 하위 메뉴를 이름으로 검색해서 바로 이동함 ──
+  function flattenRealMenu(){
+    const rows = [];
+    document.querySelectorAll('.home-section-row').forEach(row=>{
+      if(row.id === 'homeFavoritesSection') return; // 즐겨찾기는 다른 카테고리 항목의 중복이라 검색에서 제외
+      const catLabel = row.querySelector('.home-section-label')?.textContent.trim() || '';
+      row.querySelectorAll('.home-tile').forEach(tile=>{
+        const title = tile.querySelector('.home-tile-title')?.textContent.trim();
+        if(!title) return;
+        rows.push({ name:title, path:catLabel, el:tile });
+      });
+      row.querySelectorAll('.home-submenu-item, .home-submenu-leaf').forEach(item=>{
+        const name = item.querySelector('span')?.textContent.trim() || item.textContent.trim();
+        if(!name) return;
+        const parentSubmenu = item.closest('.home-submenu');
+        const parentTile = parentSubmenu?.previousElementSibling?.classList?.contains('home-tile') ? parentSubmenu.previousElementSibling : null;
+        const parentTitle = parentTile?.querySelector('.home-tile-title')?.textContent.trim() || '';
+        rows.push({ name, path:catLabel + (parentTitle ? ' · ' + parentTitle : ''), el:item });
+      });
+    });
+    return rows;
+  }
+
+  function activateMenuRow(row){
+    closeAllPopovers();
+    document.getElementById('railSearchOverlay')?.classList.remove('is-open');
+    document.getElementById('railAllMenuOverlay')?.classList.remove('is-open');
+    row.el.click();
+  }
+
+  let searchOverlay = document.getElementById('railSearchOverlay');
+  if(!searchOverlay){
+    searchOverlay = document.createElement('div');
+    searchOverlay.id = 'railSearchOverlay';
+    searchOverlay.innerHTML = `
+      <div class="rail-overlay-box">
+        <div class="rail-overlay-head">
+          <input type="text" id="railSearchInput" placeholder="메뉴 이름으로 검색 (예: 팀)">
+          <button type="button" class="rail-overlay-close" id="railSearchCloseBtn">✕</button>
+        </div>
+        <div id="railSearchResults"></div>
+      </div>
+    `;
+    document.body.appendChild(searchOverlay);
+    const input = searchOverlay.querySelector('#railSearchInput');
+    const results = searchOverlay.querySelector('#railSearchResults');
+    function renderResults(){
+      const q = input.value.trim();
+      const rows = flattenRealMenu();
+      const filtered = q ? rows.filter(r=> r.name.includes(q)) : [];
+      results.innerHTML = filtered.length
+        ? filtered.map((r,i)=>`<div class="rail-search-row" data-i="${i}"><span class="rail-search-name">${r.name}</span><span class="rail-search-path">${r.path}</span></div>`).join('')
+        : `<div style="padding:14px 6px; font-size:12.5px; color:var(--ink-soft);">${q ? '일치하는 메뉴가 없어요' : '메뉴 이름을 입력해보세요'}</div>`;
+      results.querySelectorAll('.rail-search-row').forEach(rowEl=>{
+        rowEl.addEventListener('click', ()=> activateMenuRow(filtered[+rowEl.dataset.i]));
+      });
+    }
+    input.addEventListener('input', renderResults);
+    searchOverlay.querySelector('#railSearchCloseBtn').addEventListener('click', ()=> searchOverlay.classList.remove('is-open'));
+    searchOverlay.addEventListener('click', (e)=>{ if(e.target === searchOverlay) searchOverlay.classList.remove('is-open'); });
+    renderResults();
+  }
+  document.getElementById('railSearchBtn')?.addEventListener('click', ()=>{
+    closeAllPopovers();
+    searchOverlay.classList.add('is-open');
+    const input = searchOverlay.querySelector('#railSearchInput');
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    setTimeout(()=> input.focus(), 30);
+  });
+
+  // ── 전체메뉴: 카테고리를 눌러서 펼치는 게 아니라, 모든 카테고리의 하위 메뉴를 처음부터 한 번에 다 보여줌 ──
+  let allMenuOverlay = document.getElementById('railAllMenuOverlay');
+  if(!allMenuOverlay){
+    allMenuOverlay = document.createElement('div');
+    allMenuOverlay.id = 'railAllMenuOverlay';
+    allMenuOverlay.innerHTML = `
+      <div class="rail-overlay-box all-mode">
+        <div class="rail-overlay-head">
+          <div style="font-weight:800; font-size:14px; color:var(--ink);">전체메뉴</div>
+          <div style="flex:1;"></div>
+          <button type="button" class="rail-overlay-close" id="railAllMenuCloseBtn">✕</button>
+        </div>
+        <div class="rail-allmenu-grid" id="railAllMenuGrid"></div>
+      </div>
+    `;
+    document.body.appendChild(allMenuOverlay);
+    allMenuOverlay.querySelector('#railAllMenuCloseBtn').addEventListener('click', ()=> allMenuOverlay.classList.remove('is-open'));
+    allMenuOverlay.addEventListener('click', (e)=>{ if(e.target === allMenuOverlay) allMenuOverlay.classList.remove('is-open'); });
+  }
+  function renderAllMenu(){
+    const grid = allMenuOverlay.querySelector('#railAllMenuGrid');
+    const cols = [];
+    document.querySelectorAll('.home-section-row').forEach(row=>{
+      if(row.id === 'homeFavoritesSection') return;
+      const catLabel = row.querySelector('.home-section-label')?.textContent.trim() || '';
+      const items = [];
+      row.querySelectorAll('.home-tiles > .home-tile').forEach(tile=>{
+        const title = tile.querySelector('.home-tile-title')?.textContent.trim();
+        if(!title) return;
+        items.push({ name:title, sub:false, el:tile });
+        const expandBtn = tile.querySelector('.home-tile-expand-btn[data-expand-target]');
+        if(expandBtn){
+          const submenu = document.getElementById(expandBtn.dataset.expandTarget);
+          submenu?.querySelectorAll('.home-submenu-item, .home-submenu-leaf').forEach(item=>{
+            const name = item.querySelector('span')?.textContent.trim() || item.textContent.trim();
+            if(name) items.push({ name, sub:true, el:item });
+          });
+        }
+      });
+      if(items.length) cols.push({ catLabel, items });
+    });
+    grid.innerHTML = cols.map((c,ci)=>`
+      <div>
+        <div class="rail-allmenu-col-title">${c.catLabel}</div>
+        ${c.items.map((it,ii)=>`<div class="rail-allmenu-item${it.sub ? ' rail-allmenu-sub' : ''}" data-c="${ci}" data-i="${ii}">${it.name}</div>`).join('')}
+      </div>
+    `).join('');
+    grid.querySelectorAll('.rail-allmenu-item').forEach(el=>{
+      el.addEventListener('click', ()=> activateMenuRow(cols[+el.dataset.c].items[+el.dataset.i]));
+    });
+  }
+  document.getElementById('railAllMenuBtn')?.addEventListener('click', ()=>{
+    closeAllPopovers();
+    renderAllMenu();
+    allMenuOverlay.classList.add('is-open');
+  });
+
+  function applyRailMode(){
+    const eligible = railModeEligible();
+    sidebar.classList.toggle('rail-mode', eligible);
+    if(!eligible) closeAllPopovers();
+  }
+  applyRailMode();
+  window.addEventListener('resize', applyRailMode);
+})();
 // 모바일 메뉴 펼치기/접기 버튼 - 기본은 접힘(CSS의 .app-sidebar 기본 display:none)이고, 눌러야만
 // 사이드바에 mobile-sidebar-open 클래스가 붙어 목록이 펼쳐짐. 넓은 화면에서는 이 버튼 자체가 안 보이므로
 // 클래스 유무와 무관하게 항상 사이드바가 보임
