@@ -3268,17 +3268,14 @@
                  (결재·공지 등 새로 온 것들의 알림 목록)으로 바뀌어서 공지사항 전용 화면은 다른 메뉴들처럼
                  사이드바에서 바로 들어갈 수 있게 함 -->
             <div class="home-submenu-item" id="homeSideNoticeTile"><span>공지사항</span></div>
-            <div class="home-submenu-item" data-goto="companyinfo">
-              <span>사내정보</span>
-              <button type="button" class="home-tile-expand-btn" data-expand-target="homeCompanyInfoSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
-            </div>
-            <!-- 사내정보 하위 두 항목은 청인(법인)/team(팀)으로 짧게 구분해서 부름 - 실제 텍스트는 법인명·팀명이
-                 등록되면 updateHomeCompanyInfoSidebarLabels()가 그 값으로 바로 바꿔치기하고, 아직 등록 전이면
-                 이 기본값이 보임. 이 항목은 여전히 사내정보 아이콘을 한 번 더 펼쳐야 나오는 캐스케이드 팝오버임 -->
-            <div class="home-submenu" id="homeCompanyInfoSubmenu" style="display:none;">
-              <div class="home-submenu-item" data-companyinfo-cat-goto="corp"><span id="homeCiCorpLabel">청인</span></div>
-              <div class="home-submenu-item" data-companyinfo-cat-goto="team"><span id="homeCiTeamLabel">team</span></div>
-            </div>
+            <!-- 예전엔 "사내정보"라는 이름표를 한 번 더 눌러야(캐스케이드 팝오버) 그 아래 청인(법인)/Tax.J(팀)
+                 두 항목이 나왔는데, "사내정보는 없애고 그 두 항목을 다른 항목들처럼 바로 누를 수 있는
+                 중메뉴로 올려달라"는 요청으로 이름표·펼치기 화살표·캐스케이드 래퍼를 모두 없애고, 이 두
+                 항목을 팀캘린더·공지사항과 같은 줄 안에 나란한 항목으로 바로 둠. 실제 텍스트는 법인명·팀명이
+                 등록되면 updateHomeCompanyInfoSidebarLabels()가 그 값으로 바로 바꿔치기하고(청인/Tax.J는 그
+                 예시), 아직 등록 전이면 이 기본값(청인/team)이 보임 -->
+            <div class="home-submenu-item" data-companyinfo-cat-goto="corp"><span id="homeCiCorpLabel">청인</span></div>
+            <div class="home-submenu-item" data-companyinfo-cat-goto="team"><span id="homeCiTeamLabel">team</span></div>
           </div>
         </div>
         <div class="home-section-row" id="homeSectionPolicies">
@@ -15680,6 +15677,21 @@ relocateSidebarNodes();
     // 요청으로 다시 단순하게 패널 맨 위(고정된 자리)에서 시작하게 되돌림
     expandPanel.appendChild(tiles);
     tiles.classList.add('rail-popover-open', 'rail-panel-inline');
+    // "대메뉴를 누르면 그 안의 첫 번째 하위메뉴가 바로 화면에 조회됐으면 좋겠다"는 요청(예: 개인 →
+    // 개인캘린더가 목록만 펼쳐지고 화면은 그대로인 게 아니라, 목록이 펼쳐짐과 동시에 화면도 그 첫 항목
+    // 내용으로 바로 넘어감) - 갈 곳이 있는(elHasNavigation) 첫 항목을 찾아 실제로 눌러준 것과 똑같이
+    // 동작시킴. 즐겨찾기처럼 갈 곳 표시가 없는 항목뿐인 줄은 조용히 건너뜀(아무 데도 안 눌림)
+    const firstItem = firstNavigableItem(tiles);
+    if(firstItem) firstItem.click();
+  }
+
+  function firstNavigableItem(tiles){
+    const items = tiles.querySelectorAll('.home-submenu-item, .home-tile[data-goto]');
+    for(const el of items){
+      if(el.querySelector('.home-tile-expand-btn[data-expand-target]')) continue; // 펼치기 전용(더 하위가 있는) 항목은 그 자체로는 갈 곳이 없으니 건너뜀
+      if(elHasNavigation(el) || el.dataset.favKey) return el;
+    }
+    return null;
   }
 
   // 1차 팝오버(결재/거래처/Tax.J 등) 안에서 사내정보처럼 더 펼칠 하위메뉴가 있는 항목을 누르면, 같은 줄
