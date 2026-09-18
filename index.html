@@ -102,7 +102,17 @@
      보이는 좁은 레일로 줄인 뒤, 그 아이콘을 누르면 원래 항상 펼쳐져 있던 .home-tiles 목록을 position:fixed로
      띄워서 클릭한 아이콘 옆에 팝오버 카드로 보여줌. 하위메뉴가 있는 항목(사내정보/세무신고 등)의 펼치기
      화살표는 기존과 똑같이 동작(그 팝오버 카드 안에서 아코디언으로 펼쳐짐) - 별도 로직 없이 그대로 재사용됨 */
-  .app-sidebar.rail-mode{ flex:0 0 72px; width:72px; padding-right:0; gap:6px; overflow:visible; align-items:center; }
+  /* 예전엔 아이콘을 눌렀을 때 하위메뉴가 position:fixed로 화면에 떠서(팝오버) 스크롤하면 위치가 안 맞거나
+     뒤 콘텐츠와 겹쳐 보이는 문제가 있었음 - "팝오버 말고, 누르면 그 폭만큼 오른쪽에 고정적으로 나오게
+     해달라"는 요청으로, 아이콘 레일(.home-menu-col)과 펼침 패널(#railExpandPanel)을 사이드바 안에
+     나란히 두는 가로 배치로 바꿈. 펼침 패널은 항상 고정폭(280px)을 차지해서(비어있어도 그 자리는 그대로
+     남아있음) 카테고리를 열든 닫든 대시보드(.app-main) 폭이 절대 바뀌지 않게 함 - "메뉴 열 때마다
+     대시보드 폭이 흔들린다"는 지적으로, 폭 0으로 접혔다가 카드가 들어오면서 늘어나던 예전 방식을 없앰.
+     카테고리를 열면 그 안에 하위메뉴(.home-tiles)가 실제로 옮겨 들어옴(겹치는 오버레이가 아니라
+     레이아웃에 실제로 자리를 차지하는 패널) */
+  .app-sidebar.rail-mode{ flex:0 0 auto; width:auto; flex-direction:row; align-items:flex-start; padding-right:0; gap:8px; overflow:visible; }
+  .app-sidebar.rail-mode > .home-menu-col{ flex:0 0 72px; width:72px; display:flex; flex-direction:column; gap:6px; align-items:center; }
+  .app-sidebar.rail-mode #railExpandPanel{ flex:0 0 280px; width:280px; }
   .app-sidebar.rail-mode .home-menu-expand-all-row{ display:none; }
   .app-rail-utility-row{ display:none; flex-direction:column; gap:6px; margin-bottom:4px; }
   .app-sidebar.rail-mode .app-rail-utility-row{ display:flex; }
@@ -147,15 +157,25 @@
        이게 바로 "스크롤을 끝까지 올려도 맨 위 항목이 잘려서 안 보이는" 원인이 됨 - flex 컨테이너가 넘치는
        내용을 위/아래로 반씩 나눠 중앙에 두는데, 위로 넘친 부분은 scrollTop이 음수가 될 수 없어서 스크롤로
        아예 닿을 수 없는 영역이 됨. 팝오버 안에서는 항상 위에서부터 쌓이게(flex-start) 해서 이 문제를 없앰 */
-    /* 모든 메뉴가 똑같이 250px 고정폭이라, 원천세/부가세처럼 이름이 짧은 메뉴는 오른쪽에 불필요한 흰 여백이
-       크게 남았음 - width를 내용에 맞춰 줄어들게(max-content)로 바꿈. align-items는 기본값(stretch)을 그대로
-       둬서, 컨테이너 폭 자체는 가장 긴 줄의 내용 너비로 정해지고(브라우저가 각 줄의 "원래(안 늘어난) 너비"
-       중 가장 큰 값으로 max-content 폭을 계산함), 그 다음에 각 줄이 그 폭만큼 늘어나 hover 배경이 항상
-       줄 전체를 덮게 됨 */
+    /* 예전엔 width를 내용에 맞춰 줄어들게(max-content)했었는데, 그러면 설정처럼 이름이 짧은 메뉴는
+       팝오버가 아주 좁아져서 그 뒤에 있던 표 내용(기장거래처 표 등)이 옆으로 넓게 그대로 보여서 "팝오버
+       뒤에 내용이 비친다"는 지적이 있었음 - 노란색 선으로 표시해주신 폭까지는 항상 고정폭으로 덮게
+       바꿔서, 메뉴 이름이 짧든 길든 뒤 표 내용이 옆으로 새어 보이지 않게 함
+       (긴 메뉴 이름이 줄바꿈되지 않게, 예전 max-width였던 값을 그대로 고정폭으로 씀) */
     display:flex !important; flex-direction:column; justify-content:flex-start; gap:3px; position:fixed;
-    width:max-content; min-width:150px; max-width:280px; max-height:min(82vh,580px);
+    width:280px; max-height:min(82vh,580px);
     overflow-y:auto; overflow-x:hidden; background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:10px;
     box-shadow:0 16px 40px -10px rgba(15,16,30,0.28), 0 4px 14px rgba(15,16,30,0.12); z-index:9500;
+  }
+  /* 1차(카테고리를 직접 눌러 여는) 팝오버만 - 위 공용 스타일은 그대로 카드 모양을 쓰지만, position은
+     fixed로 화면에 떠 있는 대신 #railExpandPanel 안에 실제로 들어가 있는 상태이므로 static으로 바꿔서
+     패널이 차지한 자리에 그대로 눌러앉게 함(2차 캐스케이드 팝오버는 여전히 fixed로 옆에 떠 있음).
+     패널(#railExpandPanel)이 차지하는 자리는 항상 고정폭 280px이지만, 그 안의 카드 자체는 내용에 맞춰
+     줄어들게(max-content) 해서 - 설정처럼 이름이 짧은 메뉴를 열었을 때 카드 오른쪽에 불필요한 흰
+     여백이 생기지 않게 함(카드가 줄어들어도 패널 자리 자체는 그대로 280px이라 대시보드 폭은 안 바뀜.
+     뒤 표 내용이 비쳐 보이던 예전 문제는 카드 뒤에 실제 콘텐츠가 없는 이 구조에선 해당 없음) */
+  .home-tiles.rail-popover-open.rail-panel-inline{
+    position:static; left:auto; top:auto; width:max-content; min-width:150px; max-width:280px;
   }
   /* 팝오버(1차든 캐스케이드든) 안에서 사내정보처럼 그 아래 더 펼쳐지는 항목은 원래 아이콘+글자 줄
      (.home-tile-plain) 모양 그대로 두고, 다만 그 아래 실제 하위 항목(청인/team 등)만 이 줄 안에 인라인으로
@@ -3278,17 +3298,16 @@
           </div>
         </div>
         <div class="app-rail-group-divider"></div>
-        <div class="home-section-row" id="homeSectionSettingsCompany">
-          <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> 정보</div>
-          <div class="home-tiles" id="homeTilesSettingsCompany">
-            <div class="home-submenu-item" data-settings-anchor-goto="company" data-settings-target-id="ssTitle-companyInfo"><span>회사정보</span></div>
-            <div class="home-submenu-item" data-settings-anchor-goto="company" data-settings-target-id="ssTitle-teamInfo"><span>팀정보</span></div>
-            <div class="home-submenu-item" data-settings-anchor-goto="company" data-settings-target-id="ssTitle-staffInfo"><span>직원정보</span></div>
-          </div>
-        </div>
         <div class="home-section-row" id="homeSectionSettingsWelfare">
           <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.51 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/></svg> 설정</div>
           <div class="home-tiles" id="homeTilesSettingsWelfare">
+            <!-- 예전엔 "정보"라는 별도 대메뉴로 따로 있었는데, "정보 대메뉴는 없애고 그 세 항목(회사정보/
+                 팀정보/직원정보)을 설정 밑으로 합쳐서 맨 위에 두자"는 요청으로 이 자리로 옮김. 클릭 시
+                 동작은 data-settings-anchor-goto="company" 값으로 정해지므로(위 14061번째 줄 부근 참고)
+                 어느 대메뉴 안에 있든 그대로 똑같이 동작함 -->
+            <div class="home-submenu-item" data-settings-anchor-goto="company" data-settings-target-id="ssTitle-companyInfo"><span>회사정보</span></div>
+            <div class="home-submenu-item" data-settings-anchor-goto="company" data-settings-target-id="ssTitle-teamInfo"><span>팀정보</span></div>
+            <div class="home-submenu-item" data-settings-anchor-goto="company" data-settings-target-id="ssTitle-staffInfo"><span>직원정보</span></div>
             <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-workHours"><span>근무시간</span></div>
             <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-lunch"><span>점심식대</span></div>
             <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-exclusionDays"><span>제외일수</span></div>
@@ -15545,6 +15564,10 @@ relocateSidebarNodes();
   if(!sidebar || !homeMenuCol) return;
 
   function isTouch(){ return window.matchMedia && window.matchMedia('(pointer:coarse)').matches; }
+  // 한 번은 "레일 자체를 없애고 예전 넓은 사이드바로 돌아가자"고 했다가, 다시 "아니 레일(아이콘만
+  // 있는 좁은 메뉴)은 그대로 두고, 눌렀을 때 뜨는 하위메뉴만 팝오버(화면에 붕 뜸)가 아니라 그 옆에
+  // 고정적으로 자리를 차지하는 패널로 바꿔달라"로 정리됨 - 레일 모드를 다시 켜고, 아래
+  // openPopoverFor/closeAllPopovers만 "팝오버로 띄우기" 대신 "#railExpandPanel 안에 넣기"로 바꿔서 대응함
   function railModeEligible(){ return !isTouch() && window.innerWidth > 700; }
 
   // 사이드바 맨 위(전체 펼치기 줄 자리)에 검색🔍 / 전체메뉴⊞ 버튼을 하나 추가함 - 레일 모드가 아닐 땐 CSS로 숨겨둠
@@ -15558,6 +15581,15 @@ relocateSidebarNodes();
       <button type="button" class="app-rail-utility-btn" id="railAllMenuBtn" title="전체메뉴 보기">⊞</button>
     `;
     homeMenuCol.insertBefore(utilityRow, homeMenuCol.firstChild);
+  }
+
+  // 아이콘 레일(.home-menu-col) 바로 옆에 나란히 둘 빈 패널 - 평소엔 안에 아무것도 없어서 폭이 0이라
+  // 안 보이고, 카테고리를 열면 그 하위메뉴(.home-tiles)가 이 안으로 들어와 폭 280px짜리 카드가 됨
+  let expandPanel = document.getElementById('railExpandPanel');
+  if(!expandPanel){
+    expandPanel = document.createElement('div');
+    expandPanel.id = 'railExpandPanel';
+    sidebar.appendChild(expandPanel); // .home-menu-col과 나란한 형제로 - #appSidebar 자체가 가로 배치(rail-mode)이므로 이 자리에 오면 자동으로 아이콘 레일 옆에 붙음
   }
 
   // 팝오버가 열릴 때 home-tiles를 body로 옮기기 전, 원래 있던 자리(부모 .home-section-row)를 기억해뒀다가
@@ -15582,7 +15614,7 @@ relocateSidebarNodes();
   function closeAllPopovers(){
     closeCascadePopovers();
     document.querySelectorAll('.home-tiles.rail-popover-open').forEach(tiles=>{
-      tiles.classList.remove('rail-popover-open', 'rail-popover-grid');
+      tiles.classList.remove('rail-popover-open', 'rail-popover-grid', 'rail-panel-inline');
       tiles.style.left = ''; tiles.style.top = '';
       const home = railHomeMap.get(tiles);
       if(home && home.parent) home.parent.appendChild(tiles); // 항상 label 다음(마지막) 자리라 appendChild로 충분함
@@ -15623,16 +15655,13 @@ relocateSidebarNodes();
     const tiles = row.querySelector('.home-tiles');
     if(!label || !tiles) return;
     if(!railHomeMap.has(tiles)) railHomeMap.set(tiles, { parent: row });
-    const labelRect = label.getBoundingClientRect();
-    const sidebarRect = sidebar.getBoundingClientRect();
-    // 사이드바(#appSidebar)가 position:sticky라 자체 쌓임 맥락을 만들어서, 그 안에 둔 채로는 fixed를 줘도
-    // 오른쪽 대시보드 카드에 가려짐 - body 바로 밑으로 옮겨서 쌓임 맥락 밖으로 완전히 빼냄
-    document.body.appendChild(tiles);
-    tiles.classList.add('rail-popover-open');
-    tiles.style.left = (sidebarRect.right + 8) + 'px';
-    tiles.style.top = labelRect.top + 'px';
-    // 화면 아래로 넘치지 않게 팝오버를 위로 살짝 당겨줌 (실제 높이는 body에 옮겨져 렌더링된 뒤에나 알 수 있음)
-    requestAnimationFrame(()=> clampPopoverPosition(tiles));
+    // 예전엔 여기서 body로 옮기고 position:fixed로 좌표를 계산해 띄웠는데(팝오버), 이제는 아이콘 레일
+    // 바로 옆에 항상 붙어있는 #railExpandPanel 안에 그대로 옮겨 넣기만 함 - 화면에 붕 뜨는 대신 레이아웃
+    // 안에서 실제로 그 자리를 차지하게 되므로, 좌표 계산도 스크롤에 따른 재조정도 필요 없어짐
+    const expandPanel = document.getElementById('railExpandPanel');
+    if(!expandPanel) return;
+    expandPanel.appendChild(tiles);
+    tiles.classList.add('rail-popover-open', 'rail-panel-inline');
   }
 
   // 1차 팝오버(결재/거래처/Tax.J 등) 안에서 사내정보처럼 더 펼칠 하위메뉴가 있는 항목을 누르면, 같은 줄
@@ -15889,7 +15918,7 @@ relocateSidebarNodes();
   const ALLMENU_GROUPS = [
     { label:'Works', rowIds:['homeSectionApproval','homeSectionClient','homeSectionTaxFiling','homeSectionSubmitStatus'] },
     { label:'Company', rowIds:['homeSectionTaxJ','homeSectionStaff','homeSectionPolicies'] },
-    { label:'Settings', rowIds:['homeSectionSettingsCompany','homeSectionSettingsWelfare','homeSectionSettingsData'] },
+    { label:'Settings', rowIds:['homeSectionSettingsWelfare','homeSectionSettingsData'] },
   ];
   const ALLMENU_GROUPED_ROW_IDS = new Set(ALLMENU_GROUPS.flatMap(g=> g.rowIds));
   function renderAllMenu(){
