@@ -694,7 +694,7 @@
      (예전엔 항상 전체폭 고정이었는데, 굳이 가로로 길 필요는 없다는 의견으로 다른 위젯과 동일한 폭 규칙을 따름) -
      은은한 그라디언트 패널 + 점무늬 텍스처만은 계속 유지해서 나머지 흰 카드들과 질감 차이는 남김 */
   .home-dash-freeform-hero{
-    position:relative; overflow:hidden; border-radius:22px; padding:18px 22px;
+    position:relative; overflow:hidden; border-radius:22px; padding:26px 22px;
     background:
       radial-gradient(circle at 14px 14px, rgba(91,95,239,0.10) 1.5px, transparent 1.6px) 0 0/22px 22px,
       linear-gradient(120deg, var(--indigo-bg) 0%, var(--surface) 55%, var(--mint-bg, var(--indigo-bg)) 100%);
@@ -1285,15 +1285,19 @@
      비활성 상태도 칩 모양이 뚜렷하게 보이게 함(#bulkExcelSheetToggle과 같은 이유/같은 처리) */
   .notification-filter-btn{ border:1.5px solid var(--border); }
   .notification-filter-btn.active{ border-color:var(--guide-slate); }
-  /* 거래처 상세팝업의 메모 목록 - 날짜(제목) 줄만 보이고 눌러야 내용이 펼쳐짐(details/summary 네이티브 토글) */
-  .client-memo-item{ padding:5px 0; border-bottom:1px dashed var(--border); }
-  .client-memo-item summary{ cursor:pointer; list-style:none; display:flex; align-items:center; gap:5px; color:var(--ink-soft); font-size:10.5px; outline:none; }
+  /* 거래처 상세팝업의 메모 목록 - 날짜 등 다른 텍스트 없이 화살표만 접힌 상태로 보이고, 그 화살표(줄 전체)를
+     누르면 내용이 펼쳐짐(details/summary 네이티브 토글). 클릭 영역이 아이콘 크기로 좁아지지 않게 summary를
+     줄 전체 너비로 넓히고 옅은 배경으로 클릭 가능함을 표시함 */
+  .client-memo-item{ border-bottom:1px dashed var(--border); }
+  .client-memo-item:last-child{ border-bottom:none; }
+  .client-memo-item summary{ cursor:pointer; list-style:none; display:flex; align-items:center; width:100%; padding:7px 4px; color:var(--ink-soft); outline:none; border-radius:6px; }
+  .client-memo-item summary:hover{ background:rgba(29,30,51,0.045); }
   .client-memo-item summary::-webkit-details-marker{ display:none; }
   /* 화살표를 글자(▸)로 넣었더니 폰트에 따라 점처럼 뭉개져 보인다는 의견으로, 다른 곳(잠금 아이콘 등)과
      같은 방식인 인라인 SVG 화살표로 바꿈 - summary 안의 svg.client-memo-arrow에 직접 붙임 */
   .client-memo-item summary svg.client-memo-arrow{ flex-shrink:0; transition:transform 0.15s; }
   .client-memo-item[open] summary svg.client-memo-arrow{ transform:rotate(90deg); }
-  .client-memo-item .client-memo-body{ margin-top:4px; padding-left:14px; font-size:12.5px; color:var(--ink); }
+  .client-memo-item .client-memo-body{ margin-top:2px; padding:0 4px 6px 8px; font-size:12.5px; color:var(--ink); }
   .tab-group-label{
     font-weight:800; font-size:12.5px; color:var(--navy);
     letter-spacing:0.01em; padding:0 8px 0 0; white-space:nowrap;
@@ -10801,7 +10805,8 @@ function openClientDetailModal(c){
   // 소제목이 "주연락" 배지(인디고 굵은 글씨)와 색·굵기·크기가 비슷해서 구분이 잘 안 된다는 지적이 있었음 -
   // 알약 배지 대신, 제목 줄 전체를 박스 폭만큼 뚜렷이 다른 음영(네이비 바탕 + 흰 글자)으로 채운 "제목 띠"로
   // 만들어서 그 아래 본문(옅은 회색)과 확실히 구분되는 하나의 헤더처럼 보이게 함
-  // headExtra(수정/이력/삭제 아이콘 줄 등)를 넘기면 제목 띠 오른쪽 위 구석에 작게 얹힘 - 기본정보 칸에서만 씀
+  // headExtra를 넘기면 제목 띠 오른쪽에 작게 얹힘 - 지금은 아무 데서도 안 쓰지만(수정/이력/삭제 아이콘은
+  // 이제 팝업 상단 X 옆으로 옮김, 위 openClientDetailModal 참고), 다른 구간에서 필요해지면 재사용 가능
   const group = (t, rowsHtml, headExtra) => `
     <div style="background:var(--bg); border-radius:10px; overflow:hidden; margin-bottom:10px;">
       <div style="background:var(--navy); padding:8px 12px; text-align:center; font-size:11.5px; font-weight:800; color:#fff; letter-spacing:0.06em; position:relative;">
@@ -10811,24 +10816,22 @@ function openClientDetailModal(c){
       <div style="padding:10px 12px;">${rowsHtml}</div>
     </div>`;
 
-  // 수정/이력/삭제 아이콘 줄 - "기본정보" 제목 띠(navy 바탕) 안이 아니라, "기본정보" 그룹 칩(카드) 전체의
-  // 오른쪽 위 모서리에 살짝 걸쳐서 떠 있는 작은 배지처럼 둠(아래 group('기본정보', ...)를 감싸는 relative
-  // 래퍼 + absolute 배치) - 밝은 카드 바탕에 뜨므로 원래 쓰던 색(수정:네이비/이력:회색/삭제:코랄) 그대로 씀
+  // 수정/이력/삭제 아이콘 줄 - "기본정보" 카드 모서리에 걸치게 떠 있으면 카드를 여러 번 고쳐도 계속 눌리거나
+  // 잘려 보인다는 지적("여기 몇 번 수정하는거야")을 받아, 아예 팝업 자체의 상단 제목 줄로 옮김 - X(닫기)
+  // 버튼과 같은 줄, 그 왼쪽에 나란히 둠(#memoModalTitleExtra, sticky 제목 줄 안에 absolute로 배치 - 아래
+  // renderClientDetailBody 마지막 부분 참고). 밝은 배경 위라 원래 쓰던 색(수정:네이비/이력:회색/삭제:코랄) 그대로 씀
   const clientDetailHeadIcons = `
-    <button type="button" id="clientDetailEditBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="수정" style="color:var(--navy); background:transparent; border:none; padding:5px; display:inline-flex; border-radius:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>
-    <button type="button" id="clientDetailHistoryBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="이력" style="color:var(--ink-soft); background:transparent; border:none; padding:5px; display:inline-flex; border-radius:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 16 14"></polyline></svg></button>
-    <button type="button" id="clientDetailDeleteBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="삭제" style="color:var(--coral); background:transparent; border:none; padding:5px; display:inline-flex; border-radius:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>`;
+    <button type="button" id="clientDetailEditBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="수정" style="color:var(--navy); background:transparent; border:none; padding:5px; display:inline-flex; border-radius:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>
+    <button type="button" id="clientDetailHistoryBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="이력" style="color:var(--ink-soft); background:transparent; border:none; padding:5px; display:inline-flex; border-radius:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 16 14"></polyline></svg></button>
+    <button type="button" id="clientDetailDeleteBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="삭제" style="color:var(--coral); background:transparent; border:none; padding:5px; display:inline-flex; border-radius:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>`;
   // 1) 기본정보 - 등록 폼과 같은 순서: 구분/상세구분/사업자번호/법인등록번호/사업장주소/개업일/설립일/업종코드/업태
   const subTypeDisplay = summarizeSubTags(c) || '-';
   // 설립일은 법인에만 있는 개념이라 개인 거래처면 행 자체를 넣지 않음
   const foundingRow = c.entityType !== '개인' ? rowHtml('설립일', c.foundingDate || '-') : '';
-  // 기본정보 카드는 relative 래퍼로 감싸서, 위 아이콘 줄을 카드 테두리 위로 살짝 걸치는 배지처럼(absolute,
-  // top이 음수) 오른쪽 위 모서리에 띄움 - group() 자체는 overflow:hidden이라 카드 안에서는 이렇게 못 띄움
-  let html = `<div style="position:relative; margin-top:4px;">` + group('기본정보', rowHtml('구분', c.entityType || '-') + rowHtml('상세구분', subTypeDisplay)
+  let html = group('기본정보', rowHtml('구분', c.entityType || '-') + rowHtml('상세구분', subTypeDisplay)
     + rowHtml('사업자번호', c.bizNo || '-') + (c.entityType === '법인' ? rowHtml('법인등록번호', c.corpRegNo || '-') : '')
     + rowHtml('사업장 주소', c.bizAddress || '-') + rowHtml('개업일', c.openDate || '-') + foundingRow
-    + rowHtml('업종코드', c.bizTypeCode || '-') + rowHtml('업태', c.bizType || '-'))
-    + `<div style="position:absolute; top:-8px; right:2px; display:flex; align-items:center; gap:1px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1px; box-shadow:0 2px 6px rgba(15,16,30,0.15);">${clientDetailHeadIcons}</div></div>`;
+    + rowHtml('업종코드', c.bizTypeCode || '-') + rowHtml('업태', c.bizType || '-'));
 
   // 2) 대표자 정보 - 주민번호는 암호화 없이(요청에 따라) 평문으로 등록 폼에서 바로 입력·조회함
   const repIsPrimary = c.primaryContactType !== 'contact';
@@ -10864,13 +10867,12 @@ function openClientDetailModal(c){
   }
   html += group('수임정보', hireRows);
 
-  // 5) 메모 - 여러 건이면 각각 날짜와 함께 보여줌. 메모가 쌓일수록 팝업이 너무 길어진다는 의견으로,
-  // 날짜(제목) 줄만 먼저 보이고 눌러야 내용이 펼쳐지는 <details>/<summary> 방식으로 바꿈(각 항목은 기본
-  // 접힌 상태 - 브라우저 네이티브 토글이라 별도 JS 없이 동작함)
+  // 5) 메모 - 날짜 같은 부가정보 없이 접힌 상태(화살표만)로만 보여주고, 그 화살표를 눌러야 내용이 펼쳐지는
+  // <details>/<summary> 방식(각 항목은 기본 접힌 상태 - 브라우저 네이티브 토글이라 별도 JS 없이 동작함)
   const memoList = (c.memos && c.memos.length) ? c.memos : (c.memo ? [{text:c.memo, date:''}] : []);
-  const memoArrowSvg = `<svg class="client-memo-arrow" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>`;
+  const memoArrowSvg = `<svg class="client-memo-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>`;
   const memoRows = memoList.length
-    ? memoList.map(m=>`<details class="client-memo-item"><summary>${memoArrowSvg}${escHtml(m.date||'(날짜 없음)')}</summary><div class="client-memo-body">${linkifyText(m.text||'')}</div></details>`).join('')
+    ? memoList.map(m=>`<details class="client-memo-item"><summary>${memoArrowSvg}</summary><div class="client-memo-body">${linkifyText(m.text||'')}</div></details>`).join('')
     : `<div style="padding:5px 0; font-size:12.5px; color:var(--ink-soft); text-align:center;">등록된 메모 없음</div>`;
   html += group('메모', memoRows);
 
@@ -10879,9 +10881,10 @@ function openClientDetailModal(c){
   // 하드코딩돼 있어서 소제목 스타일을 바꿔도 여기만 안 바뀌는 문제가 있었음)
   html += group('개인정보', '<div id="clientDetailPiWrap"></div>');
 
-  // 수정/이력/삭제 아이콘은 이제 위 "기본정보" 제목 띠 오른쪽 위 구석에 이미 얹혀있으므로(headExtra 참고),
-  // sticky 제목 줄(#memoModalTitleExtra)은 비워둠 - 다음에 여는 다른 안내 팝업에 남아있지 않게 함
-  document.getElementById('memoModalTitleExtra').innerHTML = '';
+  // 수정/이력/삭제 아이콘 줄은 sticky 제목 줄(#memoModalTitleExtra) 안에, X(닫기) 버튼과 같은 높이로
+  // 그 왼쪽에 나란히 둠 - closeMemoModal()에서 팝업을 닫을 때 항상 비우므로 다음에 여는 다른 안내 팝업에는 안 남음
+  document.getElementById('memoModalTitleExtra').innerHTML =
+    `<div style="position:absolute; top:14px; right:50px; display:flex; align-items:center; gap:1px;">${clientDetailHeadIcons}</div>`;
   document.getElementById('memoModalBody').innerHTML = html;
   document.getElementById('memoModalOverlay').style.display = 'flex';
   renderClientDetailPersonalInfoSection(c);
