@@ -196,6 +196,18 @@
   .rail-allmenu-grid > div + div{ border-left:1px solid var(--border); padding-left:14px; }
   .rail-allmenu-item{ font-size:12.5px; font-weight:600; color:var(--ink-soft); padding:4px 0; cursor:pointer; text-align:center; }
   .rail-allmenu-item:hover{ color:var(--ink); text-decoration:underline; }
+  /* 즐겨찾기 추가 팝업도 전체메뉴와 같은 구조(위 .rail-allmenu-*)를 재사용하되, 실제로 추가할 수 있는
+     리프 항목만 이 모양(가운데 정렬 대신 좌우로 이름+plus 버튼, 밑줄 대신 옅은 배경 hover)으로 다르게 보여줘서
+     "누르면 이동" 대신 "누르면 즐겨찾기에 추가"라는 게 눈에 드러나게 함 */
+  .rail-allmenu-item.rail-allmenu-item-add{
+    display:flex; align-items:center; justify-content:space-between; gap:8px; text-align:left;
+    padding:6px 8px; border-radius:8px;
+  }
+  .rail-allmenu-item.rail-allmenu-item-add:hover{ color:var(--ink); text-decoration:none; background:var(--indigo-bg); }
+  .rail-allmenu-add-btn{
+    flex-shrink:0; width:18px; height:18px; border-radius:50%; background:var(--indigo); color:#fff;
+    display:inline-flex; align-items:center; justify-content:center;
+  }
   /* 중간메뉴(결재/거래처/세무신고 등, depth 0)는 하위메뉴(기안작성 등)와 왼쪽 들여쓰기가 아니라 크기·굵기·
      색으로 구분함 - 그 위에 여백을 둬서 그룹이 바뀌는 지점도 눈에 띄게 함 */
   .rail-allmenu-mid{ font-size:13.5px; font-weight:800; color:var(--indigo-deep); margin-top:14px; }
@@ -3815,8 +3827,8 @@
         </div>
         <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
           <div class="field" style="flex:2 1 260px;"><label>사업장 주소</label><input type="text" id="cl-biz-address" placeholder="예: 서울특별시 강남구 테헤란로 123"></div>
-          <div class="field" style="flex:1 1 140px;"><label>개업일</label><input type="date" id="cl-open-date" min="1900-01-01" max="2099-12-31"></div>
-          <div class="field" style="flex:1 1 140px;"><label>설립일</label><input type="date" id="cl-founding-date" min="1900-01-01" max="2099-12-31"></div>
+          <div class="field" style="flex:1 1 140px;"><label>개업일</label><input type="date" id="cl-open-date"></div>
+          <div class="field" style="flex:1 1 140px;"><label>설립일</label><input type="date" id="cl-founding-date"></div>
         </div>
         <div class="field-row" style="display:flex; gap:10px; flex-wrap:wrap;">
           <div class="field" style="flex:1 1 120px;"><label>업종코드</label><input type="text" id="cl-biz-type-code" placeholder="예: 741201"></div>
@@ -4706,9 +4718,9 @@
   <!-- 즐겨찾기 선택 팝업: 사이드바의 빈 즐겨찾기 자리(+)를 누르면 뜸 - 메뉴 트리 전체(가장 하위 메뉴까지) 중
        아직 즐겨찾기에 없는 항목을 골라 추가함 -->
   <div id="favoriteMenuPickerOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
-    <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:360px; width:100%; max-height:80vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:860px; width:100%; max-height:80vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
-        <div style="font-weight:800; font-size:15px; color:var(--ink);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> Bookmarks 추가</div>
+        <div style="font-weight:800; font-size:15px; color:var(--ink);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> 즐겨찾기 추가</div>
         <button type="button" id="favoriteMenuPickerClose" class="del-btn modal-close-btn">✕</button>
       </div>
       <div id="favoriteMenuPickerList"></div>
@@ -8802,6 +8814,13 @@ function normalizeState(){
   attendance.leaveGrants = attendance.leaveGrants || [];
   attendance.leaveUsage = attendance.leaveUsage || [];
   attendance.remoteEntries = attendance.remoteEntries || [];
+  attendance.clockLog = attendance.clockLog || [];
+  // clockLog 항목엔 원래 id가 없어서(date만 있음), Drive 동기화 시 다른 항목처럼 "항목 단위로" 병합이
+  // 안 되고 배열 전체를 통째로 비교했음 - 그 사이 다른 기기/탭에서도 뭔가 저장이 겹치면(둘 다 baseline에서
+  // 바뀐 "충돌"로 판정) 방금 찍은 출퇴근 기록이 병합 결과에서 조용히 사라질 수 있었음("퇴근 찍었는데
+  // 시간이 사라진다"는 문의). date는 이미 하루에 한 건만 있는 고유값이니 그대로 id로 써서, 다른 배열들과
+  // 똑같이 날짜별로 안전하게 병합되게 함(예전 기록에 id가 없어도 여기서 한 번만 채워주면 됨)
+  attendance.clockLog.forEach(e=>{ if(e && !e.id && e.date) e.id = e.date; });
 
   // expense 기본 구조 보장
   expense.lunchEntries = expense.lunchEntries || [];
@@ -14530,7 +14549,7 @@ function todayClockEntry(create){
   const d = todayStr();
   attendance.clockLog = attendance.clockLog || [];
   let entry = attendance.clockLog.find(e=>e.date===d);
-  if(!entry && create){ entry = { date:d, checkIn:'', checkOut:'', status:'사무실' }; attendance.clockLog.push(entry); }
+  if(!entry && create){ entry = { id:d, date:d, checkIn:'', checkOut:'', status:'사무실' }; attendance.clockLog.push(entry); }
   return entry;
 }
 function nowHHMM(){
@@ -15409,23 +15428,66 @@ function renderFavoritesBar(){
     slot.addEventListener('click', openFavoriteMenuPicker);
   });
 }
+// 즐겨찾기 추가 목록도 전체메뉴(전체메뉴 모달)와 똑같이 Works/Company/Settings 3칼럼 구조로 보여달라는
+// 요청 - 예전엔 이 팝업만 따로 모든 리프 메뉴를 밋밋한 세로 목록(+ 색깔 악센트 바)으로 보여줬는데, 전체메뉴가
+// 이미 훨씬 보기 좋은 구조로 같은 메뉴 트리를 보여주고 있어서 그 구조(window.collectMenuItems/ALLMENU_GROUPS,
+// 위 initRailPopoverMode IIFE 참고)를 그대로 재사용하고, 리프 항목에만 + 버튼을 달아 누르면 바로 추가되게 함
+function buildFavoritePickerCols(favKeys){
+  if(typeof window.collectMenuItems !== 'function' || !Array.isArray(window.ALLMENU_GROUPS)) return [];
+  const cols = [];
+  const isAddableLeaf = it => !it.hasChildren && favoriteMenuKeyOf(it.el);
+  document.querySelectorAll('.home-section-row').forEach(row=>{
+    if(row.id === 'homeFavoritesSection') return;
+    if(window.ALLMENU_GROUPED_ROW_IDS && window.ALLMENU_GROUPED_ROW_IDS.has(row.id)) return;
+    const catLabel = row.querySelector('.home-section-label')?.textContent.trim() || '';
+    const tilesRoot = row.querySelector(':scope > .home-tiles');
+    if(!tilesRoot) return;
+    const items = window.collectMenuItems(tilesRoot, 0).filter(it=> it.hasChildren || !favKeys.has(favoriteMenuKeyOf(it.el)));
+    if(items.some(isAddableLeaf)) cols.push({ catLabel, items });
+  });
+  window.ALLMENU_GROUPS.forEach(group=>{
+    const items = [];
+    group.rowIds.forEach(rowId=>{
+      const row = document.getElementById(rowId);
+      const label = row?.querySelector('.home-section-label');
+      const tilesRoot = row?.querySelector(':scope > .home-tiles');
+      if(!label || !tilesRoot) return;
+      const name = label.textContent.trim();
+      if(!name) return;
+      const subItems = window.collectMenuItems(tilesRoot, 1).filter(it=> it.hasChildren || !favKeys.has(favoriteMenuKeyOf(it.el)));
+      if(!subItems.some(isAddableLeaf)) return; // 이 카테고리 아래에 더 추가할 항목이 없으면 통째로 생략
+      items.push({ name, depth:0, el:label, hasChildren:true });
+      items.push(...subItems);
+    });
+    if(items.some(isAddableLeaf)) cols.push({ catLabel: group.label, items });
+  });
+  return cols;
+}
 function openFavoriteMenuPicker(){
   const overlay = document.getElementById('favoriteMenuPickerOverlay');
   const listWrap = document.getElementById('favoriteMenuPickerList');
   if(!overlay || !listWrap) return;
   const favKeys = new Set(getFavoriteMenuItems().map(f=>f.key));
-  const items = Array.from(document.querySelectorAll(FAVORITE_MENU_SELECTOR))
-    .filter(el=>favoriteMenuIsLeaf(el))
-    .filter(el=>!favKeys.has(favoriteMenuKeyOf(el)))
-    .map(el=>({ el, key:favoriteMenuKeyOf(el), label:favoriteMenuLabelOf(el), accent:favoriteMenuAccentOf(el) }));
-  if(!items.length){
+  const cols = buildFavoritePickerCols(favKeys);
+  const plusIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
+  if(!cols.length){
     listWrap.innerHTML = `<div class="empty-state">더 등록할 수 있는 메뉴가 없어요.</div>`;
   } else {
-    listWrap.innerHTML = items.map(it=>`<div class="home-tile home-tile-plain home-fav-picker-item" data-fav-key="${escHtml(it.key)}" style="--tile-accent:${escHtml(it.accent||'var(--indigo)')};"><div class="home-tile-title">${escHtml(it.label)}</div></div>`).join('');
-    listWrap.querySelectorAll('.home-fav-picker-item').forEach(row=>{
+    listWrap.innerHTML = `<div class="rail-allmenu-grid">${cols.map((c,ci)=>`
+      <div>
+        <div class="rail-allmenu-col-title">${escHtml(c.catLabel)}</div>
+        ${c.items.map((it,ii)=>{
+          const key = it.hasChildren ? '' : favoriteMenuKeyOf(it.el);
+          const addable = !it.hasChildren && key && !favKeys.has(key);
+          const cls = it.depth===0 ? 'rail-allmenu-mid' : 'rail-allmenu-sub';
+          if(!addable) return `<div class="rail-allmenu-item ${cls}">${escHtml(it.name)}</div>`;
+          return `<div class="rail-allmenu-item rail-allmenu-item-add ${cls}" data-c="${ci}" data-i="${ii}"><span>${escHtml(it.name)}</span><span class="rail-allmenu-add-btn" title="즐겨찾기에 추가">${plusIcon}</span></div>`;
+        }).join('')}
+      </div>`).join('')}</div>`;
+    listWrap.querySelectorAll('.rail-allmenu-item-add').forEach(row=>{
       row.addEventListener('click', ()=>{
-        const found = items.find(it=>it.key===row.dataset.favKey);
-        if(found) addFavoriteMenuItem(found.el);
+        const it = cols[+row.dataset.c].items[+row.dataset.i];
+        if(it?.el) addFavoriteMenuItem(it.el);
         overlay.style.display = 'none';
       });
     });
@@ -15889,6 +15951,12 @@ relocateSidebarNodes();
   }
   applyRailMode();
   window.addEventListener('resize', applyRailMode);
+  // 즐겨찾기 추가 팝업(openFavoriteMenuPicker, 이 IIFE 밖에서 정의됨)도 전체메뉴와 똑같은 3칼럼 그룹
+  // 구조(Works/Company/Settings)로 보여주기 위해 같은 헬퍼를 재사용함 - 이 IIFE 안에서만 보이는
+  // 지역 함수라 window에 걸어서 바깥에서도 쓸 수 있게 함
+  window.collectMenuItems = collectMenuItems;
+  window.ALLMENU_GROUPS = ALLMENU_GROUPS;
+  window.ALLMENU_GROUPED_ROW_IDS = ALLMENU_GROUPED_ROW_IDS;
 })();
 // 모바일 메뉴 펼치기/접기 버튼 - 기본은 접힘(CSS의 .app-sidebar 기본 display:none)이고, 눌러야만
 // 사이드바에 mobile-sidebar-open 클래스가 붙어 목록이 펼쳐짐. 넓은 화면에서는 이 버튼 자체가 안 보이므로
@@ -16978,16 +17046,30 @@ async function handleClientFormSubmit(){
   fields.memo = fields.memos.map(m=>m.text).join(' / ');
   fields.subTagsSummary = summarizeSubTags(fields);
   if(editingClientId){
-    const c = clients.list.find(x=>x.id===editingClientId);
-    if(c){
-      const changes = diffClientFields(c, fields);
-      Object.assign(c, fields);
-      if(changes.length){
-        if(!Array.isArray(c.editHistory)) c.editHistory = [];
-        c.editHistory.unshift({ date: new Date().toLocaleString('ko-KR'), changes });
-      }
+    let c = clients.list.find(x=>x.id===editingClientId);
+    // 아주 드물게(마이그레이션/동기화 등으로 목록이 새로 교체된 사이) editingClientId가 지금
+    // clients.list 안의 어떤 항목과도 id가 안 맞을 수 있음 - 예전엔 이 경우 c가 그냥 undefined가
+    // 돼서 아무것도 반영되지 않았는데도 "수정됐어요" 토스트만 뜨고 저장은 조용히 실패한 것처럼 보이는
+    // 문제가 있었음("계속 저장이 안 된다"는 문의). id로 못 찾으면 사업자번호(없으면 상호명)로 한 번 더
+    // 찾아보고, 그래도 못 찾으면 성공한 척 넘어가지 않고 바로 오류를 알려서 데이터가 조용히 사라지지
+    // 않게 함
+    if(!c){
+      const key = clientIdentityKey(fields);
+      if(key) c = clients.list.find(x=>clientIdentityKey(x)===key);
+      if(!c) c = clients.list.find(x=>x.name && fields.name && normalizeClientName(x.name)===normalizeClientName(fields.name));
     }
-    lastEditedClientId = editingClientId;
+    if(!c){
+      editingClientId = null;
+      appAlert('수정하려는 거래처를 목록에서 찾지 못해서 저장하지 못했어요. 화면을 새로고침한 뒤, 목록에서 이 거래처를 다시 찾아 수정해주세요.');
+      return;
+    }
+    const changes = diffClientFields(c, fields);
+    Object.assign(c, fields);
+    if(changes.length){
+      if(!Array.isArray(c.editHistory)) c.editHistory = [];
+      c.editHistory.unshift({ date: new Date().toLocaleString('ko-KR'), changes });
+    }
+    lastEditedClientId = c.id;
     editingClientId = null;
     showCenterToast('수정됐어요'); document.getElementById('clientSaveMsg').textContent = '수정 완료';
     // 거래처 기본/추가정보 저장은 개인정보(암호화) 저장과 완전히 분리함 - 개인정보 저장 쪽에서 비밀번호
