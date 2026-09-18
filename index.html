@@ -25990,31 +25990,77 @@ async function gdriveEnsureFile(){
 
 // 반환값: 저장이 실제로 성공했는지 여부. gdrivePull()이 "덮어쓰기 전에 먼저 저장"할 때 이 값을 반드시 확인해서,
 // 저장이 실패했는데도 옛날 원격 데이터로 방금 입력한 내용을 덮어쓰는 사고(예: 방금 등록한 폴더링크가 사라지는 문제)를 막음.
+// 병합해서 올려도 못 막는 마지막 구멍: "원격 최신본을 받아와서 병합"부터 "그 결과를 PATCH로 올리기"까지
+// 걸리는 그 짧은 순간에, 같은 계정을 동시에 쓰는 다른 기기/탭이 하필 그 사이에 먼저 저장을 끝내버리면,
+// 내가 병합할 때는 존재하지도 않았던 그 변경사항을 내 PATCH가 통째로 덮어써버림(둘 다 "병합"을 했더라도,
+// 서로의 병합 결과를 모른 채 동시에 올렸으니 마지막에 도착한 PATCH가 무조건 이기는 구조라 소용없음).
+// PATCH 바로 직전에 파일의 modifiedTime만 가볍게 한 번 더 확인해서, 내가 병합 작업을 시작한 뒤로 누가
+// 이미 또 저장했다면 - 그 최신 내용을 반영 못 한 채로 올리지 않고, 처음부터(원격 다시 받기→병합) 다시
+// 시도함(최대 3번). 완벽히 막을 순 없어도(그 확인~PATCH 사이의 아주 짧은 틈은 여전히 남음), 위험한
+// 구간을 "원격 파일 전체를 받는 시간"에서 "가벼운 메타데이터 조회 한 번"으로 크게 줄여줌
+async function gdriveGetModifiedTime(){
+  try{
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${gdriveFileId}?fields=modifiedTime&supportsAllDrives=true`, {
+      headers: { Authorization: `Bearer ${gdriveAccessToken}` }
+    });
+    if(!res.ok) return null;
+    const data = await res.json();
+    return data.modifiedTime || null;
+  }catch(e){ return null; }
+}
 async function gdrivePush(retrying){
   if(!gdriveAccessToken || !gdriveFileId) return false;
+  const MAX_RACE_RETRIES = 3;
   try{
-    // 예전엔 여기서 바로 "지금 이 기기의 로컬 내용"을 그대로 Drive에 덮어썼음(gdriveBuildPayload()만 호출)
-    // - 그래서 오랫동안 안 켜뒀던 다른 기기/탭이 아주 사소한 것 하나만 저장해도, 그 사이 다른 사람이 만든
-    // 변경(새로 올린 기안문, 방금 비운 휴지통 등) 전체가 그 기기의 오래된 스냅샷에 통째로 덮어써져서
-    // 감쪽같이 사라지는 게 실제로 가능했음("기안이 사라진다"/"휴지통을 비웠는데 다시 채워진다" 버그의 원인).
-    // 이제는 저장 직전에 먼저 원격 최신본을 받아와서 pull과 똑같은 방식(gdriveComputeMerged)으로 병합한
-    // 뒤 그 결과를 올림 - "마지막에 저장 누른 기기가 무조건 이김" 구조를 없애고, 항목 단위로 최신 내용이
-    // 전부 살아남게 함. 원격을 못 받아왔을 때(네트워크 오류 등)만 예전처럼 로컬 내용을 그대로 올림(그래도
-    // 저장 자체는 막히지 않게 하기 위한 최소한의 보완책)
-    let payload = gdriveBuildPayload();
-    try{
-      const getRes = await fetch(`https://www.googleapis.com/drive/v3/files/${gdriveFileId}?alt=media&supportsAllDrives=true`, {
-        headers: { Authorization: `Bearer ${gdriveAccessToken}` }
-      });
-      if(getRes.ok){
-        const remote = await getRes.json();
-        if(remote && remote.profiles){
-          const merged = gdriveComputeMerged(remote);
-          gdriveApplyMergedLocally(merged); // 이 기기의 localStorage도 병합 결과로 맞춰둬서, 다음 화면 갱신 때 최신 내용이 보이게 함
-          payload = merged;
+    for(let attempt=0; attempt<=MAX_RACE_RETRIES; attempt++){
+      // 예전엔 여기서 바로 "지금 이 기기의 로컬 내용"을 그대로 Drive에 덮어썼음(gdriveBuildPayload()만 호출)
+      // - 그래서 오랫동안 안 켜뒀던 다른 기기/탭이 아주 사소한 것 하나만 저장해도, 그 사이 다른 사람이 만든
+      // 변경(새로 올린 기안문, 방금 비운 휴지통 등) 전체가 그 기기의 오래된 스냅샷에 통째로 덮어써져서
+      // 감쪽같이 사라지는 게 실제로 가능했음("기안이 사라진다"/"휴지통을 비웠는데 다시 채워진다" 버그의 원인).
+      // 이제는 저장 직전에 먼저 원격 최신본을 받아와서 pull과 똑같은 방식(gdriveComputeMerged)으로 병합한
+      // 뒤 그 결과를 올림 - "마지막에 저장 누른 기기가 무조건 이김" 구조를 없애고, 항목 단위로 최신 내용이
+      // 전부 살아남게 함. 원격을 못 받아왔을 때(네트워크 오류 등)만 예전처럼 로컬 내용을 그대로 올림(그래도
+      // 저장 자체는 막히지 않게 하기 위한 최소한의 보완책)
+      let payload = gdriveBuildPayload();
+      let modifiedTimeAtMerge = null;
+      try{
+        const [metaBefore, getRes] = await Promise.all([
+          gdriveGetModifiedTime(),
+          fetch(`https://www.googleapis.com/drive/v3/files/${gdriveFileId}?alt=media&supportsAllDrives=true`, {
+            headers: { Authorization: `Bearer ${gdriveAccessToken}` }
+          })
+        ]);
+        modifiedTimeAtMerge = metaBefore;
+        if(getRes.ok){
+          const remote = await getRes.json();
+          if(remote && remote.profiles){
+            const merged = gdriveComputeMerged(remote);
+            gdriveApplyMergedLocally(merged); // 이 기기의 localStorage도 병합 결과로 맞춰둬서, 다음 화면 갱신 때 최신 내용이 보이게 함
+            payload = merged;
+          }
+        }
+      }catch(e2){ console.error('저장 전 원격 병합 실패(로컬 내용을 그대로 올려요)', e2); }
+      // PATCH 직전에 다시 한번 확인 - 병합을 시작한 뒤로(위 modifiedTimeAtMerge 확인 이후) 누가 이미 또
+      // 저장해서 modifiedTime이 바뀌었다면, 그 내용을 모른 채로 지금 올리면 그 변경을 통째로 지우게 되므로
+      // 올리지 않고 처음부터(다시 받기→병합) 재시도함
+      if(modifiedTimeAtMerge && attempt < MAX_RACE_RETRIES){
+        const modifiedTimeNow = await gdriveGetModifiedTime();
+        if(modifiedTimeNow && modifiedTimeNow !== modifiedTimeAtMerge){
+          console.error(`Drive 파일이 병합 중에 또 바뀜 - 다시 병합해서 재시도함 (${attempt+1}/${MAX_RACE_RETRIES})`);
+          continue;
         }
       }
-    }catch(e2){ console.error('저장 전 원격 병합 실패(로컬 내용을 그대로 올려요)', e2); }
+      return await gdrivePushUpload(payload, retrying);
+    }
+    return false;
+  }catch(e){
+    console.error('Drive 저장 실패', e);
+    gdriveSetStatus('저장 실패: ' + e.message);
+    return false;
+  }
+}
+async function gdrivePushUpload(payload, retrying){
+  try{
     const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${gdriveFileId}?uploadType=media&supportsAllDrives=true`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${gdriveAccessToken}`, 'Content-Type': 'application/json' },
