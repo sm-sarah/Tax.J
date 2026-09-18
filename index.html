@@ -15444,12 +15444,35 @@ relocateSidebarNodes();
     });
   });
 
-  // 팝오버 안의 항목(탭 이동)을 누르면 자연스럽게 팝오버도 같이 닫아줌 - 기존 클릭 핸들러는 그대로 두고 추가로만 반응함
+  // 팝오버 안에서 회사/설정/데이터처럼 그 아래 더 하위메뉴(회사정보/팀정보/직원정보 등)가 있는 항목은,
+  // 원래 사이드바(상시 노출)에서는 "이름을 눌러도 그 화면으로 이동 + 하위메뉴도 같이 펼침"이 자연스러웠지만,
+  // 팝오버 안에서는 이름을 누르는 순간 바로 다른 화면으로 이동해버려서 정작 원하던 "한 단계 더 펼쳐서 고르기"를
+  // 할 수가 없었음("회사를 눌렀더니 하위메뉴 대신 회사정보 화면이 바로 떠버림") - 팝오버 안에서는 하위메뉴가
+  // 있는 항목의 이름을 눌렀을 때 화면 이동은 하지 않고 펼치기만 하도록, 그 클릭이 원래의 이동 핸들러에게
+  // 닿기 전에(캡처 단계에서) 가로채서 화살표를 대신 눌러준 것과 같은 효과만 내게 함
+  document.addEventListener('click', function(e){
+    if(!sidebar.classList.contains('rail-mode')) return;
+    if(!e.target.closest('.home-tiles.rail-popover-open')) return;
+    if(e.target.closest('.home-tile-expand-btn')) return; // 화살표 자체는 원래 자기 핸들러(펼치기/접기)가 그대로 처리
+    const item = e.target.closest('.home-tile, .home-submenu-item, .home-submenu-leaf');
+    if(!item) return;
+    const expandBtn = item.querySelector('.home-tile-expand-btn[data-expand-target]');
+    if(!expandBtn) return; // 더 이상 펼칠 하위메뉴가 없는 진짜 마지막 항목은 원래대로 눌러서 바로 이동함
+    e.stopPropagation();
+    e.preventDefault();
+    expandBtn.click();
+  }, true);
+
+  // 팝오버 안의 항목(탭 이동)을 누르면 자연스럽게 팝오버도 같이 닫아줌 - 기존 클릭 핸들러는 그대로 두고 추가로만 반응함.
+  // 위에서 가로챈, 하위메뉴가 있는 항목(펼치기만 하고 이동은 안 함)은 팝오버를 닫지 않아야 하므로 여기서도 제외함
   document.querySelectorAll('.home-tiles').forEach(tiles=>{
     tiles.addEventListener('click', (e)=>{
       if(!sidebar.classList.contains('rail-mode')) return;
       if(e.target.closest('.home-tile-expand-btn')) return; // 펼치기 화살표는 팝오버를 계속 열어둬야 함
-      if(e.target.closest('.home-tile, .home-submenu-item, .home-submenu-leaf')) closeAllPopovers();
+      const item = e.target.closest('.home-tile, .home-submenu-item, .home-submenu-leaf');
+      if(!item) return;
+      if(item.querySelector('.home-tile-expand-btn[data-expand-target]')) return; // 하위메뉴가 있는 항목은 펼치기만 하고 팝오버를 열어둬야 함
+      closeAllPopovers();
     });
   });
 
