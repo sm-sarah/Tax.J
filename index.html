@@ -2501,7 +2501,7 @@
          비어있고(다른 안내 팝업엔 영향 없음), openClientDetailModal에서만 아이콘 버튼 줄을 여기에
          채워 넣음 - 팝업을 닫을 때(closeMemoModal) 항상 비워서 다음에 여는 다른 팝업에 남아있지 않게 함 -->
     <div id="memoModalScroll" style="overflow-y:auto; flex:1 1 auto; min-height:0;">
-      <div id="memoModalTitleWrap" style="position:sticky; top:0; z-index:5; background:var(--surface); text-align:center; padding:18px 68px 10px;">
+      <div id="memoModalTitleWrap" style="position:sticky; top:0; z-index:5; background:var(--surface); text-align:center; padding:18px 68px 10px; display:flex; flex-direction:column;">
         <span id="memoModalTitle" style="display:inline-block; font-weight:800; font-size:19px; color:var(--ink);"></span>
         <div id="memoModalTitleExtra"></div>
       </div>
@@ -2533,6 +2533,8 @@
       <span style="font-weight:800; font-size:14px; letter-spacing:-0.02em; color:var(--navy);">Tax.J</span>
     </div>
     <div id="appConfirmModalMessage" style="font-size:13.5px; font-weight:600; color:var(--ink); line-height:1.55; white-space:pre-line;"></div>
+    <!-- appPromptText()로 열 때만 보이는 텍스트 입력칸(기기 이름 정하기 등) - 평소 appConfirm/appAlert에서는 display:none으로 숨어있음 -->
+    <input type="text" id="appConfirmModalInput" style="display:none; width:100%; margin-top:12px; padding:9px 11px; border:1px solid var(--border); border-radius:9px; font-size:13.5px; color:var(--ink); box-sizing:border-box; text-align:left;">
     <div style="margin-top:18px; display:flex; justify-content:center; gap:8px;">
       <button type="button" id="appConfirmModalCancelBtn" class="del-btn" style="min-width:76px;">취소</button>
       <button type="button" id="appConfirmModalOkBtn" class="submit-btn" style="width:auto; min-width:76px; padding:8px 18px;">확인</button>
@@ -5385,6 +5387,19 @@ let sharedPushTokens = [];
 // 쓰던 계정들도 따로 설정 안 하면 예전처럼 계속 알림을 받음. 회사 공용 저장소(pushTokens와 같은 자리)에 둬서,
 // 알림을 실제로 보내는 쪽(나와 다른 사람 브라우저 아무나)이 "받는 사람이 그 종류를 꺼뒀는지"를 바로 조회할 수 있음
 let sharedNotificationPrefs = {};
+// 공유 데이터(위 sharedXxx들) 중 어떤 "필드"가 언제 실제로 저장(수정)됐는지 기록해두는 맵: { [필드명]: ISO시각 }.
+// 구글드라이브 3-way 병합에서, 같은 항목이 두 기기에서 동시에 달라져 있는 "진짜 충돌"이 나면 예전엔 그냥
+// "지금 저장하는 쪽(local)"이 이겼는데, 그게 "누가 화면을 마지막에 열어놨다 저장했느냐"로 정해지는 거라
+// 실제로 더 나중에 벌어진 변경이 오히려 지워지는 사고(결재현황이 과거로 돌아가는 등)의 원인이 됐음.
+// 이제는 필드마다 "진짜로 그 값을 바꿔 저장한 시각"을 따로 남겨서, 충돌이 나면 그 시각을 기준으로 진짜
+// 더 최근에 바뀐 쪽을 고르도록 함(touchSharedField/gdriveMergeValue 참고)
+let sharedFieldUpdatedAt = {};
+function touchSharedField(fieldName){
+  try{
+    sharedFieldUpdatedAt[fieldName] = new Date().toISOString();
+    localStorage.setItem('worklog_shared_field_updatedat', JSON.stringify(sharedFieldUpdatedAt));
+  }catch(e){ console.error('필드 갱신시각 기록 실패', e); }
+}
 // attachments가 없는 예전 문서는 attachmentLink(콤마로 구분된 링크 문자열)만 갖고 있음 - attachmentListHtml()이 이 경우를 폴백 처리함
 let sharedReviewFigures = {}; // 검토표(원천세) 거래처별 월별 실제 숫자: { [clientId]: { [year]: { [month]: { income:{[fieldKey]:num}, incomeReported:num, tax:{[groupKey]:{tax:num, local:num}}, taxReported:{[근로/일용/사업/기타/이자]:num}, taxReportedLocal:num } } } }
 let sharedReviewMeta = {}; // 검토표(원천세) 거래처별 설정: { [clientId]: { sameMonth:true/false(귀속=지급 동일 여부), payCycle:'매월'|'반기', secondHalfPayCycle:null|'매월'|'반기' } } - 원본 엑셀 '2026 총괄' 시트의 귀속/지급, 신고구분 값과 동일. secondHalfPayCycle은 연중(7월부터) 신고구분이 바뀌는 거래처를 위한 값 - null이면 1~12월 내내 payCycle 그대로, 값이 있으면 7~12월만 그 값을 씀(신고구분 전환은 반기 단위로만 일어나므로 7월 기준 한 번만 지원)
@@ -5524,9 +5539,10 @@ function loadSharedData(){
   try{ sharedOpsPolicyHistory = JSON.parse(localStorage.getItem('worklog_shared_opspolicyhistory') || '[]') || []; }catch(e){ sharedOpsPolicyHistory = []; }
   try{ sharedPushTokens = JSON.parse(localStorage.getItem('worklog_shared_pushtokens') || '[]') || []; }catch(e){ sharedPushTokens = []; }
   try{ sharedNotificationPrefs = JSON.parse(localStorage.getItem('worklog_shared_notificationprefs') || '{}') || {}; }catch(e){ sharedNotificationPrefs = {}; }
+  try{ sharedFieldUpdatedAt = JSON.parse(localStorage.getItem('worklog_shared_field_updatedat') || '{}') || {}; }catch(e){ sharedFieldUpdatedAt = {}; }
 }
-async function saveSharedPushTokens(){ try{ localStorage.setItem('worklog_shared_pushtokens', JSON.stringify(sharedPushTokens)); }catch(e){ console.error('푸시 토큰 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedNotificationPrefs(){ try{ localStorage.setItem('worklog_shared_notificationprefs', JSON.stringify(sharedNotificationPrefs)); }catch(e){ console.error('알림 설정 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedPushTokens(){ try{ localStorage.setItem('worklog_shared_pushtokens', JSON.stringify(sharedPushTokens)); }catch(e){ console.error('푸시 토큰 저장 실패', e); } touchSharedField('pushTokens'); gdriveScheduleSync(); }
+async function saveSharedNotificationPrefs(){ try{ localStorage.setItem('worklog_shared_notificationprefs', JSON.stringify(sharedNotificationPrefs)); }catch(e){ console.error('알림 설정 저장 실패', e); } touchSharedField('notificationPrefs'); gdriveScheduleSync(); }
 // 알림 종류(category: 'notice'|'approvalNew'|'approvalDecision')별로 이 이메일이 푸시를 받을지 - 설정한 적
 // 없으면(값이 없으면) 기본 true(받음)
 function notificationCategoryEnabled(email, category){
@@ -5609,12 +5625,29 @@ function renderMyPushDeviceList(){
     const isThis = t.token === myToken;
     let dateLabel = '';
     try{ dateLabel = t.updatedAt ? new Date(t.updatedAt).toLocaleString('ko-KR') : ''; }catch(e){}
+    // "위아래 각각 무슨 기기인지 모르겠다"는 요청으로, 등록할 때 정한 이름(deviceName)을 보여줌 - 아직 이름을
+    // 안 정하고 등록한(이전 버전에서 등록된) 기기는 이름이 없을 수 있어서 "이름 없는 기기"로 대신 표시함
+    const nameLabel = t.deviceName ? escHtml(t.deviceName) : '이름 없는 기기';
     return `<div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-bottom:1px solid var(--border);">
-      <span style="flex:1 1 auto; font-size:12px; color:var(--ink);">${isThis ? '<b>이 기기</b> · ' : ''}마지막 등록 ${escHtml(dateLabel)}</span>
+      <span style="flex:1 1 auto; font-size:12px; color:var(--ink);">${isThis ? `<b>${nameLabel}</b> <span style="color:var(--navy);">(이 기기)</span>` : nameLabel} · 마지막 등록 ${escHtml(dateLabel)}</span>
+      <button type="button" class="del-btn my-push-device-rename-btn" data-id="${t.id}" style="font-size:11px; padding:4px 10px;">이름변경</button>
       <button type="button" class="del-btn my-push-device-del-btn" data-id="${t.id}" style="font-size:11px; padding:4px 10px;">삭제</button>
     </div>`;
   }).join('');
   wrap.innerHTML = `<div style="border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-top:6px;">${rows}</div>`;
+  wrap.querySelectorAll('.my-push-device-rename-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const target = (sharedPushTokens||[]).find(x=>x.id===btn.dataset.id);
+      if(!target) return;
+      const newName = await appPromptText('이 기기의 이름을 정해주세요.', { inputValue: target.deviceName || guessDeviceLabel(), okText:'변경' });
+      if(newName === null) return;
+      target.deviceName = newName.trim() || guessDeviceLabel();
+      if(target.token === myToken){ try{ localStorage.setItem('worklog_my_device_name', target.deviceName); }catch(e){} }
+      await saveSharedPushTokens();
+      renderMyPushDeviceList();
+      showCenterToast('이름을 바꿨어요');
+    });
+  });
   wrap.querySelectorAll('.my-push-device-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       if(!(await appConfirm('이 기기의 알림 등록을 지울까요? 그 기기에는 더 이상 알림이 안 가요.'))) return;
@@ -5624,6 +5657,19 @@ function renderMyPushDeviceList(){
       showCenterToast('삭제됐어요');
     });
   });
+}
+// 알림 등록 목록에서 "위아래 각각 어느 기기인지 모르겠다"는 요청으로, 알림을 켤 때 그 기기를 구별할
+// 이름을 정하게 함(회사PC/제 휴대폰 등). navigator.userAgent로 짐작한 이름을 기본값으로 미리 채워주고,
+// 사용자가 그대로 두거나 원하는 이름으로 바꿔서 확인하면 됨 - 한 번 정해두면 이 기기에 계속 남아있어서
+// 다음에 다시 켤 때는 그 이름이 그대로 기본값으로 뜸
+function guessDeviceLabel(){
+  const ua = navigator.userAgent || '';
+  if(/iPad/i.test(ua)) return '아이패드';
+  if(/iPhone/i.test(ua)) return '아이폰';
+  if(/Android/i.test(ua)) return /Mobile/i.test(ua) ? '안드로이드 휴대폰' : '안드로이드 태블릿';
+  if(/Macintosh/i.test(ua)) return '맥';
+  if(/Windows/i.test(ua)) return '윈도우 PC';
+  return '이 기기';
 }
 document.getElementById('settingsPushRegisterBtn')?.addEventListener('click', async ()=>{
   if(typeof Notification === 'undefined'){ appAlert('이 브라우저는 알림 기능을 지원하지 않아요. 아이폰이면 홈 화면에 앱으로 추가한 뒤 그 아이콘으로 열어보세요.'); return; }
@@ -5637,6 +5683,15 @@ document.getElementById('settingsPushRegisterBtn')?.addEventListener('click', as
   }
   const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
   if(perm !== 'granted'){ appAlert('알림 권한이 허용되지 않았어요.'); updateSettingsPushRegisterStatus(); return; }
+  let myDeviceName = null;
+  try{ myDeviceName = localStorage.getItem('worklog_my_device_name'); }catch(e){}
+  const typedName = await appPromptText('이 기기를 구별할 이름을 정해주세요.\n(예: 회사 PC, 제 휴대폰 - 알림 등록 목록에서 어느 기기인지 바로 알아볼 수 있어요)', { inputValue: myDeviceName || guessDeviceLabel(), okText:'이 이름으로 등록' });
+  if(typedName !== null){
+    myDeviceName = typedName.trim() || guessDeviceLabel();
+    try{ localStorage.setItem('worklog_my_device_name', myDeviceName); }catch(e){}
+  } else if(!myDeviceName){
+    myDeviceName = guessDeviceLabel();
+  }
   localStorage.setItem(NOTICE_NOTIFY_KEY, '1');
   localStorage.setItem(APPROVAL_NOTIFY_KEY, '1');
   try{ localStorage.setItem('worklog_notified_notice_ids', JSON.stringify((sharedNoticeHistory||[]).map(x=>x.id))); }catch(e){}
@@ -5653,8 +5708,8 @@ function readSharedPersonalInfo(){ try{ const v = localStorage.getItem('worklog_
 // sharedTeamPolicyHistory/sharedOpsPolicyHistory 배열이고, 나머지 코드(등록/수정/삭제/이력팝업)는 이 헬퍼만 통해서 접근함
 function getPolicyHistoryArr(cat){ return cat === 'ops' ? sharedOpsPolicyHistory : sharedTeamPolicyHistory; }
 function setPolicyHistoryArr(cat, arr){ if(cat === 'ops'){ sharedOpsPolicyHistory = arr; } else { sharedTeamPolicyHistory = arr; } }
-async function saveSharedTeamPolicyHistory(){ try{ localStorage.setItem('worklog_shared_teampolicyhistory', JSON.stringify(sharedTeamPolicyHistory)); }catch(e){ console.error('인사지침 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedOpsPolicyHistory(){ try{ localStorage.setItem('worklog_shared_opspolicyhistory', JSON.stringify(sharedOpsPolicyHistory)); }catch(e){ console.error('운영지침 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedTeamPolicyHistory(){ try{ localStorage.setItem('worklog_shared_teampolicyhistory', JSON.stringify(sharedTeamPolicyHistory)); }catch(e){ console.error('인사지침 저장 실패', e); } touchSharedField('teamPolicyHistory'); gdriveScheduleSync(); }
+async function saveSharedOpsPolicyHistory(){ try{ localStorage.setItem('worklog_shared_opspolicyhistory', JSON.stringify(sharedOpsPolicyHistory)); }catch(e){ console.error('운영지침 저장 실패', e); } touchSharedField('opsPolicyHistory'); gdriveScheduleSync(); }
 async function savePolicyHistoryArr(cat){ return cat === 'ops' ? saveSharedOpsPolicyHistory() : saveSharedTeamPolicyHistory(); }
 // worklog_shared_teampolicyhistory가 아직 없을 때(업데이트 후 첫 로딩) 한 번만 실행 - 그동안 직원 프로필마다
 // 따로 저장돼 있던 인사지침/운영지침 이력 중, 항목이 가장 많이 쌓여있는(=가장 실제로 쓰이던) 프로필의
@@ -5819,10 +5874,10 @@ function recoverMissingClientMemoAndPersonalInfo(){
     localStorage.setItem('worklog_client_memo_pi_recovery_v1', '1');
   }
 }
-async function saveSharedExclusions(){ try{ localStorage.setItem('worklog_shared_exclusions', JSON.stringify(sharedExclusionDays)); }catch(e){ console.error('공통 제외일 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedWorkHourExceptions(){ try{ localStorage.setItem('worklog_shared_workhours', JSON.stringify(sharedWorkHourExceptions)); }catch(e){ console.error('공통 근무시간 예외 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedNoticeHistory(){ try{ localStorage.setItem('worklog_shared_notice_history', JSON.stringify(sharedNoticeHistory)); }catch(e){ console.error('공지사항 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedNotificationLog(){ try{ localStorage.setItem('worklog_shared_notifications', JSON.stringify(sharedNotificationLog)); }catch(e){ console.error('알림 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedExclusions(){ try{ localStorage.setItem('worklog_shared_exclusions', JSON.stringify(sharedExclusionDays)); }catch(e){ console.error('공통 제외일 저장 실패', e); } touchSharedField('exclusionDays'); gdriveScheduleSync(); }
+async function saveSharedWorkHourExceptions(){ try{ localStorage.setItem('worklog_shared_workhours', JSON.stringify(sharedWorkHourExceptions)); }catch(e){ console.error('공통 근무시간 예외 저장 실패', e); } touchSharedField('workHourExceptions'); gdriveScheduleSync(); }
+async function saveSharedNoticeHistory(){ try{ localStorage.setItem('worklog_shared_notice_history', JSON.stringify(sharedNoticeHistory)); }catch(e){ console.error('공지사항 저장 실패', e); } touchSharedField('noticeHistory'); gdriveScheduleSync(); }
+async function saveSharedNotificationLog(){ try{ localStorage.setItem('worklog_shared_notifications', JSON.stringify(sharedNotificationLog)); }catch(e){ console.error('알림 저장 실패', e); } touchSharedField('notificationLog'); gdriveScheduleSync(); }
 // 기안(결재문서)이나 공지를 지우면, 거기서 나왔던 알림함(종 아이콘) 항목도 같이 지워서 이미 없어진 문서의
 // 알림이 알림함에 유령처럼 계속 남아있지 않게 함. 결재 알림의 relatedId는 "기안id"(결재 요청) 또는
 // "기안id|상태"(결재 결과 - 반려 후 재기안하면 상태별로 여러 건 쌓일 수 있어서 startsWith로 같이 잡음) 형태임
@@ -5845,7 +5900,7 @@ function refreshNotificationListModalIfOpen(){
     renderNotificationListModal();
   }
 }
-async function saveSharedNotificationReadState(){ try{ localStorage.setItem('worklog_shared_notification_read', JSON.stringify(sharedNotificationReadState)); }catch(e){ console.error('알림 읽음상태 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedNotificationReadState(){ try{ localStorage.setItem('worklog_shared_notification_read', JSON.stringify(sharedNotificationReadState)); }catch(e){ console.error('알림 읽음상태 저장 실패', e); } touchSharedField('notificationReadState'); gdriveScheduleSync(); }
 
 // 알림함 - 종 아이콘 눌렀을 때 보이는 "알림 목록"의 데이터 계층. 예전엔 브라우저 데스크톱 알림(Notification)을
 // 켠 사람에게만 그 순간 팝업으로 스쳐 지나갔는데, 이제는 그와 별개로 항상 이 목록에 기록해둬서 나중에 다시 볼 수 있음.
@@ -5913,12 +5968,15 @@ async function registerPushToken(){
       sharedPushTokens = sharedPushTokens.filter(t=>t.token !== lastToken);
     }
     try{ localStorage.setItem('worklog_my_push_token', token); }catch(e){}
+    let myDeviceName = null;
+    try{ myDeviceName = localStorage.getItem('worklog_my_device_name'); }catch(e){}
     const existing = sharedPushTokens.find(t=>t.token===token);
     if(existing){
       existing.email = email; // 같은 기기에서 이메일이 바뀐 경우(다른 계정으로 로그인)에도 최신 이메일로 갱신
       existing.updatedAt = new Date().toISOString();
+      if(myDeviceName) existing.deviceName = myDeviceName;
     } else {
-      sharedPushTokens.push({ id: genId(), email, token, updatedAt: new Date().toISOString() });
+      sharedPushTokens.push({ id: genId(), email, token, updatedAt: new Date().toISOString(), deviceName: myDeviceName || null });
     }
     // 대신, 90일 넘게 갱신이 안 된(오랫동안 켜본 적 없는 = 더 이상 안 쓰는 기기일 가능성이 큰) 토큰은
     // 조용히 정리해서 무한정 쌓이지 않게 함
@@ -6118,28 +6176,29 @@ function sweepExpiredNotifications(){
   saveSharedTrash();
   saveSharedNotificationLog();
 }
-async function saveSharedAdminEmails(){ try{ localStorage.setItem('worklog_shared_admins', JSON.stringify(sharedAdminEmails)); }catch(e){ console.error('관리자 목록 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedAdminNames(){ try{ localStorage.setItem('worklog_shared_admin_names', JSON.stringify(sharedAdminNames)); }catch(e){ console.error('관리자 이름 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedCompanyInfo(){ try{ localStorage.setItem('worklog_shared_companyinfo', JSON.stringify(sharedCompanyInfo)); }catch(e){ console.error('사내정보 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedCompanyName(){ try{ localStorage.setItem('worklog_shared_companyname', sharedCompanyName || ''); }catch(e){ console.error('회사명 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedTeamInfo(){ try{ localStorage.setItem('worklog_shared_teaminfo', JSON.stringify(sharedTeamInfo)); }catch(e){ console.error('팀정보 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedSpecialPeriods(){ try{ localStorage.setItem('worklog_shared_specialperiods', JSON.stringify(sharedSpecialPeriods)); }catch(e){ console.error('특별기간 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedFilingStatus(){ try{ localStorage.setItem('worklog_shared_filingstatus', JSON.stringify(sharedFilingStatus)); }catch(e){ console.error('신고현황 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedReviewStatus(){ try{ localStorage.setItem('worklog_shared_reviewstatus', JSON.stringify(sharedReviewStatus)); }catch(e){ console.error('검토표 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedFilingHelp(){ try{ localStorage.setItem('worklog_shared_filinghelp', JSON.stringify(sharedFilingHelp)); }catch(e){ console.error('신고도움 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedAdminEmails(){ try{ localStorage.setItem('worklog_shared_admins', JSON.stringify(sharedAdminEmails)); }catch(e){ console.error('관리자 목록 저장 실패', e); } touchSharedField('adminEmails'); gdriveScheduleSync(); }
+async function saveSharedAdminNames(){ try{ localStorage.setItem('worklog_shared_admin_names', JSON.stringify(sharedAdminNames)); }catch(e){ console.error('관리자 이름 저장 실패', e); } touchSharedField('adminNames'); gdriveScheduleSync(); }
+async function saveSharedCompanyInfo(){ try{ localStorage.setItem('worklog_shared_companyinfo', JSON.stringify(sharedCompanyInfo)); }catch(e){ console.error('사내정보 저장 실패', e); } touchSharedField('companyInfo'); gdriveScheduleSync(); }
+async function saveSharedCompanyName(){ try{ localStorage.setItem('worklog_shared_companyname', sharedCompanyName || ''); }catch(e){ console.error('회사명 저장 실패', e); } touchSharedField('companyName'); gdriveScheduleSync(); }
+async function saveSharedTeamInfo(){ try{ localStorage.setItem('worklog_shared_teaminfo', JSON.stringify(sharedTeamInfo)); }catch(e){ console.error('팀정보 저장 실패', e); } touchSharedField('teamInfo'); gdriveScheduleSync(); }
+async function saveSharedSpecialPeriods(){ try{ localStorage.setItem('worklog_shared_specialperiods', JSON.stringify(sharedSpecialPeriods)); }catch(e){ console.error('특별기간 저장 실패', e); } touchSharedField('specialPeriods'); gdriveScheduleSync(); }
+async function saveSharedFilingStatus(){ try{ localStorage.setItem('worklog_shared_filingstatus', JSON.stringify(sharedFilingStatus)); }catch(e){ console.error('신고현황 저장 실패', e); } touchSharedField('filingStatus'); gdriveScheduleSync(); }
+async function saveSharedReviewStatus(){ try{ localStorage.setItem('worklog_shared_reviewstatus', JSON.stringify(sharedReviewStatus)); }catch(e){ console.error('검토표 저장 실패', e); } touchSharedField('reviewStatus'); gdriveScheduleSync(); }
+async function saveSharedFilingHelp(){ try{ localStorage.setItem('worklog_shared_filinghelp', JSON.stringify(sharedFilingHelp)); }catch(e){ console.error('신고도움 저장 실패', e); } touchSharedField('filingHelp'); gdriveScheduleSync(); }
 // 예전엔 checkNewApprovalsForBrowserNotify/checkApprovalDecisionsForBrowserNotify가 loadAll() 안에서만
 // 불려서(페이지를 처음 열 때, 그리고 Drive 동기화로 데이터가 바뀔 때만) - Drive를 연결 안 해둔 브라우저에서는
 // 첫 로딩 이후로 "알림 받기"를 켜놔도 다시는 알림 조건을 확인할 일이 없었음(같은 브라우저에서 새로 기안/결재가
 // 생겨도 알림이 영영 안 오는 원인). 결재 데이터가 바뀌어 저장될 때마다(=지금) 같이 확인하도록 여기서도 호출함
 async function saveSharedApprovals(){
   try{ localStorage.setItem('worklog_shared_approvals', JSON.stringify(sharedApprovals)); }catch(e){ console.error('결재 저장 실패', e); }
+  touchSharedField('approvals');
   gdriveScheduleSync();
   if(typeof checkNewApprovalsForBrowserNotify === 'function') checkNewApprovalsForBrowserNotify();
   if(typeof checkApprovalDecisionsForBrowserNotify === 'function') checkApprovalDecisionsForBrowserNotify();
   if(typeof updateNotificationUnreadBadge === 'function') updateNotificationUnreadBadge();
 }
-async function saveSharedTrash(){ try{ localStorage.setItem('worklog_shared_trash', JSON.stringify(sharedTrash)); }catch(e){ console.error('공용 휴지통 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedLunchLimitHistory(){ try{ localStorage.setItem('worklog_shared_lunchlimit', JSON.stringify(sharedLunchLimitHistory)); }catch(e){ console.error('점심식대 한도 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedTrash(){ try{ localStorage.setItem('worklog_shared_trash', JSON.stringify(sharedTrash)); }catch(e){ console.error('공용 휴지통 저장 실패', e); } touchSharedField('trash'); gdriveScheduleSync(); }
+async function saveSharedLunchLimitHistory(){ try{ localStorage.setItem('worklog_shared_lunchlimit', JSON.stringify(sharedLunchLimitHistory)); }catch(e){ console.error('점심식대 한도 저장 실패', e); } touchSharedField('lunchLimitHistory'); gdriveScheduleSync(); }
 // worklog_shared_lunchlimit이 아직 없을 때(업데이트 후 첫 로딩) 한 번만 실행 - 그동안 직원 프로필마다 따로
 // 저장돼 있던 점심식대 한도 이력(과 예전의 단일값 lunchDailyLimit)을 전부 모아 공용 저장소로 합침(id 중복 제거)
 function migrateLunchLimitToSharedStore(){
@@ -6169,22 +6228,24 @@ function migrateLunchLimitToSharedStore(){
     localStorage.setItem('worklog_shared_lunchlimit', JSON.stringify([]));
   }
 }
-async function saveSharedAutoPhrases(){ try{ localStorage.setItem('worklog_shared_autophrases', JSON.stringify(sharedAutoPhrases)); }catch(e){ console.error('자동 문구 설정 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedReviewFigures(){ try{ localStorage.setItem('worklog_shared_reviewfigures', JSON.stringify(sharedReviewFigures)); }catch(e){ console.error('검토표(원천세) 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedReviewMeta(){ try{ localStorage.setItem('worklog_shared_reviewmeta', JSON.stringify(sharedReviewMeta)); }catch(e){ console.error('검토표(원천세) 거래처 설정 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedProfitLossReports(){ try{ localStorage.setItem('worklog_shared_plreports', JSON.stringify(sharedProfitLossReports)); }catch(e){ console.error('손익보고서 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedFilingTargets(){ try{ localStorage.setItem('worklog_shared_filingtargets', JSON.stringify(sharedFilingTargets)); }catch(e){ console.error('신고대상(원천세) 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedFilingCycles(){ try{ localStorage.setItem('worklog_shared_filingCycles', JSON.stringify(sharedFilingCycles)); }catch(e){ console.error('신고구분 이력(원천세) 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedIncomeTaxFilingStatus(){ try{ localStorage.setItem('worklog_shared_itfilingstatus', JSON.stringify(sharedIncomeTaxFilingStatus)); }catch(e){ console.error('원천세 신고현황 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedVatFilingTargets(){ try{ localStorage.setItem('worklog_shared_vatfilingtargets', JSON.stringify(sharedVatFilingTargets)); }catch(e){ console.error('신고대상(부가세) 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedVatReviewFigures(){ try{ localStorage.setItem('worklog_shared_vatreviewfigures', JSON.stringify(sharedVatReviewFigures)); }catch(e){ console.error('검토표(부가세) 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedTaxScheduleOverrides(){ try{ localStorage.setItem('worklog_shared_taxschedule_overrides', JSON.stringify(sharedTaxScheduleOverrides)); }catch(e){ console.error('세무일정 수정 저장 실패', e); } gdriveScheduleSync(); }
-async function saveSharedTaxScheduleCustomItems(){ try{ localStorage.setItem('worklog_shared_taxschedule_custom', JSON.stringify(sharedTaxScheduleCustomItems)); }catch(e){ console.error('세무일정 등록항목 저장 실패', e); } gdriveScheduleSync(); }
+async function saveSharedAutoPhrases(){ try{ localStorage.setItem('worklog_shared_autophrases', JSON.stringify(sharedAutoPhrases)); }catch(e){ console.error('자동 문구 설정 저장 실패', e); } touchSharedField('autoPhrases'); gdriveScheduleSync(); }
+async function saveSharedReviewFigures(){ try{ localStorage.setItem('worklog_shared_reviewfigures', JSON.stringify(sharedReviewFigures)); }catch(e){ console.error('검토표(원천세) 저장 실패', e); } touchSharedField('reviewFigures'); gdriveScheduleSync(); }
+async function saveSharedReviewMeta(){ try{ localStorage.setItem('worklog_shared_reviewmeta', JSON.stringify(sharedReviewMeta)); }catch(e){ console.error('검토표(원천세) 거래처 설정 저장 실패', e); } touchSharedField('reviewMeta'); gdriveScheduleSync(); }
+async function saveSharedProfitLossReports(){ try{ localStorage.setItem('worklog_shared_plreports', JSON.stringify(sharedProfitLossReports)); }catch(e){ console.error('손익보고서 저장 실패', e); } touchSharedField('profitLossReports'); gdriveScheduleSync(); }
+async function saveSharedFilingTargets(){ try{ localStorage.setItem('worklog_shared_filingtargets', JSON.stringify(sharedFilingTargets)); }catch(e){ console.error('신고대상(원천세) 저장 실패', e); } touchSharedField('filingTargets'); gdriveScheduleSync(); }
+async function saveSharedFilingCycles(){ try{ localStorage.setItem('worklog_shared_filingCycles', JSON.stringify(sharedFilingCycles)); }catch(e){ console.error('신고구분 이력(원천세) 저장 실패', e); } touchSharedField('filingCycles'); gdriveScheduleSync(); }
+async function saveSharedIncomeTaxFilingStatus(){ try{ localStorage.setItem('worklog_shared_itfilingstatus', JSON.stringify(sharedIncomeTaxFilingStatus)); }catch(e){ console.error('원천세 신고현황 저장 실패', e); } touchSharedField('itFilingStatus'); gdriveScheduleSync(); }
+async function saveSharedVatFilingTargets(){ try{ localStorage.setItem('worklog_shared_vatfilingtargets', JSON.stringify(sharedVatFilingTargets)); }catch(e){ console.error('신고대상(부가세) 저장 실패', e); } touchSharedField('vatFilingTargets'); gdriveScheduleSync(); }
+async function saveSharedVatReviewFigures(){ try{ localStorage.setItem('worklog_shared_vatreviewfigures', JSON.stringify(sharedVatReviewFigures)); }catch(e){ console.error('검토표(부가세) 저장 실패', e); } touchSharedField('vatReviewFigures'); gdriveScheduleSync(); }
+async function saveSharedTaxScheduleOverrides(){ try{ localStorage.setItem('worklog_shared_taxschedule_overrides', JSON.stringify(sharedTaxScheduleOverrides)); }catch(e){ console.error('세무일정 수정 저장 실패', e); } touchSharedField('taxScheduleOverrides'); gdriveScheduleSync(); }
+async function saveSharedTaxScheduleCustomItems(){ try{ localStorage.setItem('worklog_shared_taxschedule_custom', JSON.stringify(sharedTaxScheduleCustomItems)); }catch(e){ console.error('세무일정 등록항목 저장 실패', e); } touchSharedField('taxScheduleCustomItems'); gdriveScheduleSync(); }
 async function saveSharedManagePassword(){
   try{
     localStorage.setItem('worklog_shared_managesalt', sharedManageSalt);
     localStorage.setItem('worklog_shared_manageverifier', JSON.stringify(sharedManageVerifier));
   }catch(e){ console.error('관리비밀번호 저장 실패', e); }
+  touchSharedField('manageSalt');
+  touchSharedField('manageVerifier');
   gdriveScheduleSync();
 }
 
@@ -6439,8 +6500,13 @@ function openPhotoLightbox(dataUrl){
   if(!el){
     el = document.createElement('div');
     el.id = 'photoLightboxOverlay';
-    el.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(15,16,30,0.82); z-index:10050; align-items:center; justify-content:center; padding:24px; cursor:zoom-out;';
-    el.innerHTML = '<img id="photoLightboxImg" style="max-width:min(92vw,520px); max-height:82vh; border-radius:16px; box-shadow:0 12px 44px rgba(0,0,0,0.45); object-fit:contain;">';
+    // 예전엔 배경에 브라우저 기본 cursor:zoom-out 커서를 썼는데, 기기에 따라 그 커서 아이콘 자체가
+    // 저해상도 비트맵이라 확대해서 보면 깨져(모자이크처럼) 보인다는 지적이 있었음 - 그냥 손가락(pointer)
+    // 커서로 바꿔서 그 문제를 없앰. 또한 "아무데나 눌러야 닫힌다"는 걸 알아채기 어렵다는 요청으로,
+    // 눈에 보이는 닫기(✕) 버튼도 오른쪽 위에 따로 달아줌(배경 클릭으로 닫는 기존 동작은 그대로 유지)
+    el.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(15,16,30,0.82); z-index:10050; align-items:center; justify-content:center; padding:24px; cursor:pointer;';
+    el.innerHTML = '<img id="photoLightboxImg" style="max-width:min(92vw,520px); max-height:82vh; border-radius:16px; box-shadow:0 12px 44px rgba(0,0,0,0.45); object-fit:contain; cursor:default;">'
+      + '<button type="button" id="photoLightboxCloseBtn" title="닫기" style="position:fixed; top:18px; right:18px; width:38px; height:38px; border-radius:50%; border:none; background:rgba(255,255,255,0.92); color:var(--ink); font-size:18px; line-height:1; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.3); z-index:10051;">✕</button>';
     el.addEventListener('click', ()=>{ el.style.display = 'none'; });
     document.body.appendChild(el);
   }
@@ -6809,12 +6875,36 @@ function gdriveMergeValue(base, local, remote){
     const lt = gdriveRecordTimestamp(local), rt = gdriveRecordTimestamp(remote);
     if(lt !== null && rt !== null && lt !== rt) return rt > lt ? remote : local;
     const b = gdriveIsPlainObject(base) ? base : {};
+    // 공용설정 묶음(shared)에는 각 필드가 "언제 실제로 저장됐는지" 기록한 시각 맵(__fieldUpdatedAt)이 같이
+    // 실려있음(touchSharedField 참고) - 이 레벨에서 그 맵이 보이면, 아직 시각 필드가 없는 일반 설정값들도
+    // "누가 마지막에 저장했는지"가 아니라 "실제로 더 나중에 바뀐 값"으로 충돌을 풀 수 있게 함
+    const localFieldTimes = gdriveIsPlainObject(local.__fieldUpdatedAt) ? local.__fieldUpdatedAt : null;
+    const remoteFieldTimes = gdriveIsPlainObject(remote.__fieldUpdatedAt) ? remote.__fieldUpdatedAt : null;
     const keys = new Set([...Object.keys(b), ...Object.keys(local), ...Object.keys(remote)]);
     const out = {};
-    keys.forEach(k=>{ out[k] = gdriveMergeValue(b[k], local[k], remote[k]); });
+    keys.forEach(k=>{
+      if(k === '__fieldUpdatedAt'){ out[k] = gdriveMergeFieldTimestampMap(localFieldTimes, remoteFieldTimes); return; }
+      if(localFieldTimes && remoteFieldTimes && !gdriveDeepEqual(local[k], remote[k])){
+        const ltime = localFieldTimes[k] ? new Date(localFieldTimes[k]).getTime() : NaN;
+        const rtime = remoteFieldTimes[k] ? new Date(remoteFieldTimes[k]).getTime() : NaN;
+        if(!isNaN(ltime) && !isNaN(rtime) && ltime !== rtime){ out[k] = rtime > ltime ? remote[k] : local[k]; return; }
+      }
+      out[k] = gdriveMergeValue(b[k], local[k], remote[k]);
+    });
     return out;
   }
   return local; // 원시값이 정말 동시에 다르게 바뀐 경우 - 지금 저장하려는 쪽을 우선
+}
+// __fieldUpdatedAt 시각 맵 자체를 합칠 때는(위 gdriveMergeValue의 특수 케이스) 필드별로 서로 다른 값이
+// 아니라 "언제 찍힌 기록인지"만 비교해서, 두 기기가 각각 알고 있던 시각 중 항상 더 최신 쪽을 남김
+function gdriveMergeFieldTimestampMap(local, remote){
+  const out = { ...(local || {}) };
+  Object.keys(remote || {}).forEach(k=>{
+    const rt = new Date(remote[k]).getTime();
+    const lt = out[k] ? new Date(out[k]).getTime() : NaN;
+    if(isNaN(lt) || (!isNaN(rt) && rt > lt)) out[k] = remote[k];
+  });
+  return out;
 }
 // Drive와 마지막으로 주고받은(둘이 합의한) 전체 데이터 스냅샷 - 3-way 병합의 기준점.
 function getGdriveMergeBaseline(){
@@ -7066,6 +7156,7 @@ function getReadNoticeIds(){
 }
 function saveSharedNoticeReadState(){
   try{ localStorage.setItem('worklog_shared_notice_read', JSON.stringify(sharedNoticeReadState)); }catch(e){ console.error('공지 읽음상태 저장 실패', e); }
+  touchSharedField('noticeReadState');
   gdriveScheduleSync();
 }
 function markNoticeRead(id){
@@ -7088,6 +7179,7 @@ function getReadApprovalIds(){
 }
 function saveSharedApprovalReadState(){
   try{ localStorage.setItem('worklog_shared_approval_read', JSON.stringify(sharedApprovalReadState)); }catch(e){ console.error('결재 읽음상태 저장 실패', e); }
+  touchSharedField('approvalReadState');
   gdriveScheduleSync();
 }
 function markApprovalRowRead(id){
@@ -8744,8 +8836,8 @@ async function saveSchedule(){
   // 그 직원 쪽 브라우저가 동기화될 때(loadAll)이지만, 함수 자체는 중복 발송 방지가 있어 여러 번 불러도 안전함
   if(typeof checkNewTeamScheduleForBrowserNotify === 'function') checkNewTeamScheduleForBrowserNotify();
 }
-async function saveClients(){ try{ localStorage.setItem('worklog_shared_clients', JSON.stringify(clients)); }catch(e){ console.error('거래처 저장 실패', e); } gdriveScheduleSync(); }
-async function savePersonalInfo(){ try{ localStorage.setItem('worklog_shared_personalinfo', JSON.stringify(personalInfo)); }catch(e){ console.error('개인정보 저장 실패', e); } gdriveScheduleSync(); }
+async function saveClients(){ try{ localStorage.setItem('worklog_shared_clients', JSON.stringify(clients)); }catch(e){ console.error('거래처 저장 실패', e); } touchSharedField('clients'); gdriveScheduleSync(); }
+async function savePersonalInfo(){ try{ localStorage.setItem('worklog_shared_personalinfo', JSON.stringify(personalInfo)); }catch(e){ console.error('개인정보 저장 실패', e); } touchSharedField('personalInfo'); gdriveScheduleSync(); }
 
 // "휴가현황 조회 기준일" 수동 지정 기능("고급 설정")은 폐지되어 항상 오늘 날짜만 사용함 -
 // 예전에 settings.leaveAsOfDate가 저장돼있던 직원이 있어도 더는 참조하지 않음(데이터 자체는 지우지 않고 그대로 둠)
@@ -10589,7 +10681,7 @@ function openClientDetailModal(c){
   // 지적이 있었음 - 상호명과 같은 줄, 오른쪽 위 구석(닫기 버튼 바로 아래)에 작게 붙여서 "이 문서에 대한
   // 관리 버튼"처럼 보이게 함(가운데 큰 상호명 글자와 겹치지 않도록 absolute로 뺌)
   document.getElementById('memoModalTitleExtra').innerHTML = `
-    <div style="position:absolute; top:46px; right:14px; display:flex; align-items:center; gap:4px;">
+    <div style="display:flex; align-items:center; justify-content:flex-end; gap:4px; margin-top:6px;">
       <button type="button" id="clientDetailEditBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="수정" style="color:var(--navy); background:transparent; border:none; padding:6px; display:inline-flex; border-radius:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>
       <button type="button" id="clientDetailHistoryBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="이력" style="color:var(--ink-soft); background:transparent; border:none; padding:6px; display:inline-flex; border-radius:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 16 14"></polyline></svg></button>
       <button type="button" id="clientDetailDeleteBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="삭제" style="color:var(--coral); background:transparent; border:none; padding:6px; display:inline-flex; border-radius:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
@@ -17409,6 +17501,7 @@ function showCenterToast(message){
 // 화면 위쪽에 붙는다는 피드백으로, 항상 화면 정중앙에 뜨는 커스텀 팝업(#appConfirmModalOverlay)으로 통일함.
 // 둘 다 Promise를 돌려주므로, 호출부는 async 함수 안에서 await로 쓰거나 .then()으로 결과를 받으면 됨.
 let _appConfirmResolve = null;
+let _appConfirmInputMode = false; // true면 appPromptText()로 열린 상태 - 확인/취소가 텍스트 값(문자열/null)을 돌려줌
 function _appConfirmClose(result){
   const overlay = document.getElementById('appConfirmModalOverlay');
   if(overlay) overlay.style.display = 'none';
@@ -17421,20 +17514,33 @@ function _appConfirmOpen(message, opts){
   opts = opts || {};
   const overlay = document.getElementById('appConfirmModalOverlay');
   const msgEl = document.getElementById('appConfirmModalMessage');
+  const inputEl = document.getElementById('appConfirmModalInput');
   const okBtn = document.getElementById('appConfirmModalOkBtn');
   const cancelBtn = document.getElementById('appConfirmModalCancelBtn');
-  if(!overlay || !msgEl || !okBtn || !cancelBtn){ return Promise.resolve(true); }
+  if(!overlay || !msgEl || !okBtn || !cancelBtn){ return Promise.resolve(opts.input ? null : true); }
   // 이 팝업은 전역에서 하나만 쓰는 싱글턴이라, 앞서 연 확인창이 아직 답을 받기 전에(예: 느린 화면에서
   // 버튼을 연달아 눌러 확인창이 다시 열리는 경우) 또 열리면 _appConfirmResolve가 새 걸로 덮어써져서
   // 앞의 await가 영원히 안 풀리는 문제가 있었음(예: 출퇴근 버튼을 여러 번 누르면 그중 앞선 클릭의
   // "저장" 코드가 응답을 영원히 못 받아 실행이 안 되고, 정작 사용자 눈엔 마지막 확인창 하나만 보여서
   // 분명히 눌렀는데 저장이 안 된 것처럼 보이는 원인 중 하나) - 새로 열기 전에 이전 확인은 취소(false)로
   // 먼저 끝내서 절대 방치되지 않게 함
-  if(_appConfirmResolve) _appConfirmClose(false);
+  if(_appConfirmResolve) _appConfirmClose(_appConfirmInputMode ? null : false);
   msgEl.textContent = message == null ? '' : String(message);
   okBtn.textContent = opts.okText || '확인';
   cancelBtn.textContent = opts.cancelText || '취소';
   cancelBtn.style.display = opts.showCancel === false ? 'none' : '';
+  _appConfirmInputMode = !!opts.input;
+  if(inputEl){
+    if(opts.input){
+      inputEl.style.display = '';
+      inputEl.value = opts.inputValue || '';
+      inputEl.placeholder = opts.inputPlaceholder || '';
+      setTimeout(()=>{ inputEl.focus(); inputEl.select(); }, 30);
+    } else {
+      inputEl.style.display = 'none';
+      inputEl.value = '';
+    }
+  }
   overlay.style.display = 'flex';
   // 이 팝업은 항상 최상단이어야 하므로(다른 팝업 위에서 확인을 받는 용도), 고정 z-index만 믿지 않고
   // 열릴 때마다 그 시점 기준 가장 앞으로 한 번 더 끌어올림 - 세션을 오래 써서 다른 팝업들의 z-index가
@@ -17451,14 +17557,23 @@ function appConfirm(message, opts){
 function appAlert(message, opts){
   return _appConfirmOpen(message, Object.assign({}, opts, { showCancel:false }));
 }
+// 짧은 글자 하나를 입력받아야 할 때(예: 이 기기를 구별할 이름 정하기) 쓰는 텍스트 입력 팝업 - 브라우저 기본
+// prompt()도 alert/confirm과 같은 이유로 안 쓰고, 위 appConfirm/appAlert과 같은 팝업을 재사용함. 확인을 누르면
+// 입력한 문자열(빈 문자열이어도 그대로)을, 취소를 누르거나 바깥을 클릭하면 null을 돌려줌
+function appPromptText(message, opts){
+  return _appConfirmOpen(message, Object.assign({ showCancel:true }, opts, { input:true }));
+}
 document.addEventListener('DOMContentLoaded', ()=>{
   const okBtn = document.getElementById('appConfirmModalOkBtn');
   const cancelBtn = document.getElementById('appConfirmModalCancelBtn');
   const overlay = document.getElementById('appConfirmModalOverlay');
-  if(okBtn) okBtn.addEventListener('click', ()=> _appConfirmClose(true));
-  if(cancelBtn) cancelBtn.addEventListener('click', ()=> _appConfirmClose(false));
+  const inputEl = document.getElementById('appConfirmModalInput');
+  if(okBtn) okBtn.addEventListener('click', ()=> _appConfirmClose(_appConfirmInputMode ? (inputEl ? inputEl.value : '') : true));
+  if(cancelBtn) cancelBtn.addEventListener('click', ()=> _appConfirmClose(_appConfirmInputMode ? null : false));
   // 오버레이 바깥(어두운 배경) 클릭 시 취소로 간주하고 닫음 - 다른 모달들과 동일한 관례
-  if(overlay) overlay.addEventListener('click', (e)=>{ if(e.target === overlay) _appConfirmClose(false); });
+  if(overlay) overlay.addEventListener('click', (e)=>{ if(e.target === overlay) _appConfirmClose(_appConfirmInputMode ? null : false); });
+  // 입력칸에서 Enter를 누르면 확인 버튼을 누른 것과 동일하게 처리(휴대폰에서 키보드의 "완료"도 보통 Enter로 들어옴)
+  if(inputEl) inputEl.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); okBtn?.click(); } });
 });
 
 // ══════════════════════════════════════════════════════════
@@ -24436,7 +24551,7 @@ function renderEmployeeRoster(){
       ? `<span class="tag tag-usage">퇴사${p.lastWorkDate ? ' · '+p.lastWorkDate : ''}${p.resignReason ? ' · '+p.resignReason : ''}</span>`
       : '';
     const avatarTag = p.photo
-      ? `<img src="${p.photo}" class="employee-roster-photo" data-id="${p.id}" style="width:34px; height:34px; border-radius:50%; object-fit:cover; vertical-align:-10px; margin-right:5px; cursor:zoom-in;">`
+      ? `<img src="${p.photo}" class="employee-roster-photo" data-id="${p.id}" style="width:34px; height:34px; border-radius:50%; object-fit:cover; vertical-align:-10px; margin-right:5px; cursor:pointer;">`
       : (p.avatar ? `${staffAvatarIconSvg(p.avatar, 15)} ` : `<span style="color:var(--ink-soft); vertical-align:-3px; margin-right:3px;">${staffNoAvatarIconSvg(15)}</span>`);
     return `
     <div style="display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:10px; padding:9px 12px; background:var(--bg); border:1.5px solid var(--border); border-radius:10px; margin:0 0 6px; width:100%; box-sizing:border-box; ${terminated ? 'opacity:0.7;' : ''}">
@@ -24931,7 +25046,11 @@ function gdriveBuildPayload(){
     schemaVersion: SCHEMA_VERSION, syncedAt: new Date().toISOString(), profiles, data,
     // 거래처목록(clients)·개인정보(personalInfo)는 더 이상 직원 프로필별로 따로 저장되지 않고, 회사 전체가
     // 공유하는 단일 데이터라서 위 per-profile data가 아니라 shared 쪽에 실어 보냄(readSharedClients/readSharedPersonalInfo 참고)
-    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, notificationLog: sharedNotificationLog, notificationReadState: sharedNotificationReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, approvalReadState: sharedApprovalReadState, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta, profitLossReports: sharedProfitLossReports, filingTargets: sharedFilingTargets, filingCycles: sharedFilingCycles, autoPhrases: sharedAutoPhrases, itFilingStatus: sharedIncomeTaxFilingStatus, vatFilingTargets: sharedVatFilingTargets, vatReviewFigures: sharedVatReviewFigures, clients: readSharedClients(), personalInfo: readSharedPersonalInfo(), trash: sharedTrash, lunchLimitHistory: sharedLunchLimitHistory, taxScheduleOverrides: sharedTaxScheduleOverrides, taxScheduleCustomItems: sharedTaxScheduleCustomItems, teamPolicyHistory: sharedTeamPolicyHistory, opsPolicyHistory: sharedOpsPolicyHistory, pushTokens: sharedPushTokens, notificationPrefs: sharedNotificationPrefs }
+    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, notificationLog: sharedNotificationLog, notificationReadState: sharedNotificationReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, approvalReadState: sharedApprovalReadState, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta, profitLossReports: sharedProfitLossReports, filingTargets: sharedFilingTargets, filingCycles: sharedFilingCycles, autoPhrases: sharedAutoPhrases, itFilingStatus: sharedIncomeTaxFilingStatus, vatFilingTargets: sharedVatFilingTargets, vatReviewFigures: sharedVatReviewFigures, clients: readSharedClients(), personalInfo: readSharedPersonalInfo(), trash: sharedTrash, lunchLimitHistory: sharedLunchLimitHistory, taxScheduleOverrides: sharedTaxScheduleOverrides, taxScheduleCustomItems: sharedTaxScheduleCustomItems, teamPolicyHistory: sharedTeamPolicyHistory, opsPolicyHistory: sharedOpsPolicyHistory, pushTokens: sharedPushTokens, notificationPrefs: sharedNotificationPrefs,
+      // 위 필드들 중 무엇이 "실제로 언제" 마지막으로 저장(수정)됐는지 기록한 맵 - 병합(gdriveMergeValue)에서
+      // 진짜 충돌이 났을 때 "누가 화면을 마지막에 열어놨다 저장했느냐"가 아니라 "실제로 더 나중에 바뀐 쪽"을
+      // 고를 수 있게 해줌(touchSharedField 참고)
+      __fieldUpdatedAt: sharedFieldUpdatedAt }
   };
 }
 
@@ -25339,6 +25458,10 @@ function gdriveApplyMergedLocally(merged){
     if(merged.shared.opsPolicyHistory !== undefined) localStorage.setItem('worklog_shared_opspolicyhistory', JSON.stringify(merged.shared.opsPolicyHistory));
     if(merged.shared.pushTokens !== undefined) localStorage.setItem('worklog_shared_pushtokens', JSON.stringify(merged.shared.pushTokens));
     if(merged.shared.notificationPrefs !== undefined) localStorage.setItem('worklog_shared_notificationprefs', JSON.stringify(merged.shared.notificationPrefs));
+    if(merged.shared.__fieldUpdatedAt !== undefined){
+      sharedFieldUpdatedAt = merged.shared.__fieldUpdatedAt || {};
+      try{ localStorage.setItem('worklog_shared_field_updatedat', JSON.stringify(sharedFieldUpdatedAt)); }catch(e){ console.error('필드 갱신시각 저장 실패', e); }
+    }
   }
 }
 async function gdrivePull(){
