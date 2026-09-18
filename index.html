@@ -702,6 +702,11 @@
     display:flex; align-items:center; gap:11px; text-align:left;
   }
   .home-tile:hover{transform:translateX(3px); box-shadow:0 3px 8px rgba(29,30,51,0.06), 0 10px 20px -12px rgba(29,30,51,0.24);}
+  /* 화살표를 눌러 하위메뉴(.home-submenu)를 펼치면, 위 항목(둥근 카드+그림자)과 아래 펼쳐진 목록(각 없이
+     평평한 사각형)이 서로 뚝 떨어진 별개의 상자 두 개처럼 보인다는 피드백 - 펼쳐진 동안은 위 항목의 아래쪽
+     모서리를 평평하게 깎고 그 사이 여백도 없애서, 펼쳐진 하위 목록까지 한 덩어리 카드처럼 이어 붙게 함 */
+  .home-tile.submenu-open{ border-bottom-left-radius:0; border-bottom-right-radius:0; margin-bottom:0 !important; box-shadow:0 1px 2px rgba(29,30,51,0.04); }
+  .home-submenu.submenu-open{ background:var(--surface); border-radius:0 0 14px 14px; box-shadow:0 6px 14px -11px rgba(29,30,51,0.2); margin-top:0; padding-top:4px; padding-bottom:4px; }
   .home-tile-icon{font-size:17px; width:24px; height:24px; line-height:24px; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-bottom:0;}
   .home-tile-title{font-weight:700; font-size:13.5px; color:var(--ink); margin-bottom:0;}
   /* Company/Staff/Client 하위메뉴는 아이콘·칩 느낌 대신 메뉴명 텍스트 위주의 차분한 스타일로 - 즐겨찾기 칩(.home-tile)과는 구분 */
@@ -6775,6 +6780,22 @@ function gdriveMergeArrayById(baseArr, localArr, remoteArr){
   });
   return result;
 }
+// 결재현황에서 "내가 지운 게 다시 살아나고, 회계사님이 승인한 건 사라졌다" 문제의 진짜 원인 - baseline이
+// 없거나 낡아있는 기기(오래 켜둔 탭 등)가 저장하면, 아래 객체 병합이 필드 하나하나를 따로 비교해서
+// "둘 다 baseline에서 바뀐 진짜 충돌"로 보고 마지막 줄(원시값 충돌 시 "지금 저장하려는 쪽=local 우선")로
+// 빠짐 - 상태(status)·결정시각(decidedAt)·결재자 같은 필드가 원래는 한 번의 결정으로 같이 바뀌는데,
+// 필드별로 따로 승자를 정하다 보니 그 기기가 마지막으로 봤던 옛 상태(local)가 실제로는 더 나중에 일어난
+// 원격의 결정(승인 등)을 덮어써버릴 수 있었음. 승인/기안/공지처럼 "언제 있었던 일"을 나타내는 시각 필드가
+// 있는 레코드는, 필드별로 짜맞추지 말고 통째로 비교해서 실제로 더 나중에 있었던 쪽을 그대로 채택함
+function gdriveRecordTimestamp(obj){
+  if(!gdriveIsPlainObject(obj)) return null;
+  const keys = ['decidedAt','updatedAt','editedAt','savedAt','eventAt','createdAt'];
+  for(const k of keys){
+    const v = obj[k];
+    if(v){ const t = new Date(v).getTime(); if(!isNaN(t)) return t; }
+  }
+  return null;
+}
 function gdriveMergeValue(base, local, remote){
   if(gdriveDeepEqual(local, remote)) return local;
   const localChanged = !gdriveDeepEqual(local, base);
@@ -6790,6 +6811,8 @@ function gdriveMergeValue(base, local, remote){
     return local; // id 없는 배열은 항목 단위 병합이 불가능 - 지금 저장하려는 쪽을 우선
   }
   if(gdriveIsPlainObject(local) && gdriveIsPlainObject(remote)){
+    const lt = gdriveRecordTimestamp(local), rt = gdriveRecordTimestamp(remote);
+    if(lt !== null && rt !== null && lt !== rt) return rt > lt ? remote : local;
     const b = gdriveIsPlainObject(base) ? base : {};
     const keys = new Set([...Object.keys(b), ...Object.keys(local), ...Object.keys(remote)]);
     const out = {};
@@ -7167,6 +7190,7 @@ function checkNewTeamScheduleForBrowserNotify(){
   getProfiles().forEach(p=>{
     const s = readProfileRaw(p.id,'settings') || {};
     const sch = readProfileRaw(p.id,'schedule') || { events:[] };
+    const att = readProfileRaw(p.id,'attendance') || { leaveUsage:[], remoteEntries:[] };
     const name = s.employeeName || p.name || '(미등록)';
     if(name === me0) return; // 내가 등록한 일정은 나에게 알리지 않음(등록한 사람 본인은 이미 알고 있음)
     (sch.events||[]).filter(e=>e.shared !== false && e.date >= today0).forEach(e=>{
@@ -7175,6 +7199,25 @@ function checkNewTeamScheduleForBrowserNotify(){
         title:`팀 일정 등록: ${e.type || '일정'}`,
         body:`${name} · ${shortDateLabel(e.date)}${e.memo ? ' · '+e.memo : ''}`,
         author:name||'', targetEmail:'*', relatedId:e.id, eventAt:e.date
+      });
+    });
+    // "재택 등록하면 팀캘린더엔 뜨는데 알림이 없다"는 요청으로 추가함 - 휴가·재택은 개인일정(sch.events)이
+    // 아니라 근태 데이터(attendance.leaveUsage/remoteEntries)에 따로 저장되어 위 목록에 안 걸렸던 것.
+    // 팀캘린더에 뜨는 항목과 똑같은 집합(computeMonthTeamAgenda 참고)을 그대로 훑어서 알려줌
+    (att.remoteEntries||[]).filter(r=>r.date >= today0).forEach(r=>{
+      pushNotificationLogEntry({
+        type:'team-schedule', icon:'team-schedule',
+        title:`팀 일정 등록: ${r.bonus ? '특별재택' : '정기재택'}`,
+        body:`${name} · ${shortDateLabel(r.date)}`,
+        author:name||'', targetEmail:'*', relatedId:r.id, eventAt:r.date
+      });
+    });
+    (att.leaveUsage||[]).filter(u=>u.date >= today0).forEach(u=>{
+      pushNotificationLogEntry({
+        type:'team-schedule', icon:'team-schedule',
+        title:`팀 일정 등록: ${leaveTeamCalShortType(u.type, u.subtype)}`,
+        body:`${name} · ${shortDateLabel(u.date)}`,
+        author:name||'', targetEmail:'*', relatedId:u.id, eventAt:u.date
       });
     });
   });
@@ -13621,6 +13664,10 @@ document.querySelectorAll('.home-tile-expand-btn[data-expand-target]').forEach(b
     target.style.display = willOpen ? 'block' : 'none';
     btn.classList.toggle('is-open', willOpen);
     btn.textContent = willOpen ? '▾' : '▸';
+    // 펼쳐진 목록이 위 항목과 뚝 떨어진 별개의 상자로 보이지 않게, 위 항목(둥근 카드)과 펼쳐진 목록을
+    // 한 덩어리로 이어 붙이는 클래스를 같이 토글함(위 CSS .home-tile.submenu-open / .home-submenu.submenu-open 참고)
+    btn.closest('.home-tile')?.classList.toggle('submenu-open', willOpen);
+    target.classList.toggle('submenu-open', willOpen);
   });
 });
 // 사이드바 메뉴 전체 펼치기/접기 - 화살표가 있는 항목을 한 번에 다 펼치거나(중첩된 세목까지 전부) 다 접음
@@ -13636,6 +13683,8 @@ document.getElementById('homeMenuExpandAllBtn')?.addEventListener('click', funct
     target.style.display = willOpenAll ? 'block' : 'none';
     btn.classList.toggle('is-open', willOpenAll);
     btn.textContent = willOpenAll ? '▾' : '▸';
+    btn.closest('.home-tile')?.classList.toggle('submenu-open', willOpenAll);
+    target.classList.toggle('submenu-open', willOpenAll);
   });
   this.textContent = willOpenAll ? '▴ 전체' : '▾ 전체';
 });
@@ -14361,13 +14410,22 @@ function renderDashboardClockCard(){
     await saveAttendance();
     renderDashboardClockCard();
   });
-  document.getElementById('dashClockResetInBtn')?.addEventListener('click', async ()=>{
+  // 되돌리기(취소) 아이콘이 출근/퇴근 버튼과 바로 붙어있어서, 실수로 살짝 잘못 눌러도 확인 없이 곧바로
+  // 기록이 지워져버렸음("출근시간 찍었는데 사라졌다" 문의가 이 버튼의 오터치로 추정) - 출근/퇴근 버튼과
+  // 똑같이 한 번 확인을 거치게 해서, 눌렀다고 바로 지워지지 않게 함
+  document.getElementById('dashClockResetInBtn')?.addEventListener('click', async function(){
+    if(this.disabled) return;
+    this.disabled = true;
+    if(!(await appConfirm('출근 기록을 취소할까요? 다시 출근을 찍어야 해요.'))){ this.disabled = false; return; }
     const en = todayClockEntry(false);
     if(en) en.checkIn = '';
     await saveAttendance();
     renderDashboardClockCard();
   });
-  document.getElementById('dashClockResetOutBtn')?.addEventListener('click', async ()=>{
+  document.getElementById('dashClockResetOutBtn')?.addEventListener('click', async function(){
+    if(this.disabled) return;
+    this.disabled = true;
+    if(!(await appConfirm('퇴근 기록을 취소할까요? 다시 퇴근을 찍어야 해요.'))){ this.disabled = false; return; }
     const en = todayClockEntry(false);
     if(en) en.checkOut = '';
     await saveAttendance();
