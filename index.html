@@ -315,6 +315,11 @@
   .home-dashboard-pinned-row{ display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:stretch; margin-bottom:14px; }
   .home-dashboard-pinned-side{ display:grid; grid-template-columns:1fr 1fr; gap:10px; min-width:0; }
   .home-dashboard-pinned-stack{ display:flex; flex-direction:column; gap:10px; min-width:0; }
+  /* 팀캘린더 일정이 많아지면 표가 한없이 길어져서(예전엔 카드 안 스크롤로만 처리) 옆 결재현황·세무일정
+     묶음(230px×2+간격10=470px로 고정)보다 카드 자체가 더 커져버리는 문제가 있었음 - grid의 align-items:
+     stretch는 이미 정해진 칸 높이를 "채워주는" 것뿐이라, 내용이 그보다 크면 칸 자체가 늘어나버림. 그래서
+     옆 묶음과 똑같이 이 칸도 470px로 고정해서 항상 세로폭이 맞게 함(넘치는 일정은 아래 페이지네이션으로 처리) */
+  .home-dashboard-pinned-side .home-dash-card{ height:470px; }
   /* 결재현황·세무일정은 목록이 몇 건 없을 때(특히 결재현황이 "결재 이력이 없어요" 한 줄뿐일 때) 카드가
      내용만큼 쪼그라들어서 바로 아래/위 카드와 세로 높이가 서로 안 맞아 보였음 - 두 카드 다 같은 높이로
      고정하고, 내용이 그보다 길어지면 카드 자체가 늘어나는 대신 본문 안에서만 스크롤되게 함 */
@@ -426,6 +431,11 @@
   .home-dash-card[data-goto="teamcalendar"]{ align-self:stretch; }
   .home-dash-card[data-goto="teamcalendar"] .home-dash-card-body{ display:flex; flex-direction:column; min-height:0; }
   .home-dash-card-scroll{ flex:1; min-height:0; overflow-y:auto; }
+  /* 팀캘린더 위젯 하단 페이지 번호 - 한 페이지에 다 못 담는 만큼의 일정이 있을 때만 나타남(1페이지뿐이면
+     숨김). 카드 클릭 시 팀캘린더 탭으로 이동하는 핸들러가 부모에 걸려있어서, 여기도 stopPropagation으로 막음 */
+  .home-dash-cal-pager{ display:flex; justify-content:center; gap:5px; padding-top:8px; flex:0 0 auto; }
+  .home-dash-cal-page-btn{ width:22px; height:22px; border-radius:7px; border:1px solid var(--border); background:var(--surface); color:var(--ink-soft); font-size:11px; font-weight:700; cursor:pointer; }
+  .home-dash-cal-page-btn.active{ background:var(--accent, var(--mint)); color:#fff; border-color:var(--accent, var(--mint)); }
   /* 세무일정 위젯 - 예전엔 가장 가까운 기한 하나만 코랄색 D-day 히어로로 크게 강조하고 나머지는 거의 안
      보이는 회색 칩으로 나열했는데, "중요도 상관없이 다 동일한 배경색으로" + "임박한 것만 칩 안에 D-day
      표시"로 바꿔달라는 요청에 맞춰 모든 항목을 같은 slate 톤 칩으로 통일함. D-day가 2주(14일) 이내로
@@ -2890,6 +2900,13 @@
            픽토그램 SVG로 통일함(이모지 혼용 대신) - 사용자가 요청한 순서(홈→로그인→공지사항→메일→휴지통)를
            그대로 DOM 순서로 반영해서 relocateSidebarNodes()가 별도 재배치 없이 그대로 옮길 수 있게 함 -->
       <div class="nav-icon-group" id="navHomeGroup">
+        <!-- 뒤로가기 - 휴대폰/PC에 "앱으로 설치"해서 열면 브라우저 주소창·뒤로가기 버튼이 아예 없는
+             화면(PWA standalone 모드)이라, 이전 화면으로 돌아갈 방법이 이 안에 하나도 없다는 지적이
+             있었음. 탭을 옮길 때마다 이미 history.pushState로 방문기록을 쌓아두고 있어서(popstate
+             핸들러도 이미 있음), 그 방문기록을 그대로 되짚어가는 브라우저 기본 history.back()을
+             불러주는 버튼만 추가하면 됨. navHomeGroup의 실제 자식으로 넣어야 relocateSidebarNodes()가
+             이 묶음을 옮길 때 이 버튼도 항상 같이 따라다님(주소창이 없는 화면에도 항상 이 아이콘 줄은 보임) -->
+        <button type="button" id="appBackBtn" title="뒤로가기" style="background:var(--navy); color:#fff; width:38px; height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; border:none; cursor:pointer; box-shadow:0 4px 10px -3px rgba(29,30,51,0.45);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 6 12l9 7"/></svg></button>
         <button class="tab-btn tab-btn-home" data-tab="home" title="홈"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9"/></svg></button>
         <button type="button" id="quickConnectBtn" class="tab-btn" title="Google 계정 연결 상태 · 클릭해서 로그인" style="position:relative; background:var(--navy); color:#fff; width:38px; height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; box-shadow:0 4px 10px -3px rgba(29,30,51,0.45);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M10.5 12.5 20 3"/><path d="M17 6l3 3"/><path d="M14 9l2.5 2.5"/></svg><span id="gdriveSyncSpinner" title="Drive와 동기화 중" style="display:none; position:absolute; inset:-3px; border-radius:50%; border:2px solid transparent; border-top-color:#fff; border-right-color:rgba(255,255,255,0.5); animation:gdriveSyncSpin 0.7s linear infinite;"></span></button>
         <button type="button" id="noticeIconBtn" title="공지사항" style="position:relative; background:var(--navy); color:#fff; width:38px; height:38px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; border:none; cursor:pointer; box-shadow:0 4px 10px -3px rgba(29,30,51,0.45);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span id="noticeUnreadBadge" style="display:none; position:absolute; top:-3px; right:-3px; min-width:16px; height:16px; padding:0 3px; background:var(--coral); color:#fff; font-size:9.5px; font-weight:800; border-radius:20px; align-items:center; justify-content:center; line-height:1; box-shadow:0 0 0 2px var(--surface);"></span></button>
@@ -13730,6 +13747,9 @@ async function activateTab(tabName, pushHistory){
   window.scrollTo(0, 0);
 }
 
+// 위 appBackBtn(뒤로가기 아이콘) - 브라우저 기본 뒤로가기와 동일하게 history.back()만 불러주면,
+// 이미 있는 popstate 핸들러가 알아서 이전 탭으로 돌아가는 처리를 함
+document.getElementById('appBackBtn')?.addEventListener('click', ()=>{ history.back(); });
 window.addEventListener('popstate', (e)=>{
   const tab = (e.state && e.state.tab) || 'home';
   activateTab(tab, false);
@@ -14233,11 +14253,21 @@ function computeMonthTeamAgenda(monthStr){
 // (renderDashboardCalendarPreview를 monthStr 없이 부르면) 항상 이번 달로 다시 초기화됨 - 팀캘린더/개인캘린더
 // 탭이 매번 이번 달부터 보이는 것과 같은 방식
 let dashCalendarMonth = todayStr().slice(0,7);
+// 일정이 페이지 개념 없이 스크롤로만 쌓이던 게, 카드 세로폭을 옆 결재현황/세무일정 묶음과 고정으로
+// 맞추면서(위 CSS) 더 이상 카드가 늘어날 수 없게 됨 - 넘치는 일정은 스크롤 대신 "1, 2, 3..." 페이지
+// 번호를 눌러서 보게 함(요청사항)
+let dashCalendarPage = 1;
+const DASH_CAL_PAGE_SIZE = 8;
 function renderDashboardCalendarPreview(monthStr){
   const body = document.getElementById('dashCalendarBody');
   if(!body) return;
+  const prevMonth = dashCalendarMonth;
+  const noMonthGiven = (monthStr === undefined);
   dashCalendarMonth = monthStr || todayStr().slice(0,7);
   monthStr = dashCalendarMonth;
+  // 홈에 새로 들어오거나(월을 안 넘겨주고 부르면) 화살표로 다른 달로 넘어가면 항상 1페이지부터 다시 봄 -
+  // 페이지 번호를 직접 눌렀을 때는(같은 달 그대로 다시 부름) 그 페이지가 유지됨
+  if(noMonthGiven || monthStr !== prevMonth) dashCalendarPage = 1;
   // 제목을 목록 위 가운데로 두고, 좌우에 전/다음 달 화살표를 붙여서 이번 달 외의 일정도 위젯 안에서 바로
   // 넘겨볼 수 있게 함(예전엔 이번 달 고정 + "바로가기"로 팀캘린더 탭까지 가야만 다른 달을 볼 수 있었음).
   // 제목 줄이 바로 아래 표(날짜/대상자/일정 헤더)와 너무 붙어 보인다는 피드백으로, 얇은 구분선(밑줄)과
@@ -14274,10 +14304,15 @@ function renderDashboardCalendarPreview(monthStr){
   // 지난 일정과 다가올 일정이 구분이 안 된다는 요청으로, 오늘 날짜 기준 지난 일정은 흐리게(-past), 오늘
   // 일정은 옅은 강조 배경(-today)을 얹어서 한눈에 구분되게 함(다가올 일정은 기본 스타일 그대로 둠)
   const today0 = todayStr();
+  // 카드 세로폭이 고정돼서(위 CSS) 더 이상 스크롤로 전체를 다 보여줄 수 없으니, 한 페이지에 보일 만큼만
+  // 잘라서 보여주고 나머지는 아래 페이지 번호로 넘겨봄
+  const totalPages = Math.max(1, Math.ceil(items.length / DASH_CAL_PAGE_SIZE));
+  if(dashCalendarPage > totalPages) dashCalendarPage = totalPages;
+  const pageItems = items.slice((dashCalendarPage-1)*DASH_CAL_PAGE_SIZE, dashCalendarPage*DASH_CAL_PAGE_SIZE);
   const tableHtml = `<div class="home-dash-table-head">
       <span class="home-dash-table-col-date">날짜</span><span class="home-dash-table-col-person">대상자</span><span class="home-dash-table-col-main">일정</span>
     </div>`
-    + items.map(it=>{
+    + pageItems.map(it=>{
       const rowClass = it.date < today0 ? ' home-dash-table-row-past' : (it.date === today0 ? ' home-dash-table-row-today' : '');
       return `<div class="home-dash-table-row${rowClass}">
       <span class="home-dash-table-col-date">${escHtml(it.dateLabel)}</span>
@@ -14285,8 +14320,18 @@ function renderDashboardCalendarPreview(monthStr){
       <span class="home-dash-table-col-main">${it.icon} ${escHtml(it.text)}</span>
     </div>`;
     }).join('');
-  body.innerHTML = headerHtml + `<div class="home-dash-card-scroll"><div class="home-dash-table">${tableHtml}</div></div>`;
+  const pagerHtml = totalPages > 1
+    ? `<div class="home-dash-cal-pager">${Array.from({length:totalPages}, (_,i)=>i+1).map(p=>`<button type="button" class="home-dash-cal-page-btn${p===dashCalendarPage?' active':''}" data-page="${p}">${p}</button>`).join('')}</div>`
+    : '';
+  body.innerHTML = headerHtml + `<div class="home-dash-card-scroll"><div class="home-dash-table">${tableHtml}</div></div>${pagerHtml}`;
   bindDashCalNav();
+  body.querySelectorAll('.home-dash-cal-page-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation(); // 카드 전체 클릭 시 팀캘린더 탭으로 이동하는 핸들러가 부모에 걸려있어서 막음
+      dashCalendarPage = Number(btn.dataset.page);
+      renderDashboardCalendarPreview(dashCalendarMonth);
+    });
+  });
 }
 // 대시보드 "근태현황" 위젯 - 예전엔 근태경비 탭의 실제 카드(.summary-cards)를 그대로 복제해 축소하는
 // 방식이었는데, 출퇴근 카드와 스타일이 안 맞아서 이 위젯 전용 색칩 3개(잔여연차/이번달 사용/이번달 재택)로
@@ -15050,7 +15095,10 @@ function renderDashboardTaxSchedulePreview(){
     // 칩 오른쪽에 D-day 배지를 붙여서 눈에 띄게 함(예전처럼 가장 가까운 것 하나만 따로 큰 히어로로
     // 강조하지 않음 - "혹 그 다음 항목이 더 급할 수도 있는데 안 보인다"는 지적 반영)
     const rowsHtml = items.map(it=>{
-      const md = `${Number(it.date.slice(5,7))}/${Number(it.date.slice(8,10))}`;
+      // 예전엔 Number()로 앞자리 0을 지워서 "9/10"·"10/12"처럼 항목마다 자릿수가 달라져 날짜 칩들이
+      // 세로로 안 맞춰 보였음(정렬이 들쭉날쭉) - 항상 두 자리로 맞춰서("09/10") 몇 월이든 자릿수가
+      // 똑같이 나오게 함
+      const md = `${it.date.slice(5,7)}/${it.date.slice(8,10)}`;
       const dday = ddayOf(it.date);
       const ddayLabel = dday === 0 ? 'D-DAY' : (dday > 0 ? `D-${dday}` : '');
       const ddayHtml = (dday <= 14 && ddayLabel) ? `<span class="home-dash-tax-chip-dday">${ddayLabel}</span>` : '';
