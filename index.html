@@ -117,14 +117,14 @@
      남아있음) 카테고리를 열든 닫든 대시보드(.app-main) 폭이 절대 바뀌지 않게 함 - "메뉴 열 때마다
      대시보드 폭이 흔들린다"는 지적으로, 폭 0으로 접혔다가 카드가 들어오면서 늘어나던 예전 방식을 없앰.
      카테고리를 열면 그 안에 하위메뉴(.home-tiles)가 실제로 옮겨 들어옴(겹치는 오버레이가 아니라
-     레이아웃에 실제로 자리를 차지하는 패널). 이 예약된 폭은 처음엔 카드 최대폭(280px)과 똑같이
-     잡아뒀는데, 실제로는 어떤 메뉴를 열어도 카드가 150px 안팎(가장 긴 "Google Drive 연동" 항목도
-     150px를 안 넘음)에서 그대로 줄어들어 있어서, 카드 오른쪽으로 130px 가까운 빈 띠가 항상 남아있었음
-     ("하위메뉴 나오는 폭 좀 더 줄여달라"는 요청으로, 예약폭과 카드 최대폭을 둘 다 200px로 줄여서
-     그 빈 띠를 크게 줄임(그래도 나중에 더 긴 메뉴 이름이 생겨도 150~200px 사이라면 줄바꿈 없이 들어감) */
+     레이아웃에 실제로 자리를 차지하는 패널). 이 예약된 폭은 처음엔 280px → 200px로 줄여봤는데, 실제로
+     모든 메뉴를 다 열어보고 재보니 가장 긴 항목("Google Drive 연동")도 패딩 포함 150px를 안 넘어서
+     여전히 빈 띠가 남았음 - "가장 긴 메뉴 텍스트에 맞게 더 줄여달라"는 요청으로 그 실측값에 맞춰
+     150px까지 줄임(카드 쪽 max-width도 아래 .rail-panel-inline에서 같이 150px로 맞춤 - 나중에 이보다
+     긴 메뉴 이름이 추가되면 이 값도 같이 늘려줘야 줄바꿈되지 않음) */
   .app-sidebar.rail-mode{ flex:0 0 auto; width:auto; flex-direction:row; align-items:flex-start; padding-right:0; gap:8px; overflow:visible; }
   .app-sidebar.rail-mode > .home-menu-col{ flex:0 0 72px; width:72px; display:flex; flex-direction:column; gap:6px; align-items:center; }
-  .app-sidebar.rail-mode #railExpandPanel{ flex:0 0 200px; width:200px; }
+  .app-sidebar.rail-mode #railExpandPanel{ flex:0 0 150px; width:150px; }
   .app-sidebar.rail-mode .home-menu-expand-all-row{ display:none; }
   .app-rail-utility-row{ display:none; flex-direction:column; gap:6px; margin-bottom:4px; }
   .app-sidebar.rail-mode .app-rail-utility-row{ display:flex; }
@@ -186,12 +186,12 @@
   /* 1차(카테고리를 직접 눌러 여는) 팝오버만 - 위 공용 스타일은 그대로 카드 모양을 쓰지만, position은
      fixed로 화면에 떠 있는 대신 #railExpandPanel 안에 실제로 들어가 있는 상태이므로 static으로 바꿔서
      패널이 차지한 자리에 그대로 눌러앉게 함(2차 캐스케이드 팝오버는 여전히 fixed로 옆에 떠 있음).
-     패널(#railExpandPanel)이 차지하는 자리는 항상 고정폭 280px이지만, 그 안의 카드 자체는 내용에 맞춰
-     줄어들게(max-content) 해서 - 설정처럼 이름이 짧은 메뉴를 열었을 때 카드 오른쪽에 불필요한 흰
-     여백이 생기지 않게 함(카드가 줄어들어도 패널 자리 자체는 그대로 280px이라 대시보드 폭은 안 바뀜.
-     뒤 표 내용이 비쳐 보이던 예전 문제는 카드 뒤에 실제 콘텐츠가 없는 이 구조에선 해당 없음) */
+     카드 폭은 모든 메뉴를 실측해서 가장 긴 항목("Google Drive 연동", 패딩 포함 150px)에 딱 맞춘
+     고정값을 씀(#railExpandPanel의 예약폭과 같은 150px) - 그보다 짧은 메뉴(예: 매월/반기/연간)는
+     원래 max-content로 더 줄어들 수도 있지만, 메뉴마다 카드 폭이 들쭉날쭉하기보다는 항상 같은 폭으로
+     나오는 쪽이 더 안정적으로 보여서 하나로 통일함 */
   .home-tiles.rail-popover-open.rail-panel-inline{
-    position:static; left:auto; top:auto; width:max-content; min-width:150px; max-width:200px;
+    position:static; left:auto; top:auto; width:150px;
     background:transparent; border:none; border-radius:0; box-shadow:none;
   }
   /* 팝오버(1차든 캐스케이드든) 안에서 사내정보처럼 그 아래 더 펼쳐지는 항목은 원래 아이콘+글자 줄
@@ -15674,19 +15674,12 @@ relocateSidebarNodes();
     // 안에서 실제로 그 자리를 차지하게 되므로, 좌표 계산도 스크롤에 따른 재조정도 필요 없어짐
     const expandPanel = document.getElementById('railExpandPanel');
     if(!expandPanel) return;
-    // 패널이 항상 사이드바 맨 위(레일 전체의 첫 줄)에서부터 시작하다 보니, 레일 아래쪽에 있는 아이콘(예:
-    // 제출·설정·관리)을 열면 카드가 그 아이콘과 한참 떨어진 위쪽에 나타났음 - 마우스를 아이콘에서 카드로
-    // 옮기려면 그 사이에 있는 다른 아이콘들 위를 지나가게 되는데, 그 아이콘들도 각자 hover에 반응해서
-    // "지나가기만 해도" 지금 열린 카드를 닫고 자기 것을 열어버려, 카드에 닿기도 전에 사라져 눌러볼 수도
-    // 없는 문제로 이어졌음("마우스를 대야 나오는데 움직이면 사라져서 클릭도 못 한다") - 카드가 항상 그
-    // 아이콘과 같은 높이에서 시작하게 위쪽에 여백을 줘서, 마우스가 옆으로 곧장 움직이기만 해도(다른
-    // 아이콘을 거치지 않고) 카드에 닿을 수 있게 함
-    const rowTop = row.getBoundingClientRect().top;
-    const panelTop = expandPanel.getBoundingClientRect().top;
-    const alignOffset = Math.max(0, rowTop - panelTop);
+    // 한 번은 카드가 클릭한 아이콘과 같은 높이에서 열리게(위쪽 여백을 계산해서) 만들어봤는데, 이제는
+    // 호버가 아니라 클릭으로만 열리는 방식이라 그 문제(마우스가 다른 아이콘을 지나가며 닫히는 것)가
+    // 더 이상 해당하지 않고, "어느 대메뉴를 눌러도 항상 같은 자리(오른쪽 상단)에 나왔으면 좋겠다"는
+    // 요청으로 다시 단순하게 패널 맨 위(고정된 자리)에서 시작하게 되돌림
     expandPanel.appendChild(tiles);
     tiles.classList.add('rail-popover-open', 'rail-panel-inline');
-    tiles.style.marginTop = alignOffset + 'px';
   }
 
   // 1차 팝오버(결재/거래처/Tax.J 등) 안에서 사내정보처럼 더 펼칠 하위메뉴가 있는 항목을 누르면, 같은 줄
@@ -15764,24 +15757,24 @@ relocateSidebarNodes();
     openCascadePopover(item, expandBtn);
   }, true);
 
-  // 팝오버 안의 항목(탭 이동)을 누르면 자연스럽게 팝오버도 같이 닫아줌 - 기존 클릭 핸들러는 그대로 두고 추가로만 반응함.
-  // 위에서 가로챈, 하위메뉴가 있는 항목(펼치기만 하고 이동은 안 함)은 팝오버를 닫지 않아야 하므로 여기서도 제외함.
-  // 캐스케이드 팝오버(.home-submenu)도 같은 방식으로 닫혀야 하므로 .home-tiles뿐 아니라 .home-submenu에도 붙임
-  document.querySelectorAll('.home-tiles, .home-submenu').forEach(tiles=>{
-    tiles.addEventListener('click', (e)=>{
-      if(!sidebar.classList.contains('rail-mode')) return;
-      if(e.target.closest('.home-tile-expand-btn')) return; // 펼치기 화살표는 팝오버를 계속 열어둬야 함
-      const item = e.target.closest('.home-tile, .home-submenu-item, .home-submenu-leaf');
-      if(!item) return;
-      if(item.querySelector('.home-tile-expand-btn[data-expand-target]')) return; // 하위메뉴가 있는 항목은 펼치기만 하고 팝오버를 열어둬야 함
-      closeAllPopovers();
-    });
-  });
+  // 예전엔 여기서 팝오버 안의 항목(탭 이동)을 누르면 자연스럽게 팝오버도 같이 닫히게 했는데, "하위메뉴에
+  // 들어가도(다른 화면으로 이동해도) 그 목록이 사라지지 않게 해달라"는 요청으로 이 자동-닫힘을 없앰 -
+  // 이제 항목을 눌러 화면이 바뀌어도 방금 열어둔 하위메뉴 목록은 그대로 떠 있어서, 같은 카테고리 안의
+  // 다른 항목을 계속 이어서 눌러볼 수 있음(닫힘은 아래 "바깥을 누르면 닫힘"이나 다른 대메뉴를 눌렀을
+  // 때만 일어남)
 
   // 팝오버 바깥을 누르면 닫힘 - 팝오버 카드 자체는 이제 body 바로 밑으로 옮겨져 있어서(위 openPopoverFor
   // 참고) .home-section-row 안에 있는지뿐 아니라 열려있는 팝오버(1차 .home-tiles 또는 캐스케이드 .home-submenu)
   // 안인지도 같이 확인해야 함
+  // "하위메뉴에 들어가도 목록이 안 사라지게 해달라"고 고쳤는데도 실제로는 계속 닫혔던 원인 - 하위메뉴
+  // 항목(.home-submenu-item)을 누르면 그 항목 자체가 화면을 이동시키는 게 아니라, 저 멀리 다른 곳(예전
+  // 상단 nav.tabs)에 숨어있는 진짜 탭 버튼을 찾아 .click()으로 대신 눌러주는 방식이었음(사이드바 코드를
+  // 새로 만들지 않고 기존 탭 버튼을 그대로 재사용하려고 짜둔 방식) - 이 .click()이 document까지 새로
+  // 버블링되면서, 그 클릭의 대상(진짜 tab-btn)은 팝오버 "안"이 아니니 "바깥을 눌렀다"고 오판해서 매번
+  // 같이 닫혀버렸음. 사람이 직접 누른 클릭(e.isTrusted===true)과 이렇게 코드가 대신 눌러준 클릭
+  // (e.isTrusted===false)은 구분되므로, 코드가 대신 누른 클릭은 "바깥 클릭"으로 치지 않고 무시함
   document.addEventListener('click', (e)=>{
+    if(!e.isTrusted) return;
     if(!sidebar.classList.contains('rail-mode')) return;
     if(e.target.closest('.home-section-row')) return;
     if(e.target.closest('.rail-popover-open')) return;
@@ -15986,8 +15979,50 @@ relocateSidebarNodes();
     sidebar.classList.toggle('rail-mode', eligible);
     if(!eligible) closeAllPopovers();
   }
+  // 예전엔 창이 좁아지면 대시보드 2열이 1열로 접히는 것처럼 "안의 배치가 재배열"됐는데, "그러지 말고
+  // 그냥 화면 전체가 배율 줄어들듯 통째로 쪼그라들면 좋겠다"는 요청 - 브라우저 확대/축소와 같은 효과를
+  // 내는 CSS zoom을 창 폭에 맞춰 자동으로 걸어서, 재배열 대신 전체 화면이 그대로 작아지게 함.
+  // - 기준폭(REFERENCE_WIDTH)보다 넓으면 zoom 없음(1:1) - 원래 디자인 그대로
+  // - 기준폭보다 좁아지면, 그 비율만큼 zoom을 줄여서 "화면에 보이는 CSS 폭"이 항상 기준폭으로 고정되게
+  //   함(레이아웃 입장에서는 창이 안 좁아진 것처럼 보여서 재배열이 안 일어남 - 그냥 화면 전체가
+  //   확대율만큼 작게 그려질 뿐)
+  // - 휴대폰(터치 기기)이나 진짜 좁은 화면(MOBILE_BREAK 밑)은 zoom을 걸지 않고, 원래부터 있던 전용
+  //   모바일 쌓임 레이아웃(사이드바가 위로 올라가는 방식)을 그대로 씀 - 화면 자체가 작은 기기에서 그걸
+  //   더 축소해봤자 글자만 작아지고 안 읽혀서 오히려 안 좋음
+  const ZOOM_REFERENCE_WIDTH = 1300;
+  const ZOOM_MOBILE_BREAK = 700;
+  const ZOOM_MIN = 0.5;
+  let currentAutoZoom = 1;
+  function applyAutoZoom(){
+    if(isTouch()){
+      if(currentAutoZoom !== 1){ document.documentElement.style.zoom = ''; currentAutoZoom = 1; }
+      return;
+    }
+    // zoom이 걸려있으면 window.innerWidth 자체가 그 비율만큼 부풀려져 보이므로(1 CSS px가 실제로는
+    // zoom배만큼 작게 그려지는 만큼, 같은 물리적 폭 안에 더 많은 CSS px가 들어감), 지금 걸려있는
+    // zoom을 다시 곱해서 "zoom이 전혀 없었다면 이 창이 실제로 몇 CSS px였을지"를 역산함 - 이 값이
+    // 있어야 매번 안정적으로 같은 폭 기준으로 다시 계산할 수 있음(안 그러면 zoom을 걸 때마다
+    // innerWidth가 같이 바뀌면서 계산이 널뛰기 함)
+    const trueWidth = window.innerWidth * currentAutoZoom;
+    let nextZoom;
+    if(trueWidth >= ZOOM_REFERENCE_WIDTH || trueWidth < ZOOM_MOBILE_BREAK){
+      nextZoom = 1; // 넓으면 원본 그대로, 모바일 쌓임 레이아웃으로 넘어갈 만큼 좁으면 그쪽에 맡김
+    } else {
+      nextZoom = Math.max(ZOOM_MIN, trueWidth / ZOOM_REFERENCE_WIDTH);
+    }
+    if(Math.abs(nextZoom - currentAutoZoom) > 0.001){
+      currentAutoZoom = nextZoom;
+      document.documentElement.style.zoom = nextZoom === 1 ? '' : nextZoom;
+    }
+  }
   applyRailMode();
-  window.addEventListener('resize', applyRailMode);
+  applyAutoZoom();
+  let autoZoomResizeTimer = null;
+  window.addEventListener('resize', ()=>{
+    applyRailMode();
+    clearTimeout(autoZoomResizeTimer);
+    autoZoomResizeTimer = setTimeout(applyAutoZoom, 60);
+  });
   // 즐겨찾기 추가 팝업(openFavoriteMenuPicker, 이 IIFE 밖에서 정의됨)도 전체메뉴와 똑같은 3칼럼 그룹
   // 구조(Works/Company/Settings)로 보여주기 위해 같은 헬퍼를 재사용함 - 이 IIFE 안에서만 보이는
   // 지역 함수라 window에 걸어서 바깥에서도 쓸 수 있게 함
