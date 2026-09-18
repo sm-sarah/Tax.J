@@ -116,19 +116,30 @@
   .app-sidebar.rail-mode .home-section-label{
     display:flex; align-items:center; justify-content:center; width:44px; height:44px; margin:0 auto;
     border-radius:14px; background:var(--surface); border:1.5px solid var(--border); cursor:pointer;
-    box-shadow:0 1px 2px rgba(29,30,51,0.05); gap:0; font-size:0; color:var(--ink-soft);
+    box-shadow:0 1px 2px rgba(29,30,51,0.05); gap:0; font-size:0; color:var(--ink-soft); position:relative;
   }
   .app-sidebar.rail-mode .home-section-label svg{ width:18px; height:18px; flex-shrink:0; }
+  /* 결재/거래처 등 예전엔 Works/Company/Settings 안에 묶여있던 중간메뉴가 각자 독립된 레일 아이콘이 되면서,
+     SVG 대신 이모지(.home-section-icon)를 쓰는 줄도 생김 - 부모의 font-size:0(텍스트 숨김)을 이 span에서만
+     다시 켜줘야 이모지가 실제로 보임(SVG는 폰트 크기와 무관해서 이 처리가 필요 없었음) */
+  .app-sidebar.rail-mode .home-section-label .home-section-icon{ font-size:17px; flex-shrink:0; }
+  /* 결재 아이콘 옆 안읽음 배지(#homeSideApprovalTotalCount)는 이미 자체 font-size를 갖고 있어 숨겨지지
+     않지만, 좁은 레일 아이콘 안에서는 글자 옆이 아니라 아이콘 오른쪽 위 모서리에 작은 점처럼 걸쳐 보이게 함 */
+  .app-sidebar.rail-mode .home-section-label .approval-doc-badge{ position:absolute; top:-3px; right:-3px; margin-left:0; }
   .app-sidebar.rail-mode .home-section-row.rail-open .home-section-label{ background:var(--indigo); border-color:var(--indigo); color:#fff; }
   .app-sidebar.rail-mode .home-tiles{ display:none; }
+  /* Works/Company/Settings 묶음 아이콘은 없앴지만, 레일에서도 "이 아이콘들까지가 업무 관련, 이 아이콘들은
+     내부 관련"임을 눈으로 구분할 수 있게 전체메뉴의 세로줄과 같은 역할을 하는 짧은 가로선을 클러스터 사이에 둠 */
+  .app-rail-group-divider{ display:none; }
+  .app-sidebar.rail-mode .app-rail-group-divider{ display:block; width:26px; height:1px; background:var(--border); margin:4px auto; }
   /* 팝오버 카드가 열리면(JS가 home-tiles를 document.body로 옮기고 이 클래스를 붙임) - 사이드바(#appSidebar)가
      position:sticky라서 그 안에 있는 채로 position:fixed를 줘봤자 사이드바가 만든 자체 쌓임 맥락(stacking
      context) 안에 갇혀서, 오른쪽 대시보드 카드(사이드바 바깥 형제 요소)한테 시각적으로 가려지는 문제가
      있었음(z-index를 아무리 높여도 같은 쌓임 맥락 안에서만 비교되기 때문) - DOM 위치 자체를 body 바로
      밑으로 옮겨서 사이드바의 쌓임 맥락에서 완전히 빠져나오게 함 */
   /* 팝오버 카드는 두 종류가 body 바로 밑에 뜸: 1) 레일 아이콘을 눌러서 뜨는 1차 팝오버(.home-tiles) -
-     2) 그 1차 팝오버 안, 아이콘 전용 줄(.home-tiles-icon-rail)에서 아이콘 하나를 누르면 그 오른쪽에 또
-     뜨는 2차(캐스케이드) 팝오버(.home-submenu) - 두 종류 다 같은 카드 모양을 쓰므로 선택자를 합쳐놓음 */
+     2) 그 안에서 사내정보처럼 더 펼칠 항목을 누르면 그 오른쪽에 또 뜨는 2차(캐스케이드) 팝오버
+     (.home-submenu) - 두 종류 다 같은 카드 모양을 쓰므로 선택자를 합쳐놓음 */
   .home-tiles.rail-popover-open, .home-submenu.rail-popover-open{
     /* 원래 .home-tiles(줄 771 부근)는 justify-content:center인데, 팝오버처럼 내용이 넘칠 수 있는 곳에선
        이게 바로 "스크롤을 끝까지 올려도 맨 위 항목이 잘려서 안 보이는" 원인이 됨 - flex 컨테이너가 넘치는
@@ -139,12 +150,12 @@
     box-shadow:0 16px 40px -10px rgba(15,16,30,0.28), 0 4px 14px rgba(15,16,30,0.12); z-index:9500;
   }
   .home-tiles.rail-popover-open.rail-popover-grid{ display:grid !important; grid-template-columns:repeat(2,1fr); }
-  /* 결재/거래처/세무신고/제출현황, Tax.J/Staff/Policies, 회사/설정/데이터처럼 그 아래 더 펼쳐지는 중간메뉴
-     항목들은 여기(1차 팝오버) 안에서는 원래 아이콘+글자 줄(.home-tile-plain) 모양 그대로 두고, 다만 그
-     아래 실제 하위 항목(기안작성/임시저장함 등)만 이 줄 안에 인라인으로 펼치지 않고 오른쪽에 새 캐스케이드
-     팝오버로 띄움(아래 openCascadePopover 참고) - 눌렀을 때 어느 항목이 열려있는지 살짝 배경으로 표시함 */
-  .home-tiles.rail-popover-open.home-tiles-icon-rail > .home-submenu{ display:none !important; }
-  .home-tiles.rail-popover-open.home-tiles-icon-rail .home-tile.home-tile-plain.cascade-open{
+  /* 팝오버(1차든 캐스케이드든) 안에서 사내정보처럼 그 아래 더 펼쳐지는 항목은 원래 아이콘+글자 줄
+     (.home-tile-plain) 모양 그대로 두고, 다만 그 아래 실제 하위 항목(청인/team 등)만 이 줄 안에 인라인으로
+     펼치지 않고 오른쪽에 새 캐스케이드 팝오버로 띄움(아래 openCascadePopover 참고) - 눌렀을 때 어느 항목이
+     열려있는지 살짝 배경으로 표시함 */
+  .rail-popover-open > .home-submenu{ display:none !important; }
+  .rail-popover-open .home-tile.home-tile-plain.cascade-open{
     background:var(--indigo-bg);
   }
   /* 팝오버 카드 맨 위에 어떤 카테고리인지(Client/Company 등) 작은 제목을 하나 보여줌 */
@@ -167,12 +178,23 @@
   .rail-search-row:hover{ background:rgba(29,30,51,0.045); }
   .rail-search-row .rail-search-name{ font-size:13.5px; font-weight:700; color:var(--ink); }
   .rail-search-row .rail-search-path{ font-size:11px; color:var(--ink-soft); }
+  /* 전체메뉴 제목("전체메뉴")은 헤더 줄 가운데로, 글자도 더 키움 - 닫기 버튼은 제목과 겹치지 않게 오른쪽
+     끝에 따로 떠 있게(position:absolute) 함 */
+  .rail-overlay-head.all-mode-head{ position:relative; justify-content:center; }
+  .rail-overlay-head.all-mode-head .rail-overlay-title{ font-size:17px; font-weight:800; color:var(--ink); }
+  .rail-overlay-head.all-mode-head .rail-overlay-close{ position:absolute; right:0; top:50%; transform:translateY(-50%); }
   .rail-allmenu-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
-  .rail-allmenu-col-title{ font-size:12px; font-weight:800; color:var(--ink); margin-bottom:6px; }
-  .rail-allmenu-item{ font-size:12.5px; font-weight:600; color:var(--ink-soft); padding:4px 0; cursor:pointer; }
+  .rail-allmenu-col-title{ font-size:13px; font-weight:800; color:var(--ink); margin-bottom:8px; text-align:center; padding-bottom:8px; border-bottom:2px solid var(--indigo); }
+  /* Works/Company/Settings 세 칼럼 사이의 구분은 세로 선으로 - 가운데(2번째) 칼럼 좌우에 얇은 경계선을 그음 */
+  .rail-allmenu-grid > div + div{ border-left:1px solid var(--border); padding-left:14px; }
+  .rail-allmenu-item{ font-size:12.5px; font-weight:600; color:var(--ink-soft); padding:4px 0; cursor:pointer; text-align:center; }
   .rail-allmenu-item:hover{ color:var(--ink); text-decoration:underline; }
-  .rail-allmenu-sub{ padding-left:12px; font-weight:500; }
-  @media (max-width:900px){ .rail-allmenu-grid{ grid-template-columns:repeat(2,1fr); } }
+  /* 중간메뉴(결재/거래처/세무신고 등, depth 0)는 하위메뉴(기안작성 등)와 왼쪽 들여쓰기가 아니라 크기·굵기·
+     색으로 구분함 - 그 위에 여백을 둬서 그룹이 바뀌는 지점도 눈에 띄게 함 */
+  .rail-allmenu-mid{ font-size:13.5px; font-weight:800; color:var(--indigo-deep); margin-top:14px; }
+  .rail-allmenu-mid:first-child{ margin-top:0; }
+  .rail-allmenu-sub{ font-weight:500; color:var(--ink-soft); }
+  @media (max-width:900px){ .rail-allmenu-grid{ grid-template-columns:repeat(2,1fr); } .rail-allmenu-grid > div:nth-child(2){ border-left:1px solid var(--border); padding-left:18px; } .rail-allmenu-grid > div:nth-child(3){ border-left:none; padding-left:0; } }
   /* 모바일 메뉴 펼치기 버튼 - 넓은 화면에서는 사이드바가 항상 보여서 필요 없으므로 기본은 숨김 */
   .mobile-sidebar-toggle{
     display:none; align-items:center; justify-content:center; gap:7px; width:100%;
@@ -1508,8 +1530,8 @@
   tbody tr:hover td.client-name-cell{background:var(--indigo-bg) !important;}
   /* 결재 표의 "삭제" 아이콘처럼 되돌리기 어려운 동작은 평소엔 완전히 안 보이다가, 그 줄에 마우스를
      올렸을 때만 나타나게 함(요청받은 방식) - pointer-events도 같이 꺼서 숨어있는 동안엔 실수로도 안 눌림 */
-  .approval-action-danger{ opacity:0; pointer-events:none; transition:opacity .15s; }
-  tbody tr:hover .approval-action-danger{ opacity:1; pointer-events:auto; }
+  .approval-action-hover{ opacity:0; pointer-events:none; transition:opacity .15s; }
+  tbody tr:hover .approval-action-hover{ opacity:1; pointer-events:auto; }
   /* 출퇴근현황 표의 "관리"(수정/삭제) 아이콘도 같은 방식 - 평소엔 안 보이다가 그 줄에 마우스를
      올렸을 때만 나타나서, 표가 평소엔 아이콘 없이 깔끔하게 보임 */
   .clock-history-row-actions{ display:inline-flex; gap:4px; opacity:0; pointer-events:none; transition:opacity .15s; }
@@ -2599,7 +2621,7 @@
          비어있고(다른 안내 팝업엔 영향 없음), openClientDetailModal에서만 아이콘 버튼 줄을 여기에
          채워 넣음 - 팝업을 닫을 때(closeMemoModal) 항상 비워서 다음에 여는 다른 팝업에 남아있지 않게 함 -->
     <div id="memoModalScroll" style="overflow-y:auto; flex:1 1 auto; min-height:0;">
-      <div id="memoModalTitleWrap" style="position:sticky; top:0; z-index:5; background:var(--surface); text-align:center; padding:18px 68px 10px; display:flex; flex-direction:column;">
+      <div id="memoModalTitleWrap" style="position:sticky; top:0; z-index:5; background:var(--surface); text-align:center; padding:30px 68px 10px; display:flex; flex-direction:column;">
         <span id="memoModalTitle" style="display:inline-block; font-weight:800; font-size:19px; color:var(--ink);"></span>
         <div id="memoModalTitleExtra"></div>
       </div>
@@ -3140,199 +3162,170 @@
           <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Bookmarks</div>
           <div class="home-tiles" id="homeFavoritesChips"></div>
         </div>
-        <!-- 예전엔 Bookmarks 다음에 Client/Company/Staff가 각각 대분류였는데, "업무 관련이냐 내부 관련이냐"
-             기준으로 다시 묶어달라는 요청으로 두 그룹(업무/내부)으로 합침 - 각 그룹 밑의 거래처관련·팀관련·
-             직원관련은 이 그룹 안에서만 쓰는 새 중간메뉴(그 자체로는 이동할 화면이 없고 펼치기만 함)라
-             data-goto가 없고, 그 안의 실제 항목들(기장거래처·팀캘린더·개인캘린더 등)은 기존 요소를 그대로
-             옮겨왔을 뿐이라 data-*·id는 전혀 안 바뀜(기존 클릭 핸들러·배지 등이 그대로 동작함) -->
-        <div class="home-section-row">
-          <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg> Works</div>
-          <div class="home-tiles home-tiles-icon-rail" id="homeTilesWork">
-            <!-- 순서: 결재 → 거래처 → 세무신고 → 제출현황 (결재는 원래 내부/Company 쪽에 있었는데 업무 쪽으로 옮김) -->
-            <div class="home-tile home-tile-plain" data-goto="approval" style="--tile-accent:#0EA5A5;">
-              <div class="home-tile-icon">🖋️</div>
-              <div class="home-tile-title">결재</div><span id="homeSideApprovalTotalCount" class="approval-doc-badge" style="display:none;"></span>
-              <button type="button" class="home-tile-expand-btn" data-expand-target="homeWorkDocSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
+        <!-- 예전엔 Works/Company/Settings 아이콘 3개 밑에 결재·거래처 같은 중간메뉴들이 한 번 더 묶여있었는데,
+             "저 세 아이콘이 대메뉴 역할을 대신 하게 해달라, 홈 화면(레일)에서는 그 세 아이콘 자체는 빠지고
+             그 안의 10개 중간메뉴가 각자 독립된 레일 아이콘이 되면 된다"는 요청으로 이 세 줄(Works/Company/
+             Settings)은 완전히 없애고, 그 안에 있던 항목들을 각자 자기 줄(.home-section-row)로 풀어놓음.
+             다만 Works/Company/Settings라는 이름 자체는 없어지지 않음 - 전체메뉴(전체메뉴 모달)에서는 이
+             10개를 다시 세 묶음으로 모아 보여주는 걸로 그 역할을 대신함(JS의 ALLMENU_GROUPS 참고).
+             기존 요소를 그대로 옮겨왔을 뿐이라 각 항목의 data-*·id는 전혀 안 바뀜(기존 클릭 핸들러·배지 등이
+             그대로 동작함) - 회사/설정/데이터에 있던 data-settings-cat-goto만 예외로 뺐는데, 그 아이콘을 눌러
+             해당 카테고리로 전환하던 용도였지만 하위 항목(회사정보/근무시간 등)이 이미 각자
+             data-settings-anchor-goto로 알아서 그 카테고리를 골라 이동하기 때문에 아이콘 자체에는 필요 없었음 -->
+        <div class="home-section-row" id="homeSectionApproval">
+          <div class="home-section-label"><span class="home-section-icon">🖋️</span> 결재<span id="homeSideApprovalTotalCount" class="approval-doc-badge" style="display:none;"></span></div>
+          <div class="home-tiles" id="homeTilesApproval">
+            <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="new"><span>기안작성</span></div>
+            <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="draft"><span>임시저장함</span><span id="homeSideApprovalDraftCount" class="approval-doc-badge" style="display:none;"></span></div>
+            <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="mine"><span>기안함</span><span id="homeSideApprovalMineCount" class="approval-doc-badge" style="display:none;"></span></div>
+            <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="rejected"><span>반려함</span><span id="homeSideApprovalRejectedCount" class="approval-doc-badge" style="display:none;"></span></div>
+            <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="inbox"><span>결재함</span><span id="homeSideApprovalInboxCount" class="approval-doc-badge" style="display:none;"></span></div>
+            <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="all"><span>결재현황</span></div>
+          </div>
+        </div>
+        <div class="home-section-row" id="homeSectionClient">
+          <div class="home-section-label"><span class="home-section-icon">🤝</span> 거래처</div>
+          <div class="home-tiles" id="homeTilesClient">
+            <div class="home-tile home-tile-plain" data-goto="clients-regular" style="--tile-accent:var(--coral);">
+              <div class="home-tile-icon">📗</div>
+              <div class="home-tile-title">기장거래처</div>
             </div>
-            <div class="home-submenu" id="homeWorkDocSubmenu" style="display:none;">
-              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="new"><span>기안작성</span></div>
-              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="draft"><span>임시저장함</span><span id="homeSideApprovalDraftCount" class="approval-doc-badge" style="display:none;"></span></div>
-              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="mine"><span>기안함</span><span id="homeSideApprovalMineCount" class="approval-doc-badge" style="display:none;"></span></div>
-              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="rejected"><span>반려함</span><span id="homeSideApprovalRejectedCount" class="approval-doc-badge" style="display:none;"></span></div>
-              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="inbox"><span>결재함</span><span id="homeSideApprovalInboxCount" class="approval-doc-badge" style="display:none;"></span></div>
-              <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="all"><span>결재현황</span></div>
+            <div class="home-tile home-tile-plain" data-goto="clients-other" style="--tile-accent:var(--amber);">
+              <div class="home-tile-icon">📂</div>
+              <div class="home-tile-title">기타거래처</div>
             </div>
-            <div class="home-tile home-tile-plain" style="--tile-accent:var(--coral);">
-              <div class="home-tile-icon">🤝</div>
-              <div class="home-tile-title">거래처</div>
-              <button type="button" class="home-tile-expand-btn" data-expand-target="homeClientSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
+            <div class="home-tile home-tile-plain" data-goto="clients-terminated" style="--tile-accent:var(--guide-slate);">
+              <div class="home-tile-icon">🚫</div>
+              <div class="home-tile-title">해지거래처</div>
             </div>
-            <div class="home-submenu" id="homeClientSubmenu" style="display:none;">
-              <div class="home-tile home-tile-plain" data-goto="clients-regular" style="--tile-accent:var(--coral);">
-                <div class="home-tile-icon">📗</div>
-                <div class="home-tile-title">기장거래처</div>
-              </div>
-              <div class="home-tile home-tile-plain" data-goto="clients-other" style="--tile-accent:var(--amber);">
-                <div class="home-tile-icon">📂</div>
-                <div class="home-tile-title">기타거래처</div>
-              </div>
-              <div class="home-tile home-tile-plain" data-goto="clients-terminated" style="--tile-accent:var(--guide-slate);">
-                <div class="home-tile-icon">🚫</div>
-                <div class="home-tile-title">해지거래처</div>
-              </div>
-              <div class="home-tile home-tile-plain" data-goto="clients-edit" style="--tile-accent:var(--navy);">
-                <div class="home-tile-icon">🆕</div>
-                <div class="home-tile-title">거래처등록</div>
-              </div>
-            </div>
-            <!-- 예전엔 "업무" 밑에 신고현황(세목별로 더 펼쳐짐)/신고대상/제출현황/검토표/결재가 나란히 있었는데,
-                 세목(원천세 등)을 고르면 그 세목 안에서 신고대상·신고현황·검토표 중 실제로 있는 것만 보이는
-                 구조가 낫다는 의견으로 "세무신고" 밑에 세목을 먼저 두고 그 아래로 펼치게 바꿈. -->
-            <div class="home-tile home-tile-plain" data-goto="approval" style="--tile-accent:#0EA5A5;">
-              <div class="home-tile-icon">🧾</div>
-              <div class="home-tile-title">세무신고</div>
-              <button type="button" class="home-tile-expand-btn" data-expand-target="homeWorkSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
-            </div>
-            <div class="home-submenu" id="homeWorkSubmenu" style="display:none;">
-              <!-- 원천세: 신고대상/신고현황/검토표 세 화면을 하나로 합쳐서(원천세 통합) 갈래 없이 바로 이동함 -->
-              <div class="home-submenu-item" data-approval-cat-goto="itall"><span>원천세</span></div>
-              <!-- 부가세: 신고대상/신고현황/검토표 세 화면을 하나로 합쳐서(부가세 통합) 갈래 없이 바로 이동함 -->
-              <div class="home-submenu-item" data-approval-cat-goto="vatall"><span>부가세</span></div>
-              <!-- 법인세/종소세/결산: 아직 신고현황만 있어서 펼칠 하위메뉴 없이 바로 이동함 -->
-              <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="법인세"><span>법인세</span></div>
-              <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="종소세"><span>종소세</span></div>
-              <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="결산1차"><span>1차 결산</span></div>
-              <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="결산2차"><span>2차 결산</span></div>
-            </div>
-            <div class="home-tile home-tile-plain" data-goto="approval" style="--tile-accent:#0EA5A5;">
-              <div class="home-tile-icon">📮</div>
-              <div class="home-tile-title">제출현황</div>
-              <button type="button" class="home-tile-expand-btn" data-expand-target="homeWorkSubmitSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
-            </div>
-            <div class="home-submenu" id="homeWorkSubmitSubmenu" style="display:none;">
-              <div class="home-submenu-item" data-approval-cat-goto="submit" data-submit-type-goto="월별"><span>매월</span></div>
-              <div class="home-submenu-item" data-approval-cat-goto="submit" data-submit-type-goto="반기"><span>반기</span></div>
-              <div class="home-submenu-item" data-approval-cat-goto="submit" data-submit-type-goto="연간"><span>연간</span></div>
+            <div class="home-tile home-tile-plain" data-goto="clients-edit" style="--tile-accent:var(--navy);">
+              <div class="home-tile-icon">🆕</div>
+              <div class="home-tile-title">거래처등록</div>
             </div>
           </div>
         </div>
+        <!-- 예전엔 "업무" 밑에 신고현황(세목별로 더 펼쳐짐)/신고대상/제출현황/검토표/결재가 나란히 있었는데,
+             세목(원천세 등)을 고르면 그 세목 안에서 신고대상·신고현황·검토표 중 실제로 있는 것만 보이는
+             구조가 낫다는 의견으로 "세무신고" 밑에 세목을 먼저 두고 그 아래로 펼치게 바꿈. -->
+        <div class="home-section-row" id="homeSectionTaxFiling">
+          <div class="home-section-label"><span class="home-section-icon">🧾</span> 세무신고</div>
+          <div class="home-tiles" id="homeTilesTaxFiling">
+            <!-- 원천세: 신고대상/신고현황/검토표 세 화면을 하나로 합쳐서(원천세 통합) 갈래 없이 바로 이동함 -->
+            <div class="home-submenu-item" data-approval-cat-goto="itall"><span>원천세</span></div>
+            <!-- 부가세: 신고대상/신고현황/검토표 세 화면을 하나로 합쳐서(부가세 통합) 갈래 없이 바로 이동함 -->
+            <div class="home-submenu-item" data-approval-cat-goto="vatall"><span>부가세</span></div>
+            <!-- 법인세/종소세/결산: 아직 신고현황만 있어서 펼칠 하위메뉴 없이 바로 이동함 -->
+            <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="법인세"><span>법인세</span></div>
+            <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="종소세"><span>종소세</span></div>
+            <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="결산1차"><span>1차 결산</span></div>
+            <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="결산2차"><span>2차 결산</span></div>
+          </div>
+        </div>
+        <div class="home-section-row" id="homeSectionSubmitStatus">
+          <div class="home-section-label"><span class="home-section-icon">📮</span> 제출현황</div>
+          <div class="home-tiles" id="homeTilesSubmitStatus">
+            <div class="home-submenu-item" data-approval-cat-goto="submit" data-submit-type-goto="월별"><span>매월</span></div>
+            <div class="home-submenu-item" data-approval-cat-goto="submit" data-submit-type-goto="반기"><span>반기</span></div>
+            <div class="home-submenu-item" data-approval-cat-goto="submit" data-submit-type-goto="연간"><span>연간</span></div>
+          </div>
+        </div>
+        <div class="app-rail-group-divider"></div>
 
-        <div class="home-section-row">
-          <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 21v-4h6v4"/><path d="M9 7h.01M9 11h.01M15 7h.01M15 11h.01"/></svg> Company</div>
-          <div class="home-tiles home-tiles-icon-rail" id="homeTilesInternal">
-            <div class="home-tile home-tile-plain" style="--tile-accent:var(--guide-teal);">
+        <div class="home-section-row" id="homeSectionTaxJ">
+          <div class="home-section-label"><span class="home-section-icon">🗂️</span> Tax.J</div>
+          <div class="home-tiles" id="homeTilesTaxJ">
+            <div class="home-tile home-tile-plain" data-goto="teamcalendar" style="--tile-accent:var(--guide-teal);">
               <div class="home-tile-icon">🗂️</div>
-              <div class="home-tile-title">Tax.J</div>
-              <button type="button" class="home-tile-expand-btn" data-expand-target="homeTeamSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
+              <div class="home-tile-title">팀캘린더</div>
             </div>
-            <div class="home-submenu" id="homeTeamSubmenu" style="display:none;">
-              <div class="home-tile home-tile-plain" data-goto="teamcalendar" style="--tile-accent:var(--guide-teal);">
-                <div class="home-tile-icon">🗂️</div>
-                <div class="home-tile-title">팀캘린더</div>
-              </div>
-              <!-- 공지사항 - 예전엔 상단 아이콘(종 모양)을 눌러야만 볼 수 있었는데, 그 아이콘은 이제 "알림"
-                   (결재·공지 등 새로 온 것들의 알림 목록)으로 바뀌어서 공지사항 전용 화면은 다른 메뉴들처럼
-                   사이드바에서 바로 들어갈 수 있게 함 -->
-              <div class="home-tile home-tile-plain" id="homeSideNoticeTile" style="--tile-accent:var(--navy);">
-                <div class="home-tile-icon">📣</div>
-                <div class="home-tile-title">공지사항</div>
-              </div>
-              <div class="home-tile home-tile-plain" data-goto="companyinfo" style="--tile-accent:#8B5CF6;">
-                <div class="home-tile-icon">📇</div>
-                <div class="home-tile-title">사내정보</div>
-                <button type="button" class="home-tile-expand-btn" data-expand-target="homeCompanyInfoSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
-              </div>
-              <!-- 이 그룹(Tax.J) 제목과 겹쳐 보이지 않도록, 사내정보 하위 두 항목은 청인(법인)/team(팀)으로
-                   짧게 구분해서 부름 - 실제 텍스트는 법인명·팀명이 등록되면 updateHomeCompanyInfoSidebarLabels()가
-                   그 값으로 바로 바꿔치기하고, 아직 등록 전이면 이 기본값이 보임 -->
-              <div class="home-submenu" id="homeCompanyInfoSubmenu" style="display:none;">
-                <div class="home-submenu-item" data-companyinfo-cat-goto="corp"><span id="homeCiCorpLabel">청인</span></div>
-                <div class="home-submenu-item" data-companyinfo-cat-goto="team"><span id="homeCiTeamLabel">team</span></div>
-              </div>
+            <!-- 공지사항 - 예전엔 상단 아이콘(종 모양)을 눌러야만 볼 수 있었는데, 그 아이콘은 이제 "알림"
+                 (결재·공지 등 새로 온 것들의 알림 목록)으로 바뀌어서 공지사항 전용 화면은 다른 메뉴들처럼
+                 사이드바에서 바로 들어갈 수 있게 함 -->
+            <div class="home-tile home-tile-plain" id="homeSideNoticeTile" style="--tile-accent:var(--navy);">
+              <div class="home-tile-icon">📣</div>
+              <div class="home-tile-title">공지사항</div>
             </div>
-            <div class="home-tile home-tile-plain" style="--tile-accent:var(--mint);">
-              <div class="home-tile-icon">🧑‍💼</div>
-              <div class="home-tile-title">Staff</div>
-              <button type="button" class="home-tile-expand-btn" data-expand-target="homeStaffSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
+            <div class="home-tile home-tile-plain" data-goto="companyinfo" style="--tile-accent:#8B5CF6;">
+              <div class="home-tile-icon">📇</div>
+              <div class="home-tile-title">사내정보</div>
+              <button type="button" class="home-tile-expand-btn" data-expand-target="homeCompanyInfoSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
             </div>
-            <div class="home-submenu" id="homeStaffSubmenu" style="display:none;">
-              <div class="home-tile home-tile-plain" data-goto="calendar" style="--tile-accent:var(--mint);">
-                <div class="home-tile-icon">📅</div>
-                <div class="home-tile-title">개인캘린더</div>
-              </div>
-              <div class="home-tile home-tile-plain" data-goto="attendance" style="--tile-accent:var(--indigo);">
-                <div class="home-tile-icon">⏰</div>
-                <div class="home-tile-title">근태경비</div>
-              </div>
-              <!-- 대시보드 출퇴근 위젯의 "전체이력"과 같은 내용(월 선택해서 그 달 출퇴근 시각·근무시간을 보는)을
-                   다른 메뉴들처럼 조회 화면으로 보여줌 - 예전엔 팝업이었는데 전용 메뉴가 생기면서 화면 전환으로 바꿈 -->
-              <div class="home-tile home-tile-plain" data-goto="clockhistory" style="--tile-accent:var(--amber);">
-                <div class="home-tile-icon">🕒</div>
-                <div class="home-tile-title">출퇴근현황</div>
-              </div>
-            </div>
-            <!-- "내부규정"의 영문 표현 - 사내 정책/지침을 가리키는 가장 일반적인 단어인 Policies로 옮김 -->
-            <div class="home-tile home-tile-plain" data-goto="policy" style="--tile-accent:var(--guide-wine);">
-              <div class="home-tile-icon">📘</div>
-              <div class="home-tile-title">Policies</div>
-              <button type="button" class="home-tile-expand-btn" data-expand-target="homePolicySubmenu" title="하위 메뉴 펼치기/접기">▸</button>
-            </div>
-            <!-- 예전엔 "복리후생"이 내부규정과 나란한 별도 메뉴였는데, 내부규정 하위(인사지침·운영지침) 항목
-                 중 하나처럼 취급하는 게 더 자연스럽다는 의견으로 이 하위메뉴 맨 위로 옮김(탭 자체(quickguide)는
-                 그대로 두고, 여기서 그 탭으로 바로 이동하는 항목만 하나 추가함) -->
-            <div class="home-submenu" id="homePolicySubmenu" style="display:none;">
-              <div class="home-submenu-item" data-goto="quickguide"><span>복리후생</span></div>
-              <div class="home-submenu-item" data-policy-cat-goto="hr"><span>인사지침</span></div>
-              <div class="home-submenu-item" data-policy-cat-goto="ops"><span>운영지침</span></div>
+            <!-- 사내정보 하위 두 항목은 청인(법인)/team(팀)으로 짧게 구분해서 부름 - 실제 텍스트는 법인명·팀명이
+                 등록되면 updateHomeCompanyInfoSidebarLabels()가 그 값으로 바로 바꿔치기하고, 아직 등록 전이면
+                 이 기본값이 보임. 이 항목은 여전히 사내정보 아이콘을 한 번 더 펼쳐야 나오는 캐스케이드 팝오버임 -->
+            <div class="home-submenu" id="homeCompanyInfoSubmenu" style="display:none;">
+              <div class="home-submenu-item" data-companyinfo-cat-goto="corp"><span id="homeCiCorpLabel">청인</span></div>
+              <div class="home-submenu-item" data-companyinfo-cat-goto="team"><span id="homeCiTeamLabel">team</span></div>
             </div>
           </div>
         </div>
+        <div class="home-section-row" id="homeSectionStaff">
+          <div class="home-section-label"><span class="home-section-icon">🧑‍💼</span> Staff</div>
+          <div class="home-tiles" id="homeTilesStaff">
+            <div class="home-tile home-tile-plain" data-goto="calendar" style="--tile-accent:var(--mint);">
+              <div class="home-tile-icon">📅</div>
+              <div class="home-tile-title">개인캘린더</div>
+            </div>
+            <div class="home-tile home-tile-plain" data-goto="attendance" style="--tile-accent:var(--indigo);">
+              <div class="home-tile-icon">⏰</div>
+              <div class="home-tile-title">근태경비</div>
+            </div>
+            <!-- 대시보드 출퇴근 위젯의 "전체이력"과 같은 내용(월 선택해서 그 달 출퇴근 시각·근무시간을 보는)을
+                 다른 메뉴들처럼 조회 화면으로 보여줌 - 예전엔 팝업이었는데 전용 메뉴가 생기면서 화면 전환으로 바꿈 -->
+            <div class="home-tile home-tile-plain" data-goto="clockhistory" style="--tile-accent:var(--amber);">
+              <div class="home-tile-icon">🕒</div>
+              <div class="home-tile-title">출퇴근현황</div>
+            </div>
+          </div>
+        </div>
+        <!-- "내부규정"의 영문 표현 - 사내 정책/지침을 가리키는 가장 일반적인 단어인 Policies로 옮김 -->
+        <div class="home-section-row" id="homeSectionPolicies">
+          <div class="home-section-label"><span class="home-section-icon">📘</span> Policies</div>
+          <!-- 예전엔 "복리후생"이 내부규정과 나란한 별도 메뉴였는데, 내부규정 하위(인사지침·운영지침) 항목
+               중 하나처럼 취급하는 게 더 자연스럽다는 의견으로 그 하위 맨 위로 옮김(탭 자체(quickguide)는
+               그대로 두고, 여기서 그 탭으로 바로 이동하는 항목만 하나 추가함) -->
+          <div class="home-tiles" id="homeTilesPolicies">
+            <div class="home-submenu-item" data-goto="quickguide"><span>복리후생</span></div>
+            <div class="home-submenu-item" data-policy-cat-goto="hr"><span>인사지침</span></div>
+            <div class="home-submenu-item" data-policy-cat-goto="ops"><span>운영지침</span></div>
+          </div>
+        </div>
+        <div class="app-rail-group-divider"></div>
 
         <!-- 예전엔 ⚙️ 설정 아이콘 하나로 설정 탭에 들어가서 회사/직원/설정/데이터 칩을 골랐는데,
              Company/Staff/Client와 같은 목록형 메뉴로 여기 사이드바에도 바로 노출함 -->
-        <div class="home-section-row">
-          <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.51 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/></svg> Settings</div>
-          <div class="home-tiles home-tiles-icon-rail" id="homeTilesSetting">
-            <div class="home-tile home-tile-plain" data-settings-cat-goto="company" style="--tile-accent:var(--indigo);">
-              <div class="home-tile-icon">🏢</div>
-              <div class="home-tile-title">회사</div>
-              <button type="button" class="home-tile-expand-btn" data-expand-target="homeSettingsCompanySubmenu" title="하위 메뉴 펼치기/접기">▸</button>
-            </div>
-            <div class="home-submenu" id="homeSettingsCompanySubmenu" style="display:none;">
-              <div class="home-submenu-item" data-settings-anchor-goto="company" data-settings-target-id="ssTitle-companyInfo"><span>회사정보</span></div>
-              <div class="home-submenu-item" data-settings-anchor-goto="company" data-settings-target-id="ssTitle-teamInfo"><span>팀정보</span></div>
-              <div class="home-submenu-item" data-settings-anchor-goto="company" data-settings-target-id="ssTitle-staffInfo"><span>직원정보</span></div>
-            </div>
-            <!-- 예전엔 "직원" 대분류가 회사정보/팀정보와 별도 카테고리였는데, 회사 하나로 합치고 그 안의
-                 세 번째 소메뉴(직원정보)로 옮김 - 직원등록도 직원현황 화면 안으로 옮겨서 별도 카테고리가
-                 더 이상 필요없어짐 -->
-            <div class="home-tile home-tile-plain" data-settings-cat-goto="welfare" style="--tile-accent:var(--guide-mustard);">
-              <div class="home-tile-icon">⚙️</div>
-              <div class="home-tile-title">설정</div>
-              <button type="button" class="home-tile-expand-btn" data-expand-target="homeSettingsWelfareSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
-            </div>
-            <div class="home-submenu" id="homeSettingsWelfareSubmenu" style="display:none;">
-              <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-workHours"><span>근무시간</span></div>
-              <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-lunch"><span>점심식대</span></div>
-              <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-exclusionDays"><span>제외일수</span></div>
-              <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-staffLeave"><span>직원휴가</span></div>
-              <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-specialPeriod"><span>특별기간</span></div>
-              <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-taxSchedule"><span>세무일정</span></div>
-              <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-notifications"><span>알림</span></div>
-            </div>
-            <div class="home-tile home-tile-plain" data-settings-cat-goto="data" style="--tile-accent:var(--guide-slate);">
-              <div class="home-tile-icon">💾</div>
-              <div class="home-tile-title">데이터</div>
-              <button type="button" class="home-tile-expand-btn" data-expand-target="homeSettingsDataSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
-            </div>
-            <div class="home-submenu" id="homeSettingsDataSubmenu" style="display:none;">
-              <div class="home-submenu-item" data-settings-anchor-goto="data" data-settings-target-id="ssTitle-gdrive"><span>Google Drive 연동</span></div>
-              <div class="home-submenu-item" data-settings-anchor-goto="data" data-settings-target-id="ssTitle-permission"><span>권한 관리</span></div>
-              <div class="home-submenu-item" data-settings-anchor-goto="data" data-settings-target-id="ssTitle-password"><span>비밀번호 설정</span></div>
-              <div class="home-submenu-item" data-settings-anchor-goto="data" data-settings-target-id="ssTitle-backup"><span>백업복구</span></div>
-              <div class="home-submenu-item" data-settings-anchor-goto="data" data-settings-target-id="ssTitle-githubdeploy"><span>GitHub 배포</span></div>
-              <div class="home-submenu-item" data-settings-anchor-goto="data" data-settings-target-id="ssTitle-excelbackup"><span>엑셀 일괄 다운로드</span></div>
-            </div>
+        <div class="home-section-row" id="homeSectionSettingsCompany">
+          <div class="home-section-label"><span class="home-section-icon">🏢</span> 회사</div>
+          <div class="home-tiles" id="homeTilesSettingsCompany">
+            <div class="home-submenu-item" data-settings-anchor-goto="company" data-settings-target-id="ssTitle-companyInfo"><span>회사정보</span></div>
+            <div class="home-submenu-item" data-settings-anchor-goto="company" data-settings-target-id="ssTitle-teamInfo"><span>팀정보</span></div>
+            <div class="home-submenu-item" data-settings-anchor-goto="company" data-settings-target-id="ssTitle-staffInfo"><span>직원정보</span></div>
+          </div>
+        </div>
+        <!-- 예전엔 "직원" 대분류가 회사정보/팀정보와 별도 카테고리였는데, 회사 하나로 합치고 그 안의
+             세 번째 소메뉴(직원정보)로 옮김 - 직원등록도 직원현황 화면 안으로 옮겨서 별도 카테고리가
+             더 이상 필요없어짐 -->
+        <div class="home-section-row" id="homeSectionSettingsWelfare">
+          <div class="home-section-label"><span class="home-section-icon">⚙️</span> 설정</div>
+          <div class="home-tiles" id="homeTilesSettingsWelfare">
+            <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-workHours"><span>근무시간</span></div>
+            <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-lunch"><span>점심식대</span></div>
+            <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-exclusionDays"><span>제외일수</span></div>
+            <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-staffLeave"><span>직원휴가</span></div>
+            <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-specialPeriod"><span>특별기간</span></div>
+            <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-taxSchedule"><span>세무일정</span></div>
+            <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-notifications"><span>알림</span></div>
+          </div>
+        </div>
+        <div class="home-section-row" id="homeSectionSettingsData">
+          <div class="home-section-label"><span class="home-section-icon">💾</span> 데이터</div>
+          <div class="home-tiles" id="homeTilesSettingsData">
+            <div class="home-submenu-item" data-settings-anchor-goto="data" data-settings-target-id="ssTitle-gdrive"><span>Google Drive 연동</span></div>
+            <div class="home-submenu-item" data-settings-anchor-goto="data" data-settings-target-id="ssTitle-permission"><span>권한 관리</span></div>
+            <div class="home-submenu-item" data-settings-anchor-goto="data" data-settings-target-id="ssTitle-password"><span>비밀번호 설정</span></div>
+            <div class="home-submenu-item" data-settings-anchor-goto="data" data-settings-target-id="ssTitle-backup"><span>백업복구</span></div>
+            <div class="home-submenu-item" data-settings-anchor-goto="data" data-settings-target-id="ssTitle-githubdeploy"><span>GitHub 배포</span></div>
+            <div class="home-submenu-item" data-settings-anchor-goto="data" data-settings-target-id="ssTitle-excelbackup"><span>엑셀 일괄 다운로드</span></div>
           </div>
         </div>
       </div>
@@ -10821,12 +10814,23 @@ function openClientDetailModal(c){
   // 소제목이 "주연락" 배지(인디고 굵은 글씨)와 색·굵기·크기가 비슷해서 구분이 잘 안 된다는 지적이 있었음 -
   // 알약 배지 대신, 제목 줄 전체를 박스 폭만큼 뚜렷이 다른 음영(네이비 바탕 + 흰 글자)으로 채운 "제목 띠"로
   // 만들어서 그 아래 본문(옅은 회색)과 확실히 구분되는 하나의 헤더처럼 보이게 함
-  const group = (t, rowsHtml) => `
+  // headExtra(수정/이력/삭제 아이콘 줄 등)를 넘기면 제목 띠 오른쪽 위 구석에 작게 얹힘 - 기본정보 칸에서만 씀
+  const group = (t, rowsHtml, headExtra) => `
     <div style="background:var(--bg); border-radius:10px; overflow:hidden; margin-bottom:10px;">
-      <div style="background:var(--navy); padding:8px 12px; text-align:center; font-size:11.5px; font-weight:800; color:#fff; letter-spacing:0.06em;">${escHtml(t)}</div>
+      <div style="background:var(--navy); padding:8px 12px; text-align:center; font-size:11.5px; font-weight:800; color:#fff; letter-spacing:0.06em; position:relative;">
+        ${escHtml(t)}
+        ${headExtra ? `<div style="position:absolute; top:50%; right:4px; transform:translateY(-50%); display:flex; align-items:center; gap:1px;">${headExtra}</div>` : ''}
+      </div>
       <div style="padding:10px 12px;">${rowsHtml}</div>
     </div>`;
 
+  // 수정/이력/삭제 아이콘 줄 - 예전엔 상호명 바로 아래(sticky 제목 줄)에 떠 있었는데, 제목과 너무 붙어
+  // 보인다는 지적으로 "기본정보" 제목 띠 오른쪽 위 구석으로 옮김(아래 group('기본정보', ...) 호출의
+  // headExtra로 넘김) - 그 띠가 네이비 배경이라 흰색 계열로 톤만 바꿈(동작은 예전과 동일)
+  const clientDetailHeadIcons = `
+    <button type="button" id="clientDetailEditBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="수정" style="color:#fff; background:transparent; border:none; padding:5px; display:inline-flex; border-radius:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>
+    <button type="button" id="clientDetailHistoryBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="이력" style="color:rgba(255,255,255,0.8); background:transparent; border:none; padding:5px; display:inline-flex; border-radius:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 16 14"></polyline></svg></button>
+    <button type="button" id="clientDetailDeleteBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="삭제" style="color:#ffb4a8; background:transparent; border:none; padding:5px; display:inline-flex; border-radius:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>`;
   // 1) 기본정보 - 등록 폼과 같은 순서: 구분/상세구분/사업자번호/법인등록번호/사업장주소/개업일/설립일/업종코드/업태
   const subTypeDisplay = summarizeSubTags(c) || '-';
   // 설립일은 법인에만 있는 개념이라 개인 거래처면 행 자체를 넣지 않음
@@ -10834,7 +10838,7 @@ function openClientDetailModal(c){
   let html = group('기본정보', rowHtml('구분', c.entityType || '-') + rowHtml('상세구분', subTypeDisplay)
     + rowHtml('사업자번호', c.bizNo || '-') + (c.entityType === '법인' ? rowHtml('법인등록번호', c.corpRegNo || '-') : '')
     + rowHtml('사업장 주소', c.bizAddress || '-') + rowHtml('개업일', c.openDate || '-') + foundingRow
-    + rowHtml('업종코드', c.bizTypeCode || '-') + rowHtml('업태', c.bizType || '-'));
+    + rowHtml('업종코드', c.bizTypeCode || '-') + rowHtml('업태', c.bizType || '-'), clientDetailHeadIcons);
 
   // 2) 대표자 정보 - 주민번호는 암호화 없이(요청에 따라) 평문으로 등록 폼에서 바로 입력·조회함
   const repIsPrimary = c.primaryContactType !== 'contact';
@@ -10885,17 +10889,9 @@ function openClientDetailModal(c){
   // 하드코딩돼 있어서 소제목 스타일을 바꿔도 여기만 안 바뀌는 문제가 있었음)
   html += group('개인정보', '<div id="clientDetailPiWrap"></div>');
 
-  // 상호명(제목)+수정/이력/삭제 아이콘 줄을 스크롤해도 안 사라지도록 memoModalBody가 아니라, sticky로
-  // 고정되는 #memoModalTitleExtra 쪽에 채워넣음(위 memoModalTitleWrap 설명 참고)
-  // 예전엔 상호명 아래 가운데에 떠 있어서, 아래쪽 "기본정보" 제목 띠와는 상관없이 붕 떠 보인다는
-  // 지적이 있었음 - 상호명과 같은 줄, 오른쪽 위 구석(닫기 버튼 바로 아래)에 작게 붙여서 "이 문서에 대한
-  // 관리 버튼"처럼 보이게 함(가운데 큰 상호명 글자와 겹치지 않도록 absolute로 뺌)
-  document.getElementById('memoModalTitleExtra').innerHTML = `
-    <div style="display:flex; align-items:center; justify-content:flex-end; gap:4px; margin-top:6px;">
-      <button type="button" id="clientDetailEditBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="수정" style="color:var(--navy); background:transparent; border:none; padding:6px; display:inline-flex; border-radius:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>
-      <button type="button" id="clientDetailHistoryBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="이력" style="color:var(--ink-soft); background:transparent; border:none; padding:6px; display:inline-flex; border-radius:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 16 14"></polyline></svg></button>
-      <button type="button" id="clientDetailDeleteBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="삭제" style="color:var(--coral); background:transparent; border:none; padding:6px; display:inline-flex; border-radius:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
-    </div>`;
+  // 수정/이력/삭제 아이콘은 이제 위 "기본정보" 제목 띠 오른쪽 위 구석에 이미 얹혀있으므로(headExtra 참고),
+  // sticky 제목 줄(#memoModalTitleExtra)은 비워둠 - 다음에 여는 다른 안내 팝업에 남아있지 않게 함
+  document.getElementById('memoModalTitleExtra').innerHTML = '';
   document.getElementById('memoModalBody').innerHTML = html;
   document.getElementById('memoModalOverlay').style.display = 'flex';
   renderClientDetailPersonalInfoSection(c);
@@ -15526,8 +15522,8 @@ relocateSidebarNodes();
   // 모바일 전환 시 원래 DOM 구조를 찾지 못해 메뉴가 사라진 것처럼 보일 수 있음
   const railHomeMap = new WeakMap();
 
-  // 아이콘 전용 줄(.home-tiles-icon-rail)에서 아이콘 하나를 눌러 연 2차(캐스케이드) 팝오버들만 따로 닫음 -
-  // 같은 줄에서 다른 아이콘을 누르면 1차 팝오버는 그대로 두고 캐스케이드만 바꿔 달아야 하기 때문에 별도로 뺌
+  // 팝오버 안에서 사내정보처럼 더 펼칠 항목을 눌러 연 2차(캐스케이드) 팝오버들만 따로 닫음 -
+  // 같은 팝오버 안에서 다른 항목을 누르면 1차 팝오버는 그대로 두고 캐스케이드만 바꿔 달아야 하기 때문에 별도로 뺌
   function closeCascadePopovers(){
     document.querySelectorAll('.home-submenu.rail-popover-open').forEach(submenu=>{
       submenu.classList.remove('rail-popover-open', 'rail-popover-cascade');
@@ -15597,9 +15593,10 @@ relocateSidebarNodes();
     requestAnimationFrame(()=> clampPopoverPosition(tiles));
   }
 
-  // 아이콘 전용 줄(.home-tiles-icon-rail) 안에서 아이콘 하나(예: "결재")를 누르면, 그 하위 항목(기안작성/
-  // 임시저장함 등)을 같은 줄 안에 인라인으로 펼치는 대신, 사이드바 레일 아이콘을 눌렀을 때와 똑같은 방식으로
-  // 그 아이콘 오른쪽에 새 팝오버(캐스케이드)를 하나 더 띄워서 보여줌
+  // 1차 팝오버(결재/거래처/Tax.J 등) 안에서 사내정보처럼 더 펼칠 하위메뉴가 있는 항목을 누르면, 같은 줄
+  // 안에 인라인으로 펼치는 대신, 사이드바 레일 아이콘을 눌렀을 때와 똑같은 방식으로 그 항목 오른쪽에 새
+  // 팝오버(캐스케이드)를 하나 더 띄워서 보여줌. tile.closest('.rail-popover-open')로 앵커를 찾기 때문에
+  // 1차 팝오버 안이든 이미 열린 캐스케이드 팝오버 안(캐스케이드의 캐스케이드)이든 똑같이 동작함
   function openCascadePopover(tile, expandBtn){
     const submenu = document.getElementById(expandBtn.dataset.expandTarget);
     if(!submenu) return;
@@ -15608,7 +15605,7 @@ relocateSidebarNodes();
     if(alreadyOpenForThis) return; // 같은 아이콘을 다시 누르면 닫기만 함(토글)
     if(!railHomeMap.has(submenu)) railHomeMap.set(submenu, { parent: submenu.parentNode });
     const tileRect = tile.getBoundingClientRect();
-    const railPopover = tile.closest('.home-tiles.rail-popover-open');
+    const railPopover = tile.closest('.rail-popover-open');
     const anchorRect = (railPopover || tile).getBoundingClientRect();
     document.body.appendChild(submenu);
     submenu.style.display = 'block';
@@ -15659,37 +15656,24 @@ relocateSidebarNodes();
   document.querySelectorAll('.home-tile-expand-btn[data-expand-target]').forEach(btn=>{
     btn.addEventListener('click', function(e){
       if(!sidebar.classList.contains('rail-mode')) return;
-      // 아이콘 전용 줄(캐스케이드로 열림) 안의 화살표는 아래 캡처 리스너가 이 클릭 자체를 통째로 가로채서
-      // 여기까지 안 내려오므로 신경 안 써도 됨 - 여기 남는 건 캐스케이드 팝오버(.home-submenu.rail-popover-open)
-      // 안에서 한 단계 더 펼치는 경우(예: Tax.J 캐스케이드 안의 "사내정보")뿐
+      // 이름(항목)을 눌렀을 때는 아래 캡처 리스너가 그 클릭 자체를 통째로 가로채 openCascadePopover를 직접
+      // 부르므로 여기까지 안 내려오고, 여기는 화살표 버튼 자체를 직접 눌렀을 때만 남는 재계산용 리스너임
       const tiles = btn.closest('.rail-popover-open');
       if(!tiles) return;
       requestAnimationFrame(()=> requestAnimationFrame(()=> clampPopoverPosition(tiles)));
     });
   });
 
-  // 팝오버 안에서 회사/설정/데이터처럼 그 아래 더 하위메뉴(회사정보/팀정보/직원정보 등)가 있는 항목은,
-  // 원래 사이드바(상시 노출)에서는 "이름을 눌러도 그 화면으로 이동 + 하위메뉴도 같이 펼침"이 자연스러웠지만,
-  // 팝오버 안에서는 이름을 누르는 순간 바로 다른 화면으로 이동해버려서 정작 원하던 "한 단계 더 펼쳐서 고르기"를
-  // 할 수가 없었음("회사를 눌렀더니 하위메뉴 대신 회사정보 화면이 바로 떠버림") - 팝오버 안에서는 하위메뉴가
-  // 있는 항목의 이름을 눌렀을 때 화면 이동은 하지 않고 펼치기만 하도록, 그 클릭이 원래의 이동 핸들러에게
-  // 닿기 전에(캡처 단계에서) 가로채서 화살표를 대신 눌러준 것과 같은 효과만 내게 함
+  // 팝오버 안에서 사내정보처럼 그 아래 더 하위메뉴(청인/team 등)가 있는 항목은, 원래 사이드바(상시 노출)
+  // 에서는 "이름을 눌러도 그 화면으로 이동 + 하위메뉴도 같이 펼침"이 자연스러웠지만, 팝오버 안에서는 이름을
+  // 누르는 순간 바로 다른 화면으로 이동해버려서 정작 원하던 "한 단계 더 펼쳐서 고르기"를 할 수가 없었음
+  // ("사내정보를 눌렀더니 하위메뉴 대신 그 화면이 바로 떠버림") - Works/Company/Settings 대메뉴 아이콘들이
+  // 없어지고 결재/거래처/Tax.J 등이 전부 독립된 1차 팝오버가 되면서, 이제 "팝오버 안에서 한 단계 더 펼치는"
+  // 경우는 전부(1차든 캐스케이드든) 오른쪽에 새 캐스케이드 팝오버를 여는 것으로 통일함(예전엔 아이콘 전용
+  // 줄에서만 캐스케이드를 쓰고, 그 캐스케이드 안에서 한 번 더 펼치는 경우(사내정보)만 인라인 아코디언을
+  // 썼는데, 더 일관되게 항상 캐스케이드를 쓰도록 단순화함)
   document.addEventListener('click', function(e){
     if(!sidebar.classList.contains('rail-mode')) return;
-    // 아이콘 전용 줄(결재/거래처/세무신고/제출현황, Tax.J/Staff/Policies, 회사/설정/데이터)에서는 이름을 누르든
-    // 화살표를 누르든(화살표는 어차피 안 보이지만) 전부 "그 아이콘 오른쪽에 캐스케이드 팝오버 열기"로 통일함 -
-    // 인라인 아코디언 펼치기는 여기서는 아예 안 씀(위 CSS에서 그 줄 안의 .home-submenu를 강제로 숨겨두기도 함)
-    const iconRailTiles = e.target.closest('.home-tiles.rail-popover-open.home-tiles-icon-rail');
-    if(iconRailTiles){
-      const tile = e.target.closest('.home-tile');
-      if(!tile) return;
-      const expandBtn = tile.querySelector('.home-tile-expand-btn[data-expand-target]');
-      if(!expandBtn) return;
-      e.stopPropagation();
-      e.preventDefault();
-      openCascadePopover(tile, expandBtn);
-      return;
-    }
     if(!e.target.closest('.rail-popover-open')) return;
     if(e.target.closest('.home-tile-expand-btn')) return; // 화살표 자체는 원래 자기 핸들러(펼치기/접기)가 그대로 처리
     const item = e.target.closest('.home-tile, .home-submenu-item, .home-submenu-leaf');
@@ -15698,7 +15682,7 @@ relocateSidebarNodes();
     if(!expandBtn) return; // 더 이상 펼칠 하위메뉴가 없는 진짜 마지막 항목은 원래대로 눌러서 바로 이동함
     e.stopPropagation();
     e.preventDefault();
-    expandBtn.click();
+    openCascadePopover(item, expandBtn);
   }, true);
 
   // 팝오버 안의 항목(탭 이동)을 누르면 자연스럽게 팝오버도 같이 닫아줌 - 기존 클릭 핸들러는 그대로 두고 추가로만 반응함.
@@ -15707,7 +15691,6 @@ relocateSidebarNodes();
   document.querySelectorAll('.home-tiles, .home-submenu').forEach(tiles=>{
     tiles.addEventListener('click', (e)=>{
       if(!sidebar.classList.contains('rail-mode')) return;
-      if(e.target.closest('.home-tiles.home-tiles-icon-rail')) return; // 아이콘 전용 줄은 위 캡처 리스너가 이미 처리함
       if(e.target.closest('.home-tile-expand-btn')) return; // 펼치기 화살표는 팝오버를 계속 열어둬야 함
       const item = e.target.closest('.home-tile, .home-submenu-item, .home-submenu-leaf');
       if(!item) return;
@@ -15822,9 +15805,8 @@ relocateSidebarNodes();
     allMenuOverlay.id = 'railAllMenuOverlay';
     allMenuOverlay.innerHTML = `
       <div class="rail-overlay-box all-mode">
-        <div class="rail-overlay-head">
-          <div style="font-weight:800; font-size:14px; color:var(--ink);">전체메뉴</div>
-          <div style="flex:1;"></div>
+        <div class="rail-overlay-head all-mode-head">
+          <div class="rail-overlay-title">전체메뉴</div>
           <button type="button" class="rail-overlay-close" id="railAllMenuCloseBtn">✕</button>
         </div>
         <div class="rail-allmenu-grid" id="railAllMenuGrid"></div>
@@ -15858,21 +15840,52 @@ relocateSidebarNodes();
     });
     return items;
   }
+  // Works/Company/Settings 아이콘 3개는 레일(홈 화면)에서는 없앴지만("그냥 홈화면에서는 이게 빠지는거고"),
+  // 전체메뉴에서는 여전히 그 세 이름이 "이 중간메뉴들은 업무 관련, 이건 내부 관련"이라는 대메뉴 역할을
+  // 대신 해줘야 함("works~ 요기서 이 대메뉴들이 역할을 해주는거야") - 그래서 실제 DOM에는 더 이상 존재하지
+  // 않는 이 세 묶음을, 그 안에 있던(지금은 각자 독립 row가 된) 항목들의 id를 모아 가상으로 다시 만들어줌
+  const ALLMENU_GROUPS = [
+    { label:'Works', rowIds:['homeSectionApproval','homeSectionClient','homeSectionTaxFiling','homeSectionSubmitStatus'] },
+    { label:'Company', rowIds:['homeSectionTaxJ','homeSectionStaff','homeSectionPolicies'] },
+    { label:'Settings', rowIds:['homeSectionSettingsCompany','homeSectionSettingsWelfare','homeSectionSettingsData'] },
+  ];
+  const ALLMENU_GROUPED_ROW_IDS = new Set(ALLMENU_GROUPS.flatMap(g=> g.rowIds));
   function renderAllMenu(){
     const grid = allMenuOverlay.querySelector('#railAllMenuGrid');
     const cols = [];
+    // Bookmarks처럼 어느 그룹에도 안 속한 row는 예전처럼 한 줄(그 row의 이름표가 곧 칼럼 제목)로 둠
     document.querySelectorAll('.home-section-row').forEach(row=>{
       if(row.id === 'homeFavoritesSection') return;
+      if(ALLMENU_GROUPED_ROW_IDS.has(row.id)) return; // 아래에서 그룹으로 묶어 따로 처리함
       const catLabel = row.querySelector('.home-section-label')?.textContent.trim() || '';
       const tilesRoot = row.querySelector(':scope > .home-tiles');
       if(!tilesRoot) return;
       const items = collectMenuItems(tilesRoot, 0);
       if(items.length) cols.push({ catLabel, items });
     });
+    // 결재/거래처/세무신고/제출현황 → Works 한 칼럼, Tax.J/Staff/Policies → Company 한 칼럼, 회사/설정/데이터
+    // → Settings 한 칼럼으로 묶음 - 각 row의 이름표 자체를 그 칼럼 안의 중간메뉴(depth 0, 굵게)로 넣고,
+    // 그 밑의 실제 항목들은 한 단계 더 들여서(depth 1, 하위메뉴 스타일) 넣음
+    ALLMENU_GROUPS.forEach(group=>{
+      const items = [];
+      group.rowIds.forEach(rowId=>{
+        const row = document.getElementById(rowId);
+        const label = row?.querySelector('.home-section-label');
+        const tilesRoot = row?.querySelector(':scope > .home-tiles');
+        if(!label || !tilesRoot) return;
+        const name = label.textContent.trim();
+        if(!name) return;
+        // 이 가상 중간메뉴 이름표(el:label)는 그 자체로 갈 곳이 없는 이름표라 elHasNavigation이 false를
+        // 반환해서(아래 클릭 핸들러에서) 눌러도 반응 없음 - 실제 항목은 그 아래 depth 1 줄들임
+        items.push({ name, depth:0, el:label, hasChildren:true });
+        items.push(...collectMenuItems(tilesRoot, 1));
+      });
+      if(items.length) cols.push({ catLabel: group.label, items });
+    });
     grid.innerHTML = cols.map((c,ci)=>`
       <div>
         <div class="rail-allmenu-col-title">${c.catLabel}</div>
-        ${c.items.map((it,ii)=>`<div class="rail-allmenu-item${it.depth>0 ? ' rail-allmenu-sub' : ''}" data-c="${ci}" data-i="${ii}" style="${it.depth>1?`padding-left:${12*it.depth}px;`:''}">${it.name}</div>`).join('')}
+        ${c.items.map((it,ii)=>`<div class="rail-allmenu-item${it.depth===0 ? ' rail-allmenu-mid' : ' rail-allmenu-sub'}" data-c="${ci}" data-i="${ii}">${it.name}</div>`).join('')}
       </div>
     `).join('');
     grid.querySelectorAll('.rail-allmenu-item').forEach(el=>{
@@ -23083,7 +23096,7 @@ function approvalTableHeaderHtml(){
   // 문서제목 칸만 왼쪽 정렬이라 줄이 안 맞아 보인다는 점 보완 + "문서제목 칸이 어디부터 어디까지인지"
   // 폭 그대로 세로 구분선을 달라는 요청 - 양옆(문서번호와의 경계, 결재자와의 경계)에 세로선을 그어줌
   const titleColBorder = 'border-left:1px solid var(--border); border-right:1px solid var(--border);';
-  return `<tr><th style="${c} width:100px;">문서종류</th><th style="${c} width:118px;">기안일</th><th style="${c} width:64px;">기안자</th><th style="${c} width:100px;">문서번호</th><th style="${c} ${titleColBorder}">문서제목</th><th style="${c} width:64px;">결재자</th><th style="${c} width:128px;">진행상황</th><th style="${c} width:132px;">관리</th></tr>`;
+  return `<tr><th style="${c} width:100px;">문서종류</th><th style="${c} width:118px;">기안일</th><th style="${c} width:64px;">기안자</th><th style="${c} width:100px;">문서번호</th><th style="${c} ${titleColBorder}">문서제목</th><th style="${c} width:64px;">결재자</th><th style="${c} width:128px;">진행상황</th><th style="${c} width:132px;"></th></tr>`;
 }
 // 관리 칸 아이콘들 - 각 아이콘용 line-svg (기존 앱 다른 곳 아이콘들과 같은 획 스타일로 통일)
 const APPROVAL_ACTION_ICON_SVG = {
@@ -23112,8 +23125,11 @@ function findResendableNotificationForApproval(item){
 // 공용 아이콘 버튼 - 텍스트 라벨 대신 아이콘만 넣고 title로 말풍선 툴팁을 붙임(스크린리더/설명용)
 // danger:true(삭제 등 되돌리기 어려운 동작)면 평소엔 완전히 투명하게 숨어 있다가, 그 줄에 마우스를
 // 올렸을 때만 나타남(approval-action-danger 클래스, CSS는 renderApprovalTable 위쪽 참고)
-function approvalActionIconBtn(cls, dataId, icon, title, bg, fg, danger){
-  return `<button type="button" class="del-btn approval-icon-btn ${cls}${danger?' approval-action-danger':''}" data-id="${dataId}" title="${escHtml(title)}" aria-label="${escHtml(title)}" style="width:28px; height:28px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:9px; --icon-bg:${bg}; --icon-fg:${fg};">${APPROVAL_ACTION_ICON_SVG[icon]}</button>`;
+function approvalActionIconBtn(cls, dataId, icon, title, bg, fg, hoverOnly){
+  // hoverOnly: 평소엔 완전히 숨어있다가 그 줄에 마우스를 올렸을 때만 나타남(approval-action-hover 클래스) -
+  // 삭제처럼 되돌리기 어려운 동작뿐 아니라, "관리" 칸 전체를 늘 비워 보이게 하려고 다른 아이콘(알림 다시
+  // 보내기 등)에도 같이 씀
+  return `<button type="button" class="del-btn approval-icon-btn ${cls}${hoverOnly?' approval-action-hover':''}" data-id="${dataId}" title="${escHtml(title)}" aria-label="${escHtml(title)}" style="width:28px; height:28px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:9px; --icon-bg:${bg}; --icon-fg:${fg};">${APPROVAL_ACTION_ICON_SVG[icon]}</button>`;
 }
 // bucket별로 다른 관리 버튼 구성 - 기안함/결재함/전체이력: 삭제(권한 있으면), 기안함(mine): 회수, 반려함: 재기안+삭제,
 // 임시저장함: (재)기안+삭제
@@ -23135,7 +23151,7 @@ function approvalRowActionsHtml(item, bucket, expanded){
   // 종 아이콘을 하나 더 둬서, 이 기기로 그 알림을 다시 한번 띄워볼 수 있게 함(휴지통 아이콘과 같은 자리에
   // 평소엔 숨겨져 있다가 마우스를 올리면 나타남). 관련 알림이 없으면(예: 임시저장함) 아예 안 보임
   const notifEntry = (bucket === 'draft') ? null : findResendableNotificationForApproval(item);
-  const resendBtnHtml = notifEntry ? approvalActionIconBtn('approval-resend-notif-btn', notifEntry.id, 'bell', '알림 다시 보내기', 'var(--indigo-bg)', 'var(--indigo)') : '';
+  const resendBtnHtml = notifEntry ? approvalActionIconBtn('approval-resend-notif-btn', notifEntry.id, 'bell', '알림 다시 보내기', 'var(--indigo-bg)', 'var(--indigo)', true) : '';
   if(bucket === 'inbox' || bucket === 'all'){
     return resendBtnHtml + deleteBtnHtml;
   }
