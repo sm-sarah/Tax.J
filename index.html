@@ -384,6 +384,11 @@
      stretch는 이미 정해진 칸 높이를 "채워주는" 것뿐이라, 내용이 그보다 크면 칸 자체가 늘어나버림. 그래서
      옆 묶음과 똑같이 이 칸도 470px로 고정해서 항상 세로폭이 맞게 함(넘치는 일정은 아래 페이지네이션으로 처리) */
   .home-dashboard-pinned-side .home-dash-card{ height:470px; }
+  /* 출퇴근 위젯은 다른 위젯과 달리 흰 카드(.home-dash-card)가 아니라 배경 없는 자유배치(.home-dash-freeform)라
+     위의 규칙이 안 걸려서 옆 팀캘린더와 세로폭이 안 맞았음 - 같은 높이로 맞추고, 안의 내용은 세로 가운데
+     정렬로 남는 공간에 자연스럽게 배치되게 함(내용이 원래 위쪽에 딱 붙어있던 짧은 위젯이라, 그냥 늘리기만
+     하면 아래쪽에 빈 공간만 덩그러니 남아 보임) */
+  .home-dashboard-pinned-side .home-dash-freeform{ height:470px; justify-content:center; }
   /* 결재현황·세무일정은 목록이 몇 건 없을 때(특히 결재현황이 "결재 이력이 없어요" 한 줄뿐일 때) 카드가
      내용만큼 쪼그라들어서 바로 아래/위 카드와 세로 높이가 서로 안 맞아 보였음 - 두 카드 다 같은 높이로
      고정하고, 내용이 그보다 길어지면 카드 자체가 늘어나는 대신 본문 안에서만 스크롤되게 함 */
@@ -767,7 +772,11 @@
   /* Company/Staff/Client 하위메뉴 목록은 위아래 여백이 넓어서 칩 전체 높이만 불필요하게 늘어났음 - 항목 사이 간격을 없애고, 각 줄 자체의 위아래 패딩도 줄임 */
   /* Bookmarks(#homeFavoritesChips)는 예전엔 이 gap:0 목록에서 빠져있어서 다른 섹션보다 줄 사이 간격이
      유독 넓어 보였음 - 같이 넣어서 나머지 섹션들과 촘촘함을 맞춤 */
-  #homeTilesCompany, #homeTilesStaff, #homeTilesClient, #homeTilesSetting, #homeFavoritesChips{ gap:0; }
+  #homeTilesWork, #homeTilesInternal, #homeTilesSetting, #homeFavoritesChips{ gap:0; }
+  /* 중간메뉴(거래처관련/팀관련/직원관련 등)가 펼친 하위 목록은 원래 최상위 메뉴용 카드 스타일(.home-tile-plain)을
+     그대로 재사용해서 살짝 더 들여쓰기(.home-submenu의 padding-left)만 얹어 보여줌 - 새 마크업을 만들지 않고
+     기존 항목 DOM을 그대로 옮겨온 덕분에, 배지·클릭 등 기존 동작이 하나도 안 깨짐 */
+  .home-submenu .home-tile.home-tile-plain{ padding-left:6px; }
   .home-tile{
     background:var(--surface); border-radius:14px; padding:11px 16px;
     cursor:pointer; border-left:4px solid var(--tile-accent, var(--indigo));
@@ -3116,57 +3125,40 @@
           <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Bookmarks</div>
           <div class="home-tiles" id="homeFavoritesChips"></div>
         </div>
-        <!-- Client(거래처 관련 메뉴)를 가장 많이 쓸 것 같아서 맨 위로 올림 -->
+        <!-- 예전엔 Bookmarks 다음에 Client/Company/Staff가 각각 대분류였는데, "업무 관련이냐 내부 관련이냐"
+             기준으로 다시 묶어달라는 요청으로 두 그룹(업무/내부)으로 합침 - 각 그룹 밑의 거래처관련·팀관련·
+             직원관련은 이 그룹 안에서만 쓰는 새 중간메뉴(그 자체로는 이동할 화면이 없고 펼치기만 함)라
+             data-goto가 없고, 그 안의 실제 항목들(기장거래처·팀캘린더·개인캘린더 등)은 기존 요소를 그대로
+             옮겨왔을 뿐이라 data-*·id는 전혀 안 바뀜(기존 클릭 핸들러·배지 등이 그대로 동작함) -->
         <div class="home-section-row">
-          <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Client</div>
-          <div class="home-tiles" id="homeTilesClient">
-            <div class="home-tile home-tile-plain" data-goto="clients-regular" style="--tile-accent:var(--coral);">
-              <div class="home-tile-icon">📗</div>
-              <div class="home-tile-title">기장거래처</div>
+          <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg> 업무</div>
+          <div class="home-tiles" id="homeTilesWork">
+            <div class="home-tile home-tile-plain" style="--tile-accent:var(--coral);">
+              <div class="home-tile-icon">🤝</div>
+              <div class="home-tile-title">거래처관련</div>
+              <button type="button" class="home-tile-expand-btn" data-expand-target="homeClientSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
             </div>
-            <div class="home-tile home-tile-plain" data-goto="clients-other" style="--tile-accent:var(--amber);">
-              <div class="home-tile-icon">📂</div>
-              <div class="home-tile-title">기타거래처</div>
-            </div>
-            <div class="home-tile home-tile-plain" data-goto="clients-terminated" style="--tile-accent:var(--guide-slate);">
-              <div class="home-tile-icon">🚫</div>
-              <div class="home-tile-title">해지거래처</div>
-            </div>
-            <div class="home-tile home-tile-plain" data-goto="clients-edit" style="--tile-accent:var(--navy);">
-              <div class="home-tile-icon">🆕</div>
-              <div class="home-tile-title">거래처등록</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="home-section-row">
-          <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 21v-4h6v4"/><path d="M9 7h.01M9 11h.01M15 7h.01M15 11h.01"/></svg> Company</div>
-          <div class="home-tiles" id="homeTilesCompany">
-            <div class="home-tile home-tile-plain" data-goto="teamcalendar" style="--tile-accent:var(--guide-teal);">
-              <div class="home-tile-icon">🗂️</div>
-              <div class="home-tile-title">팀캘린더</div>
-            </div>
-            <!-- 공지사항 - 예전엔 상단 아이콘(종 모양)을 눌러야만 볼 수 있었는데, 그 아이콘은 이제 "알림"
-                 (결재·공지 등 새로 온 것들의 알림 목록)으로 바뀌어서 공지사항 전용 화면은 다른 메뉴들처럼
-                 사이드바에서 바로 들어갈 수 있게 함 -->
-            <div class="home-tile home-tile-plain" id="homeSideNoticeTile" style="--tile-accent:var(--navy);">
-              <div class="home-tile-icon">📣</div>
-              <div class="home-tile-title">공지사항</div>
-            </div>
-            <div class="home-tile home-tile-plain" data-goto="companyinfo" style="--tile-accent:#8B5CF6;">
-              <div class="home-tile-icon">📇</div>
-              <div class="home-tile-title">사내정보</div>
-              <button type="button" class="home-tile-expand-btn" data-expand-target="homeCompanyInfoSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
-            </div>
-            <div class="home-submenu" id="homeCompanyInfoSubmenu" style="display:none;">
-              <div class="home-submenu-item" data-companyinfo-cat-goto="corp"><span id="homeCiCorpLabel">회사</span></div>
-              <div class="home-submenu-item" data-companyinfo-cat-goto="team"><span id="homeCiTeamLabel">Tax.J</span></div>
+            <div class="home-submenu" id="homeClientSubmenu" style="display:none;">
+              <div class="home-tile home-tile-plain" data-goto="clients-regular" style="--tile-accent:var(--coral);">
+                <div class="home-tile-icon">📗</div>
+                <div class="home-tile-title">기장거래처</div>
+              </div>
+              <div class="home-tile home-tile-plain" data-goto="clients-other" style="--tile-accent:var(--amber);">
+                <div class="home-tile-icon">📂</div>
+                <div class="home-tile-title">기타거래처</div>
+              </div>
+              <div class="home-tile home-tile-plain" data-goto="clients-terminated" style="--tile-accent:var(--guide-slate);">
+                <div class="home-tile-icon">🚫</div>
+                <div class="home-tile-title">해지거래처</div>
+              </div>
+              <div class="home-tile home-tile-plain" data-goto="clients-edit" style="--tile-accent:var(--navy);">
+                <div class="home-tile-icon">🆕</div>
+                <div class="home-tile-title">거래처등록</div>
+              </div>
             </div>
             <!-- 예전엔 "업무" 밑에 신고현황(세목별로 더 펼쳐짐)/신고대상/제출현황/검토표/결재가 나란히 있었는데,
                  세목(원천세 등)을 고르면 그 세목 안에서 신고대상·신고현황·검토표 중 실제로 있는 것만 보이는
-                 구조가 낫다는 의견으로 "세무신고" 밑에 세목을 먼저 두고 그 아래로 펼치게 바꿈. 제출현황·결재는
-                 특정 세목에 매인 게 아니라서 세무신고와 같은 레벨의 독립된 메뉴로 뺐음(내용 구성은 그대로,
-                 사이드바 위치만 옮김) -->
+                 구조가 낫다는 의견으로 "세무신고" 밑에 세목을 먼저 두고 그 아래로 펼치게 바꿈. -->
             <div class="home-tile home-tile-plain" data-goto="approval" style="--tile-accent:#0EA5A5;">
               <div class="home-tile-icon">🧾</div>
               <div class="home-tile-title">세무신고</div>
@@ -3193,6 +3185,39 @@
               <div class="home-submenu-item" data-approval-cat-goto="submit" data-submit-type-goto="반기"><span>반기</span></div>
               <div class="home-submenu-item" data-approval-cat-goto="submit" data-submit-type-goto="연간"><span>연간</span></div>
             </div>
+          </div>
+        </div>
+
+        <div class="home-section-row">
+          <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 21v-4h6v4"/><path d="M9 7h.01M9 11h.01M15 7h.01M15 11h.01"/></svg> 내부</div>
+          <div class="home-tiles" id="homeTilesInternal">
+            <div class="home-tile home-tile-plain" style="--tile-accent:var(--guide-teal);">
+              <div class="home-tile-icon">🗂️</div>
+              <div class="home-tile-title">팀관련</div>
+              <button type="button" class="home-tile-expand-btn" data-expand-target="homeTeamSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
+            </div>
+            <div class="home-submenu" id="homeTeamSubmenu" style="display:none;">
+              <div class="home-tile home-tile-plain" data-goto="teamcalendar" style="--tile-accent:var(--guide-teal);">
+                <div class="home-tile-icon">🗂️</div>
+                <div class="home-tile-title">팀캘린더</div>
+              </div>
+              <!-- 공지사항 - 예전엔 상단 아이콘(종 모양)을 눌러야만 볼 수 있었는데, 그 아이콘은 이제 "알림"
+                   (결재·공지 등 새로 온 것들의 알림 목록)으로 바뀌어서 공지사항 전용 화면은 다른 메뉴들처럼
+                   사이드바에서 바로 들어갈 수 있게 함 -->
+              <div class="home-tile home-tile-plain" id="homeSideNoticeTile" style="--tile-accent:var(--navy);">
+                <div class="home-tile-icon">📣</div>
+                <div class="home-tile-title">공지사항</div>
+              </div>
+              <div class="home-tile home-tile-plain" data-goto="companyinfo" style="--tile-accent:#8B5CF6;">
+                <div class="home-tile-icon">📇</div>
+                <div class="home-tile-title">사내정보</div>
+                <button type="button" class="home-tile-expand-btn" data-expand-target="homeCompanyInfoSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
+              </div>
+              <div class="home-submenu" id="homeCompanyInfoSubmenu" style="display:none;">
+                <div class="home-submenu-item" data-companyinfo-cat-goto="corp"><span id="homeCiCorpLabel">회사</span></div>
+                <div class="home-submenu-item" data-companyinfo-cat-goto="team"><span id="homeCiTeamLabel">Tax.J</span></div>
+              </div>
+            </div>
             <div class="home-tile home-tile-plain" data-goto="approval" style="--tile-accent:#0EA5A5;">
               <div class="home-tile-icon">🖋️</div>
               <div class="home-tile-title">결재</div><span id="homeSideApprovalTotalCount" class="approval-doc-badge" style="display:none;"></span>
@@ -3206,6 +3231,27 @@
               <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="inbox"><span>결재함</span><span id="homeSideApprovalInboxCount" class="approval-doc-badge" style="display:none;"></span></div>
               <div class="home-submenu-item" data-approval-cat-goto="doc" data-approval-doc-goto="all"><span>결재현황</span></div>
             </div>
+            <div class="home-tile home-tile-plain" style="--tile-accent:var(--mint);">
+              <div class="home-tile-icon">🧑‍💼</div>
+              <div class="home-tile-title">직원관련</div>
+              <button type="button" class="home-tile-expand-btn" data-expand-target="homeStaffSubmenu" title="하위 메뉴 펼치기/접기">▸</button>
+            </div>
+            <div class="home-submenu" id="homeStaffSubmenu" style="display:none;">
+              <div class="home-tile home-tile-plain" data-goto="calendar" style="--tile-accent:var(--mint);">
+                <div class="home-tile-icon">📅</div>
+                <div class="home-tile-title">개인캘린더</div>
+              </div>
+              <div class="home-tile home-tile-plain" data-goto="attendance" style="--tile-accent:var(--indigo);">
+                <div class="home-tile-icon">⏰</div>
+                <div class="home-tile-title">근태경비</div>
+              </div>
+              <!-- 대시보드 출퇴근 위젯의 "전체이력"과 같은 내용(월 선택해서 그 달 출퇴근 시각·근무시간을 보는)을
+                   다른 메뉴들처럼 조회 화면으로 보여줌 - 예전엔 팝업이었는데 전용 메뉴가 생기면서 화면 전환으로 바꿈 -->
+              <div class="home-tile home-tile-plain" data-goto="clockhistory" style="--tile-accent:var(--amber);">
+                <div class="home-tile-icon">🕒</div>
+                <div class="home-tile-title">출퇴근현황</div>
+              </div>
+            </div>
             <div class="home-tile home-tile-plain" data-goto="policy" style="--tile-accent:var(--guide-wine);">
               <div class="home-tile-icon">📘</div>
               <div class="home-tile-title">내부규정</div>
@@ -3218,26 +3264,6 @@
               <div class="home-submenu-item" data-goto="quickguide"><span>복리후생</span></div>
               <div class="home-submenu-item" data-policy-cat-goto="hr"><span>인사지침</span></div>
               <div class="home-submenu-item" data-policy-cat-goto="ops"><span>운영지침</span></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="home-section-row">
-          <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 14 0v1"/></svg> Staff</div>
-          <div class="home-tiles" id="homeTilesStaff">
-            <div class="home-tile home-tile-plain" data-goto="calendar" style="--tile-accent:var(--mint);">
-              <div class="home-tile-icon">📅</div>
-              <div class="home-tile-title">개인캘린더</div>
-            </div>
-            <div class="home-tile home-tile-plain" data-goto="attendance" style="--tile-accent:var(--indigo);">
-              <div class="home-tile-icon">⏰</div>
-              <div class="home-tile-title">근태경비</div>
-            </div>
-            <!-- 대시보드 출퇴근 위젯의 "전체이력"과 같은 내용(월 선택해서 그 달 출퇴근 시각·근무시간을 보는)을
-                 다른 메뉴들처럼 조회 화면으로 보여줌 - 예전엔 팝업이었는데 전용 메뉴가 생기면서 화면 전환으로 바꿈 -->
-            <div class="home-tile home-tile-plain" data-goto="clockhistory" style="--tile-accent:var(--amber);">
-              <div class="home-tile-icon">🕒</div>
-              <div class="home-tile-title">출퇴근현황</div>
             </div>
           </div>
         </div>
@@ -5092,6 +5118,20 @@
           <div class="flat-row-control" style="flex:0 0 auto; justify-content:flex-end;">
             <label class="ios-toggle"><input type="checkbox" class="notif-pref-toggle" data-category="teamSchedule"><span class="ios-toggle-track"></span></label>
           </div>
+        </div>
+      </div>
+      <!-- 출근/퇴근 시간 1분 전 알림 - 위의 종류별 알림(공지·결재·팀캘린더)은 남이 등록한 일이 있어야 오는
+           알림이라 서버(sendPush)가 대신 보내주지만, 이건 "매일 정해진 시각"이 되면 오는 알림이라 그 시각을
+           지켜보고 있을 서버 쪽 장치가 없음 - 그래서 이 기기(브라우저/앱)가 켜져 있는 동안 주기적으로 시계를
+           확인하다가 표준 출근·퇴근 시간(근무시간 설정 기준) 1분 전이 되면, 아직 그날 출근/퇴근을 안 찍었을
+           때만 이 기기에서 바로 알림을 띄움 - 기기가 완전히 꺼져있거나 앱이 종료된 상태에서는 오지 않음 -->
+      <div class="flat-panel flat-panel-narrow" style="margin-bottom:10px;">
+        <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; padding:16px 14px;">
+          <div>
+            <div style="font-weight:800; font-size:14px; color:var(--ink);">출근·퇴근 1분 전 알림</div>
+            <div class="hint" style="margin:4px 0 0;">표준 출근·퇴근 시간 1분 전, 아직 출근/퇴근을 안 찍었으면 이 기기로 알려드려요. (이 기기가 켜져있을 때만 동작해요)</div>
+          </div>
+          <button type="button" id="clockReminderToggleBtn" class="del-btn" style="display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:10px 22px; white-space:nowrap;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"></circle><polyline points="12 9 12 13 15 15"></polyline><path d="M5 3 2 6"></path><path d="M22 6l-3-3"></path></svg> 알림 받기</button>
         </div>
       </div>
       <!-- 모바일에서 알림이 두세 번씩 온다는 문제 - 브라우저 저장공간 정리·재설치 등으로 같은 휴대폰이
@@ -7323,6 +7363,75 @@ async function toggleNoticeNotify(){
   appAlert('새 공지가 등록되면 알림을 받아요. 앱을 설치해두면 탭(창)이 닫혀 있어도 알림이 와요.');
 }
 document.getElementById('noticeNotifyToggleBtn')?.addEventListener('click', toggleNoticeNotify);
+
+// ===== 출근/퇴근 1분 전 알림 =====
+// 공지·결재 알림과 달리 "매일 정해진 시각"에 오는 알림이라, 그 시각을 지켜볼 서버가 없어서(sendPush는
+// 이벤트가 생겼을 때만 호출됨) 이 기기가 켜져있는 동안 주기적으로(20초마다) 시계를 직접 확인하다가
+// 표준 출근/퇴근 시간(getWorkStartTime/getWorkEndTime, 근무시간 설정 기준) 1분 전이 되면, 그날 아직
+// 출근/퇴근을 안 찍었을 때만 알림을 띄움. 같은 날 같은 알림이 여러 번 안 뜨게(20초 간격으로 계속 검사하니까)
+// 오늘 이미 보낸 알림 종류를 localStorage에 표시해둠.
+const CLOCK_REMINDER_KEY = 'worklog_clock_reminder_notify';
+function clockReminderEnabled(){ return localStorage.getItem(CLOCK_REMINDER_KEY) === '1'; }
+function updateClockReminderBtn(){
+  const btn = document.getElementById('clockReminderToggleBtn');
+  if(!btn) return;
+  const on = clockReminderEnabled() && typeof Notification !== 'undefined' && Notification.permission === 'granted';
+  btn.innerHTML = on
+    ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"></circle><polyline points="12 9 12 13 15 15"></polyline><path d="M5 3 2 6"></path><path d="M22 6l-3-3"></path></svg> 알림 받는 중`
+    : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"></circle><polyline points="12 9 12 13 15 15"></polyline><path d="M5 3 2 6"></path><path d="M22 6l-3-3"></path></svg> 알림 받기`;
+  btn.style.background = on ? 'var(--indigo)' : '';
+  btn.style.color = on ? '#fff' : '';
+}
+async function toggleClockReminder(){
+  if(typeof Notification === 'undefined'){ appAlert('이 브라우저는 알림 기능을 지원하지 않아요.'); return; }
+  if(clockReminderEnabled()){
+    localStorage.setItem(CLOCK_REMINDER_KEY, '0');
+    updateClockReminderBtn();
+    return;
+  }
+  if(Notification.permission === 'denied'){
+    appAlert('브라우저 알림 권한이 차단되어 있어요. 주소창 왼쪽 자물쇠(사이트 정보) 아이콘에서 이 사이트의 알림 권한을 허용해주세요.');
+    return;
+  }
+  const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+  if(perm !== 'granted'){ appAlert('알림 권한이 허용되지 않았어요.'); return; }
+  localStorage.setItem(CLOCK_REMINDER_KEY, '1');
+  updateClockReminderBtn();
+  appAlert('표준 출근·퇴근 시간 1분 전에 알려드려요. 이 기기(브라우저/앱)가 켜져있을 때만 동작해요 - 완전히 꺼져있으면 오지 않아요.');
+}
+document.getElementById('clockReminderToggleBtn')?.addEventListener('click', toggleClockReminder);
+// 오늘 이미 보낸 알림 종류(checkIn/checkOut) 표시 - 날짜가 바뀌면 자연히 새 키를 쓰게 되어 날마다 한 번씩만 옴
+function clockReminderAlreadySent(kind){
+  return localStorage.getItem(`worklog_clock_reminder_sent_${todayStr()}_${kind}`) === '1';
+}
+function markClockReminderSent(kind){
+  try{ localStorage.setItem(`worklog_clock_reminder_sent_${todayStr()}_${kind}`, '1'); }catch(e){}
+}
+function fireClockReminderNotification(kind, timeStr){
+  const title = kind === 'checkIn' ? '출근 시간 1분 전이에요' : '퇴근 시간 1분 전이에요';
+  const body = kind === 'checkIn' ? `표준 출근 시간(${timeStr})이 얼마 안 남았어요. 출근 도장을 잊지 마세요!` : `표준 퇴근 시간(${timeStr})이 얼마 안 남았어요.`;
+  try{ new Notification(title, { body, icon: 'icon-192.png' }); }catch(e){ console.error('출퇴근 알림 표시 실패', e); }
+  markClockReminderSent(kind);
+}
+function checkClockReminderTick(){
+  if(!clockReminderEnabled()) return;
+  if(typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  if(typeof settings === 'undefined' || typeof attendance === 'undefined') return; // 로그인/데이터 로딩 전에는 건너뜀
+  const d = todayStr();
+  const now = new Date();
+  const nowMin = now.getHours()*60 + now.getMinutes();
+  const entry = todayClockEntry(false);
+  const startMin = timeStrToMinutes(getWorkStartTime(d));
+  const endMin = timeStrToMinutes(getWorkEndTime(d));
+  if(startMin!=null && !clockReminderAlreadySent('checkIn') && !(entry && entry.checkIn) && nowMin === startMin - 1){
+    fireClockReminderNotification('checkIn', getWorkStartTime(d));
+  }
+  if(endMin!=null && !clockReminderAlreadySent('checkOut') && !(entry && entry.checkOut) && nowMin === endMin - 1){
+    fireClockReminderNotification('checkOut', getWorkEndTime(d));
+  }
+}
+setInterval(checkClockReminderTick, 20000);
+
 // 동기화로 공지 목록이 갱신될 때마다 호출됨 - 내가 아직 알림받지 않은 새 공지(남이 쓴 글)가 있으면 브라우저 알림을 띄움
 function checkNewNoticesForBrowserNotify(){
   // 데스크톱 알림(브라우저 팝업) 권한과 상관없이, 새 공지는 항상 알림함(알림 목록)에는 기록해둠
@@ -15485,6 +15594,27 @@ relocateSidebarNodes();
     closeAllPopovers();
   });
 
+  // 이 항목을 눌렀을 때 실제로 이동할 화면이 있는지 - 거래처관련/팀관련/직원관련처럼 이 리모델링(업무/내부
+  // 그룹화)에서 새로 추가한 "묶음 이름표"는 그 자체로는 갈 곳이 없고 펼치기만 하는 용도라 검색·전체메뉴에서
+  // 걸러내야 함(그 안의 실제 항목들은 각자 따로 검색/전체메뉴에 잡힘)
+  function elHasNavigation(el){
+    const ds = el.dataset || {};
+    return !!(ds.goto || ds.companyinfoCatGoto || ds.approvalCatGoto || ds.settingsCatGoto || ds.settingsAnchorGoto || ds.policyCatGoto || el.id === 'homeSideNoticeTile');
+  }
+  // 어떤 메뉴 항목이든(중첩 깊이 상관없이) "대분류 · 중간메뉴 · ..." 형태의 경로를 만들어줌 - 사내정보처럼
+  // 3단으로 중첩된 경우도 그 사이의 모든 중간메뉴 이름을 순서대로 이어붙임
+  function pathForElement(el, catLabel){
+    const chain = [];
+    let node = el.parentElement ? el.parentElement.closest('.home-submenu') : null;
+    while(node){
+      const parentTile = node.previousElementSibling && node.previousElementSibling.classList.contains('home-tile') ? node.previousElementSibling : null;
+      const parentTitle = parentTile?.querySelector('.home-tile-title')?.textContent.trim();
+      if(parentTitle) chain.unshift(parentTitle);
+      node = node.parentElement ? node.parentElement.closest('.home-submenu') : null;
+    }
+    return [catLabel, ...chain].filter(Boolean).join(' · ');
+  }
+
   // ── 메뉴 검색: 대분류(Bookmarks~Settings) 안의 모든 하위 메뉴를 이름으로 검색해서 바로 이동함 ──
   function flattenRealMenu(){
     const rows = [];
@@ -15493,16 +15623,13 @@ relocateSidebarNodes();
       const catLabel = row.querySelector('.home-section-label')?.textContent.trim() || '';
       row.querySelectorAll('.home-tile').forEach(tile=>{
         const title = tile.querySelector('.home-tile-title')?.textContent.trim();
-        if(!title) return;
-        rows.push({ name:title, path:catLabel, el:tile });
+        if(!title || !elHasNavigation(tile)) return; // 갈 곳 없는 묶음 이름표(예: 거래처관련)는 검색결과에서 제외
+        rows.push({ name:title, path:pathForElement(tile, catLabel), el:tile });
       });
       row.querySelectorAll('.home-submenu-item, .home-submenu-leaf').forEach(item=>{
         const name = item.querySelector('span')?.textContent.trim() || item.textContent.trim();
         if(!name) return;
-        const parentSubmenu = item.closest('.home-submenu');
-        const parentTile = parentSubmenu?.previousElementSibling?.classList?.contains('home-tile') ? parentSubmenu.previousElementSibling : null;
-        const parentTitle = parentTile?.querySelector('.home-tile-title')?.textContent.trim() || '';
-        rows.push({ name, path:catLabel + (parentTitle ? ' · ' + parentTitle : ''), el:item });
+        rows.push({ name, path:pathForElement(item, catLabel), el:item });
       });
     });
     return rows;
@@ -15575,36 +15702,53 @@ relocateSidebarNodes();
     allMenuOverlay.querySelector('#railAllMenuCloseBtn').addEventListener('click', ()=> allMenuOverlay.classList.remove('is-open'));
     allMenuOverlay.addEventListener('click', (e)=>{ if(e.target === allMenuOverlay) allMenuOverlay.classList.remove('is-open'); });
   }
+  // .home-tiles(또는 .home-submenu) 하나의 바로 아래 목록을 훑으면서, 하위메뉴가 있는 항목은 그 안까지
+  // 재귀적으로 따라 들어가 전부 펼쳐서 한 줄씩 쌓음 - 사내정보처럼 3단으로 중첩된 경우도 전부 다 나옴
+  function collectMenuItems(container, depth){
+    const items = [];
+    Array.from(container.children).forEach(el=>{
+      if(el.classList.contains('home-tile')){
+        const name = el.querySelector('.home-tile-title')?.textContent.trim();
+        if(!name) return;
+        const expandBtn = el.querySelector('.home-tile-expand-btn[data-expand-target]');
+        items.push({ name, depth, el, hasChildren: !!expandBtn });
+        if(expandBtn){
+          const submenu = document.getElementById(expandBtn.dataset.expandTarget);
+          if(submenu) items.push(...collectMenuItems(submenu, depth+1));
+        }
+      } else if(el.classList.contains('home-submenu-item') || el.classList.contains('home-submenu-leaf')){
+        const name = el.querySelector('span')?.textContent.trim() || el.textContent.trim();
+        if(name) items.push({ name, depth, el, hasChildren:false });
+      }
+      // .home-submenu 자체는 여기서 별도로 처리하지 않음 - 항상 자신을 여는 화살표 달린 .home-tile
+      // 바로 다음 형제로 존재해서, 위 .home-tile 분기의 expandBtn 처리에서 이미 재귀적으로 들어가 다뤄짐.
+      // 여기서 또 처리하면 같은 하위 목록이 두 번(들여쓰기된 것 + 안 된 것) 겹쳐 나오는 버그가 생김
+    });
+    return items;
+  }
   function renderAllMenu(){
     const grid = allMenuOverlay.querySelector('#railAllMenuGrid');
     const cols = [];
     document.querySelectorAll('.home-section-row').forEach(row=>{
       if(row.id === 'homeFavoritesSection') return;
       const catLabel = row.querySelector('.home-section-label')?.textContent.trim() || '';
-      const items = [];
-      row.querySelectorAll('.home-tiles > .home-tile').forEach(tile=>{
-        const title = tile.querySelector('.home-tile-title')?.textContent.trim();
-        if(!title) return;
-        items.push({ name:title, sub:false, el:tile });
-        const expandBtn = tile.querySelector('.home-tile-expand-btn[data-expand-target]');
-        if(expandBtn){
-          const submenu = document.getElementById(expandBtn.dataset.expandTarget);
-          submenu?.querySelectorAll('.home-submenu-item, .home-submenu-leaf').forEach(item=>{
-            const name = item.querySelector('span')?.textContent.trim() || item.textContent.trim();
-            if(name) items.push({ name, sub:true, el:item });
-          });
-        }
-      });
+      const tilesRoot = row.querySelector(':scope > .home-tiles');
+      if(!tilesRoot) return;
+      const items = collectMenuItems(tilesRoot, 0);
       if(items.length) cols.push({ catLabel, items });
     });
     grid.innerHTML = cols.map((c,ci)=>`
       <div>
         <div class="rail-allmenu-col-title">${c.catLabel}</div>
-        ${c.items.map((it,ii)=>`<div class="rail-allmenu-item${it.sub ? ' rail-allmenu-sub' : ''}" data-c="${ci}" data-i="${ii}">${it.name}</div>`).join('')}
+        ${c.items.map((it,ii)=>`<div class="rail-allmenu-item${it.depth>0 ? ' rail-allmenu-sub' : ''}" data-c="${ci}" data-i="${ii}" style="${it.depth>1?`padding-left:${12*it.depth}px;`:''}">${it.name}</div>`).join('')}
       </div>
     `).join('');
     grid.querySelectorAll('.rail-allmenu-item').forEach(el=>{
-      el.addEventListener('click', ()=> activateMenuRow(cols[+el.dataset.c].items[+el.dataset.i]));
+      el.addEventListener('click', ()=>{
+        const it = cols[+el.dataset.c].items[+el.dataset.i];
+        if(it.hasChildren && !elHasNavigation(it.el)) return; // 갈 곳 없는 묶음 이름표(예: 거래처관련)는 눌러도 반응 없음 - 그 아래 실제 항목을 눌러야 함
+        activateMenuRow(it);
+      });
     });
   }
   document.getElementById('railAllMenuBtn')?.addEventListener('click', ()=>{
