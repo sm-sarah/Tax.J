@@ -12988,6 +12988,7 @@ document.getElementById('ad-doctype')?.addEventListener('change', syncAdExpenseM
 document.getElementById('ad-expense-month')?.addEventListener('change', function(){
   attachExpenseReportForMonth(this.value);
   syncAdExpenseTitleFor(this.value);
+  if(typeof refreshAutoPhraseIfExpenseActive === 'function') refreshAutoPhraseIfExpenseActive();
 });
 // 부가가치세/법인세/종합소득세로 기안할 때 귀속연도·신고대상 거래처 선택칸을 보여주고, 값이 바뀔 때마다
 // 제목을 "[OOOO년 귀속] 상호명"(법인세·종소세) / "[OOOO년 N기 예정/확정] 상호명"(부가세) 형식으로 자동으로 채움 -
@@ -13199,6 +13200,37 @@ function adTaxSummaryTableHtml(){
     + `<tr><td style="${th}">신고대상</td><td style="${td}">${escHtml(periodText)} · ${escHtml(clientName)}</td></tr>`
     + `<tr><td style="${th}">특이사항</td><td style="${tdNote}">&nbsp;</td></tr>`
     + `</tbody></table>`;
+}
+// 지출결의서 기안 - 예전엔 이 문서에 전용 표가 없어서, 정산 내역(금액·계산근거)을 보려면 자동 첨부된
+// PDF를 따로 열어봐야만 했음(다른 그룹웨어처럼 문서 본문만 봐도 바로 금액이 보이면 좋겠다는 요청) -
+// 휴가/세무 표와 같은 자리·같은 스타일로 "정산월/정산(계산식)/청구금액/네이버페이" 네 줄짜리 요약표를
+// 기안내용에 넣어줌. 일자별 상세 사용내역은 여전히 자동 첨부 PDF(buildExpenseReportHTML)가 맡고,
+// 이 표는 결재자가 문서 본문에서 한눈에 확인할 수 있는 요약 역할만 함
+function adExpenseSummaryTableHtml(){
+  const monthStr = document.getElementById('ad-expense-month')?.value;
+  if(!monthStr) return '';
+  let s;
+  try{ s = calcExpenseSummary(monthStr); }catch(e){ return ''; }
+  const [y,m] = monthStr.split('-');
+  if(!y || !m) return '';
+  const monthLabel = `${y}년 ${Number(m)}월`;
+  const tableBorder = '#8A93A8';
+  const th = `padding:7px 16px; border:1px solid ${tableBorder}; background:var(--bg); font-weight:700; color:var(--ink-soft); white-space:nowrap;`;
+  const td = `padding:7px 16px; border:1px solid ${tableBorder}; color:var(--ink); font-weight:600; white-space:nowrap;`;
+  // 계산근거(식대기준일수 × 식대기준금액)는 결재자가 "왜 이 한도가 나왔는지" 바로 알 수 있게, 정산 금액
+  // 바로 아래 작은 글씨로 같이 보여줌(식대기준일수 계산법 자체는 기존 안내 팝업 그대로 유지, 여긴 결과만 인용)
+  const calcNote = `<span style="display:block; font-size:10.5px; font-weight:500; color:#888; margin-top:2px; white-space:nowrap;">(식대기준일 ${s.workdays}일 × ${won(s.dailyAmount)})</span>`;
+  return `<table style="border-collapse:collapse; margin:0 auto; width:auto; border:1px solid ${tableBorder};"><tbody>`
+    + `<tr><td style="${th}">정산월</td><td style="${td}">${escHtml(monthLabel)}</td></tr>`
+    + `<tr><td style="${th}">정산</td><td style="${td}">${won(s.monthlyLimit)} 한도${calcNote}</td></tr>`
+    + `<tr><td style="${th}">청구금액</td><td style="${td}">${won(s.claimTotal)}</td></tr>`
+    + `<tr><td style="${th}">네이버페이</td><td style="${td}">${won(s.naverPay)}</td></tr>`
+    + `</tbody></table>`;
+}
+// 정산월 선택칸을 바꾸면(자동 첨부 PDF가 그 달로 새로 갈리는 것과 함께) 기안내용 안의 위 요약표도
+// 같이 최신 달 기준으로 갈아끼워줌 - refreshAutoPhraseIfLeaveActive/refreshAutoPhraseIfTaxActive와 동일한 목적
+function refreshAutoPhraseIfExpenseActive(){
+  if(document.getElementById('ad-doctype')?.value === '지출결의서') applyAdAutoPhrase();
 }
 // 휴가 일정 선택칸(종류/세부유형/날짜)을 바꾸면, 기안내용은 이제 항상 자동으로 채워지는 상태이므로 그 안의
 // 휴가 기간·종류 표도 같이 최신값으로 갈아끼워줌 - 안 그러면 날짜를 바꿔도 기안내용엔 처음 채워졌을 때의
@@ -21570,6 +21602,8 @@ document.getElementById('ad-insert-box-btn')?.addEventListener('click', ()=>{
     boxHtml = typeof adLeaveSummaryTableHtml === 'function' ? adLeaveSummaryTableHtml() : '';
   } else if(typeof AD_TAX_DOCTYPE_KEY !== 'undefined' && AD_TAX_DOCTYPE_KEY[docType]){
     boxHtml = typeof adTaxSummaryTableHtml === 'function' ? adTaxSummaryTableHtml() : '';
+  } else if(docType === '지출결의서'){
+    boxHtml = typeof adExpenseSummaryTableHtml === 'function' ? adExpenseSummaryTableHtml() : '';
   }
   if(!boxHtml) boxHtml = adGenericTableHtml();
   const contentEl = document.getElementById('ad-content');
@@ -21633,6 +21667,10 @@ function applyAdAutoPhrase(){
     // 신고대상(귀속연도·거래처)과 특이사항을 표 안에 같이 보여주고, 특이사항 칸은 빈 칸이라 클릭해서
     // 바로 타이핑하면 그대로 기안내용에 저장됨(별도 입력창 없이도 "입력 박스"처럼 씀)
     const summaryHtml = typeof adTaxSummaryTableHtml === 'function' ? adTaxSummaryTableHtml() : '';
+    if(summaryHtml) extraHtml = `<div style="text-align:center;"><br></div><div style="text-align:center;">${summaryHtml}</div>`;
+  } else if(docType === '지출결의서'){
+    // 정산월/정산(계산식)/청구금액/네이버페이 요약표 - adExpenseSummaryTableHtml 참고
+    const summaryHtml = typeof adExpenseSummaryTableHtml === 'function' ? adExpenseSummaryTableHtml() : '';
     if(summaryHtml) extraHtml = `<div style="text-align:center;"><br></div><div style="text-align:center;">${summaryHtml}</div>`;
   }
   // 누를 때마다 이어붙이면(예전 방식) 여러 번 누르면 같은 문구가 중복으로 계속 쌓이는 문제가 있었음 -
