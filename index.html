@@ -317,41 +317,47 @@
      이유는 위 PC보기 버튼 주석과 같음) 항상 사이드바를 접어두고, 화면 아무 위치에나 띄워둘 수 있는
      동그란 버튼을 눌러서 그 위로 덮어 씌우는 패널로 열게 함 */
   html.is-touch-device .mobile-sidebar-toggle{ display:none !important; }
-  /* 예전엔 화면 왼쪽을 통째로 덮는 긴 패널(+뒤를 어둡게 깔아 "뒤가 비활성화된 것 같다"는 느낌을 주는
-     막)이었는데, 은행앱 챗봇 버튼처럼 누른 자리 근처에 작고 둥근 풍선 모양 메뉴가 뜨는 스타일로 바꿔달라는
-     요청 - 왼쪽 꽉 채운 패널 대신 모서리가 둥근 작은 카드로 바꾸고, 실제 위치(top/left)는 버튼을 누른
-     자리 기준으로 JS(positionFloatingMenuPanel)가 매번 계산해서 인라인 스타일로 넣어줌 */
-  /* "메뉴가 웹페이지 안에서 나오는 느낌보다 폰에 떠있는 느낌이면 좋겠다"는 요청 - 예전엔 display:none↔flex로
-     순간적으로 나타나고 사라져서(트랜지션이 안 걸림) 페이지 안 구성요소 하나가 그냥 켜졌다 꺼지는 것처럼
-     보였음. opacity·scale로 바꿔서 버튼이 있던 자리에서 통통 튀듯 커지며 뜨는 애니메이션을 주고, 그림자도
-     한층 더 진하게 키워서 화면 위에 붕 떠 있는 팝업(네이티브 앱의 말풍선 메뉴 같은 느낌)처럼 보이게 함 */
+  /* 예전엔 화면 왼쪽을 통째로 덮는 긴 패널이었다가, 버튼 근처에 뜨는 작은 풍선 카드로 바꿨었는데 -
+     "누르면 웹페이지 안에 있는 메뉴처럼 보이는 게 아니라 폰 화면 메뉴처럼 더 가까이 있는 느낌이면
+     좋겠다"는 요청으로, 화면 아무 데나 뜨는 카드 대신 화면 아래에서 폰 자체의 메뉴처럼 슬라이드
+     올라오는 "바텀시트"(요즘 앱들의 표준 하단 메뉴 방식)로 바꿈 - 화면 아래쪽 모서리에 그대로 붙어서
+     "떠 있는 웹 콘텐츠"가 아니라 "폰에 달린 메뉴판"처럼 보이게 함. 버튼 위치를 따라다니던 꼬리·풍선
+     카드 로직은 더 이상 안 맞아서 이제 실질적으로 안 쓰임(패널 자체 위치는 아래에서 !important로
+     화면 하단에 고정) */
   html.is-touch-device .app-sidebar{
-    display:flex !important; position:fixed !important; height:auto; top:0; left:0; right:auto; bottom:auto;
-    width:min(84vw, 320px); max-height:min(64vh, 480px); overflow-y:auto; z-index:9600;
-    background:var(--surface); box-shadow:0 26px 60px -14px rgba(15,16,30,0.45), 0 8px 22px rgba(15,16,30,0.2);
-    padding:14px 12px; border:1.5px solid rgba(255,255,255,0.6); margin:0; gap:12px; border-radius:24px;
-    opacity:0; visibility:hidden; pointer-events:none; transform:scale(0.85) translateY(14px);
-    transform-origin:left bottom; transition:opacity .18s ease, transform .2s cubic-bezier(.34,1.56,.64,1), visibility .18s;
+    display:flex !important; position:fixed !important; height:auto;
+    left:0 !important; right:0 !important; bottom:0 !important; top:auto !important;
+    width:100% !important; max-width:100% !important; max-height:78vh; overflow-y:auto; z-index:9600;
+    background:var(--surface); box-shadow:0 -14px 50px -10px rgba(15,16,30,0.5), 0 -2px 0 rgba(255,255,255,0.6) inset;
+    padding:10px 16px calc(18px + env(safe-area-inset-bottom, 0px)); border:none; border-top:1.5px solid var(--border);
+    margin:0; gap:12px; border-radius:26px 26px 0 0;
+    opacity:0; visibility:hidden; pointer-events:none; transform:translateY(100%);
+    transition:opacity .16s ease, transform .26s cubic-bezier(.32,.94,.6,1), visibility .16s;
   }
   html.is-touch-device .app-sidebar.mobile-sidebar-open{
-    opacity:1; visibility:visible; pointer-events:auto; transform:scale(1) translateY(0);
+    opacity:1; visibility:visible; pointer-events:auto; transform:translateY(0);
   }
-  /* 크기를 고정 px 대신 vw(뷰포트 폭 비율)로 잡음 - PC보기 모드는 뷰포트 자체를 1400px 캔버스로
-     강제한 뒤 화면에 맞게 축소해서 보여주는 방식이라(위 PC 보기 IIFE 참고), 고정 px는 그 축소 배율만큼
-     실제 화면에서 작아져 버림. vw는 "그 축소되는 캔버스 폭"에 대한 비율이라 축소되고 나면 항상 실제
-     화면 폭의 일정 비율(약 12%)로 계산돼서, PC보기가 켜져있든 꺼져있든 실제 화면에 보이는 크기가 같음 */
-  /* "메뉴 버튼 크기도 좀 키워달라"는 요청으로 한 단계 키움(19vw/58~74px → 23vw/68~92px) */
+  /* 크기를 고정 px 대신 vw/vh(화면 폭·높이 비율)로 잡음 - PC보기 모드는 뷰포트 자체를 1400px 캔버스로
+     강제한 뒤 화면에 맞게 축소해서 보여주는 방식이라(위 PC 보기 IIFE 참고), 고정 px 크기는 그 축소
+     배율만큼 실제 화면에서 훨씬 작게 그려져 버림(예: "세로 화면에서 메뉴 버튼이 너무 작다"는 제보 -
+     min/max-width를 px로 못박아뒀던 탓에, PC보기가 기본으로 켜진 휴대폰에서 그 px 값 그대로 캔버스에
+     그려진 뒤 다시 작게 축소되어 훨씬 작아 보였음). vw/vh는 "그 축소되는 캔버스 폭·높이"에 대한
+     비율이라 축소되고 나면 항상 실제 화면의 일정 비율로 계산돼서, PC보기가 켜져있든 꺼져있든 실제
+     화면에 보이는 크기가 똑같이 유지됨 - px 캡을 두면 이 성질이 깨지므로 일부러 안 둠 */
   #floatingMenuBtn{
-    display:none; position:fixed; left:18px; bottom:30px; width:23vw; height:23vw; min-width:68px; max-width:92px; min-height:68px; max-height:92px; border-radius:50%;
-    background:var(--indigo); color:#fff; align-items:center; justify-content:center;
+    display:none; flex-direction:column; position:fixed; left:18px; bottom:30px; width:26vw; height:26vw;
+    border-radius:30%; font-size:2.6vw;
+    background:var(--indigo); color:#fff; align-items:center; justify-content:center; gap:0.15em;
     box-shadow:0 3px 0 rgba(255,255,255,0.9), 0 10px 26px -4px rgba(15,16,30,0.6); border:3px solid rgba(255,255,255,0.95);
     z-index:999997; cursor:pointer; user-select:none; -webkit-tap-highlight-color:transparent; pointer-events:auto;
   }
   /* "메뉴 버튼이 고객센터 챗봇 캐릭터 같은 모양이면 좋겠다"는 요청 - 예전엔 그냥 흰색 햄버거(≡) 세 줄이었는데,
      이 앱 홈 화면 출퇴근 카드에 이미 쓰고 있는 귀여운 양털 뭉치 마스코트(dashMascotSvg)를 그대로 재사용함
      (새 캐릭터를 새로 그리지 않고 브랜드 마스코트를 챗봇 아이콘으로도 씀 - 일관성도 챙기고, 이 마스코트
-     자체가 이미 "도와줄게요" 느낌의 친근한 표정이라 챗봇 버튼에 잘 어울림) */
-  #floatingMenuBtn svg{ width:72%; height:72%; filter:drop-shadow(0 2px 3px rgba(15,16,30,0.25)); }
+     자체가 이미 "도와줄게요" 느낌의 친근한 표정이라 챗봇 버튼에 잘 어울림). "캐릭터 밑에 메뉴라고 글자도
+     있으면 좋겠다"는 요청으로 아이콘 아래 작은 라벨을 하나 더 둠 */
+  #floatingMenuBtn svg{ width:58%; height:58%; flex:none; filter:drop-shadow(0 2px 3px rgba(15,16,30,0.25)); }
+  #floatingMenuBtn .floating-menu-btn-label{ font-size:0.62em; font-weight:800; letter-spacing:0.02em; line-height:1; }
   html.is-touch-device #floatingMenuBtn{ display:flex; }
   #floatingMenuBtn:active{ transform:scale(0.94); }
   /* 배경을 어둡게 깔아 사이드바를 도드라져 보이게 하는 용도라, 사이드바(9600)보다는 아래(위에 덮이지
@@ -360,13 +366,12 @@
      있었음. 사이드바보다 한 단계 아래로 되돌림 */
   #floatingMenuBackdrop{ display:none; position:fixed; inset:0; background:rgba(15,16,30,0.42); z-index:9590; }
   #floatingMenuBackdrop.is-open{ display:block; }
-  /* 챗봇 버튼 스타일 풍선 메뉴로 바꾸면서, 뒤 화면을 어둡게 깔던 막도 아예 투명하게 함 - 화면이
-     "비활성화된 것처럼" 보이던 느낌을 없애고, 배경은 계속 또렷하게 보이면서 그 바깥을 탭하면 메뉴만
-     닫히는 동작(backdrop의 click 리스너)은 그대로 유지함 */
-  html.is-touch-device #floatingMenuBackdrop{ background:transparent; }
-  /* 패널이 버튼과 좀 떨어진 채로 뜨다 보니 "이게 버튼이랑 연결된 메뉴다"라는 느낌이 약하다는 피드백으로,
-     버튼 쪽을 향해 작은 꼬리(말풍선 느낌)를 붙여줌 - 실제 위치는 JS(positionFloatingMenuPanel)가 패널
-     위치를 잡고 난 뒤 버튼의 x좌표를 따라 매번 다시 계산해서 넣어줌 */
+  /* 풍선 카드 시절엔 뒤 화면이 어두워지면 "비활성화된 느낌"이라 막을 투명하게 뒀었는데, 이제 화면 아래에서
+     올라오는 바텀시트(폰 메뉴 같은 느낌)로 바뀌면서는 오히려 뒤를 살짝 어둡게 깔아주는 쪽이 "지금 메뉴가
+     화면 위로 떠서 이 화면을 덮었다"는 느낌을 더 확실히 줌(요즘 앱들의 하단 메뉴가 보통 이렇게 생김) */
+  html.is-touch-device #floatingMenuBackdrop.is-open{ background:rgba(15,16,30,0.4); }
+  /* 버튼 옆에 붙던 말풍선 꼬리는 화면 하단에 고정되는 바텀시트 방식에서는 더 이상 필요 없어서 숨김 */
+  html.is-touch-device #floatingMenuTail{ display:none !important; }
   #floatingMenuTail{ display:none; position:fixed; width:0; height:0; z-index:9601; pointer-events:none; }
   #floatingMenuTail.is-open{ display:block; }
   #floatingMenuTail.tail-down{ border-left:9px solid transparent; border-right:9px solid transparent; border-top:10px solid var(--surface); filter:drop-shadow(0 3px 2px rgba(15,16,30,0.14)); }
@@ -16221,7 +16226,7 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
   btn.setAttribute('aria-label', '메뉴 열기');
   // "메뉴 버튼이 고객센터 챗봇 캐릭터 느낌이면 좋겠다"는 요청 - 햄버거(≡) 아이콘 대신, 이 앱 홈 화면
   // 출퇴근 카드에 이미 쓰고 있는 마스코트(dashMascotSvg)를 그대로 재사용함
-  btn.innerHTML = typeof dashMascotSvg === 'function' ? dashMascotSvg('idle') : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>`;
+  btn.innerHTML = (typeof dashMascotSvg === 'function' ? dashMascotSvg('idle') : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>`) + '<span class="floating-menu-btn-label">메뉴</span>';
   document.body.appendChild(btn);
   const backdrop = document.createElement('div');
   backdrop.id = 'floatingMenuBackdrop';
