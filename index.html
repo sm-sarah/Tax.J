@@ -328,12 +328,16 @@
     display:flex !important; position:fixed !important; height:auto;
     left:0 !important; right:0 !important; bottom:0 !important; top:auto !important;
     width:100% !important; max-width:100% !important; max-height:78vh; overflow-y:auto; z-index:9600;
-    background:var(--surface); box-shadow:0 -14px 50px -10px rgba(15,16,30,0.5), 0 -2px 0 rgba(255,255,255,0.6) inset;
-    padding:10px 16px calc(18px + env(safe-area-inset-bottom, 0px)); border:none; border-top:1.5px solid var(--border);
+    background:rgba(255,255,255,0.5); -webkit-backdrop-filter:blur(30px) saturate(180%); backdrop-filter:blur(30px) saturate(180%);
+    box-shadow:0 -14px 50px -10px rgba(15,16,30,0.5), 0 -2px 0 rgba(255,255,255,0.6) inset;
+    padding:10px 16px calc(18px + env(safe-area-inset-bottom, 0px)); border:none; border-top:1.5px solid rgba(255,255,255,0.5);
     margin:0; gap:12px; border-radius:26px 26px 0 0;
     opacity:0; visibility:hidden; pointer-events:none; transform:translateY(100%);
     transition:opacity .16s ease, transform .26s cubic-bezier(.32,.94,.6,1), visibility .16s;
   }
+  /* 배경이 완전 불투명한 흰 패널이면 "웹페이지 안 콘텐츠"처럼 보인다는 지적 - 아이폰/안드로이드의 진짜
+     메뉴판(공유 시트, 홈 화면 위젯 메뉴 등)처럼 패널 자체를 반투명 유리(frosted glass)로 만들어서 뒤에
+     흐릿하게 비치는 원래 화면이 "이 메뉴는 화면과 분리된, 그 위에 뜬 레이어"라는 느낌을 주게 함 */
   html.is-touch-device .app-sidebar.mobile-sidebar-open{
     opacity:1; visibility:visible; pointer-events:auto; transform:translateY(0);
   }
@@ -360,16 +364,27 @@
   #floatingMenuBtn .floating-menu-btn-label{ font-size:1em; font-weight:800; letter-spacing:0.02em; line-height:1; }
   html.is-touch-device #floatingMenuBtn{ display:flex; }
   #floatingMenuBtn:active{ transform:scale(0.94); }
+  #floatingMenuBtn{ transition:opacity .16s ease, transform .16s ease; }
+  #floatingMenuBtn.is-hidden{ opacity:0; transform:scale(0.7); pointer-events:none; }
   /* 배경을 어둡게 깔아 사이드바를 도드라져 보이게 하는 용도라, 사이드바(9600)보다는 아래(위에 덮이지
      않게), 버튼(999997)보다는 아래(버튼은 계속 눌려야 하니) - 이전에 버튼과 같이 z-index를 확 올렸다가
      사이드바까지 이 막이 덮어버려서 메뉴 항목을 눌러도 반응이 없는(비활성화된 것처럼 보이는) 문제가
      있었음. 사이드바보다 한 단계 아래로 되돌림 */
-  #floatingMenuBackdrop{ display:none; position:fixed; inset:0; background:rgba(15,16,30,0.42); z-index:9590; }
-  #floatingMenuBackdrop.is-open{ display:block; }
+  #floatingMenuBackdrop{
+    display:none; position:fixed; inset:0; background:rgba(15,16,30,0.42); z-index:9590;
+    opacity:0; transition:opacity .18s ease, backdrop-filter .18s ease, -webkit-backdrop-filter .18s ease;
+  }
+  #floatingMenuBackdrop.is-open{ display:block; opacity:1; }
   /* 풍선 카드 시절엔 뒤 화면이 어두워지면 "비활성화된 느낌"이라 막을 투명하게 뒀었는데, 이제 화면 아래에서
      올라오는 바텀시트(폰 메뉴 같은 느낌)로 바뀌면서는 오히려 뒤를 살짝 어둡게 깔아주는 쪽이 "지금 메뉴가
-     화면 위로 떠서 이 화면을 덮었다"는 느낌을 더 확실히 줌(요즘 앱들의 하단 메뉴가 보통 이렇게 생김) */
-  html.is-touch-device #floatingMenuBackdrop.is-open{ background:rgba(15,16,30,0.4); }
+     화면 위로 떠서 이 화면을 덮었다"는 느낌을 더 확실히 줌(요즘 앱들의 하단 메뉴가 보통 이렇게 생김).
+     "뒤 화면이 흐려지면서, 메뉴는 웹이랑 분리된 느낌이었으면"이라는 요청으로 단순히 어둡게 깔던 막에
+     backdrop-filter:blur를 추가함 - 뒤에 있던 실제 화면(달력, 카드 등)이 흐릿하게 번져 보이면서, 그 위에
+     뜬 메뉴 패널은 또렷하게 남아 "이건 지금 화면과 분리된 별개의 레이어"라는 느낌을 훨씬 강하게 줌
+     (iOS 공유 시트, 안드로이드 바텀시트가 뒤를 블러 처리하는 것과 같은 방식) */
+  html.is-touch-device #floatingMenuBackdrop.is-open{
+    background:rgba(15,16,30,0.28); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+  }
   /* 버튼 옆에 붙던 말풍선 꼬리는 화면 하단에 고정되는 바텀시트 방식에서는 더 이상 필요 없어서 숨김 */
   html.is-touch-device #floatingMenuTail{ display:none !important; }
   #floatingMenuTail{ display:none; position:fixed; width:0; height:0; z-index:9601; pointer-events:none; }
@@ -16293,6 +16308,9 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
     const isOpen = sidebarEl.classList.contains('mobile-sidebar-open');
     backdrop.classList.toggle('is-open', isOpen);
     tail.classList.toggle('is-open', isOpen);
+    // 메뉴가 펼쳐지면 그 아래 깔린 "메뉴 열기" 버튼이 패널 밑단과 겹쳐 보인다는 지적 -
+    // 열려있는 동안은 버튼 자체를 살짝 사라지게(페이드+축소) 숨겨서 겹침을 없앰
+    btn.classList.toggle('is-hidden', isOpen);
     if(isOpen) positionFloatingMenuPanel();
   };
   new MutationObserver(syncBackdrop).observe(sidebarEl, { attributes:true, attributeFilter:['class'] });
