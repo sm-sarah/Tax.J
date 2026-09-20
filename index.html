@@ -326,31 +326,31 @@
      화면 하단에 고정) */
   html.is-touch-device .app-sidebar{
     display:flex !important; position:fixed !important; height:auto;
-    left:0 !important; right:0 !important; bottom:0 !important; top:auto !important;
-    width:100% !important; max-width:100% !important; max-height:78vh; overflow-y:auto; z-index:9600;
+    left:50% !important; right:auto !important; bottom:0 !important; top:auto !important;
+    width:min(100%, var(--floating-menu-panel-max, 440px)) !important; max-width:min(100%, var(--floating-menu-panel-max, 440px)) !important; max-height:78vh; overflow-y:auto; z-index:9600;
     background:rgba(255,255,255,0.5); -webkit-backdrop-filter:blur(30px) saturate(180%); backdrop-filter:blur(30px) saturate(180%);
     box-shadow:0 -14px 50px -10px rgba(15,16,30,0.5), 0 -2px 0 rgba(255,255,255,0.6) inset;
     padding:10px 16px calc(18px + env(safe-area-inset-bottom, 0px)); border:none; border-top:1.5px solid rgba(255,255,255,0.5);
     margin:0; gap:12px; border-radius:26px 26px 0 0;
-    opacity:0; visibility:hidden; pointer-events:none; transform:translateY(100%);
+    opacity:0; visibility:hidden; pointer-events:none; transform:translate(-50%, 100%);
     transition:opacity .16s ease, transform .26s cubic-bezier(.32,.94,.6,1), visibility .16s;
   }
   /* 배경이 완전 불투명한 흰 패널이면 "웹페이지 안 콘텐츠"처럼 보인다는 지적 - 아이폰/안드로이드의 진짜
      메뉴판(공유 시트, 홈 화면 위젯 메뉴 등)처럼 패널 자체를 반투명 유리(frosted glass)로 만들어서 뒤에
      흐릿하게 비치는 원래 화면이 "이 메뉴는 화면과 분리된, 그 위에 뜬 레이어"라는 느낌을 주게 함 */
+  /* 너비를 항상 100%로 뒀더니, 폴드 펼친 화면·태블릿처럼 화면 자체가 넓을 때 패널이 화면 끝까지 늘어나
+     버려서 "메뉴" 제목 옆에 불필요하게 긴 빈 여백이 생긴다는 지적 - 일반 휴대폰(440px보다 좁은 화면)에서는
+     min(100%, 440px)이 그대로 100%라 기존과 동일하게 화면 꽉 채운 시트로 보이고, 그보다 넓은 화면에서만
+     440px로 폭을 제한하고 가운데 정렬해서 "휴대폰 메뉴 크기 그대로, 화면 가운데 아래에 떠 있는" 모양이 됨 */
   html.is-touch-device .app-sidebar.mobile-sidebar-open{
-    opacity:1; visibility:visible; pointer-events:auto; transform:translateY(0);
+    opacity:1; visibility:visible; pointer-events:auto; transform:translate(-50%, 0);
   }
-  /* 크기를 고정 px 대신 vw/vh(화면 폭·높이 비율)로 잡음 - PC보기 모드는 뷰포트 자체를 1400px 캔버스로
-     강제한 뒤 화면에 맞게 축소해서 보여주는 방식이라(위 PC 보기 IIFE 참고), 고정 px 크기는 그 축소
-     배율만큼 실제 화면에서 훨씬 작게 그려져 버림(예: "세로 화면에서 메뉴 버튼이 너무 작다"는 제보 -
-     min/max-width를 px로 못박아뒀던 탓에, PC보기가 기본으로 켜진 휴대폰에서 그 px 값 그대로 캔버스에
-     그려진 뒤 다시 작게 축소되어 훨씬 작아 보였음). vw/vh는 "그 축소되는 캔버스 폭·높이"에 대한
-     비율이라 축소되고 나면 항상 실제 화면의 일정 비율로 계산돼서, PC보기가 켜져있든 꺼져있든 실제
-     화면에 보이는 크기가 똑같이 유지됨 - px 캡을 두면 이 성질이 깨지므로 일부러 안 둠 */
+  /* 버튼 크기: 실제 화면 기준 목표 크기(52~68px, 화면폭 16%)를 축소 배율의 역수로 환산한 CSS px로 넣어줌
+     (자세한 계산은 위 PC 보기 IIFE의 floatingBtnSizePx() 참고) */
   #floatingMenuBtn{
-    display:none; flex-direction:column; position:fixed; left:18px; bottom:30px; width:16vw; height:16vw;
-    border-radius:30%; font-size:2.4vw;
+    display:none; flex-direction:column; position:fixed; left:18px; bottom:30px;
+    width:var(--floating-menu-btn-size, 62px); height:var(--floating-menu-btn-size, 62px);
+    border-radius:30%; font-size:var(--floating-menu-btn-font, 9.3px);
     background:var(--indigo); color:#fff; align-items:center; justify-content:center; gap:2px;
     box-shadow:0 3px 0 rgba(255,255,255,0.9), 0 10px 26px -4px rgba(15,16,30,0.6); border:3px solid rgba(255,255,255,0.95);
     z-index:999997; cursor:pointer; user-select:none; -webkit-tap-highlight-color:transparent; pointer-events:auto;
@@ -401,8 +401,18 @@
     border-bottom:1.5px solid var(--border); margin-bottom:8px; flex:none;
   }
   .floating-menu-header-mascot{ flex:none; display:flex; }
-  .floating-menu-header-mascot svg{ width:30px; height:30px; display:block; }
-  .floating-menu-header-title{ font-weight:800; font-size:15px; color:var(--ink); }
+  .floating-menu-header-mascot svg{ width:var(--floating-menu-header-icon, 26px); height:var(--floating-menu-header-icon, 26px); display:block; }
+  .floating-menu-header-title{ font-weight:800; font-size:var(--floating-menu-header-font, 15px); color:var(--ink); flex:1; }
+  /* 제목 글자 하나만 왼쪽에 덩그러니 있고 나머지 줄 전체가 빈 여백이라는 지적 - 오른쪽 끝에 명시적인
+     닫기(✕) 버튼을 둬서(다른 팝업에서 쓰던 .modal-close-btn과 같은 스타일) 그 여백을 없애고, 배경을 탭하지
+     않고도 메뉴를 닫을 수 있는 방법도 하나 더 생김 */
+  .floating-menu-header-close{
+    flex:none; width:var(--floating-menu-header-icon, 26px); height:var(--floating-menu-header-icon, 26px);
+    min-width:var(--floating-menu-header-icon, 26px); background:var(--indigo-bg); color:var(--indigo-deep);
+    border:1px solid rgba(91,95,239,0.3); font-weight:800; padding:0; border-radius:50%;
+    display:inline-flex; align-items:center; justify-content:center;
+    font-size:calc(var(--floating-menu-header-font, 15px) * 0.86); line-height:1; cursor:pointer;
+  }
   /* 홈~휴지통 아이콘 줄을 사이드바(카드 배경 .app 안쪽) 흐름에서 아예 빼내서, 카드 밖 페이지 배경 위에
      독립된 줄로 둠 - 카드와 같은 가운데정렬 폭(max-width)을 써서 화면 크기가 달라져도 카드의 왼쪽 시작선과
      항상 나란히 맞음. 스크롤해도 화면 맨 위에 계속 붙어있도록 sticky로 고정함 */
@@ -1068,7 +1078,7 @@
      패딩값 자체도 고정 11px이 아니라 --touch-pad 변수를 씀 - PC 보기 모드일 땐 그 축소 배율의 역수만큼
      미리 커진 값이 담겨있어서(위 IIFE의 touchPadPx 참고), 축소되고 나면 결과적으로 항상 실제 화면에서
      비슷한 크기의 터치 영역이 되게 함 */
-  :root{ --touch-pad:11px; }
+  :root{ --touch-pad:11px; --touch-font-scale:1; }
   /* 패딩만 키우면 두 줄이 여전히 서로 테두리선(border-bottom)을 딱 맞대고 있어서, 그 경계선 위를 누르면
      "이 중 어느 걸 누르셨나요?" 팝업이 그대로 재발함(결재/내부규정처럼 나란히 붙은 아코디언 항목에서 확인됨).
      패딩과 별개로 줄 사이에 진짜 빈 틈(margin)을 둬서 그 경계선 자체를 아예 없애야 함 */
@@ -1077,6 +1087,19 @@
   .is-touch-device .home-fav-slot-empty{padding-top:var(--touch-pad); padding-bottom:var(--touch-pad);}
   .is-touch-device .home-submenu-item, .is-touch-device .home-submenu-leaf{padding-top:var(--touch-pad); padding-bottom:var(--touch-pad); margin-bottom:calc(var(--touch-pad) * 0.18); border-radius:8px;}
   .is-touch-device .home-submenu-item:last-child, .is-touch-device .home-submenu-leaf:last-child{margin-bottom:0;}
+  /* "메뉴 텍스트가 너무 작다"는 제보 - 카테고리 알약(홈/즐겨찾기/개인 등)과 하위 메뉴 글자(개인캘린더/
+     근태경비 등)는 이 터치 패널만을 위한 게 아니라 앱 전역에서 재사용하는 일반 CSS 글자 크기라, PC보기
+     축소 캔버스 위에서 그 px 값 그대로 훨씬 작게 그려지고 있었음 - 위 --touch-pad(터치 패딩)와 똑같은
+     방식으로 --touch-font-scale(축소 배율의 역수)을 곱해서 실제 화면에서 항상 원래 의도한 크기로
+     보이게 함(PC보기가 꺼져 있으면 1이라 아무 영향 없음) */
+  .is-touch-device .home-section-label{ font-size:calc(12.5px * var(--touch-font-scale, 1)); }
+  .is-touch-device .home-section-label.home-section-label-icon{ font-size:calc(14px * var(--touch-font-scale, 1)); }
+  .is-touch-device .home-section-label svg{ width:calc(13px * var(--touch-font-scale, 1)); height:calc(13px * var(--touch-font-scale, 1)); }
+  .is-touch-device .home-submenu-item{ font-size:calc(12.5px * var(--touch-font-scale, 1)); }
+  .is-touch-device .home-submenu-leaf{ font-size:calc(12px * var(--touch-font-scale, 1)); }
+  .is-touch-device .approval-doc-badge{ font-size:calc(9.5px * var(--touch-font-scale, 1)); }
+  .is-touch-device .home-menu-expand-all-btn{ font-size:calc(11px * var(--touch-font-scale, 1)); }
+  .is-touch-device .home-fav-slot-empty{ font-size:calc(13px * var(--touch-font-scale, 1)); }
   .month-picker label{font-size:10px; color:var(--indigo-deep); font-weight:700;}
   .month-picker input{
     font-family:'IBM Plex Mono', monospace; font-size:12.5px; font-weight:700;
@@ -16260,8 +16283,11 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
   // 독립된 창이 뜬 느낌이 나게 함
   const header = document.createElement('div');
   header.className = 'floating-menu-header';
-  header.innerHTML = `<span class="floating-menu-header-mascot">${typeof dashMascotSvg === 'function' ? dashMascotSvg('idle') : ''}</span><span class="floating-menu-header-title">메뉴</span>`;
+  header.innerHTML = `<span class="floating-menu-header-mascot">${typeof dashMascotSvg === 'function' ? dashMascotSvg('idle') : ''}</span><span class="floating-menu-header-title">메뉴</span><button type="button" class="floating-menu-header-close" aria-label="메뉴 닫기">✕</button>`;
   sidebarEl.insertBefore(header, grip.nextSibling);
+  header.querySelector('.floating-menu-header-close')?.addEventListener('click', ()=>{
+    sidebarEl.classList.remove('mobile-sidebar-open');
+  });
   // 챗봇 버튼처럼 누른 자리 근처에 풍선 메뉴가 뜨도록, 열릴 때마다 지금 버튼 위치를 기준으로 패널의
   // top/left를 계산해서 인라인 스타일로 넣어줌 - 버튼이 화면 아래쪽에 있으면 패널이 버튼 위로, 위쪽에
   // 있으면 버튼 아래로 뜨게 하고, 좌우로는 화면 밖으로 안 나가게 안쪽으로 당김. 패널과 버튼이 좀
@@ -16420,9 +16446,56 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
     const raw = Math.round(5 / Math.max(scale, 0.05));
     return Math.min(12, Math.max(7, raw));
   }
+  // 메뉴 버튼(#floatingMenuBtn) 크기 - "실제 화면에서 몇 px로 보이고 싶은지"를 먼저 정하고(52~68px 사이,
+  // 화면폭의 16%), 그 값을 지금 축소 배율의 역수만큼 미리 키운 CSS px로 환산해서 넣어줌(touchPadPx와
+  // 같은 방식) - 처음엔 이 자리에 CSS zoom을 패널 전체에 걸어 한 번에 해결해보려 했는데, position:fixed +
+  // 가운데 정렬용 transform(translate(-50%, …))과 zoom이 같이 걸리면 브라우저가 패널 위치를 화면 밖
+  // 수천 px 밖으로 계산해버리는 심각한 버그가 있어서(버튼처럼 transform 없이 위치만 고정된 요소는 zoom과
+  // 같이 써도 멀쩡했지만, 패널은 transform으로 가운데 정렬 + 슬라이드 애니메이션을 같이 쓰다 보니 문제가
+  // 됨) 포기하고, 기존처럼 요소별로 필요한 값만 미리 계산해 넣는 방식으로 되돌림
+  function floatingBtnSizePx(on){
+    if(!REAL_WIDTH) return { box:62, font:9.3 };
+    const scale = on ? (REAL_WIDTH / PC_VIEW_WIDTH) : 1;
+    const scaleInv = 1 / Math.max(scale, 0.05);
+    const desiredRealBox = Math.min(68, Math.max(52, REAL_WIDTH * 0.16));
+    const desiredRealFont = desiredRealBox * 0.15;
+    return { box: desiredRealBox * scaleInv, font: desiredRealFont * scaleInv };
+  }
+  // 메뉴 패널(바텀시트) 너비도 같은 이유로 그냥 "440px"라고 못박으면 안 됨(자세한 이유는 위 touchPadPx
+  // 주석 참고) - "실제 화면에서 최대 몇 px까지"(440px)를 정해두고 축소 배율의 역수로 환산해 상한선으로 씀
+  function floatingPanelMaxPx(on){
+    if(!REAL_WIDTH) return 440;
+    const scale = on ? (REAL_WIDTH / PC_VIEW_WIDTH) : 1;
+    const scaleInv = 1 / Math.max(scale, 0.05);
+    return 440 * scaleInv;
+  }
+  // 패널 맨 위 "메뉴" 제목 줄(마스코트 아이콘 + 글자)도 같은 방식 - 실제 화면 기준 목표 크기(아이콘 26px,
+  // 글자 15px)를 정하고 축소 배율의 역수로 환산해서 넣어줌
+  function floatingHeaderSizePx(on){
+    if(!REAL_WIDTH) return { icon:26, font:15 };
+    const scale = on ? (REAL_WIDTH / PC_VIEW_WIDTH) : 1;
+    const scaleInv = 1 / Math.max(scale, 0.05);
+    return { icon: 26 * scaleInv, font: 15 * scaleInv };
+  }
+  // "메뉴 텍스트가 너무 작다"는 제보 - 버튼/제목뿐 아니라 실제 메뉴 목록 글자(카테고리 알약, 하위 항목
+  // 등 앱 전역에서 재사용하는 일반 CSS)도 같은 이유로 축소돼서 그려지고 있었음. --touch-pad(터치 영역
+  // 패딩)와 똑같은 방식으로 --touch-font-scale을 두고, 아래 CSS에서 각 글자 크기에 calc()로 곱해줌
+  function touchFontScale(on){
+    if(!on || !REAL_WIDTH) return 1;
+    const scale = REAL_WIDTH / PC_VIEW_WIDTH;
+    return 1 / Math.max(scale, 0.05);
+  }
   function applyPcViewMode(on){
     if(viewportMeta) viewportMeta.setAttribute('content', on ? `width=${PC_VIEW_WIDTH}` : 'width=device-width, initial-scale=1.0');
     document.documentElement.style.setProperty('--touch-pad', `${touchPadPx(on)}px`);
+    document.documentElement.style.setProperty('--touch-font-scale', `${touchFontScale(on)}`);
+    const btnSize = floatingBtnSizePx(on);
+    document.documentElement.style.setProperty('--floating-menu-btn-size', `${btnSize.box.toFixed(2)}px`);
+    document.documentElement.style.setProperty('--floating-menu-btn-font', `${btnSize.font.toFixed(2)}px`);
+    document.documentElement.style.setProperty('--floating-menu-panel-max', `${floatingPanelMaxPx(on).toFixed(2)}px`);
+    const headerSize = floatingHeaderSizePx(on);
+    document.documentElement.style.setProperty('--floating-menu-header-icon', `${headerSize.icon.toFixed(2)}px`);
+    document.documentElement.style.setProperty('--floating-menu-header-font', `${headerSize.font.toFixed(2)}px`);
     if(pcViewBtn){
       pcViewBtn.title = on ? '컴퓨터 화면처럼 보는 중 · 눌러서 휴대폰 화면으로 돌아가기' : '눌러서 컴퓨터 화면처럼 보기(확대해서 필요한 부분 보기)';
       pcViewBtn.classList.toggle('pc-view-active', on);
