@@ -3581,11 +3581,11 @@
             <div class="home-submenu-item" data-settings-anchor-goto="company" data-settings-target-id="ssTitle-teamInfo"><span>팀정보</span></div>
             <div class="home-submenu-item" data-settings-anchor-goto="company" data-settings-target-id="ssTitle-staffInfo"><span>직원정보</span></div>
             <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-workHours"><span>근무시간</span></div>
+            <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-workHourExceptions"><span>예외기간</span></div>
             <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-lunch"><span>점심식대</span></div>
             <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-exclusionDays"><span>제외일수</span></div>
             <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-staffLeave"><span>직원휴가</span></div>
             <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-specialPeriod"><span>특별기간</span></div>
-            <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-workHourExceptions"><span>근무시간 예외기간</span></div>
             <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-taxSchedule"><span>세무일정</span></div>
             <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-notifications"><span>알림</span></div>
           </div>
@@ -5233,6 +5233,49 @@
         </div>
       </div>
 
+      <!-- 특별기간(아래)은 팀캘린더에 안내 칩만 띄우는 "라벨"일 뿐이고, 실제 출퇴근 기준시간을 바꾸는 건 이
+           예외기간임 - "특별기간이 보통 조기퇴근 기간이니 출퇴근시간도 같이 조정할 수 있어야 한다"는 요청으로
+           추가함. 위 표준 근무시간(getWorkStartTime/getWorkEndTime)과 똑같은 기준으로 지각(isLateClockIn)·
+           야근(isOvertimeClockOut) 판정에도 그대로 반영됨 - 즉 이 기간 동안은 "지각"·"야근" 여부가 표준시간이
+           아니라 여기서 정한 시간 기준으로 자동으로 다시 계산됨. 원래는 특별기간 섹션 밑에 있었는데, "근무시간
+           밑에 예외기간이라고 배치해달라"는 요청으로 근무시간 바로 아래로 옮기고 이름도 "예외기간"으로 줄임 -->
+      <div class="settings-sub-title" id="ssTitle-workHourExceptions" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="13" r="8"></circle><polyline points="12 9 12 13 15 15"></polyline><path d="M5 3 2 6"></path><path d="M22 6l-3-3"></path></svg> 예외기간 <span class="badge">조기퇴근·늦은출근 등 · 지각·야근 판정에 자동 반영</span></div>
+      <p class="hint">
+        특정 기간만 출근·퇴근 기준시각을 다르게 적용해요(예: 신고 성수기 조기퇴근). 둘 중 하나만 바꾸고 싶으면 나머지는 비워두면 되고, 비워둔 쪽은 위 표준 근무시간을 그대로 써요.<br>이 기간 동안의 지각·야근 판정도 여기서 정한 시각 기준으로 자동으로 계산돼요.
+      </p>
+      <div class="flat-panel flat-panel-narrow">
+        <div class="flat-row"><div class="flat-row-label">시작일 · 종료일</div><div class="flat-row-control">
+          <input type="date" id="whe-start" min="2015-01-01" max="2099-12-31" class="flat-input">
+          <span style="color:var(--ink-soft);">–</span>
+          <input type="date" id="whe-end" min="2015-01-01" max="2099-12-31" class="flat-input">
+        </div></div>
+        <!-- 시각을 고르고 나서 "이제 확정됐다"는 걸 알기 어렵다(달력 드롭다운에 확인·닫기 버튼이 없어 보임)는
+             지적이 있어서, 입력칸 옆에 확인 버튼을 따로 둠 - 누르면 포커스를 빼서(blur) 드롭다운을 확실히
+             닫고, 값이 있으면 잠깐 체크 표시로 "입력됨"을 눈에 보이게 알려줌 -->
+        <div class="flat-row"><div class="flat-row-label">출근 시각 <span style="font-weight:400;">(선택)</span></div><div class="flat-row-control" style="display:flex; align-items:center; gap:6px;">
+          <input type="time" id="whe-start-time" class="flat-input">
+          <button type="button" class="del-btn whe-time-confirm-btn" data-target="whe-start-time" style="padding:5px 10px; font-size:11.5px;">확인</button>
+        </div></div>
+        <div class="flat-row"><div class="flat-row-label">퇴근 시각 <span style="font-weight:400;">(선택)</span></div><div class="flat-row-control" style="display:flex; align-items:center; gap:6px;">
+          <input type="time" id="whe-end-time" class="flat-input">
+          <button type="button" class="del-btn whe-time-confirm-btn" data-target="whe-end-time" style="padding:5px 10px; font-size:11.5px;">확인</button>
+        </div></div>
+        <div class="flat-row"><div class="flat-row-label">메모</div><div class="flat-row-control"><input type="text" id="whe-memo" placeholder="예: 종합소득세 신고 성수기 조기퇴근" class="flat-input" style="width:100%;"></div></div>
+        <!-- "근무시간 예외기간 등록할 때 특별기간으로도 같이 등록되게 해달라"는 요청 - 이 둘은 서로 다른
+             데이터(예외기간=지각·야근 판정 기준시각, 특별기간=팀캘린더 안내 칩)라 하나로 합치지는
+             않고, 체크하면 등록 시점에 특별기간도 같은 기간·같은 내용으로 자동으로 하나 더 만들어줌(연동은
+             생성 시점 1회뿐 - 이후 서로 독립적으로 수정·삭제됨) -->
+        <div class="field" id="wheLinkSpecialField" style="display:flex; flex-direction:row; align-items:center; gap:6px; background:var(--indigo-bg); border-radius:8px; padding:8px 10px;">
+          <input type="checkbox" id="whe-link-special" checked style="width:auto;">
+          <label for="whe-link-special" style="margin:0; font-size:11.5px; color:var(--indigo-deep); font-weight:700;">특별기간 함께등록</label>
+        </div>
+        <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-top:14px;">
+          <button type="button" id="addWorkHourExceptionBtn" class="submit-btn" style="width:auto;">등록</button>
+          <span class="save-msg" id="workHourExceptionMsg"></span>
+        </div>
+      </div>
+      <div id="workHourExceptionListWrap" style="max-width:720px; margin:12px auto 0;"></div>
+
       <div class="settings-sub-title" id="ssTitle-lunch" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg> 점심식대 <span class="badge">근무일수 × 1일 기준</span></div>
 
       <p class="hint">적용 시작일 기준으로 이력을 관리합니다. 월 한도는 고정금액이 아니라 <b>근무일수 × 1일 기준 금액</b>으로 매달 유동적으로 계산됩니다.</p>
@@ -5333,43 +5376,6 @@
         </div>
       </div>
       <div id="specialPeriodListWrap" style="max-width:720px; margin:12px auto 0;"></div>
-
-      <!-- 특별기간(위)은 팀캘린더에 안내 칩만 띄우는 "라벨"일 뿐이고, 실제 출퇴근 기준시간을 바꾸는 건 이
-           근무시간 예외기간임 - "특별기간이 보통 조기퇴근 기간이니 출퇴근시간도 같이 조정할 수 있어야
-           한다"는 요청으로 추가함. 위 표준 근무시간(getWorkStartTime/getWorkEndTime)과 똑같은 기준으로
-           지각(isLateClockIn)·야근(isOvertimeClockOut) 판정에도 그대로 반영됨 - 즉 이 기간 동안은 "지각"·
-           "야근" 여부가 표준시간이 아니라 여기서 정한 시간 기준으로 자동으로 다시 계산됨 -->
-      <div class="settings-sub-title" id="ssTitle-workHourExceptions" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="13" r="8"></circle><polyline points="12 9 12 13 15 15"></polyline><path d="M5 3 2 6"></path><path d="M22 6l-3-3"></path></svg> 근무시간 예외기간 <span class="badge">조기퇴근·늦은출근 등 · 지각·야근 판정에 자동 반영</span></div>
-      <p class="hint">
-        특정 기간만 출근·퇴근 기준시각을 다르게 적용해요(예: 신고 성수기 조기퇴근). 둘 중 하나만 바꾸고 싶으면 나머지는 비워두면 되고, 비워둔 쪽은 위 표준 근무시간을 그대로 써요.<br>이 기간 동안의 지각·야근 판정도 여기서 정한 시각 기준으로 자동으로 계산돼요.
-      </p>
-      <div class="flat-panel flat-panel-narrow">
-        <div class="flat-row"><div class="flat-row-label">시작일 · 종료일</div><div class="flat-row-control">
-          <input type="date" id="whe-start" min="2015-01-01" max="2099-12-31" class="flat-input">
-          <span style="color:var(--ink-soft);">–</span>
-          <input type="date" id="whe-end" min="2015-01-01" max="2099-12-31" class="flat-input">
-        </div></div>
-        <div class="flat-row"><div class="flat-row-label">출근 시각 <span style="font-weight:400;">(선택)</span></div><div class="flat-row-control">
-          <input type="time" id="whe-start-time" class="flat-input">
-        </div></div>
-        <div class="flat-row"><div class="flat-row-label">퇴근 시각 <span style="font-weight:400;">(선택)</span></div><div class="flat-row-control">
-          <input type="time" id="whe-end-time" class="flat-input">
-        </div></div>
-        <div class="flat-row"><div class="flat-row-label">메모</div><div class="flat-row-control"><input type="text" id="whe-memo" placeholder="예: 종합소득세 신고 성수기 조기퇴근" class="flat-input" style="width:100%;"></div></div>
-        <!-- "근무시간 예외기간 등록할 때 특별기간으로도 같이 등록되게 해달라"는 요청 - 이 둘은 서로 다른
-             데이터(근무시간 예외기간=지각·야근 판정 기준시각, 특별기간=팀캘린더 안내 칩)라 하나로 합치지는
-             않고, 체크하면 등록 시점에 특별기간도 같은 기간·같은 내용으로 자동으로 하나 더 만들어줌(연동은
-             생성 시점 1회뿐 - 이후 서로 독립적으로 수정·삭제됨) -->
-        <div class="field" id="wheLinkSpecialField" style="display:flex; flex-direction:row; align-items:center; gap:6px; background:var(--indigo-bg); border-radius:8px; padding:8px 10px;">
-          <input type="checkbox" id="whe-link-special" checked style="width:auto;">
-          <label for="whe-link-special" style="margin:0; font-size:11.5px; color:var(--indigo-deep); font-weight:700;">특별기간으로도 함께 등록 (팀캘린더에 안내 칩으로 표시)</label>
-        </div>
-        <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-top:14px;">
-          <button type="button" id="addWorkHourExceptionBtn" class="submit-btn" style="width:auto;">등록</button>
-          <span class="save-msg" id="workHourExceptionMsg"></span>
-        </div>
-      </div>
-      <div id="workHourExceptionListWrap" style="max-width:720px; margin:12px auto 0;"></div>
 
       <div class="settings-sub-title" id="ssTitle-taxSchedule" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="3" y1="10" x2="21" y2="10"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="16" y1="2" x2="16" y2="6"></line></svg> 세무일정 관리 <span class="badge">대시보드 세무일정 위젯 · 관리자만 수정 가능</span></div>
       <p class="hint">
@@ -11186,19 +11192,21 @@ function openClientDetailModal(c){
       <div style="padding:10px 12px;">${rowsHtml}</div>
     </div>`;
 
-  // 수정/이력/삭제 아이콘 줄 - "기본정보" 카드 모서리에 걸치게 떠 있으면 카드를 여러 번 고쳐도 계속 눌리거나
-  // 잘려 보인다는 지적("여기 몇 번 수정하는거야")을 받아, 아예 팝업 자체의 상단 제목 줄로 옮김 - X(닫기)
-  // 버튼과 같은 줄, 그 왼쪽에 나란히 둠(#memoModalTitleExtra, sticky 제목 줄 안에 absolute로 배치 - 아래
-  // renderClientDetailBody 마지막 부분 참고). 밝은 배경 위라 원래 쓰던 색(수정:네이비/이력:회색/삭제:코랄) 그대로 씀
+  // 수정/이력/삭제 아이콘 줄 - 원래 "기본정보" 카드 모서리에 걸치게 떠 있어서 여러 번 고치면 계속 눌리거나
+  // 잘려 보인다는 지적이 있었고("여기 몇 번 수정하는거야"), 그래서 한때 팝업 상단 제목 줄(X 옆)로 옮겼었는데
+  // 거긴 X(닫기)·상호명이 이미 있는 자리라 서로 자리가 좁아 부딪힌다는 재지적을 받음. 최종적으로 "기본정보"
+  // 제목이 시작되는 지점 바로 위에, 카드에 걸치지 않는 별도의 한 줄(margin-bottom으로 아래 카드와 확실히
+  // 떨어뜨림)로 둬서 상단 제목 줄과도 안 겹치고 카드 모서리에도 안 걸치게 함
   const clientDetailHeadIcons = `
-    <button type="button" id="clientDetailEditBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="수정" style="color:var(--navy); background:transparent; border:none; padding:5px; display:inline-flex; border-radius:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>
-    <button type="button" id="clientDetailHistoryBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="이력" style="color:var(--ink-soft); background:transparent; border:none; padding:5px; display:inline-flex; border-radius:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 16 14"></polyline></svg></button>
-    <button type="button" id="clientDetailDeleteBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="삭제" style="color:var(--coral); background:transparent; border:none; padding:5px; display:inline-flex; border-radius:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>`;
+    <button type="button" id="clientDetailEditBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="수정" style="color:var(--navy); background:var(--bg); border:none; padding:7px; display:inline-flex; border-radius:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>
+    <button type="button" id="clientDetailHistoryBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="이력" style="color:var(--ink-soft); background:var(--bg); border:none; padding:7px; display:inline-flex; border-radius:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 16 14"></polyline></svg></button>
+    <button type="button" id="clientDetailDeleteBtn" class="del-btn client-icon-plain" data-id="${c.id}" title="삭제" style="color:var(--coral); background:var(--bg); border:none; padding:7px; display:inline-flex; border-radius:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>`;
+  const clientDetailIconRow = `<div style="display:flex; justify-content:flex-end; align-items:center; gap:6px; margin:0 0 10px;">${clientDetailHeadIcons}</div>`;
   // 1) 기본정보 - 등록 폼과 같은 순서: 구분/상세구분/사업자번호/법인등록번호/사업장주소/개업일/설립일/업종코드/업태
   const subTypeDisplay = summarizeSubTags(c) || '-';
   // 설립일은 법인에만 있는 개념이라 개인 거래처면 행 자체를 넣지 않음
   const foundingRow = c.entityType !== '개인' ? rowHtml('설립일', c.foundingDate || '-') : '';
-  let html = group('기본정보', rowHtml('구분', c.entityType || '-') + rowHtml('상세구분', subTypeDisplay)
+  let html = clientDetailIconRow + group('기본정보', rowHtml('구분', c.entityType || '-') + rowHtml('상세구분', subTypeDisplay)
     + rowHtml('사업자번호', c.bizNo || '-') + (c.entityType === '법인' ? rowHtml('법인등록번호', c.corpRegNo || '-') : '')
     + rowHtml('사업장 주소', c.bizAddress || '-') + rowHtml('개업일', c.openDate || '-') + foundingRow
     + rowHtml('업종코드', c.bizTypeCode || '-') + rowHtml('업태', c.bizType || '-'));
@@ -11237,24 +11245,17 @@ function openClientDetailModal(c){
   }
   html += group('수임정보', hireRows);
 
-  // 5) 메모 - 날짜 같은 부가정보 없이 접힌 상태(화살표만)로만 보여주고, 그 화살표를 눌러야 내용이 펼쳐지는
-  // <details>/<summary> 방식(각 항목은 기본 접힌 상태 - 브라우저 네이티브 토글이라 별도 JS 없이 동작함)
-  const memoList = (c.memos && c.memos.length) ? c.memos : (c.memo ? [{text:c.memo, date:''}] : []);
-  const memoArrowSvg = `<svg class="client-memo-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"></polyline></svg>`;
-  const memoRows = memoList.length
-    ? memoList.map(m=>`<details class="client-memo-item"><summary>${memoArrowSvg}</summary><div class="client-memo-body">${linkifyText(m.text||'')}</div></details>`).join('')
-    : `<div style="padding:5px 0; font-size:12.5px; color:var(--ink-soft); text-align:center;">등록된 메모 없음</div>`;
-  html += group('메모', memoRows);
+  // 5) 메모 - "폴더처럼 표에서 바로 눌러 따로 보고 싶다"는 요청으로 이 상세정보 팝업에서는 빼고, 표의
+  // "메모" 열 아이콘을 눌러 openClientMemoModal()로 따로 보게 함(바로 아래 함수 참고)
 
   // 6) 개인정보(암호화) - 잠겨있으면 이 팝업 안에서 바로 비밀번호를 물어보고 풀 수 있게 함(클릭 한 번으로 전체 조회)
   // 다른 구획과 같은 group() 헬퍼를 써서 제목 띠 스타일이 똑같이 적용되게 함(예전엔 이 구간만 따로
   // 하드코딩돼 있어서 소제목 스타일을 바꿔도 여기만 안 바뀌는 문제가 있었음)
   html += group('개인정보', '<div id="clientDetailPiWrap"></div>');
 
-  // 수정/이력/삭제 아이콘 줄은 sticky 제목 줄(#memoModalTitleExtra) 안에, X(닫기) 버튼과 같은 높이로
-  // 그 왼쪽에 나란히 둠 - closeMemoModal()에서 팝업을 닫을 때 항상 비우므로 다음에 여는 다른 안내 팝업에는 안 남음
-  document.getElementById('memoModalTitleExtra').innerHTML =
-    `<div style="position:absolute; top:14px; right:50px; display:flex; align-items:center; gap:1px;">${clientDetailHeadIcons}</div>`;
+  // 수정/이력/삭제 아이콘 줄은 이제 본문(memoModalBody) 맨 위, "기본정보" 카드 바로 위 한 줄로 렌더링되므로
+  // (clientDetailIconRow, 위 참고) 상단 sticky 제목 줄(#memoModalTitleExtra)은 비워둠
+  document.getElementById('memoModalTitleExtra').innerHTML = '';
   document.getElementById('memoModalBody').innerHTML = html;
   document.getElementById('memoModalOverlay').style.display = 'flex';
   renderClientDetailPersonalInfoSection(c);
@@ -11271,6 +11272,22 @@ function openClientDetailModal(c){
     await deleteClientById(c.id);
     closeMemoModal();
   });
+}
+// 거래처 표의 "메모" 열 아이콘을 눌렀을 때 - 상세정보 팝업(openClientDetailModal) 안에 묻혀있던 메모를
+// "폴더처럼 표에서 바로 따로 보고 싶다"는 요청으로 분리한 전용 팝업. 같은 공용 팝업(memoModalOverlay)을
+// 재사용하되, 이번엔 메모만 보여주는 용도라 접어두지 않고 처음부터 펼쳐서(open) 보여줌
+function openClientMemoModal(c){
+  document.getElementById('memoModalTitleExtra').innerHTML = '';
+  document.getElementById('memoModalTitle').textContent = (c.name || '거래처') + ' 메모';
+  const memoList = (c.memos && c.memos.length) ? c.memos : (c.memo ? [{text:c.memo, date:''}] : []);
+  const memoRows = memoList.length
+    ? memoList.map(m=>`<div class="client-memo-item-standalone" style="padding:9px 0; border-bottom:1px solid var(--border);">
+        ${m.date ? `<div style="font-size:11px; color:var(--ink-soft); font-weight:700; margin-bottom:3px;">${escHtml(m.date)}</div>` : ''}
+        <div style="line-height:1.6;">${linkifyText(m.text||'')}</div>
+      </div>`).join('')
+    : `<div style="padding:16px 0; font-size:12.5px; color:var(--ink-soft); text-align:center;">등록된 메모 없음</div>`;
+  document.getElementById('memoModalBody').innerHTML = `<div style="background:var(--bg); border-radius:10px; overflow:hidden; padding:4px 12px;">${memoRows}</div>`;
+  document.getElementById('memoModalOverlay').style.display = 'flex';
 }
 // openClientDetailModal 하단의 "개인정보" 구간 - 잠겨있으면 그 자리에서 바로 비밀번호를 물어보고, 풀리면
 // 홈택스/여신금융협회/통장비밀번호 등 등록된 항목을 전부 ID/PW·정보·비고 형태로 보여줌. 다른 항목(기본정보 등)과
@@ -11548,6 +11565,14 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
     const folderBtn = c.driveFolder
       ? `<a class="del-btn client-action-btn client-icon-plain" href="${escHtml(c.driveFolder)}" target="_blank" rel="noopener" title="공유드라이브 폴더 열기" style="text-decoration:none; color:#B45309;">${folderSvg}</a>`
       : `<button class="del-btn client-action-btn client-icon-plain" disabled style="opacity:0.55; cursor:default; color:#B45309;" title="등록된 폴더 링크 없음">${folderSvg}</button>`;
+    // "메모를 상세정보 팝업 안에 묻어두지 말고, 폴더처럼 표에서 바로 눌러서 따로 보고 싶다"는 요청으로
+    // 폴더 열 바로 오른쪽에 메모 열을 추가함 - 등록된 메모가 있으면 진한 색(indigo)+채워진 아이콘, 없으면
+    // 폴더 버튼처럼 옅게 비활성 표시. 클릭하면 openClientMemoModal()이 그 거래처 메모만 따로 띄워줌
+    const memoListForBtn = (c.memos && c.memos.length) ? c.memos : (c.memo ? [{text:c.memo}] : []);
+    const memoSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line></svg>`;
+    const memoBtn = memoListForBtn.length
+      ? `<button type="button" class="del-btn client-action-btn client-icon-plain client-memo-btn" data-id="${c.id}" title="메모 보기 (${memoListForBtn.length}건)" style="color:var(--indigo-deep);">${memoSvg}</button>`
+      : `<button type="button" class="del-btn client-action-btn client-icon-plain client-memo-btn" data-id="${c.id}" style="opacity:0.4; color:var(--indigo-deep);" title="등록된 메모 없음">${memoSvg}</button>`;
     return `<tr>
       <td class="num cvb">${idx+1}</td>${groupNoCell}
       <td class="cvb" style="color:${taxColor}; font-weight:600;">${escHtml(taxTypeDisplay)}</td>
@@ -11560,6 +11585,7 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
       <td class="num cvb">${escHtml(c.contractDate||'-')}</td>
       <td class="num cvb">${escHtml(c.start||'-')}</td>${terminationCells}
       <td>${folderBtn}</td>
+      <td>${memoBtn}</td>
     </tr>`;
   }).join('');
   const groupNoHeader = showGroupNo ? '<th class="cvb">#</th>' : '';
@@ -11571,13 +11597,22 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
     ? `<th class="cvb" id="clFeeHeaderTh"><span style="display:inline-flex; align-items:center; gap:4px;">수임료 <button type="button" id="clFeeIconBtn" title="월별 수임료 합계 조회" style="border:none; background:transparent; color:var(--mint); cursor:pointer; padding:0; display:inline-flex; align-items:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></button></span></th>`
     : '<th class="cvb">수임료</th>';
   const folderColHeader = `<th class="cvb" style="color:#B45309;">폴더</th>`;
-  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th class="cvb">순번</th>${groupNoHeader}<th class="cvb">수임구분</th><th class="cvb">사업자구분</th><th class="cvb">상호명</th><th class="cvb">사업자번호</th><th class="cvb">법인등록번호</th><th class="cvb">대표자</th>${feeHeader}<th class="cvb">계약일</th><th class="cvb">수임시작일</th>${terminationHeaders}${folderColHeader}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  const memoColHeader = `<th class="cvb" style="color:var(--indigo-deep);">메모</th>`;
+  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th class="cvb">순번</th>${groupNoHeader}<th class="cvb">수임구분</th><th class="cvb">사업자구분</th><th class="cvb">상호명</th><th class="cvb">사업자번호</th><th class="cvb">법인등록번호</th><th class="cvb">대표자</th>${feeHeader}<th class="cvb">계약일</th><th class="cvb">수임시작일</th>${terminationHeaders}${folderColHeader}${memoColHeader}</tr></thead><tbody>${rows}</tbody></table></div>`;
   if(isRegularFeeTable){
     wrap.querySelector('#clFeeIconBtn')?.addEventListener('click', (e)=>{
       e.stopPropagation();
       openClFeeMonthPopup(e.currentTarget);
     });
   }
+  wrap.querySelectorAll('.client-memo-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const c = clients.list.find(x=>x.id===btn.dataset.id);
+      if(!c) return;
+      openClientMemoModal(c);
+    });
+  });
   wrap.querySelectorAll('.client-subtype-marker').forEach(marker=>{
     marker.addEventListener('click', (e)=>{
       e.stopPropagation();
@@ -18537,6 +18572,22 @@ function workHourExceptionTimeSummary(startTime, endTime){
   if(endTime) parts.push(`${endTime} 퇴근`);
   return parts.join(' · ');
 }
+// 출근·퇴근 시각 입력칸 옆 "확인" 버튼 - <input type="time">은 브라우저 기본 드롭다운(시:분 스피너)에
+// 별도의 닫기·확인 버튼이 없어서, 값을 고르고도 "이게 확정된 건가?" 헷갈린다는 지적이 있었음. 눌렀을 때
+// blur()로 드롭다운을 확실히 닫고, 값이 있으면 버튼을 잠깐 체크 표시로 바꿔 "입력됨"을 눈에 보이게 알려줌
+document.querySelectorAll('.whe-time-confirm-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const input = document.getElementById(btn.dataset.target);
+    if(!input) return;
+    input.blur();
+    if(input.value){
+      const original = btn.textContent;
+      btn.textContent = '입력됨 ✓';
+      btn.disabled = true;
+      setTimeout(()=>{ btn.textContent = original; btn.disabled = false; }, 900);
+    }
+  });
+});
 document.getElementById('addWorkHourExceptionBtn')?.addEventListener('click', async ()=>{
   const startDate = document.getElementById('whe-start').value;
   const endDate = document.getElementById('whe-end').value;
