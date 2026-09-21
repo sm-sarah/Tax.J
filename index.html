@@ -748,6 +748,14 @@
   .home-dash-cal-pager{ display:flex; justify-content:center; gap:5px; padding-top:8px; flex:0 0 auto; }
   .home-dash-cal-page-btn{ width:22px; height:22px; border-radius:7px; border:1px solid var(--border); background:var(--surface); color:var(--ink-soft); font-size:11px; font-weight:700; cursor:pointer; }
   .home-dash-cal-page-btn.active{ background:var(--accent, var(--mint)); color:#fff; border-color:var(--accent, var(--mint)); }
+  /* "홈에 새로 들어오면 지난 일정 페이지 대신 오늘 이후 일정이 있는 페이지로 자동으로 넘어가게 해달라"는
+     요청으로 자동 이동하게 했는데, 그러면 지난 일정이 있었다는 걸 못 알아챌 수 있어서 그 자동으로 건너뛴
+     페이지 맨 위에 이 링크를 달아 눌러서 바로 전 페이지(지난 일정)로 돌아가 볼 수 있게 함 */
+  .home-dash-cal-prevlink{
+    display:block; width:100%; text-align:left; background:none; border:none; cursor:pointer;
+    color:var(--ink-soft); font-size:11px; font-weight:700; padding:0 2px 8px; margin-top:-3px;
+  }
+  .home-dash-cal-prevlink:hover{ color:var(--accent, var(--mint)); text-decoration:underline; }
   /* 세무일정 위젯 - 예전엔 가장 가까운 기한 하나만 코랄색 D-day 히어로로 크게 강조하고 나머지는 거의 안
      보이는 회색 칩으로 나열했는데, "중요도 상관없이 다 동일한 배경색으로" + "임박한 것만 칩 안에 D-day
      표시"로 바꿔달라는 요청에 맞춰 모든 항목을 같은 slate 톤 칩으로 통일함. D-day가 2주(14일) 이내로
@@ -5345,6 +5353,14 @@
           <input type="time" id="whe-end-time" class="flat-input">
         </div></div>
         <div class="flat-row"><div class="flat-row-label">메모</div><div class="flat-row-control"><input type="text" id="whe-memo" placeholder="예: 종합소득세 신고 성수기 조기퇴근" class="flat-input" style="width:100%;"></div></div>
+        <!-- "근무시간 예외기간 등록할 때 특별기간으로도 같이 등록되게 해달라"는 요청 - 이 둘은 서로 다른
+             데이터(근무시간 예외기간=지각·야근 판정 기준시각, 특별기간=팀캘린더 안내 칩)라 하나로 합치지는
+             않고, 체크하면 등록 시점에 특별기간도 같은 기간·같은 내용으로 자동으로 하나 더 만들어줌(연동은
+             생성 시점 1회뿐 - 이후 서로 독립적으로 수정·삭제됨) -->
+        <div class="field" id="wheLinkSpecialField" style="display:flex; flex-direction:row; align-items:center; gap:6px; background:var(--indigo-bg); border-radius:8px; padding:8px 10px;">
+          <input type="checkbox" id="whe-link-special" checked style="width:auto;">
+          <label for="whe-link-special" style="margin:0; font-size:11.5px; color:var(--indigo-deep); font-weight:700;">특별기간으로도 함께 등록 (팀캘린더에 안내 칩으로 표시)</label>
+        </div>
         <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-top:14px;">
           <button type="button" id="addWorkHourExceptionBtn" class="submit-btn" style="width:auto;">등록</button>
           <span class="save-msg" id="workHourExceptionMsg"></span>
@@ -10601,11 +10617,23 @@ function renderWorkHourExceptions(){
   wrap.innerHTML = `<table><thead><tr><th>기간</th><th>기준시각</th><th>메모</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
   wrap.querySelectorAll('.workhour-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
+      const target = sharedWorkHourExceptions.find(x=>x.id===btn.dataset.id);
+      // 등록할 때 "특별기간으로도 함께 등록"으로 같이 만든 항목이면, 그 특별기간도 같이 지울지 물어봄
+      // (연동은 생성 시점에만 걸리고 그 뒤로는 독립적이라, 원치 않으면 특별기간은 그대로 남겨둘 수 있음)
+      if(target && target.specialPeriodId && sharedSpecialPeriods.some(sp=>sp.id===target.specialPeriodId)){
+        if(await appConfirm('같이 등록됐던 특별기간(팀캘린더 안내 칩)도 함께 삭제할까요?')){
+          recordDeletedSpecialPeriodId(target.specialPeriodId);
+          sharedSpecialPeriods = sharedSpecialPeriods.filter(x=>x.id!==target.specialPeriodId);
+          await saveSharedSpecialPeriods();
+          renderSpecialPeriods();
+        }
+      }
       recordDeletedWorkHourId(btn.dataset.id); // 삭제 직후 동기화로 되살아나지 않도록 기록
       sharedWorkHourExceptions = sharedWorkHourExceptions.filter(x=>x.id!==btn.dataset.id);
       await saveSharedWorkHourExceptions();
       renderWorkHourExceptions();
       renderCalendar();
+      renderAdminCalendar();
     });
   });
 }
@@ -14789,9 +14817,11 @@ function renderDashboardCalendarPreview(monthStr){
   const noMonthGiven = (monthStr === undefined);
   dashCalendarMonth = monthStr || todayStr().slice(0,7);
   monthStr = dashCalendarMonth;
-  // 홈에 새로 들어오거나(월을 안 넘겨주고 부르면) 화살표로 다른 달로 넘어가면 항상 1페이지부터 다시 봄 -
-  // 페이지 번호를 직접 눌렀을 때는(같은 달 그대로 다시 부름) 그 페이지가 유지됨
-  if(noMonthGiven || monthStr !== prevMonth) dashCalendarPage = 1;
+  // 화살표로 다른 달(과거·미래)로 넘어가면 항상 1페이지부터 다시 봄 - 처음 보는 달이니 위에서부터 훑는 게 자연스러움.
+  // 홈에 새로 들어올 때(월을 안 주고 부르면)는 다름 - "지난 일정이 1페이지를 다 채우고 있어서 다가올 일정을
+  // 보려면 매번 직접 2페이지를 눌러야 한다"는 제보로, 이 경우엔 1로 고정하지 않고 아래에서 오늘 이후 일정이
+  // 처음 나오는 페이지를 찾아 그 페이지로 바로 맞춰줌(페이지 번호를 직접 눌렀을 때는 그대로 유지됨)
+  if(monthStr !== prevMonth) dashCalendarPage = 1;
   // 제목을 목록 위 가운데로 두고, 좌우에 전/다음 달 화살표를 붙여서 이번 달 외의 일정도 위젯 안에서 바로
   // 넘겨볼 수 있게 함(예전엔 이번 달 고정 + "바로가기"로 팀캘린더 탭까지 가야만 다른 달을 볼 수 있었음).
   // 제목 줄이 바로 아래 표(날짜/대상자/일정 헤더)와 너무 붙어 보인다는 피드백으로, 얇은 구분선(밑줄)과
@@ -14831,8 +14861,20 @@ function renderDashboardCalendarPreview(monthStr){
   // 카드 세로폭이 고정돼서(위 CSS) 더 이상 스크롤로 전체를 다 보여줄 수 없으니, 한 페이지에 보일 만큼만
   // 잘라서 보여주고 나머지는 아래 페이지 번호로 넘겨봄
   const totalPages = Math.max(1, Math.ceil(items.length / DASH_CAL_PAGE_SIZE));
+  // 홈에 새로 들어올 때(월을 안 주고 부르면)는, 지난 일정만 채워진 페이지에 그대로 두지 않고 오늘(또는 그
+  // 이후) 일정이 처음 나오는 페이지로 자동으로 맞춰줌 - items는 날짜순 정렬이라 그 첫 인덱스만 찾으면 됨.
+  // 전부 지난 일정뿐이면(오늘 이후 일정이 없으면) 굳이 마지막 페이지로 보낼 이유는 없어서 1페이지 그대로 둠
+  if(noMonthGiven){
+    const upcomingIdx = items.findIndex(it => it.date >= today0);
+    dashCalendarPage = upcomingIdx > 0 ? Math.floor(upcomingIdx / DASH_CAL_PAGE_SIZE) + 1 : 1;
+  }
   if(dashCalendarPage > totalPages) dashCalendarPage = totalPages;
   const pageItems = items.slice((dashCalendarPage-1)*DASH_CAL_PAGE_SIZE, dashCalendarPage*DASH_CAL_PAGE_SIZE);
+  // "지난 일정이 있다는 걸 알아채게" 이 페이지 맨 위로 바로 전 페이지로 돌아가는 링크를 달아줌(1페이지에는
+  // 더 이전 페이지가 없으니 표시 안 함) - 자동으로 건너뛴 지난 일정이 있다는 걸 눈치채지 못하고 놓치지 않게 함
+  const prevPageLinkHtml = dashCalendarPage > 1
+    ? `<button type="button" class="home-dash-cal-prevlink" id="dashCalPrevPageBtn">← 이전 일정</button>`
+    : '';
   const tableHtml = `<div class="home-dash-table-head">
       <span class="home-dash-table-col-date">날짜</span><span class="home-dash-table-col-person">대상자</span><span class="home-dash-table-col-main">일정</span>
     </div>`
@@ -14847,8 +14889,13 @@ function renderDashboardCalendarPreview(monthStr){
   const pagerHtml = totalPages > 1
     ? `<div class="home-dash-cal-pager">${Array.from({length:totalPages}, (_,i)=>i+1).map(p=>`<button type="button" class="home-dash-cal-page-btn${p===dashCalendarPage?' active':''}" data-page="${p}">${p}</button>`).join('')}</div>`
     : '';
-  body.innerHTML = headerHtml + `<div class="home-dash-card-scroll"><div class="home-dash-table">${tableHtml}</div></div>${pagerHtml}`;
+  body.innerHTML = headerHtml + prevPageLinkHtml + `<div class="home-dash-card-scroll"><div class="home-dash-table">${tableHtml}</div></div>${pagerHtml}`;
   bindDashCalNav();
+  document.getElementById('dashCalPrevPageBtn')?.addEventListener('click', (e)=>{
+    e.stopPropagation(); // 카드 전체 클릭 시 팀캘린더 탭으로 이동하는 핸들러가 부모에 걸려있어서 막음
+    dashCalendarPage -= 1;
+    renderDashboardCalendarPreview(dashCalendarMonth);
+  });
   body.querySelectorAll('.home-dash-cal-page-btn').forEach(btn=>{
     btn.addEventListener('click', (e)=>{
       e.stopPropagation(); // 카드 전체 클릭 시 팀캘린더 탭으로 이동하는 핸들러가 부모에 걸려있어서 막음
@@ -18476,20 +18523,40 @@ document.getElementById('addSpecialPeriodBtn')?.addEventListener('click', async 
 // 근무시간 예외기간(조기퇴근/늦은출근) 등록 - 특별기간과 달리 실제 지각(isLateClockIn)·야근(isOvertimeClockOut)
 // 판정 기준시각 자체를 이 기간 동안 바꿔치기함(getWorkStartTime/getWorkEndTime 참고). 출근·퇴근 시각은 각각
 // 선택사항이라 하나만 입력해도 등록되고, 비운 쪽은 표준 근무시간을 그대로 씀
+// 근무시간 예외기간 시간 조정 내용을 사람이 읽을 문장으로 - 특별기간에 자동으로 같이 등록할 때 내용(content)으로 씀
+function workHourExceptionTimeSummary(startTime, endTime){
+  const parts = [];
+  if(startTime) parts.push(`${startTime} 출근`);
+  if(endTime) parts.push(`${endTime} 퇴근`);
+  return parts.join(' · ');
+}
 document.getElementById('addWorkHourExceptionBtn')?.addEventListener('click', async ()=>{
   const startDate = document.getElementById('whe-start').value;
   const endDate = document.getElementById('whe-end').value;
   const startTime = document.getElementById('whe-start-time').value;
   const endTime = document.getElementById('whe-end-time').value;
   const memo = document.getElementById('whe-memo').value.trim();
+  const linkSpecial = document.getElementById('whe-link-special')?.checked;
   const msgEl = document.getElementById('workHourExceptionMsg');
   const showMsg = (text)=>{ msgEl.textContent = text; setTimeout(()=>msgEl.textContent='',2500); };
   if(!startDate || !endDate){ showMsg('시작일·종료일을 입력해주세요.'); return; }
   if(startDate > endDate){ showMsg('종료일이 시작일보다 빠를 수 없어요.'); return; }
   if(!startTime && !endTime){ showMsg('출근 시각·퇴근 시각 중 하나는 입력해주세요.'); return; }
-  sharedWorkHourExceptions.push({ id:genId(), startDate, endDate, startTime: startTime || undefined, endTime: endTime || undefined, memo });
+  const timeSummary = workHourExceptionTimeSummary(startTime, endTime);
+  const exception = { id:genId(), startDate, endDate, startTime: startTime || undefined, endTime: endTime || undefined, memo };
+  // "특별기간으로도 함께 등록"을 체크하면, 같은 기간으로 특별기간을 하나 더 만들어서 팀캘린더에도 바로
+  // 안내 칩("특별기간) 내용")이 뜨게 함 - 내용은 메모를 그대로 쓰고, 메모가 비어있으면 시간 요약으로 대신함.
+  // 두 데이터는 이 등록 순간에만 서로 연결될 뿐 완전히 독립적이라, 나중에 하나를 지워도 다른 하나는 그대로 남음
+  if(linkSpecial){
+    const specialPeriod = { id:genId(), startDate, endDate, content: memo || timeSummary };
+    sharedSpecialPeriods.push(specialPeriod);
+    exception.specialPeriodId = specialPeriod.id;
+    await saveSharedSpecialPeriods();
+    renderSpecialPeriods();
+  }
+  sharedWorkHourExceptions.push(exception);
   await saveSharedWorkHourExceptions();
-  showMsg('추가됨');
+  showMsg(linkSpecial ? '추가됨 (특별기간에도 등록됨)' : '추가됨');
   document.getElementById('whe-memo').value = '';
   renderWorkHourExceptions();
   renderAdminCalendar();
