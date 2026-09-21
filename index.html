@@ -25498,7 +25498,7 @@ document.getElementById('githubDeployBtn')?.addEventListener('click', async ()=>
   const msgEl = document.getElementById('githubDeployMsg');
   const token = (localStorage.getItem(GITHUB_DEPLOY_TOKEN_KEY) || '').trim();
   if(!token || !githubDeploySelectedFile){ return; }
-  const ok = await appConfirm(`"${githubDeploySelectedFile.name}" 파일을 GitHub(${GITHUB_DEPLOY_REPO_OWNER}/${GITHUB_DEPLOY_REPO_NAME})의 index.html에 바로 커밋할까요?\n\n반영되면 몇 초~몇 분 안에 실제 서비스 화면에도 그대로 적용돼요.`, { okText:'네, 배포할게요', cancelText:'취소' });
+  const ok = await appConfirm('커밋할까요?', { okText:'네, 배포할게요', cancelText:'취소' });
   if(!ok) return;
   const btn = document.getElementById('githubDeployBtn');
   btn.disabled = true;
@@ -26204,6 +26204,13 @@ async function afterGdriveConnected(){
     // PC(localStorage가 비어있어 이 오차가 특히 크게 보임)에서는 로그인할 때마다 매번 이 잘못된 개수가 그대로
     // 굳어져 있었음. 이메일을 안 시점에 한 번 더 정확한 키로 다시 계산해서 바로잡음
     updateNotificationUnreadBadge();
+    // 같은 이유(위 gdrivePull()이 currentUserEmail을 모르는 채로 한 번 먼저 돌아감)로, "나에게 온 새 결재
+    // 요청"/"내 기안의 승인·반려 결과"를 알림함에 기록하는 이 두 체크도 그 첫 실행에서는 이메일이 없어
+    // 조용히 아무것도 못 기록하고 지나감 - 예전엔 다음 자동 동기화(포커스 복귀·3분 주기)나 결재 데이터가
+    // 다시 저장될 때까지 최대 몇 분간 알림함에 안 잡히고 있었음. 이메일을 안 시점에 바로 한 번 더 불러서
+    // 그 지연 없이 로그인 직후 바로 알림함에 반영되게 함
+    checkNewApprovalsForBrowserNotify();
+    checkApprovalDecisionsForBrowserNotify();
     applyPermissionUI();
     // 앱을 껐다 켜도(백그라운드) 알림이 오려면 FCM 토큰이 항상 최신이어야 하는데, 예전엔 "알림 받기" 버튼을
     // 누른 그 순간에만 등록했음 - 그 뒤로 브라우저 데이터 정리·OS 업데이트 등으로 토큰이 조용히 무효화되면
