@@ -1088,12 +1088,13 @@
   .home-fav-remove:hover{background:var(--coral-bg); color:var(--coral);}
   /* "즐겨찾기는 클릭 시 메인으로 뜨게 할 화면을 선택할 수 있게 하자" - ✕(제거) 버튼 옆에 별 모양 버튼을
      하나 더 둬서, 이 즐겨찾기 항목을 "메인"(즐겨찾기 아이콘을 눌렀을 때 목록이 펼쳐지며 바로 넘어가는
-     화면)으로 고를 수 있게 함. 다른 항목들과 마찬가지로 마우스를 올렸을 때만 보이지만, 지금 메인으로
-     지정된 항목의 별은 항상 채워진 채로 보여서 어느 게 메인인지 한눈에 알 수 있게 함 */
+     화면)으로 고를 수 있게 함. 원래는 ✕ 버튼처럼 마우스를 올렸을 때만 보이게 했는데, "메인으로 바꾸려는데
+     계속 반영이 안 된다"는 제보의 실제 원인은 대부분 이 별 자체를 못 찾아서(완전히 안 보이니 어디를
+     눌러야 하는지 몰라 엉뚱한 곳을 누르고 있었음) - 항상 옅게라도 보이게 기본 opacity를 올려서 찾기 쉽게 함 */
   .home-fav-pin{
     position:absolute; top:50%; right:22px; transform:translateY(-50%); width:18px; height:18px; border-radius:50%;
     border:none; background:none; color:var(--ink-soft); cursor:pointer; padding:0;
-    display:inline-flex; align-items:center; justify-content:center; opacity:0; transition:opacity .12s, color .12s;
+    display:inline-flex; align-items:center; justify-content:center; opacity:0.45; transition:opacity .12s, color .12s;
   }
   .home-fav-tile:hover .home-fav-pin{ opacity:1; }
   .home-fav-pin:hover{ color:#e0a324; }
@@ -15852,6 +15853,10 @@ function setFavoriteMainKey(key){
   settings.favoriteMainKey = key;
   saveSettings();
   renderFavoritesBar();
+  // 별을 눌러도 반응이 없어 보인다는 제보 - 위 opacity 조정과 별개로, 실제로 바뀌었다는 걸 확실히
+  // 알 수 있도록 짧게 토스트 안내를 띄움
+  const target = getFavoriteMenuItems().find(f=>f.key===key);
+  if(typeof showCenterToast === 'function' && target) showCenterToast(`'${target.label}'을(를) 즐겨찾기 메인으로 설정했어요`);
 }
 function findFavoriteMenuTarget(key){
   return Array.from(document.querySelectorAll(FAVORITE_MENU_SELECTOR)).find(el=>favoriteMenuKeyOf(el)===key);
