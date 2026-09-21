@@ -331,16 +331,18 @@
     display:flex !important; position:fixed !important; height:auto;
     left:50% !important; right:auto !important; bottom:0 !important; top:auto !important;
     width:min(100%, var(--floating-menu-panel-max, 440px)) !important; max-width:min(100%, var(--floating-menu-panel-max, 440px)) !important; max-height:78vh; overflow-y:auto; z-index:9600;
-    background:rgba(255,255,255,0.5); -webkit-backdrop-filter:blur(30px) saturate(180%); backdrop-filter:blur(30px) saturate(180%);
+    background:var(--surface);
     box-shadow:0 -14px 50px -10px rgba(15,16,30,0.5), 0 -2px 0 rgba(255,255,255,0.6) inset;
-    padding:10px 16px calc(18px + env(safe-area-inset-bottom, 0px)); border:none; border-top:1.5px solid rgba(255,255,255,0.5);
+    padding:10px 16px calc(18px + env(safe-area-inset-bottom, 0px)); border:none; border-top:1.5px solid var(--border);
     margin:0; gap:12px; border-radius:26px 26px 0 0;
     opacity:0; visibility:hidden; pointer-events:none; transform:translate(-50%, 100%);
     transition:opacity .16s ease, transform .26s cubic-bezier(.32,.94,.6,1), visibility .16s;
   }
-  /* 배경이 완전 불투명한 흰 패널이면 "웹페이지 안 콘텐츠"처럼 보인다는 지적 - 아이폰/안드로이드의 진짜
-     메뉴판(공유 시트, 홈 화면 위젯 메뉴 등)처럼 패널 자체를 반투명 유리(frosted glass)로 만들어서 뒤에
-     흐릿하게 비치는 원래 화면이 "이 메뉴는 화면과 분리된, 그 위에 뜬 레이어"라는 느낌을 주게 함 */
+  /* 예전엔 패널이 완전 불투명하면 "웹페이지 안 콘텐츠"처럼 보인다며 반투명 유리(frosted glass)로 뒤 화면이
+     흐릿하게 비치게 했었는데("이 메뉴는 화면과 분리된, 그 위에 뜬 레이어"라는 느낌을 주려던 것) - 메뉴
+     구성이 자리를 잡고 나니 "이제 뒤 화면을 굳이 흐리게/어둡게 처리 안 하고 그대로 보여줘도 될 것 같다"는
+     요청으로, 패널은 다른 카드들과 똑같은 불투명 배경(--surface)으로, 바로 아래 배경막(#floatingMenuBackdrop)도
+     더 이상 뒤 화면을 어둡게 깔거나 블러 처리하지 않도록 되돌림(아래 #floatingMenuBackdrop 주석 참고) */
   /* 너비를 항상 100%로 뒀더니, 폴드 펼친 화면·태블릿처럼 화면 자체가 넓을 때 패널이 화면 끝까지 늘어나
      버려서 "메뉴" 제목 옆에 불필요하게 긴 빈 여백이 생긴다는 지적 - 일반 휴대폰(440px보다 좁은 화면)에서는
      min(100%, 440px)이 그대로 100%라 기존과 동일하게 화면 꽉 채운 시트로 보이고, 그보다 넓은 화면에서만
@@ -403,53 +405,49 @@
      전부 열린 시트 안에 있으므로 숨겨도 아쉬울 게 없음) */
   #floatingTabBar.is-hidden{ opacity:0; transform:translateX(-50%) translateY(12px); pointer-events:none; }
   #floatingTabBar{ transition:opacity .16s ease, transform .16s ease; }
-  /* 배경을 어둡게 깔아 사이드바를 도드라져 보이게 하는 용도라, 사이드바(9600)보다는 아래(위에 덮이지
-     않게), 버튼(999997)보다는 아래(버튼은 계속 눌려야 하니) - 이전에 버튼과 같이 z-index를 확 올렸다가
-     사이드바까지 이 막이 덮어버려서 메뉴 항목을 눌러도 반응이 없는(비활성화된 것처럼 보이는) 문제가
-     있었음. 사이드바보다 한 단계 아래로 되돌림 */
+  /* 사이드바(9600)보다는 아래(위에 덮이지 않게), 버튼(999997)보다는 아래(버튼은 계속 눌려야 하니) - 이전에
+     버튼과 같이 z-index를 확 올렸다가 사이드바까지 이 막이 덮어버려서 메뉴 항목을 눌러도 반응이 없는
+     (비활성화된 것처럼 보이는) 문제가 있었음. 사이드바보다 한 단계 아래로 되돌림.
+     한동안은 뒤 화면을 어둡게 깔고 블러까지 줘서 "메뉴가 화면과 분리된 레이어"라는 느낌을 일부러 강하게
+     냈었는데("뒤 화면이 흐려지면서, 메뉴는 웹이랑 분리된 느낌이었으면"이라는 요청 때문), 메뉴 구성이
+     자리를 잡고 나니 "이제 뒤 화면을 그대로 보여줘도 될 것 같다"는 요청으로 어둡게 깔거나 흐리게 하는
+     처리를 전부 없앰 - 그래도 이 막 자체는 그대로 둬서(투명하게), 시트가 열려있는 동안 뒷 화면을 눌러도
+     그 너머 버튼이 눌리지 않고 이 막을 눌러 시트를 닫는 원래 동작(closeSheet)은 그대로 유지됨 */
   #floatingMenuBackdrop{
-    display:none; position:fixed; inset:0; background:rgba(15,16,30,0.42); z-index:9590;
-    opacity:0; transition:opacity .18s ease, backdrop-filter .18s ease, -webkit-backdrop-filter .18s ease;
+    display:none; position:fixed; inset:0; z-index:9590;
+    opacity:0; transition:opacity .18s ease;
   }
   #floatingMenuBackdrop.is-open{ display:block; opacity:1; }
-  /* 풍선 카드 시절엔 뒤 화면이 어두워지면 "비활성화된 느낌"이라 막을 투명하게 뒀었는데, 이제 화면 아래에서
-     올라오는 바텀시트(폰 메뉴 같은 느낌)로 바뀌면서는 오히려 뒤를 살짝 어둡게 깔아주는 쪽이 "지금 메뉴가
-     화면 위로 떠서 이 화면을 덮었다"는 느낌을 더 확실히 줌(요즘 앱들의 하단 메뉴가 보통 이렇게 생김).
-     "뒤 화면이 흐려지면서, 메뉴는 웹이랑 분리된 느낌이었으면"이라는 요청으로 단순히 어둡게 깔던 막에
-     backdrop-filter:blur를 추가함 - 뒤에 있던 실제 화면(달력, 카드 등)이 흐릿하게 번져 보이면서, 그 위에
-     뜬 메뉴 패널은 또렷하게 남아 "이건 지금 화면과 분리된 별개의 레이어"라는 느낌을 훨씬 강하게 줌
-     (iOS 공유 시트, 안드로이드 바텀시트가 뒤를 블러 처리하는 것과 같은 방식) */
-  html.is-touch-device #floatingMenuBackdrop.is-open{
-    background:rgba(15,16,30,0.28); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
-  }
-  /* ===== 바텀시트(#appSidebar) 안 두 가지 화면: 더보기를 누르면 뜨는 "전체 메뉴" 그리드(헤더 흰색/납작),
-     그 안에서 카테고리 하나를 고르면 뜨는 하위 항목 목록(헤더 진한 navy) - 여러 시안을 두고 최종적으로
-     이 조합으로 확정됨("전체메뉴 네이비 바는 없어도 될것같아. 하위메뉴는 괜찮고") */
+  /* ===== 바텀시트(#appSidebar) 안 두 가지 화면: 더보기를 누르면 뜨는 "전체 메뉴" 그리드, 그 안에서
+     카테고리 하나를 고르면 뜨는 하위 항목 목록 - 원래는 하위메뉴 헤더만 진한 navy 바였는데("전체메뉴
+     네이비 바는 없어도 될것같아. 하위메뉴는 괜찮고"), 메뉴 구성 자체가 자리를 잡고 나니 "이제 굳이 눈에
+     띄는 navy 바로 구분 안 해도 될 것 같다, 홈 화면 메뉴랑 같은 배경색으로 맞추자"는 요청으로 둘 다 홈
+     화면 사이드바 메뉴가 놓인 배경색(--bg)으로 통일함(진하게 대비 주던 navy/흰색 대신, 다른 화면들과
+     톤이 이어지는 차분한 인상으로) */
   .touch-sheet-header{
     display:flex; align-items:center; gap:8px; padding:2px 2px 11px; margin-bottom:8px; flex:none;
-    background:linear-gradient(160deg, var(--navy), #2B3768); color:#fff;
+    background:var(--bg); color:var(--ink);
     margin-left:-16px; margin-right:-16px; margin-top:-10px; padding-left:16px; padding-right:16px; padding-top:12px;
     border-radius:26px 26px 0 0;
   }
-  /* "전체메뉴 네이비 바는 없어도 될것같아" - 그리드 화면 헤더만 배경 없이 밑줄만 남긴 납작한 버전으로 */
   .touch-sheet-header.is-plain{
-    background:none; color:var(--ink); border-bottom:1.5px solid var(--border);
-    margin-left:0; margin-right:0; margin-top:0; padding:2px 2px 10px; border-radius:0;
+    background:var(--bg); color:var(--ink); border-bottom:1.5px solid var(--border);
+    margin-left:-16px; margin-right:-16px; margin-top:-10px; padding-left:16px; padding-right:16px; padding-top:12px;
+    border-radius:26px 26px 0 0;
   }
   .touch-sheet-header-back{
     flex:none; width:calc(24px * var(--touch-font-scale, 1)); height:calc(24px * var(--touch-font-scale, 1));
     display:inline-flex; align-items:center; justify-content:center; border-radius:50%; cursor:pointer;
-    background:rgba(255,255,255,0.16); color:#fff; font-size:calc(18px * var(--touch-font-scale, 1)); font-weight:900; line-height:1;
+    background:var(--surface); color:var(--ink-soft); font-size:calc(18px * var(--touch-font-scale, 1)); font-weight:900; line-height:1;
   }
   .touch-sheet-header-title{ font-weight:800; font-size:calc(15px * var(--touch-font-scale, 1)); flex:1; }
   .touch-sheet-header-close{
     flex:none; width:calc(24px * var(--touch-font-scale, 1)); height:calc(24px * var(--touch-font-scale, 1));
-    min-width:calc(24px * var(--touch-font-scale, 1)); background:rgba(255,255,255,0.16); color:#fff;
+    min-width:calc(24px * var(--touch-font-scale, 1)); background:var(--surface); color:var(--ink-soft);
     border:none; font-weight:800; padding:0; border-radius:50%;
     display:inline-flex; align-items:center; justify-content:center;
     font-size:calc(13px * var(--touch-font-scale, 1)); line-height:1; cursor:pointer;
   }
-  .touch-sheet-header.is-plain .touch-sheet-header-close{ background:var(--bg); color:var(--ink-soft); }
   /* 전체 메뉴 그리드 - 색깔 배경 박스 아이콘 대신, 탭바 아이콘과 무게감이 똑같은 얇은 line-icon으로
      통일감 있게(마스코트 없이) */
   .touch-sheet-grid{
@@ -480,13 +478,6 @@
     box-shadow:0 0 0 1.5px rgba(255,255,255,0.92);
   }
   .touch-sheet-category-body{ display:flex; flex-direction:column; }
-  /* 즐겨찾기 카테고리를 열면 "⇅ 순서" 버튼이 흰 사이드바 배경용 색(어두운 회색)을 그대로 가진 채
-     진한 navy 헤더 안으로 옮겨와서, 글자가 배경에 묻혀 거의 안 보였음 - 이 헤더 안에서만 다른 닫기/뒤로
-     버튼처럼 흰 글자로 보이게 함 */
-  .touch-sheet-header .home-fav-reorder-btn{ color:#fff; font-size:calc(11px * var(--touch-font-scale, 1)); }
-  .touch-sheet-header .home-fav-reorder-btn:hover, .touch-sheet-header .home-fav-reorder-btn.is-active{
-    color:var(--indigo-deep); background:#fff;
-  }
   /* 홈~휴지통 아이콘 줄을 사이드바(카드 배경 .app 안쪽) 흐름에서 아예 빼내서, 카드 밖 페이지 배경 위에
      독립된 줄로 둠 - 카드와 같은 가운데정렬 폭(max-width)을 써서 화면 크기가 달라져도 카드의 왼쪽 시작선과
      항상 나란히 맞음. 스크롤해도 화면 맨 위에 계속 붙어있도록 sticky로 고정함 */
@@ -1113,15 +1104,21 @@
   }
   .home-fav-slot-empty:last-child{ border-bottom:none; }
   .home-fav-slot-empty:hover{ color:var(--indigo); background:rgba(29,30,51,0.035); }
-  /* "즐겨찾기 순서도 위아래로 바꿀 수 있으면 좋겠다"는 요청 - 항상 화살표가 떠 있으면 번잡하니, 즐겨찾기
-     타이틀 옆에 작은 "순서" 버튼을 눌러야만(순서 편집 모드) 각 줄에 ▲▼ 버튼이 나타나게 함. 편집 모드
-     중엔 헷갈리지 않도록 메인지정 별·삭제 버튼은 잠깐 숨겨둠 */
-  .home-fav-section-head{ display:flex; align-items:center; justify-content:space-between; gap:6px; }
+  /* "즐겨찾기 순서도 위아래로 바꿀 수 있으면 좋겠다"는 요청 - 항상 화살표가 떠 있으면 번잡하니, 순서 버튼을
+     눌러야만(순서 편집 모드) 각 줄에 ▲▼ 버튼이 나타나게 함. 편집 모드 중엔 헷갈리지 않도록 메인지정 별·삭제
+     버튼은 잠깐 숨겨둠. 예전엔 이 버튼이 "즐겨찾기" 라벨 옆(.home-fav-section-head)에 있었는데, 데스크탑
+     축소(레일) 사이드바에서는 라벨만 좁은 아이콘 레일에 그대로 남고 목록(.home-tiles)만 옆 패널로 옮겨가는
+     구조라, 이 버튼도 라벨을 따라 레일에 남아 좁은 칸에 "⇅ 순서"라는 글자 버튼이 아이콘 바로 옆에 눌린 채
+     떠 있는 것처럼 비율이 어긋나 보였음("즐겨찾기 눌렀을 때 설정 아이콘이 작게 하나 떠 있으면 좋겠다"는
+     요청) - 버튼을 목록(.home-tiles#homeFavoritesChips) 자신의 첫 줄로 옮겨서, 목록이 어디로 옮겨지든
+     (레일 팝오버·모바일 시트·기본 사이드바) 항상 그 목록과 함께 다니고, 즐겨찾기를 열어야만 보이는 작은
+     ⚙ 아이콘 버튼 하나로 단순화함(아래 renderFavoritesBar 참고) */
+  .home-fav-tools-row{ display:flex; justify-content:flex-end; padding:0 2px 4px; }
   .home-fav-reorder-btn{
-    background:none; border:none; cursor:pointer; font-size:10.5px; font-weight:700; color:var(--ink-soft);
-    padding:3px 8px; border-radius:20px; display:inline-flex; align-items:center; gap:3px; flex:none;
+    background:none; border:none; cursor:pointer; color:var(--ink-soft);
+    width:22px; height:22px; border-radius:7px; display:inline-flex; align-items:center; justify-content:center; flex:none;
   }
-  .home-fav-reorder-btn:hover{ color:var(--indigo); background:rgba(29,30,51,0.045); }
+  .home-fav-reorder-btn:hover{ color:var(--indigo); background:rgba(29,30,51,0.06); }
   .home-fav-reorder-btn.is-active{ color:#fff; background:var(--indigo); }
   .home-fav-move{
     display:none; flex:none; width:16px; height:16px; border-radius:4px; border:none; background:none;
@@ -3465,10 +3462,7 @@
           <button type="button" class="tab-btn home-section-label" data-tab="home" title="홈"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9"/></svg> 홈</button>
         </div>
         <div class="home-section-row" id="homeFavoritesSection">
-          <div class="home-fav-section-head">
-            <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> 즐겨찾기</div>
-            <button type="button" id="homeFavReorderBtn" class="home-fav-reorder-btn" title="즐겨찾기 순서 바꾸기">⇅ 순서</button>
-          </div>
+          <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> 즐겨찾기</div>
           <div class="home-tiles" id="homeFavoritesChips"></div>
         </div>
         <div class="app-rail-group-divider"></div>
@@ -15732,9 +15726,15 @@ function renderFavoritesBar(){
     if(idx > 0){ const [main] = list.splice(idx, 1); list.unshift(main); }
   }
   const effectiveMainKey = mainKey || (list[0] && list[0].key) || '';
+  // 순서 버튼(⚙)을 목록 맨 위, 오른쪽 끝에 작게 둠 - "즐겨찾기 라벨 옆"이 아니라 "즐겨찾기를 열었을 때
+  // 그 목록 안"에 있어야, 이 목록이 통째로 옮겨 다니는 모든 자리(데스크탑 축소 사이드바의 팝오버, 모바일
+  // 하단 시트, 기본 사이드바)에서 항상 같이 따라다니면서도 자기 목록 폭에 맞게 자연스러운 비율로 보임
+  // (위 CSS .home-fav-tools-row 주석 참고). 클릭 핸들러는 아래에서 매번 새로 다시 그려지는 이 버튼에 매번
+  // 다시 걸어줌(wrap.innerHTML로 매번 새로 만들어지므로)
+  let html = `<div class="home-fav-tools-row"><button type="button" id="homeFavReorderBtn" class="home-fav-reorder-btn${favReorderMode ? ' is-active' : ''}" title="즐겨찾기 순서 바꾸기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82A1.65 1.65 0 0 0 3 13.09H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button></div>`;
   // 다른 팝오버(원천세/부가세 등)와 똑같은 납작한 목록 스타일(.home-submenu-item)로 통일함 - 예전엔
   // 카드형(.home-tile-plain, 왼쪽 컬러 바)이라 즐겨찾기만 다른 메뉴들과 스타일이 달라 보였음
-  let html = list.map((f,i)=>`
+  html += list.map((f,i)=>`
     <div class="home-submenu-item home-fav-tile${f.key===effectiveMainKey ? ' home-fav-tile-main' : ''}" data-fav-key="${escHtml(f.key)}">
       <button type="button" class="home-fav-move" data-fav-key="${escHtml(f.key)}" data-dir="-1" title="위로"${i===0 ? ' disabled' : ''}>▲</button>
       <button type="button" class="home-fav-move" data-fav-key="${escHtml(f.key)}" data-dir="1" title="아래로"${i===list.length-1 ? ' disabled' : ''}>▼</button>
@@ -15770,6 +15770,12 @@ function renderFavoritesBar(){
   });
   wrap.querySelectorAll('.home-fav-slot-empty').forEach(slot=>{
     slot.addEventListener('click', openFavoriteMenuPicker);
+  });
+  const reorderBtnEl = wrap.querySelector('#homeFavReorderBtn');
+  if(reorderBtnEl) reorderBtnEl.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    favReorderMode = !favReorderMode;
+    renderFavoritesBar();
   });
 }
 // 즐겨찾기 추가 목록도 전체메뉴(전체메뉴 모달)와 똑같이 Works/Company/Settings 3칼럼 구조로 보여달라는
@@ -15807,11 +15813,6 @@ function buildFavoritePickerCols(favKeys){
   });
   return cols;
 }
-document.getElementById('homeFavReorderBtn')?.addEventListener('click', ()=>{
-  favReorderMode = !favReorderMode;
-  document.getElementById('homeFavReorderBtn')?.classList.toggle('is-active', favReorderMode);
-  renderFavoritesBar();
-});
 // 예전엔 이 팝업(전체메뉴 스타일 즐겨찾기 선택창)에서 +를 누르는 순간 팝업 자체가 통째로 닫혀버려서,
 // 즐겨찾기를 여러 개 등록하려면 "레일에서 즐겨찾기 다시 열기 → + 누르기"를 매번 반복해야 했음
 // ("플러스 누르면 아예 하위메뉴도 안보이거든? 플러스 누르면 현재 화면 그대로 유지되게 하면 좋겠고"라는
@@ -16475,21 +16476,14 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
   // 서로 부딪히지 않음 - 터치/레일은 기기 하나에서 동시에 켜질 수 없음)
   const touchHomeMap = new WeakMap();
   let activeCategoryTiles = null;
-  // 즐겨찾기는 라벨 옆에 "⇅ 순서" 버튼이 하나 더 있는데, .home-tiles만 옮기면 그 버튼은 숨겨진
-  // .home-menu-col 안에 남아 터치에서 순서 편집을 할 수 없게 됨 - 카테고리 헤더로 같이 옮겨줌(복제 아님,
-  // 기존 클릭 동작 그대로 유지)
-  let favReorderBtnHome = null;
+  // 즐겨찾기 순서 버튼(⚙)은 이제 라벨이 아니라 목록(.home-tiles#homeFavoritesChips) 자신의 첫 줄에 있어서
+  // (renderFavoritesBar 참고), 아래에서 tiles를 통째로 옮길 때 별도 처리 없이 항상 같이 따라다님
 
   function restoreMovedTiles(){
     if(activeCategoryTiles){
       const home = touchHomeMap.get(activeCategoryTiles);
       if(home && home.parent) home.parent.appendChild(activeCategoryTiles);
       activeCategoryTiles = null;
-    }
-    if(favReorderBtnHome){
-      const reorderBtn = document.getElementById('homeFavReorderBtn');
-      if(reorderBtn) favReorderBtnHome.appendChild(reorderBtn);
-      favReorderBtnHome = null;
     }
   }
   function showGridView(){
@@ -16531,14 +16525,6 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
     activeCategoryTiles = tiles;
     const titleEl = document.getElementById('touchSheetCategoryTitle');
     if(titleEl) titleEl.textContent = textOf(row);
-    if(rowId === 'homeFavoritesSection'){
-      const reorderBtn = document.getElementById('homeFavReorderBtn');
-      const closeBtn = document.getElementById('touchSheetCategoryClose');
-      if(reorderBtn && closeBtn){
-        favReorderBtnHome = reorderBtn.parentNode;
-        closeBtn.parentNode.insertBefore(reorderBtn, closeBtn);
-      }
-    }
     showCategoryView();
     sidebarEl.classList.add('mobile-sidebar-open');
   }
@@ -16685,10 +16671,16 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
   // "메뉴 텍스트가 너무 작다"는 제보 - 버튼/제목뿐 아니라 실제 메뉴 목록 글자(카테고리 알약, 하위 항목
   // 등 앱 전역에서 재사용하는 일반 CSS)도 같은 이유로 축소돼서 그려지고 있었음. --touch-pad(터치 영역
   // 패딩)와 똑같은 방식으로 --touch-font-scale을 두고, 아래 CSS에서 각 글자 크기에 calc()로 곱해줌
+  // "폴드폰처럼 실제 화면 폭이 유난히 좁은 기기(접힌 커버 화면 등)에서 메뉴가 너무 크게 보인다"는 제보 -
+  // 이 배율은 끝이 없이 커질 수 있는 계산식(PC_VIEW_WIDTH/REAL_WIDTH)이라, 화면이 좁을수록 더 큰 배율이
+  // 나와서 탭바 아이콘·배지 같은 터치 전용 요소가 화면이 좁을수록 오히려 더 커 보이는 역설적인 문제가
+  // 있었음(일반 휴대폰 폭 기준으로 이미 적당히 커 보이게 다듬어둔 배율이 대략 3.6배인데, 그보다 좁은
+  // 화면에선 4배, 5배로 한도 없이 커짐) - 일반 휴대폰 폭에서 나오는 배율 정도를 상한선으로 둬서, 그보다
+  // 좁은 화면도 "보통 휴대폰과 같은 크기"까지만 커지고 그 이상으로는 안 커지게 함
   function touchFontScale(on){
     if(!on || !REAL_WIDTH) return 1;
     const scale = REAL_WIDTH / PC_VIEW_WIDTH;
-    return 1 / Math.max(scale, 0.05);
+    return Math.min(3.6, 1 / Math.max(scale, 0.05));
   }
   function applyPcViewMode(on){
     if(viewportMeta) viewportMeta.setAttribute('content', on ? `width=${PC_VIEW_WIDTH}` : 'width=device-width, initial-scale=1.0');
