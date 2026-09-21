@@ -348,27 +348,43 @@
   html.is-touch-device .app-sidebar.mobile-sidebar-open{
     opacity:1; visibility:visible; pointer-events:auto; transform:translate(-50%, 0);
   }
-  /* 버튼 크기: 실제 화면 기준 목표 크기(52~68px, 화면폭 16%)를 축소 배율의 역수로 환산한 CSS px로 넣어줌
-     (자세한 계산은 위 PC 보기 IIFE의 floatingBtnSizePx() 참고) */
-  #floatingMenuBtn{
-    display:none; flex-direction:column; position:fixed; left:18px; bottom:30px;
-    width:var(--floating-menu-btn-size, 62px); height:var(--floating-menu-btn-size, 62px);
-    border-radius:30%; font-size:var(--floating-menu-btn-font, 9.3px);
-    background:var(--indigo); color:#fff; align-items:center; justify-content:center; gap:2px;
-    box-shadow:0 3px 0 rgba(255,255,255,0.9), 0 10px 26px -4px rgba(15,16,30,0.6); border:3px solid rgba(255,255,255,0.95);
-    z-index:999997; cursor:pointer; user-select:none; -webkit-tap-highlight-color:transparent; pointer-events:auto;
+  /* ===== 하단 탭바(홈/즐겨찾기/개인/결재/더보기) - 예전엔 떠다니는 마스코트 버튼 하나였는데, "폰에서
+     보는 메뉴 스타일이 별로다, 디자인 예시를 몇 개 보여달라"는 요청으로 여러 시안을 만들어봤고, 최종적으로
+     "접었을 때는 하단에 5개 탭(홈/즐겨찾기/개인/결재/더보기), 폈을 때(더보기)는 전체 카테고리를 아이콘
+     그리드로, 그 중 하나를 누르면 하위 항목 목록이 뜨는" 조합안으로 확정됨(#appSidebar를 그 목록/그리드가
+     뜨는 바텀시트로 그대로 재사용 - 아래 IIFE 참고). 탭 5개 중 홈/즐겨찾기/개인/결재는 각각 바로 그 화면/
+     목록으로 가는 지름길이고, 더보기만 전체 그리드를 엶 */
+  #floatingTabBar{
+    display:none; position:fixed; left:50%; bottom:0; transform:translateX(-50%);
+    width:100%; max-width:min(100%, var(--floating-menu-panel-max, 440px));
+    padding:6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+    background:rgba(255,255,255,0.86); -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%);
+    border-top:1.5px solid rgba(255,255,255,0.6); box-shadow:0 -6px 24px -10px rgba(15,16,30,0.35);
+    align-items:stretch; justify-content:space-between; gap:2px;
+    z-index:999997; -webkit-tap-highlight-color:transparent;
   }
-  /* "메뉴 버튼이 고객센터 챗봇 캐릭터 같은 모양이면 좋겠다"는 요청 - 예전엔 그냥 흰색 햄버거(≡) 세 줄이었는데,
-     이 앱 홈 화면 출퇴근 카드에 이미 쓰고 있는 귀여운 양털 뭉치 마스코트(dashMascotSvg)를 그대로 재사용함
-     (새 캐릭터를 새로 그리지 않고 브랜드 마스코트를 챗봇 아이콘으로도 씀 - 일관성도 챙기고, 이 마스코트
-     자체가 이미 "도와줄게요" 느낌의 친근한 표정이라 챗봇 버튼에 잘 어울림). "캐릭터 밑에 메뉴라고 글자도
-     있으면 좋겠다"는 요청으로 아이콘 아래 작은 라벨을 하나 더 둠 */
-  #floatingMenuBtn svg{ width:54%; height:54%; flex:none; filter:drop-shadow(0 2px 3px rgba(15,16,30,0.25)); }
-  #floatingMenuBtn .floating-menu-btn-label{ font-size:1em; font-weight:800; letter-spacing:0.02em; line-height:1; }
-  html.is-touch-device #floatingMenuBtn{ display:flex; }
-  #floatingMenuBtn:active{ transform:scale(0.94); }
-  #floatingMenuBtn{ transition:opacity .16s ease, transform .16s ease; }
-  #floatingMenuBtn.is-hidden{ opacity:0; transform:scale(0.7); pointer-events:none; }
+  html.is-touch-device #floatingTabBar{ display:flex; }
+  .floating-tab-btn{
+    flex:1 1 0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    background:none; border:none; cursor:pointer; padding:6px 2px 4px; border-radius:12px; position:relative;
+    color:var(--ink-soft); user-select:none;
+  }
+  .floating-tab-btn:active{ background:rgba(29,30,51,0.06); }
+  .floating-tab-btn svg{
+    width:calc(20px * var(--touch-font-scale, 1)); height:calc(20px * var(--touch-font-scale, 1)); flex:none;
+  }
+  .floating-tab-btn-label{ font-size:calc(10.5px * var(--touch-font-scale, 1)); font-weight:700; line-height:1; }
+  .floating-tab-btn .approval-doc-badge{
+    position:absolute; top:2px; right:calc(50% - 20px); margin-left:0;
+    font-size:calc(9px * var(--touch-font-scale, 1));
+  }
+  .floating-tab-btn-more svg{ color:var(--indigo); }
+  /* 탭바 z-index가 시트(#appSidebar, 9600)보다 높아서(999997) 시트가 열려있는 동안은 탭바가 그 위에
+     그대로 덮여 그리드/목록 맨 아래 줄을 가려버렸음 - 예전 떠다니는 버튼이 패널 열렸을 때 스스로
+     숨었던 것(.is-hidden)과 같은 방식으로, 시트가 열려있는 동안은 탭바도 잠깐 숨김(눌러야 할 버튼은
+     전부 열린 시트 안에 있으므로 숨겨도 아쉬울 게 없음) */
+  #floatingTabBar.is-hidden{ opacity:0; transform:translateX(-50%) translateY(12px); pointer-events:none; }
+  #floatingTabBar{ transition:opacity .16s ease, transform .16s ease; }
   /* 배경을 어둡게 깔아 사이드바를 도드라져 보이게 하는 용도라, 사이드바(9600)보다는 아래(위에 덮이지
      않게), 버튼(999997)보다는 아래(버튼은 계속 눌려야 하니) - 이전에 버튼과 같이 z-index를 확 올렸다가
      사이드바까지 이 막이 덮어버려서 메뉴 항목을 눌러도 반응이 없는(비활성화된 것처럼 보이는) 문제가
@@ -388,33 +404,62 @@
   html.is-touch-device #floatingMenuBackdrop.is-open{
     background:rgba(15,16,30,0.28); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
   }
-  /* 버튼 옆에 붙던 말풍선 꼬리는 화면 하단에 고정되는 바텀시트 방식에서는 더 이상 필요 없어서 숨김 */
-  html.is-touch-device #floatingMenuTail{ display:none !important; }
-  #floatingMenuTail{ display:none; position:fixed; width:0; height:0; z-index:9601; pointer-events:none; }
-  #floatingMenuTail.is-open{ display:block; }
-  #floatingMenuTail.tail-down{ border-left:9px solid transparent; border-right:9px solid transparent; border-top:10px solid var(--surface); filter:drop-shadow(0 3px 2px rgba(15,16,30,0.14)); }
-  #floatingMenuTail.tail-up{ border-left:9px solid transparent; border-right:9px solid transparent; border-bottom:10px solid var(--surface); filter:drop-shadow(0 -3px 2px rgba(15,16,30,0.14)); }
-  /* 버튼은 이제 고정 위치라, 패널을 다른 자리로 옮기고 싶을 때 쓰라고 패널 맨 위에 작은 손잡이를 둠 -
-     여길 눌러 끌면 패널만 옮겨지고 버튼은 그대로 있음 */
-  .floating-menu-grip{ width:38px; height:5px; border-radius:3px; background:var(--border); margin:0 auto 10px; cursor:grab; touch-action:none; flex:none; }
-  .floating-menu-grip:active{ cursor:grabbing; background:var(--guide-slate); }
-  /* 패널 맨 위 마스코트+"메뉴" 제목 줄 - 목록 카드가 아니라 챗봇 대화창 같은 독립된 창처럼 보이게 함 */
-  .floating-menu-header{
-    display:flex; align-items:center; gap:8px; padding:0 2px 10px;
-    border-bottom:1.5px solid var(--border); margin-bottom:8px; flex:none;
+  /* ===== 바텀시트(#appSidebar) 안 두 가지 화면: 더보기를 누르면 뜨는 "전체 메뉴" 그리드(헤더 흰색/납작),
+     그 안에서 카테고리 하나를 고르면 뜨는 하위 항목 목록(헤더 진한 navy) - 여러 시안을 두고 최종적으로
+     이 조합으로 확정됨("전체메뉴 네이비 바는 없어도 될것같아. 하위메뉴는 괜찮고") */
+  .touch-sheet-header{
+    display:flex; align-items:center; gap:8px; padding:2px 2px 11px; margin-bottom:8px; flex:none;
+    background:linear-gradient(160deg, var(--navy), #2B3768); color:#fff;
+    margin-left:-16px; margin-right:-16px; margin-top:-10px; padding-left:16px; padding-right:16px; padding-top:12px;
+    border-radius:26px 26px 0 0;
   }
-  .floating-menu-header-mascot{ flex:none; display:flex; }
-  .floating-menu-header-mascot svg{ width:var(--floating-menu-header-icon, 26px); height:var(--floating-menu-header-icon, 26px); display:block; }
-  .floating-menu-header-title{ font-weight:800; font-size:var(--floating-menu-header-font, 15px); color:var(--ink); flex:1; }
-  /* 제목 글자 하나만 왼쪽에 덩그러니 있고 나머지 줄 전체가 빈 여백이라는 지적 - 오른쪽 끝에 명시적인
-     닫기(✕) 버튼을 둬서(다른 팝업에서 쓰던 .modal-close-btn과 같은 스타일) 그 여백을 없애고, 배경을 탭하지
-     않고도 메뉴를 닫을 수 있는 방법도 하나 더 생김 */
-  .floating-menu-header-close{
-    flex:none; width:var(--floating-menu-header-icon, 26px); height:var(--floating-menu-header-icon, 26px);
-    min-width:var(--floating-menu-header-icon, 26px); background:var(--indigo-bg); color:var(--indigo-deep);
-    border:1px solid rgba(91,95,239,0.3); font-weight:800; padding:0; border-radius:50%;
+  /* "전체메뉴 네이비 바는 없어도 될것같아" - 그리드 화면 헤더만 배경 없이 밑줄만 남긴 납작한 버전으로 */
+  .touch-sheet-header.is-plain{
+    background:none; color:var(--ink); border-bottom:1.5px solid var(--border);
+    margin-left:0; margin-right:0; margin-top:0; padding:2px 2px 10px; border-radius:0;
+  }
+  .touch-sheet-header-back{
+    flex:none; width:calc(24px * var(--touch-font-scale, 1)); height:calc(24px * var(--touch-font-scale, 1));
+    display:inline-flex; align-items:center; justify-content:center; border-radius:50%; cursor:pointer;
+    background:rgba(255,255,255,0.16); color:#fff; font-size:calc(18px * var(--touch-font-scale, 1)); font-weight:900; line-height:1;
+  }
+  .touch-sheet-header-title{ font-weight:800; font-size:calc(15px * var(--touch-font-scale, 1)); flex:1; }
+  .touch-sheet-header-close{
+    flex:none; width:calc(24px * var(--touch-font-scale, 1)); height:calc(24px * var(--touch-font-scale, 1));
+    min-width:calc(24px * var(--touch-font-scale, 1)); background:rgba(255,255,255,0.16); color:#fff;
+    border:none; font-weight:800; padding:0; border-radius:50%;
     display:inline-flex; align-items:center; justify-content:center;
-    font-size:calc(var(--floating-menu-header-font, 15px) * 0.86); line-height:1; cursor:pointer;
+    font-size:calc(13px * var(--touch-font-scale, 1)); line-height:1; cursor:pointer;
+  }
+  .touch-sheet-header.is-plain .touch-sheet-header-close{ background:var(--bg); color:var(--ink-soft); }
+  /* 전체 메뉴 그리드 - 색깔 배경 박스 아이콘 대신, 탭바 아이콘과 무게감이 똑같은 얇은 line-icon으로
+     통일감 있게(마스코트 없이) */
+  .touch-sheet-grid{
+    display:grid; grid-template-columns:repeat(4, 1fr); gap:6px 4px; padding:4px 0 6px;
+  }
+  .touch-sheet-grid-item{
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px;
+    background:none; border:none; cursor:pointer; padding:10px 2px; border-radius:12px; position:relative;
+    color:var(--ink-soft);
+  }
+  .touch-sheet-grid-item:active{ background:rgba(29,30,51,0.06); }
+  .touch-sheet-grid-item svg{
+    width:calc(21px * var(--touch-font-scale, 1)); height:calc(21px * var(--touch-font-scale, 1)); flex:none;
+  }
+  .touch-sheet-grid-item-label{
+    font-size:calc(11.5px * var(--touch-font-scale, 1)); font-weight:700; color:var(--ink); text-align:center; line-height:1.25;
+  }
+  .touch-sheet-grid-item .approval-doc-badge{
+    position:absolute; top:4px; right:calc(50% - 26px); margin-left:0;
+    font-size:calc(9px * var(--touch-font-scale, 1));
+  }
+  .touch-sheet-category-body{ display:flex; flex-direction:column; }
+  /* 즐겨찾기 카테고리를 열면 "⇅ 순서" 버튼이 흰 사이드바 배경용 색(어두운 회색)을 그대로 가진 채
+     진한 navy 헤더 안으로 옮겨와서, 글자가 배경에 묻혀 거의 안 보였음 - 이 헤더 안에서만 다른 닫기/뒤로
+     버튼처럼 흰 글자로 보이게 함 */
+  .touch-sheet-header .home-fav-reorder-btn{ color:#fff; font-size:calc(11px * var(--touch-font-scale, 1)); }
+  .touch-sheet-header .home-fav-reorder-btn:hover, .touch-sheet-header .home-fav-reorder-btn.is-active{
+    color:var(--indigo-deep); background:#fff;
   }
   /* 홈~휴지통 아이콘 줄을 사이드바(카드 배경 .app 안쪽) 흐름에서 아예 빼내서, 카드 밖 페이지 배경 위에
      독립된 줄로 둠 - 카드와 같은 가운데정렬 폭(max-width)을 써서 화면 크기가 달라져도 카드의 왼쪽 시작선과
@@ -502,6 +547,12 @@
      아래로 자연스럽게 쌓이도록 flex-wrap을 씀 */
   .home-dashboard-layout{ display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap; }
   .home-menu-col{ flex:0 0 auto; }
+  /* 터치 기기는 이 접었다 펼치는 전체 아코디언 목록 대신 하단 탭바 + 그리드 + 하위목록(바텀시트) 방식으로
+     완전히 대체됨(아래 #floatingTabBar IIFE 참고) - 그 목록 안에 실제로 쌓여있던 .home-tiles는 카테고리를
+     열 때마다 새 자리(#touchSheetCategoryBody)로 옮겨졌다가 닫히면 다시 여기로 돌아오므로(복제 아님),
+     이 컬럼 자체는 항상 그대로 두고 화면에만 안 보이게 함 - 데스크탑 레일 모드(rail-mode)는 터치가
+     아닐 때만 켜지므로 이 규칙과 서로 부딪히지 않음 */
+  .is-touch-device .home-menu-col{ display:none; }
   /* 대시보드(홈)와 사이드바 "전체" 펼침보기는 굳이 복사 기능이 필요 없다는 요청 - 특히 휴대폰에서 길게
      누르면 뜨는 텍스트선택/복사 콜아웃이 스크롤·탭을 방해해서 불편하다는 의미로 보고, 홈 탭 전체에
      텍스트선택을 꺼둠. 입력창(메모 등)까지 막히면 오히려 불편하므로 input/textarea/select 등 실제
@@ -514,6 +565,12 @@
   .home-menu-expand-all-row{ display:flex; justify-content:flex-end; margin:0 0 8px; }
   .home-menu-expand-all-btn{ background:none; border:none; cursor:pointer; font-size:11px; font-weight:700; color:var(--ink-soft); padding:2px 4px; display:inline-flex; align-items:center; gap:3px; }
   .home-menu-expand-all-btn:hover{ color:var(--indigo); }
+  /* 터치 기기(폰/폴드)에서는 이 버튼을 아래 floating-menu IIFE가 헤더(마스코트+"메뉴"+닫기✕) 안으로
+     실제로 옮겨 넣음 - "버튼 하나만 오른쪽 끝에 있고 그 왼쪽은 전부 빈 줄"이라는 지적으로, 거의 비어있던
+     원래 자리(.home-menu-expand-all-row)는 통째로 숨김. "전체"라는 글자도 좁은 화면에서는 빼고 화살표만
+     남겨 자리를 덜 차지하게 함(펼침/접힘 상태는 화살표 방향(▾/▴)만으로도 알 수 있음) */
+  .is-touch-device .home-menu-expand-all-row{ display:none; }
+  .is-touch-device .home-menu-expand-all-label{ display:none; }
   .home-dashboard-col{ flex:1 1 420px; min-width:280px; }
   /* "Dashboard" 글자가 위쪽 Tax.J 로고와 굵기·자간이 비슷해서 로고의 축소판처럼 보인다는 피드백 -
      로고는 크고 진한 브랜드 글자로, 이 제목은 작고 여백 있는 라벨(eyebrow) 스타일로 확실히 갈라놓음.
@@ -1030,6 +1087,26 @@
   }
   .home-fav-slot-empty:last-child{ border-bottom:none; }
   .home-fav-slot-empty:hover{ color:var(--indigo); background:rgba(29,30,51,0.035); }
+  /* "즐겨찾기 순서도 위아래로 바꿀 수 있으면 좋겠다"는 요청 - 항상 화살표가 떠 있으면 번잡하니, 즐겨찾기
+     타이틀 옆에 작은 "순서" 버튼을 눌러야만(순서 편집 모드) 각 줄에 ▲▼ 버튼이 나타나게 함. 편집 모드
+     중엔 헷갈리지 않도록 메인지정 별·삭제 버튼은 잠깐 숨겨둠 */
+  .home-fav-section-head{ display:flex; align-items:center; justify-content:space-between; gap:6px; }
+  .home-fav-reorder-btn{
+    background:none; border:none; cursor:pointer; font-size:10.5px; font-weight:700; color:var(--ink-soft);
+    padding:3px 8px; border-radius:20px; display:inline-flex; align-items:center; gap:3px; flex:none;
+  }
+  .home-fav-reorder-btn:hover{ color:var(--indigo); background:rgba(29,30,51,0.045); }
+  .home-fav-reorder-btn.is-active{ color:#fff; background:var(--indigo); }
+  .home-fav-move{
+    display:none; flex:none; width:16px; height:16px; border-radius:4px; border:none; background:none;
+    color:var(--ink-soft); font-size:9px; line-height:1; align-items:center; justify-content:center; cursor:pointer; padding:0;
+  }
+  .home-fav-move:hover:not(:disabled){ background:rgba(29,30,51,0.08); color:var(--indigo); }
+  .home-fav-move:disabled{ opacity:0.25; cursor:default; }
+  #homeFavoritesChips.is-reorder-mode .home-fav-move{ display:inline-flex; }
+  #homeFavoritesChips.is-reorder-mode .home-fav-pin,
+  #homeFavoritesChips.is-reorder-mode .home-fav-remove{ display:none; }
+  #homeFavoritesChips.is-reorder-mode .home-fav-tile{ padding-right:8px; }
   /* 설정 하위칩(직원등록/직원현황 등)은 눌렀을 때 팝업이 뜨는 단순 메뉴라서, 홈 화면 목록만큼
      줄 사이 여백·구분선·점 불릿을 크게 둘 필요가 없음 - 줄 간격 없이 촘촘하게, 구분선도 없앰 */
   .settings-subsection-chip-row{ gap:0; }
@@ -3344,7 +3421,7 @@
       <!-- 기존 바로가기 메뉴 전체를 왼쪽 사이드바로 묶음 -->
       <div class="home-menu-col">
         <div class="home-menu-expand-all-row">
-          <button type="button" id="homeMenuExpandAllBtn" class="home-menu-expand-all-btn">▾ 전체</button>
+          <button type="button" id="homeMenuExpandAllBtn" class="home-menu-expand-all-btn">▾ <span class="home-menu-expand-all-label">전체</span></button>
         </div>
         <!-- ⭐ 즐겨찾기: 하위메뉴가 많아져서 자주 쓰는 화면(가장 하위 메뉴 포함, 예: 세무신고>원천세>신고현황)을
              바로 찾기 번거롭다는 의견으로, 사이드바 맨 위(Client보다도 위)에 최대 5개까지 등록해두는 자리를 둠.
@@ -3362,7 +3439,10 @@
           <button type="button" class="tab-btn home-section-label" data-tab="home" title="홈"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9"/></svg> 홈</button>
         </div>
         <div class="home-section-row" id="homeFavoritesSection">
-          <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> 즐겨찾기</div>
+          <div class="home-fav-section-head">
+            <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> 즐겨찾기</div>
+            <button type="button" id="homeFavReorderBtn" class="home-fav-reorder-btn" title="즐겨찾기 순서 바꾸기">⇅ 순서</button>
+          </div>
           <div class="home-tiles" id="homeFavoritesChips"></div>
         </div>
         <div class="app-rail-group-divider"></div>
@@ -9978,7 +10058,7 @@ function renderAllLeaveHistory(){
     return `<tr>
       <td class="num" style="white-space:nowrap;">${dateLabel}</td>
       <td style="white-space:nowrap;">${escHtml(label)}</td>
-      <td>${escHtml(g.memo || '')}</td>
+      <td style="text-align:center;">${escHtml(g.memo || '')}</td>
       <td style="white-space:nowrap; text-align:center;">${editBtn}${delBtn}</td>
     </tr>`;
   }).join('');
@@ -13667,7 +13747,11 @@ function applyLeaveApprovalToAttendance(item){
   att.leaveUsage = att.leaveUsage || [];
   const isHalfDayOnly = (item.leaveType === '반차' || item.leaveType === '반반차');
   const isSpecial = typeof SPECIAL_LEAVE_TYPES !== 'undefined' && SPECIAL_LEAVE_TYPES.includes(item.leaveType);
-  const memo = `[기안 승인] ${item.title||''}`.trim();
+  // 예전엔 여기서 "[기안 승인] 휴가 신청"처럼 메모에 출처를 자동으로 남겼는데, 이제 휴가는 전부 기안
+  // 승인을 거쳐야만 등록되는 구조라 굳이 매번 적을 필요가 없는 당연한 정보라는 의견으로 자동 메모를 없앰
+  // (기안자가 기안 작성 시 직접 남긴 메모가 있다면 그건 아래에서 따로 쓰지 않고 비워둠 - 필요하면
+  // 휴가이력 화면에서 직접 메모를 적어 넣을 수 있음)
+  const memo = '';
   let dates = [item.leaveStart];
   if(!isHalfDayOnly && item.leaveEnd && item.leaveEnd > item.leaveStart && typeof parseDate === 'function' && typeof fmt === 'function'){
     dates = [];
@@ -14176,7 +14260,7 @@ document.getElementById('homeMenuExpandAllBtn')?.addEventListener('click', funct
     btn.classList.toggle('is-open', willOpenAll);
     btn.textContent = willOpenAll ? '▾' : '▸';
   });
-  this.textContent = willOpenAll ? '▴ 전체' : '▾ 전체';
+  this.innerHTML = (willOpenAll ? '▴ ' : '▾ ') + '<span class="home-menu-expand-all-label">전체</span>';
 });
 // 사이드바에서 신고현황/검토표/결재로 바로 이동 - 업무 탭으로 이동한 뒤 해당 카테고리 칩까지 자동으로 눌러줌
 // (결재 밑의 기안/기안함/결재함/반려함/완료함/전체이력도 신고현황 밑 세목과 같은 방식으로, 해당 결재 하위탭 버튼을 원격으로 눌러줌)
@@ -15576,6 +15660,19 @@ function addFavoriteMenuItem(el){
   saveFavoriteMenuItems(list);
   renderFavoritesBar();
 }
+let favReorderMode = false;
+// "즐겨찾기 순서도 위아래로 정할 수 있으면 좋겠다"는 요청 - 순서 편집 모드에서 각 줄의 ▲▼ 버튼을 누르면
+// 바로 옆 항목과 자리를 맞바꿈(가장 위/아래 항목은 그 방향 버튼이 disabled로 막혀있어 안전)
+function moveFavoriteMenuItem(key, dir){
+  const list = getFavoriteMenuItems().slice();
+  const idx = list.findIndex(f=>f.key===key);
+  if(idx < 0) return;
+  const swapIdx = idx + dir;
+  if(swapIdx < 0 || swapIdx >= list.length) return;
+  const tmp = list[idx]; list[idx] = list[swapIdx]; list[swapIdx] = tmp;
+  saveFavoriteMenuItems(list);
+  renderFavoritesBar();
+}
 function removeFavoriteMenuItem(key){
   // 직원 삭제·결재문서 삭제와 똑같은 이유(다른 탭/기기가 아직 예전 즐겨찾기 목록을 들고 있다가 뭔가 저장하는
   // 순간 방금 지운 항목이 Drive 동기화로 되살아남)로, 지운 직후 "최근 삭제" 목록에 기록해둠 - gdrivePull에서
@@ -15603,8 +15700,10 @@ function renderFavoritesBar(){
   const effectiveMainKey = mainKey || (list[0] && list[0].key) || '';
   // 다른 팝오버(원천세/부가세 등)와 똑같은 납작한 목록 스타일(.home-submenu-item)로 통일함 - 예전엔
   // 카드형(.home-tile-plain, 왼쪽 컬러 바)이라 즐겨찾기만 다른 메뉴들과 스타일이 달라 보였음
-  let html = list.map(f=>`
+  let html = list.map((f,i)=>`
     <div class="home-submenu-item home-fav-tile${f.key===effectiveMainKey ? ' home-fav-tile-main' : ''}" data-fav-key="${escHtml(f.key)}">
+      <button type="button" class="home-fav-move" data-fav-key="${escHtml(f.key)}" data-dir="-1" title="위로"${i===0 ? ' disabled' : ''}>▲</button>
+      <button type="button" class="home-fav-move" data-fav-key="${escHtml(f.key)}" data-dir="1" title="아래로"${i===list.length-1 ? ' disabled' : ''}>▼</button>
       <span>${escHtml(f.label)}</span>
       <button type="button" class="home-fav-pin${f.key===effectiveMainKey ? ' is-main' : ''}" data-fav-key="${escHtml(f.key)}" title="${f.key===effectiveMainKey ? '즐겨찾기의 메인 화면이에요 (즐겨찾기 아이콘을 누르면 바로 이 화면으로 이동)' : '이 화면을 즐겨찾기의 메인으로 설정'}"><svg width="11" height="11" viewBox="0 0 24 24" fill="${f.key===effectiveMainKey ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
       <button type="button" class="home-fav-remove" data-fav-key="${escHtml(f.key)}" title="즐겨찾기에서 제거">✕</button>
@@ -15616,9 +15715,14 @@ function renderFavoritesBar(){
     html += `<div class="home-fav-slot-empty" title="즐겨찾기 추가">+</div>`;
   }
   wrap.innerHTML = html;
+  wrap.classList.toggle('is-reorder-mode', favReorderMode);
+  wrap.querySelectorAll('.home-fav-move').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{ e.stopPropagation(); moveFavoriteMenuItem(btn.dataset.favKey, Number(btn.dataset.dir)); });
+  });
   wrap.querySelectorAll('.home-fav-tile').forEach(tile=>{
     tile.addEventListener('click', (e)=>{
-      if(e.target.closest('.home-fav-remove') || e.target.closest('.home-fav-pin')) return;
+      if(e.target.closest('.home-fav-remove') || e.target.closest('.home-fav-pin') || e.target.closest('.home-fav-move')) return;
+      if(favReorderMode) return; // 순서 편집 중엔 실수로 화면 이동되지 않게 항목 클릭 자체를 막음
       const target = findFavoriteMenuTarget(tile.dataset.favKey);
       if(target) target.click();
       else appAlert('연결된 메뉴를 찾을 수 없어요. 즐겨찾기에서 지우고 다시 등록해주세요.');
@@ -15669,14 +15773,27 @@ function buildFavoritePickerCols(favKeys){
   });
   return cols;
 }
-function openFavoriteMenuPicker(){
+document.getElementById('homeFavReorderBtn')?.addEventListener('click', ()=>{
+  favReorderMode = !favReorderMode;
+  document.getElementById('homeFavReorderBtn')?.classList.toggle('is-active', favReorderMode);
+  renderFavoritesBar();
+});
+// 예전엔 이 팝업(전체메뉴 스타일 즐겨찾기 선택창)에서 +를 누르는 순간 팝업 자체가 통째로 닫혀버려서,
+// 즐겨찾기를 여러 개 등록하려면 "레일에서 즐겨찾기 다시 열기 → + 누르기"를 매번 반복해야 했음
+// ("플러스 누르면 아예 하위메뉴도 안보이거든? 플러스 누르면 현재 화면 그대로 유지되게 하면 좋겠고"라는
+// 요청) - 이제 +를 눌러도 창은 그대로 열려있고, 방금 추가한 항목만 "추가됨" 표시로 바뀌면서 목록이
+// 갱신됨. 5개(FAVORITE_MENU_MAX)를 다 채우면 그때는 더 추가할 수 없다는 안내만 보여줌
+function renderFavoriteMenuPickerList(){
   const overlay = document.getElementById('favoriteMenuPickerOverlay');
   const listWrap = document.getElementById('favoriteMenuPickerList');
   if(!overlay || !listWrap) return;
   const favKeys = new Set(getFavoriteMenuItems().map(f=>f.key));
+  const atMax = getFavoriteMenuItems().length >= FAVORITE_MENU_MAX;
   const cols = buildFavoritePickerCols(favKeys);
   const plusIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`;
-  if(!cols.length){
+  if(atMax){
+    listWrap.innerHTML = `<div class="empty-state">즐겨찾기는 최대 ${FAVORITE_MENU_MAX}개까지 등록할 수 있어요. 다른 걸 등록하려면 먼저 기존 즐겨찾기를 하나 지워주세요.</div>`;
+  } else if(!cols.length){
     listWrap.innerHTML = `<div class="empty-state">더 등록할 수 있는 메뉴가 없어요.</div>`;
   } else {
     listWrap.innerHTML = `<div class="rail-allmenu-grid">${cols.map((c,ci)=>`
@@ -15694,10 +15811,15 @@ function openFavoriteMenuPicker(){
       row.addEventListener('click', ()=>{
         const it = cols[+row.dataset.c].items[+row.dataset.i];
         if(it?.el) addFavoriteMenuItem(it.el);
-        overlay.style.display = 'none';
+        renderFavoriteMenuPickerList(); // 창은 닫지 않고 목록만 새로 그려서 계속 추가할 수 있게 함
       });
     });
   }
+}
+function openFavoriteMenuPicker(){
+  const overlay = document.getElementById('favoriteMenuPickerOverlay');
+  if(!overlay) return;
+  renderFavoriteMenuPickerList();
   overlay.style.display = 'flex';
 }
 document.getElementById('favoriteMenuPickerClose')?.addEventListener('click', ()=>{
@@ -16244,11 +16366,14 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
   document.getElementById('appSidebar')?.classList.toggle('mobile-sidebar-open');
 });
 
-// ===== 화면에 둥둥 떠서 드래그로 옮길 수 있는 메뉴 버튼(터치 기기 전용) =====
-// "모바일 버전도 상단에 고정돼있잖아, 그거 말고 화면 움직일 때마다(스크롤해도) 따라다니게, PC버전을
-// 모바일로 볼 때도" 요청 - 위 상단 고정 메뉴 버튼과, PC보기 모드에서 사이드바가 항상 펼쳐진 채이던
-// 방식을 터치 기기에서는 이 버튼 하나로 대신함. 처음 위치는 화면 오른쪽 아래에 두고, 이후에는 손가락으로
-// 끌어서 옮긴 마지막 위치를 기기에 기억해뒀다가 다음에 켤 때도 그 자리에 그대로 뜨게 함
+// ===== 하단 탭바 + 전체메뉴 그리드 + 하위목록 바텀시트(터치 기기 전용) =====
+// "폰에서 볼때 메뉴 그거 아무래도 너무 스타일이 별로라" - 떠다니는 마스코트 버튼 하나 방식을 없애고,
+// 여러 디자인 시안을 거쳐 확정된 "⭐ 조합안"을 실제로 붙임: 접었을 때는 화면 아래 5개 탭(홈/즐겨찾기/
+// 개인/결재/더보기), 더보기를 누르면 전체 카테고리 아이콘 그리드(헤더는 흰 바탕에 밑줄만), 그 중 하나를
+// 누르면(즐겨찾기/개인/결재는 탭에서 바로) 그 카테고리의 실제 하위 항목 목록이 뜸(헤더는 진한 navy +
+// 뒤로가기). 바텀시트 자체는 기존 #appSidebar를 그대로 재사용(위치·배경·열고 닫는 애니메이션은 손대지
+// 않음 - html.is-touch-device .app-sidebar CSS 참고), 그 안의 실제 하위 항목(.home-tiles)도 복제하지
+// 않고 옮겼다가(데스크탑 레일모드의 openPopoverFor/railHomeMap과 같은 방식) 닫히면 원래 자리로 되돌림
 (function(){
   // 아래쪽 "PC 화면 보기 토글" IIFE가 html.is-touch-device 클래스를 붙여주는데, 이 코드가 그보다 먼저
   // 실행되므로 그 클래스가 아직 안 붙어있을 수 있음 - 같은 판별식(pointer:coarse)을 여기서도 직접 씀
@@ -16257,158 +16382,216 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
   if(!document.documentElement.classList.contains('is-touch-device')) return;
   const sidebarEl = document.getElementById('appSidebar');
   if(!sidebarEl) return;
-  // "구조가 이상하다, 은행앱/챗봇 아이콘처럼 자리가 고정돼있고 그 안에서 독립적으로 움직이는 식이면
-  // 좋겠다"는 요청으로, 이전엔 버튼 자체를 손으로 끌어서 옮기던 걸 뒤집음: 버튼은 항상 화면 왼쪽 아래
-  // 같은 자리(CSS로 고정)에 있고, 대신 열린 메뉴 패널 쪽에 작은 손잡이를 둬서 패널만 필요하면 끌어
-  // 옮길 수 있게 함
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.id = 'floatingMenuBtn';
-  btn.setAttribute('aria-label', '메뉴 열기');
-  // "메뉴 버튼이 고객센터 챗봇 캐릭터 느낌이면 좋겠다"는 요청 - 햄버거(≡) 아이콘 대신, 이 앱 홈 화면
-  // 출퇴근 카드에 이미 쓰고 있는 마스코트(dashMascotSvg)를 그대로 재사용함
-  btn.innerHTML = (typeof dashMascotSvg === 'function' ? dashMascotSvg('idle') : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>`) + '<span class="floating-menu-btn-label">메뉴</span>';
-  document.body.appendChild(btn);
+
+  function rowEl(id){ return document.getElementById(id); }
+  // 홈(#homeGoHomeSection)만 예외적으로 행 자체가 <button class="tab-btn home-section-label">라서
+  // (다른 카테고리는 행 안에 .home-section-label이 따로 있는 <div>), 행 자체가 라벨인 경우도 같이 처리함
+  function labelOf(row){
+    if(!row) return null;
+    if(row.classList.contains('home-section-label')) return row;
+    return row.querySelector('.home-section-label');
+  }
+  function svgHtmlOf(row){
+    const label = labelOf(row);
+    const svg = label ? label.querySelector('svg') : null;
+    return svg ? svg.outerHTML : '';
+  }
+  // 라벨 글자만 뽑아옴(결재처럼 안읽음 배지가 라벨 안에 같이 들어있어서, 배지 숫자가 이름에 섞여
+  // "결재3"처럼 보이지 않도록 배지는 복제본에서 지우고 읽음)
+  function textOf(row){
+    const label = labelOf(row);
+    if(!label) return '';
+    const clone = label.cloneNode(true);
+    clone.querySelectorAll('.approval-doc-badge').forEach(b=> b.remove());
+    return clone.textContent.trim();
+  }
+  function allCategoryRows(){
+    return Array.from(document.querySelectorAll('.home-menu-col > .home-section-row'));
+  }
+
+  // ── 그리드/카테고리 두 화면을 담을 바텀시트 내부 마크업 - #appSidebar 맨 앞에 그대로 끼워 넣고,
+  // 기존 .home-menu-col(원래 있던 전체 아코디언 목록)은 CSS로 숨겨둔 채 그 실제 .home-tiles 노드만
+  // 필요할 때 빌려옴 ──
+  const gridView = document.createElement('div');
+  gridView.id = 'touchSheetGridView';
+  gridView.innerHTML = `
+    <div class="touch-sheet-header is-plain">
+      <strong class="touch-sheet-header-title">전체 메뉴</strong>
+      <button type="button" class="touch-sheet-header-close" id="touchSheetGridClose" aria-label="메뉴 닫기">✕</button>
+    </div>
+    <div class="touch-sheet-grid" id="touchSheetGrid"></div>
+  `;
+  sidebarEl.insertBefore(gridView, sidebarEl.firstChild);
+
+  const categoryView = document.createElement('div');
+  categoryView.id = 'touchSheetCategoryView';
+  categoryView.style.display = 'none';
+  categoryView.innerHTML = `
+    <div class="touch-sheet-header" id="touchSheetCategoryHeader">
+      <div class="touch-sheet-header-back" id="touchSheetCategoryBack" aria-label="뒤로">‹</div>
+      <strong class="touch-sheet-header-title" id="touchSheetCategoryTitle"></strong>
+      <button type="button" class="touch-sheet-header-close" id="touchSheetCategoryClose" aria-label="메뉴 닫기">✕</button>
+    </div>
+    <div class="touch-sheet-category-body" id="touchSheetCategoryBody"></div>
+  `;
+  sidebarEl.insertBefore(categoryView, gridView.nextSibling);
+
+  // 카테고리를 열 때 body로 옮기기 전, 원래 있던 자리(부모 .home-section-row)를 기억해뒀다가 닫힐 때
+  // 정확히 그 자리로 되돌리는 저장소 - 데스크탑 레일모드의 railHomeMap과 같은 방식(별도 WeakMap이라
+  // 서로 부딪히지 않음 - 터치/레일은 기기 하나에서 동시에 켜질 수 없음)
+  const touchHomeMap = new WeakMap();
+  let activeCategoryTiles = null;
+  // 즐겨찾기는 라벨 옆에 "⇅ 순서" 버튼이 하나 더 있는데, .home-tiles만 옮기면 그 버튼은 숨겨진
+  // .home-menu-col 안에 남아 터치에서 순서 편집을 할 수 없게 됨 - 카테고리 헤더로 같이 옮겨줌(복제 아님,
+  // 기존 클릭 동작 그대로 유지)
+  let favReorderBtnHome = null;
+
+  function restoreMovedTiles(){
+    if(activeCategoryTiles){
+      const home = touchHomeMap.get(activeCategoryTiles);
+      if(home && home.parent) home.parent.appendChild(activeCategoryTiles);
+      activeCategoryTiles = null;
+    }
+    if(favReorderBtnHome){
+      const reorderBtn = document.getElementById('homeFavReorderBtn');
+      if(reorderBtn) favReorderBtnHome.appendChild(reorderBtn);
+      favReorderBtnHome = null;
+    }
+  }
+  function showGridView(){
+    gridView.style.display = '';
+    categoryView.style.display = 'none';
+  }
+  function showCategoryView(){
+    gridView.style.display = 'none';
+    categoryView.style.display = '';
+  }
+  function closeSheet(){
+    sidebarEl.classList.remove('mobile-sidebar-open');
+    // 실제 복구(옮긴 .home-tiles 되돌리기, 그리드 화면으로 리셋)는 아래 MutationObserver가 클래스 변화
+    // 자체를 지켜보다가 처리함 - 이 버튼으로 닫든, 배경을 탭해서 닫든, 메뉴 항목을 눌러 화면이 바뀌면서
+    // 기존 코드가 알아서 닫는 경우(activateTab 등)든 전부 같은 한 곳에서 항상 똑같이 처리됨
+  }
+  function openGrid(){
+    restoreMovedTiles();
+    showGridView();
+    sidebarEl.classList.add('mobile-sidebar-open');
+  }
+  function backToGrid(){
+    restoreMovedTiles();
+    showGridView();
+  }
+  function openCategory(rowId){
+    const row = rowEl(rowId);
+    if(!row) return;
+    const tiles = row.querySelector('.home-tiles');
+    if(!tiles){
+      // 홈처럼 하위메뉴가 없는 항목(눌러야 할 하위 목록이 없음) - 시트를 열 필요 없이 바로 그 화면으로 이동
+      closeSheet();
+      row.click();
+      return;
+    }
+    restoreMovedTiles();
+    if(!touchHomeMap.has(tiles)) touchHomeMap.set(tiles, { parent: tiles.parentNode });
+    document.getElementById('touchSheetCategoryBody').appendChild(tiles);
+    activeCategoryTiles = tiles;
+    const titleEl = document.getElementById('touchSheetCategoryTitle');
+    if(titleEl) titleEl.textContent = textOf(row);
+    if(rowId === 'homeFavoritesSection'){
+      const reorderBtn = document.getElementById('homeFavReorderBtn');
+      const closeBtn = document.getElementById('touchSheetCategoryClose');
+      if(reorderBtn && closeBtn){
+        favReorderBtnHome = reorderBtn.parentNode;
+        closeBtn.parentNode.insertBefore(reorderBtn, closeBtn);
+      }
+    }
+    showCategoryView();
+    sidebarEl.classList.add('mobile-sidebar-open');
+  }
+
+  // ── 전체 메뉴 그리드 - 실제 사이드바 카테고리 11개를 그대로(순서 그대로) 아이콘+글자로 나열함.
+  // 색 배경 박스 대신 탭바와 같은 얇은 line-icon으로 통일감을 맞춤(CSS의 .touch-sheet-grid-item 참고) ──
+  const grid = document.getElementById('touchSheetGrid');
+  allCategoryRows().forEach(row=>{
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'touch-sheet-grid-item';
+    const badgeHtml = row.id === 'homeSectionApproval' ? '<span class="approval-doc-badge" id="touchGridApprovalBadge" style="display:none;"></span>' : '';
+    btn.innerHTML = `${svgHtmlOf(row)}<span class="touch-sheet-grid-item-label">${textOf(row)}</span>${badgeHtml}`;
+    btn.addEventListener('click', ()=> openCategory(row.id));
+    grid.appendChild(btn);
+  });
+
+  document.getElementById('touchSheetGridClose').addEventListener('click', closeSheet);
+  document.getElementById('touchSheetCategoryClose').addEventListener('click', closeSheet);
+  document.getElementById('touchSheetCategoryBack').addEventListener('click', backToGrid);
+
+  // ── 하단 탭바(홈/즐겨찾기/개인/결재/더보기) - 앞의 넷은 각각 바로 그 화면/목록으로 가는 지름길이고
+  // (즐겨찾기·개인·결재는 그리드를 거치지 않고 바로 하위 목록 화면으로), 더보기만 전체 그리드를 엶 ──
   const backdrop = document.createElement('div');
   backdrop.id = 'floatingMenuBackdrop';
   document.body.appendChild(backdrop);
-  const tail = document.createElement('div');
-  tail.id = 'floatingMenuTail';
-  tail.className = 'floating-menu-tail';
-  document.body.appendChild(tail);
-  // 패널 맨 위에 붙는 작은 손잡이 - 여길 끌면 패널 위치만 옮겨지고(버튼은 그대로), 놓으면 그 자리에 머묾
-  const grip = document.createElement('div');
-  grip.className = 'floating-menu-grip';
-  grip.setAttribute('aria-hidden', 'true');
-  sidebarEl.insertBefore(grip, sidebarEl.firstChild);
-  // "메뉴가 웹페이지 안에서 열리는 느낌보다 폰에 떠 있는 챗봇 팝업 느낌이면 좋겠다"는 요청 - 패널 맨
-  // 위에 버튼과 같은 마스코트 아이콘 + "메뉴" 제목을 넣어서, 목록 카드 하나가 아니라 챗봇 대화창 같은
-  // 독립된 창이 뜬 느낌이 나게 함
-  const header = document.createElement('div');
-  header.className = 'floating-menu-header';
-  header.innerHTML = `<span class="floating-menu-header-mascot">${typeof dashMascotSvg === 'function' ? dashMascotSvg('idle') : ''}</span><span class="floating-menu-header-title">메뉴</span><button type="button" class="floating-menu-header-close" aria-label="메뉴 닫기">✕</button>`;
-  sidebarEl.insertBefore(header, grip.nextSibling);
-  header.querySelector('.floating-menu-header-close')?.addEventListener('click', ()=>{
-    sidebarEl.classList.remove('mobile-sidebar-open');
+  backdrop.addEventListener('click', closeSheet);
+
+  const tabBar = document.createElement('div');
+  tabBar.id = 'floatingTabBar';
+  const TAB_ROW_IDS = ['homeGoHomeSection', 'homeFavoritesSection', 'homeSectionStaff', 'homeSectionApproval'];
+  TAB_ROW_IDS.forEach(rowId=>{
+    const row = rowEl(rowId);
+    if(!row) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'floating-tab-btn';
+    const badgeHtml = rowId === 'homeSectionApproval' ? '<span class="approval-doc-badge" id="floatingTabApprovalBadge" style="display:none;"></span>' : '';
+    btn.innerHTML = `${svgHtmlOf(row)}<span class="floating-tab-btn-label">${textOf(row)}</span>${badgeHtml}`;
+    btn.addEventListener('click', ()=> openCategory(rowId));
+    tabBar.appendChild(btn);
   });
-  // 챗봇 버튼처럼 누른 자리 근처에 풍선 메뉴가 뜨도록, 열릴 때마다 지금 버튼 위치를 기준으로 패널의
-  // top/left를 계산해서 인라인 스타일로 넣어줌 - 버튼이 화면 아래쪽에 있으면 패널이 버튼 위로, 위쪽에
-  // 있으면 버튼 아래로 뜨게 하고, 좌우로는 화면 밖으로 안 나가게 안쪽으로 당김. 패널과 버튼이 좀
-  // 떨어져 있어도 "연결된 메뉴"라는 느낌이 나도록 버튼을 향한 작은 꼬리도 같이 붙여줌
-  function positionFloatingMenuPanel(){
-    const btnRect = btn.getBoundingClientRect();
-    const panelW = sidebarEl.offsetWidth || 280;
-    const vw = window.innerWidth || 360, vh = window.innerHeight || 640;
-    const GAP = 10;
-    let left = btnRect.left + btnRect.width/2 - panelW/2;
-    left = clamp(left, EDGE_MARGIN, vw - panelW - EDGE_MARGIN);
-    const spaceAbove = btnRect.top - GAP;
-    const spaceBelow = vh - btnRect.bottom - GAP;
-    let top, placedAbove;
-    if(spaceAbove >= 200 || spaceAbove >= spaceBelow){
-      // 버튼 위로 띄우되, 패널이 위쪽 화면 밖으로 넘치면 그만큼 안으로 당김
-      placedAbove = true;
-      const panelH = Math.min(sidebarEl.scrollHeight || 400, vh*0.64, 480);
-      top = Math.max(EDGE_MARGIN, btnRect.top - GAP - panelH);
-    } else {
-      placedAbove = false;
-      top = btnRect.bottom + GAP;
-    }
-    sidebarEl.style.left = `${left}px`;
-    sidebarEl.style.top = `${top}px`;
-    const panelRect = sidebarEl.getBoundingClientRect();
-    const tailMargin = 16;
-    const tailCenterX = clamp(btnRect.left + btnRect.width/2, panelRect.left + tailMargin, panelRect.right - tailMargin);
-    tail.style.left = `${tailCenterX - 9}px`;
-    tail.classList.remove('tail-up', 'tail-down');
-    if(placedAbove){
-      tail.classList.add('tail-down');
-      tail.style.top = `${panelRect.bottom - 1}px`;
-    } else {
-      tail.classList.add('tail-up');
-      tail.style.top = `${panelRect.top - 9}px`;
-    }
-  }
-  // 사이드바에 mobile-sidebar-open 클래스가 붙고 빠지는 걸 그대로 지켜보다가 배경 막도 같이 켜고 끔(투명해도
-  // 바깥 탭으로 닫는 역할은 여전히 함) - 이 버튼을 눌러서 열 때뿐 아니라, 메뉴 항목을 눌러 다른 화면으로
-  // 넘어가면서 기존 코드가 알아서 사이드바를 닫는 경우(activateTab 등)에도 따로 손댈 필요 없이 항상
-  // backdrop 상태가 맞게 따라오고, 열릴 때마다 위치도 다시 계산됨
-  const syncBackdrop = ()=>{
+  const moreBtn = document.createElement('button');
+  moreBtn.type = 'button';
+  moreBtn.className = 'floating-tab-btn floating-tab-btn-more';
+  moreBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span class="floating-tab-btn-label">더보기</span>';
+  moreBtn.addEventListener('click', openGrid);
+  tabBar.appendChild(moreBtn);
+  document.body.appendChild(tabBar);
+
+  // 사이드바(=바텀시트)에 mobile-sidebar-open 클래스가 붙고 빠지는 걸 그대로 지켜보다가 배경 막도 같이
+  // 켜고 끄고, 닫힐 때는 옮겨둔 .home-tiles/순서 버튼을 원래 자리로 되돌리고 다음에 다시 열면 항상
+  // 그리드 화면부터 보이도록 리셋함(예: 카테고리 하위 항목을 눌러 화면이 바뀌면서 기존 코드가 알아서
+  // 시트를 닫는 경우에도 - 위 closeSheet()를 거치지 않고 클래스만 직접 지워도 - 여기서 한 곳에 모여
+  // 똑같이 처리됨)
+  const syncSheetState = ()=>{
     const isOpen = sidebarEl.classList.contains('mobile-sidebar-open');
     backdrop.classList.toggle('is-open', isOpen);
-    tail.classList.toggle('is-open', isOpen);
-    // 메뉴가 펼쳐지면 그 아래 깔린 "메뉴 열기" 버튼이 패널 밑단과 겹쳐 보인다는 지적 -
-    // 열려있는 동안은 버튼 자체를 살짝 사라지게(페이드+축소) 숨겨서 겹침을 없앰
-    btn.classList.toggle('is-hidden', isOpen);
-    if(isOpen) positionFloatingMenuPanel();
-  };
-  new MutationObserver(syncBackdrop).observe(sidebarEl, { attributes:true, attributeFilter:['class'] });
-  syncBackdrop();
-  backdrop.addEventListener('click', ()=>{ sidebarEl.classList.remove('mobile-sidebar-open'); });
-  window.addEventListener('resize', ()=>{
-    if(sidebarEl.classList.contains('mobile-sidebar-open')) positionFloatingMenuPanel();
-  });
-
-  // 화면 맨 가장자리(특히 아래쪽)에는 요즘 휴대폰의 "홈 화면으로 스와이프"/뒤로가기 제스처 영역이
-  // 겹쳐있어서, 버튼/패널을 거기 너무 붙여두면 터치가 그 제스처로 먹혀버려 "눌러도 반응이 없는"
-  // 것처럼 보일 수 있었음 - 여백을 넉넉히 둬서 그 영역을 피하게 함
-  const EDGE_MARGIN = 18;
-  function clamp(v, min, max){ return Math.min(max, Math.max(min, v)); }
-
-  // 버튼은 이제 은행앱/챗봇 아이콘처럼 화면 왼쪽 아래 한 자리에 고정 - CSS(#floatingMenuBtn)에서
-  // bottom/left로 위치를 잡아주므로 여기서는 손대지 않음
-  // 짧은 시간 안에 토글이 또 불리면(중복 이벤트로 두 번 불려도) 무시해서 "열렸다가 바로 닫힘"처럼
-  // 보이는 걸 막아둠
-  let lastToggleAt = 0;
-  function toggleSidebar(){
-    const now = Date.now();
-    if(now - lastToggleAt < 350) return;
-    lastToggleAt = now;
-    sidebarEl.classList.toggle('mobile-sidebar-open');
-  }
-  btn.addEventListener('click', toggleSidebar);
-
-  // 패널 손잡이(grip) 드래그 - 버튼은 고정, 대신 열린 패널만 필요하면 끌어서 옮길 수 있게 함. 놓은
-  // 자리에 그대로 머물고, 다음에 버튼을 다시 눌러 새로 열면 버튼 근처 기본 위치로 되돌아옴
-  const TAP_THRESHOLD = 10;
-  let gDragging = false, gMoved = false, gStartX = 0, gStartY = 0, gStartLeft = 0, gStartTop = 0, gPointerId = null;
-  function gripPointerDown(e){
-    gDragging = true; gMoved = false;
-    gPointerId = e.pointerId;
-    gStartX = e.clientX; gStartY = e.clientY;
-    const r = sidebarEl.getBoundingClientRect();
-    gStartLeft = r.left; gStartTop = r.top;
-    try{ grip.setPointerCapture(gPointerId); }catch(err){}
-  }
-  function gripPointerMove(e){
-    if(!gDragging || e.pointerId !== gPointerId) return;
-    const dx = e.clientX - gStartX, dy = e.clientY - gStartY;
-    if(Math.abs(dx) > TAP_THRESHOLD || Math.abs(dy) > TAP_THRESHOLD){
-      if(!gMoved){
-        gMoved = true;
-        // 드래그가 시작되는 순간, 버튼을 향하던 꼬리는 더 이상 위치가 안 맞으므로 숨김(다음에 새로
-        // 열 때 원래 위치로 뜨면서 다시 나타남)
-        tail.classList.remove('is-open');
-      }
-      const panelW = sidebarEl.offsetWidth || 280, panelH = sidebarEl.offsetHeight || 400;
-      const vw = window.innerWidth || 360, vh = window.innerHeight || 640;
-      const left = clamp(gStartLeft + dx, EDGE_MARGIN, vw - panelW - EDGE_MARGIN);
-      const top = clamp(gStartTop + dy, EDGE_MARGIN, vh - panelH - EDGE_MARGIN);
-      sidebarEl.style.left = `${left}px`;
-      sidebarEl.style.top = `${top}px`;
-      if(e.cancelable) e.preventDefault();
+    tabBar.classList.toggle('is-hidden', isOpen);
+    if(!isOpen){
+      restoreMovedTiles();
+      showGridView();
     }
+  };
+  new MutationObserver(syncSheetState).observe(sidebarEl, { attributes:true, attributeFilter:['class'] });
+  syncSheetState();
+
+  // 결재 안읽음 배지(#homeSideApprovalTotalCount)는 숨겨진 .home-menu-col 안에만 있어서, 그 숫자를
+  // 탭바·그리드의 "결재" 아이콘 옆에도 똑같이 보이도록 복제해서 따라가게 함(업무 로직(setPill)은 그대로
+  // 두고, 그 결과 값만 지켜보다가 그대로 옮겨 적음)
+  function mirrorApprovalBadge(){
+    const src = document.getElementById('homeSideApprovalTotalCount');
+    if(!src) return;
+    const text = src.textContent || '';
+    const shown = src.style.display !== 'none' && !!text;
+    ['floatingTabApprovalBadge', 'touchGridApprovalBadge'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(!el) return;
+      el.textContent = text;
+      el.style.display = shown ? 'inline-flex' : 'none';
+    });
   }
-  function gripPointerUp(e){
-    if(!gDragging || (gPointerId !== null && e.pointerId !== gPointerId)) return;
-    gDragging = false;
-    try{ grip.releasePointerCapture(gPointerId); }catch(err){}
-    gPointerId = null;
+  const approvalBadgeSrc = document.getElementById('homeSideApprovalTotalCount');
+  if(approvalBadgeSrc){
+    new MutationObserver(mirrorApprovalBadge).observe(approvalBadgeSrc, { attributes:true, attributeFilter:['style'], childList:true, characterData:true, subtree:true });
+    mirrorApprovalBadge();
   }
-  grip.addEventListener('pointerdown', gripPointerDown);
-  grip.addEventListener('pointermove', gripPointerMove);
-  grip.addEventListener('pointerup', gripPointerUp);
-  grip.addEventListener('pointercancel', gripPointerUp);
 })();
 
 // ===== PC 화면 보기 토글 =====
@@ -16449,36 +16632,17 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
     const raw = Math.round(5 / Math.max(scale, 0.05));
     return Math.min(12, Math.max(7, raw));
   }
-  // 메뉴 버튼(#floatingMenuBtn) 크기 - "실제 화면에서 몇 px로 보이고 싶은지"를 먼저 정하고(52~68px 사이,
-  // 화면폭의 16%), 그 값을 지금 축소 배율의 역수만큼 미리 키운 CSS px로 환산해서 넣어줌(touchPadPx와
-  // 같은 방식) - 처음엔 이 자리에 CSS zoom을 패널 전체에 걸어 한 번에 해결해보려 했는데, position:fixed +
-  // 가운데 정렬용 transform(translate(-50%, …))과 zoom이 같이 걸리면 브라우저가 패널 위치를 화면 밖
-  // 수천 px 밖으로 계산해버리는 심각한 버그가 있어서(버튼처럼 transform 없이 위치만 고정된 요소는 zoom과
-  // 같이 써도 멀쩡했지만, 패널은 transform으로 가운데 정렬 + 슬라이드 애니메이션을 같이 쓰다 보니 문제가
-  // 됨) 포기하고, 기존처럼 요소별로 필요한 값만 미리 계산해 넣는 방식으로 되돌림
-  function floatingBtnSizePx(on){
-    if(!REAL_WIDTH) return { box:62, font:9.3 };
-    const scale = on ? (REAL_WIDTH / PC_VIEW_WIDTH) : 1;
-    const scaleInv = 1 / Math.max(scale, 0.05);
-    const desiredRealBox = Math.min(68, Math.max(52, REAL_WIDTH * 0.16));
-    const desiredRealFont = desiredRealBox * 0.15;
-    return { box: desiredRealBox * scaleInv, font: desiredRealFont * scaleInv };
-  }
-  // 메뉴 패널(바텀시트) 너비도 같은 이유로 그냥 "440px"라고 못박으면 안 됨(자세한 이유는 위 touchPadPx
-  // 주석 참고) - "실제 화면에서 최대 몇 px까지"(440px)를 정해두고 축소 배율의 역수로 환산해 상한선으로 씀
+  // 메뉴 패널(바텀시트) 너비를 그냥 "440px"라고 못박으면 안 됨(자세한 이유는 위 touchPadPx 주석 참고) -
+  // "실제 화면에서 최대 몇 px까지"(440px)를 정해두고 축소 배율의 역수로 환산해 상한선으로 씀. 예전엔 이
+  // 자리에 메뉴 버튼 크기(floatingBtnSizePx)·패널 헤더 크기(floatingHeaderSizePx)도 따로 계산해 넣었는데,
+  // 떠다니는 버튼+전용 헤더 방식을 하단 탭바+그리드/목록 방식으로 바꾸면서 그 새 요소들은 전부 아래
+  // touchFontScale과 같은 배율을 calc()로 곱하는 공통 방식(--touch-font-scale)만으로 충분해져서
+  // 요소별 전용 함수가 더 이상 필요 없어짐
   function floatingPanelMaxPx(on){
     if(!REAL_WIDTH) return 440;
     const scale = on ? (REAL_WIDTH / PC_VIEW_WIDTH) : 1;
     const scaleInv = 1 / Math.max(scale, 0.05);
     return 440 * scaleInv;
-  }
-  // 패널 맨 위 "메뉴" 제목 줄(마스코트 아이콘 + 글자)도 같은 방식 - 실제 화면 기준 목표 크기(아이콘 26px,
-  // 글자 15px)를 정하고 축소 배율의 역수로 환산해서 넣어줌
-  function floatingHeaderSizePx(on){
-    if(!REAL_WIDTH) return { icon:26, font:15 };
-    const scale = on ? (REAL_WIDTH / PC_VIEW_WIDTH) : 1;
-    const scaleInv = 1 / Math.max(scale, 0.05);
-    return { icon: 26 * scaleInv, font: 15 * scaleInv };
   }
   // "메뉴 텍스트가 너무 작다"는 제보 - 버튼/제목뿐 아니라 실제 메뉴 목록 글자(카테고리 알약, 하위 항목
   // 등 앱 전역에서 재사용하는 일반 CSS)도 같은 이유로 축소돼서 그려지고 있었음. --touch-pad(터치 영역
@@ -16492,13 +16656,7 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
     if(viewportMeta) viewportMeta.setAttribute('content', on ? `width=${PC_VIEW_WIDTH}` : 'width=device-width, initial-scale=1.0');
     document.documentElement.style.setProperty('--touch-pad', `${touchPadPx(on)}px`);
     document.documentElement.style.setProperty('--touch-font-scale', `${touchFontScale(on)}`);
-    const btnSize = floatingBtnSizePx(on);
-    document.documentElement.style.setProperty('--floating-menu-btn-size', `${btnSize.box.toFixed(2)}px`);
-    document.documentElement.style.setProperty('--floating-menu-btn-font', `${btnSize.font.toFixed(2)}px`);
     document.documentElement.style.setProperty('--floating-menu-panel-max', `${floatingPanelMaxPx(on).toFixed(2)}px`);
-    const headerSize = floatingHeaderSizePx(on);
-    document.documentElement.style.setProperty('--floating-menu-header-icon', `${headerSize.icon.toFixed(2)}px`);
-    document.documentElement.style.setProperty('--floating-menu-header-font', `${headerSize.font.toFixed(2)}px`);
     if(pcViewBtn){
       pcViewBtn.title = on ? '컴퓨터 화면처럼 보는 중 · 눌러서 휴대폰 화면으로 돌아가기' : '눌러서 컴퓨터 화면처럼 보기(확대해서 필요한 부분 보기)';
       pcViewBtn.classList.toggle('pc-view-active', on);
