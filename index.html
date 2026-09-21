@@ -1881,14 +1881,16 @@
   #clientsTerminatedListWrap .table-scroll{
     max-height:none; overflow-y:visible; overflow-x:auto;
   }
-  /* 위 overflow:visible로 바뀌면서 이 표들의 sticky 헤더는 이제 "박스" 기준이 아니라 "페이지(뷰포트)" 기준으로
-     동작함 - 그런데 화면 맨 위(top:0)엔 이미 홈~휴지통 아이콘 줄(#appTopIconBar)이 sticky로 떠서 그 자리를
-     차지하고 있어서, 표 헤더도 top:0으로 붙으면 그 아이콘 줄 뒤에 완전히 가려져(z-index가 더 낮음) 스크롤하면
-     헤더 자체가 통째로 사라진 것처럼 보였음. 아이콘 줄의 실제 높이(--top-bar-h, JS에서 계산해 넣어줌)만큼
-     아래로 내려서 붙게 해서 아이콘 줄 바로 밑에 표 헤더가 겹치지 않고 보이게 함 */
+  /* 처음엔 위 overflow:visible로 바뀌면서 이 표들의 sticky 헤더가 "박스"가 아니라 "페이지(뷰포트)" 기준으로
+     동작할 거라 보고 top을 아이콘 줄 높이(--top-bar-h)만큼 내려 붙였는데, 실제로는 overflow-x:auto 때문에
+     overflow-y도 같이 auto로 바뀌면서 이 박스 자체가 스크롤 컨테이너가 돼버려 sticky 기준이 여전히 "박스"
+     쪽으로 잡힘 - 그런데 박스엔 max-height가 없어서 별도로 스크롤되진 않고 페이지랑 같이 움직이다보니,
+     PC에서(특히 PC 보기 모드로 화면을 축소해 보여줄 때) 헤더가 제자리에 안 붙고 표 중간 행 위에 둥 떠서
+     겹쳐 보이는 이상현상으로 이어짐(제보: 순번~폴더 헤더 줄이 2~3번째 행 위에 겹쳐 보임). 헤더를 굳이
+     화면에 고정해 둘 필요까지는 없는 표라, 아예 sticky를 끄고 표 맨 위에 얌전히 있게 함 */
   #clientsRegularListWrap .table-scroll thead th, #clientsOtherListWrap .table-scroll thead th,
   #clientsTerminatedListWrap .table-scroll thead th{
-    top:var(--top-bar-h, 0px);
+    position:static;
   }
   .table-scroll table{box-shadow:none; border-radius:0; table-layout:auto; overflow:visible;}
   .table-scroll th, .table-scroll td{white-space:nowrap; padding:8px 9px; font-size:13px; text-align:center;}
@@ -3583,6 +3585,7 @@
             <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-exclusionDays"><span>제외일수</span></div>
             <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-staffLeave"><span>직원휴가</span></div>
             <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-specialPeriod"><span>특별기간</span></div>
+            <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-workHourExceptions"><span>근무시간 예외기간</span></div>
             <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-taxSchedule"><span>세무일정</span></div>
             <div class="home-submenu-item" data-settings-anchor-goto="welfare" data-settings-target-id="ssTitle-notifications"><span>알림</span></div>
           </div>
@@ -5892,6 +5895,8 @@ let sharedVatFilingTargets = {};
 let sharedVatReviewFigures = {};
 // 세무일정 관리: 기본 제공 항목의 특정 회차(연-월)만 날짜를 직접 고쳐둔 값 - { [ruleId:YYYY-MM]: 'YYYY-MM-DD' }
 let sharedTaxScheduleOverrides = {};
+// 세무일정 관리: 국세청 연동 항목의 날짜를 직접 고칠 때마다 남기는 수정이력 - { [ruleId:YYYY-MM]: [{date, changes:[{label,before,after}], reason}, ...] } (최신이 배열 맨 앞)
+let sharedTaxScheduleOverrideHistory = {};
 // 세무일정 관리: 회사가 직접 등록한 일정 - [{id, title, recurrence:'once'|'monthly'|'annual', date, day, month}]
 let sharedTaxScheduleCustomItems = [];
 function loadSharedData(){
@@ -5963,6 +5968,7 @@ function loadSharedData(){
   try{ sharedVatFilingTargets = JSON.parse(localStorage.getItem('worklog_shared_vatfilingtargets') || '{}') || {}; }catch(e){ sharedVatFilingTargets = {}; }
   try{ sharedVatReviewFigures = JSON.parse(localStorage.getItem('worklog_shared_vatreviewfigures') || '{}') || {}; }catch(e){ sharedVatReviewFigures = {}; }
   try{ sharedTaxScheduleOverrides = JSON.parse(localStorage.getItem('worklog_shared_taxschedule_overrides') || '{}') || {}; }catch(e){ sharedTaxScheduleOverrides = {}; }
+  try{ sharedTaxScheduleOverrideHistory = JSON.parse(localStorage.getItem('worklog_shared_taxschedule_override_history') || '{}') || {}; }catch(e){ sharedTaxScheduleOverrideHistory = {}; }
   try{ sharedTaxScheduleCustomItems = JSON.parse(localStorage.getItem('worklog_shared_taxschedule_custom') || '[]') || []; }catch(e){ sharedTaxScheduleCustomItems = []; }
   const prevManageVerifierRaw = JSON.stringify(sharedManageVerifier);
   try{ sharedManageSalt = localStorage.getItem('worklog_shared_managesalt') || ''; }catch(e){ sharedManageSalt = ''; }
@@ -6687,6 +6693,7 @@ async function saveSharedIncomeTaxFilingStatus(){ try{ localStorage.setItem('wor
 async function saveSharedVatFilingTargets(){ try{ localStorage.setItem('worklog_shared_vatfilingtargets', JSON.stringify(sharedVatFilingTargets)); }catch(e){ console.error('신고대상(부가세) 저장 실패', e); } touchSharedField('vatFilingTargets'); gdriveScheduleSync(); }
 async function saveSharedVatReviewFigures(){ try{ localStorage.setItem('worklog_shared_vatreviewfigures', JSON.stringify(sharedVatReviewFigures)); }catch(e){ console.error('검토표(부가세) 저장 실패', e); } touchSharedField('vatReviewFigures'); gdriveScheduleSync(); }
 async function saveSharedTaxScheduleOverrides(){ try{ localStorage.setItem('worklog_shared_taxschedule_overrides', JSON.stringify(sharedTaxScheduleOverrides)); }catch(e){ console.error('세무일정 수정 저장 실패', e); } touchSharedField('taxScheduleOverrides'); gdriveScheduleSync(); }
+async function saveSharedTaxScheduleOverrideHistory(){ try{ localStorage.setItem('worklog_shared_taxschedule_override_history', JSON.stringify(sharedTaxScheduleOverrideHistory)); }catch(e){ console.error('세무일정 수정이력 저장 실패', e); } touchSharedField('taxScheduleOverrideHistory'); gdriveScheduleSync(); }
 async function saveSharedTaxScheduleCustomItems(){ try{ localStorage.setItem('worklog_shared_taxschedule_custom', JSON.stringify(sharedTaxScheduleCustomItems)); }catch(e){ console.error('세무일정 등록항목 저장 실패', e); } touchSharedField('taxScheduleCustomItems'); gdriveScheduleSync(); }
 async function saveSharedManagePassword(){
   try{
