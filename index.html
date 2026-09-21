@@ -357,26 +357,44 @@
   #floatingTabBar{
     display:none; position:fixed; left:50%; bottom:0; transform:translateX(-50%);
     width:100%; max-width:min(100%, var(--floating-menu-panel-max, 440px));
-    padding:6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+    padding:9px 6px calc(9px + env(safe-area-inset-bottom, 0px));
     background:rgba(255,255,255,0.86); -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%);
     border-top:1.5px solid rgba(255,255,255,0.6); box-shadow:0 -6px 24px -10px rgba(15,16,30,0.35);
     align-items:stretch; justify-content:space-between; gap:2px;
     z-index:999997; -webkit-tap-highlight-color:transparent;
   }
   html.is-touch-device #floatingTabBar{ display:flex; }
+  /* "대메뉴(하단 탭바) 세로폭이 여유가 없어 보인다"는 제보 - 버튼 위아래 패딩과 바 자체의 위아래 패딩을
+     늘려 아이콘/글자가 답답하게 붙어 보이지 않도록 줄바꿈 여유를 더 줌 */
   .floating-tab-btn{
-    flex:1 1 0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
-    background:none; border:none; cursor:pointer; padding:6px 2px 4px; border-radius:12px; position:relative;
+    flex:1 1 0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    background:none; border:none; cursor:pointer; padding:9px 2px 7px; border-radius:12px; position:relative;
     color:var(--ink-soft); user-select:none;
   }
   .floating-tab-btn:active{ background:rgba(29,30,51,0.06); }
+  /* 아이콘 크기 자체(원래 20px)는 그대로 두되, 배지가 아이콘 바로 위에 겹쳐 그려지던 문제를 고치기 위해
+     아이콘을 자체 크기만큼의 작은 래퍼(.floating-tab-icon-wrap)로 감싸 놓음 - 배지 위치를 "버튼 전체 폭의
+     50%"가 아니라 "이 아이콘 래퍼의 오른쪽 위 모서리"를 기준으로 잡을 수 있게 됨(아래 참고) */
+  .floating-tab-icon-wrap{
+    position:relative; display:inline-flex; flex:none;
+    width:calc(20px * var(--touch-font-scale, 1)); height:calc(20px * var(--touch-font-scale, 1));
+  }
   .floating-tab-btn svg{
     width:calc(20px * var(--touch-font-scale, 1)); height:calc(20px * var(--touch-font-scale, 1)); flex:none;
   }
   .floating-tab-btn-label{ font-size:calc(10.5px * var(--touch-font-scale, 1)); font-weight:700; line-height:1; }
-  .floating-tab-btn .approval-doc-badge{
-    position:absolute; top:2px; right:calc(50% - 20px); margin-left:0;
-    font-size:calc(9px * var(--touch-font-scale, 1));
+  /* "배지 숫자가 잘 안 보인다"는 제보 - 두 가지가 같이 겹쳐서 그랬음. (1) 예전엔 배지 위치를 버튼 전체
+     너비 기준(right:calc(50% - 20px))으로 잡아서, 실제로는 아이콘(20px) 바로 위에 배지가 완전히 겹쳐져
+     그려졌음(펜 아이콘의 회색 대각선 획이 빨간 배지 원 뒤로 그대로 비쳐서 숫자와 뒤섞여 보였음) - 위
+     .floating-tab-icon-wrap 기준으로 그 오른쪽 위 모서리 "바깥"에 살짝 걸치도록(translate로 원 절반을
+     모서리 밖으로 빼냄) 옮겨서 아이콘과 안 겹치게 함. (2) 겹침을 없애고 봐도 배지 자체(15px, 글자 9px)가
+     너무 작아서 숫자가 뭉개져 보였음 - min-width/height와 글자 크기를 한 단계 키움(흰 테두리는 배경과 살짝
+     떨어뜨려 보이게 하는 용도) */
+  .floating-tab-icon-wrap .approval-doc-badge{
+    position:absolute; top:0; right:0; margin-left:0; transform:translate(48%, -48%);
+    min-width:calc(17px * var(--touch-font-scale, 1)); height:calc(17px * var(--touch-font-scale, 1));
+    font-size:calc(10.5px * var(--touch-font-scale, 1));
+    box-shadow:0 0 0 1.5px rgba(255,255,255,0.92);
   }
   .floating-tab-btn-more svg{ color:var(--indigo); }
   /* 탭바 z-index가 시트(#appSidebar, 9600)보다 높아서(999997) 시트가 열려있는 동안은 탭바가 그 위에
@@ -443,15 +461,23 @@
     color:var(--ink-soft);
   }
   .touch-sheet-grid-item:active{ background:rgba(29,30,51,0.06); }
+  .touch-sheet-grid-icon-wrap{
+    position:relative; display:inline-flex; flex:none;
+    width:calc(21px * var(--touch-font-scale, 1)); height:calc(21px * var(--touch-font-scale, 1));
+  }
   .touch-sheet-grid-item svg{
     width:calc(21px * var(--touch-font-scale, 1)); height:calc(21px * var(--touch-font-scale, 1)); flex:none;
   }
   .touch-sheet-grid-item-label{
     font-size:calc(11.5px * var(--touch-font-scale, 1)); font-weight:700; color:var(--ink); text-align:center; line-height:1.25;
   }
-  .touch-sheet-grid-item .approval-doc-badge{
-    position:absolute; top:4px; right:calc(50% - 26px); margin-left:0;
-    font-size:calc(9px * var(--touch-font-scale, 1));
+  /* 탭바 배지와 같은 이유(아이콘과 겹쳐 숫자가 잘 안 보이던 문제)로, 아이콘 래퍼의 오른쪽 위 모서리
+     바깥으로 살짝 걸치도록 옮김 */
+  .touch-sheet-grid-icon-wrap .approval-doc-badge{
+    position:absolute; top:0; right:0; margin-left:0; transform:translate(44%, -44%);
+    min-width:calc(17px * var(--touch-font-scale, 1)); height:calc(17px * var(--touch-font-scale, 1));
+    font-size:calc(10.5px * var(--touch-font-scale, 1));
+    box-shadow:0 0 0 1.5px rgba(255,255,255,0.92);
   }
   .touch-sheet-category-body{ display:flex; flex-direction:column; }
   /* 즐겨찾기 카테고리를 열면 "⇅ 순서" 버튼이 흰 사이드바 배경용 색(어두운 회색)을 그대로 가진 채
@@ -7686,6 +7712,14 @@ setInterval(checkClockReminderTick, 20000);
 
 // 동기화로 공지 목록이 갱신될 때마다 호출됨 - 내가 아직 알림받지 않은 새 공지(남이 쓴 글)가 있으면 브라우저 알림을 띄움
 function checkNewNoticesForBrowserNotify(){
+  // 로그인 직후 맨 처음 한 번은(구글 이메일을 아직 확인하기 전) currentStaffDisplayName()이 "내가 누군지"를
+  // 정확히 몰라서 임시로 기본값("직원")을 대신 돌려줄 수 있음(결재 쪽의 checkNewApprovalsForBrowserNotify가
+  // currentUserEmail이 없으면 아예 건너뛰는 것과 같은 문제) - 그 상태로 아래 "내가 쓴 글은 빼고" 필터를
+  // 돌리면, 실제로는 내가 쓴 공지인데도 "다른 사람이 쓴 새 공지"로 잘못 판정해서 알림함(전체 공개, targetEmail:'*')에
+  // 잘못 기록해버릴 수 있음(한 번 잘못 기록되면 이후엔 정확한 이름으로 다시 불러도 이미 쌓인 그 기록이
+  // 저절로 지워지진 않음) - 로그인 이메일을 아직 모르는 이 이른 시점엔 아예 건너뛰고, 진짜 로그인이
+  // 끝난 뒤(afterGdriveConnected의 renderAll 등)에 정확한 이름으로 다시 불렸을 때만 판정함
+  if(!currentUserEmail) return;
   // 데스크톱 알림(브라우저 팝업) 권한과 상관없이, 새 공지는 항상 알림함(알림 목록)에는 기록해둠
   const me0 = currentStaffDisplayName();
   (sharedNoticeHistory||[]).filter(n=>(n.authorName||'')!==me0).forEach(n=>{
@@ -16516,8 +16550,10 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'touch-sheet-grid-item';
+    // 탭바와 같은 이유로(위 floating-tab-icon-wrap 주석 참고) 배지가 아이콘과 겹쳐 보이지 않도록 아이콘
+    // 전용 래퍼 안에 같이 넣음
     const badgeHtml = row.id === 'homeSectionApproval' ? '<span class="approval-doc-badge" id="touchGridApprovalBadge" style="display:none;"></span>' : '';
-    btn.innerHTML = `${svgHtmlOf(row)}<span class="touch-sheet-grid-item-label">${textOf(row)}</span>${badgeHtml}`;
+    btn.innerHTML = `<span class="touch-sheet-grid-icon-wrap">${svgHtmlOf(row)}${badgeHtml}</span><span class="touch-sheet-grid-item-label">${textOf(row)}</span>`;
     btn.addEventListener('click', ()=> openCategory(row.id));
     grid.appendChild(btn);
   });
@@ -16542,8 +16578,10 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'floating-tab-btn';
+    // 배지(결재 탭의 미확인 건수)를 아이콘 자체와 겹치지 않게 아이콘 전용 래퍼(.floating-tab-icon-wrap) 안에
+    // 같이 넣어서, 그 래퍼의 오른쪽 위 모서리 밖으로 살짝 걸치게 그려지도록 함(위 CSS 주석 참고)
     const badgeHtml = rowId === 'homeSectionApproval' ? '<span class="approval-doc-badge" id="floatingTabApprovalBadge" style="display:none;"></span>' : '';
-    btn.innerHTML = `${svgHtmlOf(row)}<span class="floating-tab-btn-label">${textOf(row)}</span>${badgeHtml}`;
+    btn.innerHTML = `<span class="floating-tab-icon-wrap">${svgHtmlOf(row)}${badgeHtml}</span><span class="floating-tab-btn-label">${textOf(row)}</span>`;
     btn.addEventListener('click', ()=> openCategory(rowId));
     tabBar.appendChild(btn);
   });
@@ -24281,15 +24319,20 @@ document.getElementById('approvalDetailModalOverlay')?.addEventListener('click',
 // 사이드바 알림뱃지(N) + 결재함/기안함 각각의 New 표시(pill)를 한번에 갱신. 결재함은 "대기중 건수"를 그대로,
 // 기안함은 "아직 안 본 새 변화" 건수를 보여줌(markApprovalSeen으로 탭을 열면 사라짐)
 function renderApprovalAllBadges(){
-  const inboxList = myApprovalInboxList();
   const mineList = myApprovalMineList();
   const draftList = myApprovalDraftList();
   const rejectedList = myApprovalRejectedList();
+  // 결재함 배지(위 빨간 동그라미든, 아래 결재함 pill이든) 전부 "실제로 아직 결론 안 나서 내가 처리해야
+  // 하는 건수"만 세야 하는데, myApprovalInboxList()는 결재함 화면 자체는 승인·반려된 것도 같이 보여주려고
+  // 일부러 전체를 돌려주는 함수임(위 myApprovalInboxList 주석 참고) - 바로 아래 pendingCount(빨간
+  // 동그라미)는 이미 그걸 알고 myApprovalPendingInboxCount()로 따로 걸러서 썼는데, 정작 그 아래 결재함
+  // pill 두 곳(approvalInboxCount/homeSideApprovalInboxCount)은 그 필터링 없이 inboxList.length(승인·
+  // 반려 포함 전체 건수)를 그대로 써버려서, "결재함은 대기중 건수를 그대로"라는 바로 위 함수 설명과 다르게
+  // 한 번 결재(승인/반려)해도 배지 숫자가 안 줄어들고 계속 남아있는 문제가 있었음 - "결재할 게 있어서
+  // 뜬 건지, 처리하면 없어지는지" 제보로 발견함. 두 곳 다 pendingCount를 쓰도록 통일함
+  const pendingCount = typeof myApprovalPendingInboxCount === 'function' ? myApprovalPendingInboxCount() : 0;
   const navBadge = document.getElementById('approvalPendingBadge');
   if(navBadge){
-    // 이 빨간 동그라미도 이름 그대로 "대기중" 건수를 보여주는 자리라, 결재함 전체 건수(승인·반려 포함)가
-    // 아니라 실제로 아직 결론 안 난 것만 셈(위 myApprovalPendingInboxCount 주석 참고)
-    const pendingCount = typeof myApprovalPendingInboxCount === 'function' ? myApprovalPendingInboxCount() : 0;
     navBadge.style.display = pendingCount>0 ? 'flex' : 'none';
     navBadge.textContent = String(pendingCount);
   }
@@ -24299,7 +24342,7 @@ function renderApprovalAllBadges(){
     el.style.display = count>0 ? 'inline-flex' : 'none';
     el.textContent = count>0 ? String(count) : '';
   };
-  setPill('approvalInboxCount', inboxList.length);
+  setPill('approvalInboxCount', pendingCount);
   setPill('approvalMineCount', countApprovalUnseen('mine', mineList));
   setPill('approvalDraftCount', draftList.length);
   setPill('approvalRejectedCount', countApprovalUnseen('rejected', rejectedList));
@@ -24308,11 +24351,11 @@ function renderApprovalAllBadges(){
   // 탭에 들어가기 전에도 사이드바 메뉴 글자 옆에서 바로 몇 건 있는지 보이게 해달라는 요청으로 추가함
   const rejectedUnseen = countApprovalUnseen('rejected', rejectedList);
   const mineUnseen = countApprovalUnseen('mine', mineList);
-  setPill('homeSideApprovalInboxCount', inboxList.length);
+  setPill('homeSideApprovalInboxCount', pendingCount);
   setPill('homeSideApprovalMineCount', mineUnseen);
   setPill('homeSideApprovalRejectedCount', rejectedUnseen);
   setPill('homeSideApprovalDraftCount', draftList.length);
-  setPill('homeSideApprovalTotalCount', inboxList.length + mineUnseen + rejectedUnseen + draftList.length);
+  setPill('homeSideApprovalTotalCount', pendingCount + mineUnseen + rejectedUnseen + draftList.length);
 }
 // 예전 이름(renderApprovalBadge)으로 부르는 곳이 남아있어도 그대로 동작하도록 별칭 유지
 function renderApprovalBadge(){ renderApprovalAllBadges(); }
