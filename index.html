@@ -5400,7 +5400,7 @@
       <div id="taxScheduleCustomListWrap" style="max-width:720px; margin:12px auto 0;"></div>
 
       <p class="hint" style="margin-top:18px;">
-        아래는 해당 연도의 세무일정 전체(기본 제공 + 위에서 등록한 일정)예요. 위/아래 연도 버튼으로 다른 연도도 볼 수 있고, 특정 회차의 날짜가 실제와 달라지면 "수정"으로 그 회차만 고칠 수 있어요. "되돌리기"로 원래 계산된 날짜로 다시 되돌릴 수 있어요.
+        매년 국세청 세무일정이 자동연계돼요. 세법개정 등으로 일정이 달라지면 수정도 가능해요. 만약 새로운 세무일정 또는 4대보험 일정 등 추가를 원하시면 수기로도 등록 가능해요.
       </p>
       <div id="taxScheduleUpcomingListWrap" style="max-width:720px; margin:12px auto 0;"></div>
 
@@ -18697,18 +18697,29 @@ function renderTaxScheduleUpcomingList(){
   if(!wrap) return;
   const year = taxScheduleAdminViewYear;
   const items = taxScheduleOccurrencesForYear(year);
-  const yearSwitcherHtml = `<div style="display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:10px;">
-    <button type="button" class="del-btn tax-schedule-year-prev-btn">◀ 이전 연도</button>
-    <b style="font-size:13.5px;">${year}년</b>
-    <button type="button" class="del-btn tax-schedule-year-next-btn">다음 연도 ▶</button>
+  // 위/아래 연도 버튼도 다른 화면의 전월/익월 화살표(.cal-nav-arrow)와 똑같은 아이콘 전용 스타일로 통일함 -
+  // 예전엔 이 버튼만 "◀ 이전 연도"/"다음 연도 ▶" 글자가 든 칩 버튼(.del-btn)이라 다른 화살표들과 이질적으로 보였음
+  const yearSwitcherHtml = `<div style="display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:10px;">
+    <button type="button" class="cal-nav-arrow tax-schedule-year-prev-btn" title="이전 연도"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+    <b style="font-size:13.5px; min-width:44px; text-align:center;">${year}년</b>
+    <button type="button" class="cal-nav-arrow tax-schedule-year-next-btn" title="다음 연도"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
   </div>`;
+  // 관리 칸(수정/되돌리기)도 출퇴근현황 이력표(.clock-history-row-actions)와 같은 방식으로, 평소엔 숨겨뒀다가
+  // 그 줄에 마우스를 올렸을 때만 아이콘이 나타나게 함 - 세무일정은 매번 새로 계산되는 회차라 실제로 "지우는"
+  // 개념은 없고(지우면 다음 조회 때 원래 계산된 날짜로 다시 나타남), 그 의미에 가장 가까운 동작이 "되돌리기"라
+  // 직접수정한 회차에만 되돌리기 아이콘이 같이 뜸
   const rows = items.map(it=>{
     const tag = it.overridden ? ' <span style="color:var(--coral); font-weight:700;">(직접수정)</span>' : (it.shifted ? ' <span style="color:var(--ink-soft);">(휴일 순연)</span>' : '');
-    const revertBtn = it.overridden ? `<button class="del-btn tax-schedule-revert-btn" data-id="${it.id}">되돌리기</button>` : '';
+    const revertBtn = it.overridden ? `<button type="button" class="del-btn client-icon-plain tax-schedule-revert-btn" data-id="${it.id}" title="되돌리기" style="color:var(--coral); background:transparent; border:none; padding:2px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"></path><polyline points="3 4 3 10 9 10"></polyline></svg></button>` : '';
     return `<tr>
       <td class="num">${it.date}${tag}</td>
       <td>${escHtml(it.title)}</td>
-      <td><button class="del-btn tax-schedule-override-btn" data-id="${it.id}" data-date="${it.date}" data-title="${escHtml(it.title)}">수정</button> ${revertBtn}</td>
+      <td>
+        <span class="clock-history-row-actions">
+          <button type="button" class="del-btn client-icon-plain tax-schedule-override-btn" data-id="${it.id}" data-date="${it.date}" data-title="${escHtml(it.title)}" title="수정" style="color:var(--navy); background:transparent; border:none; padding:2px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>
+          ${revertBtn}
+        </span>
+      </td>
     </tr>`;
   }).join('');
   const listHtml = items.length
