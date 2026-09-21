@@ -1860,15 +1860,18 @@
      (그래야 표가 박스 밖으로 튀어나가 보이는 대신 박스 안에서 옆으로 스크롤됨) */
   #filingStatusTableWrap .table-scroll, #reviewStatusTableWrap .table-scroll, #submitStatusTableWrap .table-scroll, #itAllTableWrap .table-scroll, #vatAllTableWrap .table-scroll{ max-height:none; overflow-y:visible; overflow-x:auto; }
   /* 기장/기타/해지거래처 표: "표 안에 또 스크롤이 생기지 말고, 이미 있는 바깥(페이지) 스크롤만 쓰고 싶다"는
-     요청 - max-height로 박스 높이를 제한하고 overflow:auto를 주면 이 박스 자체가 내부 스크롤 컨테이너가
-     되어버려서 요청과 반대로 동작하므로, 아예 이 박스에는 높이 제한도 overflow도 주지 않음(overflow:visible).
-     그러면 박스가 스크롤 컨테이너가 아니게 되어 sticky 헤더가 "페이지" 기준으로 정상 동작하고, 표는 페이지
-     스크롤을 따라 전체가 그대로 다 보임. (overflow-x:auto를 같이 주면 CSS 스펙상 overflow-y도 auto로 강제
-     전환되면서 다시 이 박스가 내부 스크롤 컨테이너가 돼버리므로, 가로 스크롤은 일부러 안 씀 - 이 표는 열
-     구성상 화면 폭 안에 보통 다 들어옴) */
+     요청으로 한동안 이 박스에는 높이 제한도 overflow도 주지 않았었음(overflow:visible) - "이 표는 열
+     구성상 화면 폭 안에 보통 다 들어옴"이라고 가정했던 건데, 실제 휴대폰(특히 PC 보기 모드로 데스크탑 폭
+     그대로 축소해 보여주는 상태)에서는 순번·수임구분·사업자번호·법인등록번호·수임료·계약일 등 열이 많아서
+     이 가정이 깨짐 - 박스에 overflow가 전혀 없으니 표가 그대로 페이지의 실제 콘텐츠 폭을 뷰포트 메타
+     태그가 선언한 폭(PC_VIEW_WIDTH)보다 더 넓게 밀어버렸고, 그러면 휴대폰 브라우저가 그 넘친 실제 폭에
+     맞춰 화면 전체를 한 번 더 축소해버려서 "이 화면만 유독 메뉴·아이콘이 더 작게 보인다"는 제보로 이어짐
+     - 신고현황 표(바로 위 주석)와 같은 방식으로 박스 안에서만 가로 스크롤되게 해서 표가 페이지 폭을 넘어
+     퍼지지 않게 막음(overflow-x:auto를 주면 CSS 스펙상 overflow-y도 같이 auto로 바뀌지만, max-height를
+     안 줘서 박스 높이가 내용만큼 자라니 세로 스크롤은 실제로 생기지 않고 페이지 스크롤 그대로 유지됨) */
   #clientsRegularListWrap .table-scroll, #clientsOtherListWrap .table-scroll,
   #clientsTerminatedListWrap .table-scroll{
-    max-height:none; overflow:visible;
+    max-height:none; overflow-y:visible; overflow-x:auto;
   }
   /* 위 overflow:visible로 바뀌면서 이 표들의 sticky 헤더는 이제 "박스" 기준이 아니라 "페이지(뷰포트)" 기준으로
      동작함 - 그런데 화면 맨 위(top:0)엔 이미 홈~휴지통 아이콘 줄(#appTopIconBar)이 sticky로 떠서 그 자리를
@@ -5320,6 +5323,35 @@
       </div>
       <div id="specialPeriodListWrap" style="max-width:720px; margin:12px auto 0;"></div>
 
+      <!-- 특별기간(위)은 팀캘린더에 안내 칩만 띄우는 "라벨"일 뿐이고, 실제 출퇴근 기준시간을 바꾸는 건 이
+           근무시간 예외기간임 - "특별기간이 보통 조기퇴근 기간이니 출퇴근시간도 같이 조정할 수 있어야
+           한다"는 요청으로 추가함. 위 표준 근무시간(getWorkStartTime/getWorkEndTime)과 똑같은 기준으로
+           지각(isLateClockIn)·야근(isOvertimeClockOut) 판정에도 그대로 반영됨 - 즉 이 기간 동안은 "지각"·
+           "야근" 여부가 표준시간이 아니라 여기서 정한 시간 기준으로 자동으로 다시 계산됨 -->
+      <div class="settings-sub-title" id="ssTitle-workHourExceptions" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="13" r="8"></circle><polyline points="12 9 12 13 15 15"></polyline><path d="M5 3 2 6"></path><path d="M22 6l-3-3"></path></svg> 근무시간 예외기간 <span class="badge">조기퇴근·늦은출근 등 · 지각·야근 판정에 자동 반영</span></div>
+      <p class="hint">
+        특정 기간만 출근·퇴근 기준시각을 다르게 적용해요(예: 신고 성수기 조기퇴근). 둘 중 하나만 바꾸고 싶으면 나머지는 비워두면 되고, 비워둔 쪽은 위 표준 근무시간을 그대로 써요.<br>이 기간 동안의 지각·야근 판정도 여기서 정한 시각 기준으로 자동으로 계산돼요.
+      </p>
+      <div class="flat-panel flat-panel-narrow">
+        <div class="flat-row"><div class="flat-row-label">시작일 · 종료일</div><div class="flat-row-control">
+          <input type="date" id="whe-start" min="2015-01-01" max="2099-12-31" class="flat-input">
+          <span style="color:var(--ink-soft);">–</span>
+          <input type="date" id="whe-end" min="2015-01-01" max="2099-12-31" class="flat-input">
+        </div></div>
+        <div class="flat-row"><div class="flat-row-label">출근 시각 <span style="font-weight:400;">(선택)</span></div><div class="flat-row-control">
+          <input type="time" id="whe-start-time" class="flat-input">
+        </div></div>
+        <div class="flat-row"><div class="flat-row-label">퇴근 시각 <span style="font-weight:400;">(선택)</span></div><div class="flat-row-control">
+          <input type="time" id="whe-end-time" class="flat-input">
+        </div></div>
+        <div class="flat-row"><div class="flat-row-label">메모</div><div class="flat-row-control"><input type="text" id="whe-memo" placeholder="예: 종합소득세 신고 성수기 조기퇴근" class="flat-input" style="width:100%;"></div></div>
+        <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-top:14px;">
+          <button type="button" id="addWorkHourExceptionBtn" class="submit-btn" style="width:auto;">등록</button>
+          <span class="save-msg" id="workHourExceptionMsg"></span>
+        </div>
+      </div>
+      <div id="workHourExceptionListWrap" style="max-width:720px; margin:12px auto 0;"></div>
+
       <div class="settings-sub-title" id="ssTitle-taxSchedule" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="3" y1="10" x2="21" y2="10"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="16" y1="2" x2="16" y2="6"></line></svg> 세무일정 관리 <span class="badge">대시보드 세무일정 위젯 · 관리자만 수정 가능</span></div>
       <p class="hint">
         대시보드 세무일정 위젯에 보이는 신고기한을 직접 관리해요.<br>
@@ -6779,9 +6811,12 @@ function getWorkEndTime(dateStr){
   const std = settings.standardWorkHours || {};
   return isFirstHalfYear(dateStr) ? (std.h1End || '17:30') : (std.h2End || '17:00');
 }
-// getWorkEndTime과 짝이 되는 함수 - 지각 판정에 씀. 근무시간 예외기간(조기퇴근 등)은 퇴근시간만 다루는
-// 기존 데이터라 출근시간에는 적용하지 않고, 표준 출근시간(상/하반기)만 기준으로 함
+// getWorkEndTime과 짝이 되는 함수 - 지각 판정에 씀. 예전엔 근무시간 예외기간(조기퇴근 등)이 퇴근시간만
+// 다루는 데이터라 출근시간에는 적용하지 않았는데, "조기퇴근이면 출근시간도 늦어질 수 있다"는 요청으로
+// startTime 필드가 추가되면서 출근시간도 예외기간을 그대로 따르게 함(설정 > 복지 > 근무시간 예외기간)
 function getWorkStartTime(dateStr){
+  const exception = (sharedWorkHourExceptions||[]).find(ex => dateStr >= ex.startDate && dateStr <= ex.endDate);
+  if(exception && exception.startTime) return exception.startTime;
   const std = settings.standardWorkHours || {};
   return isFirstHalfYear(dateStr) ? (std.h1Start || '09:30') : (std.h2Start || '09:30');
 }
@@ -8369,7 +8404,9 @@ function renderAdminCalendar(){
     const isWeekend = dow===0 || dow===6;
     const whExceptionTeam = (sharedWorkHourExceptions||[]).find(ex => dateStr >= ex.startDate && dateStr <= ex.endDate);
     if(whExceptionTeam && !isWeekend){
-      (byDate[dateStr]=byDate[dateStr]||[]).push(`<span class="cal-badge schedule">${calIconSvg('early')} ${whExceptionTeam.endTime} 조기퇴근</span>`);
+      // 출근·퇴근 시각은 각각 선택사항이라(둘 다 있을 수도, 하나만 있을 수도) 있는 것만 따로 배지로 보여줌
+      if(whExceptionTeam.endTime) (byDate[dateStr]=byDate[dateStr]||[]).push(`<span class="cal-badge schedule">${calIconSvg('early')} ${whExceptionTeam.endTime} 조기퇴근</span>`);
+      if(whExceptionTeam.startTime) (byDate[dateStr]=byDate[dateStr]||[]).push(`<span class="cal-badge schedule">${calIconSvg('early')} ${whExceptionTeam.startTime} 출근</span>`);
     }
     (sharedSpecialPeriods||[]).filter(sp => dateStr >= sp.startDate && dateStr <= sp.endDate).forEach(sp=>{
       const isStart = dateStr === sp.startDate || dow === 0; // 같은 주(그리드 한 줄) 안에서만 이어붙이고, 주가 바뀌면 새로 시작된 것처럼 보이게
@@ -10551,13 +10588,17 @@ function renderWorkHourExceptions(){
     wrap.innerHTML = `<div class="empty-state">등록된 근무시간 예외 기간이 없습니다.</div>`;
     return;
   }
-  const rows = list.map(ex=>`<tr>
+  const rows = list.map(ex=>{
+    // 출근시간(startTime)은 나중에 추가된 필드라 예전에 등록된 항목엔 없을 수 있음 - 그런 항목은 퇴근시각만 보여줌
+    const timeParts = [ex.startTime ? `${ex.startTime} 출근` : '', ex.endTime ? `${ex.endTime} 퇴근` : ''].filter(Boolean);
+    return `<tr>
     <td class="num">${ex.startDate} ~ ${ex.endDate}</td>
-    <td class="num">${ex.endTime} 퇴근</td>
+    <td class="num">${timeParts.join(' · ') || '-'}</td>
     <td>${escHtml(ex.memo||'')}</td>
     <td><button class="del-btn workhour-del-btn" data-id="${ex.id}">삭제</button></td>
-  </tr>`).join('');
-  wrap.innerHTML = `<table><thead><tr><th>기간</th><th>퇴근시각</th><th>메모</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  </tr>`;
+  }).join('');
+  wrap.innerHTML = `<table><thead><tr><th>기간</th><th>기준시각</th><th>메모</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
   wrap.querySelectorAll('.workhour-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       recordDeletedWorkHourId(btn.dataset.id); // 삭제 직후 동기화로 되살아나지 않도록 기록
@@ -10778,7 +10819,10 @@ function renderCalendar(){
       badges += `<span class="cal-badge schedule"${titleAttr}>${calIconSvg('schedule')} ${escHtml(e.type || '일정')}</span>`;
     });
     const whException = (sharedWorkHourExceptions||[]).find(ex => dateStr >= ex.startDate && dateStr <= ex.endDate);
-    if(whException && !isWeekend) badges += `<span class="cal-badge schedule">${calIconSvg('early')} ${whException.endTime} 조기퇴근</span>`;
+    if(whException && !isWeekend){
+      if(whException.endTime) badges += `<span class="cal-badge schedule">${calIconSvg('early')} ${whException.endTime} 조기퇴근</span>`;
+      if(whException.startTime) badges += `<span class="cal-badge schedule">${calIconSvg('early')} ${whException.startTime} 출근</span>`;
+    }
     const hasAnnualLeave = (rawLeaveByDate[dateStr]||[]).some(u=>GROUPABLE_LEAVE_TYPES.includes(u.type));
     const hasHoliday = (exclusionByDate[dateStr]||[]).some(x=>x.reason==='공휴일');
     let workIcon = '';
@@ -13920,7 +13964,10 @@ function buildCalendarHTML(monthStr){
       if(t) lines += `<span class="cal-line tag-schedule" style="opacity:0.82;">${calIconSvg('time')} ${t}</span>`;
     });
     const whExceptionPrint = (sharedWorkHourExceptions||[]).find(ex => dateStr >= ex.startDate && dateStr <= ex.endDate);
-    if(whExceptionPrint && !isWeekend) lines += `<span class="cal-line tag-schedule">${calIconSvg('early')} ${whExceptionPrint.endTime} 조기퇴근</span>`;
+    if(whExceptionPrint && !isWeekend){
+      if(whExceptionPrint.endTime) lines += `<span class="cal-line tag-schedule">${calIconSvg('early')} ${whExceptionPrint.endTime} 조기퇴근</span>`;
+      if(whExceptionPrint.startTime) lines += `<span class="cal-line tag-schedule">${calIconSvg('early')} ${whExceptionPrint.startTime} 출근</span>`;
+    }
     const hasAnnualLeavePrint = (rawLeaveByDate[dateStr]||[]).some(u=>GROUPABLE_LEAVE_TYPES.includes(u.type));
     const hasHolidayPrint = (exclusionByDate[dateStr]||[]).some(x=>x.reason==='공휴일');
     let workIconPrint = '';
@@ -14839,7 +14886,14 @@ function todayClockEntry(create){
   const d = todayStr();
   attendance.clockLog = attendance.clockLog || [];
   let entry = attendance.clockLog.find(e=>e.date===d);
-  if(!entry && create){ entry = { id:d, date:d, checkIn:'', checkOut:'', status:'사무실' }; attendance.clockLog.push(entry); }
+  if(!entry && create){
+    // "사무실/재택 토글이 눈에 잘 안 띄어서 재택인 날에도 계속 사무실로 찍힐 것 같다"는 요청 - 오늘 날짜가
+    // 이미 근태관리 탭에서 재택근무로 등록돼 있으면(attendance.remoteEntries), 출퇴근 도장을 처음 찍을 때
+    // 근무지 토글을 자동으로 "재택"에 맞춰서 시작함. 그래도 토글 자체는 그대로 남아있어 언제든 직접 바꿀 수 있음
+    const isRemoteToday = (attendance.remoteEntries||[]).some(r=>r.date===d);
+    entry = { id:d, date:d, checkIn:'', checkOut:'', status: isRemoteToday ? '재택' : '사무실' };
+    attendance.clockLog.push(entry);
+  }
   return entry;
 }
 function nowHHMM(){
@@ -15726,13 +15780,13 @@ function renderFavoritesBar(){
   const wrap = document.getElementById('homeFavoritesChips');
   if(!wrap) return;
   const list = getFavoriteMenuItems().slice();
-  // 메인으로 고른 항목이 있으면 맨 앞으로 옮김 - 즐겨찾기 아이콘을 눌렀을 때 항상 이 목록의 "첫 번째"
-  // 항목으로 바로 넘어가므로(firstNavigableItem), 맨 앞에 두는 것만으로 별도 로직 없이 "메인" 역할을 함
+  // "별표를 누르면 그 항목이 목록 맨 위로 옮겨간다"는 제보 - 메인으로 고르는 것과 목록에서의 위치(순서
+  // 버튼 ▲▼로 직접 정한 자리)는 서로 다른 건데, 예전엔 메인 항목을 배열 맨 앞으로 옮겨서 "즐겨찾기 아이콘을
+  // 누르면 이 목록의 첫 번째로 이동"(firstNavigableItem)이라는 규칙 하나로 두 가지를 한꺼번에 처리했었음.
+  // 이제는 배열 순서를 건드리지 않고 그대로 두고(별표를 눌러도 자리는 그대로), 메인 화면으로 이동하는
+  // 부분만 firstNavigableItem 쪽에서 "배열 순서상 첫 번째" 대신 "메인으로 지정된 항목"을 직접 찾아가도록
+  // 따로 처리함(아래 firstNavigableItem 참고)
   const mainKey = getFavoriteMainKey();
-  if(mainKey){
-    const idx = list.findIndex(f=>f.key===mainKey);
-    if(idx > 0){ const [main] = list.splice(idx, 1); list.unshift(main); }
-  }
   const effectiveMainKey = mainKey || (list[0] && list[0].key) || '';
   // 순서 버튼(⚙)을 목록 맨 위, 오른쪽 끝에 작게 둠 - "즐겨찾기 라벨 옆"이 아니라 "즐겨찾기를 열었을 때
   // 그 목록 안"에 있어야, 이 목록이 통째로 옮겨 다니는 모든 자리(데스크탑 축소 사이드바의 팝오버, 모바일
@@ -16019,6 +16073,16 @@ relocateSidebarNodes();
   }
 
   function firstNavigableItem(tiles){
+    // 즐겨찾기 목록은 배열 순서(사용자가 ▲▼로 직접 정한 자리)와 무관하게, 별표로 고른 "메인" 항목이
+    // 즐겨찾기 아이콘을 눌렀을 때 이동할 화면이어야 함(위 renderFavoritesBar 주석 참고) - 목록 순서상
+    // 첫 번째를 찾기 전에, 메인으로 지정된 항목이 있으면 그걸 먼저 찾아 바로 돌려줌
+    if(tiles.id === 'homeFavoritesChips' && typeof getFavoriteMainKey === 'function'){
+      const mainKey = getFavoriteMainKey();
+      if(mainKey){
+        const mainEl = tiles.querySelector(`.home-fav-tile[data-fav-key="${CSS.escape(mainKey)}"]`);
+        if(mainEl) return mainEl;
+      }
+    }
     const items = tiles.querySelectorAll('.home-submenu-item, .home-tile[data-goto]');
     for(const el of items){
       if(el.querySelector('.home-tile-expand-btn[data-expand-target]')) continue; // 펼치기 전용(더 하위가 있는) 항목은 그 자체로는 갈 곳이 없으니 건너뜀
@@ -17245,6 +17309,12 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
     // creditMonth를 미리 배정함(한도가 없으니 계속 다음 달로 넘어가며 찾음)
     if(useAdvance){ entry.advance = true; entry.creditMonth = nextAvailableRemoteCreditMonth(monthAfter(date)); }
     attendance.remoteEntries.push(entry);
+    // 오늘 날짜를 지금 막 재택으로 등록했는데, 오늘 출퇴근 도장이 이미 찍혀있고(예: 아침에 일단 사무실로
+    // 찍어뒀다가 뒤늦게 재택 등록) 아직 출근 전이면, 근무지 토글도 같이 "재택"으로 맞춰줌
+    if(date === todayStr()){
+      const todayEntry = todayClockEntry(false);
+      if(todayEntry && !todayEntry.checkIn) todayEntry.status = '재택';
+    }
     await saveAttendance();
     document.getElementById('usageSaveMsg').textContent = '추가됨';
     setTimeout(()=>document.getElementById('usageSaveMsg').textContent='',1800);
@@ -18401,6 +18471,29 @@ document.getElementById('addSpecialPeriodBtn')?.addEventListener('click', async 
   document.getElementById('sp-content').value = '';
   renderSpecialPeriods();
   renderAdminCalendar();
+});
+
+// 근무시간 예외기간(조기퇴근/늦은출근) 등록 - 특별기간과 달리 실제 지각(isLateClockIn)·야근(isOvertimeClockOut)
+// 판정 기준시각 자체를 이 기간 동안 바꿔치기함(getWorkStartTime/getWorkEndTime 참고). 출근·퇴근 시각은 각각
+// 선택사항이라 하나만 입력해도 등록되고, 비운 쪽은 표준 근무시간을 그대로 씀
+document.getElementById('addWorkHourExceptionBtn')?.addEventListener('click', async ()=>{
+  const startDate = document.getElementById('whe-start').value;
+  const endDate = document.getElementById('whe-end').value;
+  const startTime = document.getElementById('whe-start-time').value;
+  const endTime = document.getElementById('whe-end-time').value;
+  const memo = document.getElementById('whe-memo').value.trim();
+  const msgEl = document.getElementById('workHourExceptionMsg');
+  const showMsg = (text)=>{ msgEl.textContent = text; setTimeout(()=>msgEl.textContent='',2500); };
+  if(!startDate || !endDate){ showMsg('시작일·종료일을 입력해주세요.'); return; }
+  if(startDate > endDate){ showMsg('종료일이 시작일보다 빠를 수 없어요.'); return; }
+  if(!startTime && !endTime){ showMsg('출근 시각·퇴근 시각 중 하나는 입력해주세요.'); return; }
+  sharedWorkHourExceptions.push({ id:genId(), startDate, endDate, startTime: startTime || undefined, endTime: endTime || undefined, memo });
+  await saveSharedWorkHourExceptions();
+  showMsg('추가됨');
+  document.getElementById('whe-memo').value = '';
+  renderWorkHourExceptions();
+  renderAdminCalendar();
+  renderAll();
 });
 
 // 세무일정 관리 (설정 > 복지) - 등록: 기본 제공 세목 외의 일정(4대보험 보수총액신고, 지급명세서 제출, 수기 일정 등)을
