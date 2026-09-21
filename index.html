@@ -26195,6 +26195,15 @@ async function afterGdriveConnected(){
     await gdriveEnsureFile();
     await gdrivePull();
     await fetchCurrentUserEmail();
+    // "분명히 다 읽었는데 로그인하는 PC마다 알림함(종 아이콘) 배지가 계속 떠있다"는 제보의 원인 - 바로 위
+    // gdrivePull() 안에서 loadAll()이 이미 한 번 알림 배지를 계산하는데, 그 시점은 아직 이 줄(위
+    // fetchCurrentUserEmail)이 실행되기 전이라 currentUserEmail이 null인 상태임. 알림 읽음상태는 로그인
+    // 이메일 기준 키(notificationLogAccountKey)로 드라이브에 저장·동기화되는데, 이메일을 모르는 채로
+    // 계산하면 그 대신 기기 로컬 프로필 키로 조회하게 되어(이 키엔 저장된 읽음 기록이 전혀 없음) 실제로는
+    // 이미 다 읽은 알림들도 전부 안읽음으로 잘못 셈 - 그 뒤로 이 배지를 다시 계산하는 곳이 없어서, 새
+    // PC(localStorage가 비어있어 이 오차가 특히 크게 보임)에서는 로그인할 때마다 매번 이 잘못된 개수가 그대로
+    // 굳어져 있었음. 이메일을 안 시점에 한 번 더 정확한 키로 다시 계산해서 바로잡음
+    updateNotificationUnreadBadge();
     applyPermissionUI();
     // 앱을 껐다 켜도(백그라운드) 알림이 오려면 FCM 토큰이 항상 최신이어야 하는데, 예전엔 "알림 받기" 버튼을
     // 누른 그 순간에만 등록했음 - 그 뒤로 브라우저 데이터 정리·OS 업데이트 등으로 토큰이 조용히 무효화되면
