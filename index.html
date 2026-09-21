@@ -15405,7 +15405,7 @@ function renderDashboardApprovalAllPreview(){
       <span class="home-dash-table-col-person">${escHtml(displayDrafterName(a))}</span>
       <span class="home-dash-table-col-main">${escHtml(a.title||'(제목 없음)')}</span>
       <span class="home-dash-table-col-person">${escHtml(resolveNameByEmail(a.approverEmail)||a.approverName||'')}</span>
-      <span class="home-dash-table-col-status">${typeof approvalStatusTagHtml === 'function' ? approvalStatusTagHtml(a.status, undefined, undefined, a.decidedAt) : escHtml(a.status||'')}</span>
+      <span class="home-dash-table-col-status">${typeof approvalProgressStepperHtml === 'function' ? approvalProgressStepperHtml(a.status, undefined, undefined, a.decidedAt) : escHtml(a.status||'')}</span>
     </div>`;
   }).join('');
   body.innerHTML = `<div class="home-dash-table">${headHtml}${rowsHtml}</div>`;
@@ -23378,7 +23378,9 @@ async function deleteApprovalDraft(id){
 }
 
 // 탭을 눌러 실제로 목록을 보면 "새 항목" 표시를 지워줌(공지사항 읽음 처리와 같은 방식) - 결재함은 대기 건수를
-// 그대로 보여주는 용도라 읽음 처리 대상이 아니고, 기안함만 "안 본 새 변화" 배지를 씀
+// 그대로 보여주는 용도라 읽음 처리 대상이 아니고, 임시저장함/반려함은 "안 본 새 변화" 배지를 씀. 기안함만
+// 예외로, 탭을 여는 것만으로 전체를 읽음 처리하지 않음(문서별로 실제 의견을 열어봐야만 그 문서 배지가
+// 사라짐 - markApprovalCommentsSeen 참고. 승인됐다는 이유만으로 탭 한 번 눌렀다고 다 같이 사라지면 안 됨)
 document.querySelectorAll('.approval-doc-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     document.querySelectorAll('.approval-doc-btn').forEach(b=>b.classList.remove('active'));
@@ -23416,7 +23418,7 @@ document.querySelectorAll('.approval-doc-btn').forEach(btn=>{
     }
     else if(doc === 'draft'){ renderApprovalDraftList(); markApprovalSeen('draft', myApprovalDraftList()); renderApprovalAllBadges(); }
     else if(doc === 'inbox') renderApprovalInbox();
-    else if(doc === 'mine'){ renderApprovalMine(); markApprovalSeen('mine', myApprovalMineList()); renderApprovalAllBadges(); }
+    else if(doc === 'mine'){ renderApprovalMine(); }
     else if(doc === 'rejected'){ renderApprovalRejected(); markApprovalSeen('rejected', myApprovalRejectedList()); renderApprovalAllBadges(); }
     else if(doc === 'all') renderApprovalAll();
   });
@@ -23448,6 +23450,34 @@ function approvalStatusTagHtml(status, ctx, resubmitCount, decidedAt){
   if(status === '회수') return `<span class="tag" style="background:#E2E8F0; color:#475569;">회수</span>`;
   if(status === '삭제') return `<span class="tag" style="background:#374151; color:#fff;">삭제</span>`;
   return `<span class="tag" style="background:var(--amber-bg); color:var(--amber);">${ctx==='mine' ? '상신' : '진행중'}</span>` + resubmitBadge;
+}
+// "진행상황을 칩 하나로 뭉뚱그리지 말고, 기안→검토중→승인 세 단계를 나란히 보여주면서 지금 어느 단계인지만
+// 색으로 표시해달라"는 요청 - 정상적으로 흘러가는 문서(기안/검토중/승인/반려)는 이 세 단계 진행바로,
+// 그 흐름 밖에 있는 문서(임시저장/회수/삭제 - 아직 결재선에 올라가지도 않았거나 중간에 빠진 것들)는
+// 기존처럼 단순 칩 하나로 그대로 보여줌(억지로 진행바에 끼워 넣으면 오히려 헷갈림)
+function approvalProgressStepperHtml(status, ctx, resubmitCount, decidedAt){
+  if(status === '임시저장' || status === '회수' || status === '삭제'){
+    return approvalStatusTagHtml(status, ctx, resubmitCount, decidedAt);
+  }
+  const resubmitBadge = (resubmitCount && (status==='기안'||status==='검토중')) ? ` <span style="font-size:9px; font-weight:800; color:var(--indigo-deep); background:var(--indigo-bg); padding:1px 5px; border-radius:7px; vertical-align:1px;">재기안${resubmitCount>1?' ×'+resubmitCount:''}</span>` : '';
+  const decidedDateStr = decidedAt && typeof approvalDateShort === 'function' ? approvalDateShort(decidedAt) : '';
+  const decidedTitleAttr = decidedDateStr ? ` title="${escHtml(decidedDateStr)} 완료"` : '';
+  const rejected = status === '반려';
+  // 기안 상신 직후(아직 결재자가 한 번도 안 열어봄)엔 0단계, 결재자가 열어보면(검토중) 1단계, 승인·반려로
+  // 결론이 나면 2단계(마지막)가 "지금 단계"임
+  const activeIdx = status === '기안' ? 0 : status === '검토중' ? 1 : 2;
+  const labels = ['기안', '검토중', rejected ? '반려' : '승인'];
+  // 마지막 단계 색만 결과에 따라 갈림(승인=민트/성공, 반려=코랄/주의) - 앞 두 단계는 아직 결론이 안 난
+  // "진행 중"이라는 뜻으로 amber(호박색)를 그대로 씀(기존 칩 색 규칙과 동일한 신호등 규칙을 그대로 이어받음)
+  const activeColor = activeIdx===2 ? (rejected ? 'var(--coral)' : 'var(--mint)') : 'var(--amber)';
+  const stepsHtml = labels.map((label, idx)=>{
+    const isActive = idx === activeIdx;
+    const color = isActive ? activeColor : 'var(--ink-soft)';
+    const weight = isActive ? 900 : 600;
+    const opacity = isActive ? 1 : 0.5;
+    return `<span style="color:${color}; font-weight:${weight}; opacity:${opacity};">${label}</span>`;
+  }).join(`<span style="color:var(--ink-soft); opacity:0.35; margin:0 2px; font-size:8.5px;">→</span>`);
+  return `<span${decidedTitleAttr} class="approval-stepper" style="display:inline-flex; align-items:center; font-size:10.5px; white-space:nowrap; letter-spacing:-0.2px;">${stepsHtml}</span>${resubmitBadge}`;
 }
 // ── 결재 목록(임시저장함/기안함/반려함/결재함/전체이력) 각각을 "나" 기준으로 걸러주는 헬퍼 ──
 // 기안함: 내가 기안한 문서 중 아직 결론 안 났거나(상신·검토중) 승인된 것만(반려·회수는 각각 반려함/임시저장함
@@ -23715,7 +23745,9 @@ function approvalTableHeaderHtml(){
   // 문서제목 칸만 왼쪽 정렬이라 줄이 안 맞아 보인다는 점 보완 + "문서제목 칸이 어디부터 어디까지인지"
   // 폭 그대로 세로 구분선을 달라는 요청 - 양옆(문서번호와의 경계, 결재자와의 경계)에 세로선을 그어줌
   const titleColBorder = 'border-left:1px solid var(--border); border-right:1px solid var(--border);';
-  return `<tr><th style="${c} width:100px;">문서종류</th><th style="${c} width:118px;">기안일</th><th style="${c} width:64px;">기안자</th><th style="${c} width:100px;">문서번호</th><th style="${c} ${titleColBorder}">문서제목</th><th style="${c} width:64px;">결재자</th><th style="${c} width:128px;">진행상황</th><th style="${c} width:132px;"></th></tr>`;
+  // 진행상황 칸을 상태 칩 하나 대신 "기안 → 검토중 → 승인" 세 단계 진행바로 바꾸면서 가로로 더 필요해져서
+  // 128px → 150px로 넓힘(그만큼은 옆 문서제목 칸의 가변폭에서 자연스럽게 줄어듦)
+  return `<tr><th style="${c} width:100px;">문서종류</th><th style="${c} width:118px;">기안일</th><th style="${c} width:64px;">기안자</th><th style="${c} width:100px;">문서번호</th><th style="${c} ${titleColBorder}">문서제목</th><th style="${c} width:64px;">결재자</th><th style="${c} width:150px;">진행상황</th><th style="${c} width:132px;"></th></tr>`;
 }
 // 관리 칸 아이콘들 - 각 아이콘용 line-svg (기존 앱 다른 곳 아이콘들과 같은 획 스타일로 통일)
 const APPROVAL_ACTION_ICON_SVG = {
@@ -23822,15 +23854,20 @@ function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
     // 행 사이 구분선을 다른 표보다 좀 더 또렷하게 줌(문서제목 칸만 왼쪽 정렬이라 다른 칸과 정렬이 달라
     // 줄이 헷갈릴 수 있어서, 구분선으로 각 문서 줄을 눈에 잘 띄게 나눠줌)
     const rowBorder = 'border-top:1px solid rgba(29,30,51,0.16);';
+    // 기안함(bucket 'mine')에서만, 이 문서에 아직 못 읽은 의견이 있으면 제목 오른쪽에 "의견 N건"을 따로
+    // 붙여줌 - "승인됐다고 배지 없애려고 기안문을 또 읽을 필요는 없지만, 진짜 의견이 달렸으면 그게 어느
+    // 문서인지는 목록에서 바로 보여야 한다"는 요청으로 추가함
+    const unseenComments = bucket==='mine' ? approvalUnseenCommentCount(item) : 0;
+    const rowOpinionBadge = unseenComments>0 ? ` <span class="tag" style="background:var(--coral-bg); color:var(--coral); font-size:10.5px; font-weight:800; vertical-align:1px;">의견 ${unseenComments}건</span>` : '';
     // 행 아무 곳이나 클릭하면 문서가 열리도록 바뀌어서, 행 전체에 클릭 가능한 느낌(커서)을 줌
     return `<tr class="approval-row-clickable" data-id="${item.id}" style="cursor:pointer; ${expanded?'background:var(--indigo-bg);':''}">
       <td style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}"><span class="tag" style="${approvalDocTypeChipStyle(item.docType||'일반')}">${escHtml(item.docType||'일반')}</span></td>
       <td class="num" style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}">${escHtml(approvalDateShort(item.createdAt))}</td>
       <td style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}">${escHtml(displayDrafterName(item))}</td>
       <td class="num" style="text-align:center; overflow:hidden; text-overflow:ellipsis; font-size:11px; color:var(--ink-soft); ${rowBorder}">${escHtml(approvalDocNumber(item))}</td>
-      <td style="text-align:left; vertical-align:middle; white-space:normal; word-break:break-word; padding-left:16px; font-size:13.5px; font-weight:${isRead?600:800}; color:var(--ink); ${rowBorder} border-left:1px solid var(--border); border-right:1px solid var(--border);">${escHtml(approvalTitleDisplay(item))}</td>
+      <td style="text-align:left; vertical-align:middle; white-space:normal; word-break:break-word; padding-left:16px; font-size:13.5px; font-weight:${isRead?600:800}; color:var(--ink); ${rowBorder} border-left:1px solid var(--border); border-right:1px solid var(--border);">${escHtml(approvalTitleDisplay(item))}${rowOpinionBadge}</td>
       <td style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}">${escHtml(resolveNameByEmail(item.approverEmail) || item.approverName || '')}</td>
-      <td style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}">${approvalStatusTagHtml(item.status, statusCtx, item.resubmitCount, item.decidedAt)}</td>
+      <td style="text-align:center; overflow:hidden; text-overflow:ellipsis; ${rowBorder}">${approvalProgressStepperHtml(item.status, statusCtx, item.resubmitCount, item.decidedAt)}</td>
       <td style="text-align:center; white-space:normal; ${rowBorder}"><div style="display:inline-flex; gap:6px; flex-wrap:wrap; justify-content:center;">${approvalRowActionsHtml(item, bucket, expanded)}</div></td>
     </tr>`;
   }).join('');
@@ -23872,8 +23909,10 @@ function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
         const item = (sharedApprovals||[]).find(a=>a.id===id);
         if(item && markApprovalViewedIfNeeded(item)){
           await saveSharedApprovals();
-          renderApprovalAllBadges();
         }
+        // 목록에서 행을 펼쳐 실제로 문서를 열어보는 순간도 팝업으로 열 때와 똑같이 "의견을 봤다"로 처리함
+        if(item){ markApprovalCommentsSeen(item); }
+        renderApprovalAllBadges();
       }
       if(typeof onChange === 'function') onChange();
     });
@@ -24047,13 +24086,47 @@ function renderApprovalAll(){
 // 서로 댓글처럼 자유롭게 의견을 주고받을 수 있게 comments 배열로 바꿈. 승인/반려를 결정할 때 남긴 의견도
 // 이 배열에 "결정" 표시가 붙은 댓글로 같이 쌓여서, 위(요약)·아래(상태줄)로 상태·시간 정보가 중복 표시되던
 // 문제 없이 기안내용/첨부파일/의견 흐름 하나로만 보이게 함
-function approvalCommentListHtml(item){
+// approvalCommentListHtml과 아래 "안 읽은 의견 수" 계산(approvalUnseenCommentCount)이 항상 똑같은 기준으로
+// "진짜 의견"을 골라내야 서로 어긋나지 않으므로(예: 목록엔 안 보이는데 배지 숫자엔 잡히는 등) 그 필터 기준을
+// 이 함수 하나로 공유함
+function approvalVisibleComments(item){
   // 승인/반려 결과는 이제 기안문 자체에 도장처럼 따로 표시하므로(approvalDocVisualHtml의 decisionStampHtml),
   // 그때 같이 남겨진 결정 기록(c.decision)은 여기 "의견" 목록에서는 빼서 순수하게 사람들이 남긴 말만
   // 보이게 함 - 다만 결재자가 승인/반려하면서 메모까지 같이 남긴 경우엔(text가 있음) 그 메모 자체는
   // 여전히 의미가 있으니 평범한 의견 하나로는 계속 보여줌(다만 "· 승인" 표시나 색 테두리는 뺌 - 결과는
   // 이제 도장에서만 확인)
-  const list = (item.comments || []).filter(c => !c.decision || (c.text||'').trim());
+  return (item.comments || []).filter(c => !c.decision || (c.text||'').trim());
+}
+// "기안함 배지가 단순히 승인됐다는 이유만으로도 계속 떠 있고, 그걸 지우자고 이미 다 끝난 기안문을 굳이
+// 또 열어봐야 한다"는 제보 - 예전엔 기안함 배지가 문서의 id+상태(approvalSeenToken) 조합을 기준으로 삼아서,
+// 승인처럼 상태만 바뀌어도(새로 남겨진 의견이 전혀 없어도) "안 본 변화"로 잡혔음. 기안함만큼은 "상태가
+// 바뀌었는지"가 아니라 "내가 아직 못 본 의견(댓글)이 있는지"만으로 배지를 판단하도록 완전히 새 기준으로
+// 바꿈 - 문서별로 "지금까지 본 의견 개수"를 저장해두고, 실제 의견 개수가 그보다 많으면 그 차이만큼 "안 읽은
+// 의견"으로 셈(결재 자체는 결재함 쪽에서 이미 "대기 건수"로 따로 표시하므로, 여기선 순수하게 의견 알림만 담당)
+function approvalCommentSeenStorageKey(){ return 'worklog_approval_comment_seen_counts'; }
+function getApprovalCommentSeenMap(){
+  try{ return JSON.parse(localStorage.getItem(approvalCommentSeenStorageKey()) || '{}'); }catch(e){ return {}; }
+}
+function approvalUnseenCommentCount(item){
+  if(!item) return 0;
+  const map = getApprovalCommentSeenMap();
+  const seen = map[item.id] || 0;
+  const total = approvalVisibleComments(item).length;
+  return Math.max(0, total - seen);
+}
+// 문서를 실제로 열어봤을 때(목록에서 행을 펼치거나, 팝업으로 열거나, 그 문서에 직접 의견/결정을 남겼을 때)
+// 호출해서 "지금까지의 의견 개수"를 현재 개수로 맞춰둠 - 그 뒤에 다른 사람이 의견을 새로 남겨야만 다시 배지가 뜸
+function markApprovalCommentsSeen(item){
+  if(!item) return;
+  const map = getApprovalCommentSeenMap();
+  map[item.id] = approvalVisibleComments(item).length;
+  // 지워지거나 더 이상 존재하지 않는 문서의 기록이 계속 쌓이지 않도록, 지금 실제로 남아있는 문서 id만 남겨서 정리
+  const validIds = new Set((sharedApprovals||[]).map(a=>a.id));
+  Object.keys(map).forEach(k=>{ if(!validIds.has(k)) delete map[k]; });
+  try{ localStorage.setItem(approvalCommentSeenStorageKey(), JSON.stringify(map)); }catch(e){}
+}
+function approvalCommentListHtml(item){
+  const list = approvalVisibleComments(item);
   if(!list.length) return `<div class="hint" style="margin:0 0 10px;">아직 의견이 없어요.</div>`;
   // 이름(짧고 항상 비슷한 폭) / 의견내용(가장 길어질 수 있으니 남는 폭을 다 가져감) / 시간(고정폭, 항상
   // 다 보이게)을 한 줄에 나란히 두는 3단 레이아웃으로 바꿈 - 예전엔 "이름·시간" 줄 아래에 내용이 다음
@@ -24229,6 +24302,10 @@ function openApprovalDetailModal(id){
     saveSharedApprovals();
     renderApprovalInbox(); renderApprovalMine(); renderApprovalRejected(); renderApprovalAll(); renderApprovalAllBadges();
   }
+  // 이 문서를 지금 실제로 열어보는 순간이므로, 그때까지 쌓인 의견을 전부 "본 것"으로 표시해서 기안함의
+  // "의견 N건" 배지가 다시 안 뜨게 함(위 markApprovalCommentsSeen 주석 참고)
+  markApprovalCommentsSeen(item);
+  renderApprovalAllBadges();
   document.getElementById('approvalDetailModalTitle').textContent = '기안 조회';
   document.getElementById('approvalDetailModalBody').innerHTML = approvalDetailBodyHtml(item);
   document.getElementById('approvalDetailModalOverlay').style.display = 'flex';
@@ -24253,6 +24330,10 @@ async function addApprovalComment(id, decisionLabel, onChange){
   // 이렇게 해야 곧바로 승인/반려 버튼을 눌러도 이미 등록한 의견이 결정 메모에 중복으로 다시 붙지 않음
   if(inputEl) inputEl.value = '';
   document.querySelectorAll(`#approvalCommentListWrap-${id}`).forEach(w=>{ w.innerHTML = approvalCommentListHtml(item); });
+  // 방금 내가 남긴 의견까지 포함해서 "본 것"으로 표시해둠 - 안 그러면 내가 스스로 남긴 의견 때문에
+  // 기안함 배지가 나 자신에게 뜨는 이상한 상황이 생김
+  markApprovalCommentsSeen(item);
+  renderApprovalAllBadges();
   await saveSharedApprovals();
   if(typeof onChange === 'function') onChange();
   else renderApprovalAll();
@@ -24300,6 +24381,9 @@ async function decideApproval(id, decision){
       eventAt: item.decidedAt || ''
     });
   }
+  // 결정을 내리는 사람(보통 결재자) 본인 기준으로도 방금 막 쌓인 의견까지 "본 것"으로 표시해둠(기안자=결재자인
+  // 셀프결재 등 예외 상황에서도 스스로에게 배지가 뜨지 않도록)
+  markApprovalCommentsSeen(item);
   await saveSharedApprovals();
   document.getElementById('approvalDetailModalOverlay').style.display = 'none';
   approvalExpandedId = null; // 결정을 내리면 목록으로 접어서 바뀐 상태를 목록에서 바로 보여줌
@@ -24316,20 +24400,20 @@ document.getElementById('approvalDetailModalClose')?.addEventListener('click', (
 document.getElementById('approvalDetailModalOverlay')?.addEventListener('click', (e)=>{
   if(e.target.id === 'approvalDetailModalOverlay'){ document.getElementById('approvalDetailModalOverlay').style.display = 'none'; revokeApprovalAttachmentObjectUrls(); }
 });
-// 사이드바 알림뱃지(N) + 결재함/기안함 각각의 New 표시(pill)를 한번에 갱신. 결재함은 "대기중 건수"를 그대로,
-// 기안함은 "아직 안 본 새 변화" 건수를 보여줌(markApprovalSeen으로 탭을 열면 사라짐)
+// 사이드바 알림뱃지(N) + 결재함/기안함 각각의 표시(pill)를 한번에 갱신.
+// 결재함은 "대기중 건수"를 그대로 숫자로("N") 보여주고(처리해도 없어지지 않는 게 아니라, 처리할 게
+// 남아있는 동안은 계속 떠 있는 게 맞다는 의견 - 결재를 하나 처리하면 그만큼 줄어듦), 기안함은 "아직 안 읽은
+// 의견(댓글)이 달린 문서 수"만 보여줌(markApprovalCommentsSeen으로 그 문서를 열어보면 그 문서만 사라짐).
+// "결재함은 숫자만 봐선 뭘 뜻하는지 헷갈리니 '대기 N건'처럼 뜻이 보이게, 기안함은 단순히 승인됐다고 뜨는 게
+// 아니라 새 의견이 달렸을 때만 '의견 N건'으로 뜨면 좋겠다"는 요청으로 아래처럼 바꿈
 function renderApprovalAllBadges(){
   const mineList = myApprovalMineList();
   const draftList = myApprovalDraftList();
   const rejectedList = myApprovalRejectedList();
   // 결재함 배지(위 빨간 동그라미든, 아래 결재함 pill이든) 전부 "실제로 아직 결론 안 나서 내가 처리해야
   // 하는 건수"만 세야 하는데, myApprovalInboxList()는 결재함 화면 자체는 승인·반려된 것도 같이 보여주려고
-  // 일부러 전체를 돌려주는 함수임(위 myApprovalInboxList 주석 참고) - 바로 아래 pendingCount(빨간
-  // 동그라미)는 이미 그걸 알고 myApprovalPendingInboxCount()로 따로 걸러서 썼는데, 정작 그 아래 결재함
-  // pill 두 곳(approvalInboxCount/homeSideApprovalInboxCount)은 그 필터링 없이 inboxList.length(승인·
-  // 반려 포함 전체 건수)를 그대로 써버려서, "결재함은 대기중 건수를 그대로"라는 바로 위 함수 설명과 다르게
-  // 한 번 결재(승인/반려)해도 배지 숫자가 안 줄어들고 계속 남아있는 문제가 있었음 - "결재할 게 있어서
-  // 뜬 건지, 처리하면 없어지는지" 제보로 발견함. 두 곳 다 pendingCount를 쓰도록 통일함
+  // 일부러 전체를 돌려주는 함수임(위 myApprovalInboxList 주석 참고) - pendingCount는 myApprovalPendingInboxCount()로
+  // 그 중 진짜 대기중(기안/검토중)인 것만 걸러서 셈
   const pendingCount = typeof myApprovalPendingInboxCount === 'function' ? myApprovalPendingInboxCount() : 0;
   const navBadge = document.getElementById('approvalPendingBadge');
   if(navBadge){
@@ -24342,20 +24426,34 @@ function renderApprovalAllBadges(){
     el.style.display = count>0 ? 'inline-flex' : 'none';
     el.textContent = count>0 ? String(count) : '';
   };
-  setPill('approvalInboxCount', pendingCount);
-  setPill('approvalMineCount', countApprovalUnseen('mine', mineList));
+  // 결재함 전용 - 숫자 하나만 달랑 떠 있으면 "대기 중인 건지, 그냥 새로 생긴 알림인지" 헷갈린다는 의견으로
+  // "대기 N건"처럼 뜻이 바로 보이는 문구로 표시함(공간이 좁은 하단 탭바·그리드 아이콘 배지는 그대로 숫자만 씀 -
+  // homeSideApprovalTotalCount를 그대로 따라가는 mirrorApprovalBadge 참고)
+  const setTextPill = (elId, text)=>{
+    const el = document.getElementById(elId);
+    if(!el) return;
+    el.style.display = text ? 'inline-flex' : 'none';
+    el.textContent = text || '';
+  };
+  const pendingText = pendingCount>0 ? `대기 ${pendingCount}건` : '';
+  setTextPill('approvalInboxCount', pendingText);
+  setTextPill('homeSideApprovalInboxCount', pendingText);
+  // 기안함 전용 - 상태가 바뀐 문서 수가 아니라, 아직 못 읽은 의견이 달린 "문서 수"를 셈(문서 하나에 의견이
+  // 여러 개 새로 달려도 "의견 N건"의 N은 문서 개수 기준 - 목록에서는 각 문서 제목 옆에 그 문서 자신의 안 읽은
+  // 의견 개수가 따로 표시됨(approvalRowOpinionBadgeHtml 참고))
+  const mineUnseenDocs = mineList.filter(a => approvalUnseenCommentCount(a) > 0);
+  const mineOpinionText = mineUnseenDocs.length>0 ? `의견 ${mineUnseenDocs.length}건` : '';
+  setTextPill('approvalMineCount', mineOpinionText);
+  setTextPill('homeSideApprovalMineCount', mineOpinionText);
   setPill('approvalDraftCount', draftList.length);
   setPill('approvalRejectedCount', countApprovalUnseen('rejected', rejectedList));
   // 실제로 화면에 보이는 사이드바(홈 화면 왼쪽 Company > 결재 하위메뉴)의 기안함/반려함/결재함/임시저장함
-  // 옆에도 같은 숫자를 그대로 띄움 - 위 approvalInboxCount 등은 결재 탭 안으로 들어가야 보이는 pill이라,
+  // 옆에도 같은 내용을 그대로 띄움 - 위 approvalInboxCount 등은 결재 탭 안으로 들어가야 보이는 pill이라,
   // 탭에 들어가기 전에도 사이드바 메뉴 글자 옆에서 바로 몇 건 있는지 보이게 해달라는 요청으로 추가함
   const rejectedUnseen = countApprovalUnseen('rejected', rejectedList);
-  const mineUnseen = countApprovalUnseen('mine', mineList);
-  setPill('homeSideApprovalInboxCount', pendingCount);
-  setPill('homeSideApprovalMineCount', mineUnseen);
   setPill('homeSideApprovalRejectedCount', rejectedUnseen);
   setPill('homeSideApprovalDraftCount', draftList.length);
-  setPill('homeSideApprovalTotalCount', pendingCount + mineUnseen + rejectedUnseen + draftList.length);
+  setPill('homeSideApprovalTotalCount', pendingCount + mineUnseenDocs.length + rejectedUnseen + draftList.length);
 }
 // 예전 이름(renderApprovalBadge)으로 부르는 곳이 남아있어도 그대로 동작하도록 별칭 유지
 function renderApprovalBadge(){ renderApprovalAllBadges(); }
