@@ -278,9 +278,13 @@
   }
   .mobile-sidebar-toggle svg{ flex:none; }
   /* PC 화면 보기 토글 버튼 - 화면 폭이 아니라 JS가 기기 특성(터치 포인터)으로 한 번 판단해서 붙여두는
-     html.is-touch-device 클래스로만 노출 여부를 정함(이유는 버튼 옆 HTML 주석 참고) */
+     html.is-touch-hardware 클래스로만 노출 여부를 정함(이유는 버튼 옆 HTML 주석 참고). is-touch-device는
+     "지금 휴대폰용 레이아웃을 쓸지"를 나타내는 값이라 PC 보기를 켜면 빠지는데, 그 클래스로 이 버튼
+     노출을 정해뒀더니 PC 보기를 켜는 순간 정작 다시 끌 버튼 자체가 화면에서 사라져버렸음("데스크탑버전
+     아이콘은 어디감?" 제보) - 기기가 터치 기기인지 자체는 PC 보기 상태와 무관하게 항상 그대로이므로
+     별도 클래스(is-touch-hardware)로 분리해서 버튼은 항상 보이게 함 */
   #pcViewToggleBtn{ display:none; }
-  html.is-touch-device #pcViewToggleBtn{ display:inline-flex; }
+  html.is-touch-hardware #pcViewToggleBtn{ display:inline-flex; }
   #pcViewToggleBtn.pc-view-active{ background:var(--indigo) !important; }
   /* "창을 줄여도 여전히 이렇다"는 제보 - 폭 700px 밑이면 무조건(터치 기기든 마우스로 창을 좁게 줄인
      PC든 상관없이) 사이드바가 접히고 메뉴가 위쪽 "☰ 메뉴" 버튼으로 바뀌는 이 모바일 전용 쌓임 레이아웃이
@@ -16923,6 +16927,10 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
 // 이 기본 모드를 언제든 끄고 켤 수 있게 함.
 (function(){
   const TOUCH_DEVICE = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
+  // PC 보기 상태와 무관하게 "이 기기가 터치 기기인지" 자체는 항상 고정값이라 별도 클래스로 붙여둠 -
+  // is-touch-device(휴대폰용 레이아웃 여부, PC 보기 켜면 빠짐)와 분리해서 PC 화면 보기 토글 버튼이
+  // PC 보기를 켜도 계속 보이게 함(바로 아래 #pcViewToggleBtn CSS 주석 참고)
+  if(TOUCH_DEVICE) document.documentElement.classList.add('is-touch-hardware');
   const PC_VIEW_KEY = 'worklog_pc_view_on_mobile';
   // 아직 한 번도 건드린 적 없으면(저장된 값이 없으면) 기본은 켜짐 - 클래스를 붙이기 전에 먼저 알아야
   // "PC 보기가 이미 켜진 채 시작하는 터치 기기"엔 애초에 is-touch-device를 안 붙일 수 있음(위 레일 모드
