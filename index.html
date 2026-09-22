@@ -268,6 +268,15 @@
   .rail-allmenu-mid{ font-size:13.5px; font-weight:800; color:var(--indigo-deep); margin-top:14px; }
   .rail-allmenu-mid:first-child{ margin-top:0; }
   .rail-allmenu-sub{ font-weight:500; color:var(--ink-soft); }
+  /* 설정 하위메뉴 안의 회사/Tax.J/일반 같은 묶음 이름표 - 전체메뉴에서도 옆 flyout(.home-tiles-subgroup-label)과
+     같은 톤(indigo-deep, 작은 대문자)으로 보여줘서 어디서 봐도 같은 묶음 구분이 눈에 띄게 함. 실제 이동
+     기능이 없는 이름표라 hover 밑줄/커서도 다른 항목과 다르게 끔 */
+  .rail-allmenu-subgroup-label{
+    font-size:10px; font-weight:800; color:var(--indigo-deep); text-transform:uppercase;
+    letter-spacing:0.05em; margin-top:9px; padding-top:7px; border-top:1px dashed var(--border);
+    cursor:default;
+  }
+  .rail-allmenu-subgroup-label:hover{ color:var(--indigo-deep); text-decoration:none; }
   @media (max-width:900px){ .rail-allmenu-grid{ grid-template-columns:repeat(2,1fr); } .rail-allmenu-grid > div:nth-child(2){ border-left:1px solid var(--border); padding-left:18px; } .rail-allmenu-grid > div:nth-child(3){ border-left:none; padding-left:0; } }
   /* 모바일 메뉴 펼치기 버튼 - 넓은 화면에서는 사이드바가 항상 보여서 필요 없으므로 기본은 숨김 */
   .mobile-sidebar-toggle{
@@ -1177,10 +1186,14 @@
      flattenRealMenu)이 .home-tile/.home-submenu-item/.home-submenu-leaf 클래스만 보고 지나가므로
      별도로 걸러낼 필요 없이 자동으로 무시됨 */
   .home-tiles-subgroup-label{
-    font-size:11px; font-weight:800; color:var(--ink-soft); opacity:0.7;
-    padding:9px 6px 3px 11px; letter-spacing:0.02em; user-select:none; cursor:default;
+    font-size:10.5px; font-weight:800; color:var(--indigo-deep); opacity:1;
+    padding:10px 6px 4px 11px; letter-spacing:0.05em; text-transform:uppercase;
+    user-select:none; cursor:default;
   }
-  .home-tiles-subgroup-label:first-child{ padding-top:2px; }
+  .home-tiles-subgroup-label:first-child{ padding-top:2px; margin-top:0; border-top:none; }
+  /* 묶음이 바뀌는 지점(회사→Tax.J→일반)을 이름표 색만이 아니라 위쪽 옅은 구분선으로도 한 번 더 표시해서,
+     묶음 사이 경계가 더 뚜렷하게 보이게 함("구분이 안 된다"는 요청) */
+  .home-tiles-subgroup-label:not(:first-child){ margin-top:6px; padding-top:10px; border-top:1px dashed var(--border); }
   <!-- 팝업 목록 줄도 실제 사이드바 메뉴 줄(.home-tile-plain)과 똑같은 모양(둥근 점 대신 왼쪽 컬러 바)을 쓰도록
        .home-tile.home-tile-plain 스타일을 그대로 재사용함 - 예전엔 이 팝업만 별도로 둥근 점 불릿을 썼어서
        실제 메뉴 목록과 생김새가 달라 보였음 -->
@@ -16548,6 +16561,14 @@ relocateSidebarNodes();
       } else if(el.classList.contains('home-submenu-item') || el.classList.contains('home-submenu-leaf')){
         const name = el.querySelector('span')?.textContent.trim() || el.textContent.trim();
         if(name) items.push({ name, depth, el, hasChildren:false });
+      } else if(el.classList.contains('home-tiles-subgroup-label')){
+        // 설정 하위메뉴의 회사/Tax.J/일반 같은 묶음 이름표 - 원래는 이동 속성이 없어서 여기서 그냥
+        // 지나쳤는데("전체메뉴에도 이 섹션 반영해줘" 요청으로), 눌러도 반응 없는 묶음 제목(hasChildren:true +
+        // elHasNavigation=false 조합, 위 Works/Company/Settings 대분류 이름표와 같은 방식)으로 수집해서
+        // 전체메뉴에도 그대로 구간 표시가 나오게 함. isSubgroupLabel만 별도로 표시해서 렌더링에서
+        // rail-allmenu-mid(대분류용)와 다른 전용 스타일을 입힘
+        const name = el.textContent.trim();
+        if(name) items.push({ name, depth, el, hasChildren:true, isSubgroupLabel:true });
       }
       // .home-submenu 자체는 여기서 별도로 처리하지 않음 - 항상 자신을 여는 화살표 달린 .home-tile
       // 바로 다음 형제로 존재해서, 위 .home-tile 분기의 expandBtn 처리에서 이미 재귀적으로 들어가 다뤄짐.
@@ -16606,7 +16627,7 @@ relocateSidebarNodes();
     grid.innerHTML = cols.map((c,ci)=>`
       <div>
         <div class="rail-allmenu-col-title">${c.catLabel}</div>
-        ${c.items.map((it,ii)=>`<div class="rail-allmenu-item${it.depth===0 ? ' rail-allmenu-mid' : ' rail-allmenu-sub'}" data-c="${ci}" data-i="${ii}">${it.name}</div>`).join('')}
+        ${c.items.map((it,ii)=>`<div class="rail-allmenu-item${it.isSubgroupLabel ? ' rail-allmenu-subgroup-label' : (it.depth===0 ? ' rail-allmenu-mid' : ' rail-allmenu-sub')}" data-c="${ci}" data-i="${ii}">${it.name}</div>`).join('')}
       </div>
     `).join('');
     grid.querySelectorAll('.rail-allmenu-item').forEach(el=>{
