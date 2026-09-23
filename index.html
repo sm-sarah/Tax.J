@@ -1531,6 +1531,15 @@
   .notice-back-chip-label{max-width:0; opacity:0; white-space:nowrap; font-size:12px; font-weight:700; margin-left:0; transition:max-width 0.18s ease, opacity 0.12s ease, margin-left 0.18s ease;}
   .notice-back-chip:hover{padding:7px 12px;}
   .notice-back-chip:hover .notice-back-chip-label{max-width:60px; opacity:1; margin-left:6px;}
+  /* "등록/검색/알림 칩 세 개는 가로세로 폭이 다 같아야 한다"는 요청 - 글자 길이가 서로 달라도(등록/검색/알림
+     전부 두 글자로 맞췄지만 아이콘 유무 등으로 미묘하게 달라질 수 있어서) 폭을 아예 고정폭으로 못박음.
+     아래 검색 패널의 입력칸·버튼들과도 높이(34px)를 맞춰서, 두 줄이 서로 다른 화면처럼 안 보이고 하나의
+     통일된 툴바처럼 보이게 함 */
+  .notice-toolbar-chip{
+    width:72px; height:34px; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center;
+    gap:4px; padding:0; white-space:nowrap;
+  }
+  .notice-search-ctrl{ height:34px; box-sizing:border-box; }
   .notice-unread-dot{
     display:inline-block; font-size:9px; font-weight:800; color:#fff; background:var(--coral);
     border-radius:8px; padding:1px 5px; margin-right:5px; vertical-align:middle; line-height:1.3;
@@ -2121,7 +2130,47 @@
     display:flex; align-items:center; justify-content:center; min-width:72px; height:34px; padding:0 10px;
     border-radius:8px; border:1.5px solid #FDE68A; background:#FEF9C3; color:#92660A; font-weight:700;
     font-size:11.5px; text-align:center; cursor:grab; touch-action:none; user-select:none; box-sizing:border-box;
+    position:relative;
   }
+  /* "자리/구역표시 지우는 방법이 안 보인다"는 요청 - 칸에 마우스를 올리거나(호버), 이미 선택돼있으면
+     (모바일처럼 호버가 없는 기기에서도 탭해서 선택만 하면 보이게) 오른쪽 위에 작은 × 버튼이 나타나고,
+     그걸 누르면 바로 그 칸을 지움(아래 편집 패널까지 내려가서 "이 칸 삭제"를 또 안 눌러도 됨). 평소엔
+     완전히 숨겨둬서 화면이 지저분해지지 않게 함 */
+  .seat-edit-cell-delete, .seat-chart-tray-chip-delete{
+    position:absolute; top:1px; right:1px; width:15px; height:15px; border-radius:50%; border:none;
+    background:#DC2626; color:#fff; font-size:9px; font-weight:800; line-height:1; padding:0; z-index:3;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    opacity:0; pointer-events:none; transition:opacity .12s ease;
+  }
+  .seat-edit-cell:hover .seat-edit-cell-delete, .seat-edit-cell.is-selected .seat-edit-cell-delete,
+  .seat-chart-tray-chip:hover .seat-chart-tray-chip-delete, .seat-chart-tray-chip.is-selected .seat-chart-tray-chip-delete{
+    opacity:1; pointer-events:auto;
+  }
+  /* "가로/세로 +·− 버튼 말고 마우스로 자유롭게 끌어서 크기를 바꾸고 싶다"는 요청 - 선택된 칸의 오른쪽
+     아래 모서리에만 나타나는 크기조절 손잡이. 끄는 동안은 픽셀 단위로 부드럽게 늘었다 줄었다 하다가,
+     손을 뗄 때 가장 가까운 칸 수(rowSpan/colSpan)로 스냅됨(기존 +/- 버튼은 그대로 남겨둬서 정확한 값을
+     원하면 그걸 써도 됨) */
+  .seat-resize-handle{
+    position:absolute; right:1px; bottom:1px; width:12px; height:12px; border-radius:3px 0 6px 0;
+    background:var(--indigo); cursor:nwse-resize; touch-action:none; z-index:3;
+    box-shadow:0 0 0 1.5px var(--surface);
+  }
+  /* "모니터 방향을 화살표 말고 책상 위 굵은 선 + 의자를 원으로 표기해달라"는 요청 - 모니터가 있는 변엔
+     굵은 색 바(seat-dir-monitor), 반대쪽(의자가 있는 변)엔 칸 테두리에 반쯤 걸친 타원(seat-dir-chair)을
+     같이 그림. rot0/180은 칸이 가로로 긴 채라 가로로 넓적한 바·타원을, rot90/270은 칸이 세로로 길어진
+     채라(아래 seatCellEffectiveSpans 참고 - 1×1 자리도 이때는 세로로 늘어남) 세로로 긴 바·타원을 씀 */
+  .seat-dir-monitor{ position:absolute; background:var(--indigo); border-radius:3px; z-index:2; }
+  .seat-dir-monitor.rot0{ top:-2px; left:20%; right:20%; height:4px; }
+  .seat-dir-monitor.rot90{ right:-2px; top:20%; bottom:20%; width:4px; }
+  .seat-dir-monitor.rot180{ bottom:-2px; left:20%; right:20%; height:4px; }
+  .seat-dir-monitor.rot270{ left:-2px; top:20%; bottom:20%; width:4px; }
+  .seat-dir-chair{ position:absolute; border:1.6px solid var(--ink-soft); background:var(--surface); border-radius:50%; z-index:2; }
+  /* 자리 사이 간격(그리드 gap 5~6px)보다 더 튀어나오면 옆·아래 칸과 겹쳐 보일 수 있어서, 튀어나오는
+     쪽 길이의 절반(6px)만큼만 칸 밖으로 나가고 나머지 절반은 칸 안쪽에 걸치게 함 */
+  .seat-dir-chair.rot0{ bottom:-6px; left:50%; transform:translateX(-50%); width:16px; height:12px; }
+  .seat-dir-chair.rot90{ left:-6px; top:50%; transform:translateY(-50%); width:12px; height:16px; }
+  .seat-dir-chair.rot180{ top:-6px; left:50%; transform:translateX(-50%); width:16px; height:12px; }
+  .seat-dir-chair.rot270{ right:-6px; top:50%; transform:translateY(-50%); width:12px; height:16px; }
   /* [시범 적용 v6] 라벨 칸을 168px로 고정폭 줘서 "날짜"처럼 짧은 라벨과 입력칸 사이에 여백이 크게 남는다는
      의견 - 라벨을 고정폭 대신 글자 길이만큼만 차지하게(auto) 바꾸고, 줄마다("날짜"/"구분"/"일수"/"조정사유"
      등) 테두리 하나로 묶어서 구분되게 함. v5에서 흰 배경을 채웠었는데 "그게 싫었던 것"이라는 피드백 -
@@ -3094,6 +3143,20 @@
     </div>
   </div>
 </div>
+<!-- 출퇴근기록 가져오기 - 사내 근태관리 시스템에서 내려받은 기록(CLOCK_IMPORT_DATASET)을 골라 적용할 직원에
+     반영하는 1회성 동기화 팝업. 이미 있던 날짜는 시스템 기록으로 덮어쓰되, 덮어써지는 값은 휴지통에 남김 -->
+<div id="clockImportModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:420px; width:100%; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="text-align:center; font-weight:800; font-size:15px; margin-bottom:4px;">출퇴근기록 가져오기</div>
+    <p class="hint" style="text-align:center; margin:0 0 14px;">사내 근태관리 시스템에서 내려받은 기록을 우리 앱 출퇴근현황(clockLog)에 반영해요.<br>가져오는 날짜에 이미 있던 기록은 시스템 기록으로 덮어써요(덮어써지는 값은 휴지통에 남아요).</p>
+    <div id="clockImportRowsWrap"></div>
+    <div id="clockImportMsg" class="hint" style="text-align:center; min-height:14px;"></div>
+    <div style="text-align:center; margin-top:10px; display:flex; justify-content:center; gap:8px;">
+      <button type="button" id="clockImportRunBtn" class="submit-btn" style="width:auto; padding:8px 18px;">가져오기</button>
+      <button type="button" id="clockImportCloseBtn" class="del-btn modal-close-btn">✕</button>
+    </div>
+  </div>
+</div>
 <!-- 출퇴근현황 표의 "수정" 팝업 - 출근 도장을 깜빡하고 늦게 찍는 것처럼, 실제 시간으로 사후에 고쳐야 할 때가
      있어서 출근/퇴근 시간과 근무지를 직접 고칠 수 있게 함. 다만 근태 기록을 아무렇지 않게 고칠 수 있으면
      신뢰도가 떨어지므로, 반드시 수정 사유를 적어야만 저장되게 막고(미입력 시 저장 자체를 막음), 저장할
@@ -3533,21 +3596,21 @@
       <div style="font-size:12px; font-weight:800; color:var(--ink-soft);">공지사항 목록</div>
       <div style="display:flex; align-items:center; gap:6px;">
         <button type="button" id="noticeSearchBackBtn" class="notice-back-chip" style="display:none;" title="돌아가기"><span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg></span><span class="notice-back-chip-label">돌아가기</span></button>
-        <button type="button" id="noticeNotifyToggleBtn" class="del-btn" style="background:var(--surface); border:1.3px solid var(--border); color:var(--ink);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M13.73 21a2 2 0 0 1-3.46 0"></path><path d="M18.63 13A17.89 17.89 0 0 1 18 8"></path><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"></path><path d="M18 8a6 6 0 0 0-9.33-5"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg> 알림 받기</button>
-        <button type="button" id="noticeAddBtn" class="del-btn" style="background:var(--indigo); color:#fff;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 등록</button>
-        <button type="button" id="noticeSearchToggleBtn" class="del-btn" style="background:var(--surface); border:1.3px solid var(--border); color:var(--ink);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> 검색</button>
+        <button type="button" id="noticeNotifyToggleBtn" class="del-btn notice-toolbar-chip" style="background:var(--surface); border:1.3px solid var(--border); color:var(--ink);"></button>
+        <button type="button" id="noticeAddBtn" class="del-btn notice-toolbar-chip" style="background:var(--indigo); color:#fff;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 등록</button>
+        <button type="button" id="noticeSearchToggleBtn" class="del-btn notice-toolbar-chip" style="background:var(--surface); border:1.3px solid var(--border); color:var(--ink);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> 검색</button>
       </div>
     </div>
     <div id="noticeSearchPanel" style="display:none; background:var(--bg); border-radius:12px; padding:12px; margin-bottom:14px; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;">
-      <select id="notice-search-type" style="border:1.5px solid var(--border); border-radius:8px; padding:7px 10px; font-size:12.5px; background:var(--surface); font-family:'Pretendard',sans-serif;">
+      <select id="notice-search-type" class="notice-search-ctrl" style="border:1.5px solid var(--border); border-radius:8px; padding:0 10px; font-size:12.5px; background:var(--surface); font-family:'Pretendard',sans-serif;">
         <option value="title">제목</option>
         <option value="author">작성자</option>
         <option value="date">날짜</option>
       </select>
-      <input type="text" id="notice-search-text" placeholder="검색어 입력" style="border:1.5px solid var(--border); border-radius:8px; padding:7px 10px; font-size:12.5px; background:var(--surface); width:180px;">
-      <input type="date" id="notice-search-date" style="display:none; border:1.5px solid var(--border); border-radius:8px; padding:6px 10px; font-size:12.5px; background:var(--surface);">
-      <button type="button" id="noticeSearchBtn" class="submit-btn" style="width:auto; padding:7px 16px;">검색</button>
-      <button type="button" id="noticeSearchResetBtn" class="del-btn">초기화</button>
+      <input type="text" id="notice-search-text" placeholder="검색어 입력" class="notice-search-ctrl" style="border:1.5px solid var(--border); border-radius:8px; padding:0 10px; font-size:12.5px; background:var(--surface); width:180px;">
+      <input type="date" id="notice-search-date" style="display:none; border:1.5px solid var(--border); border-radius:8px; padding:0 10px; font-size:12.5px; background:var(--surface);" class="notice-search-ctrl">
+      <button type="button" id="noticeSearchBtn" class="submit-btn notice-search-ctrl" style="width:auto; padding:0 16px;">검색</button>
+      <button type="button" id="noticeSearchResetBtn" class="del-btn notice-search-ctrl" style="padding:0 10px;">초기화</button>
     </div>
 
     <div id="noticeListWrap"></div>
@@ -4933,7 +4996,7 @@
       <!-- 결재: 작은 그룹웨어 (기안/결재자/첨부/알림) -->
       <div class="approval-panel" data-approval-cat="doc" style="display:none;">
         <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
-          <button type="button" id="approvalNotifyToggleBtn" class="del-btn" title="내가 결재자로 지정된 새 문서가 오면 이 브라우저에서 알림을 받아요."><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M13.73 21a2 2 0 0 1-3.46 0"></path><path d="M18.63 13A17.89 17.89 0 0 1 18 8"></path><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"></path><path d="M18 8a6 6 0 0 0-9.33-5"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg> 알림 받기</button>
+          <button type="button" id="approvalNotifyToggleBtn" class="del-btn"></button>
         </div>
 
         <div class="approval-doc-panel" data-approval-doc="new">
@@ -5261,7 +5324,7 @@
            수정은 이 설정 탭 자체가 이미 관리자 전용이라 별도 권한 체크가 필요 없음. 저장할 때마다 이전
            상태를 이력에 남김 -->
       <div class="settings-sub-title" id="ssTitle-seatChart" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="4" width="18" height="16" rx="1"></rect><path d="M3 10h18"></path><path d="M9 10v10"></path></svg> 좌석배치도</div>
-      <p class="hint" style="text-align:center;">아래 미리보기에서 자리를 마우스(또는 손가락)로 눌러서 그대로 끌어다 옮겨요. 자리를 살짝 누르기만 하면 이름·크기를 바꾸거나 지울 수 있어요. "자리"는 빈칸이면 미점유로 보이고, "구역표시"는 화장실·계단실처럼 이름표만 있는 칸이에요. 저장할 때마다 이력이 남아요.</p>
+      <p class="hint" style="text-align:center;">아래 미리보기에서 자리를 마우스(또는 손가락)로 눌러서 그대로 끌어다 옮겨요. 자리를 살짝 누르기만 하면 이름·크기를 바꾸거나 지울 수 있고, 칸에 마우스를 올리면 뜨는 × 버튼으로 바로 지울 수도 있어요. 선택된 칸의 오른쪽 아래 모서리를 끌면 자유롭게 크기를 바꿀 수 있어요. "자리"는 빈칸이면 미점유로 보이고, "구역표시"는 화장실·계단실처럼 이름표만 있는 칸, "소품"은 사물함처럼 작은 비품, "구분선"은 구획을 나누는 테두리예요. 저장할 때마다 이력이 남아요.</p>
       <div class="flat-panel" style="max-width:900px;">
         <!-- "기준일자 칸 오른쪽 여백이 너무 많다"는 요청으로 한 번 줄이면서(내용에 맞는 폭으로 줄이고 가운데
              정렬) 오히려 라벨과 입력칸 사이(칸 안쪽)에 여백이 새로 생겨버림 - 이 두 줄(.flat-row) 자체가
@@ -5274,6 +5337,13 @@
         <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin:6px 0 4px; flex-wrap:wrap;">
           <button type="button" class="del-btn" id="seatChartAddSeatBtn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 자리 추가</button>
           <button type="button" class="del-btn" id="seatChartAddLabelBtn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 구역표시 추가</button>
+          <!-- "사물함처럼 작은 소품도 놓고 싶다" 요청 - 자리/구역표시와 같은 칸이지만 눈에 띄게 작고 옅은
+               점선 스타일로 구분되는 "소품" 칸을 하나 더 둠 -->
+          <button type="button" class="del-btn" id="seatChartAddItemBtn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 소품 추가</button>
+          <!-- "구획 나누는 경계선도 있으면 좋겠다" 요청 - 테두리만 있고 속은 비어서, 다른 자리/구역표시
+               칸들 뒤에 깔려 그 위로 겹쳐 보일 수 있는 "구분선" 칸을 추가함(진짜 방을 나누는 선이 아니라
+               이 칸도 그냥 크기·위치를 자유롭게 옮길 수 있는 하나의 칸일 뿐이라, 이름은 없어도 됨) -->
+          <button type="button" class="del-btn" id="seatChartAddDividerBtn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 구분선 추가</button>
           <span style="width:1px; height:16px; background:var(--border); margin:0 4px;"></span>
           <span style="font-size:11.5px; color:var(--ink-soft);">가로 칸 수</span>
           <button type="button" class="del-btn" id="seatChartColsMinusBtn" style="padding:5px 10px;">−</button>
@@ -5379,6 +5449,10 @@
           <!-- 한 사람이 계정을 새로 만들어서(예: 이메일 변경 등) 실제로는 같은 직원인데 프로필이 여러 개로
                나뉘는 경우, 예전 계정의 근태·경비 기록을 새 계정으로 옮겨 합칠 수 있게 하는 버튼 -->
           <button type="button" id="employeeDataTransferBtn" class="del-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="13 6 19 12 13 18"></polyline></svg> 데이터 이관</button>
+          <!-- "사내 근태관리 시스템 기록을 우리 앱 출퇴근현황이랑 동기화하고 싶다"는 요청으로 만든 1회성
+               가져오기 버튼 - 그 시스템에서 내려받은 엑셀을 미리 정리해 embed해둔 값(CLOCK_IMPORT_DATASET)을
+               고른 직원의 출퇴근기록(clockLog)에 반영함 -->
+          <button type="button" id="clockImportBtn" class="del-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 3v12"></path><path d="M7 10l5 5 5-5"></path><path d="M4 19h16"></path></svg> 출퇴근기록 가져오기</button>
         </div>
         <div id="addEmployeeFormWrap" class="settings-addbox-topbtn" style="display:none; margin-bottom:16px; position:relative;">
           <p class="hint" style="text-align:center;">
@@ -7952,8 +8026,14 @@ function updateNoticeNotifyBtn(){
   const bellSvg = on
     ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`
     : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M13.73 21a2 2 0 0 1-3.46 0"></path><path d="M18.63 13A17.89 17.89 0 0 1 18 8"></path><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"></path><path d="M18 8a6 6 0 0 0-9.33-5"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
-  btn.innerHTML = on ? `${bellSvg} 알림 받는 중` : `${bellSvg} 알림 받기`;
-  btn.style.background = on ? 'var(--indigo)' : '';
+  // "등록 버튼이랑 색이 구분이 안 된다"는 요청 - 켜져있을 때 색을 등록 버튼과 같은 인디고 대신 민트로 바꿔서
+  // 서로 다른 버튼이라는 게 한눈에 보이게 함. 글자도 "알림 받는 중"/"알림 받기"로 칩 길이가 서로 달라지는
+  // 대신 항상 "알림"으로 고정하고(다른 두 칩과 가로폭이 똑같아지도록), 지금 상태는 종 아이콘 모양(꺼짐:
+  // 선 그어진 종)으로만 구분하며, 마우스를 올렸을 때 뜨는 title 툴팁으로 "알림 받는 중"/"알림 받기"를 안내함
+  btn.innerHTML = `${bellSvg} 알림`;
+  btn.title = on ? '알림 받는 중' : '알림 받기';
+  btn.style.background = on ? 'var(--mint)' : '';
+  btn.style.borderColor = on ? 'var(--mint)' : '';
   btn.style.color = on ? '#fff' : '';
 }
 async function toggleNoticeNotify(){
@@ -8673,7 +8753,7 @@ function renderAdminCalendar(){
       const icon = r.bonus ? calIconSvg('special') : calIconSvg('remote');
       // 특별재택(bonus)은 한도 밖이라 잔여횟수 표기가 의미 없어서 정기재택에만 "(N회/6회)"를 붙임 -
       // N은 그 달 전체 사용 건수(합계)가 아니라 이 항목이 creditMonth 안에서 사용일 순으로 몇 번째인지(누적)임
-      const typeLabel = r.bonus ? '특별재택' : `정기재택 (${remoteEntryRank(att.remoteEntries, r)}회/${REGULAR_REMOTE_MONTHLY_QUOTA}회)`;
+      const typeLabel = r.bonus ? '특별재택' : `정기재택 (${remoteEntryRank(att.remoteEntries, r)}회/${regularRemoteMonthlyQuotaFor(remoteCreditMonthOf(r))}회)`;
       const advSuffix = r.advance ? advBadgeTag(creditMonthShortLabel(r.creditMonth)) : '';
       (byDate[r.date]=byDate[r.date]||[]).push(`<span class="cal-badge ${cls}">${icon} ${escHtml(name)}) ${typeLabel}${advSuffix}</span>`);
     });
@@ -9701,8 +9781,18 @@ function getEffectiveGrantsAsOf(cutoff){
 // 휴가(연차/반차/반반차)는 아직 발생하지 않은 다음 연차에서 최대 5일까지만 미리 당겨써서 쓸 수 있음.
 const LEAVE_ADVANCE_MAX_DAYS = 5;
 // 정기재택 월 한도 - 2026.09.01부터 월 2회 → 월 6회로 늘어남 (여전히 "자율 사용"이라 한도를 실제로 막지는
-// 않고, 화면에 "X/6회"로 보여주는 표시용 기준값으로만 씀)
-const REGULAR_REMOTE_MONTHLY_QUOTA = 6;
+// 않고, 화면에 "X/N회"로 보여주는 표시용 기준값으로만 씀). 처음엔 이걸 그냥 고정값 6으로 둬서 예전 달
+// (2026.08 이전) 기록을 조회해도 항상 "X/6회"로 보였는데, 그 당시엔 한도가 2회였으므로 잘못된 표기였음 -
+// 조회 대상 달(monthStr)이 기준월 이전이면 예전 한도(2회)를, 이후면 새 한도(6회)를 돌려주는 함수로 바꿔서
+// 지난 달 기록엔 그 당시 한도가 그대로 보이게 함
+const REGULAR_REMOTE_QUOTA_INCREASE_MONTH = '2026-09';
+function regularRemoteMonthlyQuotaFor(monthStr){
+  return (monthStr && monthStr >= REGULAR_REMOTE_QUOTA_INCREASE_MONTH) ? 6 : 2;
+}
+// "8월 재택까지는 특별재택이 식대기준일수에서 제외되면 안 된다"는 지적으로 만든 시작월 기준값 - 이 달
+// (2026-09)부터 등록된 특별재택만 식대기준일수에서 차감되고, 그 이전 달의 특별재택은 몇 건이든 차감 없음
+// (calcWorkdays/calcWorkdaysExclusionBreakdown 둘 다 이 기준을 씀)
+const SPECIAL_REMOTE_EXCLUSION_START_MONTH = '2026-09';
 // 2026.09.01부터, 정기재택 중 일부는 식대기준일수(점심식대한도 계산)에서 빠질 수 있음 - 처음엔 "6회 중
 // 4회는 자동으로 고정 차감"으로 만들었는데, 매달 몇 회를 쓸지가 유동적이라 자동 계산 대신 재택 등록할 때
 // "이 날은 식대기준일수에서 제외" 체크박스(remoteEntries[].noLunch)로 건별로 직접 선택하는 방식으로 바꿈
@@ -9727,7 +9817,7 @@ function nextAvailableRemoteCreditMonth(fromMonthStr){
   for(let i=0;i<240;i++){ // 최대 20년치까지 탐색(사실상 무한 루프 방지용 안전장치)
     const monthStr = `${y}-${String(m).padStart(2,'0')}`;
     const usedInMonth = (attendance.remoteEntries||[]).filter(r => !r.bonus && remoteCreditMonthOf(r) === monthStr).length;
-    if(usedInMonth < 2) return monthStr;
+    if(usedInMonth < regularRemoteMonthlyQuotaFor(monthStr)) return monthStr;
     m++; if(m>12){ m=1; y++; }
   }
   return fromMonthStr;
@@ -10145,8 +10235,15 @@ function calcWorkdays(monthStr){
   // 기준으로 세서 차감함(당겨쓰기로 다른 달 한도를 미리 썼어도, 실제 근무는 이 달에 안 한 거니 이 달
   // 식대기준일수에서 빠지는 게 맞음) - 몇 회를 쓰든 자동으로 정해지지 않고 등록할 때 건별로 직접 선택함.
   // 특별재택(bonus, 월 한도 미포함)도 재택인 이상 회사에서 점심을 제공/대체하지 않는 건 마찬가지라
-  // noLunch 여부와 무관하게 항상 식대기준일수에서 제외함
-  const remoteNoLunchDays = attendance.remoteEntries.filter(r => (r.bonus || r.noLunch) && r.date.startsWith(monthStr)).length;
+  // 식대기준일수에서 제외하기로 했는데, "8월 재택까지는 특별재택을 기준일수에서 빼지 않기로 했었다"는
+  // 지적으로 이 제외 규칙 자체의 시작월을 명확히 못박음 - 9월(SPECIAL_REMOTE_EXCLUSION_START_MONTH)
+  // 이전 달은 특별재택이 몇 건이든 전혀 차감하지 않고, 그 달부터만 차감함(noLunch 체크는 원래도 이 규칙과
+  // 무관하게 그대로 둠 - 그건 등록할 때 사람이 직접 켠 경우에만 차감되는 별개 항목이라 소급 적용될 여지가 없음)
+  const remoteNoLunchDays = attendance.remoteEntries.filter(r => {
+    if(!r.date.startsWith(monthStr)) return false;
+    if(r.bonus) return monthStr >= SPECIAL_REMOTE_EXCLUSION_START_MONTH;
+    return !!r.noLunch;
+  }).length;
   const weekdays = Math.max(0, rawWeekdays - holidayCount); // '근무가능일수' = 주말·공휴일 제외
   const exclusionCount = otherExclusionCount; // '차감일수'에는 공휴일·저녁회식을 포함하지 않음
   const workdays = Math.max(0, weekdays - noLunchDays - exclusionCount - remoteNoLunchDays); // 식대계산 기준일수 (점심회식·정기재택 4일 등도 차감된 값)
@@ -10178,9 +10275,12 @@ function calcWorkdaysExclusionBreakdown(monthStr){
   });
   const monthRemoteNoLunchDays = attendance.remoteEntries.filter(r => !r.bonus && r.noLunch && r.date.startsWith(monthStr)).length;
   add('정기재택(식대미포함)', monthRemoteNoLunchDays);
-  // 특별재택(월 한도 미포함)도 재택인 이상 회사에서 점심을 제공/대체하지 않는 건 마찬가지라 항상 식대기준일수에서 제외함
-  const monthRemoteBonusDays = attendance.remoteEntries.filter(r => r.bonus && r.date.startsWith(monthStr)).length;
-  add('특별재택', monthRemoteBonusDays);
+  // 특별재택은 SPECIAL_REMOTE_EXCLUSION_START_MONTH(2026-09)부터만 식대기준일수에서 제외되므로, 그 이전
+  // 달은 특별재택이 있어도 이 계산근거 내역에 아예 안 보여야 함(실제로 안 빠지는데 빠진 것처럼 보이면 혼란)
+  if(monthStr >= SPECIAL_REMOTE_EXCLUSION_START_MONTH){
+    const monthRemoteBonusDays = attendance.remoteEntries.filter(r => r.bonus && r.date.startsWith(monthStr)).length;
+    add('특별재택', monthRemoteBonusDays);
+  }
   return counts;
 }
 function openWorkdaysCalcInfoModal(){
@@ -10549,7 +10649,10 @@ function renderAllRemoteHistory(){
   const buildRows = (list) => list.map(en=>{
     // 태그 구성(정기재택/특별재택 + 당겨씀/식대제외)은 renderAttendance()의 이번달 근태 기록 표와 동일하게 맞춤
     const advTag = en.advance ? ` <span style="color:var(--indigo-deep); font-weight:800; display:inline-flex; align-items:center; gap:2px;">${advIconTag()}${remoteCreditMonthOf(en)} 한도차감</span>` : '';
-    const noLunchTag = (en.bonus || en.noLunch) ? ` <span style="color:#8A6D1E; font-weight:800;">${calIconSvg('lunchparty')} 식대제외</span>` : '';
+    // 특별재택은 SPECIAL_REMOTE_EXCLUSION_START_MONTH(2026-09)부터만 식대기준일수에서 제외되므로, 그
+    // 이전 달 특별재택엔 "식대제외" 뱃지를 붙이지 않음(아래 renderAttendance() 이번달 표와 동일 기준)
+    const bonusExcluded = en.bonus && (en.date||'').slice(0,7) >= SPECIAL_REMOTE_EXCLUSION_START_MONTH;
+    const noLunchTag = (bonusExcluded || en.noLunch) ? ` <span style="color:#8A6D1E; font-weight:800;">${calIconSvg('lunchparty')} 식대제외</span>` : '';
     const label = `${en.bonus ? '특별재택' : '정기재택'}${advTag}${noLunchTag}`;
     return `<tr>
       <td class="num" style="text-align:center;">${en.date}</td>
@@ -10658,12 +10761,13 @@ function renderAttendance(){
   const regularRemote = s.monthRemote.filter(r => !r.bonus);
   const bonusRemote = s.monthRemote.filter(r => r.bonus);
   document.getElementById('monthRemoteDisplay').textContent = s.monthRemote.length + '일';
-  // 재택근무 링은 "이번달 자율 재택 한도(REGULAR_REMOTE_MONTHLY_QUOTA) 중 얼마를 썼는지"로 채움
-  setCardRing('monthRemoteRing', REGULAR_REMOTE_MONTHLY_QUOTA > 0 ? s.monthRemoteQuotaUsed / REGULAR_REMOTE_MONTHLY_QUOTA : 0);
+  // 재택근무 링은 "이번달 자율 재택 한도(월별로 다른 regularRemoteMonthlyQuotaFor) 중 얼마를 썼는지"로 채움
+  const monthRemoteQuota = regularRemoteMonthlyQuotaFor(monthStr);
+  setCardRing('monthRemoteRing', monthRemoteQuota > 0 ? s.monthRemoteQuotaUsed / monthRemoteQuota : 0);
   // "자율 사용 X/N회"는 실제로 그 달에 쓴 개수가 아니라, 그 달 한도에서 차감된 개수(당겨쓰기 포함) 기준으로 보여줌
   const advanceNote = s.monthRemoteQuotaUsed > regularRemote.length ? ` (당겨씀 ${s.monthRemoteQuotaUsed - regularRemote.length}회 포함)` : '';
   document.getElementById('monthRemoteSub').textContent =
-    `자율 사용 ${s.monthRemoteQuotaUsed}/${REGULAR_REMOTE_MONTHLY_QUOTA}회${advanceNote}` + (bonusRemote.length > 0 ? ` · 특별재택 ${bonusRemote.length}회 (한도 외)` : '');
+    `자율 사용 ${s.monthRemoteQuotaUsed}/${monthRemoteQuota}회${advanceNote}` + (bonusRemote.length > 0 ? ` · 특별재택 ${bonusRemote.length}회 (한도 외)` : '');
 
   const wrap = document.getElementById('attendanceLedgerWrap');
   const monthGrants = attendance.leaveGrants.filter(g=>g.date.startsWith(monthStr)).map(g=>({...g, kind:'grant'}));
@@ -10694,8 +10798,12 @@ function renderAttendance(){
     }
     else {
       const advTag = en.advance ? ` <span style="color:var(--indigo-deep); font-weight:800; display:inline-flex; align-items:center; gap:2px;">${advIconTag()}${remoteCreditMonthOf(en)} 한도차감</span>` : '';
-      // 특별재택은 noLunch 값과 무관하게 항상 식대기준일수에서 제외되므로(위 calcWorkdays 참고) 뱃지도 항상 같이 보여줌
-      const noLunchTag = (en.bonus || en.noLunch) ? ` <span style="color:#8A6D1E; font-weight:800;">${calIconSvg('lunchparty')} 식대제외</span>` : '';
+      // 특별재택은 SPECIAL_REMOTE_EXCLUSION_START_MONTH(2026-09)부터만 식대기준일수에서 제외되므로(위
+      // calcWorkdays 참고), 그 이전 달 특별재택엔 이 뱃지를 붙이면 안 됨(실제로는 안 빠지는데 빠지는
+      // 것처럼 보여서 혼란을 줌) - 정기재택의 noLunch 체크는 원래도 등록 시 사람이 직접 켠 것만 반영되는
+      // 별개 항목이라 이 시작월과 무관하게 그대로 둠
+      const bonusExcluded = en.bonus && (en.date||'').slice(0,7) >= SPECIAL_REMOTE_EXCLUSION_START_MONTH;
+      const noLunchTag = (bonusExcluded || en.noLunch) ? ` <span style="color:#8A6D1E; font-weight:800;">${calIconSvg('lunchparty')} 식대제외</span>` : '';
       tag = `<span class="tag ${en.bonus ? 'tag-remote-special' : 'tag-remote'}">${en.bonus ? '특별재택' : '정기재택'}${advTag}${noLunchTag}</span>`;
       detail = '-';
     }
@@ -11098,7 +11206,7 @@ function renderCalendar(){
       const rAdvSuffix = rInfo.advance ? advBadgeTag(creditMonthShortLabel(rInfo.creditMonth)) : '';
       // 특별재택은 한도 밖이라 회차 표기가 의미 없어서 그대로 두고, 정기재택은 팀캘린더 미리보기(대시보드)처럼
       // "N회/6회" 사용 회차를 같이 보여줌 - 요청: "개인캘린더에도 정기재택 횟수 표기가 되게해줘"
-      badges += rInfo.bonus ? `<span class="cal-badge special">${calIconSvg('special')} 특별재택${rAdvSuffix}</span>` : `<span class="cal-badge remote">${calIconSvg('remote')} 정기재택 (${remoteEntryRank(attendance.remoteEntries, rInfo)}회/${REGULAR_REMOTE_MONTHLY_QUOTA}회)${rAdvSuffix}</span>`;
+      badges += rInfo.bonus ? `<span class="cal-badge special">${calIconSvg('special')} 특별재택${rAdvSuffix}</span>` : `<span class="cal-badge remote">${calIconSvg('remote')} 정기재택 (${remoteEntryRank(attendance.remoteEntries, rInfo)}회/${regularRemoteMonthlyQuotaFor(remoteCreditMonthOf(rInfo))}회)${rAdvSuffix}</span>`;
     }
     // 설정 > 복리후생 > 특별기간(sharedSpecialPeriods)은 팀캘린더(renderAdminCalendar)에만 그려주고
     // 개인캘린더(이 함수)에는 애초에 빠져있었음 - 모바일/PC 문제가 아니라 이 화면 자체에 이 로직이 없었던
@@ -15124,7 +15232,7 @@ function computeMonthTeamAgenda(monthStr){
       (att.remoteEntries||[]).filter(r=>r.date===ds).forEach(r=>{
         // 팀캘린더(월간 표)와 동일하게 잔여횟수를 같이 보여줌(그 달 합계가 아니라 누적 순번) - 특별재택은 한도 밖이라 제외
         const cnt = r.bonus ? null : remoteEntryRank(att.remoteEntries, r);
-        items.push({ date:ds, dateLabel, person:name, icon: r.bonus ? calIconSvg('special') : calIconSvg('remote'), text: r.bonus ? '특별재택' : `정기재택 (${cnt}회/${REGULAR_REMOTE_MONTHLY_QUOTA}회)` });
+        items.push({ date:ds, dateLabel, person:name, icon: r.bonus ? calIconSvg('special') : calIconSvg('remote'), text: r.bonus ? '특별재택' : `정기재택 (${cnt}회/${regularRemoteMonthlyQuotaFor(remoteCreditMonthOf(r))}회)` });
       });
       (sch.events||[]).filter(e=>e.date===ds && e.shared !== false).forEach(e=>{
         items.push({ date:ds, dateLabel, person:name, icon:calIconSvg('schedule'), text: e.type || '일정' });
@@ -19508,8 +19616,14 @@ function chipifySettingsCategory(catKey){
       current = { titleEl: node, nodes: [node] };
       subsections.push(current);
     } else if(nestedSubtitle){
-      subsections.push({ titleEl: nestedSubtitle, nodes: [node] });
-      current = null;
+      // 특별기간처럼 소제목이 (연도별 이력 버튼과 한 줄에 놓느라) 감싸는 div 하나에만 nested로 들어있고
+      // 안내문구·등록폼·목록 같은 실제 내용은 그 div 밖의 다음 형제 노드들로 이어지는 경우, 여기서
+      // current를 null로 지워버리면 뒤따르는 형제 노드들이 전부 "이 소제목 몫"으로 못 들어가고 keepTop으로
+      // 빠져서 어느 소메뉴 칩을 눌러도 항상 화면에 떠있는 상태가 됐음("설정에 근무시간부터 알림까지
+      // 특별기간이 다 떠있다"는 제보의 원인) - current를 이 소제목의 subsection으로 계속 가리키게 해서,
+      // 직접 자식인 다른 소제목들과 똑같이 뒤따르는 형제 노드들도 정상적으로 이 소제목의 몫으로 들어가게 함
+      current = { titleEl: nestedSubtitle, nodes: [node] };
+      subsections.push(current);
     } else if(current){
       current.nodes.push(node);
     } else {
@@ -25361,10 +25475,16 @@ function updateApprovalNotifyBtn(){
   const btn = document.getElementById('approvalNotifyToggleBtn');
   if(!btn) return;
   const on = approvalNotifyEnabled() && typeof Notification !== 'undefined' && Notification.permission === 'granted';
-  // 알림 받는 중일 때만 종 아이콘을 붙여서 상태가 한눈에 구분되게 함 - 꺼져있을 땐 아이콘 없이 문구만
-  const bellSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`;
-  btn.innerHTML = on ? `${bellSvg} 알림 받는 중` : `알림 받기`;
-  btn.style.background = on ? 'var(--indigo)' : '';
+  // "공지사항 알림 칩이랑 똑같이 맞춰달라"는 요청 - 공지사항 쪽(updateNoticeNotifyBtn)과 같은 규칙으로
+  // 통일함: 켜져있을 때 종 아이콘(꺼져있으면 선 그어진 종), 글자는 항상 "알림"으로 고정, 켜졌을 때 색은
+  // 인디고 대신 민트(다른 화면의 파란 강조 버튼과 안 헷갈리게), 지금 상태(받는 중/받기)는 title 툴팁으로 안내
+  const bellSvg = on
+    ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`
+    : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M13.73 21a2 2 0 0 1-3.46 0"></path><path d="M18.63 13A17.89 17.89 0 0 1 18 8"></path><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"></path><path d="M18 8a6 6 0 0 0-9.33-5"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+  btn.innerHTML = `${bellSvg} 알림`;
+  btn.title = on ? '알림 받는 중' : '알림 받기';
+  btn.style.background = on ? 'var(--mint)' : '';
+  btn.style.borderColor = on ? 'var(--mint)' : '';
   btn.style.color = on ? '#fff' : '';
 }
 async function toggleApprovalNotify(){
@@ -27172,6 +27292,79 @@ document.getElementById('empDataTransferRunBtn')?.addEventListener('click', asyn
   }
 });
 
+// 사내 근태관리 시스템("전사_기간별근태현황")에서 내려받은 엑셀 4개(2025-11-24~2026-09-23 구간을 나눠 받음)를
+// 미리 정리해 embed해둔 1회성 이전 데이터 - "지금 출퇴근현황에 있는 기록을 사내 시스템 원본이랑 동기화하고
+// 싶다"는 요청으로 아래 가져오기 팝업(#clockImportBtn)에서만 씀. 이름별로 실제 출근/퇴근 도장이 찍힌
+// 날짜만 들어있고 값은 [출근시간, 퇴근시간](HH:MM:SS, 둘 중 하나만 찍힌 날은 빈 문자열) - 같은 기간
+// 조종환은 사내 시스템에 찍힌 기록이 전혀 없어서(사업주라 별도 관리) 데이터에 포함되지 않음
+const CLOCK_IMPORT_DATASET = {"장선민":{"2025-12-01":["09:24:08","17:02:26"],"2025-12-02":["09:20:35","17:01:19"],"2025-12-03":["09:24:02","17:04:16"],"2025-12-04":["09:14:50","17:02:25"],"2025-12-05":["09:04:38","16:15:45"],"2025-12-08":["09:09:18","17:02:43"],"2025-12-09":["09:06:09","17:02:23"],"2025-12-10":["09:02:34","17:01:08"],"2025-12-11":["09:06:08","17:01:40"],"2025-12-12":["09:00:34","17:00:28"],"2025-12-15":["09:05:56","17:01:30"],"2025-12-16":["09:03:23","17:00:41"],"2025-12-17":["09:11:06","17:00:15"],"2025-12-18":["09:07:25","17:01:18"],"2025-12-19":["09:02:15","17:00:22"],"2025-12-22":["09:03:58","17:00:24"],"2025-12-23":["09:06:18","17:02:04"],"2025-12-24":["09:01:37","13:08:07"],"2025-12-26":["09:03:00","17:00:37"],"2025-12-29":["09:07:59","17:03:34"],"2025-12-30":["09:03:14","17:28:37"],"2025-12-31":["09:06:16","16:02:12"],"2026-01-02":["09:05:59","07:35:59"],"2026-01-06":["09:16:57","17:38:15"],"2026-01-07":["09:28:18","17:31:20"],"2026-01-08":["09:21:34","17:36:10"],"2026-01-09":["09:10:30","17:38:20"],"2026-01-12":["09:19:19","17:38:42"],"2026-01-14":["09:13:59","17:33:26"],"2026-01-15":["09:08:15","19:17:51"],"2026-01-16":["09:25:48","17:32:17"],"2026-01-20":["09:03:20","21:59:44"],"2026-01-21":["09:08:30","21:37:25"],"2026-01-22":["09:16:45","19:06:26"],"2026-01-23":["09:02:49","17:30:16"],"2026-01-26":["09:10:38","17:56:55"],"2026-01-27":["09:08:39","17:59:05"],"2026-01-28":["09:06:19","17:32:39"],"2026-01-29":["10:59:06","17:33:51"],"2026-01-30":["09:08:13","17:30:10"],"2026-02-02":["09:18:26","17:30:15"],"2026-02-03":["09:17:29","17:31:43"],"2026-02-04":["09:17:14","17:30:40"],"2026-02-05":["09:06:29","17:33:33"],"2026-02-06":["09:03:03","17:31:03"],"2026-02-09":["09:00:39","17:30:05"],"2026-02-10":["09:07:50","07:37:50"],"2026-02-11":["09:05:01","07:35:01"],"2026-02-12":["08:51:53","18:42:23"],"2026-02-13":["08:54:13","15:59:14"],"2026-02-19":["09:06:00","17:35:19"],"2026-02-20":["09:09:13","17:30:39"],"2026-02-23":["09:10:31","17:30:30"],"2026-02-24":["09:16:58","17:31:15"],"2026-02-25":["09:03:03","17:31:41"],"2026-02-26":["09:15:59","17:33:48"],"2026-02-27":["09:02:01","17:30:08"],"2026-03-03":["09:13:05","17:31:20"],"2026-03-04":["09:15:39","17:31:35"],"2026-03-05":["09:15:47","17:32:31"],"2026-03-06":["09:12:55","17:30:21"],"2026-03-09":["08:50:26","17:38:37"],"2026-03-10":["09:15:51","17:32:55"],"2026-03-11":["09:23:41","17:30:12"],"2026-03-12":["08:24:02","06:54:02"],"2026-03-18":["08:37:25","20:38:10"],"2026-03-20":["08:40:35","23:00:00"],"2026-03-23":["08:57:31","17:30:27"],"2026-03-24":["08:57:10","17:30:41"],"2026-03-25":["09:04:12","17:30:13"],"2026-03-26":["09:02:26","17:30:15"],"2026-03-27":["09:02:45","17:38:42"],"2026-03-30":["08:59:53","17:33:19"],"2026-03-31":["08:01:11","06:31:11"],"2026-04-01":["08:15:29","17:33:56"],"2026-04-02":["08:56:21","16:38:17"],"2026-04-03":["08:33:59","17:48:59"],"2026-04-06":["09:09:57","16:32:01"],"2026-04-08":["09:17:14","17:04:24"],"2026-04-09":["08:52:12","16:34:05"],"2026-04-20":["09:07:14","17:30:25"],"2026-04-21":["09:06:51","17:32:02"],"2026-04-22":["09:07:01","17:31:45"],"2026-04-23":["09:12:40","17:00:22"],"2026-04-27":["09:07:51","17:01:44"],"2026-04-28":["09:09:00","17:01:03"],"2026-04-29":["09:05:07","17:00:22"],"2026-04-30":["09:14:38","17:46:19"],"2026-05-04":["08:13:14","17:38:31"],"2026-05-06":["08:57:56","17:30:12"],"2026-05-07":["09:11:45","17:01:10"],"2026-05-08":["09:07:06","17:00:10"],"2026-05-11":["09:03:37","17:00:27"],"2026-05-12":["09:02:37","17:00:11"],"2026-05-13":["09:01:30","17:00:04"],"2026-05-14":["09:03:33","17:00:05"],"2026-05-15":["09:05:53","17:06:28"],"2026-05-18":["09:08:03","17:01:57"],"2026-05-19":["09:12:16","17:00:16"],"2026-05-20":["09:09:59","17:00:26"],"2026-05-21":["09:16:17","17:04:35"],"2026-05-22":["09:07:20","17:00:59"],"2026-05-26":["09:11:44","17:00:15"],"2026-05-27":["09:26:25","17:02:40"],"2026-05-28":["09:09:26","17:04:10"],"2026-05-29":["09:08:34","17:00:05"],"2026-06-01":["09:17:17","17:00:14"],"2026-06-02":["08:42:53","17:18:37"],"2026-06-04":["09:04:17","17:01:27"],"2026-06-05":["09:28:51","17:01:17"],"2026-06-08":["09:14:51","17:00:22"],"2026-06-09":["09:11:23","17:00:19"],"2026-06-10":["09:06:21","17:00:28"],"2026-06-11":["08:58:02","12:31:43"],"2026-06-15":["09:17:22","17:00:06"],"2026-06-16":["09:12:37","17:03:40"],"2026-06-17":["09:17:34","17:00:09"],"2026-06-18":["09:19:33","17:01:17"],"2026-06-19":["09:05:54","17:00:04"],"2026-06-22":["09:14:41","17:00:35"],"2026-06-23":["09:16:25","17:03:13"],"2026-06-24":["17:02:35","09:00:00"],"2026-06-25":["09:07:08","17:00:09"],"2026-06-26":["08:58:48","17:00:09"],"2026-06-29":["09:07:57","17:00:08"],"2026-06-30":["09:11:46","17:04:55"],"2026-07-01":["09:01:46","17:57:53"],"2026-07-02":["09:12:54","19:42:17"],"2026-07-03":["07:49:11","17:29:49"],"2026-07-06":["09:23:04","17:00:49"],"2026-07-07":["09:23:35","17:00:44"],"2026-07-08":["09:11:53","17:00:07"],"2026-07-09":["09:16:31","17:01:02"],"2026-07-10":["09:11:14","17:00:03"],"2026-07-13":["09:26:58","17:00:11"],"2026-07-14":["09:09:11","17:05:44"],"2026-07-15":["09:07:03","17:01:11"],"2026-07-16":["09:23:02","17:01:40"],"2026-07-20":["09:17:06","17:00:10"],"2026-07-21":["09:06:43","17:00:46"],"2026-07-22":["09:13:02","17:01:06"],"2026-07-23":["08:45:08","07:15:08"],"2026-07-24":["08:50:12","07:20:12"],"2026-07-27":["09:16:16","17:00:19"],"2026-07-28":["08:47:32","17:01:48"],"2026-07-29":["08:54:51","17:18:00"],"2026-07-30":["09:24:14","17:00:08"],"2026-08-03":["08:54:43","17:03:28"],"2026-08-04":["09:21:07","17:00:04"],"2026-08-05":["08:56:39","17:01:20"],"2026-08-06":["09:21:04","17:00:24"],"2026-08-07":["08:20:49","18:02:30"],"2026-08-10":["09:05:40","17:07:19"],"2026-08-11":["09:18:34","17:06:17"],"2026-08-12":["08:53:05","22:58:17"],"2026-08-13":["09:11:12","17:11:44"],"2026-08-14":["08:27:43","17:01:07"],"2026-08-18":["09:11:01","17:00:15"],"2026-08-19":["09:09:10","17:00:20"],"2026-08-20":["08:42:22","17:01:56"],"2026-08-21":["08:55:32","17:00:59"],"2026-08-24":["09:05:44","17:00:07"],"2026-08-25":["09:11:06","17:00:09"],"2026-08-26":["09:15:34","17:00:09"],"2026-08-31":["07:51:46","17:02:28"],"2026-09-01":["09:25:36","17:05:56"],"2026-09-02":["09:23:16","17:00:06"],"2026-09-04":["09:05:28","17:03:06"],"2026-09-07":["09:04:41","17:00:18"],"2026-09-08":["09:00:21","17:00:22"],"2026-09-09":["09:12:18","17:00:56"],"2026-09-10":["08:55:51","17:00:22"],"2026-09-11":["08:55:52","17:01:00"],"2026-09-14":["09:12:03","17:00:08"],"2026-09-15":["09:26:03","17:00:17"],"2026-09-16":["08:48:09","17:02:18"],"2026-09-17":["10:27:40","17:00:21"],"2026-09-18":["08:52:20","07:22:20"],"2026-09-21":["09:11:14","17:00:25"],"2026-09-22":["09:21:17","17:00:30"],"2026-09-23":["08:52:19",""]}};
+function clockImportRowsHtml(){
+  const profiles = getProfiles();
+  const names = Object.keys(CLOCK_IMPORT_DATASET);
+  if(!names.length) return `<div class="empty-state" style="padding:10px;">가져올 기록이 없어요.</div>`;
+  return names.map(name=>{
+    const dates = Object.keys(CLOCK_IMPORT_DATASET[name]).sort();
+    const matchedId = (profiles.find(p=>p.name===name) || {}).id || '';
+    const optHtml = profiles.map(p=>`<option value="${p.id}" ${p.id===matchedId?'selected':''}>${escHtml(p.name || '(이름 미등록)')}</option>`).join('');
+    return `<div class="field">
+      <label>${escHtml(name)} (${dates.length}건, ${dates[0]}~${dates[dates.length-1]}) → 적용할 직원</label>
+      <select class="clock-import-target-select" data-import-name="${escHtml(name)}">${optHtml}</select>
+    </div>`;
+  }).join('');
+}
+document.getElementById('clockImportBtn')?.addEventListener('click', ()=>{
+  document.getElementById('clockImportRowsWrap').innerHTML = clockImportRowsHtml();
+  document.getElementById('clockImportMsg').textContent = '';
+  document.getElementById('clockImportModalOverlay').style.display = 'flex';
+});
+document.getElementById('clockImportCloseBtn')?.addEventListener('click', ()=>{
+  document.getElementById('clockImportModalOverlay').style.display = 'none';
+});
+document.getElementById('clockImportModalOverlay')?.addEventListener('click', (e)=>{
+  if(e.target.id === 'clockImportModalOverlay') document.getElementById('clockImportModalOverlay').style.display = 'none';
+});
+document.getElementById('clockImportRunBtn')?.addEventListener('click', async ()=>{
+  const msgEl = document.getElementById('clockImportMsg');
+  const rows = Array.from(document.querySelectorAll('.clock-import-target-select'));
+  if(!rows.length){ msgEl.textContent = '가져올 기록이 없어요.'; return; }
+  const plan = rows.map(sel=>({ name: sel.dataset.importName, profileId: sel.value })).filter(p=>p.profileId);
+  if(!plan.length){ msgEl.textContent = '적용할 직원을 선택해주세요.'; return; }
+  const profiles = getProfiles();
+  const summaryLines = plan.map(p=>`${p.name} → ${(profiles.find(x=>x.id===p.profileId)||{}).name||'(이름 미등록)'} (${Object.keys(CLOCK_IMPORT_DATASET[p.name]).length}건)`).join('\n');
+  const ok = await appConfirm(`아래대로 출퇴근 기록을 가져올까요?\n\n${summaryLines}\n\n· 가져오는 날짜에 이미 있던 기록은 시스템 기록으로 덮어써요(덮어써지는 값은 휴지통에 남아 되돌릴 수 있어요).\n· 그 외 날짜의 기존 기록은 그대로 남아요.\n· 새로고침 후 반영돼요.`);
+  if(!ok) return;
+  try{
+    plan.forEach(p=>{
+      const dataset = CLOCK_IMPORT_DATASET[p.name] || {};
+      const att = readProfileRaw(p.profileId, 'attendance') || { leaveGrants:[], leaveUsage:[], remoteEntries:[], clockLog:[] };
+      att.clockLog = att.clockLog || [];
+      Object.keys(dataset).forEach(date=>{
+        const [checkInFull, checkOutFull] = dataset[date];
+        const existingIdx = att.clockLog.findIndex(e=>e.date===date);
+        if(existingIdx !== -1){
+          pushToSharedTrash('attendance', 'clockLog', `[가져오기 전 값] ${date} 출퇴근기록`, att.clockLog[existingIdx], p.profileId);
+          att.clockLog.splice(existingIdx, 1);
+        }
+        att.clockLog.push({
+          id: date, date,
+          checkIn: (checkInFull||'').slice(0,5), checkOut: (checkOutFull||'').slice(0,5),
+          checkInFull: checkInFull||'', checkOutFull: checkOutFull||'',
+          status: '사무실', updatedAt: new Date().toISOString(),
+        });
+      });
+      writeProfileRaw(p.profileId, 'attendance', att);
+      if(activeProfileId === p.profileId) attendance = att;
+    });
+    saveSharedTrash();
+    document.getElementById('clockImportModalOverlay').style.display = 'none';
+    await appAlert('출퇴근 기록을 가져왔어요.\n\n적용된 화면을 보려면 새로고침해주세요.');
+    location.reload();
+  }catch(err){
+    console.error('출퇴근기록 가져오기 실패', err);
+    msgEl.textContent = '가져오는 중 오류가 발생했어요. 다시 시도해주세요.';
+  }
+});
+
 // ===== Google Drive 연동 =====
 const GDRIVE_FILE_NAME = 'taxj-shared-data.json';
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email';
@@ -28211,43 +28404,75 @@ function seatChartColsForRender(chart){
 const SEAT_CELL_STYLE_COMMON = 'border:1px solid var(--border); border-radius:6px; padding:7px 8px; text-align:center; font-size:12px; display:flex; align-items:center; justify-content:center; min-height:34px;';
 // 칸에 저장된 rowSpan/colSpan은 항상 "0도(안 돌린) 기준" 값이고, dir이 90/270이면 실제로 그릴 때만
 // 가로세로를 맞바꿔서 돌아간 모양으로 보여줌 - 위 데이터 모델 주석 참고
+// "오른쪽으로 돌렸는데 책상 모양이 그대로다"는 지적 - 딱 1칸짜리(rowSpan=colSpan=1) 평범한 자리는
+// 원래도 가로세로가 같은 값(1,1)이라 그대로 맞바꿔봐야 여전히 (1,1)이라서 돌려도 모양이 하나도 안
+// 바뀌었음(가로 2칸짜리처럼 이미 가로세로가 다른 자리는 이 문제 없이 잘 돌아갔음). 격자 한 칸 자체가
+// 가로로 넓은 직사각형(SEAT_EDIT_CELL_W>SEAT_EDIT_CELL_H)이라 세로 한 칸만으로는 "가로가 좁고 세로가
+// 긴" 모양을 표현할 수 없어서, 이 경우만 세로로 2칸을 차지하도록 늘려 최소한 "세로로 길어졌다"는
+// 회전감은 나게 함(정확히 가로세로가 반전된 비율은 아니지만 실제 격자 구조상 낼 수 있는 가장 가까운 모양)
 function seatCellEffectiveSpans(cell){
   const rot = ((cell.dir||0)%360+360)%360;
   const rowSpan = cell.rowSpan||1, colSpan = cell.colSpan||1;
-  return (rot===90 || rot===270) ? { rowSpan:colSpan, colSpan:rowSpan } : { rowSpan, colSpan };
+  if(rot!==90 && rot!==270) return { rowSpan, colSpan };
+  if(rowSpan===1 && colSpan===1) return { rowSpan:2, colSpan:1 };
+  return { rowSpan:colSpan, colSpan:rowSpan };
 }
-// 자리(seat)가 바라보는 방향을 칸 테두리에 작은 삼각형(▲)으로 표시 - 기본 모양(위쪽을 가리킴)을 dir만큼
-// 통째로 돌려서 해당 테두리 쪽에 붙임(0=위, 90=오른쪽, 180=아래, 270=왼쪽)
-function seatDirArrowPos(rot){
-  const map = {
-    0:   'top:1px; left:50%; transform:translateX(-50%) rotate(0deg);',
-    90:  'right:1px; top:50%; transform:translateY(-50%) rotate(90deg);',
-    180: 'bottom:1px; left:50%; transform:translateX(-50%) rotate(180deg);',
-    270: 'left:1px; top:50%; transform:translateY(-50%) rotate(270deg);'
-  };
-  return map[rot] || map[0];
+// 위에서 세로 2칸을 차지하게 늘린 자리는, 그 2칸 너비(가로 1칸분)를 그대로 다 채워버리면 오히려 "가로로
+// 넓은 책상이 세로로 김"이 돼서 회전한 느낌이 안 남 - 실제로 눈에 보이는 칸(테두리) 자체는 절반 너비로
+// 좁혀서, 세로 2칸짜리 영역 안에 얇고 긴 책상이 가운데 놓인 것처럼 보이게 함(자리를 차지하는 영역은
+// 그대로 2칸이라 옆·아래 자리와 겹치지 않으면서도, 실제 모양은 "가늘고 길게" 보임)
+function seatIsAutoInflatedPortrait(cell){
+  if(cell.type!=='seat') return false;
+  const rot = ((cell.dir||0)%360+360)%360;
+  return (rot===90 || rot===270) && (cell.rowSpan||1)===1 && (cell.colSpan||1)===1;
 }
+// 위 함수의 반대 방향 - "화면에 보이는(돌아간 뒤) 크기"를 주면, 그 칸의 dir을 그대로 두고 "저장용(0도
+// 기준)" rowSpan/colSpan으로 거꾸로 환산해서 넣어줌. 마우스로 자유롭게 끌어서 크기를 바꾸는 손잡이가
+// 실제로 눈에 보이는 크기 기준으로 계산하기 때문에 필요함
+function seatSetEffectiveSpans(cell, effRowSpan, effColSpan){
+  const rot = ((cell.dir||0)%360+360)%360;
+  if(rot===90 || rot===270){ cell.rowSpan = effColSpan; cell.colSpan = effRowSpan; }
+  else { cell.rowSpan = effRowSpan; cell.colSpan = effColSpan; }
+}
+// 자리(seat)가 바라보는 방향 표시 - 예전엔 화살표(▲) 하나로만 모니터 방향을 가리켰는데, "화살표 대신
+// 책상 위에 모니터 위치는 굵은 선으로, 의자는 원(타원)으로 보여달라"는 요청으로 바꿈. 모니터가 있는
+// 변엔 굵은 색 바(.seat-dir-monitor), 그 반대쪽(의자가 있는 변)엔 칸 테두리에 반쯤 걸친 타원
+// (.seat-dir-chair)을 같이 그림 - 위치·모양은 CSS 쪽(.seat-dir-monitor/.seat-dir-chair의 rot0~270)에서
+// 방향별로 미리 정의해뒀고, 여기서는 dir에 맞는 rot 클래스만 붙여줌
 function seatDirArrowHtml(dir){
   const rot = ((dir||0)%360+360)%360;
   if(!rot) return '';
-  // "화살표가 자리·모니터 방향을 어떻게 표현하는거야?" 질문 - 화살표가 가리키는 쪽이 모니터(화면)가
-  // 놓인 방향이고, 화살표가 없는 반대쪽 테두리가 의자가 있는 쪽이라는 걸 PC에서 마우스를 올리면 바로
-  // 알 수 있게 title로 안내함(pointer-events는 그대로 켜둬야 title이 뜸 - 드래그는 여전히 부모
-  // .seat-edit-cell까지 이벤트가 버블링돼서 그대로 잘 동작함)
-  return `<span style="position:absolute; ${seatDirArrowPos(rot)} font-size:9px; line-height:1; color:var(--indigo);" title="모니터(화면)가 이 방향을 향해요 · 반대쪽이 의자가 있는 쪽">▲</span>`;
+  // dir=0(회전 없음, 기본값)은 예전 화살표와 마찬가지로 표시하지 않음 - 대부분의 자리가 기본 방향이라
+  // 굳이 표시할 필요가 없고, 표시하면 오히려 화면이 복잡해 보임
+  return `<span class="seat-dir-monitor rot${rot}" title="모니터(화면)가 이 방향을 향해요 · 반대쪽이 의자가 있는 쪽"></span><span class="seat-dir-chair rot${rot}" title="의자가 있는 쪽"></span>`;
 }
+// "구획을 나누는 경계선도 있으면" 요청으로 추가한 구분선(divider)과 "사물함 같은 작은 소품"용 item -
+// 자리·구역표시와 같은 칸 데이터(row/col/rowSpan/colSpan)를 그대로 쓰되 생김새만 다름. 구분선은 속이
+// 비어있어서 다른 칸과 겹쳐도 내용을 가리지 않아야 하므로, 그리는 순서 자체를 구분선이 먼저(맨 뒤에)
+// 오도록 옮겨서 자리/구역표시/소품이 항상 그 위에 그려지게 함(아래 seatChartOrderForStack 참고)
 function seatCellViewHtml(cell){
   const empty = cell.type==='seat' && !cell.text;
   let bg = 'background:var(--surface);';
   if(cell.type==='label') bg = 'background:var(--bg); color:var(--ink-soft); font-weight:700;';
+  else if(cell.type==='divider') bg = 'background:transparent; border:2px dashed var(--ink-soft); box-shadow:none; color:var(--ink-soft); font-weight:700; font-size:10.5px; align-items:flex-start; justify-content:flex-start; padding:3px 6px;';
+  else if(cell.type==='item') bg = 'background:#F1F0FB; border:1.5px dashed var(--indigo); color:var(--indigo-deep); font-weight:700; font-size:10.5px;';
   else if(empty) bg = 'background:#FEF9C3; color:#92660A; font-weight:700;';
   const { rowSpan, colSpan } = seatCellEffectiveSpans(cell);
   const dirArrow = cell.type==='seat' ? seatDirArrowHtml(cell.dir) : '';
-  return `<div style="position:relative; grid-row:${cell.row} / span ${rowSpan}; grid-column:${cell.col} / span ${colSpan}; ${SEAT_CELL_STYLE_COMMON} ${bg}">${dirArrow}${escHtml(empty ? '미점유' : (cell.text||''))}</div>`;
+  const z = cell.type==='divider' ? 'z-index:0;' : 'z-index:1;';
+  // 세로 2칸으로 늘어난(auto-inflate) 자리는 그 2칸 폭을 다 채우지 않고 절반 너비로 좁혀서 가운데 놓아,
+  // 실제로 가늘고 긴 책상이 회전해 들어간 것처럼 보이게 함(자리가 차지하는 격자 영역 자체는 그대로 2칸)
+  const narrowStyle = seatIsAutoInflatedPortrait(cell) ? 'width:50%; margin:0 auto;' : '';
+  return `<div style="position:relative; grid-row:${cell.row} / span ${rowSpan}; grid-column:${cell.col} / span ${colSpan}; ${SEAT_CELL_STYLE_COMMON} ${bg} ${z} ${narrowStyle}">${dirArrow}${escHtml(empty ? '미점유' : (cell.text||''))}</div>`;
+}
+// 구분선(divider)을 배열 맨 앞으로 보내 먼저 그리게 함 - CSS grid는 같은 자리를 두고 여러 칸이 겹치면
+// "나중에 그려진 쪽"이 위로 덮으므로, 구분선을 항상 먼저 그려야 자리/구역표시/소품 글자가 안 가려짐
+function seatChartOrderForStack(cells){
+  return (cells||[]).slice().sort((a,b)=> (a.type==='divider'?0:1) - (b.type==='divider'?0:1));
 }
 function renderSeatGridHtml(cells, cols){
   const safeCols = Math.max(1, cols||9);
-  const body = (cells||[]).map(seatCellViewHtml).join('');
+  const body = seatChartOrderForStack(cells).map(seatCellViewHtml).join('');
   return `<div style="display:grid; grid-template-columns:repeat(${safeCols}, minmax(64px,1fr)); grid-auto-rows:minmax(34px,auto); gap:5px; min-width:${safeCols*70}px;">${body}</div>`;
 }
 // ── 여기부터 "미리보기에서 직접 끌어서 옮기는" 편집 방식 ──
@@ -28285,19 +28510,37 @@ function seatChartFindOpenRow(){
   const maxRow = seatChartDraft.cells.reduce((m,c)=>{ const sp=seatCellEffectiveSpans(c); return Math.max(m, (c.row||1)+(sp.rowSpan||1)-1); }, 0);
   return maxRow + 1;
 }
+// 종류별 이름표(삭제 확인 문구 등에서 재사용)
+function seatCellTypeLabel(cell){
+  return cell.type==='label' ? '구역표시' : cell.type==='divider' ? '구분선' : cell.type==='item' ? '소품' : '자리';
+}
 function seatChartEditCellHtml(cell){
   const empty = cell.type==='seat' && !cell.text;
-  let bg = 'background:var(--surface); border:1.5px solid var(--border);';
-  if(cell.type==='label') bg = 'background:var(--bg); color:var(--ink-soft); font-weight:700; border:1.5px dashed var(--border);';
-  else if(empty) bg = 'background:#FEF9C3; color:#92660A; font-weight:700; border:1.5px solid #FDE68A;';
-  const sel = cell.id===seatChartSelectedId ? ' box-shadow:0 0 0 2.5px var(--indigo);' : '';
+  let bg = 'background:var(--surface); border:1.5px solid var(--border); z-index:1;';
+  if(cell.type==='label') bg = 'background:var(--bg); color:var(--ink-soft); font-weight:700; border:1.5px dashed var(--border); z-index:1;';
+  else if(cell.type==='divider') bg = 'background:transparent; color:var(--ink-soft); font-weight:700; border:2px dashed var(--ink-soft); z-index:0; align-items:flex-start; justify-content:flex-start;';
+  else if(cell.type==='item') bg = 'background:#F1F0FB; color:var(--indigo-deep); font-weight:700; border:1.5px dashed var(--indigo); z-index:1;';
+  else if(empty) bg = 'background:#FEF9C3; color:#92660A; font-weight:700; border:1.5px solid #FDE68A; z-index:1;';
+  const isSel = cell.id===seatChartSelectedId;
+  const sel = isSel ? ' box-shadow:0 0 0 2.5px var(--indigo);' : '';
   const { rowSpan, colSpan } = seatCellEffectiveSpans(cell);
   const left = ((cell.col||1)-1) * (SEAT_EDIT_CELL_W+SEAT_EDIT_GAP);
   const top = ((cell.row||1)-1) * (SEAT_EDIT_CELL_H+SEAT_EDIT_GAP);
-  const w = colSpan*SEAT_EDIT_CELL_W + (colSpan-1)*SEAT_EDIT_GAP;
+  let w = colSpan*SEAT_EDIT_CELL_W + (colSpan-1)*SEAT_EDIT_GAP;
   const h = rowSpan*SEAT_EDIT_CELL_H + (rowSpan-1)*SEAT_EDIT_GAP;
+  let visualLeft = left;
+  // 세로 2칸으로 늘어난(auto-inflate) 자리는 그 2칸 폭(SEAT_EDIT_CELL_W)을 다 채우지 않고 짧은 변 폭
+  // (SEAT_EDIT_CELL_H)만큼만 남긴 채 가운데로 좁혀서, 가늘고 긴 책상이 회전해 들어간 것처럼 보이게 함 -
+  // 자리를 잡는 영역(드래그·충돌판정 기준) 자체는 그대로 2칸이라 옆·아래 자리와는 안 겹침
+  if(seatIsAutoInflatedPortrait(cell)){
+    visualLeft = left + (w - SEAT_EDIT_CELL_H)/2;
+    w = SEAT_EDIT_CELL_H;
+  }
   const dirArrow = cell.type==='seat' ? seatDirArrowHtml(cell.dir) : '';
-  return `<div class="seat-edit-cell" data-id="${cell.id}" style="position:absolute; left:${left}px; top:${top}px; width:${w}px; height:${h}px; ${bg}${sel} border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11.5px; text-align:center; padding:2px; cursor:grab; touch-action:none; user-select:none; box-sizing:border-box; overflow:hidden; line-height:1.2;">${dirArrow}<span class="seat-edit-cell-label">${escHtml(empty ? '미점유' : (cell.text||'(이름없음)'))}</span></div>`;
+  // 삭제 × 버튼은 항상 마크업엔 넣어두고(호버/선택 시에만 CSS로 보이게), 크기조절 손잡이는 선택됐을 때만 넣음
+  const deleteBtn = `<button type="button" class="seat-edit-cell-delete" data-id="${cell.id}" title="${escHtml(seatCellTypeLabel(cell))} 삭제" aria-label="삭제">✕</button>`;
+  const resizeHandle = isSel ? `<div class="seat-resize-handle" data-id="${cell.id}" title="끌어서 크기 바꾸기"></div>` : '';
+  return `<div class="seat-edit-cell${isSel ? ' is-selected' : ''}" data-id="${cell.id}" style="position:absolute; left:${visualLeft}px; top:${top}px; width:${w}px; height:${h}px; ${bg}${sel} border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11.5px; text-align:center; padding:2px; cursor:grab; touch-action:none; user-select:none; box-sizing:border-box; line-height:1.2;">${dirArrow}<span class="seat-edit-cell-label">${escHtml(empty ? '미점유' : (cell.text||'(이름없음)'))}</span>${deleteBtn}${resizeHandle}</div>`;
 }
 function renderSeatChartEditPreview(){
   const wrap = document.getElementById('seatChartPreviewWrap');
@@ -28322,6 +28565,74 @@ function bindSeatChartEditCellEvents(){
   document.querySelectorAll('#seatChartEditGrid .seat-edit-cell').forEach(el=>{
     el.addEventListener('pointerdown', seatChartCellPointerDown);
   });
+  // "자리/구역표시 지우려면 어떻게 하냐" 요청으로 만든 호버(또는 선택 시) × 삭제 버튼 - pointerdown에서
+  // 부모(.seat-edit-cell)로 이벤트가 버블링되면 삭제 버튼을 누른 순간 칸이 같이 끌리기 시작해버리므로
+  // stopPropagation으로 막고, click에서 실제 삭제를 함(확인 팝업 한 번 거침)
+  document.querySelectorAll('#seatChartEditGrid .seat-edit-cell-delete').forEach(btn=>{
+    btn.addEventListener('pointerdown', e=>{ e.stopPropagation(); });
+    btn.addEventListener('click', seatChartDeleteCellClick);
+  });
+  // "화살표로 +/- 하는 것 말고 마우스로 자유롭게 끌어서 크기를 바꾸고 싶다" 요청으로 만든 크기조절 손잡이
+  document.querySelectorAll('#seatChartEditGrid .seat-resize-handle').forEach(handle=>{
+    handle.addEventListener('pointerdown', seatChartResizeHandlePointerDown);
+  });
+}
+async function seatChartDeleteCellClick(e){
+  e.stopPropagation();
+  const id = e.currentTarget.dataset.id;
+  const cell = seatChartDraft?.cells.find(c=>c.id===id);
+  if(!cell) return;
+  const name = cell.text || (cell.type==='label' ? '구역표시' : cell.type==='divider' ? '구분선' : cell.type==='item' ? '소품' : '(이름없음)');
+  if(!(await appConfirm(`"${name}" 칸을 삭제할까요?`))) return;
+  seatChartDraft.cells = seatChartDraft.cells.filter(c=>c.id!==id);
+  if(seatChartSelectedId===id) seatChartSelectedId = null;
+  renderSeatChartEditPreview();
+}
+// 크기조절 손잡이 드래그 - 다른 칸 드래그(seatChartCellPointerDown)와 같은 이유로, 끄는 동안 매번
+// renderSeatChartEditPreview()를 다시 부르면 그 사이 이 손잡이 엘리먼트 자체가 DOM에서 새로 교체돼버려
+// setPointerCapture가 깨질 수 있음 - 끄는 동안은 부모 칸의 style.width/height만 직접 바꿔서 부드럽게
+// 보여주고(픽셀 단위로 자유롭게), 손을 뗄 때 한 번만 가장 가까운 칸 수로 스냅해서 실제 값에 반영함
+function seatChartResizeHandlePointerDown(e){
+  e.preventDefault();
+  e.stopPropagation();
+  const handle = e.currentTarget;
+  const id = handle.dataset.id;
+  const cell = seatChartDraft?.cells.find(c=>c.id===id);
+  const parentEl = handle.parentElement;
+  if(!cell || !parentEl) return;
+  const startX = e.clientX, startY = e.clientY;
+  const startW = parentEl.offsetWidth, startH = parentEl.offsetHeight;
+  const startEff = seatCellEffectiveSpans(cell);
+  let finalEffRowSpan = startEff.rowSpan, finalEffColSpan = startEff.colSpan;
+  try{ handle.setPointerCapture(e.pointerId); }catch(err){}
+  function onMove(ev){
+    const dx = ev.clientX-startX, dy = ev.clientY-startY;
+    const newW = Math.max(SEAT_EDIT_CELL_W, startW+dx);
+    const newH = Math.max(SEAT_EDIT_CELL_H, startH+dy);
+    parentEl.style.width = newW+'px';
+    parentEl.style.height = newH+'px';
+    const rawCols = Math.round((newW+SEAT_EDIT_GAP)/(SEAT_EDIT_CELL_W+SEAT_EDIT_GAP));
+    const rawRows = Math.round((newH+SEAT_EDIT_GAP)/(SEAT_EDIT_CELL_H+SEAT_EDIT_GAP));
+    const maxColSpan = Math.max(1, (seatChartDraft.cols||9) - (cell.col||1) + 1);
+    finalEffColSpan = Math.max(1, Math.min(maxColSpan, Math.min(20, rawCols)));
+    finalEffRowSpan = Math.max(1, Math.min(20, rawRows));
+  }
+  function finish(){
+    handle.removeEventListener('pointermove', onMove);
+    handle.removeEventListener('pointerup', finish);
+    handle.removeEventListener('pointercancel', finish);
+    // 위 seatCellEffectiveSpans의 1×1 자동 인플레이트(회전 중인 1×1 자리를 세로 2칸으로 "보여주기만"
+    // 하는 것)는 실제 크기를 바꾼 게 아니므로, 손잡이를 눌렀다가 그대로(안 끌고) 떼는 것처럼 화면에
+    // 보이던 크기와 끝난 크기가 같으면 굳이 seatSetEffectiveSpans를 불러 저장용 rowSpan/colSpan을
+    // 건드리지 않음 - 그냥 두면 1×1이 조용히 다른 값으로 바뀌어버릴 수 있었음
+    if(finalEffRowSpan !== startEff.rowSpan || finalEffColSpan !== startEff.colSpan){
+      seatSetEffectiveSpans(cell, finalEffRowSpan, finalEffColSpan);
+    }
+    renderSeatChartEditPreview();
+  }
+  handle.addEventListener('pointermove', onMove);
+  handle.addEventListener('pointerup', finish);
+  handle.addEventListener('pointercancel', finish);
 }
 // "자리를 끌다가 밖으로 빼면 미배치로 뒀다가 나중에 다시 넣을 수 있게" 요청으로 만든 트레이 - row/col이
 // 없는 칸을 여기 칩으로 보여주고, 이 칩도 그리드 칸과 똑같은 포인터 드래그 핸들러를 그대로 씀(fromTray
@@ -28336,10 +28647,15 @@ function renderSeatChartTray(){
   }
   wrap.innerHTML = unassigned.map(c=>{
     const sel = c.id===seatChartSelectedId ? ' box-shadow:0 0 0 2.5px var(--indigo);' : '';
-    return `<div class="seat-chart-tray-chip" data-id="${c.id}" style="${sel}">${escHtml(c.text || (c.type==='label' ? '구역표시' : '(이름없음)'))}</div>`;
+    const isSel = c.id===seatChartSelectedId ? ' is-selected' : '';
+    return `<div class="seat-chart-tray-chip${isSel}" data-id="${c.id}" style="${sel}">${escHtml(c.text || (c.type==='label' ? '구역표시' : '(이름없음)'))}<button type="button" class="seat-chart-tray-chip-delete" data-id="${c.id}" title="삭제" aria-label="삭제">✕</button></div>`;
   }).join('');
   wrap.querySelectorAll('.seat-chart-tray-chip').forEach(el=>{
     el.addEventListener('pointerdown', seatChartCellPointerDown);
+  });
+  wrap.querySelectorAll('.seat-chart-tray-chip-delete').forEach(btn=>{
+    btn.addEventListener('pointerdown', e=>{ e.stopPropagation(); });
+    btn.addEventListener('click', seatChartDeleteCellClick);
   });
 }
 // "자리를 옮기면 옆 자리랑 겹쳐 보인다"는 요청으로 드래그 동작을 다시 짬 - 그냥 좌표만 바꾸던 예전
@@ -28437,7 +28753,9 @@ function seatChartCellPointerDown(e){
     newCol = Math.max(1, Math.min(newCol, maxCol));
     newRow = Math.max(1, newRow);
     const target = { row:newRow, col:newCol, rowSpan:cell.rowSpan||1, colSpan:cell.colSpan||1, dir:cell.dir||0 };
-    const occupant = seatChartDraft.cells.find(c=> c.id!==cell.id && c.row && c.col && seatChartRangesOverlap(c, target));
+    // "구분선"은 진짜 자리를 차지하는 칸이 아니라 다른 칸들 뒤에 깔리는 테두리 표시일 뿐이라, 자리·구역
+    // 표시·소품과 겹쳐도 자리를 맞바꾸거나 밀어내지 않음(구분선끼리 겹쳐도 마찬가지)
+    const occupant = cell.type==='divider' ? null : seatChartDraft.cells.find(c=> c.id!==cell.id && c.type!=='divider' && c.row && c.col && seatChartRangesOverlap(c, target));
     if(occupant){
       if(fromTray || !oldRow || !oldCol){
         occupant.row = null; occupant.col = null; // 바꿔줄 원래 자리가 없으면 그 자리를 대신 미배치로
@@ -28464,6 +28782,8 @@ function renderSeatChartCellEditor(){
       <select id="seatEditType" class="flat-input">
         <option value="seat" ${cell.type==='seat'?'selected':''}>자리</option>
         <option value="label" ${cell.type==='label'?'selected':''}>구역표시</option>
+        <option value="item" ${cell.type==='item'?'selected':''}>소품</option>
+        <option value="divider" ${cell.type==='divider'?'selected':''}>구분선</option>
       </select>
     </div></div>
     <div class="flat-row"><div class="flat-row-label">이름</div><div class="flat-row-control">
@@ -28547,6 +28867,24 @@ document.getElementById('seatChartAddLabelBtn')?.addEventListener('click', ()=>{
   if(!seatChartDraft) return;
   const row = seatChartFindOpenRow();
   const cell = { id: genId(), type:'label', text:'새 구역', row, col:1, rowSpan:1, colSpan:1 };
+  seatChartDraft.cells.push(cell);
+  seatChartSelectedId = cell.id;
+  renderSeatChartEditPreview();
+});
+document.getElementById('seatChartAddItemBtn')?.addEventListener('click', ()=>{
+  if(!seatChartDraft) return;
+  const row = seatChartFindOpenRow();
+  const cell = { id: genId(), type:'item', text:'사물함', row, col:1, rowSpan:1, colSpan:1 };
+  seatChartDraft.cells.push(cell);
+  seatChartSelectedId = cell.id;
+  renderSeatChartEditPreview();
+});
+document.getElementById('seatChartAddDividerBtn')?.addEventListener('click', ()=>{
+  if(!seatChartDraft) return;
+  const row = seatChartFindOpenRow();
+  // 구분선은 테두리만 있는 큰 구획이라, 자리·구역표시(기본 1×1)와 달리 처음부터 2×2 정도로 시작해서
+  // 바로 눈에 보이게 하고, 크기조절 손잡이(또는 +/- 버튼)로 감싸고 싶은 구역만큼 늘리면 됨
+  const cell = { id: genId(), type:'divider', text:'', row, col:1, rowSpan:2, colSpan:2 };
   seatChartDraft.cells.push(cell);
   seatChartSelectedId = cell.id;
   renderSeatChartEditPreview();
@@ -28872,11 +29210,23 @@ function bindHrEditRowEvents(){
   document.querySelectorAll('.hr-staff-del-btn').forEach(btn=>{ btn.onclick = ()=>{ btn.closest('.hr-staff-row')?.remove(); }; });
   document.querySelectorAll('.hr-duty-del-btn').forEach(btn=>{ btn.onclick = ()=>{ btn.closest('.hr-duty-row')?.remove(); }; });
 }
-function renderHrTeamEdit(){
+// "직원 추가 눌러서 입력칸을 만들어놨는데 저장도 안 했는데 사라진다"는 제보 - renderHrTeamEdit()이
+// renderAll() 안에 들어있어서, 백그라운드 동기화 등으로 renderAll()이 다시 불릴 때마다 이 화면도 매번
+// sharedHrTeamInfo(마지막으로 저장된 값) 기준으로 통째로 다시 그려지고 있었음. 방금 "+ 직원 추가"로
+// 끼워넣은, 아직 저장 안 한 빈 입력행은 sharedHrTeamInfo엔 없으니 그 다음 renderAll()이 돌 때 그대로
+// 지워져버린 것 - 좌석배치도(seatChartDraft)처럼 별도 draft 객체를 만드는 대신, 이 화면은 입력값을
+// DOM에 그대로 들고 있는 방식이라 더 간단하게 "이미 한 번 그렸으면 다시 그리지 않는다"는 플래그로 막음.
+// 저장 직후(hrTeamEditForceRerender=true)에만 최신값으로 다시 그려서, 방금 저장한 결과(빈 칸 정리 등)가
+// 화면에 반영됨
+let hrTeamEditInited = false;
+function renderHrTeamEdit(force){
   const staffWrap = document.getElementById('hrStaffListWrap');
   const dutyWrap = document.getElementById('hrDutyListWrap');
-  if(staffWrap) staffWrap.innerHTML = (sharedHrTeamInfo.staff||[]).map(hrStaffRowHtml).join('') || `<div class="empty-state" style="padding:10px;">등록된 직원이 없어요.</div>`;
-  if(dutyWrap) dutyWrap.innerHTML = (sharedHrTeamInfo.duties||[]).map(hrDutyRowHtml).join('') || `<div class="empty-state" style="padding:10px;">등록된 업무가 없어요.</div>`;
+  if(!staffWrap || !dutyWrap) return;
+  if(hrTeamEditInited && !force) return;
+  hrTeamEditInited = true;
+  staffWrap.innerHTML = (sharedHrTeamInfo.staff||[]).map(hrStaffRowHtml).join('') || `<div class="empty-state" style="padding:10px;">등록된 직원이 없어요.</div>`;
+  dutyWrap.innerHTML = (sharedHrTeamInfo.duties||[]).map(hrDutyRowHtml).join('') || `<div class="empty-state" style="padding:10px;">등록된 업무가 없어요.</div>`;
   bindHrEditRowEvents();
 }
 document.getElementById('hrStaffAddBtn')?.addEventListener('click', ()=>{
@@ -28932,7 +29282,7 @@ document.getElementById('hrTeamSaveBtn')?.addEventListener('click', async ()=>{
   sharedHrTeamInfo.staff = newStaff;
   sharedHrTeamInfo.duties = newDuties;
   await saveSharedHrTeamInfo();
-  renderHrTeamEdit();
+  renderHrTeamEdit(true);
   renderHrTeamView();
   showCenterToast('저장됐어요');
   const msg = document.getElementById('hrTeamSaveMsg');
