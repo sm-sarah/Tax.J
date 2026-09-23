@@ -28621,9 +28621,13 @@ function seatChartEditCellHtml(cell){
   // 삭제 × 버튼은 항상 마크업엔 넣어두고(호버/선택 시에만 CSS로 보이게), 크기조절 손잡이는 선택됐을 때만 넣음
   const deleteBtn = `<button type="button" class="seat-edit-cell-delete" data-id="${cell.id}" title="${escHtml(seatCellTypeLabel(cell))} 삭제" aria-label="삭제">✕</button>`;
   const resizeHandle = isSel ? `<div class="seat-resize-handle" data-id="${cell.id}" title="끌어서 크기 바꾸기"></div>` : '';
+  // "이름없음 이런것도 왜 나오는지 모르겠고" - 구분선은 이름이 꼭 필요한 칸이 아니라서(테두리/선 자체가
+  // 표시), 비어있으면 그냥 빈칸으로 두고 자리/구역표시/소품에서만 안내 문구를 보여줌
   const labelHtml = (cell.type==='label' || cell.type==='item')
     ? seatCellIconBodyHtml(cell, escHtml(cell.text||'(이름없음)'), 'seat-edit-cell-label')
-    : `<span class="seat-edit-cell-label"${seatLabelStyle}>${escHtml(empty ? '미점유' : (cell.text||'(이름없음)'))}</span>`;
+    : cell.type==='divider'
+      ? `<span class="seat-edit-cell-label">${escHtml(cell.text||'')}</span>`
+      : `<span class="seat-edit-cell-label"${seatLabelStyle}>${escHtml(empty ? '미점유' : (cell.text||'(이름없음)'))}</span>`;
   return `<div class="seat-edit-cell${isSel ? ' is-selected' : ''}" data-id="${cell.id}" style="position:absolute; left:${visualLeft}px; top:${top}px; width:${w}px; height:${h}px; ${bg}${sel} border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11.5px; text-align:center; padding:2px; cursor:grab; touch-action:none; user-select:none; box-sizing:border-box; line-height:1.2; ${narrowTextStyle}">${dividerBar}${dirArrow}${labelHtml}${deleteBtn}${resizeHandle}</div>`;
 }
 function renderSeatChartEditPreview(){
@@ -28732,7 +28736,9 @@ function renderSeatChartTray(){
   wrap.innerHTML = unassigned.map(c=>{
     const sel = c.id===seatChartSelectedId ? ' box-shadow:0 0 0 2.5px var(--indigo);' : '';
     const isSel = c.id===seatChartSelectedId ? ' is-selected' : '';
-    return `<div class="seat-chart-tray-chip${isSel}" data-id="${c.id}" style="${sel}">${escHtml(c.text || (c.type==='label' ? '구역표시' : '(이름없음)'))}<button type="button" class="seat-chart-tray-chip-delete" data-id="${c.id}" title="삭제" aria-label="삭제">✕</button></div>`;
+    // 이름이 없을 때 보여줄 안내문구는 종류별 이름표(seatCellTypeLabel)를 그대로 씀 - 구분선이면
+    // "(이름없음)" 대신 "구분선"이라고 나와서 덜 어색함
+    return `<div class="seat-chart-tray-chip${isSel}" data-id="${c.id}" style="${sel}">${escHtml(c.text || seatCellTypeLabel(c))}<button type="button" class="seat-chart-tray-chip-delete" data-id="${c.id}" title="삭제" aria-label="삭제">✕</button></div>`;
   }).join('');
   wrap.querySelectorAll('.seat-chart-tray-chip').forEach(el=>{
     el.addEventListener('pointerdown', seatChartCellPointerDown);
@@ -28861,7 +28867,11 @@ function renderSeatChartCellEditor(){
   if(!seatChartSelectedId){ wrap.innerHTML = ''; return; }
   const cell = seatChartDraft.cells.find(c=>c.id===seatChartSelectedId);
   if(!cell){ seatChartSelectedId = null; wrap.innerHTML = ''; return; }
-  wrap.innerHTML = `<div class="flat-panel" style="max-width:440px; margin:10px auto 0; padding:12px;">
+  // "배치도 보면서 설정해야되는데 배치도가 위에있고 입력창이 아래있어서 보면서 할수가없네" 요청 - 이
+  // 패널을 화면(뷰포트) 아래쪽에 고정해서, 위쪽 미리보기를 스크롤해서 보는 동안에도 이 패널은 항상 그
+  // 자리에 떠 있게 함(칸을 누르면 바로 아래에 뜨는 게 아니라 화면 맨 아래 도킹된 패널이 내용만 바뀜) -
+  // max-height+overflow-y로 내용이 길 때는 패널 안에서만 스크롤되게 함
+  wrap.innerHTML = `<div class="flat-panel" style="max-width:440px; width:calc(100% - 24px); margin:0 auto; padding:12px; position:fixed; left:0; right:0; bottom:0; z-index:500; max-height:64vh; overflow-y:auto; background:var(--surface); border-radius:16px 16px 0 0; box-shadow:0 -10px 28px -8px rgba(29,30,51,0.32);">
     <div class="flat-row"><div class="flat-row-label">종류</div><div class="flat-row-control">
       <select id="seatEditType" class="flat-input">
         <option value="seat" ${cell.type==='seat'?'selected':''}>자리</option>
@@ -28891,20 +28901,24 @@ function renderSeatChartCellEditor(){
     </div></div>` : ''}
     ${cell.type==='divider' ? `
     <!-- "구분선은 직선형태를 말한거였어"와 "직선과 막힌선 다 해도 될것같아, 굵기랑 컬러도 선택할 수 있으면"
-         요청 - 모양(막힌 사각형/직선)·굵기·색을 칸마다 고를 수 있게 함 -->
-    <div class="flat-row"><div class="flat-row-label">모양</div><div class="flat-row-control">
-      <select id="seatEditDividerShape" class="flat-input">
-        <option value="box" ${(cell.dividerShape||'box')==='box'?'selected':''}>막힌 사각형</option>
-        <option value="line" ${cell.dividerShape==='line'?'selected':''}>직선</option>
-      </select>
+         요청에 이어 "저 라인에 직접 디자인설정을 못해? 뭘 삽입해서 하니까 불편해" 요청 - 글자로만 된
+         드롭다운 대신, 실제 모양·굵기가 그대로 보이는 버튼을 눌러서 바로 바뀌는 걸 보게 함(굵기 버튼은
+         실제 두께의 선을 미리보기로 보여줌) -->
+    <div class="flat-row"><div class="flat-row-label">모양</div><div class="flat-row-control" style="display:flex; gap:6px;">
+      <button type="button" class="del-btn seat-divider-shape-btn" data-shape="box" style="display:flex; align-items:center; gap:5px; padding:6px 10px;${(cell.dividerShape||'box')==='box' ? ' background:var(--indigo); color:#fff; border-color:var(--indigo);' : ''}">
+        <svg width="18" height="13" viewBox="0 0 24 16" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3,2.4"><rect x="1.5" y="1.5" width="21" height="13" rx="2"></rect></svg> 막힌 사각형
+      </button>
+      <button type="button" class="del-btn seat-divider-shape-btn" data-shape="line" style="display:flex; align-items:center; gap:5px; padding:6px 10px;${cell.dividerShape==='line' ? ' background:var(--indigo); color:#fff; border-color:var(--indigo);' : ''}">
+        <svg width="18" height="13" viewBox="0 0 24 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="1" y1="8" x2="23" y2="8"></line></svg> 직선
+      </button>
     </div></div>
-    <div class="flat-row"><div class="flat-row-label">굵기</div><div class="flat-row-control">
-      <select id="seatEditDividerThickness" class="flat-input">
-        <option value="1" ${(cell.dividerThickness||2)===1?'selected':''}>얇게</option>
-        <option value="2" ${(cell.dividerThickness||2)===2?'selected':''}>보통</option>
-        <option value="4" ${(cell.dividerThickness||2)===4?'selected':''}>굵게</option>
-        <option value="6" ${(cell.dividerThickness||2)===6?'selected':''}>아주 굵게</option>
-      </select>
+    <div class="flat-row"><div class="flat-row-label">굵기</div><div class="flat-row-control" style="display:flex; gap:6px;">
+      ${[1,2,4,6].map(t=>{
+        const isSel = (cell.dividerThickness||2)===t;
+        return `<button type="button" class="del-btn seat-divider-thickness-btn" data-thickness="${t}" style="padding:9px 12px;${isSel ? ' background:var(--indigo); border-color:var(--indigo);' : ''}" title="${t}px">
+          <span style="display:block; width:22px; height:${t}px; border-radius:2px; background:${isSel ? '#fff' : 'var(--ink-soft)'};"></span>
+        </button>`;
+      }).join('')}
     </div></div>
     <div class="flat-row"><div class="flat-row-label">색상</div><div class="flat-row-control" style="display:flex; align-items:center; gap:8px;">
       <input type="color" id="seatEditDividerColor" value="${cell.dividerColor || '#75789A'}" style="width:34px; height:28px; padding:0; border:1px solid var(--border); border-radius:6px; cursor:pointer;">
@@ -28913,8 +28927,14 @@ function renderSeatChartCellEditor(){
     <!-- "구분선이 복도 구분같은 것도 잘 되려나?" 요청 - +/- 버튼으로 한 칸씩 늘리지 않아도, 한 번에
          가로/세로 전체를 가로지르는 길이로 맞춰서 복도처럼 넓은 구획을 쉽게 나눌 수 있게 함 -->
     <div class="flat-row"><div class="flat-row-label">빠른 크기</div><div class="flat-row-control" style="display:flex; gap:6px; flex-wrap:wrap;">
-      <button type="button" class="del-btn seat-chart-action-btn" id="seatEditDividerFullWidthBtn" title="복도처럼 가로 전체를 가로지르는 얇은 선으로">↔ 가로 전체(복도)</button>
-      <button type="button" class="del-btn seat-chart-action-btn" id="seatEditDividerFullHeightBtn" title="복도처럼 세로 전체를 가로지르는 얇은 선으로">↕ 세로 전체(복도)</button>
+      <button type="button" class="del-btn seat-chart-action-btn" id="seatEditDividerFullWidthBtn" title="복도처럼 가로 전체를 가로지르는 얇은 선으로">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><line x1="3" y1="12" x2="21" y2="12"></line><path d="M8,7 L3,12 L8,17"></path><path d="M16,7 L21,12 L16,17"></path></svg>
+        가로 전체(복도)
+      </button>
+      <button type="button" class="del-btn seat-chart-action-btn" id="seatEditDividerFullHeightBtn" title="복도처럼 세로 전체를 가로지르는 얇은 선으로">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><line x1="12" y1="3" x2="12" y2="21"></line><path d="M7,8 L12,3 L17,8"></path><path d="M7,16 L12,21 L17,16"></path></svg>
+        세로 전체(복도)
+      </button>
     </div></div>` : ''}
     ${cell.type==='seat' ? `
     <!-- "이걸 바탕으로 조직도도, 팀명과 직책도 설정할 수 있으면" 요청으로 자리(seat)에만 team/position을
@@ -28958,15 +28978,33 @@ function renderSeatChartCellEditor(){
     // 칸 안에 방향 화살표(dirArrow)가 같이 들어있어서, 예전처럼 칸 전체의 textContent를 통째로 바꾸면
     // 화살표까지 같이 지워짐 - 이름 글자만 담는 전용 span(.seat-edit-cell-label)만 골라서 바꿔줌
     const labelEl = document.querySelector(`#seatChartEditGrid .seat-edit-cell[data-id="${cell.id}"] .seat-edit-cell-label`);
-    if(labelEl) labelEl.textContent = (cell.type==='seat' && !cell.text) ? '미점유' : (cell.text || '(이름없음)');
+    if(labelEl){
+      // "이름없음 이런것도 왜 나오는지 모르겠고" - 구분선은 이름이 꼭 필요한 칸이 아니라서(테두리/선
+      // 자체가 표시), 비어있으면 그냥 빈칸으로 두고 자리/구역표시/소품에서만 안내 문구를 보여줌
+      labelEl.textContent = cell.type==='divider' ? (cell.text || '') : ((cell.type==='seat' && !cell.text) ? '미점유' : (cell.text || '(이름없음)'));
+    }
     const chipEl = document.querySelector(`#seatChartTrayWrap .seat-chart-tray-chip[data-id="${cell.id}"]`);
-    if(chipEl) chipEl.textContent = cell.text || (cell.type==='label' ? '구역표시' : '(이름없음)');
+    if(chipEl) chipEl.textContent = cell.text || seatCellTypeLabel(cell);
   });
   document.getElementById('seatEditTeam')?.addEventListener('input', (e)=>{ cell.team = e.target.value; });
   document.getElementById('seatEditPosition')?.addEventListener('input', (e)=>{ cell.position = e.target.value; });
   document.getElementById('seatEditIcon')?.addEventListener('change', (e)=>{ cell.icon = e.target.value; renderSeatChartEditPreview(); });
-  document.getElementById('seatEditDividerShape')?.addEventListener('change', (e)=>{ cell.dividerShape = e.target.value; renderSeatChartEditPreview(); });
-  document.getElementById('seatEditDividerThickness')?.addEventListener('change', (e)=>{ cell.dividerThickness = parseInt(e.target.value,10)||2; renderSeatChartEditPreview(); });
+  // "저 라인에 직접 디자인설정을 못해? 뭘 삽입해서 하니까 불편해" 요청으로 드롭다운 대신 버튼으로 바꿈 -
+  // 누르면 바로 반영되고, 패널도 다시 그려서 방금 누른 버튼이 선택된 채로(진하게) 보이게 함
+  document.querySelectorAll('.seat-divider-shape-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      cell.dividerShape = btn.dataset.shape;
+      renderSeatChartEditPreview();
+      renderSeatChartCellEditor();
+    });
+  });
+  document.querySelectorAll('.seat-divider-thickness-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      cell.dividerThickness = parseInt(btn.dataset.thickness,10)||2;
+      renderSeatChartEditPreview();
+      renderSeatChartCellEditor();
+    });
+  });
   document.getElementById('seatEditDividerColor')?.addEventListener('input', (e)=>{ cell.dividerColor = e.target.value; renderSeatChartEditPreview(); });
   document.getElementById('seatEditDividerFullWidthBtn')?.addEventListener('click', ()=>{
     // 복도처럼 가로 전체를 가로지르게 - 세로는 한 칸(얇은 선)으로, 가로는 지금 배치도의 전체 열 수만큼
