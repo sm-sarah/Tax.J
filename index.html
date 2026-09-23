@@ -15478,7 +15478,11 @@ function renderDashboardClockCard(){
       en.status = btn.dataset.status;
       en.updatedAt = new Date().toISOString();
       recordRecentClockEntryEdit(activeProfileId, en);
-      await saveAttendance();
+      gdriveSuspendPull = true;
+      try{
+        await saveAttendance();
+        await gdrivePush(); // 예약(2초 디바운스)까지 기다리지 않고 즉시 반영 - 저장 직후 화면이 배경으로 가도(폰 백그라운드 등) 반영 전에 끊기지 않게 함
+      } finally { gdriveSuspendPull = false; }
       renderDashboardClockCard();
     });
   });
@@ -15506,7 +15510,15 @@ function renderDashboardClockCard(){
     // 값"을 정확히 골라내게 됨
     en.updatedAt = new Date().toISOString();
     recordRecentClockEntryEdit(activeProfileId, en);
-    await saveAttendance();
+    // 폰을 백그라운드로 보내면(잠금, 다른 앱 전환 등) 예약된 2초짜리 디바운스 타이머가 브라우저에 의해
+    // 지연되거나 아예 멈춰서, 방금 찍은 출근 기록이 한동안(다시 켤 때까지) Drive에 올라가지 않을 수 있음
+    // - 그 사이에 이 기록을 다른 기기가 아직 모르는 채로 뭔가를 저장하면 꼬일 여지가 생기므로, 예약을
+    // 기다리지 않고 여기서 바로 반영함(gdriveSuspendPull로 그 사이 pull이 끼어들어 덮어쓰는 것도 막음)
+    gdriveSuspendPull = true;
+    try{
+      await saveAttendance();
+      await gdrivePush();
+    } finally { gdriveSuspendPull = false; }
     renderDashboardClockCard();
   });
   document.getElementById('dashClockOutBtn')?.addEventListener('click', async function(){
@@ -15519,7 +15531,11 @@ function renderDashboardClockCard(){
     en.checkOutFull = full;
     en.updatedAt = new Date().toISOString();
     recordRecentClockEntryEdit(activeProfileId, en);
-    await saveAttendance();
+    gdriveSuspendPull = true;
+    try{
+      await saveAttendance();
+      await gdrivePush(); // 출근 버튼과 같은 이유(백그라운드 전환 시 디바운스 지연) - 예약을 기다리지 않고 즉시 반영
+    } finally { gdriveSuspendPull = false; }
     renderDashboardClockCard();
   });
   // 되돌리기(취소) 아이콘이 출근/퇴근 버튼과 바로 붙어있어서, 실수로 살짝 잘못 눌러도 확인 없이 곧바로
@@ -15531,7 +15547,11 @@ function renderDashboardClockCard(){
     if(!(await appConfirm('출근 기록을 취소할까요? 다시 출근을 찍어야 해요.'))){ this.disabled = false; return; }
     const en = todayClockEntry(false);
     if(en){ en.checkIn = ''; en.checkInFull = ''; en.updatedAt = new Date().toISOString(); recordRecentClockEntryEdit(activeProfileId, en); }
-    await saveAttendance();
+    gdriveSuspendPull = true;
+    try{
+      await saveAttendance();
+      await gdrivePush();
+    } finally { gdriveSuspendPull = false; }
     renderDashboardClockCard();
   });
   document.getElementById('dashClockResetOutBtn')?.addEventListener('click', async function(){
@@ -15540,7 +15560,11 @@ function renderDashboardClockCard(){
     if(!(await appConfirm('퇴근 기록을 취소할까요? 다시 퇴근을 찍어야 해요.'))){ this.disabled = false; return; }
     const en = todayClockEntry(false);
     if(en){ en.checkOut = ''; en.checkOutFull = ''; en.updatedAt = new Date().toISOString(); recordRecentClockEntryEdit(activeProfileId, en); }
-    await saveAttendance();
+    gdriveSuspendPull = true;
+    try{
+      await saveAttendance();
+      await gdrivePush();
+    } finally { gdriveSuspendPull = false; }
     renderDashboardClockCard();
   });
   updateDashClockLiveTime(); // 카드를 새로 그린 직후, 1초 주기 갱신이 오기 전까지 "--:--:--"로 비어보이지 않게 바로 한 번 채움
