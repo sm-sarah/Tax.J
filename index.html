@@ -29883,6 +29883,27 @@ window.addEventListener('focus', ()=>{ if(gdriveAccessToken && gdriveFileId) gdr
 // 불려서, "오래 백그라운드에 있다가 돌아온 폰이 낡은 데이터를 그대로 저장해버리는" 위험을 줄여줌
 document.addEventListener('visibilitychange', ()=>{
   if(!document.hidden && gdriveAccessToken && gdriveFileId) gdrivePull(true);
+  // "폰에서 알림 읽고 바로 다른 앱으로 넘어가버리면(백그라운드), 저장을 2초 뒤로 미뤄둔 예약(gdriveScheduleSync)의
+  // 타이머가 화면이 안 보이는 동안 브라우저에 의해 멈춰서 채 돌기도 전에 끝나버리고, 그 읽음 표시가 Drive에
+  // 못 올라간 채로 남는 경우가 있었음("분명 읽었는데 노트북에서 로그인하면 알림이 다시 안읽음으로 뜬다"는
+  // 제보의 원인 - 정작 이 기기(폰)엔 이미 반영돼 있어서 본인은 못 알아채고, 그 상태로 다른 기기가 먼저
+  // 동기화해서 열어봐야 드러남). 화면이 숨겨지는 바로 그 순간에 아직 못 올린 예약이 남아있으면, 타이머를
+  // 기다리지 않고 바로 저장을 시도함(성공 여부와 무관하게 위 gdrivePull의 "밀린 저장 먼저 반영" 안전장치가
+  // 있어서 이중으로 막혀 있음)
+  if(document.hidden && gdriveAccessToken && gdriveFileId && (gdriveSyncTimer || localStorage.getItem('worklog_gdrive_pending_push')==='1')){
+    clearTimeout(gdriveSyncTimer);
+    gdriveSyncTimer = null;
+    gdrivePush();
+  }
+});
+// visibilitychange가 대부분(탭 전환·백그라운드) 먼저 잡아주지만, 탭을 아예 닫거나 새로고침할 때는 기기·
+// 브라우저에 따라 visibilitychange 없이 곧장 pagehide만 불리는 경우도 있어서 같은 안전장치를 한 번 더 둠
+window.addEventListener('pagehide', ()=>{
+  if(gdriveAccessToken && gdriveFileId && (gdriveSyncTimer || localStorage.getItem('worklog_gdrive_pending_push')==='1')){
+    clearTimeout(gdriveSyncTimer);
+    gdriveSyncTimer = null;
+    gdrivePush();
+  }
 });
 // 이 탭을 열어두기만 해도 15초마다 자동으로 동기화해서, 여러 명이 거의 동시에 써도 서로의 변경사항이
 // 최대한 빨리(예전엔 3분 주기였음) 반영되게 함. 이제 직원목록 등은 통째로 덮어쓰지 않고 병합해서
