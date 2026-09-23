@@ -529,6 +529,16 @@
     box-shadow:0 0 0 1.5px rgba(255,255,255,0.92);
   }
   .touch-sheet-category-body{ display:flex; flex-direction:column; }
+  /* "폰에서 PC 화면 보기를 누르면 왼쪽에 메뉴가 또 뜬다" 제보 - #touchSheetGridView("전체 메뉴" 그리드)/
+     #touchSheetCategoryView(카테고리 하위 목록, "‹ 회사 ✕" 같은 헤더)는 터치 전용 바텀시트 화면인데,
+     이 두 화면 자체는 #appSidebar 맨 앞에 항상 그대로 들어있고 자기 자신의 표시 여부는 오직 인라인
+     style.display로만 관리됨(showGridView/showCategoryView). 그런데 그 값을 초기화해주는 쪽은 시트가
+     닫힐 때(mobile-sidebar-open 클래스 제거)를 지켜보는 MutationObserver뿐이라, 카테고리를 연 채로
+     PC 화면 보기를 켜는 순간처럼 두 상태가 같은 틱에 겹치면 리셋이 늦어져 레일 모드 사이드바 위에
+     이 헤더가 그대로 얹혀 보일 수 있었음 - JS 타이밍에 기대지 않도록, 레일 모드일 땐(=PC로 보는 중)
+     이 두 화면을 CSS로 무조건 숨겨서 어떤 순서로 켜지든 절대 겹쳐 보이지 않게 못박음 */
+  .app-sidebar.rail-mode #touchSheetGridView,
+  .app-sidebar.rail-mode #touchSheetCategoryView{ display:none !important; }
   /* 홈~휴지통 아이콘 줄을 사이드바(카드 배경 .app 안쪽) 흐름에서 아예 빼내서, 카드 밖 페이지 배경 위에
      독립된 줄로 둠 - 카드와 같은 가운데정렬 폭(max-width)을 써서 화면 크기가 달라져도 카드의 왼쪽 시작선과
      항상 나란히 맞음. 스크롤해도 화면 맨 위에 계속 붙어있도록 sticky로 고정함 */
@@ -3088,7 +3098,10 @@
      있어서 출근/퇴근 시간과 근무지를 직접 고칠 수 있게 함. 다만 근태 기록을 아무렇지 않게 고칠 수 있으면
      신뢰도가 떨어지므로, 반드시 수정 사유를 적어야만 저장되게 막고(미입력 시 저장 자체를 막음), 저장할
      때마다 무엇이 어떻게 바뀌었는지 그 날짜 기록의 editHistory에 자동으로 남김(사내정보·거래처 등 다른
-     곳의 수정이력과 같은 방식이라 openHistoryModal을 그대로 재사용해서 조회할 수 있음) -->
+     곳의 수정이력과 같은 방식이라 openHistoryModal을 그대로 재사용해서 조회할 수 있음).
+     input type="time"에 step="1"을 줘서 분뿐 아니라 초 단위까지 직접 입력할 수 있게 함 - 이 값이 그대로
+     checkInFull/checkOutFull(HH:MM:SS, 대시보드 카드·출퇴근현황 표에 초까지 보여줄 때 씀)에 저장되고,
+     근태 계산(지각/야근 등)이 쓰는 checkIn/checkOut(HH:MM)은 거기서 앞 5글자만 잘라 같이 맞춰줌 -->
 <div id="clockEditModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:360px; width:100%; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
     <div style="text-align:center; margin-bottom:14px;">
@@ -3096,15 +3109,15 @@
       <div id="clockEditDateLabel" style="font-size:12px; font-weight:700; color:var(--ink-soft); margin-top:2px;"></div>
       <button type="button" id="clockEditHistoryBtn" class="del-btn" style="display:none; margin-top:8px; font-size:11px; padding:4px 10px;">수정이력 보기</button>
     </div>
-    <div class="field"><label>출근시간</label><input type="time" id="clockEditCheckIn"></div>
-    <div class="field"><label>퇴근시간</label><input type="time" id="clockEditCheckOut"></div>
+    <div class="field"><label>출근시간</label><input type="time" id="clockEditCheckIn" step="1"></div>
+    <div class="field"><label>퇴근시간</label><input type="time" id="clockEditCheckOut" step="1"></div>
     <div class="field">
       <label>근무지</label>
       <div id="clockEditStatusGroup" class="home-dash-status-btn-group"></div>
     </div>
     <div class="field">
       <label>수정 사유 <span style="color:var(--coral); font-weight:800;">*필수</span></label>
-      <textarea id="clockEditReason" rows="2" placeholder="예: 출근 도장을 깜빡해서 실제 출근시간으로 수정합니다" style="width:100%; font-family:'Pretendard',sans-serif; font-size:13px; line-height:1.6; border:1.5px solid rgba(29,30,51,0.22); border-radius:10px; padding:8px 10px; background:var(--input-bg); color:var(--ink); resize:none; box-sizing:border-box;"></textarea>
+      <textarea id="clockEditReason" rows="2" placeholder="예: 동기화 오류 등으로 실제 출근시간으로 수정합니다" style="width:100%; font-family:'Pretendard',sans-serif; font-size:13px; line-height:1.6; border:1.5px solid rgba(29,30,51,0.22); border-radius:10px; padding:8px 10px; background:var(--input-bg); color:var(--ink); resize:none; box-sizing:border-box;"></textarea>
     </div>
     <div id="clockEditMsg" class="hint" style="text-align:center; min-height:14px; color:var(--coral); font-weight:700;"></div>
     <div style="text-align:center; margin-top:10px; display:flex; justify-content:center; gap:8px;">
@@ -15638,8 +15651,8 @@ function renderClockHistoryTable(){
     // 그 줄에 마우스를 올렸을 때만 나타나게 해서 표가 평소엔 아이콘 없이 깔끔하게 유지됨
     return `<tr>
       <td class="cvb">${Number(m)}/${Number(d)} (${dow})</td>
-      <td class="cvb" style="color:#1E9E6C; font-weight:700;">${e.checkIn || '-'}</td>
-      <td class="cvb" style="color:#DC4364; font-weight:700;">${e.checkOut || '-'}</td>
+      <td class="cvb" style="color:#1E9E6C; font-weight:700;">${e.checkInFull || e.checkIn || '-'}</td>
+      <td class="cvb" style="color:#DC4364; font-weight:700;">${e.checkOutFull || e.checkOut || '-'}</td>
       <td class="cvb">${hrs}</td>
       <td class="cvb">${escHtml(e.status||'')}</td>
       <td>
@@ -15681,8 +15694,10 @@ function openClockEditModal(dateStr){
   if(dateLabelEl) dateLabelEl.textContent = `${Number(m)}월 ${Number(d)}일 (${dow})`;
   const inEl = document.getElementById('clockEditCheckIn');
   const outEl = document.getElementById('clockEditCheckOut');
-  if(inEl) inEl.value = entry.checkIn || '';
-  if(outEl) outEl.value = entry.checkOut || '';
+  // step="1" 입력칸이라 값 형식이 HH:MM:SS라서, 초까지 저장돼있던 기록(checkInFull/checkOutFull)이 있으면
+  // 그대로 채우고, 예전 기록처럼 분 단위(checkIn/checkOut, HH:MM)만 있으면 초를 00으로 채워서 넣어줌
+  if(inEl) inEl.value = entry.checkInFull || (entry.checkIn ? entry.checkIn+':00' : '');
+  if(outEl) outEl.value = entry.checkOutFull || (entry.checkOut ? entry.checkOut+':00' : '');
   const statusGroup = document.getElementById('clockEditStatusGroup');
   if(statusGroup){
     statusGroup.innerHTML = DASH_CLOCK_STATUS_OPTS.map(o=>`<button type="button" class="home-dash-status-btn${(entry.status||'사무실')===o.key?' active':''}" data-status="${o.key}">${o.key}</button>`).join('');
@@ -15726,24 +15741,26 @@ document.getElementById('clockEditSaveBtn')?.addEventListener('click', async ()=
     if(msgEl) msgEl.textContent = '수정 사유를 반드시 입력해야 저장할 수 있어요.';
     return;
   }
-  const newCheckIn = document.getElementById('clockEditCheckIn')?.value || '';
-  const newCheckOut = document.getElementById('clockEditCheckOut')?.value || '';
+  // step="1" 입력칸이라 값이 있으면 HH:MM:SS 형식으로 옴 - 초까지(Full) 그대로 저장하고, 근태 계산이
+  // 쓰는 분 단위 필드는 그 앞 5글자(HH:MM)만 잘라서 같이 맞춰줌
+  const newCheckInFull = document.getElementById('clockEditCheckIn')?.value || '';
+  const newCheckOutFull = document.getElementById('clockEditCheckOut')?.value || '';
+  const newCheckIn = newCheckInFull.slice(0,5);
+  const newCheckOut = newCheckOutFull.slice(0,5);
   const newStatus = document.getElementById('clockEditStatusGroup')?.querySelector('.home-dash-status-btn.active')?.dataset.status || entry.status || '사무실';
   const changes = [];
-  if(newCheckIn !== (entry.checkIn||'')) changes.push({ label:'출근시간', before: entry.checkIn||'(없음)', after: newCheckIn||'(없음)' });
-  if(newCheckOut !== (entry.checkOut||'')) changes.push({ label:'퇴근시간', before: entry.checkOut||'(없음)', after: newCheckOut||'(없음)' });
+  // 수정이력엔 초까지 있으면 초까지(사람이 실제로 뭘 봤는지 그대로) 남김
+  if(newCheckInFull !== (entry.checkInFull || (entry.checkIn?entry.checkIn+':00':''))) changes.push({ label:'출근시간', before: entry.checkInFull||entry.checkIn||'(없음)', after: newCheckInFull||'(없음)' });
+  if(newCheckOutFull !== (entry.checkOutFull || (entry.checkOut?entry.checkOut+':00':''))) changes.push({ label:'퇴근시간', before: entry.checkOutFull||entry.checkOut||'(없음)', after: newCheckOutFull||'(없음)' });
   if(newStatus !== (entry.status||'사무실')) changes.push({ label:'근무지', before: entry.status||'사무실', after: newStatus });
   if(!changes.length){
     if(msgEl) msgEl.textContent = '바뀐 내용이 없어요.';
     return;
   }
-  // 수정 팝업의 input type="time"은 초 단위를 다루지 못하므로, 직접 고친 시각엔 정확한 초가 없음 -
-  // 대시보드 카드가 예전 초(checkInFull/checkOutFull)를 그대로 들고 있다가 안 맞는 초를 보여주지
-  // 않도록, 값이 바뀐 쪽만 같이 지워서 그 이후엔 분 단위(HH:MM)로만 표시되게 함
-  if(changes.some(c=>c.label==='출근시간')) entry.checkInFull = '';
-  if(changes.some(c=>c.label==='퇴근시간')) entry.checkOutFull = '';
   entry.checkIn = newCheckIn;
   entry.checkOut = newCheckOut;
+  entry.checkInFull = newCheckInFull;
+  entry.checkOutFull = newCheckOutFull;
   entry.status = newStatus;
   entry.updatedAt = new Date().toISOString();
   if(!Array.isArray(entry.editHistory)) entry.editHistory = [];
@@ -17215,6 +17232,14 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
     new MutationObserver(mirrorApprovalBadge).observe(approvalBadgeSrc, { attributes:true, attributeFilter:['style'], childList:true, characterData:true, subtree:true });
     mirrorApprovalBadge();
   }
+  // PC 화면 보기 토글 IIFE가 켜질 때 직접 불러서, 카테고리를 열어둔 채로 PC 보기로 전환해도 그 카테고리의
+  // .home-tiles가 시트 쪽(touchSheetCategoryBody)에 계속 남아있지 않고 확실히 제자리로 돌아오게 함(위 CSS
+  // 안전장치는 화면에 안 보이게만 막아줄 뿐이라, 실제 데이터/DOM 위치까지 되돌리는 건 이 함수가 해야 함)
+  window.__resetTouchSheetView = function(){
+    restoreMovedTiles();
+    showGridView();
+    sidebarEl.classList.remove('mobile-sidebar-open');
+  };
 })();
 
 // ===== 핀치 줌(손가락으로 화면 확대)해도 하단 탭바/메뉴 시트가 화면 밖으로 사라지지 않게 붙잡아둠 =====
@@ -17356,8 +17381,13 @@ document.getElementById('mobileSidebarToggle')?.addEventListener('click', ()=>{
     // 껐어도 이 클래스는 그대로 남아있었음. 이 클래스에 걸린 CSS(.app-sidebar.mobile-sidebar-open{
     // display:flex !important })가 is-touch-device 여부와 무관하게 항상 강제로 보이게 만드는 규칙이라,
     // PC 보기(레일 모드) 화면 위에 모바일 전체메뉴 시트가 그대로 겹쳐 보이는 원인이었음 - PC 보기를 켤 땐
-    // 그 시트를 확실히 닫아줌
-    if(on) document.getElementById('appSidebar')?.classList.remove('mobile-sidebar-open');
+    // 그 시트를 확실히 닫아줌. 단순히 클래스만 지우면(예전 방식) 카테고리를 열어둔 채로 전환했을 때
+    // 그 카테고리의 .home-tiles가 시트 쪽에 옮겨진 채로 안 돌아오는 경우가 있어서, 위 터치 바텀시트
+    // IIFE가 노출해둔 리셋 함수(__resetTouchSheetView)를 대신 불러 tiles 복구까지 한 번에 처리함
+    if(on){
+      if(typeof window.__resetTouchSheetView === 'function') window.__resetTouchSheetView();
+      else document.getElementById('appSidebar')?.classList.remove('mobile-sidebar-open');
+    }
     if(typeof window.__recalcRailMode === 'function') window.__recalcRailMode();
   }
   // 아직 한 번도 건드린 적 없으면(저장된 값이 없으면) 기본은 켜짐. 명시적으로 "0"을 저장해둔 적이 있을
