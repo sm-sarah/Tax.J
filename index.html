@@ -28450,14 +28450,63 @@ function seatDirArrowHtml(dir){
 // 자리·구역표시와 같은 칸 데이터(row/col/rowSpan/colSpan)를 그대로 쓰되 생김새만 다름. 구분선은 속이
 // 비어있어서 다른 칸과 겹쳐도 내용을 가리지 않아야 하므로, 그리는 순서 자체를 구분선이 먼저(맨 뒤에)
 // 오도록 옮겨서 자리/구역표시/소품이 항상 그 위에 그려지게 함(아래 seatChartOrderForStack 참고)
+// "구분선은 저게 아니라 직선형태를 말한거였어"와 "직선과 막힌선 다 해도 될것같아, 굵기랑 컬러도 선택할 수
+// 있으면" 요청 - 기존 "막힌 사각형"(점선 테두리) 모양은 그대로 두고, "직선" 모양을 새로 추가함. 어느
+// 모양이든 굵기(dividerThickness)·색(dividerColor)을 칸마다 따로 고를 수 있고, 값이 없으면(기존에 만들어둔
+// 구분선들) 예전 그대로 막힌 사각형·2px·회색으로 보임. 직선은 칸의 가로세로 중 더 긴 쪽 방향으로 곧은 선
+// 하나만 가운데에 그림(가로로 넓으면 가로선, 세로로 길면 세로선)
+function seatDividerVisual(cell, effRowSpan, effColSpan){
+  const shape = cell.dividerShape || 'box';
+  const thickness = cell.dividerThickness || 2;
+  const color = cell.dividerColor || '#75789A';
+  if(shape==='line'){
+    const horizontal = (effColSpan||1) >= (effRowSpan||1);
+    const barStyle = horizontal
+      ? `position:absolute; left:4%; right:4%; top:50%; height:${thickness}px; transform:translateY(-50%); background:${color}; border-radius:${Math.min(thickness,3)}px;`
+      : `position:absolute; top:4%; bottom:4%; left:50%; width:${thickness}px; transform:translateX(-50%); background:${color}; border-radius:${Math.min(thickness,3)}px;`;
+    return { boxStyle: 'background:transparent; border:none; box-shadow:none;', innerBarHtml: `<span style="${barStyle}"></span>` };
+  }
+  return { boxStyle: `background:transparent; border:${thickness}px dashed ${color}; box-shadow:none;`, innerBarHtml: '' };
+}
+// "화장실·회의실·탕비실은 아이콘으로 보여줄 수 있으면"에 이어, "약간 선아이콘형태로, 기존 스타일이랑
+// 어울리게" 요청 - 알록달록한 이모지 대신, 앱 곳곳의 다른 버튼들과 똑같은 방식(테두리 없이 선(stroke)만
+// 있는 currentColor 아이콘)으로 그림. currentColor라서 구역표시(회색 글자)·소품(인디고 글자) 색을 그대로
+// 따라가서 이질감이 없음
+const SEAT_ICON_DEFS = {
+  toilet: { label:'화장실', svg:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="6" r="2.6"></circle><path d="M6,20 C6,14.5 8.7,12 12,12 C15.3,12 18,14.5 18,20"></path></svg>' },
+  meeting: { label:'회의실', svg:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="2.6"></circle><path d="M4,19 C4,15 6.2,13 9,13 C11.8,13 14,15 14,19"></path><circle cx="17" cy="9" r="2.1"></circle><path d="M14.6,19 C14.9,16 16.3,14.3 18,14.3 C19.9,14.3 21,16.2 21,19"></path></svg>' },
+  pantry: { label:'탕비실', svg:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="9" width="11" height="9" rx="2"></rect><path d="M15.5,11 C18,11 18.5,12.3 18.5,13.7 C18.5,15.1 18,16.4 15.5,16.4"></path><path d="M8,5.5 C8,5.5 9.3,4 8,2.5"></path><path d="M11.6,5.5 C11.6,5.5 12.9,4 11.6,2.5"></path></svg>' },
+  locker: { label:'사물함', svg:'<svg width="14" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.5"></rect><line x1="12" y1="3" x2="12" y2="21"></line><line x1="8.6" y1="12" x2="9.6" y2="12"></line><line x1="14.4" y1="12" x2="15.4" y2="12"></line></svg>' },
+  stairs: { label:'계단실', svg:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4,20 L4,16 L9,16 L9,12 L14,12 L14,8 L19,8 L19,4"></path></svg>' },
+  elevator: { label:'엘리베이터', svg:'<svg width="14" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.5"></rect><path d="M9.5,11 L12,8 L14.5,11"></path><path d="M9.5,14 L12,17 L14.5,14"></path></svg>' },
+  printer: { label:'프린터', svg:'<svg width="16" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="5"></rect><rect x="4" y="8" width="16" height="8" rx="1.5"></rect><rect x="7" y="16" width="10" height="5"></rect></svg>' },
+  warehouse: { label:'창고', svg:'<svg width="16" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4,9 L12,4 L20,9"></path><rect x="5" y="9" width="14" height="11"></rect><line x1="12" y1="9" x2="12" y2="20"></line></svg>' }
+};
+// 구역표시/소품에서 아이콘을 하나 고르면(cell.icon, 위 SEAT_ICON_DEFS의 키) 이름 위에 선아이콘을, 이름은
+// 그 밑에 작게 이어붙여 보여줌(아이콘이 없으면 예전처럼 이름만 보임). labelClass를 주면 그 안쪽 이름
+// span에 그 클래스를 붙여서, 편집 화면에서 이름만 골라 바꾸는 기존 로직(.seat-edit-cell-label 참고)이
+// 아이콘과 상관없이 그대로 동작함
+function seatCellIconBodyHtml(cell, textHtml, labelClass){
+  const wrapped = labelClass ? `<span class="${labelClass}">${textHtml}</span>` : textHtml;
+  if(!cell.icon) return wrapped;
+  // 예전에 이모지로 저장해둔 값(하위호환)은 정의된 선아이콘이 없으니 그 글자를 그대로 아이콘 자리에 보여줌
+  const def = SEAT_ICON_DEFS[cell.icon];
+  const iconMarkup = def ? def.svg : escHtml(cell.icon);
+  return `<span style="display:flex; flex-direction:column; align-items:center; gap:1px; line-height:1.15;"><span aria-hidden="true" style="display:inline-flex; font-size:14px;">${iconMarkup}</span>${wrapped}</span>`;
+}
 function seatCellViewHtml(cell){
   const empty = cell.type==='seat' && !cell.text;
+  const { rowSpan, colSpan } = seatCellEffectiveSpans(cell);
   let bg = 'background:var(--surface);';
+  let dividerBar = '';
   if(cell.type==='label') bg = 'background:var(--bg); color:var(--ink-soft); font-weight:700;';
-  else if(cell.type==='divider') bg = 'background:transparent; border:2px dashed var(--ink-soft); box-shadow:none; color:var(--ink-soft); font-weight:700; font-size:10.5px; align-items:flex-start; justify-content:flex-start; padding:3px 6px;';
+  else if(cell.type==='divider'){
+    const dv = seatDividerVisual(cell, rowSpan, colSpan);
+    bg = `${dv.boxStyle} color:${cell.dividerColor||'var(--ink-soft)'}; font-weight:700; font-size:10.5px; align-items:flex-start; justify-content:flex-start; padding:3px 6px;`;
+    dividerBar = dv.innerBarHtml;
+  }
   else if(cell.type==='item') bg = 'background:#F1F0FB; border:1.5px dashed var(--indigo); color:var(--indigo-deep); font-weight:700; font-size:10.5px;';
   else if(empty) bg = 'background:#FEF9C3; color:#92660A; font-weight:700;';
-  const { rowSpan, colSpan } = seatCellEffectiveSpans(cell);
   const dirArrow = cell.type==='seat' ? seatDirArrowHtml(cell.dir) : '';
   const z = cell.type==='divider' ? 'z-index:0;' : 'z-index:1;';
   // 세로 2칸으로 늘어난(auto-inflate) 자리는 그 2칸 폭을 다 채우지 않고 절반 너비로 좁혀서 가운데 놓아,
@@ -28466,7 +28515,10 @@ function seatCellViewHtml(cell){
   // 표시(seat-dir-chair/seat-dir-monitor, 칸 안쪽으로 6px씩 들어옴)와 가운데 이름 글자가 겹쳐 보였음.
   // 좌우 여백을 넉넉히 주고 글자도 살짝 작게 줄여서 그 6px 구간을 피해가게 함
   const narrowStyle = seatIsAutoInflatedPortrait(cell) ? 'width:50%; margin:0 auto; padding-left:10px; padding-right:10px; font-size:10.5px;' : '';
-  return `<div style="position:relative; grid-row:${cell.row} / span ${rowSpan}; grid-column:${cell.col} / span ${colSpan}; ${SEAT_CELL_STYLE_COMMON} ${bg} ${z} ${narrowStyle}">${dirArrow}${escHtml(empty ? '미점유' : (cell.text||''))}</div>`;
+  const bodyHtml = (cell.type==='label' || cell.type==='item')
+    ? seatCellIconBodyHtml(cell, escHtml(cell.text||''), '')
+    : escHtml(empty ? '미점유' : (cell.text||''));
+  return `<div style="position:relative; grid-row:${cell.row} / span ${rowSpan}; grid-column:${cell.col} / span ${colSpan}; ${SEAT_CELL_STYLE_COMMON} ${bg} ${z} ${narrowStyle}">${dividerBar}${dirArrow}${bodyHtml}</div>`;
 }
 // 구분선(divider)을 배열 맨 앞으로 보내 먼저 그리게 함 - CSS grid는 같은 자리를 두고 여러 칸이 겹치면
 // "나중에 그려진 쪽"이 위로 덮으므로, 구분선을 항상 먼저 그려야 자리/구역표시/소품 글자가 안 가려짐
@@ -28519,14 +28571,19 @@ function seatCellTypeLabel(cell){
 }
 function seatChartEditCellHtml(cell){
   const empty = cell.type==='seat' && !cell.text;
+  const { rowSpan, colSpan } = seatCellEffectiveSpans(cell);
   let bg = 'background:var(--surface); border:1.5px solid var(--border); z-index:1;';
+  let dividerBar = '';
   if(cell.type==='label') bg = 'background:var(--bg); color:var(--ink-soft); font-weight:700; border:1.5px dashed var(--border); z-index:1;';
-  else if(cell.type==='divider') bg = 'background:transparent; color:var(--ink-soft); font-weight:700; border:2px dashed var(--ink-soft); z-index:0; align-items:flex-start; justify-content:flex-start;';
+  else if(cell.type==='divider'){
+    const dv = seatDividerVisual(cell, rowSpan, colSpan);
+    bg = `${dv.boxStyle} color:${cell.dividerColor||'var(--ink-soft)'}; font-weight:700; z-index:0; align-items:flex-start; justify-content:flex-start;`;
+    dividerBar = dv.innerBarHtml;
+  }
   else if(cell.type==='item') bg = 'background:#F1F0FB; color:var(--indigo-deep); font-weight:700; border:1.5px dashed var(--indigo); z-index:1;';
   else if(empty) bg = 'background:#FEF9C3; color:#92660A; font-weight:700; border:1.5px solid #FDE68A; z-index:1;';
   const isSel = cell.id===seatChartSelectedId;
   const sel = isSel ? ' box-shadow:0 0 0 2.5px var(--indigo);' : '';
-  const { rowSpan, colSpan } = seatCellEffectiveSpans(cell);
   const left = ((cell.col||1)-1) * (SEAT_EDIT_CELL_W+SEAT_EDIT_GAP);
   const top = ((cell.row||1)-1) * (SEAT_EDIT_CELL_H+SEAT_EDIT_GAP);
   let w = colSpan*SEAT_EDIT_CELL_W + (colSpan-1)*SEAT_EDIT_GAP;
@@ -28547,7 +28604,10 @@ function seatChartEditCellHtml(cell){
   // 삭제 × 버튼은 항상 마크업엔 넣어두고(호버/선택 시에만 CSS로 보이게), 크기조절 손잡이는 선택됐을 때만 넣음
   const deleteBtn = `<button type="button" class="seat-edit-cell-delete" data-id="${cell.id}" title="${escHtml(seatCellTypeLabel(cell))} 삭제" aria-label="삭제">✕</button>`;
   const resizeHandle = isSel ? `<div class="seat-resize-handle" data-id="${cell.id}" title="끌어서 크기 바꾸기"></div>` : '';
-  return `<div class="seat-edit-cell${isSel ? ' is-selected' : ''}" data-id="${cell.id}" style="position:absolute; left:${visualLeft}px; top:${top}px; width:${w}px; height:${h}px; ${bg}${sel} border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11.5px; text-align:center; padding:2px; cursor:grab; touch-action:none; user-select:none; box-sizing:border-box; line-height:1.2; ${narrowTextStyle}">${dirArrow}<span class="seat-edit-cell-label">${escHtml(empty ? '미점유' : (cell.text||'(이름없음)'))}</span>${deleteBtn}${resizeHandle}</div>`;
+  const labelHtml = (cell.type==='label' || cell.type==='item')
+    ? seatCellIconBodyHtml(cell, escHtml(cell.text||'(이름없음)'), 'seat-edit-cell-label')
+    : `<span class="seat-edit-cell-label">${escHtml(empty ? '미점유' : (cell.text||'(이름없음)'))}</span>`;
+  return `<div class="seat-edit-cell${isSel ? ' is-selected' : ''}" data-id="${cell.id}" style="position:absolute; left:${visualLeft}px; top:${top}px; width:${w}px; height:${h}px; ${bg}${sel} border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11.5px; text-align:center; padding:2px; cursor:grab; touch-action:none; user-select:none; box-sizing:border-box; line-height:1.2; ${narrowTextStyle}">${dividerBar}${dirArrow}${labelHtml}${deleteBtn}${resizeHandle}</div>`;
 }
 function renderSeatChartEditPreview(){
   const wrap = document.getElementById('seatChartPreviewWrap');
@@ -28796,6 +28856,49 @@ function renderSeatChartCellEditor(){
     <div class="flat-row"><div class="flat-row-label">이름</div><div class="flat-row-control">
       <input type="text" id="seatEditText" class="flat-input" placeholder="이름 또는 구역명" value="${escHtml(cell.text||'')}">
     </div></div>
+    ${(cell.type==='label' || cell.type==='item') ? `
+    <!-- "화장실·회의실·탕비실은 아이콘으로 보여줄 수 있으면" 요청 - 구역표시/소품에서만 아이콘을 고를 수
+         있게 함(자리는 이름이 핵심이라 제외, 구분선은 테두리/선 자체가 표시라 아이콘 자리가 없음) -->
+    <div class="flat-row"><div class="flat-row-label">아이콘</div><div class="flat-row-control">
+      <select id="seatEditIcon" class="flat-input">
+        <option value="" ${!cell.icon?'selected':''}>없음</option>
+        <option value="toilet" ${cell.icon==='toilet'?'selected':''}>화장실</option>
+        <option value="meeting" ${cell.icon==='meeting'?'selected':''}>회의실</option>
+        <option value="pantry" ${cell.icon==='pantry'?'selected':''}>탕비실</option>
+        <option value="locker" ${cell.icon==='locker'?'selected':''}>사물함</option>
+        <option value="stairs" ${cell.icon==='stairs'?'selected':''}>계단실</option>
+        <option value="elevator" ${cell.icon==='elevator'?'selected':''}>엘리베이터</option>
+        <option value="printer" ${cell.icon==='printer'?'selected':''}>프린터</option>
+        <option value="warehouse" ${cell.icon==='warehouse'?'selected':''}>창고</option>
+      </select>
+    </div></div>` : ''}
+    ${cell.type==='divider' ? `
+    <!-- "구분선은 직선형태를 말한거였어"와 "직선과 막힌선 다 해도 될것같아, 굵기랑 컬러도 선택할 수 있으면"
+         요청 - 모양(막힌 사각형/직선)·굵기·색을 칸마다 고를 수 있게 함 -->
+    <div class="flat-row"><div class="flat-row-label">모양</div><div class="flat-row-control">
+      <select id="seatEditDividerShape" class="flat-input">
+        <option value="box" ${(cell.dividerShape||'box')==='box'?'selected':''}>막힌 사각형</option>
+        <option value="line" ${cell.dividerShape==='line'?'selected':''}>직선</option>
+      </select>
+    </div></div>
+    <div class="flat-row"><div class="flat-row-label">굵기</div><div class="flat-row-control">
+      <select id="seatEditDividerThickness" class="flat-input">
+        <option value="1" ${(cell.dividerThickness||2)===1?'selected':''}>얇게</option>
+        <option value="2" ${(cell.dividerThickness||2)===2?'selected':''}>보통</option>
+        <option value="4" ${(cell.dividerThickness||2)===4?'selected':''}>굵게</option>
+        <option value="6" ${(cell.dividerThickness||2)===6?'selected':''}>아주 굵게</option>
+      </select>
+    </div></div>
+    <div class="flat-row"><div class="flat-row-label">색상</div><div class="flat-row-control" style="display:flex; align-items:center; gap:8px;">
+      <input type="color" id="seatEditDividerColor" value="${cell.dividerColor || '#75789A'}" style="width:34px; height:28px; padding:0; border:1px solid var(--border); border-radius:6px; cursor:pointer;">
+      <span style="font-size:11px; color:var(--ink-soft);">선 색을 골라요</span>
+    </div></div>
+    <!-- "구분선이 복도 구분같은 것도 잘 되려나?" 요청 - +/- 버튼으로 한 칸씩 늘리지 않아도, 한 번에
+         가로/세로 전체를 가로지르는 길이로 맞춰서 복도처럼 넓은 구획을 쉽게 나눌 수 있게 함 -->
+    <div class="flat-row"><div class="flat-row-label">빠른 크기</div><div class="flat-row-control" style="display:flex; gap:6px; flex-wrap:wrap;">
+      <button type="button" class="del-btn seat-chart-action-btn" id="seatEditDividerFullWidthBtn" title="복도처럼 가로 전체를 가로지르는 얇은 선으로">↔ 가로 전체(복도)</button>
+      <button type="button" class="del-btn seat-chart-action-btn" id="seatEditDividerFullHeightBtn" title="복도처럼 세로 전체를 가로지르는 얇은 선으로">↕ 세로 전체(복도)</button>
+    </div></div>` : ''}
     ${cell.type==='seat' ? `
     <!-- "이걸 바탕으로 조직도도, 팀명과 직책도 설정할 수 있으면" 요청으로 자리(seat)에만 team/position을
          추가로 둠 - 구역표시(label)는 사람이 아니라 화장실·계단실 같은 칸이라 해당 없음 -->
@@ -28826,7 +28929,13 @@ function renderSeatChartCellEditor(){
       <button type="button" class="del-btn" id="seatEditCloseBtn">닫기</button>
     </div>
   </div>`;
-  document.getElementById('seatEditType').addEventListener('change', (e)=>{ cell.type = e.target.value; renderSeatChartEditPreview(); });
+  document.getElementById('seatEditType').addEventListener('change', (e)=>{
+    cell.type = e.target.value;
+    renderSeatChartEditPreview();
+    // 종류를 바꾸면 아이콘(구역표시/소품)·구분선 모양 같은, 종류에 따라 보였다 안 보였다 하는 입력칸이
+    // 바뀌어야 해서 편집 패널 자체를 다시 그림
+    renderSeatChartCellEditor();
+  });
   document.getElementById('seatEditText').addEventListener('input', (e)=>{
     cell.text = e.target.value;
     // 칸 안에 방향 화살표(dirArrow)가 같이 들어있어서, 예전처럼 칸 전체의 textContent를 통째로 바꾸면
@@ -28838,6 +28947,31 @@ function renderSeatChartCellEditor(){
   });
   document.getElementById('seatEditTeam')?.addEventListener('input', (e)=>{ cell.team = e.target.value; });
   document.getElementById('seatEditPosition')?.addEventListener('input', (e)=>{ cell.position = e.target.value; });
+  document.getElementById('seatEditIcon')?.addEventListener('change', (e)=>{ cell.icon = e.target.value; renderSeatChartEditPreview(); });
+  document.getElementById('seatEditDividerShape')?.addEventListener('change', (e)=>{ cell.dividerShape = e.target.value; renderSeatChartEditPreview(); });
+  document.getElementById('seatEditDividerThickness')?.addEventListener('change', (e)=>{ cell.dividerThickness = parseInt(e.target.value,10)||2; renderSeatChartEditPreview(); });
+  document.getElementById('seatEditDividerColor')?.addEventListener('input', (e)=>{ cell.dividerColor = e.target.value; renderSeatChartEditPreview(); });
+  document.getElementById('seatEditDividerFullWidthBtn')?.addEventListener('click', ()=>{
+    // 복도처럼 가로 전체를 가로지르게 - 세로는 한 칸(얇은 선)으로, 가로는 지금 배치도의 전체 열 수만큼
+    cell.colSpan = Math.max(1, seatChartDraft.cols||9);
+    cell.rowSpan = 1;
+    renderSeatChartEditPreview();
+    renderSeatChartCellEditor();
+  });
+  document.getElementById('seatEditDividerFullHeightBtn')?.addEventListener('click', ()=>{
+    // 복도처럼 세로 전체를 가로지르게 - 가로는 한 칸(얇은 선)으로, 세로는 이 구분선 위치부터 다른 칸들이
+    // 실제로 놓인 마지막 행까지(빈 여유 행까지 늘어나지 않도록 seatChartRowsNeeded의 +3 여유분은 제외)
+    const startRow = cell.row||1;
+    const maxRow = seatChartDraft.cells.reduce((m,c)=>{
+      if(c.id===cell.id || !c.row || !c.col) return m;
+      const sp = seatCellEffectiveSpans(c);
+      return Math.max(m, (c.row||1)+(sp.rowSpan||1)-1);
+    }, startRow);
+    cell.rowSpan = Math.max(1, maxRow - startRow + 1);
+    cell.colSpan = 1;
+    renderSeatChartEditPreview();
+    renderSeatChartCellEditor();
+  });
   document.getElementById('seatEditRowSpanMinus').addEventListener('click', ()=>{ cell.rowSpan = Math.max(1,(cell.rowSpan||1)-1); renderSeatChartEditPreview(); });
   document.getElementById('seatEditRowSpanPlus').addEventListener('click', ()=>{ cell.rowSpan = Math.min(20,(cell.rowSpan||1)+1); renderSeatChartEditPreview(); });
   document.getElementById('seatEditColSpanMinus').addEventListener('click', ()=>{ cell.colSpan = Math.max(1,(cell.colSpan||1)-1); renderSeatChartEditPreview(); });
