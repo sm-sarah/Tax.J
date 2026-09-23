@@ -7673,6 +7673,32 @@ function recordApprovalDecision(id, status){
     localStorage.setItem('worklog_recent_approval_decisions', JSON.stringify(list));
   }catch(e){}
 }
+// "출근 찍었는데 몇 분 뒤에 사라진다" - 결재 결정과 똑같은 문제일 가능성이 큼. 출퇴근 기록(clockLog)은
+// id가 그날 날짜라 하루에 한 번만 있는 레코드인데, 방금 출근/재택 토글을 누른 직후(아직 이 기기의
+// push가 Drive에 다 반영되기 전) 같은 프로필의 다른 탭/기기가 그 순간 뭔가 다른 걸 저장하면서 자기가
+// 들고 있던 "그날 기록의 예전 버전"(예: 아직 출근 전, 사무실인 상태)까지 같이 실어 올릴 수 있고, 그
+// 오래된 버전에도 어쩌다 updatedAt이 더 최근으로 찍혀있으면(기기 시계가 안 맞는 경우 등) 병합에서
+// 방금 찍은 기록을 이겨버릴 수 있음 - 출근/퇴근/근무지를 바꿀 때마다 "최근에 내가 이 프로필의 이 날짜를
+// 이렇게 바꿨다"를 기록해두고, 병합 결과가 그것과 다르면 병합 직후 다시 되돌려서 방금 한 조작이 도로
+// 사라지지 않게 함(결재 결정 안전장치와 같은 원리, storageKey만 다름)
+function getRecentClockEntryEdits(){
+  try{
+    const raw = JSON.parse(localStorage.getItem('worklog_recent_clock_edits') || '[]');
+    const now = Date.now();
+    const fresh = raw.filter(e=> e && e.key && (now - e.at) < RECENT_DELETION_TTL_MS);
+    if(fresh.length !== raw.length) localStorage.setItem('worklog_recent_clock_edits', JSON.stringify(fresh));
+    return fresh;
+  }catch(e){ return []; }
+}
+function recordRecentClockEntryEdit(pid, entry){
+  try{
+    if(!pid || !entry || !entry.date) return;
+    const key = `${pid}::${entry.date}`;
+    const list = getRecentClockEntryEdits().filter(e=>e.key!==key);
+    list.push({ key, pid, entry: JSON.parse(JSON.stringify(entry)), at: Date.now() });
+    localStorage.setItem('worklog_recent_clock_edits', JSON.stringify(list));
+  }catch(e){}
+}
 // 공지사항 삭제할 때도 직원·결재문서와 똑같은 문제(지운 직후 다른 기기/탭이 아직 들고 있던 예전 목록이
 // Drive 동기화로 다시 올라가면서 방금 지운 게 되살아남)가 있었는데, 이 안전장치가 그 항목에만 없어서
 // "삭제해도 계속 나타난다"는 문제로 이어졌음. 매번 이렇게 목록마다 똑같은 함수쌍을 손으로 새로 만들다
@@ -15232,16 +15258,23 @@ function renderDashboardAttendancePreview(){
 
 // 대시보드 출퇴근 카드 - 오늘 날짜 기준으로 출근/퇴근 시각을 눌러서 바로 찍을 수 있는 도장 위젯.
 // 기록은 근태(attendance) 데이터에 clockLog로 함께 저장되고(개인별), 프로필을 바꾸면 그 사람 기준으로 다시 그려짐.
+// "재택인데 대시보드 출퇴근에 재택으로 안 가있다"는 제보 - 오늘 근태관리 탭에 재택근무로 등록돼 있으면
+// (attendance.remoteEntries) 근무지 토글이 자동으로 "재택"에서 시작해야 하는데, 이 판정 로직이 딱 한
+// 군데(todayClockEntry가 그날 기록을 "새로 만드는" 순간)에만 있었음 - 그런데 화면에 카드를 그릴 때는
+// (아직 출근 도장을 안 찍어 기록 자체가 없는 대부분의 경우) todayClockEntry(false)로 "새로 만들지 말고
+// 있으면만 가져와" 호출해서, 기록이 없으면 이 판정을 건너뛰고 그냥 하드코딩된 '사무실'로 대체해서 보여주고
+// 있었음(아래 renderDashboardClockCard의 기존 기본값 참고) - 그래서 재택 등록을 해놔도 아직 출근을 안 찍은
+// 상태에서는 카드에 사무실로만 보였던 것. 두 군데 모두 이 함수 하나로 판정하도록 합쳐서 다시 어긋나지 않게 함
+function todayDefaultClockStatus(){
+  const d = todayStr();
+  return (attendance.remoteEntries||[]).some(r=>r.date===d) ? '재택' : '사무실';
+}
 function todayClockEntry(create){
   const d = todayStr();
   attendance.clockLog = attendance.clockLog || [];
   let entry = attendance.clockLog.find(e=>e.date===d);
   if(!entry && create){
-    // "사무실/재택 토글이 눈에 잘 안 띄어서 재택인 날에도 계속 사무실로 찍힐 것 같다"는 요청 - 오늘 날짜가
-    // 이미 근태관리 탭에서 재택근무로 등록돼 있으면(attendance.remoteEntries), 출퇴근 도장을 처음 찍을 때
-    // 근무지 토글을 자동으로 "재택"에 맞춰서 시작함. 그래도 토글 자체는 그대로 남아있어 언제든 직접 바꿀 수 있음
-    const isRemoteToday = (attendance.remoteEntries||[]).some(r=>r.date===d);
-    entry = { id:d, date:d, checkIn:'', checkOut:'', status: isRemoteToday ? '재택' : '사무실', updatedAt: new Date().toISOString() };
+    entry = { id:d, date:d, checkIn:'', checkOut:'', status: todayDefaultClockStatus(), updatedAt: new Date().toISOString() };
     attendance.clockLog.push(entry);
   }
   return entry;
@@ -15385,7 +15418,7 @@ function renderDashboardClockCard(){
         ${profiles.map(p=>`<option value="${p.id}" ${p.id===activeProfileId?'selected':''}>${escHtml(p.name||'(이름 없음)')}</option>`).join('')}
       </select>`
     : (activeName ? `<span style="font-size:11px; font-weight:700; color:var(--ink-soft);">${escHtml(activeName)}</span>` : '');
-  const entry = todayClockEntry(false) || { checkIn:'', checkOut:'', status:'사무실' };
+  const entry = todayClockEntry(false) || { checkIn:'', checkOut:'', status: todayDefaultClockStatus() };
   const week = weeklyClockSummary();
   const weekHours = (week.doneMinutes/60).toFixed(1).replace(/\.0$/,'');
   const clockState = dashClockState(entry);
@@ -15444,6 +15477,7 @@ function renderDashboardClockCard(){
       const en = todayClockEntry(true);
       en.status = btn.dataset.status;
       en.updatedAt = new Date().toISOString();
+      recordRecentClockEntryEdit(activeProfileId, en);
       await saveAttendance();
       renderDashboardClockCard();
     });
@@ -15471,6 +15505,7 @@ function renderDashboardClockCard(){
     // gdriveRecordTimestamp가 이 필드를 자동으로 읽어서(기존 결재/공지 등과 같은 방식) "진짜 나중에 저장된
     // 값"을 정확히 골라내게 됨
     en.updatedAt = new Date().toISOString();
+    recordRecentClockEntryEdit(activeProfileId, en);
     await saveAttendance();
     renderDashboardClockCard();
   });
@@ -15483,6 +15518,7 @@ function renderDashboardClockCard(){
     en.checkOut = full.slice(0,5);
     en.checkOutFull = full;
     en.updatedAt = new Date().toISOString();
+    recordRecentClockEntryEdit(activeProfileId, en);
     await saveAttendance();
     renderDashboardClockCard();
   });
@@ -15494,7 +15530,7 @@ function renderDashboardClockCard(){
     this.disabled = true;
     if(!(await appConfirm('출근 기록을 취소할까요? 다시 출근을 찍어야 해요.'))){ this.disabled = false; return; }
     const en = todayClockEntry(false);
-    if(en){ en.checkIn = ''; en.checkInFull = ''; en.updatedAt = new Date().toISOString(); }
+    if(en){ en.checkIn = ''; en.checkInFull = ''; en.updatedAt = new Date().toISOString(); recordRecentClockEntryEdit(activeProfileId, en); }
     await saveAttendance();
     renderDashboardClockCard();
   });
@@ -15503,7 +15539,7 @@ function renderDashboardClockCard(){
     this.disabled = true;
     if(!(await appConfirm('퇴근 기록을 취소할까요? 다시 퇴근을 찍어야 해요.'))){ this.disabled = false; return; }
     const en = todayClockEntry(false);
-    if(en){ en.checkOut = ''; en.checkOutFull = ''; en.updatedAt = new Date().toISOString(); }
+    if(en){ en.checkOut = ''; en.checkOutFull = ''; en.updatedAt = new Date().toISOString(); recordRecentClockEntryEdit(activeProfileId, en); }
     await saveAttendance();
     renderDashboardClockCard();
   });
@@ -27707,6 +27743,26 @@ function gdriveComputeMerged(remote){
   if(deletedSpecialPeriodIds.size && merged.shared) merged.shared.specialPeriods = (merged.shared.specialPeriods||[]).filter(x=>!deletedSpecialPeriodIds.has(x.id));
   const deletedAdminEmails = new Set(getRecentlyDeletedAdminEmails().map(e=>e.id));
   if(deletedAdminEmails.size && merged.shared) merged.shared.adminEmails = (merged.shared.adminEmails||[]).filter(e=>!deletedAdminEmails.has(e));
+  // 출퇴근 기록도 같은 이유로 같은 안전장치 적용 - "출근을 찍었는데 몇 분 뒤 기록이 사라진다"는 문제 대비.
+  // clockLog는 날짜(id)별로 병합되고 updatedAt으로 최신을 가리므로 이론적으로는 이미 안전해야 하지만,
+  // 결재 승인/거부가 그랬듯 실제로는 오래 켜둔 다른 탭/기기가 하필 그 사이에 저장되며 예상 못 한 경로로
+  // 되돌아갈 수 있어 방금 이 기기에서 찍은/고친 오늘 기록은 병합 결과에서도 확실히 남도록 한 번 더 맞춰줌
+  const recentClockEdits = getRecentClockEntryEdits();
+  if(recentClockEdits.length && merged.data){
+    recentClockEdits.forEach(({pid, entry})=>{
+      const d = merged.data[pid];
+      if(!d || !d.attendance) return;
+      if(!Array.isArray(d.attendance.clockLog)) d.attendance.clockLog = [];
+      const idx = d.attendance.clockLog.findIndex(e=>e.date===entry.date);
+      const existing = idx!==-1 ? d.attendance.clockLog[idx] : null;
+      if(existing && gdriveDeepEqual(existing, entry)) return; // 이미 같으면 손댈 필요 없음
+      const existingTime = existing && existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+      const recordedTime = entry.updatedAt ? new Date(entry.updatedAt).getTime() : 0;
+      if(!existing || !(existingTime > recordedTime)){ // 병합 결과 쪽이 이 기록보다 더 나중 게 아니면 방금 남긴 걸로 맞춤
+        if(idx===-1) d.attendance.clockLog.push(entry); else d.attendance.clockLog[idx] = entry;
+      }
+    });
+  }
   return merged;
 }
 // gdriveComputeMerged()가 만들어낸 병합 결과를 이 기기의 로컬 저장소(localStorage)에도 그대로 반영함 -
