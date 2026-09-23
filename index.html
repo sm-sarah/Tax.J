@@ -28462,7 +28462,10 @@ function seatCellViewHtml(cell){
   const z = cell.type==='divider' ? 'z-index:0;' : 'z-index:1;';
   // 세로 2칸으로 늘어난(auto-inflate) 자리는 그 2칸 폭을 다 채우지 않고 절반 너비로 좁혀서 가운데 놓아,
   // 실제로 가늘고 긴 책상이 회전해 들어간 것처럼 보이게 함(자리가 차지하는 격자 영역 자체는 그대로 2칸)
-  const narrowStyle = seatIsAutoInflatedPortrait(cell) ? 'width:50%; margin:0 auto;' : '';
+  // "세로형일때 글자가 겹치네" - 폭이 절반으로 좁아진 만큼, 양옆에 반쯤 걸쳐 그려지는 의자/모니터
+  // 표시(seat-dir-chair/seat-dir-monitor, 칸 안쪽으로 6px씩 들어옴)와 가운데 이름 글자가 겹쳐 보였음.
+  // 좌우 여백을 넉넉히 주고 글자도 살짝 작게 줄여서 그 6px 구간을 피해가게 함
+  const narrowStyle = seatIsAutoInflatedPortrait(cell) ? 'width:50%; margin:0 auto; padding-left:10px; padding-right:10px; font-size:10.5px;' : '';
   return `<div style="position:relative; grid-row:${cell.row} / span ${rowSpan}; grid-column:${cell.col} / span ${colSpan}; ${SEAT_CELL_STYLE_COMMON} ${bg} ${z} ${narrowStyle}">${dirArrow}${escHtml(empty ? '미점유' : (cell.text||''))}</div>`;
 }
 // 구분선(divider)을 배열 맨 앞으로 보내 먼저 그리게 함 - CSS grid는 같은 자리를 두고 여러 칸이 겹치면
@@ -28537,10 +28540,14 @@ function seatChartEditCellHtml(cell){
     w = SEAT_EDIT_CELL_H;
   }
   const dirArrow = cell.type==='seat' ? seatDirArrowHtml(cell.dir) : '';
+  // "세로형일때 글자가 겹치네" - 위에서 36px로 좁혀놓은 칸은, 양옆에 반쯤 걸쳐 그려지는 의자/모니터 표시가
+  // 칸 안쪽으로 6px씩 파고들어서 가운데 이름 글자와 겹쳐 보였음. 좁혀진 칸에서만 좌우 패딩을 넉넉히 주고
+  // 글자도 살짝 줄여서, 그 6px 구간을 피해 글자가 가운데로 더 모이게 함
+  const narrowTextStyle = seatIsAutoInflatedPortrait(cell) ? 'padding-left:9px; padding-right:9px; font-size:10px;' : '';
   // 삭제 × 버튼은 항상 마크업엔 넣어두고(호버/선택 시에만 CSS로 보이게), 크기조절 손잡이는 선택됐을 때만 넣음
   const deleteBtn = `<button type="button" class="seat-edit-cell-delete" data-id="${cell.id}" title="${escHtml(seatCellTypeLabel(cell))} 삭제" aria-label="삭제">✕</button>`;
   const resizeHandle = isSel ? `<div class="seat-resize-handle" data-id="${cell.id}" title="끌어서 크기 바꾸기"></div>` : '';
-  return `<div class="seat-edit-cell${isSel ? ' is-selected' : ''}" data-id="${cell.id}" style="position:absolute; left:${visualLeft}px; top:${top}px; width:${w}px; height:${h}px; ${bg}${sel} border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11.5px; text-align:center; padding:2px; cursor:grab; touch-action:none; user-select:none; box-sizing:border-box; line-height:1.2;">${dirArrow}<span class="seat-edit-cell-label">${escHtml(empty ? '미점유' : (cell.text||'(이름없음)'))}</span>${deleteBtn}${resizeHandle}</div>`;
+  return `<div class="seat-edit-cell${isSel ? ' is-selected' : ''}" data-id="${cell.id}" style="position:absolute; left:${visualLeft}px; top:${top}px; width:${w}px; height:${h}px; ${bg}${sel} border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11.5px; text-align:center; padding:2px; cursor:grab; touch-action:none; user-select:none; box-sizing:border-box; line-height:1.2; ${narrowTextStyle}">${dirArrow}<span class="seat-edit-cell-label">${escHtml(empty ? '미점유' : (cell.text||'(이름없음)'))}</span>${deleteBtn}${resizeHandle}</div>`;
 }
 function renderSeatChartEditPreview(){
   const wrap = document.getElementById('seatChartPreviewWrap');
