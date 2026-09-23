@@ -28520,12 +28520,13 @@ function seatCellViewHtml(cell){
   const narrowStyle = isNarrowPortrait ? 'width:50%; margin:0 auto; font-size:10.5px;' : '';
   // "세로형일때 글자가 겹치네" 다음엔 "작은책상은 회전하면 이름이 줄바꿈이 되고, 자연스럽게 어떤게
   // 좋을까" 요청 - 옆으로 눌러 줄바꿈시키는 대신, 책상처럼 이름 글자도 세로쓰기(writing-mode:vertical-rl)로
-  // 같이 돌려서 좁은 칸 안에서도 줄바꿈 없이 한 줄로 읽히게 함(한글은 세로쓰기에서도 그대로, "CPA"같은
-  // 영문만 자동으로 눕혀짐 - text-orientation:mixed 표준 동작). 글줄 폭이 글자 하나 정도로 좁아져서,
-  // 의자/모니터 표시가 칸 안쪽으로 6px씩 파고드는 구간도 자연히 피해가 겹칠 일이 없어짐
+  // 같이 돌려서 좁은 칸 안에서도 줄바꿈 없이 한 줄로 읽히게 함. 처음엔 text-orientation:mixed를 썼는데,
+  // 그러면 "CPA"같은 영문만 통째로 90도 눕혀져서(고개를 옆으로 기울여야 읽히는 모양) "이게 방향이
+  // 맞아?"라는 지적을 받음 - upright로 바꿔서 한글이든 영문이든 글자 하나하나를 눕히지 않고 그대로 세운
+  // 채 위에서 아래로 쌓아, C·P·A가 각자 똑바로 선 채 세로로 나열되게 함(고개를 기울일 필요 없이 바로 읽힘)
   const seatText = escHtml(empty ? '미점유' : (cell.text||''));
   const seatTextHtml = (cell.type==='seat' && isNarrowPortrait && seatText)
-    ? `<span style="writing-mode:vertical-rl; text-orientation:mixed; white-space:nowrap;">${seatText}</span>`
+    ? `<span style="writing-mode:vertical-rl; text-orientation:upright; white-space:nowrap;">${seatText}</span>`
     : seatText;
   const bodyHtml = (cell.type==='label' || cell.type==='item')
     ? seatCellIconBodyHtml(cell, escHtml(cell.text||''), '')
@@ -28613,11 +28614,13 @@ function seatChartEditCellHtml(cell){
   const narrowTextStyle = isNarrowPortrait ? 'font-size:10.5px;' : '';
   // "세로형일때 글자가 겹치네" 다음엔 "작은책상은 회전하면 이름이 줄바꿈이 되고, 자연스럽게 어떤게
   // 좋을까" 요청 - 옆으로 눌러 줄바꿈시키는 대신, 책상처럼 이름도 세로쓰기(writing-mode:vertical-rl)로
-  // 같이 돌려서 좁은 칸에서도 줄바꿈 없이 한 줄로 읽히게 함(한글은 그대로, "CPA"같은 영문만 자동으로
-  // 눕혀짐). .seat-edit-cell-label 자체에 스타일을 줘서, 이름을 고칠 때(.textContent만 바꾸는 기존 로직)
-  // 세로쓰기 스타일이 그대로 유지됨. 글줄 폭이 글자 하나 정도로 좁아져 의자/모니터 표시가 파고드는
-  // 구간도 자연히 피해가 겹칠 일이 없어짐
-  const seatLabelStyle = (cell.type==='seat' && isNarrowPortrait) ? ' style="writing-mode:vertical-rl; text-orientation:mixed; white-space:nowrap;"' : '';
+  // 같이 돌려서 좁은 칸에서도 줄바꿈 없이 한 줄로 읽히게 함. text-orientation:mixed로 처음 했더니 "CPA"같은
+  // 영문이 통째로 90도 눕혀져서(고개를 기울여야 읽힘) "이게 방향이 맞아?"라는 지적을 받아 upright로 바꿈 -
+  // 한글이든 영문이든 글자 하나하나를 눕히지 않고 그대로 세운 채 위에서 아래로 쌓음.
+  // .seat-edit-cell-label 자체에 스타일을 줘서, 이름을 고칠 때(.textContent만 바꾸는 기존 로직) 세로쓰기
+  // 스타일이 그대로 유지됨. 글줄 폭이 글자 하나 정도로 좁아져 의자/모니터 표시가 파고드는 구간도 자연히
+  // 피해가 겹칠 일이 없어짐
+  const seatLabelStyle = (cell.type==='seat' && isNarrowPortrait) ? ' style="writing-mode:vertical-rl; text-orientation:upright; white-space:nowrap;"' : '';
   // 삭제 × 버튼은 항상 마크업엔 넣어두고(호버/선택 시에만 CSS로 보이게), 크기조절 손잡이는 선택됐을 때만 넣음
   const deleteBtn = `<button type="button" class="seat-edit-cell-delete" data-id="${cell.id}" title="${escHtml(seatCellTypeLabel(cell))} 삭제" aria-label="삭제">✕</button>`;
   const resizeHandle = isSel ? `<div class="seat-resize-handle" data-id="${cell.id}" title="끌어서 크기 바꾸기"></div>` : '';
