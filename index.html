@@ -5350,7 +5350,12 @@
           <span id="seatChartColsLabel" style="font-size:12.5px; font-weight:700; min-width:18px; text-align:center; display:inline-block;">9</span>
           <button type="button" class="del-btn" id="seatChartColsPlusBtn" style="padding:5px 10px;">+</button>
         </div>
-        <div id="seatChartPreviewWrap" style="overflow-x:auto; padding-bottom:8px; margin-top:14px;"></div>
+        <!-- "큰 책상을 끝에 배치하면 의자가 짤리네" - 의자·모니터 표시가 칸 테두리보다 6px 정도 밖으로
+             튀어나오게 그려지는데, 자리가 배치도 맨 가장자리(첫 줄/첫 칸 등)에 있으면 그 튀어나온 부분이
+             바로 이 스크롤 영역의 경계 밖이라 스크롤해도 보이지 않고 잘려버렸음. 이 감싸는 영역 자체에
+             여백을 둬서, 그 안의 그리드(#seatChartEditGrid)는 그대로 (0,0)부터 그려지되 튀어나온 부분이
+             이 여백 안에 들어오게 함(그리드 안쪽 좌표 계산·드래그 로직은 전혀 안 건드림) -->
+        <div id="seatChartPreviewWrap" style="overflow-x:auto; padding:10px; margin-top:14px;"></div>
         <!-- "자리를 옮기다가 다른 자리 위에 놓으면 겹쳐 보인다"는 요청으로, 그 위에 놓으면 서로 자리를
              맞바꾸게(swap) 됨. "아니면 외부로 빼서 나중에 다시 넣게" 쪽도 같이 원해서, 이 트레이 위에
              자리를 끌어다 놓으면 배치에서 잠깐 빼둘 수 있고(미배치), 여기 있는 자리를 다시 미리보기 쪽으로
@@ -28511,13 +28516,20 @@ function seatCellViewHtml(cell){
   const z = cell.type==='divider' ? 'z-index:0;' : 'z-index:1;';
   // 세로 2칸으로 늘어난(auto-inflate) 자리는 그 2칸 폭을 다 채우지 않고 절반 너비로 좁혀서 가운데 놓아,
   // 실제로 가늘고 긴 책상이 회전해 들어간 것처럼 보이게 함(자리가 차지하는 격자 영역 자체는 그대로 2칸)
-  // "세로형일때 글자가 겹치네" - 폭이 절반으로 좁아진 만큼, 양옆에 반쯤 걸쳐 그려지는 의자/모니터
-  // 표시(seat-dir-chair/seat-dir-monitor, 칸 안쪽으로 6px씩 들어옴)와 가운데 이름 글자가 겹쳐 보였음.
-  // 좌우 여백을 넉넉히 주고 글자도 살짝 작게 줄여서 그 6px 구간을 피해가게 함
-  const narrowStyle = seatIsAutoInflatedPortrait(cell) ? 'width:50%; margin:0 auto; padding-left:10px; padding-right:10px; font-size:10.5px;' : '';
+  const isNarrowPortrait = seatIsAutoInflatedPortrait(cell);
+  const narrowStyle = isNarrowPortrait ? 'width:50%; margin:0 auto; font-size:10.5px;' : '';
+  // "세로형일때 글자가 겹치네" 다음엔 "작은책상은 회전하면 이름이 줄바꿈이 되고, 자연스럽게 어떤게
+  // 좋을까" 요청 - 옆으로 눌러 줄바꿈시키는 대신, 책상처럼 이름 글자도 세로쓰기(writing-mode:vertical-rl)로
+  // 같이 돌려서 좁은 칸 안에서도 줄바꿈 없이 한 줄로 읽히게 함(한글은 세로쓰기에서도 그대로, "CPA"같은
+  // 영문만 자동으로 눕혀짐 - text-orientation:mixed 표준 동작). 글줄 폭이 글자 하나 정도로 좁아져서,
+  // 의자/모니터 표시가 칸 안쪽으로 6px씩 파고드는 구간도 자연히 피해가 겹칠 일이 없어짐
+  const seatText = escHtml(empty ? '미점유' : (cell.text||''));
+  const seatTextHtml = (cell.type==='seat' && isNarrowPortrait && seatText)
+    ? `<span style="writing-mode:vertical-rl; text-orientation:mixed; white-space:nowrap;">${seatText}</span>`
+    : seatText;
   const bodyHtml = (cell.type==='label' || cell.type==='item')
     ? seatCellIconBodyHtml(cell, escHtml(cell.text||''), '')
-    : escHtml(empty ? '미점유' : (cell.text||''));
+    : seatTextHtml;
   return `<div style="position:relative; grid-row:${cell.row} / span ${rowSpan}; grid-column:${cell.col} / span ${colSpan}; ${SEAT_CELL_STYLE_COMMON} ${bg} ${z} ${narrowStyle}">${dividerBar}${dirArrow}${bodyHtml}</div>`;
 }
 // 구분선(divider)을 배열 맨 앞으로 보내 먼저 그리게 함 - CSS grid는 같은 자리를 두고 여러 칸이 겹치면
@@ -28592,21 +28604,26 @@ function seatChartEditCellHtml(cell){
   // 세로 2칸으로 늘어난(auto-inflate) 자리는 그 2칸 폭(SEAT_EDIT_CELL_W)을 다 채우지 않고 짧은 변 폭
   // (SEAT_EDIT_CELL_H)만큼만 남긴 채 가운데로 좁혀서, 가늘고 긴 책상이 회전해 들어간 것처럼 보이게 함 -
   // 자리를 잡는 영역(드래그·충돌판정 기준) 자체는 그대로 2칸이라 옆·아래 자리와는 안 겹침
-  if(seatIsAutoInflatedPortrait(cell)){
+  const isNarrowPortrait = seatIsAutoInflatedPortrait(cell);
+  if(isNarrowPortrait){
     visualLeft = left + (w - SEAT_EDIT_CELL_H)/2;
     w = SEAT_EDIT_CELL_H;
   }
   const dirArrow = cell.type==='seat' ? seatDirArrowHtml(cell.dir) : '';
-  // "세로형일때 글자가 겹치네" - 위에서 36px로 좁혀놓은 칸은, 양옆에 반쯤 걸쳐 그려지는 의자/모니터 표시가
-  // 칸 안쪽으로 6px씩 파고들어서 가운데 이름 글자와 겹쳐 보였음. 좁혀진 칸에서만 좌우 패딩을 넉넉히 주고
-  // 글자도 살짝 줄여서, 그 6px 구간을 피해 글자가 가운데로 더 모이게 함
-  const narrowTextStyle = seatIsAutoInflatedPortrait(cell) ? 'padding-left:9px; padding-right:9px; font-size:10px;' : '';
+  const narrowTextStyle = isNarrowPortrait ? 'font-size:10.5px;' : '';
+  // "세로형일때 글자가 겹치네" 다음엔 "작은책상은 회전하면 이름이 줄바꿈이 되고, 자연스럽게 어떤게
+  // 좋을까" 요청 - 옆으로 눌러 줄바꿈시키는 대신, 책상처럼 이름도 세로쓰기(writing-mode:vertical-rl)로
+  // 같이 돌려서 좁은 칸에서도 줄바꿈 없이 한 줄로 읽히게 함(한글은 그대로, "CPA"같은 영문만 자동으로
+  // 눕혀짐). .seat-edit-cell-label 자체에 스타일을 줘서, 이름을 고칠 때(.textContent만 바꾸는 기존 로직)
+  // 세로쓰기 스타일이 그대로 유지됨. 글줄 폭이 글자 하나 정도로 좁아져 의자/모니터 표시가 파고드는
+  // 구간도 자연히 피해가 겹칠 일이 없어짐
+  const seatLabelStyle = (cell.type==='seat' && isNarrowPortrait) ? ' style="writing-mode:vertical-rl; text-orientation:mixed; white-space:nowrap;"' : '';
   // 삭제 × 버튼은 항상 마크업엔 넣어두고(호버/선택 시에만 CSS로 보이게), 크기조절 손잡이는 선택됐을 때만 넣음
   const deleteBtn = `<button type="button" class="seat-edit-cell-delete" data-id="${cell.id}" title="${escHtml(seatCellTypeLabel(cell))} 삭제" aria-label="삭제">✕</button>`;
   const resizeHandle = isSel ? `<div class="seat-resize-handle" data-id="${cell.id}" title="끌어서 크기 바꾸기"></div>` : '';
   const labelHtml = (cell.type==='label' || cell.type==='item')
     ? seatCellIconBodyHtml(cell, escHtml(cell.text||'(이름없음)'), 'seat-edit-cell-label')
-    : `<span class="seat-edit-cell-label">${escHtml(empty ? '미점유' : (cell.text||'(이름없음)'))}</span>`;
+    : `<span class="seat-edit-cell-label"${seatLabelStyle}>${escHtml(empty ? '미점유' : (cell.text||'(이름없음)'))}</span>`;
   return `<div class="seat-edit-cell${isSel ? ' is-selected' : ''}" data-id="${cell.id}" style="position:absolute; left:${visualLeft}px; top:${top}px; width:${w}px; height:${h}px; ${bg}${sel} border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11.5px; text-align:center; padding:2px; cursor:grab; touch-action:none; user-select:none; box-sizing:border-box; line-height:1.2; ${narrowTextStyle}">${dividerBar}${dirArrow}${labelHtml}${deleteBtn}${resizeHandle}</div>`;
 }
 function renderSeatChartEditPreview(){
@@ -29053,7 +29070,8 @@ function renderSeatChartView(){
   </div>`;
   const cells = seatChartCellsForRender(sharedSeatChart);
   const cols = seatChartColsForRender(sharedSeatChart);
-  wrap.innerHTML = headerRow + `<div id="seatChartPrintArea" style="overflow-x:auto;">${renderSeatGridHtml(cells, cols)}</div>`;
+  // 편집화면과 같은 이유로("의자가 짤리네") 가장자리 자리의 튀어나온 의자·모니터 표시가 잘리지 않게 여백을 둠
+  wrap.innerHTML = headerRow + `<div id="seatChartPrintArea" style="overflow-x:auto; padding:10px;">${renderSeatGridHtml(cells, cols)}</div>`;
 }
 // ===== 조직도 (좌석배치도의 team/position을 재사용) =====
 // 보고체계(누가 누구 위인지) 같은 별도 데이터가 없어서 트리형 조직도 대신, 팀별로 묶어 "이름 (직책)"을
@@ -29214,7 +29232,7 @@ function bindSeatChartHistoryPopupEvents(el){
       const entry = (sharedSeatChart.history||[]).find(h=>h.id===btn.dataset.id);
       if(!entry) return;
       const label = [entry.title, entry.asOf ? `(${entry.asOf} 기준)` : ''].filter(Boolean).join(' ');
-      openDraggablePopup({ title:`좌석배치도${label ? ' - '+label : ''}`, html: `<div style="overflow-x:auto;">${renderSeatGridHtml(entry.cells, entry.cols)}</div>`, width:700 });
+      openDraggablePopup({ title:`좌석배치도${label ? ' - '+label : ''}`, html: `<div style="overflow-x:auto; padding:10px;">${renderSeatGridHtml(entry.cells, entry.cols)}</div>`, width:700 });
     });
   });
   el.querySelectorAll('.seat-hist-restore-btn').forEach(btn=>{
