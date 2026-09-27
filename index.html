@@ -1560,10 +1560,19 @@
   .ci-keys-doc .corp-info-doc-eyebrow{ margin:0; font-size:10px; }
   .ci-keys-doc{ background:rgba(255,255,255,0.7); }
   .ci-keys-tools{ display:flex; align-items:center; gap:6px; margin:4px 0 2px; flex-wrap:wrap; }
-  .ci-krow{ display:grid !important; grid-template-columns:104px minmax(0,1fr); gap:0 12px; align-items:start !important; padding:9px 0 !important; border-bottom:1px dashed var(--border) !important; }
-  .ci-keys:not(.ci-keys-doc) .ci-krow{ padding:9px 12px !important; grid-template-columns:90px minmax(0,1fr); }
+  .ci-krow{ display:grid !important; grid-template-columns:96px minmax(0,1fr); gap:0 12px; align-items:center !important; padding:8px 0 !important; border-bottom:1px dashed var(--border) !important; }
+  .ci-kline1{ display:flex; align-items:center; gap:10px; min-width:0; white-space:nowrap; font-size:13px; font-weight:600; color:var(--ink); }
+  /* 칸이 좁으면 메모가 먼저 줄어들고(말줄임), ID·PW 값은 마지막까지 최대한 다 보이게 함 */
+  .ci-kpair{ display:inline-flex; align-items:center; gap:4px; min-width:0; flex:0 1 auto; }
+  .ci-kpair .k{ font-size:10.5px; font-weight:800; color:var(--ink-soft); flex:none; }
+  .ci-kpair .v{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ci-kline1 .ci-knote{ margin:0 0 0 auto; padding-left:6px; flex:0 100 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11.5px; font-weight:500; color:var(--ink-soft); }
+  .ci-klabel{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ci-keys:not(.ci-keys-doc) .ci-krow{ padding:8px 14px !important; grid-template-columns:90px minmax(0,1fr); }
+  .ci-keys:not(.ci-keys-doc) .ci-keys-head{ padding:10px 14px; background:transparent; }
+  .ci-keys:not(.ci-keys-doc) .ci-keys-title{ font-size:13px; color:var(--navy); }
   .ci-krow:hover{ background:transparent !important; }
-  .ci-klabel{ color:var(--ink-soft); font-weight:700; font-size:12px; padding-top:2px; overflow-wrap:anywhere; }
+  .ci-klabel{ color:var(--ink-soft); font-weight:700; font-size:12px; }
   .ci-kvals{ min-width:0; }
   .ci-kv{ display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--ink); min-height:24px; }
   .ci-kv .k{ font-size:10.5px; font-weight:800; color:var(--ink-soft); width:20px; flex:none; }
@@ -1630,7 +1639,7 @@
     border:1px solid var(--border); background:var(--surface); color:var(--ink-soft); cursor:pointer; font-size:10.5px; font-weight:800; }
   .ci-kbtn:hover{ color:var(--indigo); border-color:var(--indigo); background:var(--indigo-bg); }
   .ci-kempty{ padding:16px; text-align:center; color:var(--ink-soft); font-size:12.5px; }
-  .ci-member-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px; }
+  .ci-member-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(400px,1fr)); gap:12px; }
   @media (max-width:760px){ .ci-two{ grid-template-columns:minmax(0,1fr); } }
 
   .notice-toggle-chip{
@@ -13777,25 +13786,25 @@ function ciKRowHtml(it){
   const pwVal = rv ? (rv.pwVal||'') : (it.pwVal||'');
   const content = rv ? (rv.content||'') : (it.content||'');
   const href = it.noteIsLink ? (it.note||it.link||'') : (it.link && !it.note ? it.link : '');
+  // "메모는 ID/PW 오른쪽으로, 정보는 한 줄에 다 나오게" 요청 - 항목 하나를 한 줄로: [ID 값 복사] [PW 값 복사] … 메모(오른쪽 끝).
+  // 값이 길면 줄바꿈하지 않고 말줄임(…)으로 줄이고, 마우스를 올리면 전체 값이 말풍선으로 보임(복사는 전체 값)
   const noteHtml = href
-    ? `<div class="ci-knote"><a href="${escHtml(href)}" target="_blank" rel="noopener">🔗 열기</a></div>`
-    : (it.note ? `<div class="ci-knote">${escHtml(it.note)}</div>` : '');
+    ? `<span class="ci-knote"><a href="${escHtml(href)}" target="_blank" rel="noopener">🔗 열기</a></span>`
+    : (it.note ? `<span class="ci-knote" title="${escHtml(it.note)}">${escHtml(it.note)}</span>` : '');
   const copyBtn = (v, lb)=> v ? `<button type="button" class="ci-kcopy" data-ci-copy="${escHtml(v)}" data-ci-copy-label="${lb}" title="${lb} 복사">${CI_ICON_COPY}</button>` : '';
-  // "비밀번호도 암호화 없이 다 나오게" 요청 - 가리지 않고 그대로 보여주고, ID·PW 각각 옆에 복사 버튼을 둠
-  let vals;
+  const pair = (k, v, lb)=> `<span class="ci-kpair">${k ? `<span class="k">${k}</span>` : ''}<span class="v" title="${escHtml(v||'')}">${v ? escHtml(v) : '-'}</span>${copyBtn(v, lb)}</span>`;
+  let line;
   if(locked){
-    vals = `<div class="ci-kv"><span class="v" style="color:var(--ink-soft);">예전에 암호화된 항목</span><button type="button" class="ci-kcopy ci-reveal-btn" data-reveal-id="${it.id}" title="눌러서 확인">${CI_ICON_LOCK}</button></div>`;
+    line = `<span class="ci-kpair"><span class="v" style="color:var(--ink-soft);">예전에 암호화된 항목</span><button type="button" class="ci-kcopy ci-reveal-btn" data-reveal-id="${it.id}" title="눌러서 확인">${CI_ICON_LOCK}</button></span>`;
   } else if(isAccount){
-    // ID가 비어있는 항목(공동인증서·도어락처럼 비밀번호만 있는 것)은 ID 줄을 아예 빼서 "-"만 덩그러니 남지 않게 함
-    vals = (idVal ? `<div class="ci-kv"><span class="k">ID</span><span class="v ci-mono">${escHtml(idVal)}</span>${copyBtn(idVal,'ID')}</div>` : '') + `
-      <div class="ci-kv"><span class="k">PW</span><span class="v ci-mono">${pwVal ? escHtml(pwVal) : '-'}</span>${copyBtn(pwVal,'비밀번호')}</div>`;
+    line = (idVal ? pair('ID', idVal, 'ID') : '') + pair('PW', pwVal, '비밀번호');
   } else {
-    vals = `<div class="ci-kv"><span class="v" style="white-space:pre-wrap;">${content ? escHtml(content) : '-'}</span>${copyBtn(content,'내용')}</div>`;
+    line = pair('', content, '내용');
   }
   const search = [it.label, isAccount ? idVal : content, it.note].filter(Boolean).join(' ').toLowerCase();
   return `<div class="ci-krow" data-kind="${isAccount?'account':'info'}" data-search="${escHtml(search)}">
-    <div class="ci-klabel">${escHtml(it.label||'')}</div>
-    <div class="ci-kvals">${vals}${noteHtml}</div>
+    <div class="ci-klabel" title="${escHtml(it.label||'')}">${escHtml(it.label||'')}</div>
+    <div class="ci-kline1">${line}${noteHtml}</div>
   </div>`;
 }
 // opts: {title, sub, search(bool), emptyText}
@@ -13998,7 +14007,7 @@ async function renderCompanyInfoCorp(wrapId, showControls){
     // "기타" 정보 항목은 오른쪽 목록에 ID/PW와 같이 섞어서 "정보" 태그로 보여줌
     const extraInfo = infoList.filter(it => !CORP_BASIC_INFO_ORDER.includes(it.label));
     const side = buildCiProfileSideHtml(sharedCompanyName || '회사명 미등록', 'CORPORATE PROFILE', corpBasicInfoRows(infoList), '설정 > 회사 정보에서 등록해보세요.');
-    const keys = buildCiKeychainHtml([...acctList, ...extraInfo], { docTitle:'공용정보', docEyebrow:'SHARED ACCOUNTS', search:true, emptyText:'등록된 계정이 없습니다.' });
+    const keys = buildCiKeychainHtml([...acctList, ...extraInfo], { docTitle:'공용정보', docEyebrow:'SHARED ACCOUNTS', emptyText:'등록된 계정이 없습니다.' });
     wrap.innerHTML = `<div class="ci-two">${side}${keys}</div>`;
     bindCiKeychain(wrap);
     return;
@@ -14040,7 +14049,7 @@ async function renderCompanyInfoTeamGeneral(wrapId, showControls){
     return;
   }
   if(!showControls){
-    wrap.innerHTML = buildCiKeychainHtml(list, { docTitle:'공용정보', docEyebrow:'SHARED ACCOUNTS', search:true });
+    wrap.innerHTML = buildCiKeychainHtml(list, { docTitle:'공용정보', docEyebrow:'SHARED ACCOUNTS' });
     bindCiKeychain(wrap);
     return;
   }
