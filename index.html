@@ -1,4 +1,37 @@
 <!DOCTYPE html>
+<!--
+  ███ Tax.J 디자인 규칙 — 수정하기 전에 반드시 먼저 읽을 것 (어느 계정·어느 대화에서 작업하든 동일) ███
+
+  0. 최우선 원칙
+     - 요청받은 부분만 고친다. 요청하지 않은 화면·표·버튼의 스타일, 폼 구성, 양식, 위치, 문구, 색은 절대 바꾸지 않는다.
+     - "고치는 김에 정리"하거나 "다른 화면과 맞추려고" 범위를 넓히지 않는다.
+     - 다른 곳도 바꿔야 할 것 같으면 바꾸기 전에 먼저 물어본다.
+     - 기존 코드의 "요청 배경" 주석은 지우지 않는다(왜 그렇게 됐는지 기록이라 되돌림 방지에 쓰임).
+
+  1. 색 (CSS 변수만 사용, 새 색을 임의로 만들지 않음)
+     - 기본 글자 --ink / 보조 글자 --ink-soft / 제목·강조 --navy / 포인트 --indigo(연한 배경 --indigo-bg)
+     - 완료·성공 --mint / 주의 --amber / 삭제·경고 --coral / 테두리 --border / 페이지 배경 --bg / 카드 --surface
+     - 표 안에서는 색을 최소화: 상태는 "글자색만"(배경 칩 없음), 미대상·해당없음은 회색 "—"
+
+  2. 제목
+     - 개인 메뉴(개인캘린더·근태경비·출퇴근현황) 탭 제목: 진한 잉크색 + 왼쪽 세로 남색 막대(.section-title-tab-header), 가운데
+     - 그 외 화면 제목·내규(복리후생·인사지침·운영지침) 제목: 가운데 정렬, 등록/수정/이력 아이콘은 같은 줄 오른쪽 끝
+     - 등록증(회사·팀 조회): 명조 큰 제목 + 영문 소제목 + 남색 밑줄. 그 아래 "공용정보"는 한 단계 낮춘 작은 고딕 소제목
+
+  3. 아이콘
+     - 이모지 대신 선(stroke) 아이콘, currentColor 사용
+     - 등록 = 문서+ / 수정 = 연필 / 이력 = 시계 / 삭제 = ✕ 또는 휴지통 / 설정 = 톱니 / 인쇄 = 프린터 / 기준값 = 링크
+
+  4. 레이아웃·컴포넌트
+     - 조회 화면: 흰 카드(.ci-side/.ci-keys) 안에 "회색 항목명 | 진한 값" 목록, 점선 구분, 한 항목은 한 줄(길면 …)
+     - 연월 선택: 흰 알약 모양 칸 안에 ‹ 2026년 9월 › 📅, 직원 이름은 연보라 칩(누르면 바로 아래 드롭다운)
+     - 팝업: openDraggablePopup / 확인창: appConfirm·appAlert (브라우저 기본 alert/confirm 금지)
+     - 좌석배치도·검증표처럼 PC용 작업은 모바일에서 "PC에서 진행해 주세요" 안내만 띄우고 모바일용으로 억지로 재배치하지 않음
+
+  5. 데이터 안전 (동기화 코드 수정 시)
+     - Drive 최신본을 읽지 못하면 절대 업로드하지 않는다(로컬 내용으로 통째 덮어쓰기 금지)
+     - 회사 데이터 파일을 못 찾았을 때 빈 파일을 조용히 새로 만들지 않는다(반드시 사용자 확인)
+-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1517,6 +1550,22 @@
   /* 사내정보(법인/팀)는 거래처 목록처럼 데이터가 쭉 나열되는 화면이 아니라 항목 수가 적은 정보성 화면이라
      페이지 전체 폭을 다 쓰지 않고 적당히 좁은 폭으로 가운데 정렬함 */
   .ci-view{ max-width:760px; margin:0 auto; }
+  .review-timing-note{ font-size:11.5px; font-weight:700; color:#B4830E; background:var(--amber-bg); border-radius:8px; padding:3px 10px; }
+  .pc-only-blocked > :not(.pc-only-notice){ display:none !important; }
+  .pc-only-notice{ text-align:center; padding:28px 16px; color:var(--ink-soft); }
+  .pc-only-icon{ color:var(--indigo); margin-bottom:8px; display:flex; justify-content:center; }
+  .pc-only-title{ font-size:15px; font-weight:800; color:var(--navy); margin-bottom:6px; }
+  .pc-only-desc{ font-size:12.5px; margin-bottom:14px; line-height:1.5; }
+  /* 설정 > 회사정보 입력 화면 - "조회 화면처럼 정리" 요청: 칸마다 따로 있던 테두리 상자를 없애고, 흰 카드 한 장 안에
+     "회색 항목명 | 입력칸"을 점선으로 나눠 나열(조회 화면 등록증과 같은 느낌). 입력칸은 평소엔 선 없이, 누르면 밑줄 */
+  #companyNameForm{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px 22px 16px; max-width:560px; margin:0 auto; box-shadow:0 1px 2px rgba(29,30,51,0.04); }
+  #companyNameForm .flat-row{ display:grid; grid-template-columns:110px minmax(0,1fr); gap:0 14px; align-items:center; max-width:none; margin:0; padding:7px 0; border:none; border-bottom:1px dashed var(--border); border-radius:0; }
+  #companyNameForm .flat-row:last-of-type{ border-bottom:none; }
+  #companyNameForm .flat-row-label{ color:var(--ink-soft); font-size:12px; font-weight:700; }
+  #companyNameForm .flat-input{ border-bottom-color:transparent; font-size:13px; font-weight:600; color:var(--ink); }
+  #companyNameForm .flat-input:hover{ border-bottom-color:var(--border); }
+  #companyNameForm .flat-input:focus{ border-bottom-color:var(--indigo); outline:none; }
+  #companyNameForm .flat-input::placeholder{ font-weight:400; }
   .settings-provisional-banner{ max-width:520px; margin:0 auto 12px; padding:7px 12px; border-radius:10px; background:var(--indigo-bg); color:var(--indigo-deep); font-size:12px; font-weight:700; text-align:center; }
   .pv-row{ display:flex; gap:6px; margin-bottom:6px; align-items:center; }
   .pv-row .pv-key{ flex:0 0 38%; } .pv-row .pv-val{ flex:1 1 auto; }
@@ -4981,6 +5030,8 @@
                 <span id="reviewItFsSectionBadge" style="font-size:11px; font-weight:700; color:var(--indigo); background:var(--indigo-bg); border-radius:20px; padding:3px 10px;"></span>
                 <select id="reviewItFsYearSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:5px 7px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12px; font-weight:700;"></select>
                 <div id="reviewItFsMetaWrap" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:11.5px; color:var(--ink-soft);"></div>
+                <!-- 당월·익월 지급을 둘 다 하는 거래처에서, 이 검증표가 어느 지급시기 것인지와 예전 합산값 안내를 보여줌 -->
+                <span id="reviewItFsTimingNote" class="review-timing-note" style="display:none;"></span>
               </div>
               <div style="display:flex; align-items:center; gap:8px;">
                 <span class="hint" style="font-size:11px; margin:0;">숫자를 입력해도 자동 저장되지 않아요 - 저장 버튼을 눌러야 저장돼요.</span>
@@ -6257,10 +6308,6 @@
           <button type="button" id="importSharedBtn" class="submit-btn" style="width:auto; padding:7px 13px; font-size:12px; background:var(--mint);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg> 공통설정 불러오기</button>
           <input type="file" id="importSharedFile" accept="application/json" style="display:none;">
           <span class="save-msg" id="sharedBackupSaveMsg" style="margin-top:0;"></span>
-        </div>
-        <!-- 하루 한 번 자동으로 Drive에 남기는 날짜별 백업본 목록 - 여기서 원하는 날짜로 되돌릴 수 있음 -->
-        <div style="display:flex; justify-content:center;">
-          <button type="button" id="gdriveBackupListBtn" class="del-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg> Drive 자동 백업에서 복원</button>
         </div>
       </div>
 
@@ -22782,11 +22829,13 @@ function renderVatAllPeriodControls(){
   const sortedYears = Array.from(years).sort((a,b)=> Number(b) - Number(a));
   yearSel.innerHTML = sortedYears.map(y=>`<option value="${y}" ${y===vatAllYear?'selected':''}>${y}년</option>`).join('');
 }
+// "부가세 현황도 원천세 현황이랑 같이 가도 돼" - 원천세 신고현황과 같은 규칙으로 맞춤: 아직 손대지 않은 칸(미확인)만
+// 테두리 있는 빈 칸처럼 두고, 나머지 상태는 배경 칩 없이 글자색만으로 구분(plain)
 const VAT_ALL_FILING_STATUS_STYLE = {
   '미확인': { color:'var(--border)', bg:'transparent', text:'var(--ink-soft)' },
-  '검토중': { color:'var(--amber)', bg:'var(--amber-bg)', text:'#8A5A05' },
-  '기안완료': { color:'var(--indigo)', bg:'var(--indigo-bg)', text:'var(--indigo-deep)' },
-  '신고완료': { color:'var(--mint)', bg:'var(--mint-bg)', text:'var(--mint)' }
+  '검토중': { color:'transparent', bg:'transparent', text:'#B4830E', plain:true },
+  '기안완료': { color:'transparent', bg:'transparent', text:'var(--indigo-deep)', plain:true },
+  '신고완료': { color:'transparent', bg:'transparent', text:'var(--mint)', plain:true }
 };
 // 기수 한 칸의 상태 계산 - 미대상/예정고지처럼 "사무실이 직접 신고하지 않는" 상태는 신고대상 등록 상태 그대로,
 // 대상/예정신고대상처럼 "직접 신고하는" 상태는 신고현황(sharedFilingStatus) 진행상태까지 덧붙임
@@ -22818,15 +22867,17 @@ function renderVatAllUnified(){
       let label, style, tip = '';
       if(!cs.filerCase){
         label = vatTargetCellLabel(cs.targetStatus, p);
-        style = cs.targetStatus === 'not-target' ? { color:'var(--border)', bg:'transparent', text:'var(--ink-soft)' }
-          : cs.targetStatus === 'notice' ? { color:'var(--guide-teal)', bg:'var(--guide-teal-bg)', text:'var(--guide-teal)' }
-          : { color:'var(--amber)', bg:'var(--amber-bg)', text:'#8A5A05' };
+        // 미대상은 원천세처럼 회색 "—" 하나로, 예정고지 등은 글자색만
+        if(cs.targetStatus === 'not-target'){ label = '—'; tip = tip || '신고 대상 아님'; }
+        style = cs.targetStatus === 'not-target' ? { color:'transparent', bg:'transparent', text:'var(--ink-soft)', plain:true }
+          : cs.targetStatus === 'notice' ? { color:'transparent', bg:'transparent', text:'var(--guide-teal)', plain:true }
+          : { color:'transparent', bg:'transparent', text:'#B4830E', plain:true };
       } else {
         label = cs.filingEntry.status;
         style = VAT_ALL_FILING_STATUS_STYLE[cs.filingEntry.status] || VAT_ALL_FILING_STATUS_STYLE['미확인'];
         tip = cs.filingEntry.memo || '';
       }
-      return `<td class="cvb"><button type="button" class="vat-all-cell-btn" data-client-id="${c.id}" data-period="${p}" data-filer="${cs.filerCase?'1':'0'}" title="${escHtml(tip)}" style="width:100%; border:1.5px solid ${style.color}; border-radius:6px; padding:4px 2px; background:${style.bg}; color:${style.text}; font-size:10.5px; font-weight:700; cursor:pointer;">${escHtml(label)}</button></td>`;
+      return `<td class="cvb"><button type="button" class="vat-all-cell-btn" data-client-id="${c.id}" data-period="${p}" data-filer="${cs.filerCase?'1':'0'}" title="${escHtml(tip)}" style="width:100%; border:${style.plain ? 'none' : `1.5px solid ${style.color}`}; border-radius:6px; padding:4px 2px; background:${style.bg}; color:${style.text}; font-size:10.5px; font-weight:700; cursor:pointer;">${escHtml(label)}</button></td>`;
     }).join('');
     const verifyCell = `<td class="cvb"><button type="button" class="del-btn review-vat-open-btn" data-client-id="${c.id}" title="부가세 신고검증 전체화면으로 열기" style="width:24px; height:24px; padding:0; display:inline-flex; align-items:center; justify-content:center; background:var(--surface); color:var(--indigo-deep); border:1.5px solid var(--indigo-bg); border-radius:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button></td>`;
     return `<tr>
@@ -23700,8 +23751,22 @@ function renderReviewItFsSection(){
 // 급여검증/납부세액검증 전체화면 팝업을 염 - clientId・section(income|tax)을 받아 그 표만 딱 채워서 보여줌
 function openReviewItFullscreen(clientId, section, timing){
   if(!clientId) return;
+  if(isMobileWorkEnv() && !pcOnlyOverride.reviewIt){
+    appConfirm('급여·세액 검증표는 칸이 많아서 휴대폰에서는 입력하기 어려워요.\nPC에서 진행해 주세요.', { okText:'그래도 열기', cancelText:'닫기' }).then(ok=>{ if(ok){ pcOnlyOverride.reviewIt = true; openReviewItFullscreen(clientId, section, timing); } });
+    return;
+  }
   reviewItFsClientId = clientId;
   reviewItFsTiming = timing || null;
+  // "익월지급 정리" - 지급시기가 둘인 거래처는 검증표도 둘로 나뉘는데, 예전에 입력(또는 엑셀에서 불러온) 값은
+  // 당월+익월을 합친 숫자로 당월지급 쪽에만 남아 있음. 헷갈리지 않게 지금 보는 표가 어느 쪽인지 알려줌
+  const noteEl = document.getElementById('reviewItFsTimingNote');
+  if(noteEl){
+    const msg = reviewItFsTiming === 'sameMonth' ? '당월지급 · 예전에 입력된 값은 당월+익월 합산이에요. 익월분은 익월지급 표로 옮겨 적어 주세요'
+      : reviewItFsTiming === 'nextMonth' ? '익월지급 · 익월 지급분만 따로 입력하는 표예요'
+      : '';
+    noteEl.textContent = msg;
+    noteEl.style.display = msg ? '' : 'none';
+  }
   viewingReviewItSection = section === 'tax' ? 'tax' : 'income';
   const client = bookkeepingClientList().find(c=>c.id===clientId);
   const nameEl = document.getElementById('reviewItFsClientName');
@@ -29116,94 +29181,6 @@ function gdriveBuildPayload(){
   };
 }
 
-// ── 하루 한 번 자동 백업 ──
-// 좌석배치도·인사지침처럼 이력이 있는 것 말고 거래처·회사정보 같은 나머지 데이터는 실수로 지우거나 덮어쓰면
-// 되돌리기 어려워서, 관리자 기기가 그날 처음 Drive에 저장할 때 전체 데이터를 "Tax.J 백업 YYYY-MM-DD.json"
-// 이름으로 원본 파일과 같은 폴더에 한 벌 더 남김. 같은 날짜 백업이 이미 있으면(다른 관리자 기기가 먼저
-// 만들었으면) 다시 만들지 않고, 60일이 지난 백업은 정리함. 실패해도 평소 저장에는 아무 영향 없음
-const GDRIVE_BACKUP_PREFIX = 'Tax.J 백업 ';
-async function gdriveBackupParents(){
-  const r = await fetch(`https://www.googleapis.com/drive/v3/files/${gdriveFileId}?fields=parents,driveId&supportsAllDrives=true`, { headers:{ Authorization:`Bearer ${gdriveAccessToken}` } });
-  if(!r.ok) throw new Error('원본 위치 확인 실패 ' + r.status);
-  return await r.json(); // { parents:[...], driveId }
-}
-async function gdriveListBackups(meta){
-  const parent = meta.parents && meta.parents[0];
-  let q = `name contains '${GDRIVE_BACKUP_PREFIX}' and trashed=false`;
-  if(parent) q += ` and '${parent}' in parents`;
-  const base = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&orderBy=name desc&pageSize=100&fields=files(id,name,modifiedTime,size)&supportsAllDrives=true&includeItemsFromAllDrives=true`;
-  const url = meta.driveId ? `${base}&driveId=${meta.driveId}&corpora=drive` : base;
-  const r = await fetch(url, { headers:{ Authorization:`Bearer ${gdriveAccessToken}` } });
-  if(!r.ok) throw new Error('백업 목록 조회 실패 ' + r.status);
-  return ((await r.json()).files || []).filter(f=> f.name.startsWith(GDRIVE_BACKUP_PREFIX));
-}
-async function gdriveCreateBackup(payload, name, meta){
-  const metadata = JSON.stringify(meta.parents && meta.parents.length ? { name, mimeType:'application/json', parents:[meta.parents[0]] } : { name, mimeType:'application/json' });
-  const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id', {
-    method:'POST', headers:{ Authorization:`Bearer ${gdriveAccessToken}`, 'Content-Type':'multipart/related; boundary=taxjboundary' },
-    body: gdriveBuildMultipartBody(payload, metadata)
-  });
-  if(!r.ok) throw new Error('백업 생성 실패 ' + r.status);
-}
-let gdriveBackupRunning = false;
-async function gdriveMaybeDailyBackup(payload){
-  try{
-    if(gdriveBackupRunning || !gdriveAccessToken || !gdriveFileId || !isCurrentUserAdmin) return;
-    const today = todayStr();
-    if(localStorage.getItem('worklog_last_daily_backup') === today) return;
-    gdriveBackupRunning = true;
-    const meta = await gdriveBackupParents();
-    const list = await gdriveListBackups(meta);
-    const name = `${GDRIVE_BACKUP_PREFIX}${today}.json`;
-    if(!list.some(f=> f.name === name)) await gdriveCreateBackup(payload, name, meta);
-    localStorage.setItem('worklog_last_daily_backup', today);
-    // 60일 넘은 자동 백업 정리(수동으로 남긴 "복원 전" 백업은 그대로 둠) - 삭제 권한이 없으면 조용히 건너뜀
-    const cutoff = new Date(parseDate(today).getTime() - 60*86400000);
-    for(const f of list){
-      const m = f.name.match(/(\d{4}-\d{2}-\d{2})\.json$/);
-      if(m && !f.name.includes('복원 전') && parseDate(m[1]) < cutoff){
-        try{ await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?supportsAllDrives=true`, { method:'DELETE', headers:{ Authorization:`Bearer ${gdriveAccessToken}` } }); }catch(e){}
-      }
-    }
-  }catch(e){ console.error('자동 백업 실패(저장에는 영향 없음)', e); }
-  finally{ gdriveBackupRunning = false; }
-}
-async function openGdriveBackupListPopup(){
-  if(!gdriveAccessToken || !gdriveFileId){ appAlert('Google 계정으로 로그인해야 볼 수 있어요.'); return; }
-  if(!isCurrentUserAdmin){ appAlert('관리자만 복원할 수 있어요.'); return; }
-  const el = openDraggablePopup({ title:'Drive 자동 백업', html:'<div class="empty-state">불러오는 중...</div>', width:480 });
-  const body = el.querySelector('.floating-popup-body');
-  let meta, list;
-  try{ meta = await gdriveBackupParents(); list = await gdriveListBackups(meta); }
-  catch(e){ body.innerHTML = `<div class="empty-state">백업 목록을 불러오지 못했어요. (${escHtml(e.message)})</div>`; return; }
-  if(!list.length){ body.innerHTML = '<div class="empty-state">아직 자동 백업이 없어요. 관리자가 로그인해서 저장하면 하루 한 번 생겨요.</div>'; return; }
-  body.innerHTML = `<p class="hint" style="margin:0 0 8px;">복원하면 회사 전체 데이터가 그 날짜 상태로 돌아가요. 복원 직전 상태도 따로 백업해 둬요.</p>
-    <table><thead><tr><th>백업</th><th>크기</th><th></th></tr></thead><tbody>${list.map(f=>`<tr><td style="text-align:left;">${escHtml(f.name.replace(GDRIVE_BACKUP_PREFIX,'').replace('.json',''))}</td><td class="num">${f.size ? Math.round(f.size/1024)+'KB' : '-'}</td><td><button type="button" class="del-btn gdrive-restore-btn" data-id="${f.id}" data-name="${escHtml(f.name)}">복원</button></td></tr>`).join('')}</tbody></table>`;
-  body.querySelectorAll('.gdrive-restore-btn').forEach(btn=> btn.addEventListener('click', async ()=>{
-    const label = btn.dataset.name.replace(GDRIVE_BACKUP_PREFIX,'').replace('.json','');
-    if(!(await appConfirm(`${label} 백업으로 회사 전체 데이터를 되돌릴까요?\n지금 상태는 "복원 전" 백업으로 따로 남겨둬요.`))) return;
-    try{
-      btn.disabled = true; btn.textContent = '복원 중...';
-      const r = await fetch(`https://www.googleapis.com/drive/v3/files/${btn.dataset.id}?alt=media&supportsAllDrives=true`, { headers:{ Authorization:`Bearer ${gdriveAccessToken}` } });
-      if(!r.ok) throw new Error('백업 파일을 읽지 못했어요 ' + r.status);
-      const backup = await r.json();
-      if(!backup || !backup.profiles) throw new Error('백업 파일 형식이 올바르지 않아요');
-      const nowStamp = new Date().toLocaleString('sv-SE').slice(0,16).replace(' ','_').replace(':','');
-      await gdriveCreateBackup(gdriveBuildPayload(), `${GDRIVE_BACKUP_PREFIX}복원 전 ${nowStamp}.json`, meta);
-      const up = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${gdriveFileId}?uploadType=media&supportsAllDrives=true`, {
-        method:'PATCH', headers:{ Authorization:`Bearer ${gdriveAccessToken}`, 'Content-Type':'application/json' }, body: JSON.stringify(backup, null, 2)
-      });
-      if(!up.ok) throw new Error('복원 저장 실패 ' + up.status);
-      // 이 기기의 로컬 데이터·병합 기준점도 백업 내용으로 맞춘 뒤 새로고침 - 그래야 방금 되돌린 내용을 이 기기의
-      // 옛 데이터가 다시 덮어쓰지 않음
-      gdriveApplyMergedLocally(backup);
-      setGdriveMergeBaseline(backup);
-      try{ localStorage.removeItem('worklog_gdrive_pending_push'); }catch(e){}
-      appAlert(`${label} 백업으로 복원했어요. 화면을 새로고침할게요.`).then(()=> location.reload());
-    }catch(e){ btn.disabled = false; btn.textContent = '복원'; appAlert('복원하지 못했어요: ' + e.message); }
-  }));
-}
-document.getElementById('gdriveBackupListBtn')?.addEventListener('click', openGdriveBackupListPopup);
 function gdriveBuildMultipartBody(contentObj, metadataOverride){
   const metadata = metadataOverride || JSON.stringify({ name: GDRIVE_FILE_NAME, mimeType: 'application/json' });
   const content = JSON.stringify(contentObj, null, 2);
@@ -29483,7 +29460,6 @@ async function gdrivePushUpload(payload, retrying){
     gdriveSetStatus(`연결됨 · ${new Date().toLocaleTimeString('ko-KR')} 저장됨`);
     try{ localStorage.removeItem('worklog_gdrive_pending_push'); }catch(e){}
     setGdriveMergeBaseline(payload); // 방금 이 내용을 Drive에 그대로 반영했으니, 다음 병합 기준점도 이걸로 갱신
-    gdriveMaybeDailyBackup(payload); // 하루 한 번 날짜별 백업본도 남김(기다리지 않고 뒤에서 진행)
     lastGdrivePulledSnapshot = JSON.stringify(payload); // 방금 올린 내용과 100% 같은 걸 다시 받아오면(다음 pull) 재작업 안 하게
     // 저장이 방금 성공했으니, 이 참에 오늘 자동백업이 아직 안 됐으면 같이 진행함(실패해도 저장 자체 결과에는
     // 영향 안 주도록 기다리지 않고 그냥 흘려보냄 - await 안 함)
@@ -29862,7 +29838,7 @@ function setGdriveSyncingIndicator(active){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.27 21:50';
+const APP_BUILD = '2026.09.27 22:05';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -30599,9 +30575,36 @@ function seatChartEditCellHtml(cell){
     : `<span class="seat-edit-cell-label${seatLabelClass}"${seatLabelStyle}>${escHtml(empty ? '미점유' : (cell.text||'(이름없음)'))}</span>`;
   return `<div class="seat-edit-cell${isSel ? ' is-selected' : ''}" data-id="${cell.id}" style="position:absolute; left:${visualLeft}px; top:${drawTop}px; width:${w}px; height:${drawH}px; ${bg}${sel} border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11.5px; text-align:center; padding:2px; cursor:grab; touch-action:none; user-select:none; box-sizing:border-box; line-height:1.2;">${dirArrow}${doorMark}${labelHtml}${rz}</div>`;
 }
+// ── PC 전용 작업 안내 ──
+// "좌석배치도 등 모바일로 하기 힘든 작업은 무리해서 모바일용으로 바꾸기보다(그러면 디자인이 틀어짐), PC로
+// 진행해 달라는 안내가 나오면 된다" 요청 - 터치 화면(휴대폰·태블릿)이나 좁은 화면에서는 해당 편집 영역 대신
+// 안내문만 보여주고, 꼭 필요하면 "그래도 열기"로 그대로 쓸 수 있게 함(화면 배치 자체는 PC 그대로 둠)
+const pcOnlyOverride = {};
+function isMobileWorkEnv(){
+  try{ return (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) || window.innerWidth < 760; }catch(e){ return false; }
+}
+function pcOnlyGuard(container, key){
+  if(!container) return false;
+  const blocked = isMobileWorkEnv() && !pcOnlyOverride[key];
+  container.classList.toggle('pc-only-blocked', blocked);
+  let note = container.querySelector(':scope > .pc-only-notice');
+  if(blocked && !note){
+    note = document.createElement('div');
+    note.className = 'pc-only-notice';
+    note.innerHTML = `<div class="pc-only-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"></rect><path d="M8 21h8M12 17v4"></path></svg></div>
+      <div class="pc-only-title">PC에서 진행해 주세요</div>
+      <div class="pc-only-desc">이 작업은 화면이 넓어야 편하게 할 수 있어서 휴대폰에서는 제공하지 않아요.</div>
+      <button type="button" class="del-btn pc-only-open">그래도 열기</button>`;
+    container.prepend(note);
+    note.querySelector('.pc-only-open').addEventListener('click', ()=>{ pcOnlyOverride[key] = true; container.classList.remove('pc-only-blocked'); note.remove(); if(key==='seatChart') renderSeatChartEditPreview(); });
+  }
+  if(!blocked && note) note.remove();
+  return blocked;
+}
 function renderSeatChartEditPreview(){
   const wrap = document.getElementById('seatChartPreviewWrap');
   if(!wrap || !seatChartDraft) return;
+  if(pcOnlyGuard(wrap.closest('.flat-panel') || wrap.parentElement, 'seatChart')) return;
   const cols = Math.max(1, seatChartDraft.cols||9);
   const rows = seatChartRowsNeeded();
   const gridW = seatColX(cols+1) - SEAT_EDIT_GAP;
