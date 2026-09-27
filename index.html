@@ -829,12 +829,17 @@
   .home-dash-cal-page-btn.active{ background:var(--accent, var(--mint)); color:#fff; border-color:var(--accent, var(--mint)); }
   /* "홈에 새로 들어오면 지난 일정 페이지 대신 오늘 이후 일정이 있는 페이지로 자동으로 넘어가게 해달라"는
      요청으로 자동 이동하게 했는데, 그러면 지난 일정이 있었다는 걸 못 알아챌 수 있어서 그 자동으로 건너뛴
-     페이지 맨 위에 이 링크를 달아 눌러서 바로 전 페이지(지난 일정)로 돌아가 볼 수 있게 함 */
-  .home-dash-cal-prevlink{
-    display:block; width:100%; text-align:left; background:none; border:none; cursor:pointer;
-    color:var(--ink-soft); font-size:11px; font-weight:700; padding:0 2px 8px; margin-top:-3px;
+     페이지에 이 표시를 달아 눌러서 바로 전 페이지(지난 일정)로 돌아가 볼 수 있게 함.
+     처음엔 표 위쪽(열 제목보다도 위)에 "← 이전 일정" 링크로 따로 떨어뜨려 뒀는데, "9/24 일정 위로 점점점
+     같은 걸로 '이전'을 표현하는 게 더 자연스럽겠다"는 의견으로, 표 첫 줄(제일 위 일정) 바로 위에 붙는
+     줄임표(⋯) 줄로 바꿈 - 열 제목(day-table-head)과 실제 일정 줄(day-table-body) 사이, 첫 일정 줄과
+     똑같은 폭으로 표에 자연스럽게 이어 붙어 보이게 함 */
+  .home-dash-cal-prevrow{
+    display:block; width:100%; text-align:center; background:none; border:none; cursor:pointer;
+    color:var(--ink-soft); font-size:12px; font-weight:700; letter-spacing:0.04em; padding:5px 2px;
+    border-bottom:1px dashed var(--border);
   }
-  .home-dash-cal-prevlink:hover{ color:var(--accent, var(--mint)); text-decoration:underline; }
+  .home-dash-cal-prevrow:hover{ color:var(--accent, var(--mint)); background:var(--bg); }
   /* 세무일정 위젯 - 예전엔 가장 가까운 기한 하나만 코랄색 D-day 히어로로 크게 강조하고 나머지는 거의 안
      보이는 회색 칩으로 나열했는데, "중요도 상관없이 다 동일한 배경색으로" + "임박한 것만 칩 안에 D-day
      표시"로 바꿔달라는 요청에 맞춰 모든 항목을 같은 slate 톤 칩으로 통일함. D-day가 2주(14일) 이내로
@@ -2146,9 +2151,25 @@
     display:flex; align-items:center; justify-content:center; cursor:pointer;
     opacity:0; pointer-events:none; transition:opacity .12s ease;
   }
+  /* "구역누르면 자동으로 뜨는게 아니라 가까이 마우스 가면 수정·닫기 아이콘으로 선택하게" 요청으로 삭제(×)
+     버튼과 짝을 이루는 수정(연필) 버튼 - 삭제 버튼과 겹치지 않게 반대쪽(왼쪽 위)에 둠. "닫기버튼하고
+     수정버튼이 오면 이름(예: cpa)글자가 가려질것 같다"는 우려대로 실제로 겹칠 수 있어서, 바로 아래
+     .seat-edit-cell-label/.seat-chart-tray-chip-label 규칙에서 호버·선택 중에만 글자를 살짝 줄여 피함 */
+  .seat-edit-cell-edit, .seat-chart-tray-chip-edit{
+    position:absolute; top:1px; left:1px; width:15px; height:15px; border-radius:50%; border:none;
+    background:var(--indigo); color:#fff; padding:0; z-index:3;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    opacity:0; pointer-events:none; transition:opacity .12s ease;
+  }
   .seat-edit-cell:hover .seat-edit-cell-delete, .seat-edit-cell.is-selected .seat-edit-cell-delete,
-  .seat-chart-tray-chip:hover .seat-chart-tray-chip-delete, .seat-chart-tray-chip.is-selected .seat-chart-tray-chip-delete{
+  .seat-chart-tray-chip:hover .seat-chart-tray-chip-delete, .seat-chart-tray-chip.is-selected .seat-chart-tray-chip-delete,
+  .seat-edit-cell:hover .seat-edit-cell-edit, .seat-edit-cell.is-selected .seat-edit-cell-edit,
+  .seat-chart-tray-chip:hover .seat-chart-tray-chip-edit, .seat-chart-tray-chip.is-selected .seat-chart-tray-chip-edit{
     opacity:1; pointer-events:auto;
+  }
+  .seat-edit-cell:hover .seat-edit-cell-label, .seat-edit-cell.is-selected .seat-edit-cell-label,
+  .seat-chart-tray-chip:hover .seat-chart-tray-chip-label, .seat-chart-tray-chip.is-selected .seat-chart-tray-chip-label{
+    font-size:9.5px;
   }
   /* "가로/세로 +·− 버튼 말고 마우스로 자유롭게 끌어서 크기를 바꾸고 싶다"는 요청 - 선택된 칸의 오른쪽
      아래 모서리에만 나타나는 크기조절 손잡이. 끄는 동안은 픽셀 단위로 부드럽게 늘었다 줄었다 하다가,
@@ -2159,22 +2180,17 @@
     background:var(--indigo); cursor:nwse-resize; touch-action:none; z-index:3;
     box-shadow:0 0 0 1.5px var(--surface);
   }
-  /* "모니터 방향을 화살표 말고 책상 위 굵은 선 + 의자를 원으로 표기해달라"는 요청 - 모니터가 있는 변엔
-     굵은 색 바(seat-dir-monitor), 반대쪽(의자가 있는 변)엔 칸 테두리에 반쯤 걸친 타원(seat-dir-chair)을
-     같이 그림. rot0/180은 칸이 가로로 긴 채라 가로로 넓적한 바·타원을, rot90/270은 칸이 세로로 길어진
-     채라(아래 seatCellEffectiveSpans 참고 - 1×1 자리도 이때는 세로로 늘어남) 세로로 긴 바·타원을 씀 */
+  /* "모니터 방향을 화살표 말고 책상 위 굵은 선으로 표기해달라"는 요청 - 모니터가 있는 변에 굵은 색 바
+     (seat-dir-monitor)를 그림. 한때 반대쪽(의자가 있는 변)에 의자 표시(등받이 있는 사각형 등)도 같이
+     그려봤는데, "모니터 위치만 표시되면 의자 표시는 필요 없을 것 같다"는 의견으로 다시 뺌 - 모니터가
+     향한 방향의 반대쪽이 곧 의자가 있는 쪽이라 이거 하나만으로도 방향을 알 수 있음. rot0/180은 칸이
+     가로로 긴 채라 가로로 넓적한 바를, rot90/270은 칸이 세로로 길어진 채라(아래 seatCellEffectiveSpans
+     참고 - 1×1 자리도 이때는 세로로 늘어남) 세로로 긴 바를 씀 */
   .seat-dir-monitor{ position:absolute; background:var(--indigo); border-radius:3px; z-index:2; }
   .seat-dir-monitor.rot0{ top:-2px; left:20%; right:20%; height:4px; }
   .seat-dir-monitor.rot90{ right:-2px; top:20%; bottom:20%; width:4px; }
   .seat-dir-monitor.rot180{ bottom:-2px; left:20%; right:20%; height:4px; }
   .seat-dir-monitor.rot270{ left:-2px; top:20%; bottom:20%; width:4px; }
-  .seat-dir-chair{ position:absolute; border:1.6px solid var(--ink-soft); background:var(--surface); border-radius:50%; z-index:2; }
-  /* 자리 사이 간격(그리드 gap 5~6px)보다 더 튀어나오면 옆·아래 칸과 겹쳐 보일 수 있어서, 튀어나오는
-     쪽 길이의 절반(6px)만큼만 칸 밖으로 나가고 나머지 절반은 칸 안쪽에 걸치게 함 */
-  .seat-dir-chair.rot0{ bottom:-6px; left:50%; transform:translateX(-50%); width:16px; height:12px; }
-  .seat-dir-chair.rot90{ left:-6px; top:50%; transform:translateY(-50%); width:12px; height:16px; }
-  .seat-dir-chair.rot180{ top:-6px; left:50%; transform:translateX(-50%); width:16px; height:12px; }
-  .seat-dir-chair.rot270{ right:-6px; top:50%; transform:translateY(-50%); width:12px; height:16px; }
   /* [시범 적용 v6] 라벨 칸을 168px로 고정폭 줘서 "날짜"처럼 짧은 라벨과 입력칸 사이에 여백이 크게 남는다는
      의견 - 라벨을 고정폭 대신 글자 길이만큼만 차지하게(auto) 바꾸고, 줄마다("날짜"/"구분"/"일수"/"조정사유"
      등) 테두리 하나로 묶어서 구분되게 함. v5에서 흰 배경을 채웠었는데 "그게 싫었던 것"이라는 피드백 -
@@ -3759,6 +3775,7 @@
                  어느 대메뉴 안에 있든 그대로 똑같이 동작함 -->
             <div class="home-tiles-subgroup-label">회사</div>
             <div class="home-submenu-item" data-settings-anchor-goto="company" data-settings-target-id="ssTitle-companyInfo"><span>회사정보</span></div>
+            <div class="home-submenu-item" data-settings-anchor-goto="company" data-settings-target-id="ssTitle-orgChart"><span>조직도</span></div>
             <div class="home-submenu-item" data-settings-anchor-goto="company" data-settings-target-id="ssTitle-seatChart"><span>좌석배치도</span></div>
             <div class="home-submenu-item" data-settings-anchor-goto="company" data-settings-target-id="ssTitle-hrTeam"><span>경영지원실</span></div>
             <div class="home-tiles-subgroup-label">Tax.J</div>
@@ -5327,27 +5344,58 @@
            탭에는 관리자가 아니어도(로그인만 하면) 그대로 보이고(요청: "다른 직원들의 권한은 필요없어"),
            수정은 이 설정 탭 자체가 이미 관리자 전용이라 별도 권한 체크가 필요 없음. 저장할 때마다 이전
            상태를 이력에 남김 -->
+      <!-- 조직도 - "조직도를 먼저 설정하고 나서 자리배치도가 나오는 게 맞는 것 같다"는 요청으로, 좌석배치도의
+           자리마다 팀/직책을 입력해서 조직도가 파생되어 나오던 예전 방식과 별개로, 이름·팀·직책을 독립적으로
+           등록하는 명단을 여기 둠(우리 팀만 등록해서 쓰는 명단이라 회사 전체 직원명단과는 다름). 여기 등록된
+           사람 중 아직 좌석배치도에 자리가 없는 사람은 좌석배치도 편집 화면의 "배치예정"에 자동으로 나타나서
+           바로 끌어다 자리를 배치할 수 있음(seatChartInitDraft/seatChartSeedUnplacedFromOrgChart 참고) -->
+      <div class="settings-sub-title" id="ssTitle-orgChart" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> 조직도</div>
+      <p class="hint" style="text-align:center;">여기서 등록한 이름·팀·직책이 조직도 화면에 나와요. 아직 좌석배치도에 자리가 없는 사람은 아래 좌석배치도 편집 화면의 "배치예정"에 자동으로 나타나서 바로 끌어다 자리에 배치할 수 있어요.</p>
+      <div class="flat-panel" style="max-width:640px;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:12px;">
+          <input type="text" id="orgChartAddName" placeholder="이름" class="flat-input" style="width:110px; text-align:center;">
+          <input type="text" id="orgChartAddTeam" placeholder="팀 (예: 세무1팀)" class="flat-input" style="width:130px; text-align:center;">
+          <input type="text" id="orgChartAddPosition" placeholder="직책 (예: 팀장)" class="flat-input" style="width:110px; text-align:center;">
+          <button type="button" class="del-btn" id="orgChartAddBtn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> <span id="orgChartAddBtnLabel">등록</span></button>
+          <button type="button" class="del-btn" id="orgChartCancelEditBtn" style="display:none;">취소</button>
+        </div>
+        <div id="orgChartAdminListWrap"></div>
+      </div>
+
       <div class="settings-sub-title" id="ssTitle-seatChart" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="4" width="18" height="16" rx="1"></rect><path d="M3 10h18"></path><path d="M9 10v10"></path></svg> 좌석배치도</div>
       <p class="hint" style="text-align:center;">아래 미리보기에서 자리를 마우스(또는 손가락)로 눌러서 그대로 끌어다 옮겨요. 자리를 살짝 누르기만 하면 이름·크기를 바꾸거나 지울 수 있고, 칸에 마우스를 올리면 뜨는 × 버튼으로 바로 지울 수도 있어요. 선택된 칸의 오른쪽 아래 모서리를 끌면 자유롭게 크기를 바꿀 수 있어요. "자리"는 빈칸이면 미점유로 보이고, "구역표시"는 화장실·계단실처럼 이름표만 있는 칸, "소품"은 사물함처럼 작은 비품, "구분선"은 구획을 나누는 테두리예요. 저장할 때마다 이력이 남아요.</p>
       <div class="flat-panel" style="max-width:900px;">
+        <!-- "이력/인쇄 버튼은 아이콘만 남겨서 박스 가장 바깥 테두리 위쪽에 오른쪽 정렬로 두는 게 낫겠다"는
+             요청 - 예전엔 아래쪽 저장 버튼 옆에 텍스트까지 있는 버튼으로 나란히 있었는데, 이 박스(.flat-panel)
+             맨 위로 옮기고 아이콘만 남김. 저장은 실제로 반영되는 중요한 동작이라 아래쪽에 그대로 크게 남겨두고,
+             이력/인쇄는 부가 기능이라 이렇게 작은 아이콘 버튼으로 위쪽 구석에 둠 -->
+        <div style="display:flex; justify-content:flex-end; gap:6px; margin:-2px -2px 10px 0;">
+          <button type="button" class="del-btn seat-chart-action-btn" id="seatChartHistoryBtn" title="이력" style="padding:6px 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></button>
+          <button type="button" class="del-btn seat-chart-action-btn" id="seatChartPrintBtn" title="인쇄" style="padding:6px 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></button>
+        </div>
         <!-- "기준일자 칸 오른쪽 여백이 너무 많다"는 요청으로 한 번 줄이면서(내용에 맞는 폭으로 줄이고 가운데
              정렬) 오히려 라벨과 입력칸 사이(칸 안쪽)에 여백이 새로 생겨버림 - 이 두 줄(.flat-row) 자체가
              기본 .flat-row 규칙(max-width:440px)을 그대로 물려받아 900px 패널 안에서 이미 좁게 중앙에
              떠 있는데, 그 안에서 또 입력칸을 가운데 정렬하니 라벨 옆과 입력칸 오른쪽 양쪽에 빈 공간이 겹쳐
              보였음. 줄 자체를 내용 폭만큼(라벨+입력칸이 서로 붙는 정도로) 줄이고, 그 압축된 줄 하나를
              패널 가운데에 두는 방식으로 바꿔서 불필요한 여백을 없앰 -->
-        <div class="flat-row" style="max-width:280px;"><div class="flat-row-label">배치도 이름</div><div class="flat-row-control"><input type="text" id="seatChartTitle" class="flat-input" placeholder="예: 자리배치도 1 (선택)" style="width:150px;"></div></div>
-        <div class="flat-row" style="max-width:280px;"><div class="flat-row-label">기준일자</div><div class="flat-row-control"><input type="date" id="seatChartAsOf" class="flat-input" style="width:150px;"></div></div>
+        <div class="flat-row" style="max-width:280px;"><div class="flat-row-label">배치도 이름</div><div class="flat-row-control"><input type="text" id="seatChartTitle" class="flat-input" placeholder="예: 자리배치도 1 (선택)" style="width:150px; text-align:center;"></div></div>
+        <!-- 날짜칸 폭이 150px로 빠듯해서(다른 화면의 date input엔 이 폭 제한이 없음) 네이티브 날짜 위젯이
+             연-월-일 세 구획을 표시할 자리가 좁아 "숫자를 연달아 치면 연월/월일이 이상하게 밀려 보인다"는
+             문제가 있었음 - 조금 더 넉넉한 폭으로 늘려서 세 구획이 여유 있게 표시되게 함 -->
+        <div class="flat-row" style="max-width:280px;"><div class="flat-row-label">기준일자</div><div class="flat-row-control"><input type="date" id="seatChartAsOf" class="flat-input" style="width:168px; text-align:center;"></div></div>
         <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin:6px 0 4px; flex-wrap:wrap;">
-          <button type="button" class="del-btn" id="seatChartAddSeatBtn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 자리 추가</button>
-          <button type="button" class="del-btn" id="seatChartAddLabelBtn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 구역표시 추가</button>
-          <!-- "사물함처럼 작은 소품도 놓고 싶다" 요청 - 자리/구역표시와 같은 칸이지만 눈에 띄게 작고 옅은
-               점선 스타일로 구분되는 "소품" 칸을 하나 더 둠 -->
-          <button type="button" class="del-btn" id="seatChartAddItemBtn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 소품 추가</button>
-          <!-- "구획 나누는 경계선도 있으면 좋겠다" 요청 - 테두리만 있고 속은 비어서, 다른 자리/구역표시
-               칸들 뒤에 깔려 그 위로 겹쳐 보일 수 있는 "구분선" 칸을 추가함(진짜 방을 나누는 선이 아니라
-               이 칸도 그냥 크기·위치를 자유롭게 옮길 수 있는 하나의 칸일 뿐이라, 이름은 없어도 됨) -->
-          <button type="button" class="del-btn" id="seatChartAddDividerBtn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 구분선 추가</button>
+          <!-- "구역표시추가하고 소품추가 자리추가 이게 너무 중복인데 그냥 추가버튼 하나로 다 통일되게
+               해주면 좋겠어" 요청 - 종류별로 따로 있던 4개 버튼(자리/구역표시/소품/구분선 추가)을 없애고,
+               하나의 드롭다운에서 종류를 고르면 그 자리에서 바로 추가되게 합침(고르고 나면 다음에 또
+               쓸 수 있게 안내문구로 자동으로 되돌아감) -->
+          <select id="seatChartAddTypeSelect" class="flat-input" style="width:136px;">
+            <option value="" selected>+ 칸 추가</option>
+            <option value="seat">자리</option>
+            <option value="label">구역표시</option>
+            <option value="item">소품</option>
+            <option value="divider">구분선</option>
+          </select>
           <span style="width:1px; height:16px; background:var(--border); margin:0 4px;"></span>
           <span style="font-size:11.5px; color:var(--ink-soft);">가로 칸 수</span>
           <button type="button" class="del-btn" id="seatChartColsMinusBtn" style="padding:5px 10px;">−</button>
@@ -5371,8 +5419,6 @@
         <div id="seatChartCellEditorWrap"></div>
         <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-top:16px;">
           <button type="button" class="submit-btn seat-chart-action-btn" id="seatChartSaveBtn">저장</button>
-          <button type="button" class="del-btn seat-chart-action-btn" id="seatChartHistoryBtn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 이력</button>
-          <button type="button" class="del-btn seat-chart-action-btn" id="seatChartPrintBtn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> 인쇄</button>
         </div>
         <div style="text-align:right;"><span class="save-msg" id="seatChartSaveMsg"></span></div>
       </div>
@@ -6146,6 +6192,13 @@ let sharedOpsPolicyHistory = [];  // 운영지침 이력
 // 미점유}. 저장할 때마다 그 시점의 전체 seats 스냅샷 + 기준일자를 history에 남겨서, 언제 누가 어디 앉았는지
 // 나중에도 찾아볼 수 있게 함(인사지침 이력과 같은 방식)
 let sharedSeatChart = { asOf:'', seats:{}, updatedAt:'', updatedBy:'', history:[] };
+// "조직도를 먼저 설정하고 나서 좌석배치도가 나오는 게 맞는 것 같다"는 요청 - 예전엔 조직도가 좌석배치도의
+// 자리(seat)마다 입력해둔 팀/직책만 긁어모아서(파생 데이터로) 보여줬는데, 그러면 "아직 자리는 안 정해졌지만
+// 우리 팀 사람인" 경우를 표현할 방법이 없었음. 이제 이름·팀·직책을 독립적으로 등록하는 명단(sharedOrgChart)을
+// 따로 두고(설정 > 회사 > 조직도), 이 명단에는 있는데 좌석배치도엔 아직 자리가 없는 사람은 좌석배치도 편집
+// 화면 "배치예정" 트레이에 자동으로 나타나서 바로 끌어다 자리에 배치할 수 있게 함(seatChartInitDraft 참고).
+// [{id, name, team, position}]
+let sharedOrgChart = [];
 // 회사정보 > 경영지원실 - 소속 직원 정보(staff)와 업무분장(duties) 목록. 수정할 때마다 history에
 // "누가 언제 무엇을 바꿨는지" 한 줄 요약을 남김(출퇴근 수정이력과 같은 방식)
 let sharedHrTeamInfo = { staff:[], duties:[], updatedAt:'', history:[] };
@@ -6315,6 +6368,8 @@ function loadSharedData(){
   try{ sharedSeatChart = JSON.parse(localStorage.getItem('worklog_shared_seatchart') || 'null') || { asOf:'', seats:{}, updatedAt:'', updatedBy:'', history:[] }; }catch(e){ sharedSeatChart = { asOf:'', seats:{}, updatedAt:'', updatedBy:'', history:[] }; }
   if(!sharedSeatChart.seats) sharedSeatChart.seats = {};
   if(!Array.isArray(sharedSeatChart.history)) sharedSeatChart.history = [];
+  try{ sharedOrgChart = JSON.parse(localStorage.getItem('worklog_shared_orgchart') || '[]') || []; }catch(e){ sharedOrgChart = []; }
+  if(!Array.isArray(sharedOrgChart)) sharedOrgChart = [];
   try{ sharedHrTeamInfo = JSON.parse(localStorage.getItem('worklog_shared_hrteaminfo') || 'null') || { staff:[], duties:[], updatedAt:'', history:[] }; }catch(e){ sharedHrTeamInfo = { staff:[], duties:[], updatedAt:'', history:[] }; }
   if(!Array.isArray(sharedHrTeamInfo.staff)) sharedHrTeamInfo.staff = [];
   if(!Array.isArray(sharedHrTeamInfo.duties)) sharedHrTeamInfo.duties = [];
@@ -6496,6 +6551,7 @@ async function saveSharedOpsPolicyHistory(){ try{ localStorage.setItem('worklog_
 // 동시에 수정) gdriveRecordTimestamp가 이 값을 보고 "실제로 더 나중에 바뀐 쪽"을 골라줄 수 있게 함
 // (출퇴근 기록 병합 버그를 고칠 때 쓴 것과 같은 방식 - clockLog entry의 updatedAt 참고)
 async function saveSharedSeatChart(){ sharedSeatChart.updatedAt = new Date().toISOString(); try{ localStorage.setItem('worklog_shared_seatchart', JSON.stringify(sharedSeatChart)); }catch(e){ console.error('좌석배치도 저장 실패', e); } touchSharedField('seatChart'); gdriveScheduleSync(); }
+async function saveSharedOrgChart(){ try{ localStorage.setItem('worklog_shared_orgchart', JSON.stringify(sharedOrgChart)); }catch(e){ console.error('조직도 명단 저장 실패', e); } touchSharedField('orgChart'); gdriveScheduleSync(); }
 async function saveSharedHrTeamInfo(){ sharedHrTeamInfo.updatedAt = new Date().toISOString(); try{ localStorage.setItem('worklog_shared_hrteaminfo', JSON.stringify(sharedHrTeamInfo)); }catch(e){ console.error('경영지원실 정보 저장 실패', e); } touchSharedField('hrTeamInfo'); gdriveScheduleSync(); }
 async function savePolicyHistoryArr(cat){ return cat === 'ops' ? saveSharedOpsPolicyHistory() : saveSharedTeamPolicyHistory(); }
 // worklog_shared_teampolicyhistory가 아직 없을 때(업데이트 후 첫 로딩) 한 번만 실행 - 그동안 직원 프로필마다
@@ -15334,26 +15390,28 @@ function renderDashboardCalendarPreview(monthStr){
   }
   if(dashCalendarPage > totalPages) dashCalendarPage = totalPages;
   const pageItems = items.slice((dashCalendarPage-1)*DASH_CAL_PAGE_SIZE, dashCalendarPage*DASH_CAL_PAGE_SIZE);
-  // "지난 일정이 있다는 걸 알아채게" 이 페이지 맨 위로 바로 전 페이지로 돌아가는 링크를 달아줌(1페이지에는
-  // 더 이전 페이지가 없으니 표시 안 함) - 자동으로 건너뛴 지난 일정이 있다는 걸 눈치채지 못하고 놓치지 않게 함
-  const prevPageLinkHtml = dashCalendarPage > 1
-    ? `<button type="button" class="home-dash-cal-prevlink" id="dashCalPrevPageBtn">← 이전 일정</button>`
-    : '';
-  const tableHtml = `<div class="home-dash-table-head">
+  // "지난 일정이 있다는 걸 알아채게" 이 페이지 맨 위 일정 줄 바로 위에 전 페이지(지난 일정)로 돌아가는
+  // 줄임표 줄을 달아줌(1페이지에는 더 이전 페이지가 없으니 표시 안 함) - 자동으로 건너뛴 지난 일정이
+  // 있다는 걸 눈치채지 못하고 놓치지 않게 함. 열 제목 줄과 실제 일정 줄을 각각 별도의 표(.home-dash-table)로
+  // 나눠서, 그 둘 사이에 이 줄을 자연스럽게 끼워 넣음(열 폭은 셋 다 같은 고정폭 클래스를 써서 그대로 맞음)
+  const tableHeadHtml = `<div class="home-dash-table home-dash-table-fixed"><div class="home-dash-table-head">
       <span class="home-dash-table-col-date">날짜</span><span class="home-dash-table-col-person">대상자</span><span class="home-dash-table-col-main">일정</span>
-    </div>`
-    + pageItems.map(it=>{
+    </div></div>`;
+  const prevRowHtml = dashCalendarPage > 1
+    ? `<button type="button" class="home-dash-cal-prevrow" id="dashCalPrevPageBtn">⋯ 이전 일정</button>`
+    : '';
+  const tableBodyHtml = `<div class="home-dash-table home-dash-table-fixed">` + pageItems.map(it=>{
       const rowClass = it.date < today0 ? ' home-dash-table-row-past' : (it.date === today0 ? ' home-dash-table-row-today' : '');
       return `<div class="home-dash-table-row${rowClass}">
       <span class="home-dash-table-col-date">${escHtml(it.dateLabel)}</span>
       <span class="home-dash-table-col-person">${escHtml(it.person||'전체')}</span>
       <span class="home-dash-table-col-main" title="${escHtml(it.text)}">${it.icon} ${escHtml(it.text)}</span>
     </div>`;
-    }).join('');
+    }).join('') + `</div>`;
   const pagerHtml = totalPages > 1
     ? `<div class="home-dash-cal-pager">${Array.from({length:totalPages}, (_,i)=>i+1).map(p=>`<button type="button" class="home-dash-cal-page-btn${p===dashCalendarPage?' active':''}" data-page="${p}">${p}</button>`).join('')}</div>`
     : '';
-  body.innerHTML = headerHtml + prevPageLinkHtml + `<div class="home-dash-card-scroll"><div class="home-dash-table home-dash-table-fixed">${tableHtml}</div></div>${pagerHtml}`;
+  body.innerHTML = headerHtml + `<div class="home-dash-card-scroll">${tableHeadHtml}${prevRowHtml}${tableBodyHtml}</div>${pagerHtml}`;
   bindDashCalNav();
   // 잘린 칸(title 툴팁으로만 보이던 나머지 내용)을 눌렀을 때도 같은 내용이 보이게 함 - 마우스 오버 자체가
   // 없는 터치기기(휴대폰)에서는 title 툴팁이 사실상 안 뜨기 때문에, 실제로 잘려있는 칸(scrollWidth >
@@ -19654,11 +19712,14 @@ function chipifySettingsCategory(catKey){
 
   // 위쪽 회사/직원/설정/데이터 대분류 버튼(.settings-cat-btn)과 같은 .policy-category-toggle 스타일을 그대로 재사용 -
   // 새 CSS 없이도 active 버튼 강조가 자동으로 먹힘
-  // (이 버튼 줄도 이제 왼쪽 사이드바 목록과 중복이라 화면에서는 숨김 - 사이드바 클릭이 버튼을 원격으로
-  // 눌러서 어떤 소메뉴를 보여줄지 그대로 정하므로, 버튼 자체와 클릭 로직은 남겨둠)
+  // 예전엔 "왼쪽 사이드바 목록과 중복"이라는 이유로 이 버튼 줄을 화면에서 숨겼는데, 그 사이드바(홈 화면의
+  // .home-menu-col 안 설정 항목들)는 실제로는 "홈" 탭에 있을 때만 보이고 설정 탭 자체로 들어오면(사이드바
+  // 항목을 눌러 들어왔든, 상단 톱니바퀴 아이콘으로 바로 들어왔든) 사라져버림 - "설정 눌러서 들어왔어도
+  // 하위메뉴는 떠야지, 자리배치도가 설정의 하위메뉴잖아"라는 지적대로, 설정 화면 안에서도 지금 어떤
+  // 소메뉴를 보고 있는지 알 수 있게 다시 화면에 띄움
   const toggleRow = document.createElement('div');
   toggleRow.className = 'policy-category-toggle settings-subsection-toggle';
-  toggleRow.style.cssText = 'margin:16px 0 22px; flex-wrap:wrap; display:none;';
+  toggleRow.style.cssText = 'margin:16px 0 22px; flex-wrap:wrap;';
 
   const panelWrap = document.createElement('div');
   panelWrap.className = 'settings-subsection-panels';
@@ -19696,6 +19757,9 @@ function chipifySettingsCategory(catKey){
       btn.classList.add('active');
       panels.forEach(p=>{ p.style.display = 'none'; });
       panel.style.display = 'block';
+      // 조직도 소메뉴로 들어올 때마다 명단을 새로 그려서, 다른 곳(예: 동기화로 받아온 값)에서 바뀐 내용도
+      // 항상 최신으로 보이게 함
+      if(btn.dataset.subsectionId === 'ssTitle-orgChart' && typeof renderOrgChartAdminList === 'function') renderOrgChartAdminList();
     });
     toggleRow.appendChild(btn);
   });
@@ -27612,7 +27676,7 @@ function gdriveBuildPayload(){
     schemaVersion: SCHEMA_VERSION, syncedAt: new Date().toISOString(), profiles, data,
     // 거래처목록(clients)·개인정보(personalInfo)는 더 이상 직원 프로필별로 따로 저장되지 않고, 회사 전체가
     // 공유하는 단일 데이터라서 위 per-profile data가 아니라 shared 쪽에 실어 보냄(readSharedClients/readSharedPersonalInfo 참고)
-    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, notificationLog: sharedNotificationLog, notificationReadState: sharedNotificationReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, specialPeriodHistory: sharedSpecialPeriodHistory, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, approvalReadState: sharedApprovalReadState, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta, profitLossReports: sharedProfitLossReports, filingTargets: sharedFilingTargets, filingCycles: sharedFilingCycles, autoPhrases: sharedAutoPhrases, itFilingStatus: sharedIncomeTaxFilingStatus, vatFilingTargets: sharedVatFilingTargets, vatReviewFigures: sharedVatReviewFigures, clients: readSharedClients(), personalInfo: readSharedPersonalInfo(), trash: sharedTrash, lunchLimitHistory: sharedLunchLimitHistory, taxScheduleOverrides: sharedTaxScheduleOverrides, taxScheduleCustomItems: sharedTaxScheduleCustomItems, teamPolicyHistory: sharedTeamPolicyHistory, opsPolicyHistory: sharedOpsPolicyHistory, pushTokens: sharedPushTokens, notificationPrefs: sharedNotificationPrefs, seatChart: sharedSeatChart, hrTeamInfo: sharedHrTeamInfo,
+    shared: { exclusionDays: sharedExclusionDays, workHourExceptions: sharedWorkHourExceptions, noticeHistory: sharedNoticeHistory, noticeReadState: sharedNoticeReadState, notificationLog: sharedNotificationLog, notificationReadState: sharedNotificationReadState, adminEmails: sharedAdminEmails, adminNames: sharedAdminNames, manageSalt: sharedManageSalt, manageVerifier: sharedManageVerifier, companyInfo: sharedCompanyInfo, companyName: sharedCompanyName, teamInfo: sharedTeamInfo, specialPeriods: sharedSpecialPeriods, specialPeriodHistory: sharedSpecialPeriodHistory, filingStatus: sharedFilingStatus, reviewStatus: sharedReviewStatus, filingHelp: sharedFilingHelp, approvals: sharedApprovals, approvalReadState: sharedApprovalReadState, reviewFigures: sharedReviewFigures, reviewMeta: sharedReviewMeta, profitLossReports: sharedProfitLossReports, filingTargets: sharedFilingTargets, filingCycles: sharedFilingCycles, autoPhrases: sharedAutoPhrases, itFilingStatus: sharedIncomeTaxFilingStatus, vatFilingTargets: sharedVatFilingTargets, vatReviewFigures: sharedVatReviewFigures, clients: readSharedClients(), personalInfo: readSharedPersonalInfo(), trash: sharedTrash, lunchLimitHistory: sharedLunchLimitHistory, taxScheduleOverrides: sharedTaxScheduleOverrides, taxScheduleCustomItems: sharedTaxScheduleCustomItems, teamPolicyHistory: sharedTeamPolicyHistory, opsPolicyHistory: sharedOpsPolicyHistory, pushTokens: sharedPushTokens, notificationPrefs: sharedNotificationPrefs, seatChart: sharedSeatChart, orgChart: sharedOrgChart, hrTeamInfo: sharedHrTeamInfo,
       // 위 필드들 중 무엇이 "실제로 언제" 마지막으로 저장(수정)됐는지 기록한 맵 - 병합(gdriveMergeValue)에서
       // 진짜 충돌이 났을 때 "누가 화면을 마지막에 열어놨다 저장했느냐"가 아니라 "실제로 더 나중에 바뀐 쪽"을
       // 고를 수 있게 해줌(touchSharedField 참고)
@@ -28092,6 +28156,7 @@ function gdriveApplyMergedLocally(merged){
     if(merged.shared.pushTokens !== undefined) localStorage.setItem('worklog_shared_pushtokens', JSON.stringify(merged.shared.pushTokens));
     if(merged.shared.notificationPrefs !== undefined) localStorage.setItem('worklog_shared_notificationprefs', JSON.stringify(merged.shared.notificationPrefs));
     if(merged.shared.seatChart !== undefined) localStorage.setItem('worklog_shared_seatchart', JSON.stringify(merged.shared.seatChart));
+    if(merged.shared.orgChart !== undefined) localStorage.setItem('worklog_shared_orgchart', JSON.stringify(merged.shared.orgChart));
     if(merged.shared.hrTeamInfo !== undefined) localStorage.setItem('worklog_shared_hrteaminfo', JSON.stringify(merged.shared.hrTeamInfo));
     if(merged.shared.__fieldUpdatedAt !== undefined){
       sharedFieldUpdatedAt = merged.shared.__fieldUpdatedAt || {};
@@ -28463,16 +28528,16 @@ function seatSetEffectiveSpans(cell, effRowSpan, effColSpan){
   else { cell.rowSpan = effRowSpan; cell.colSpan = effColSpan; }
 }
 // 자리(seat)가 바라보는 방향 표시 - 예전엔 화살표(▲) 하나로만 모니터 방향을 가리켰는데, "화살표 대신
-// 책상 위에 모니터 위치는 굵은 선으로, 의자는 원(타원)으로 보여달라"는 요청으로 바꿈. 모니터가 있는
-// 변엔 굵은 색 바(.seat-dir-monitor), 그 반대쪽(의자가 있는 변)엔 칸 테두리에 반쯤 걸친 타원
-// (.seat-dir-chair)을 같이 그림 - 위치·모양은 CSS 쪽(.seat-dir-monitor/.seat-dir-chair의 rot0~270)에서
-// 방향별로 미리 정의해뒀고, 여기서는 dir에 맞는 rot 클래스만 붙여줌
+// 책상 위에 모니터 위치는 굵은 선으로 보여달라"는 요청으로 바꿈. 한때 반대쪽(의자가 있는 변)에도 의자
+// 표시(원/등받이 사각형)를 같이 그려봤는데, "모니터 위치만 표시되면 의자 표시는 필요 없을 것 같다"는
+// 의견으로 다시 빼서 지금은 모니터 바(.seat-dir-monitor) 하나만 그림 - 위치는 CSS 쪽
+// (.seat-dir-monitor의 rot0~270)에서 방향별로 미리 정의해뒀고, 여기서는 dir에 맞는 rot 클래스만 붙여줌
 function seatDirArrowHtml(dir){
   const rot = ((dir||0)%360+360)%360;
   if(!rot) return '';
   // dir=0(회전 없음, 기본값)은 예전 화살표와 마찬가지로 표시하지 않음 - 대부분의 자리가 기본 방향이라
   // 굳이 표시할 필요가 없고, 표시하면 오히려 화면이 복잡해 보임
-  return `<span class="seat-dir-monitor rot${rot}" title="모니터(화면)가 이 방향을 향해요 · 반대쪽이 의자가 있는 쪽"></span><span class="seat-dir-chair rot${rot}" title="의자가 있는 쪽"></span>`;
+  return `<span class="seat-dir-monitor rot${rot}" title="모니터(화면)가 이 방향을 향해요"></span>`;
 }
 // "구획을 나누는 경계선도 있으면" 요청으로 추가한 구분선(divider)과 "사물함 같은 작은 소품"용 item -
 // 자리·구역표시와 같은 칸 데이터(row/col/rowSpan/colSpan)를 그대로 쓰되 생김새만 다름. 구분선은 속이
@@ -28489,10 +28554,18 @@ function seatDividerVisual(cell, effRowSpan, effColSpan){
   const color = cell.dividerColor || '#75789A';
   if(shape==='line'){
     const horizontal = (effColSpan||1) >= (effRowSpan||1);
+    // "구분선이 칸 가운데가 아니라 배경에 있는 격자선(칸과 칸 경계) 자리에 들어가야 한다"는 요청으로,
+    // 예전엔 항상 칸 가운데(50%)에 고정해 그리던 걸 0~100% 사이 자유 위치(dividerOffset)로 바꿈 -
+    // 0%면 칸의 시작쪽 격자선, 100%면 끝쪽 격자선에 딱 맞고, 50%(기본값, 값이 없는 기존 구분선도 포함)면
+    // 예전과 똑같이 가운데
+    const offset = cell.dividerOffset==null ? 50 : cell.dividerOffset;
     const barStyle = horizontal
-      ? `position:absolute; left:4%; right:4%; top:50%; height:${thickness}px; transform:translateY(-50%); background:${color}; border-radius:${Math.min(thickness,3)}px;`
-      : `position:absolute; top:4%; bottom:4%; left:50%; width:${thickness}px; transform:translateX(-50%); background:${color}; border-radius:${Math.min(thickness,3)}px;`;
-    return { boxStyle: 'background:transparent; border:none; box-shadow:none;', innerBarHtml: `<span style="${barStyle}"></span>` };
+      ? `position:absolute; left:4%; right:4%; top:${offset}%; height:${thickness}px; transform:translateY(-50%); background:${color}; border-radius:${Math.min(thickness,3)}px;`
+      : `position:absolute; top:4%; bottom:4%; left:${offset}%; width:${thickness}px; transform:translateX(-50%); background:${color}; border-radius:${Math.min(thickness,3)}px;`;
+    // 위치 슬라이더를 끄는 동안(input 이벤트가 계속 발생하는 동안) 매번 이 칸 전체를 다시 그리면 슬라이더
+    // 엘리먼트 자체가 통째로 새로 만들어져 드래그가 끊기므로, seat-divider-line-bar 클래스를 붙여두고
+    // 슬라이더 쪽에서 이 span의 style만 직접 바꿔치기함(아래 seatEditDividerOffset input 핸들러 참고)
+    return { boxStyle: 'background:transparent; border:none; box-shadow:none;', innerBarHtml: `<span class="seat-divider-line-bar" style="${barStyle}"></span>` };
   }
   return { boxStyle: `background:transparent; border:${thickness}px dashed ${color}; box-shadow:none;`, innerBarHtml: '' };
 }
@@ -28508,7 +28581,16 @@ const SEAT_ICON_DEFS = {
   stairs: { label:'계단실', svg:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4,20 L4,16 L9,16 L9,12 L14,12 L14,8 L19,8 L19,4"></path></svg>' },
   elevator: { label:'엘리베이터', svg:'<svg width="14" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.5"></rect><path d="M9.5,11 L12,8 L14.5,11"></path><path d="M9.5,14 L12,17 L14.5,14"></path></svg>' },
   printer: { label:'프린터', svg:'<svg width="16" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="5"></rect><rect x="4" y="8" width="16" height="8" rx="1.5"></rect><rect x="7" y="16" width="10" height="5"></rect></svg>' },
-  warehouse: { label:'창고', svg:'<svg width="16" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4,9 L12,4 L20,9"></path><rect x="5" y="9" width="14" height="11"></rect><line x1="12" y1="9" x2="12" y2="20"></line></svg>' }
+  warehouse: { label:'창고', svg:'<svg width="16" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4,9 L12,4 L20,9"></path><rect x="5" y="9" width="14" height="11"></rect><line x1="12" y1="9" x2="12" y2="20"></line></svg>' },
+  // "기타로 몇 개 더 있어서 포인트를 줄 수 있으면 좋겠다"는 요청으로 추가한 아이콘들 - 화장실·회의실처럼
+  // 특정 공간을 가리키는 용도라기보단, 화분·커피머신·와이파이존처럼 그 자리에 뭐가 있는지 가볍게
+  // 표시하거나 포인트(별)를 주는 용도로 씀
+  plant: { label:'화분', svg:'<svg width="14" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12,21 L12,13"></path><path d="M12,13 C7,13 5,9.5 5,6 C9.5,6 12,8 12,13 Z"></path><path d="M12,13 C17,13 19,10 19,7.2 C15,7.2 12,8.5 12,13 Z"></path><path d="M7.5,21 L16.5,21"></path></svg>' },
+  coffee: { label:'커피머신', svg:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17,8 L19,8 C20.4,8 21.5,9.1 21.5,10.5 C21.5,11.9 20.4,13 19,13 L17,13"></path><path d="M4,8 L17,8 L17,15 C17,17.5 15,19 12.5,19 L8.5,19 C6,19 4,17.5 4,15 Z"></path><line x1="8" y1="2" x2="8" y2="5"></line><line x1="12" y1="2" x2="12" y2="5"></line></svg>' },
+  parking: { label:'주차장', svg:'<svg width="14" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M9,17 L9,7 L13,7 C15,7 16.5,8.3 16.5,10.3 C16.5,12.3 15,13.6 13,13.6 L9,13.6"></path></svg>' },
+  wifi: { label:'와이파이존', svg:'<svg width="15" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5,12.5 C9.5,8 14.5,8 19,12.5"></path><path d="M8.5,16 C11,13.5 13,13.5 15.5,16"></path><circle cx="12" cy="19.3" r="1.1" fill="currentColor" stroke="none"></circle></svg>' },
+  bookshelf: { label:'자료실', svg:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4,4 L4,20"></path><path d="M4,4 L8,4 L8,20 L4,20"></path><path d="M9,3 L13,4 L11,20 L8,19.3"></path><path d="M14,4 L18,4 L18,20 L14,20"></path></svg>' },
+  star: { label:'포인트', svg:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2.5 15 9.2 22 9.9 16.8 14.6 18.3 21.5 12 17.9 5.7 21.5 7.2 14.6 2 9.9 9 9.2 12 2.5"></polygon></svg>' }
 };
 // 구역표시/소품에서 아이콘을 하나 고르면(cell.icon, 위 SEAT_ICON_DEFS의 키) 이름 위에 선아이콘을, 이름은
 // 그 밑에 작게 이어붙여 보여줌(아이콘이 없으면 예전처럼 이름만 보임). labelClass를 주면 그 안쪽 이름
@@ -28578,6 +28660,27 @@ function renderSeatGridHtml(cells, cols){
 // 만들지 않아서 끌던 도중 내용이 날아가지 않음
 let seatChartDraft = null; // { asOf, title, cols, cells:[...] }
 let seatChartSelectedId = null;
+// "구역누르면 자동으로 뜨는게 아니라, 가까이 마우스 가면 수정·닫기 아이콘으로 선택할 수 있으면 좋겠다"는
+// 요청 - 예전엔 seatChartSelectedId 하나로 "칸을 눌러 하이라이트(호버 아이콘 노출용)"와 "아래 수정 패널을
+// 연다"를 동시에 처리해서, 칸을 그냥 누르기만 해도(자리를 옮기려고 끌었을 때도 끝나면 selectedId가 잡혀서)
+// 수정 패널이 매번 떠버렸음. 이제 "하이라이트/호버 아이콘 노출"은 그대로 seatChartSelectedId가 맡고,
+// "수정 패널을 연다"는 이 새 변수가 따로 맡아서 - 칸을 누르거나 끌어 옮기는 것만으로는 열리지 않고, 호버 시
+// 나타나는 수정(연필) 아이콘을 직접 눌러야만(또는 새 칸을 추가한 직후엔 바로) 열림
+let seatChartEditorOpenId = null;
+// "저장버튼이 있으면 좋겠어. 그래서 저장해야 반영되게. 저장안하고 끄면 반영안되게" 요청으로 둔 스냅샷 -
+// 수정 패널을 열 때(또는 새 칸을 추가할 때) 칸의 그 시점 상태를 통째로 복사해뒀다가, 패널을 저장 없이
+// 닫으면(seatChartCloseCellEditor(false)) 그대로 되돌리고, 저장을 누르면(commit=true) 그냥 버림(현재
+// 상태를 그대로 인정). 이름·아이콘 같은 입력칸뿐 아니라 패널이 열려있는 동안 그리드에서 직접 끌어 옮기거나
+// 손잡이로 크기를 바꾼 것까지 전부 이 스냅샷 하나로 한꺼번에 되돌아감
+let seatChartEditorBackup = null;
+function seatChartCloseCellEditor(commit){
+  if(!commit && seatChartEditorOpenId && seatChartEditorBackup){
+    const idx = seatChartDraft?.cells.findIndex(c=>c.id===seatChartEditorOpenId);
+    if(idx > -1) seatChartDraft.cells[idx] = { ...seatChartEditorBackup };
+  }
+  seatChartEditorOpenId = null;
+  seatChartEditorBackup = null;
+}
 const SEAT_EDIT_CELL_W = 72, SEAT_EDIT_CELL_H = 36, SEAT_EDIT_GAP = 6;
 function seatChartCloneCells(cells){ return (cells||[]).map(c=>({ ...c })); }
 function seatChartInitDraft(){
@@ -28587,7 +28690,26 @@ function seatChartInitDraft(){
     cols: seatChartColsForRender(sharedSeatChart),
     cells: seatChartCloneCells(seatChartCellsForRender(sharedSeatChart))
   };
+  seatChartSeedUnplacedFromOrgChart();
   seatChartSelectedId = null;
+  seatChartEditorOpenId = null;
+  seatChartEditorBackup = null;
+}
+// "조직도를 먼저 설정하고 나서 자리배치도가 나오는 게 맞다"는 요청 - 조직도(sharedOrgChart)에 등록은
+// 됐는데 아직 이 자리배치도 어디에도 이름이 없는 사람을, row/col 없는 자리(seat) 칸으로 만들어서 편집
+// 화면을 열 때마다 자동으로 끼워넣음. row/col이 없는 칸은 그리드가 아니라 "배치예정" 트레이 쪽에서만
+// 보이는 기존 규칙(renderSeatChartTray)을 그대로 타므로, 트레이 쪽 코드는 따로 안 건드려도 됨 - 여기서
+// 직접 그리드에 안 넣고 트레이로만 보내서, 관리자가 실제로 자리를 끌어다 놓기 전까진 배치도 모양이
+// 저절로 안 바뀌게 함. 팀/직책도 명단 값을 그대로 미리 채워서 끌어다 놓기만 하면 됨
+function seatChartSeedUnplacedFromOrgChart(){
+  if(!seatChartDraft) return;
+  const existingNames = new Set(seatChartDraft.cells.filter(c=>c.type==='seat' && c.text).map(c=>c.text.trim()));
+  (sharedOrgChart||[]).forEach(p=>{
+    const name = (p.name||'').trim();
+    if(!name || existingNames.has(name)) return;
+    existingNames.add(name);
+    seatChartDraft.cells.push({ id: genId(), type:'seat', text:name, team:p.team||'', position:p.position||'', row:null, col:null, rowSpan:1, colSpan:1, dir:0 });
+  });
 }
 // 두 칸(자리/구역표시)이 실제로 겹치는지(행/열 범위가 교차하는지) 판정 - 자리를 끌어다 이미 다른 칸이
 // 있는 곳에 놓았을 때 "서로 자리를 맞바꿀지"를 정하는 데 씀
@@ -28652,7 +28774,10 @@ function seatChartEditCellHtml(cell){
   // 스타일이 그대로 유지됨. 글줄 폭이 글자 하나 정도로 좁아져 의자/모니터 표시가 파고드는 구간도 자연히
   // 피해가 겹칠 일이 없어짐
   const seatLabelStyle = (cell.type==='seat' && isNarrowPortrait) ? ' style="writing-mode:vertical-rl; text-orientation:upright; white-space:nowrap;"' : '';
-  // 삭제 × 버튼은 항상 마크업엔 넣어두고(호버/선택 시에만 CSS로 보이게), 크기조절 손잡이는 선택됐을 때만 넣음
+  // 삭제 × 버튼(오른쪽 위)과 수정 연필 버튼(왼쪽 위)은 항상 마크업엔 넣어두고(호버/선택 시에만 CSS로
+  // 보이게), 크기조절 손잡이는 선택됐을 때만 넣음. 수정 버튼을 눌러야만 아래 수정 패널이 열림(칸을 그냥
+  // 누르거나 끌어 옮기는 것만으로는 안 열림 - seatChartEditorOpenId 선언부 주석 참고)
+  const editBtn = `<button type="button" class="seat-edit-cell-edit" data-id="${cell.id}" title="${escHtml(seatCellTypeLabel(cell))} 수정" aria-label="수정"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>`;
   const deleteBtn = `<button type="button" class="seat-edit-cell-delete" data-id="${cell.id}" title="${escHtml(seatCellTypeLabel(cell))} 삭제" aria-label="삭제">✕</button>`;
   const resizeHandle = isSel ? `<div class="seat-resize-handle" data-id="${cell.id}" title="끌어서 크기 바꾸기"></div>` : '';
   // "이름없음 이런것도 왜 나오는지 모르겠고" - 구분선은 이름이 꼭 필요한 칸이 아니라서(테두리/선 자체가
@@ -28662,7 +28787,7 @@ function seatChartEditCellHtml(cell){
     : cell.type==='divider'
       ? `<span class="seat-edit-cell-label">${escHtml(cell.text||'')}</span>`
       : `<span class="seat-edit-cell-label"${seatLabelStyle}>${escHtml(empty ? '미점유' : (cell.text||'(이름없음)'))}</span>`;
-  return `<div class="seat-edit-cell${isSel ? ' is-selected' : ''}" data-id="${cell.id}" style="position:absolute; left:${visualLeft}px; top:${top}px; width:${w}px; height:${h}px; ${bg}${sel} border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11.5px; text-align:center; padding:2px; cursor:grab; touch-action:none; user-select:none; box-sizing:border-box; line-height:1.2; ${narrowTextStyle}">${dividerBar}${dirArrow}${labelHtml}${deleteBtn}${resizeHandle}</div>`;
+  return `<div class="seat-edit-cell${isSel ? ' is-selected' : ''}" data-id="${cell.id}" style="position:absolute; left:${visualLeft}px; top:${top}px; width:${w}px; height:${h}px; ${bg}${sel} border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11.5px; text-align:center; padding:2px; cursor:grab; touch-action:none; user-select:none; box-sizing:border-box; line-height:1.2; ${narrowTextStyle}">${dividerBar}${dirArrow}${labelHtml}${editBtn}${deleteBtn}${resizeHandle}</div>`;
 }
 function renderSeatChartEditPreview(){
   const wrap = document.getElementById('seatChartPreviewWrap');
@@ -28694,10 +28819,29 @@ function bindSeatChartEditCellEvents(){
     btn.addEventListener('pointerdown', e=>{ e.stopPropagation(); });
     btn.addEventListener('click', seatChartDeleteCellClick);
   });
+  // 호버(또는 선택 시) 수정 연필 버튼 - "자리이동하려고 눌렀는데 수정창이 바로 떠버린다"는 요청으로,
+  // 칸을 그냥 누르거나 끌어 옮기는 것만으로는 수정 패널이 안 열리게 바꾸면서 대신 만든 전용 버튼
+  document.querySelectorAll('#seatChartEditGrid .seat-edit-cell-edit').forEach(btn=>{
+    btn.addEventListener('pointerdown', e=>{ e.stopPropagation(); });
+    btn.addEventListener('click', seatChartOpenCellEditorClick);
+  });
   // "화살표로 +/- 하는 것 말고 마우스로 자유롭게 끌어서 크기를 바꾸고 싶다" 요청으로 만든 크기조절 손잡이
   document.querySelectorAll('#seatChartEditGrid .seat-resize-handle').forEach(handle=>{
     handle.addEventListener('pointerdown', seatChartResizeHandlePointerDown);
   });
+}
+function seatChartOpenCellEditorClick(e){
+  e.stopPropagation();
+  const id = e.currentTarget.dataset.id;
+  const cell = seatChartDraft?.cells.find(c=>c.id===id);
+  if(!cell) return;
+  // 다른 칸의 수정 패널이 저장 안 된 채로 열려있었다면, 그 칸부터 먼저 되돌리고(저장하지 않은 변경 취소)
+  // 새 칸의 패널을 염
+  if(seatChartEditorOpenId && seatChartEditorOpenId!==id) seatChartCloseCellEditor(false);
+  seatChartSelectedId = id;
+  seatChartEditorOpenId = id;
+  seatChartEditorBackup = { ...cell };
+  renderSeatChartEditPreview();
 }
 async function seatChartDeleteCellClick(e){
   e.stopPropagation();
@@ -28708,6 +28852,7 @@ async function seatChartDeleteCellClick(e){
   if(!(await appConfirm(`"${name}" 칸을 삭제할까요?`))) return;
   seatChartDraft.cells = seatChartDraft.cells.filter(c=>c.id!==id);
   if(seatChartSelectedId===id) seatChartSelectedId = null;
+  if(seatChartEditorOpenId===id) seatChartCloseCellEditor(true); // 지워졌으니 되돌릴 필요 없이 그냥 닫음
   renderSeatChartEditPreview();
 }
 // 크기조절 손잡이 드래그 - 다른 칸 드래그(seatChartCellPointerDown)와 같은 이유로, 끄는 동안 매번
@@ -28771,11 +28916,17 @@ function renderSeatChartTray(){
     const sel = c.id===seatChartSelectedId ? ' box-shadow:0 0 0 2.5px var(--indigo);' : '';
     const isSel = c.id===seatChartSelectedId ? ' is-selected' : '';
     // 이름이 없을 때 보여줄 안내문구는 종류별 이름표(seatCellTypeLabel)를 그대로 씀 - 구분선이면
-    // "(이름없음)" 대신 "구분선"이라고 나와서 덜 어색함
-    return `<div class="seat-chart-tray-chip${isSel}" data-id="${c.id}" style="${sel}">${escHtml(c.text || seatCellTypeLabel(c))}<button type="button" class="seat-chart-tray-chip-delete" data-id="${c.id}" title="삭제" aria-label="삭제">✕</button></div>`;
+    // "(이름없음)" 대신 "구분선"이라고 나와서 덜 어색함. 이름을 <span>으로 감싸둬서(예전엔 그냥 텍스트
+    // 노드였음) 호버·선택 시 CSS로 살짝 작게 줄여(.seat-chart-tray-chip-label) 왼쪽 수정·오른쪽 삭제
+    // 아이콘 두 개가 같이 떠도 "김진현 CPA"처럼 긴 이름이 가려 보이지 않게 함
+    return `<div class="seat-chart-tray-chip${isSel}" data-id="${c.id}" style="${sel}"><span class="seat-chart-tray-chip-label">${escHtml(c.text || seatCellTypeLabel(c))}</span><button type="button" class="seat-chart-tray-chip-edit" data-id="${c.id}" title="수정" aria-label="수정"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button><button type="button" class="seat-chart-tray-chip-delete" data-id="${c.id}" title="삭제" aria-label="삭제">✕</button></div>`;
   }).join('');
   wrap.querySelectorAll('.seat-chart-tray-chip').forEach(el=>{
     el.addEventListener('pointerdown', seatChartCellPointerDown);
+  });
+  wrap.querySelectorAll('.seat-chart-tray-chip-edit').forEach(btn=>{
+    btn.addEventListener('pointerdown', e=>{ e.stopPropagation(); });
+    btn.addEventListener('click', seatChartOpenCellEditorClick);
   });
   wrap.querySelectorAll('.seat-chart-tray-chip-delete').forEach(btn=>{
     btn.addEventListener('pointerdown', e=>{ e.stopPropagation(); });
@@ -28830,7 +28981,14 @@ function seatChartCellPointerDown(e){
     ghost.remove();
     if(tray) tray.classList.remove('seat-tray-hover');
     if(!moved){
-      seatChartSelectedId = (seatChartSelectedId===id) ? null : id;
+      // 칸을 그냥 누르기만 한 것(끌지 않음)은 하이라이트(호버 아이콘 노출용 is-selected)만 토글하고,
+      // 수정 패널은 열지 않음 - "구역누르면 자동으로 뜨는 게 아니라 수정 아이콘을 눌러야 뜨게" 요청 참고
+      if(seatChartSelectedId===id){
+        seatChartSelectedId = null;
+        if(seatChartEditorOpenId===id) seatChartEditorOpenId = null;
+      } else {
+        seatChartSelectedId = id;
+      }
       renderSeatChartEditPreview();
       return;
     }
@@ -28898,14 +29056,22 @@ function seatChartCellPointerDown(e){
 function renderSeatChartCellEditor(){
   const wrap = document.getElementById('seatChartCellEditorWrap');
   if(!wrap) return;
-  if(!seatChartSelectedId){ wrap.innerHTML = ''; return; }
-  const cell = seatChartDraft.cells.find(c=>c.id===seatChartSelectedId);
-  if(!cell){ seatChartSelectedId = null; wrap.innerHTML = ''; return; }
+  // 이 패널은 이제 "선택"이 아니라 "수정 버튼을 눌렀는지"(seatChartEditorOpenId)로만 열림 -
+  // seatChartSelectedId 선언부 주석 참고
+  if(!seatChartEditorOpenId){ wrap.innerHTML = ''; return; }
+  const cell = seatChartDraft.cells.find(c=>c.id===seatChartEditorOpenId);
+  if(!cell){ seatChartEditorOpenId = null; wrap.innerHTML = ''; return; }
   // "배치도 보면서 설정해야되는데 배치도가 위에있고 입력창이 아래있어서 보면서 할수가없네" 요청 - 이
   // 패널을 화면(뷰포트) 아래쪽에 고정해서, 위쪽 미리보기를 스크롤해서 보는 동안에도 이 패널은 항상 그
   // 자리에 떠 있게 함(칸을 누르면 바로 아래에 뜨는 게 아니라 화면 맨 아래 도킹된 패널이 내용만 바뀜) -
   // max-height+overflow-y로 내용이 길 때는 패널 안에서만 스크롤되게 함
   wrap.innerHTML = `<div class="flat-panel" style="max-width:440px; width:calc(100% - 24px); margin:0 auto; padding:12px; position:fixed; left:0; right:0; bottom:0; z-index:500; max-height:64vh; overflow-y:auto; background:var(--surface); border-radius:16px 16px 0 0; box-shadow:0 -10px 28px -8px rgba(29,30,51,0.32);">
+    <!-- "닫기버튼은 상단 오른쪽에 아이콘으로" 요청 - 예전엔 아래쪽에 텍스트 버튼(닫기)이 저장 버튼처럼
+         있었는데, 저장 없이 닫는 동작이라 눈에 덜 띄게 위쪽 구석 아이콘으로 옮기고, 아래쪽엔 실제로
+         반영하는 저장 버튼을 크게 둠("저장해야 반영되게, 저장 안 하고 끄면 반영 안 되게") -->
+    <div style="display:flex; justify-content:flex-end; margin:-4px -4px 4px 0;">
+      <button type="button" class="del-btn" id="seatEditCloseBtn" title="닫기(저장 안 함)" style="padding:5px 7px;">✕</button>
+    </div>
     <div class="flat-row"><div class="flat-row-label">종류</div><div class="flat-row-control">
       <select id="seatEditType" class="flat-input">
         <option value="seat" ${cell.type==='seat'?'selected':''}>자리</option>
@@ -28919,19 +29085,30 @@ function renderSeatChartCellEditor(){
     </div></div>
     ${(cell.type==='label' || cell.type==='item') ? `
     <!-- "화장실·회의실·탕비실은 아이콘으로 보여줄 수 있으면" 요청 - 구역표시/소품에서만 아이콘을 고를 수
-         있게 함(자리는 이름이 핵심이라 제외, 구분선은 테두리/선 자체가 표시라 아이콘 자리가 없음) -->
-    <div class="flat-row"><div class="flat-row-label">아이콘</div><div class="flat-row-control">
-      <select id="seatEditIcon" class="flat-input">
-        <option value="" ${!cell.icon?'selected':''}>없음</option>
-        <option value="toilet" ${cell.icon==='toilet'?'selected':''}>화장실</option>
-        <option value="meeting" ${cell.icon==='meeting'?'selected':''}>회의실</option>
-        <option value="pantry" ${cell.icon==='pantry'?'selected':''}>탕비실</option>
-        <option value="locker" ${cell.icon==='locker'?'selected':''}>사물함</option>
-        <option value="stairs" ${cell.icon==='stairs'?'selected':''}>계단실</option>
-        <option value="elevator" ${cell.icon==='elevator'?'selected':''}>엘리베이터</option>
-        <option value="printer" ${cell.icon==='printer'?'selected':''}>프린터</option>
-        <option value="warehouse" ${cell.icon==='warehouse'?'selected':''}>창고</option>
-      </select>
+         있게 함(자리는 이름이 핵심이라 제외, 구분선은 테두리/선 자체가 표시라 아이콘 자리가 없음).
+         "드롭박스에서 이름 옆에 미리보기가 있으면 좋겠다"는 요청 - 네이티브 <select>는 옵션 안에 아이콘을
+         그려 넣을 수 없어서(글자만 가능), 버튼+목록 팝업으로 직접 만든 드롭다운으로 바꿔서 각 줄마다
+         실제 선아이콘을 이름 옆에 같이 보여줌 -->
+    <div class="flat-row"><div class="flat-row-label">아이콘</div><div class="flat-row-control" style="position:relative;">
+      <button type="button" class="flat-input seat-icon-picker-btn" id="seatEditIconBtn" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; text-align:left;">
+        <span style="display:flex; align-items:center; gap:7px;">
+          <span id="seatEditIconBtnPreview" style="display:inline-flex; width:15px; height:15px; align-items:center; justify-content:center; color:var(--ink-soft); flex-shrink:0;">${cell.icon && SEAT_ICON_DEFS[cell.icon] ? SEAT_ICON_DEFS[cell.icon].svg : ''}</span>
+          <span id="seatEditIconBtnLabel">${cell.icon && SEAT_ICON_DEFS[cell.icon] ? escHtml(SEAT_ICON_DEFS[cell.icon].label) : '없음'}</span>
+        </span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </button>
+      <div id="seatEditIconMenu" style="display:none; position:absolute; left:0; right:0; top:calc(100% + 4px); background:var(--surface); border:1px solid var(--border); border-radius:10px; box-shadow:0 10px 24px -8px rgba(29,30,51,0.3); z-index:30; max-height:210px; overflow-y:auto; padding:4px;">
+        <div class="seat-icon-picker-opt" data-icon="" style="display:flex; align-items:center; gap:7px; padding:7px 8px; border-radius:7px; cursor:pointer; font-size:12.5px;${!cell.icon ? ' background:var(--indigo-bg);' : ''}">
+          <span style="display:inline-flex; width:15px; flex-shrink:0;"></span> 없음
+        </div>
+        ${Object.keys(SEAT_ICON_DEFS).map(key=>{
+          const def = SEAT_ICON_DEFS[key];
+          const isSel = cell.icon===key;
+          return `<div class="seat-icon-picker-opt" data-icon="${key}" style="display:flex; align-items:center; gap:7px; padding:7px 8px; border-radius:7px; cursor:pointer; font-size:12.5px;${isSel ? ' background:var(--indigo-bg);' : ''}">
+            <span style="display:inline-flex; width:15px; align-items:center; justify-content:center; color:var(--ink-soft); flex-shrink:0;">${def.svg}</span> ${escHtml(def.label)}
+          </div>`;
+        }).join('')}
+      </div>
     </div></div>` : ''}
     ${cell.type==='divider' ? `
     <!-- "구분선은 직선형태를 말한거였어"와 "직선과 막힌선 다 해도 될것같아, 굵기랑 컬러도 선택할 수 있으면"
@@ -28958,18 +29135,17 @@ function renderSeatChartCellEditor(){
       <input type="color" id="seatEditDividerColor" value="${cell.dividerColor || '#75789A'}" style="width:34px; height:28px; padding:0; border:1px solid var(--border); border-radius:6px; cursor:pointer;">
       <span style="font-size:11px; color:var(--ink-soft);">선 색을 골라요</span>
     </div></div>
-    <!-- "구분선이 복도 구분같은 것도 잘 되려나?" 요청 - +/- 버튼으로 한 칸씩 늘리지 않아도, 한 번에
-         가로/세로 전체를 가로지르는 길이로 맞춰서 복도처럼 넓은 구획을 쉽게 나눌 수 있게 함 -->
-    <div class="flat-row"><div class="flat-row-label">빠른 크기</div><div class="flat-row-control" style="display:flex; gap:6px; flex-wrap:wrap;">
-      <button type="button" class="del-btn seat-chart-action-btn" id="seatEditDividerFullWidthBtn" title="복도처럼 가로 전체를 가로지르는 얇은 선으로">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><line x1="3" y1="12" x2="21" y2="12"></line><path d="M8,7 L3,12 L8,17"></path><path d="M16,7 L21,12 L16,17"></path></svg>
-        가로 전체(복도)
-      </button>
-      <button type="button" class="del-btn seat-chart-action-btn" id="seatEditDividerFullHeightBtn" title="복도처럼 세로 전체를 가로지르는 얇은 선으로">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><line x1="12" y1="3" x2="12" y2="21"></line><path d="M7,8 L12,3 L17,8"></path><path d="M7,16 L12,21 L17,16"></path></svg>
-        세로 전체(복도)
-      </button>
-    </div></div>` : ''}
+    ${cell.dividerShape==='line' ? `
+    <!-- "구분선이 칸 가운데 말고 배경에 있는 격자선 자리에 들어가야 한다"는 요청 - 예전엔 직선 모양이
+         항상 칸 가운데(50%)에 고정이었는데, 시작쪽/끝쪽 격자선(0%/100%)에 딱 붙는 버튼 두 개와 자유
+         위치 슬라이더를 같이 둬서 원하는 자리에 맞출 수 있게 함 -->
+    <div class="flat-row"><div class="flat-row-label">위치</div><div class="flat-row-control" style="display:flex; align-items:center; gap:6px;">
+      <button type="button" class="del-btn seat-divider-offset-btn" data-offset="0" style="padding:5px 8px; font-size:10.5px;" title="칸 시작쪽 격자선에 맞춤">시작선</button>
+      <input type="range" id="seatEditDividerOffset" min="0" max="100" step="1" value="${cell.dividerOffset==null?50:cell.dividerOffset}" style="flex:1 1 auto; min-width:56px;">
+      <button type="button" class="del-btn seat-divider-offset-btn" data-offset="100" style="padding:5px 8px; font-size:10.5px;" title="칸 끝쪽 격자선에 맞춤">끝선</button>
+    </div></div>
+    ` : ''}
+    ` : ''}
     ${cell.type==='seat' ? `
     <!-- "이걸 바탕으로 조직도도, 팀명과 직책도 설정할 수 있으면" 요청으로 자리(seat)에만 team/position을
          추가로 둠 - 구역표시(label)는 사람이 아니라 화장실·계단실 같은 칸이라 해당 없음 -->
@@ -28990,14 +29166,16 @@ function renderSeatChartCellEditor(){
       <button type="button" class="del-btn" id="seatEditColSpanPlus" style="padding:3px 8px;">+</button>
     </div></div>
     <!-- "가로/세로 구성도 선택하고, 책상 방향(자리가 바라보는 쪽)까지 보이면 좋겠다"는 요청 - 누를 때마다
-         90도씩 돌아가며(0→90→180→270→0) 칸 모양(가로↔세로)과, 자리(seat)라면 방향 화살표까지 같이 돎 -->
+         90도씩 돌아가며(0→90→180→270→0) 칸 모양(가로↔세로)과, 자리(seat)라면 방향 화살표까지 같이 돎.
+         "90도회전 글자는 아이콘하고 90도표시만 있던지 글자크기 좀 줄여달라"는 요청으로 "회전" 글자는 빼고
+         글자 크기도 살짝 줄임 -->
     <div class="flat-row"><div class="flat-row-label">방향</div><div class="flat-row-control" style="display:flex; align-items:center; gap:8px;">
-      <button type="button" class="del-btn seat-chart-action-btn" id="seatEditRotateBtn" title="누를 때마다 90도씩 돌아가요 (칸 모양 + 자리 방향)">↻ 90° 회전</button>
-      <span style="font-size:11px; color:var(--ink-soft);">현재 ${cell.dir||0}°${cell.type==='seat' ? ' · 화살표 = 모니터 방향, 반대쪽 = 의자' : ''}</span>
+      <button type="button" class="del-btn seat-chart-action-btn" id="seatEditRotateBtn" title="누를 때마다 90도씩 돌아가요 (칸 모양 + 자리 방향)" style="font-size:11.5px; padding:0 12px;">↻ 90°</button>
+      <span style="font-size:11px; color:var(--ink-soft);">현재 ${cell.dir||0}°${cell.type==='seat' ? ' · 모니터가 향한 방향' : ''}</span>
     </div></div>
     <div style="text-align:center; margin-top:10px;">
       <button type="button" class="del-btn" id="seatEditDeleteBtn" style="color:#DC2626; border-color:#FCA5A5;">이 칸 삭제</button>
-      <button type="button" class="del-btn" id="seatEditCloseBtn">닫기</button>
+      <button type="button" class="submit-btn seat-chart-action-btn" id="seatEditSaveBtn" style="margin-left:8px;">저장</button>
     </div>
   </div>`;
   document.getElementById('seatEditType').addEventListener('change', (e)=>{
@@ -29017,12 +29195,29 @@ function renderSeatChartCellEditor(){
       // 자체가 표시), 비어있으면 그냥 빈칸으로 두고 자리/구역표시/소품에서만 안내 문구를 보여줌
       labelEl.textContent = cell.type==='divider' ? (cell.text || '') : ((cell.type==='seat' && !cell.text) ? '미점유' : (cell.text || '(이름없음)'));
     }
-    const chipEl = document.querySelector(`#seatChartTrayWrap .seat-chart-tray-chip[data-id="${cell.id}"]`);
-    if(chipEl) chipEl.textContent = cell.text || seatCellTypeLabel(cell);
+    // 트레이 칩도 이름을 <span class="seat-chart-tray-chip-label">(수정·삭제 아이콘과 형제)로 감싸둬서,
+    // 칩 전체(chipEl)의 textContent를 통째로 바꾸면 그 안의 수정·삭제 아이콘까지 같이 지워짐 - 이름 span만
+    // 골라서 바꿔줌
+    const chipLabelEl = document.querySelector(`#seatChartTrayWrap .seat-chart-tray-chip[data-id="${cell.id}"] .seat-chart-tray-chip-label`);
+    if(chipLabelEl) chipLabelEl.textContent = cell.text || seatCellTypeLabel(cell);
   });
   document.getElementById('seatEditTeam')?.addEventListener('input', (e)=>{ cell.team = e.target.value; });
   document.getElementById('seatEditPosition')?.addEventListener('input', (e)=>{ cell.position = e.target.value; });
-  document.getElementById('seatEditIcon')?.addEventListener('change', (e)=>{ cell.icon = e.target.value; renderSeatChartEditPreview(); });
+  // 아이콘 선택 - 버튼을 누르면 목록 팝업이 열리고, 한 줄을 고르면 그 자리에서 바로 반영(패널을
+  // renderSeatChartCellEditor()로 다시 그려서 버튼 미리보기·선택 표시가 즉시 바뀜)
+  const seatIconBtn = document.getElementById('seatEditIconBtn');
+  const seatIconMenu = document.getElementById('seatEditIconMenu');
+  seatIconBtn?.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    if(seatIconMenu) seatIconMenu.style.display = seatIconMenu.style.display==='none' ? 'block' : 'none';
+  });
+  document.querySelectorAll('#seatEditIconMenu .seat-icon-picker-opt').forEach(opt=>{
+    opt.addEventListener('click', ()=>{
+      cell.icon = opt.dataset.icon || '';
+      renderSeatChartEditPreview();
+      renderSeatChartCellEditor();
+    });
+  });
   // "저 라인에 직접 디자인설정을 못해? 뭘 삽입해서 하니까 불편해" 요청으로 드롭다운 대신 버튼으로 바꿈 -
   // 누르면 바로 반영되고, 패널도 다시 그려서 방금 누른 버튼이 선택된 채로(진하게) 보이게 함
   document.querySelectorAll('.seat-divider-shape-btn').forEach(btn=>{
@@ -29040,26 +29235,24 @@ function renderSeatChartCellEditor(){
     });
   });
   document.getElementById('seatEditDividerColor')?.addEventListener('input', (e)=>{ cell.dividerColor = e.target.value; renderSeatChartEditPreview(); });
-  document.getElementById('seatEditDividerFullWidthBtn')?.addEventListener('click', ()=>{
-    // 복도처럼 가로 전체를 가로지르게 - 세로는 한 칸(얇은 선)으로, 가로는 지금 배치도의 전체 열 수만큼
-    cell.colSpan = Math.max(1, seatChartDraft.cols||9);
-    cell.rowSpan = 1;
-    renderSeatChartEditPreview();
-    renderSeatChartCellEditor();
+  // 구분선 위치 자유 슬라이더 - 끄는 동안(input) renderSeatChartEditPreview()로 전체를 다시 그리면
+  // 슬라이더 엘리먼트 자체가 매번 새로 만들어져 드래그가 끊기므로, 이름 입력칸(seatEditText)과 같은
+  // 방식으로 그리드 위 그 칸의 선(.seat-divider-line-bar) 위치만 직접 바꿔치기함
+  document.getElementById('seatEditDividerOffset')?.addEventListener('input', (e)=>{
+    cell.dividerOffset = parseInt(e.target.value, 10) || 0;
+    const barEl = document.querySelector(`#seatChartEditGrid .seat-edit-cell[data-id="${cell.id}"] .seat-divider-line-bar`);
+    if(barEl){
+      const horizontal = barEl.style.height !== '';
+      if(horizontal) barEl.style.top = cell.dividerOffset + '%';
+      else barEl.style.left = cell.dividerOffset + '%';
+    }
   });
-  document.getElementById('seatEditDividerFullHeightBtn')?.addEventListener('click', ()=>{
-    // 복도처럼 세로 전체를 가로지르게 - 가로는 한 칸(얇은 선)으로, 세로는 이 구분선 위치부터 다른 칸들이
-    // 실제로 놓인 마지막 행까지(빈 여유 행까지 늘어나지 않도록 seatChartRowsNeeded의 +3 여유분은 제외)
-    const startRow = cell.row||1;
-    const maxRow = seatChartDraft.cells.reduce((m,c)=>{
-      if(c.id===cell.id || !c.row || !c.col) return m;
-      const sp = seatCellEffectiveSpans(c);
-      return Math.max(m, (c.row||1)+(sp.rowSpan||1)-1);
-    }, startRow);
-    cell.rowSpan = Math.max(1, maxRow - startRow + 1);
-    cell.colSpan = 1;
-    renderSeatChartEditPreview();
-    renderSeatChartCellEditor();
+  document.querySelectorAll('.seat-divider-offset-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      cell.dividerOffset = parseInt(btn.dataset.offset, 10) || 0;
+      renderSeatChartEditPreview();
+      renderSeatChartCellEditor();
+    });
   });
   document.getElementById('seatEditRowSpanMinus').addEventListener('click', ()=>{ cell.rowSpan = Math.max(1,(cell.rowSpan||1)-1); renderSeatChartEditPreview(); });
   document.getElementById('seatEditRowSpanPlus').addEventListener('click', ()=>{ cell.rowSpan = Math.min(20,(cell.rowSpan||1)+1); renderSeatChartEditPreview(); });
@@ -29069,10 +29262,31 @@ function renderSeatChartCellEditor(){
   document.getElementById('seatEditDeleteBtn').addEventListener('click', ()=>{
     seatChartDraft.cells = seatChartDraft.cells.filter(c=>c.id!==cell.id);
     seatChartSelectedId = null;
+    seatChartCloseCellEditor(true); // 지워졌으니 되돌릴 필요 없이 그냥 닫음
     renderSeatChartEditPreview();
   });
-  document.getElementById('seatEditCloseBtn').addEventListener('click', ()=>{ seatChartSelectedId = null; renderSeatChartEditPreview(); });
+  // 저장 - 지금까지 이 패널에서 바꾼 내용(과 열려있는 동안 그리드에서 직접 옮기거나 크기를 바꾼 것)을
+  // 그대로 인정하고 닫음
+  document.getElementById('seatEditSaveBtn').addEventListener('click', ()=>{
+    seatChartCloseCellEditor(true);
+    renderSeatChartEditPreview();
+  });
+  // 상단 오른쪽 ✕ - 저장 없이 닫음(스냅샷으로 되돌림)
+  document.getElementById('seatEditCloseBtn').addEventListener('click', ()=>{
+    seatChartSelectedId = null;
+    seatChartCloseCellEditor(false);
+    renderSeatChartEditPreview();
+  });
 }
+// 아이콘 선택 팝업 바깥을 누르면 닫힘 - 패널(renderSeatChartCellEditor)이 열릴 때마다 매번 새로 등록하면
+// 그 안의 버튼·팝업 엘리먼트가 다시 그려질 때마다 리스너가 계속 쌓이므로, 여기서 딱 한 번만 등록해두고
+// 매번 최신 엘리먼트를 id로 다시 찾아옴(리렌더로 엘리먼트가 통째로 바뀌어도 항상 지금 것을 가리킴)
+document.addEventListener('click', (e)=>{
+  const menu = document.getElementById('seatEditIconMenu');
+  if(!menu || menu.style.display==='none') return;
+  const btn = document.getElementById('seatEditIconBtn');
+  if(!menu.contains(e.target) && !(btn && btn.contains(e.target))) menu.style.display = 'none';
+});
 document.getElementById('seatChartAsOf')?.addEventListener('input', (e)=>{ if(seatChartDraft) seatChartDraft.asOf = e.target.value; });
 document.getElementById('seatChartTitle')?.addEventListener('input', (e)=>{ if(seatChartDraft) seatChartDraft.title = e.target.value; });
 document.getElementById('seatChartColsMinusBtn')?.addEventListener('click', ()=>{
@@ -29085,38 +29299,23 @@ document.getElementById('seatChartColsPlusBtn')?.addEventListener('click', ()=>{
   seatChartDraft.cols = Math.min(30, (seatChartDraft.cols||9)+1);
   renderSeatChartEditPreview();
 });
-document.getElementById('seatChartAddSeatBtn')?.addEventListener('click', ()=>{
-  if(!seatChartDraft) return;
+// 예전엔 자리/구역표시/소품/구분선 추가 버튼이 각각 따로 있었는데, "너무 중복"이라는 요청으로 위 드롭다운
+// 하나로 합침 - 종류를 고르는 순간 바로 그 칸을 추가하고, 다음에 또 고를 수 있게 드롭다운은 안내문구로
+// 되돌림. 새로 추가한 칸은 이름부터 입력해야 하므로 바로 수정 패널을 열어주고(저장/닫기 스냅샷도 같이 둠)
+document.getElementById('seatChartAddTypeSelect')?.addEventListener('change', (e)=>{
+  const type = e.target.value;
+  e.target.value = '';
+  if(!type || !seatChartDraft) return;
   const row = seatChartFindOpenRow();
-  const cell = { id: genId(), type:'seat', text:'', row, col:1, rowSpan:1, colSpan:1 };
+  const cell = type==='divider'
+    // 구분선은 테두리만 있는 큰 구획이라, 자리·구역표시(기본 1×1)와 달리 처음부터 2×2 정도로 시작해서
+    // 바로 눈에 보이게 하고, 크기조절 손잡이(또는 +/- 버튼)로 감싸고 싶은 구역만큼 늘리면 됨
+    ? { id: genId(), type, text:'', row, col:1, rowSpan:2, colSpan:2 }
+    : { id: genId(), type, text: type==='label' ? '새 구역' : type==='item' ? '사물함' : '', row, col:1, rowSpan:1, colSpan:1 };
   seatChartDraft.cells.push(cell);
   seatChartSelectedId = cell.id;
-  renderSeatChartEditPreview();
-});
-document.getElementById('seatChartAddLabelBtn')?.addEventListener('click', ()=>{
-  if(!seatChartDraft) return;
-  const row = seatChartFindOpenRow();
-  const cell = { id: genId(), type:'label', text:'새 구역', row, col:1, rowSpan:1, colSpan:1 };
-  seatChartDraft.cells.push(cell);
-  seatChartSelectedId = cell.id;
-  renderSeatChartEditPreview();
-});
-document.getElementById('seatChartAddItemBtn')?.addEventListener('click', ()=>{
-  if(!seatChartDraft) return;
-  const row = seatChartFindOpenRow();
-  const cell = { id: genId(), type:'item', text:'사물함', row, col:1, rowSpan:1, colSpan:1 };
-  seatChartDraft.cells.push(cell);
-  seatChartSelectedId = cell.id;
-  renderSeatChartEditPreview();
-});
-document.getElementById('seatChartAddDividerBtn')?.addEventListener('click', ()=>{
-  if(!seatChartDraft) return;
-  const row = seatChartFindOpenRow();
-  // 구분선은 테두리만 있는 큰 구획이라, 자리·구역표시(기본 1×1)와 달리 처음부터 2×2 정도로 시작해서
-  // 바로 눈에 보이게 하고, 크기조절 손잡이(또는 +/- 버튼)로 감싸고 싶은 구역만큼 늘리면 됨
-  const cell = { id: genId(), type:'divider', text:'', row, col:1, rowSpan:2, colSpan:2 };
-  seatChartDraft.cells.push(cell);
-  seatChartSelectedId = cell.id;
+  seatChartEditorOpenId = cell.id;
+  seatChartEditorBackup = { ...cell };
   renderSeatChartEditPreview();
 });
 function renderSeatChartEdit(){
@@ -29148,18 +29347,27 @@ function renderSeatChartView(){
 // ===== 조직도 (좌석배치도의 team/position을 재사용) =====
 // 보고체계(누가 누구 위인지) 같은 별도 데이터가 없어서 트리형 조직도 대신, 팀별로 묶어 "이름 (직책)"을
 // 카드에 나열하는 그룹형 조직도로 만듦 - 작은 팀 단위 회사에서 가장 흔히 쓰는 조직도 형태이기도 하고,
-// 좌석배치도 자리 편집 화면에서 팀/직책만 입력해두면 별도 관리 없이 그대로 반영됨
+// 좌석배치도 자리 편집 화면에서 팀/직책만 입력해두면 별도 관리 없이 그대로 반영됨.
+// "조직도를 먼저 설정하고 나서 자리배치도가 나오는 게 맞다"는 요청으로, 이제는 독립된 명단(sharedOrgChart,
+// 설정 > 회사 > 조직도)을 우선 소스로 삼음(팀/직책도 명단 값을 그대로 씀). 다만 예전처럼 자리에만 팀/직책을
+// 입력해둔 기존 데이터도 그대로 보이게, 명단에 없는 이름의 자리는 그 자리의 팀/직책으로 추가함(이름이
+// 겹치면 명단 쪽 값이 우선함)
 function orgChartGroups(){
-  const cells = seatChartCellsForRender(sharedSeatChart);
   const groups = {}; // { 팀명: [{name, position}] }
   const order = [];
-  (cells||[]).forEach(c=>{
-    if(c.type!=='seat' || !c.text) return;
-    const team = (c.team||'').trim() || '미지정';
-    if(!groups[team]){ groups[team] = []; order.push(team); }
-    groups[team].push({ name:c.text, position:(c.position||'').trim() });
-  });
-  // "미지정"은 팀을 아직 안 채운 자리들 모음이라 항상 맨 뒤로
+  const seen = new Set();
+  const addPerson = (name, team, position)=>{
+    name = (name||'').trim();
+    if(!name || seen.has(name)) return;
+    seen.add(name);
+    const t = (team||'').trim() || '미지정';
+    if(!groups[t]){ groups[t] = []; order.push(t); }
+    groups[t].push({ name, position:(position||'').trim() });
+  };
+  (sharedOrgChart||[]).forEach(p=> addPerson(p.name, p.team, p.position));
+  const cells = seatChartCellsForRender(sharedSeatChart);
+  (cells||[]).forEach(c=>{ if(c.type==='seat' && c.text) addPerson(c.text, c.team, c.position); });
+  // "미지정"은 팀을 아직 안 채운 사람들 모음이라 항상 맨 뒤로
   order.sort((a,b)=> a==='미지정' ? 1 : b==='미지정' ? -1 : 0);
   return order.map(team=>({ team, members: groups[team] }));
 }
@@ -29175,7 +29383,7 @@ function orgChartCardHtml(group){
 }
 function renderOrgChartHtml(){
   const groups = orgChartGroups();
-  if(!groups.length) return `<div class="empty-state">좌석배치도에 이름을 채우면 여기 조직도에 나와요. 팀·직책은 자리 편집 화면에서 각 자리를 눌러 설정할 수 있어요.</div>`;
+  if(!groups.length) return `<div class="empty-state">설정 > 회사 > 조직도에서 이름·팀·직책을 등록하면 여기 나와요.</div>`;
   return `<div style="display:flex; flex-wrap:wrap; gap:14px; justify-content:center;">${groups.map(orgChartCardHtml).join('')}</div>`;
 }
 function renderOrgChartView(){
@@ -29229,18 +29437,90 @@ document.getElementById('orgChartPrintBtn')?.addEventListener('click', ()=>{
 });
 // "인쇄 아이콘 왼쪽에 설정 아이콘 넣어서 바로 설정으로" 요청 - 사이드바 "설정 > 회사 > 좌석배치도" 항목
 // (data-settings-anchor-goto="company", data-settings-target-id="ssTitle-seatChart")이 이동하는 방식과
-// 완전히 똑같이 이동시킴. 조직도도 좌석배치도 설정 화면을 그대로 재사용함(위 orgChartSettingsBtn 주석 참고)
-function goToSeatChartSettings(){
+// 완전히 똑같이 이동시킴. 조직도는 이제 자기 자신의 설정 화면(ssTitle-orgChart, 명단 등록)이 따로 있어서
+// 좌석배치도 설정과는 다른 곳으로 감(예전엔 조직도 전용 설정이 없어서 좌석배치도 설정을 같이 썼음)
+function goToSettingsSubsection(subsectionId){
   activateTab('settings', true);
   document.querySelector('.settings-cat-btn[data-settings-cat="company"]')?.click();
   requestAnimationFrame(()=>{
     const group = document.querySelector('.settings-group[data-settings-cat="company"]');
-    const btn = group?.querySelector('.settings-subsection-btn[data-subsection-id="ssTitle-seatChart"]');
+    const btn = group?.querySelector(`.settings-subsection-btn[data-subsection-id="${subsectionId}"]`);
     if(btn) btn.click();
   });
 }
+function goToSeatChartSettings(){ goToSettingsSubsection('ssTitle-seatChart'); }
+function goToOrgChartSettings(){ goToSettingsSubsection('ssTitle-orgChart'); }
 document.getElementById('seatChartViewSettingsBtn')?.addEventListener('click', goToSeatChartSettings);
-document.getElementById('orgChartSettingsBtn')?.addEventListener('click', goToSeatChartSettings);
+document.getElementById('orgChartSettingsBtn')?.addEventListener('click', goToOrgChartSettings);
+// 조직도 명단(sharedOrgChart) 관리 - "등록" 버튼 하나로 추가/수정을 겸함(제외일 등록 폼과 같은 방식). 수정
+// 버튼을 누르면 입력칸에 값이 채워지고 버튼이 "수정 완료"로 바뀌며, 이때만 "취소" 버튼이 나타남
+let editingOrgChartId = null;
+function orgChartAdminResetForm(){
+  editingOrgChartId = null;
+  document.getElementById('orgChartAddName').value = '';
+  document.getElementById('orgChartAddTeam').value = '';
+  document.getElementById('orgChartAddPosition').value = '';
+  document.getElementById('orgChartAddBtnLabel').textContent = '등록';
+  document.getElementById('orgChartCancelEditBtn').style.display = 'none';
+}
+function renderOrgChartAdminList(){
+  const wrap = document.getElementById('orgChartAdminListWrap');
+  if(!wrap) return;
+  const list = sharedOrgChart || [];
+  if(!list.length){
+    wrap.innerHTML = `<div class="empty-state" style="padding:14px;">등록된 사람이 없습니다.</div>`;
+    return;
+  }
+  const rows = list.map(p=> `<tr>
+    <td style="text-align:center; font-weight:700;">${escHtml(p.name)}</td>
+    <td style="text-align:center;">${escHtml(p.team||'')}</td>
+    <td style="text-align:center;">${escHtml(p.position||'')}</td>
+    <td style="white-space:nowrap; text-align:center;"><button type="button" class="del-btn orgchart-edit-btn" data-id="${p.id}" style="margin-right:6px;">수정</button><button type="button" class="del-btn orgchart-del-btn" data-id="${p.id}">삭제</button></td>
+  </tr>`);
+  renderPaginatedRows(wrap, '<tr><th style="text-align:center;">이름</th><th style="text-align:center;">팀</th><th style="text-align:center;">직책</th><th style="text-align:center;">관리</th></tr>', rows, 10);
+  wrap.querySelectorAll('.orgchart-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const p = sharedOrgChart.find(x=>x.id===btn.dataset.id);
+      if(!p) return;
+      editingOrgChartId = p.id;
+      document.getElementById('orgChartAddName').value = p.name || '';
+      document.getElementById('orgChartAddTeam').value = p.team || '';
+      document.getElementById('orgChartAddPosition').value = p.position || '';
+      document.getElementById('orgChartAddBtnLabel').textContent = '수정 완료';
+      document.getElementById('orgChartCancelEditBtn').style.display = 'inline-block';
+      document.getElementById('orgChartAddName').scrollIntoView({behavior:'smooth', block:'center'});
+    });
+  });
+  wrap.querySelectorAll('.orgchart-del-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      sharedOrgChart = sharedOrgChart.filter(x=>x.id!==btn.dataset.id);
+      await saveSharedOrgChart();
+      if(editingOrgChartId === btn.dataset.id) orgChartAdminResetForm();
+      renderOrgChartAdminList();
+      if(typeof renderOrgChartView === 'function') renderOrgChartView();
+    });
+  });
+}
+document.getElementById('orgChartAddBtn')?.addEventListener('click', async ()=>{
+  const nameInput = document.getElementById('orgChartAddName');
+  const teamInput = document.getElementById('orgChartAddTeam');
+  const positionInput = document.getElementById('orgChartAddPosition');
+  const name = (nameInput.value||'').trim();
+  if(!name){ nameInput.focus(); return; }
+  const team = (teamInput.value||'').trim();
+  const position = (positionInput.value||'').trim();
+  if(editingOrgChartId){
+    const p = sharedOrgChart.find(x=>x.id===editingOrgChartId);
+    if(p){ p.name = name; p.team = team; p.position = position; }
+  } else {
+    sharedOrgChart.push({ id: genId(), name, team, position });
+  }
+  await saveSharedOrgChart();
+  orgChartAdminResetForm();
+  renderOrgChartAdminList();
+  if(typeof renderOrgChartView === 'function') renderOrgChartView();
+});
+document.getElementById('orgChartCancelEditBtn')?.addEventListener('click', orgChartAdminResetForm);
 document.getElementById('seatChartSaveBtn')?.addEventListener('click', async ()=>{
   if(!seatChartDraft) return;
   const newCells = seatChartDraft.cells;
