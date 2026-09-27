@@ -2145,9 +2145,12 @@
      (모바일처럼 호버가 없는 기기에서도 탭해서 선택만 하면 보이게) 오른쪽 위에 작은 × 버튼이 나타나고,
      그걸 누르면 바로 그 칸을 지움(아래 편집 패널까지 내려가서 "이 칸 삭제"를 또 안 눌러도 됨). 평소엔
      완전히 숨겨둬서 화면이 지저분해지지 않게 함 */
+  /* "수정·닫기 아이콘이 너무 작아서 누르려면 이동용 손바닥 커서가 먼저 떠버린다"는 지적으로 15px→19px로
+     키움(칸 자체도 108×54로 같이 키워서 여유가 생김) - 버튼이 커진 만큼 실제로 누를 수 있는 영역도
+     넓어져서, 칸을 끌려고 한(이동용 cursor:grab이 뜨는) 게 아니라 이 버튼을 누른 게 더 잘 인식됨 */
   .seat-edit-cell-delete, .seat-chart-tray-chip-delete{
-    position:absolute; top:1px; right:1px; width:15px; height:15px; border-radius:50%; border:none;
-    background:#DC2626; color:#fff; font-size:9px; font-weight:800; line-height:1; padding:0; z-index:3;
+    position:absolute; top:1px; right:1px; width:19px; height:19px; border-radius:50%; border:none;
+    background:#DC2626; color:#fff; font-size:11px; font-weight:800; line-height:1; padding:0; z-index:3;
     display:flex; align-items:center; justify-content:center; cursor:pointer;
     opacity:0; pointer-events:none; transition:opacity .12s ease;
   }
@@ -2156,7 +2159,7 @@
      수정버튼이 오면 이름(예: cpa)글자가 가려질것 같다"는 우려대로 실제로 겹칠 수 있어서, 바로 아래
      .seat-edit-cell-label/.seat-chart-tray-chip-label 규칙에서 호버·선택 중에만 글자를 살짝 줄여 피함 */
   .seat-edit-cell-edit, .seat-chart-tray-chip-edit{
-    position:absolute; top:1px; left:1px; width:15px; height:15px; border-radius:50%; border:none;
+    position:absolute; top:1px; left:1px; width:19px; height:19px; border-radius:50%; border:none;
     background:var(--indigo); color:#fff; padding:0; z-index:3;
     display:flex; align-items:center; justify-content:center; cursor:pointer;
     opacity:0; pointer-events:none; transition:opacity .12s ease;
@@ -2167,7 +2170,12 @@
   .seat-chart-tray-chip:hover .seat-chart-tray-chip-edit, .seat-chart-tray-chip.is-selected .seat-chart-tray-chip-edit{
     opacity:1; pointer-events:auto;
   }
-  .seat-edit-cell:hover .seat-edit-cell-label, .seat-edit-cell.is-selected .seat-edit-cell-label,
+  /* 회전된 자리(seat-edit-cell-label-narrow - 세로쓰기로 글자 수에 맞춰 이미 자체적으로 줄여둔 글씨,
+     seatNarrowPortraitFontSize 참고)는 이 호버·선택 시 축소 규칙에서 빼야 함 - 안 그러면 "회전하면
+     글씨가 다 표기가 안 된다"처럼, 선택 중일 땐 이 규칙(9.5px)이 더 우선 적용돼 세로로 좁은 칸 높이에
+     맞춰 계산해둔 원래(더 작을 수도 있는) 글씨 크기를 도로 9.5px로 키워버려 칸 밖으로 넘치게 됐음 */
+  .seat-edit-cell:hover .seat-edit-cell-label:not(.seat-edit-cell-label-narrow),
+  .seat-edit-cell.is-selected .seat-edit-cell-label:not(.seat-edit-cell-label-narrow),
   .seat-chart-tray-chip:hover .seat-chart-tray-chip-label, .seat-chart-tray-chip.is-selected .seat-chart-tray-chip-label{
     font-size:9.5px;
   }
@@ -5353,9 +5361,11 @@
       <p class="hint" style="text-align:center;">여기서 등록한 이름·팀·직책이 조직도 화면에 나와요. 아직 좌석배치도에 자리가 없는 사람은 아래 좌석배치도 편집 화면의 "배치예정"에 자동으로 나타나서 바로 끌어다 자리에 배치할 수 있어요.</p>
       <div class="flat-panel" style="max-width:640px;">
         <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:12px;">
-          <input type="text" id="orgChartAddName" placeholder="이름" class="flat-input" style="width:110px; text-align:center;">
-          <input type="text" id="orgChartAddTeam" placeholder="팀 (예: 세무1팀)" class="flat-input" style="width:130px; text-align:center;">
-          <input type="text" id="orgChartAddPosition" placeholder="직책 (예: 팀장)" class="flat-input" style="width:110px; text-align:center;">
+          <!-- 좌석배치도 이름칸과 같은 이유(id 하나를 계속 재사용)로 브라우저 자동완성 풍선이 뜰 수 있어서
+               세 칸 다 autocomplete="off"로 꺼둠 -->
+          <input type="text" id="orgChartAddName" placeholder="이름" class="flat-input" autocomplete="off" style="width:110px; text-align:center;">
+          <input type="text" id="orgChartAddTeam" placeholder="팀 (예: 세무1팀)" class="flat-input" autocomplete="off" style="width:130px; text-align:center;">
+          <input type="text" id="orgChartAddPosition" placeholder="직책 (예: 팀장)" class="flat-input" autocomplete="off" style="width:110px; text-align:center;">
           <button type="button" class="del-btn" id="orgChartAddBtn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> <span id="orgChartAddBtnLabel">등록</span></button>
           <button type="button" class="del-btn" id="orgChartCancelEditBtn" style="display:none;">취소</button>
         </div>
@@ -5761,20 +5771,21 @@
            하지만, "여기저기 안 가고 한 군데서 전체적으로 설정하고 싶다"는 요청으로 새로 추가함. 내 계정
            기준으로만 켜고 끌 수 있어서(다른 직원 알림 설정은 안 건드림), 로그인한 이메일(currentUserEmail)
            기준으로 sharedNotificationPrefs[내 이메일]을 읽고 씀 -->
+      <!-- "알림메뉴 너무 복잡스러운데 정리해서 단순하게 해달라"는 요청으로 화면을 다시 짬 - 예전엔 카드가
+           4개(기기등록 카드/종류별 스위치 카드/출근퇴근알림 카드/기기목록)로 따로 떨어져 있고 카드마다 긴
+           설명 문단이 딸려있어서 한눈에 안 들어왔음. ① 기기등록 카드는 긴 설명 문단 없이 상태 문구+버튼
+           한 줄로 줄임(상태 문구 자체가 지금 어떤 상태인지 말해주므로 별도 설명이 필요없음) ② "종류별
+           스위치"와 "출근퇴근 알림"을 한 스위치 목록에 합침 - 출근퇴근 알림도 버튼 대신 다른 항목들과
+           똑같은 ios-toggle 스위치로 바꿔서 모양을 통일함 ③ 문제 생겼을 때만 볼 일 있는 "등록된 기기
+           목록"은 <details>로 접어서 기본은 숨겨두고, 펼쳐야만 보이게 함 -->
       <div class="settings-sub-title" id="ssTitle-notifications" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> 알림 <span class="badge">내 계정 기준 · 이 기기뿐 아니라 등록된 모든 기기에 적용</span></div>
-      <p class="hint">
-        이 기기에서 알림을 받으려면 먼저 아래 버튼으로 한 번 켜야 해요. 휴대폰·PC 등 기기마다 각각 한 번씩 따로 켜야 하고, 아직 안 켠 기기에서는 아래 종류별 스위치를 켜도 알림이 오지 않아요.
-      </p>
       <div class="flat-panel flat-panel-narrow" style="margin-bottom:10px;">
-        <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; padding:16px 14px;">
-          <div>
-            <div style="font-weight:800; font-size:14px; color:var(--ink);">이 기기(지금 보고 있는 이 브라우저)의 알림</div>
-            <div class="hint" style="margin:4px 0 0;" id="settingsPushRegisterStatus">확인 중...</div>
-          </div>
-          <button type="button" id="settingsPushRegisterBtn" class="del-btn" style="background:var(--indigo); color:#fff; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:10px 22px; white-space:nowrap;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> 이 기기에서 알림 켜기</button>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 16px; flex-wrap:wrap;">
+          <div class="hint" style="margin:0; text-align:left; flex:1 1 220px;" id="settingsPushRegisterStatus">확인 중...</div>
+          <button type="button" id="settingsPushRegisterBtn" class="del-btn" style="background:var(--indigo); color:#fff; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:9px 18px; white-space:nowrap; flex:0 0 auto;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> 이 기기에서 알림 켜기</button>
         </div>
       </div>
-      <p class="hint" id="notifCategoryPanelHint" style="display:none;">이 기기에서 알림을 켜야 아래 종류별 설정이 적용돼요.</p>
+      <p class="hint" id="notifCategoryPanelHint" style="display:none;">이 기기에서 알림을 켜야 아래 스위치가 적용돼요. (휴대폰·PC 등 기기마다 각각 한 번씩 따로 켜야 해요)</p>
       <div class="flat-panel flat-panel-narrow" id="notifCategoryPanel">
         <div class="flat-row">
           <div class="flat-row-label" style="flex:1 1 auto;">공지사항 등록</div>
@@ -5800,28 +5811,32 @@
             <label class="ios-toggle"><input type="checkbox" class="notif-pref-toggle" data-category="teamSchedule"><span class="ios-toggle-track"></span></label>
           </div>
         </div>
-      </div>
-      <!-- 출근/퇴근 시간 5분 전 알림 - 위의 종류별 알림(공지·결재·팀캘린더)은 남이 등록한 일이 있어야 오는
-           알림이라 서버(sendPush)가 대신 보내주지만, 이건 "매일 정해진 시각"이 되면 오는 알림이라 그 시각을
-           지켜보고 있을 서버 쪽 장치가 없음 - 그래서 이 기기(브라우저/앱)가 켜져 있는 동안 주기적으로 시계를
-           확인하다가 표준 출근·퇴근 시간(근무시간 설정 기준) 5분 전이 되면, 아직 그날 출근/퇴근을 안 찍었을
-           때만 이 기기에서 바로 알림을 띄움 - 기기가 완전히 꺼져있거나 앱이 종료된 상태에서는 오지 않음.
-           직원별로 이 화면(설정)에서 각자 켜야만 오고, 기본값은 꺼짐(미알림) -->
-      <div class="flat-panel flat-panel-narrow" style="margin-bottom:10px;">
-        <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; padding:16px 14px;">
-          <div>
-            <div style="font-weight:800; font-size:14px; color:var(--ink);">출근·퇴근 5분 전 알림</div>
-            <div class="hint" style="margin:4px 0 0;">표준 출근·퇴근 시간 5분 전, 아직 출근/퇴근을 안 찍었으면 이 기기로 알려드려요. 이 화면에서 직접 켠 사람에게만 오고, 기본은 꺼져있어요. (이 기기가 켜져있을 때만 동작해요)</div>
+        <!-- 출근/퇴근 시간 5분 전 알림 - 위의 종류별 알림(공지·결재·팀캘린더)은 남이 등록한 일이 있어야 오는
+             알림이라 서버(sendPush)가 대신 보내주지만, 이건 "매일 정해진 시각"이 되면 오는 알림이라 그 시각을
+             지켜보고 있을 서버 쪽 장치가 없음 - 그래서 이 기기(브라우저/앱)가 켜져 있는 동안 주기적으로 시계를
+             확인하다가 표준 출근·퇴근 시간(근무시간 설정 기준) 5분 전이 되면, 아직 그날 출근/퇴근을 안 찍었을
+             때만 이 기기에서 바로 알림을 띄움 - 기기가 완전히 꺼져있거나 앱이 종료된 상태에서는 오지 않음.
+             직원별로 이 화면(설정)에서 각자 켜야만 오고, 기본값은 꺼짐(미알림). 원래는 이 항목만 따로
+             카드+버튼으로 떨어져 있었는데, 화면을 단순하게 정리하면서 위 스위치들과 같은 줄 모양(ios-toggle)
+             으로 합침 - class는 notif-pref-toggle을 안 씀(그건 sharedNotificationPrefs 저장용이라 별개 로직) -->
+        <div class="flat-row">
+          <div class="flat-row-label" style="flex:1 1 auto;">출근·퇴근 5분 전 알림</div>
+          <div class="flat-row-control" style="flex:0 0 auto; justify-content:flex-end;">
+            <label class="ios-toggle"><input type="checkbox" id="clockReminderToggle"><span class="ios-toggle-track"></span></label>
           </div>
-          <button type="button" id="clockReminderToggleBtn" class="del-btn" style="display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:10px 22px; white-space:nowrap;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"></circle><polyline points="12 9 12 13 15 15"></polyline><path d="M5 3 2 6"></path><path d="M22 6l-3-3"></path></svg> 알림 받기</button>
         </div>
       </div>
       <!-- 모바일에서 알림이 두세 번씩 온다는 문제 - 브라우저 저장공간 정리·재설치 등으로 같은 휴대폰이
            예전 토큰과 새 토큰을 둘 다 등록해둔 채로 남아있는 경우가 원인일 수 있음(등록 자체는 기기마다
            따로 쌓이게 설계돼 있어서, 정상적으로 여러 기기를 등록한 것과 구분이 잘 안 됨) - 내 이메일로
-           등록된 기기(토큰) 목록을 직접 보고, 더는 안 쓰거나 중복돼 보이는 걸 손으로 지울 수 있게 함 -->
-      <p class="hint" style="margin-top:16px;">아래는 내 계정으로 등록된 기기(알림 토큰) 목록이에요. 실제로는 기기 하나인데 여기 여러 개로 남아있으면(예: 앱을 지웠다 다시 설치한 경우) 그 기기에 알림이 중복으로 뜰 수 있어요 - 오래됐거나 더 안 쓰는 건 지워주세요. 방금 켠 "이 기기"까지 지우면 알림이 다시 꺼지니, 그건 남겨두세요.</p>
-      <div id="myPushDeviceListWrap"></div>
+           등록된 기기(토큰) 목록을 직접 보고, 더는 안 쓰거나 중복돼 보이는 걸 손으로 지울 수 있게 함.
+           평소엔 볼 일이 없는 문제해결용 목록이라, 화면을 단순하게 정리하면서 <details>로 접어 기본은
+           숨겨두고 필요할 때만 펼쳐보게 함 -->
+      <details style="max-width:720px; margin:16px auto 0;">
+        <summary class="hint" style="cursor:pointer; text-align:center;">기기 목록 관리 (알림이 중복으로 오는 등 문제 해결용)</summary>
+        <p class="hint" style="margin-top:8px;">내 계정으로 등록된 기기(알림 토큰) 목록이에요. 실제로는 기기 하나인데 여기 여러 개로 남아있으면(예: 앱을 지웠다 다시 설치한 경우) 그 기기에 알림이 중복으로 뜰 수 있어요 - 오래됐거나 더 안 쓰는 건 지워주세요. 방금 켠 "이 기기"까지 지우면 알림이 다시 꺼지니, 그건 남겨두세요.</p>
+        <div id="myPushDeviceListWrap"></div>
+      </details>
     </div>
 
     <div class="settings-group settings-flat" data-settings-cat="data" style="display:none;">
@@ -6397,6 +6412,7 @@ function renderNotificationPrefsUI(){
     cb.checked = notificationCategoryEnabled(myEmail, cb.dataset.category);
   });
   updateSettingsPushRegisterStatus();
+  if(typeof updateClockReminderBtn === 'function') updateClockReminderBtn(); // 출근퇴근 알림 스위치도 같은 줄에 합쳤으니 같이 최신 상태로 맞춤
 }
 document.querySelectorAll('.notif-pref-toggle').forEach(cb=>{
   cb.addEventListener('change', ()=>{
@@ -6992,12 +7008,13 @@ function markNotificationRead(id){
   if(set.has(id)) return;
   set.add(id);
   sharedNotificationReadState[key] = [...set];
+  recordNotificationRead(id); // 동기화 과정에서 이 읽음 처리가 도로 안읽음으로 되돌아가지 않도록 기록(결재 결정과 같은 원리)
   saveSharedNotificationReadState();
 }
 function markAllNotificationsRead(){
   const key = notificationLogAccountKey();
   const set = getReadNotificationIds();
-  myNotificationLogEntries().forEach(n=>set.add(n.id));
+  myNotificationLogEntries().forEach(n=>{ set.add(n.id); recordNotificationRead(n.id); });
   sharedNotificationReadState[key] = [...set];
   saveSharedNotificationReadState();
 }
@@ -7841,6 +7858,27 @@ function recordApprovalDecision(id, status){
     localStorage.setItem('worklog_recent_approval_decisions', JSON.stringify(list));
   }catch(e){}
 }
+// "알림 읽음 했는데 다시 안읽음으로 뜬다" - 결재 결정/출퇴근 기록과 똑같은 문제. notificationReadState는
+// { 계정키: [읽은id...] } 형태의 객체라, gdriveMergeValue가 두 쪽 다 이 필드를 건드린(진짜 충돌) 상황을
+// 만나면 계정키별로 파고들어 합치지 않고 한쪽 값 전체를 통째로 골라버림 - 그 순간 내가 방금 읽음 처리한
+// 알림이 병합 결과에서 통째로 빠질 수 있음. 그래서 결재 결정과 같은 방식으로 "내가 최근에 읽음 처리한
+// 알림 id"를 따로 기록해두고, 병합이 끝난 뒤 내 계정 키의 읽은 목록에 강제로 다시 포함시켜줌
+function getRecentNotificationReads(){
+  try{
+    const raw = JSON.parse(localStorage.getItem('worklog_recent_notification_reads') || '[]');
+    const now = Date.now();
+    const fresh = raw.filter(e=> e && e.id && (now - e.at) < RECENT_DELETION_TTL_MS);
+    if(fresh.length !== raw.length) localStorage.setItem('worklog_recent_notification_reads', JSON.stringify(fresh));
+    return fresh;
+  }catch(e){ return []; }
+}
+function recordNotificationRead(id){
+  try{
+    const list = getRecentNotificationReads().filter(e=>e.id!==id);
+    list.push({id, at: Date.now()});
+    localStorage.setItem('worklog_recent_notification_reads', JSON.stringify(list));
+  }catch(e){}
+}
 // "출근 찍었는데 몇 분 뒤에 사라진다" - 결재 결정과 똑같은 문제일 가능성이 큼. 출퇴근 기록(clockLog)은
 // id가 그날 날짜라 하루에 한 번만 있는 레코드인데, 방금 출근/재택 토글을 누른 직후(아직 이 기기의
 // push가 Drive에 다 반영되기 전) 같은 프로필의 다른 탭/기기가 그 순간 뭔가 다른 걸 저장하면서 자기가
@@ -8143,34 +8181,36 @@ document.getElementById('noticeNotifyToggleBtn')?.addEventListener('click', togg
 // 기본값은 항상 꺼짐(미알림)이고, 아래 toggleClockReminder()로 직접 켠 직원의 기기에서만 동작함.
 const CLOCK_REMINDER_KEY = 'worklog_clock_reminder_notify';
 function clockReminderEnabled(){ return localStorage.getItem(CLOCK_REMINDER_KEY) === '1'; }
+// "알림메뉴 정리해서 단순하게" 요청으로, 원래 따로 떨어져있던 버튼(눌러서 켜짐/꺼짐 문구가 바뀌던 방식)을
+// 없애고 위 종류별 알림 스위치들과 같은 줄의 ios-toggle 체크박스(#clockReminderToggle)로 합침 - 그래서
+// "버튼 문구를 바꾼다"가 아니라 "체크 상태를 맞춘다"로 역할이 바뀜. renderNotificationPrefsUI()에서도
+// 같이 호출해서, 예전엔 없던(버튼 누르기 전까진 항상 꺼진 모양으로만 보이던) "페이지 열자마자 실제 저장된
+// 상태 그대로 보이기"도 같이 해결됨
 function updateClockReminderBtn(){
-  const btn = document.getElementById('clockReminderToggleBtn');
-  if(!btn) return;
-  const on = clockReminderEnabled() && typeof Notification !== 'undefined' && Notification.permission === 'granted';
-  btn.innerHTML = on
-    ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"></circle><polyline points="12 9 12 13 15 15"></polyline><path d="M5 3 2 6"></path><path d="M22 6l-3-3"></path></svg> 알림 받는 중`
-    : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"></circle><polyline points="12 9 12 13 15 15"></polyline><path d="M5 3 2 6"></path><path d="M22 6l-3-3"></path></svg> 알림 받기`;
-  btn.style.background = on ? 'var(--indigo)' : '';
-  btn.style.color = on ? '#fff' : '';
+  const cb = document.getElementById('clockReminderToggle');
+  if(!cb) return;
+  cb.checked = clockReminderEnabled() && typeof Notification !== 'undefined' && Notification.permission === 'granted';
 }
-async function toggleClockReminder(){
-  if(typeof Notification === 'undefined'){ appAlert('이 브라우저는 알림 기능을 지원하지 않아요.'); return; }
-  if(clockReminderEnabled()){
+// 체크박스라 "누르면 무조건 반대로 뒤집기"가 아니라, 이미 브라우저가 바꿔놓은 checked 값(켜려는 건지
+// 끄려는 건지)을 그대로 따라가면서 권한 확인 등 필요한 절차만 얹음 - 절차 중간에 막히면(권한 거부 등)
+// checked를 도로 되돌려서 실제로 켜지지 않았는데 스위치만 켜진 것처럼 보이지 않게 함
+async function setClockReminderEnabled(cb){
+  if(typeof Notification === 'undefined'){ appAlert('이 브라우저는 알림 기능을 지원하지 않아요.'); cb.checked = false; return; }
+  if(!cb.checked){
     localStorage.setItem(CLOCK_REMINDER_KEY, '0');
-    updateClockReminderBtn();
     return;
   }
   if(Notification.permission === 'denied'){
     appAlert('브라우저 알림 권한이 차단되어 있어요. 주소창 왼쪽 자물쇠(사이트 정보) 아이콘에서 이 사이트의 알림 권한을 허용해주세요.');
+    cb.checked = false;
     return;
   }
   const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
-  if(perm !== 'granted'){ appAlert('알림 권한이 허용되지 않았어요.'); return; }
+  if(perm !== 'granted'){ appAlert('알림 권한이 허용되지 않았어요.'); cb.checked = false; return; }
   localStorage.setItem(CLOCK_REMINDER_KEY, '1');
-  updateClockReminderBtn();
   appAlert('표준 출근·퇴근 시간 5분 전에 알려드려요. 이 기기(브라우저/앱)가 켜져있을 때만 동작해요 - 완전히 꺼져있으면 오지 않아요.');
 }
-document.getElementById('clockReminderToggleBtn')?.addEventListener('click', toggleClockReminder);
+document.getElementById('clockReminderToggle')?.addEventListener('change', (e)=> setClockReminderEnabled(e.target));
 // 오늘 이미 보낸 알림 종류(checkIn/checkOut) 표시 - 날짜가 바뀌면 자연히 새 키를 쓰게 되어 날마다 한 번씩만 옴
 function clockReminderAlreadySent(kind){
   return localStorage.getItem(`worklog_clock_reminder_sent_${todayStr()}_${kind}`) === '1';
@@ -16294,8 +16334,9 @@ function renderDashboardTaxSchedulePreview(){
       const dday = ddayOf(it.date);
       const ddayLabel = dday === 0 ? 'D-DAY' : (dday > 0 ? `D-${dday}` : '');
       const ddayHtml = (dday <= 14 && ddayLabel) ? `<span class="home-dash-tax-chip-dday">${ddayLabel}</span>` : '';
-      const shiftNote = it.shifted ? ' <span style="font-weight:600;">(휴일 순연)</span>' : '';
-      return `<div class="home-dash-tax-chip"><span class="home-dash-tax-chip-date">${md}</span><span class="home-dash-tax-chip-title">${escHtml(it.title)}${shiftNote}</span>${ddayHtml}</div>`;
+      // "여기 휴일순연이라는 표기는 안 해줘도 될 것 같다"는 요청으로 홈 대시보드 위젯에서는 이 표시를
+      // 뺌(설정 > 세무일정 관리 화면에는 그대로 남겨둠 - 거긴 왜 날짜가 다른지 확인이 필요한 관리 화면)
+      return `<div class="home-dash-tax-chip"><span class="home-dash-tax-chip-date">${md}</span><span class="home-dash-tax-chip-title">${escHtml(it.title)}</span>${ddayHtml}</div>`;
     }).join('');
     body.innerHTML = `<div class="home-dash-tax-chip-row">${rowsHtml}</div>`;
   }
@@ -28058,6 +28099,17 @@ function gdriveComputeMerged(remote){
       return (decided && a.status !== decided) ? { ...a, status: decided } : a;
     });
   }
+  // 알림 읽음 처리도 같은 이유로 한 번 더 안전장치 - notificationReadState는 계정키별 배열을 담은 객체라
+  // gdriveMergeValue가 충돌로 판단하면 계정키 단위로 파고들지 않고 한쪽 값 전체를 통째로 골라버릴 수 있음.
+  // 방금 내가 읽음 처리한 알림 id가 병합 결과의 내 계정 목록에 없으면 병합 직후 다시 넣어줌
+  const recentNotificationReads = getRecentNotificationReads();
+  if(recentNotificationReads.length && merged.shared){
+    const key = notificationLogAccountKey();
+    if(!merged.shared.notificationReadState) merged.shared.notificationReadState = {};
+    const set = new Set(Array.isArray(merged.shared.notificationReadState[key]) ? merged.shared.notificationReadState[key] : []);
+    recentNotificationReads.forEach(e=>set.add(e.id));
+    merged.shared.notificationReadState[key] = [...set];
+  }
   // 공지사항 삭제도 같은 이유로 한 번 더 안전장치 - 최근에 지운 공지 id는 병합 결과에 남아있어도 확실히 제거
   const deletedNoticeIds = new Set(getRecentlyDeletedNoticeIds().map(e=>e.id));
   if(deletedNoticeIds.size && merged.shared) merged.shared.noticeHistory = (merged.shared.noticeHistory||[]).filter(n=>!deletedNoticeIds.has(n.id));
@@ -28513,10 +28565,14 @@ function seatIsAutoInflatedPortrait(cell){
 }
 // "이것도 칩밖으로 이름이 나가" - 세로쓰기(upright)는 글자를 하나씩 위에서 아래로 쌓기 때문에, "허승용
 // CPA"처럼 글자 수가 많으면 칸 높이(2칸, 약 74px)를 넘어서 카드 테두리 밖으로 글자가 삐져나왔음. 글자
-// 수가 많을수록 글씨를 더 작게 줄여서(최소 7.5px까지) 최대한 칸 안에 다 담기게 함
-function seatNarrowPortraitFontSize(text){
+// 수가 많을수록 글씨를 더 작게 줄여서(최소 7.5px까지) 최대한 칸 안에 다 담기게 함. availableHeight는
+// 실제로 글자가 쌓일 수 있는 세로 2칸의 높이인데, 조회화면(seatCellViewHtml, 격자 한 줄 최소 34px+간격
+// 5px=73px)과 편집화면(seatChartEditCellHtml, SEAT_EDIT_CELL_H 기준)의 칸 높이가 서로 달라서(편집화면은
+// "칸을 키워달라"는 요청으로 이후 여러 번 커짐) 하나의 상수로는 둘 다 못 맞춤 - 기본값 74는 조회화면
+// 기준이고, 편집화면 호출부는 자신의 실제 칸 높이를 직접 계산해서 넘겨줌
+function seatNarrowPortraitFontSize(text, availableHeight){
   const len = (text||'').length || 1;
-  const available = 74; // 세로 2칸(각 36px + 사이 간격 6px) 안에서 실제로 글자가 쌓일 수 있는 높이
+  const available = availableHeight || 74; // 조회화면 기준 - 세로 2칸(각 34px + 사이 간격 5px) 안에서 실제로 글자가 쌓일 수 있는 높이
   return Math.max(7.5, Math.min(10.5, available / len));
 }
 // 위 함수의 반대 방향 - "화면에 보이는(돌아간 뒤) 크기"를 주면, 그 칸의 dir을 그대로 두고 "저장용(0도
@@ -28681,7 +28737,12 @@ function seatChartCloseCellEditor(commit){
   seatChartEditorOpenId = null;
   seatChartEditorBackup = null;
 }
-const SEAT_EDIT_CELL_W = 72, SEAT_EDIT_CELL_H = 36, SEAT_EDIT_GAP = 6;
+// "수정·닫기 아이콘이 여전히 글자랑 겹쳐, 칸을 아예 키우는 건 어때?" 요청으로 72×36에서 88×44로 한 번
+// 키웠는데, "수정·닫기 아이콘이 너무 작아 누르려면 이동용 손바닥 커서가 먼저 뜬다"·"회전하면 글씨가 다
+// 표기가 안 된다"는 후속 지적으로 88×44에서 108×54로 한 번 더 키움(가로세로 비율 2:1은 계속 유지) -
+// 아이콘을 더 크게 키울 여유(아래 .seat-edit-cell-edit/-delete 15px→19px)와 회전된 자리(세로 2칸으로
+// 늘어나는 자리, seatIsAutoInflatedPortrait)의 글자가 들어갈 세로 공간을 함께 넉넉하게 늘리기 위함
+const SEAT_EDIT_CELL_W = 108, SEAT_EDIT_CELL_H = 54, SEAT_EDIT_GAP = 6;
 function seatChartCloneCells(cells){ return (cells||[]).map(c=>({ ...c })); }
 function seatChartInitDraft(){
   seatChartDraft = {
@@ -28763,21 +28824,29 @@ function seatChartEditCellHtml(cell){
   // "이것도 칩밖으로 이름이 나가" - 세로쓰기는 글자 수만큼 칸 높이를 그대로 잡아먹어서, 이름+직함이 길면
   // 칸을 넘어 카드 밖으로 삐져나왔음. 글자 수에 맞춰 미리 글씨를 줄여서(최소 7.5px) 최대한 칸 안에 담기게
   // 함(overflow:hidden은 안 씀 - 이 칸엔 반쯤 밖으로 걸쳐 그려지는 의자/모니터 표시가 같이 들어있어서,
-  // 여기다 자르는 걸 걸어두면 그 표시까지 같이 잘려버림)
-  const narrowTextStyle = isNarrowPortrait ? `font-size:${seatNarrowPortraitFontSize(cell.text)}px;` : '';
+  // 여기다 자르는 걸 걸어두면 그 표시까지 같이 잘려버림). 편집화면 칸 높이(SEAT_EDIT_CELL_H) 기준으로
+  // 실제 2칸 높이를 계산해서 넘겨줌(조회화면과 칸 높이가 달라서 seatNarrowPortraitFontSize 기본값을
+  // 그대로 쓰면 안 맞음)
+  const narrowFontSize = isNarrowPortrait ? seatNarrowPortraitFontSize(cell.text, 2*SEAT_EDIT_CELL_H + SEAT_EDIT_GAP) : null;
   // "세로형일때 글자가 겹치네" 다음엔 "작은책상은 회전하면 이름이 줄바꿈이 되고, 자연스럽게 어떤게
   // 좋을까" 요청 - 옆으로 눌러 줄바꿈시키는 대신, 책상처럼 이름도 세로쓰기(writing-mode:vertical-rl)로
   // 같이 돌려서 좁은 칸에서도 줄바꿈 없이 한 줄로 읽히게 함. text-orientation:mixed로 처음 했더니 "CPA"같은
   // 영문이 통째로 90도 눕혀져서(고개를 기울여야 읽힘) "이게 방향이 맞아?"라는 지적을 받아 upright로 바꿈 -
-  // 한글이든 영문이든 글자 하나하나를 눕히지 않고 그대로 세운 채 위에서 아래로 쌓음.
-  // .seat-edit-cell-label 자체에 스타일을 줘서, 이름을 고칠 때(.textContent만 바꾸는 기존 로직) 세로쓰기
-  // 스타일이 그대로 유지됨. 글줄 폭이 글자 하나 정도로 좁아져 의자/모니터 표시가 파고드는 구간도 자연히
-  // 피해가 겹칠 일이 없어짐
-  const seatLabelStyle = (cell.type==='seat' && isNarrowPortrait) ? ' style="writing-mode:vertical-rl; text-orientation:upright; white-space:nowrap;"' : '';
+  // 한글이든 영문이든 글자 하나하나를 눕히지 않고 그대로 세운 채 위에서 아래로 쌓음. font-size는 원래
+  // 부모 칸(div) 쪽에 줘서 상속에 기대고 있었는데, "회전하면 글씨가 다 표기가 안 된다"는 지적의 원인이
+  // 바로 이 방식이었음 - 호버·선택 시 이름 글자를 9.5px로 줄이는 CSS 규칙(.seat-edit-cell-label)이 이
+  // 상속값보다 우선 적용되면서, 세로로 좁은 칸에 맞춰 이미 계산해둔(9.5px보다 작을 수 있는) 크기를 도로
+  // 키워버려 칸 밖으로 넘쳤음 - font-size를 라벨 span 자신에게 직접 주고 seat-edit-cell-label-narrow
+  // 클래스를 같이 붙여서, 그 CSS 규칙이 이 라벨만은 건드리지 않도록 뺌(위 :not() 선택자 참고)
+  const seatLabelStyle = (cell.type==='seat' && isNarrowPortrait)
+    ? ` style="writing-mode:vertical-rl; text-orientation:upright; white-space:nowrap; font-size:${narrowFontSize}px;"`
+    : '';
+  const seatLabelClass = (cell.type==='seat' && isNarrowPortrait) ? ' seat-edit-cell-label-narrow' : '';
   // 삭제 × 버튼(오른쪽 위)과 수정 연필 버튼(왼쪽 위)은 항상 마크업엔 넣어두고(호버/선택 시에만 CSS로
   // 보이게), 크기조절 손잡이는 선택됐을 때만 넣음. 수정 버튼을 눌러야만 아래 수정 패널이 열림(칸을 그냥
-  // 누르거나 끌어 옮기는 것만으로는 안 열림 - seatChartEditorOpenId 선언부 주석 참고)
-  const editBtn = `<button type="button" class="seat-edit-cell-edit" data-id="${cell.id}" title="${escHtml(seatCellTypeLabel(cell))} 수정" aria-label="수정"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>`;
+  // 누르거나 끌어 옮기는 것만으로는 안 열림 - seatChartEditorOpenId 선언부 주석 참고). "너무 작아서 누르려면
+  // 이동용 손바닥 커서가 먼저 뜬다"는 지적으로 버튼(15→19px)과 같이 아이콘도 9→11px로 키움
+  const editBtn = `<button type="button" class="seat-edit-cell-edit" data-id="${cell.id}" title="${escHtml(seatCellTypeLabel(cell))} 수정" aria-label="수정"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>`;
   const deleteBtn = `<button type="button" class="seat-edit-cell-delete" data-id="${cell.id}" title="${escHtml(seatCellTypeLabel(cell))} 삭제" aria-label="삭제">✕</button>`;
   const resizeHandle = isSel ? `<div class="seat-resize-handle" data-id="${cell.id}" title="끌어서 크기 바꾸기"></div>` : '';
   // "이름없음 이런것도 왜 나오는지 모르겠고" - 구분선은 이름이 꼭 필요한 칸이 아니라서(테두리/선 자체가
@@ -28786,8 +28855,8 @@ function seatChartEditCellHtml(cell){
     ? seatCellIconBodyHtml(cell, escHtml(cell.text||'(이름없음)'), 'seat-edit-cell-label')
     : cell.type==='divider'
       ? `<span class="seat-edit-cell-label">${escHtml(cell.text||'')}</span>`
-      : `<span class="seat-edit-cell-label"${seatLabelStyle}>${escHtml(empty ? '미점유' : (cell.text||'(이름없음)'))}</span>`;
-  return `<div class="seat-edit-cell${isSel ? ' is-selected' : ''}" data-id="${cell.id}" style="position:absolute; left:${visualLeft}px; top:${top}px; width:${w}px; height:${h}px; ${bg}${sel} border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11.5px; text-align:center; padding:2px; cursor:grab; touch-action:none; user-select:none; box-sizing:border-box; line-height:1.2; ${narrowTextStyle}">${dividerBar}${dirArrow}${labelHtml}${editBtn}${deleteBtn}${resizeHandle}</div>`;
+      : `<span class="seat-edit-cell-label${seatLabelClass}"${seatLabelStyle}>${escHtml(empty ? '미점유' : (cell.text||'(이름없음)'))}</span>`;
+  return `<div class="seat-edit-cell${isSel ? ' is-selected' : ''}" data-id="${cell.id}" style="position:absolute; left:${visualLeft}px; top:${top}px; width:${w}px; height:${h}px; ${bg}${sel} border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11.5px; text-align:center; padding:2px; cursor:grab; touch-action:none; user-select:none; box-sizing:border-box; line-height:1.2;">${dividerBar}${dirArrow}${labelHtml}${editBtn}${deleteBtn}${resizeHandle}</div>`;
 }
 function renderSeatChartEditPreview(){
   const wrap = document.getElementById('seatChartPreviewWrap');
@@ -29080,8 +29149,13 @@ function renderSeatChartCellEditor(){
         <option value="divider" ${cell.type==='divider'?'selected':''}>구분선</option>
       </select>
     </div></div>
+    <!-- "김진현 CPA라고 쓴 풍선이 화면에 둥둥 떠다닌다"는 제보 - 이 입력칸이 id="seatEditText"로 고정된 채
+         칸을 바꿔가며 계속 재사용되는데(다른 이름의 칸을 열 때마다 이 id의 입력칸이 새 값으로 다시
+         그려짐), autocomplete를 꺼두지 않으면 브라우저가 예전에 이 id에 쳤던 값(예: "김진현 CPA")을
+         자동완성 후보로 기억해뒀다가 전혀 다른 칸(예: "예정")을 열었을 때 그 옆에 풍선처럼 띄워버림 -
+         이름·팀·직책 입력칸(과 조직도 명단 등록칸) 전부 autocomplete="off"로 꺼서 막음 -->
     <div class="flat-row"><div class="flat-row-label">이름</div><div class="flat-row-control">
-      <input type="text" id="seatEditText" class="flat-input" placeholder="이름 또는 구역명" value="${escHtml(cell.text||'')}">
+      <input type="text" id="seatEditText" class="flat-input" placeholder="이름 또는 구역명" autocomplete="off" value="${escHtml(cell.text||'')}">
     </div></div>
     ${(cell.type==='label' || cell.type==='item') ? `
     <!-- "화장실·회의실·탕비실은 아이콘으로 보여줄 수 있으면" 요청 - 구역표시/소품에서만 아이콘을 고를 수
@@ -29150,10 +29224,10 @@ function renderSeatChartCellEditor(){
     <!-- "이걸 바탕으로 조직도도, 팀명과 직책도 설정할 수 있으면" 요청으로 자리(seat)에만 team/position을
          추가로 둠 - 구역표시(label)는 사람이 아니라 화장실·계단실 같은 칸이라 해당 없음 -->
     <div class="flat-row"><div class="flat-row-label">팀</div><div class="flat-row-control">
-      <input type="text" id="seatEditTeam" class="flat-input" placeholder="예: 세무1팀 (선택, 조직도에 씀)" value="${escHtml(cell.team||'')}">
+      <input type="text" id="seatEditTeam" class="flat-input" placeholder="예: 세무1팀 (선택, 조직도에 씀)" autocomplete="off" value="${escHtml(cell.team||'')}">
     </div></div>
     <div class="flat-row"><div class="flat-row-label">직책</div><div class="flat-row-control">
-      <input type="text" id="seatEditPosition" class="flat-input" placeholder="예: 팀장 (선택, 조직도에 씀)" value="${escHtml(cell.position||'')}">
+      <input type="text" id="seatEditPosition" class="flat-input" placeholder="예: 팀장 (선택, 조직도에 씀)" autocomplete="off" value="${escHtml(cell.position||'')}">
     </div></div>` : ''}
     <div class="flat-row"><div class="flat-row-label">크기</div><div class="flat-row-control" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
       <span style="font-size:11px; color:var(--ink-soft);">세로</span>
@@ -29440,6 +29514,15 @@ document.getElementById('orgChartPrintBtn')?.addEventListener('click', ()=>{
 // 완전히 똑같이 이동시킴. 조직도는 이제 자기 자신의 설정 화면(ssTitle-orgChart, 명단 등록)이 따로 있어서
 // 좌석배치도 설정과는 다른 곳으로 감(예전엔 조직도 전용 설정이 없어서 좌석배치도 설정을 같이 썼음)
 function goToSettingsSubsection(subsectionId){
+  // "회사 메뉴의 좌석배치도 화면에서 설정 아이콘을 눌러 들어오면, 진짜 설정 화면에서 좌석배치도를 눌러
+  // 들어왔을 때와 달리 왼쪽 레일의 하위메뉴 펼침 패널(#railExpandPanel)이 뜨지 않는다"는 지적 - 그 패널은
+  // 레일 아이콘 줄의 라벨(.home-section-label)을 실제로 클릭해야만 열리는데(openPopoverFor, 넓은 화면
+  // 전용 레일모드 IIFE 안), 여기서는 activateTab/버튼 클릭만 직접 흉내내다보니 그 라벨을 누른 적이 없어서
+  // 패널이 계속 닫힌 채로 남아있었음. 새로 만들지 않고, 이 subsectionId를 담고 있는 사이드바 그룹의 라벨을
+  // 그대로 한 번 눌러서 이미 붙어있는 그 클릭 이벤트를 재사용함 - 레일모드가 아니면(모바일 등) 그 리스너
+  // 안에서 스스로 아무 것도 안 하므로 여기서 따로 분기할 필요 없음
+  document.querySelector(`.home-submenu-item[data-settings-target-id="${subsectionId}"]`)
+    ?.closest('.home-section-row')?.querySelector('.home-section-label')?.click();
   activateTab('settings', true);
   document.querySelector('.settings-cat-btn[data-settings-cat="company"]')?.click();
   requestAnimationFrame(()=>{
