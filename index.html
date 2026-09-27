@@ -13278,13 +13278,20 @@ document.querySelectorAll('.ci-cat-btn').forEach(btn=>{
 // 관리 버튼(수정/이력/삭제) - 사내정보 3종(법인/팀/개인) 목록에서 공통으로 씀
 // showControls=false면(=조회 전용 화면) admin이어도 버튼을 아예 렌더링하지 않음 - 등록/수정/삭제는
 // 이제 설정 > 회사 > 회사정보/팀정보에서만 하고, 사내정보 탭은 순수 조회 화면으로만 씀
+// "관리 칸이 글자 버튼 세 개(수정/이력/삭제)라 줄마다 너무 넓어 보인다"는 요청으로, 다른 화면들(신고제출
+// 저장 버튼 등)과 같은 방향으로 아이콘 버튼 세 개로 바꿈 - title 툴팁으로 각각 무슨 기능인지 알려줌
 function ciRowButtons(admin, category, id, person, hasHistory, showControls){
   if(!admin || showControls===false) return '';
   const personAttr = person ? ` data-person="${escHtml(person)}"` : '';
+  const histColor = hasHistory ? 'var(--ink-soft)' : 'var(--border)';
+  const histCursor = hasHistory ? 'pointer' : 'not-allowed';
+  const histDisabledAttr = hasHistory ? '' : 'disabled';
   return `<td style="white-space:nowrap;">
-    <button class="del-btn ci-edit-btn" data-cat="${category}" data-id="${id}"${personAttr}>수정</button>
-    <button class="del-btn ci-history-btn" data-cat="${category}" data-id="${id}"${personAttr} ${hasHistory?'':'disabled style="opacity:0.4;"'}>이력</button>
-    <button class="del-btn ci-del-btn" data-cat="${category}" data-id="${id}"${personAttr}>삭제</button>
+    <span style="display:inline-flex; align-items:center; gap:2px;">
+      <button type="button" class="ci-edit-btn" data-cat="${category}" data-id="${id}"${personAttr} title="수정" style="background:none; border:none; cursor:pointer; color:var(--indigo); display:inline-flex; align-items:center; padding:3px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"></path></svg></button>
+      <button type="button" class="ci-history-btn" data-cat="${category}" data-id="${id}"${personAttr} title="이력" ${histDisabledAttr} style="background:none; border:none; color:${histColor}; cursor:${histCursor}; display:inline-flex; align-items:center; padding:3px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></button>
+      <button type="button" class="ci-del-btn" data-cat="${category}" data-id="${id}"${personAttr} title="삭제" style="background:none; border:none; cursor:pointer; color:var(--coral); display:inline-flex; align-items:center; padding:3px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>
+    </span>
   </td>`;
 }
 // 항목별 선택 암호화 - corp/teamGeneral/team 항목은 이제 기본적으로 암호화하지 않고 평문으로 바로 등록/조회되며,
@@ -13378,6 +13385,45 @@ function buildCiAccountTable(list, category, admin, person, titlePrefix, showCon
   // 패턴(거래처 등록폼의 "추가정보"/"개인정보" 등)과 똑같이 위에 점선 구분선을 넣어 위/아래 구간을 나눠줌
   const titleHtml = hideTitle ? '' : `<div style="text-align:center; margin-top:26px; padding-top:20px; border-top:1.5px dashed var(--border); margin-bottom:12px;"><span class="section-subtitle-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg> ${escHtml((titlePrefix||'')+'공용정보')}</span></div>`;
   return `${titleHtml}<div class="table-scroll"><table><thead><tr><th>항목명</th><th>ID</th><th>PW</th><th>메모</th>${withControls?'<th>관리</th>':''}</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+// "팀원 기본정보 화면에 ID/PW 표랑 일반정보 표가 따로 나뉘어 있어서 번거롭다"는 요청으로, 한 사람의 항목
+// 목록을 종류(정보/계정) 구분 없이 표 하나로 합침(팀원별 카드 전용, category='team'). "내용" 칸이 항목
+// 종류에 따라 다르게 채워짐 - 일반 정보(info)는 그 내용 그대로, ID/PW 계정(account)은 "ID: .."/"PW: .."
+// 두 줄로 보여줌(암호화된 항목은 기존처럼 자물쇠 버튼 하나로 ID/PW를 한꺼번에 열어봄). 메모 칸은 그대로
+// 남기되 "메모"라는 칸 제목만 빼서(내용만 봐도 충분하다는 의견) 표를 더 단순해 보이게 함
+function buildCiUnifiedTable(list, category, admin, person, showControls){
+  if(!list.length) return '';
+  const withControls = admin && showControls!==false;
+  const noteCell = (it)=>{
+    const href = it.noteIsLink ? (it.note||it.link||'') : (it.link && !it.note ? it.link : '');
+    if(href) return `<a href="${escHtml(href)}" target="_blank" rel="noopener" style="color:var(--indigo); font-weight:700;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> 열기</a>`;
+    return `<span style="white-space:pre-wrap; font-size:12px; color:var(--ink-soft); max-width:220px; display:inline-block;">${escHtml(it.note||'')}</span>`;
+  };
+  const rows = list.map(it=>{
+    const isAccount = (it.type||'account') === 'account';
+    let contentCell;
+    if(isAccount){
+      if(!it.sensitiveEnc){
+        contentCell = `<span style="display:block;">ID: ${it.idVal?escHtml(it.idVal):'<span style="color:var(--ink-soft);">-</span>'}</span><span style="display:block;">PW: ${it.pwVal?escHtml(it.pwVal):'<span style="color:var(--ink-soft);">-</span>'}</span>`;
+      } else if(ciRevealedValues[it.id]){
+        const rv = ciRevealedValues[it.id];
+        contentCell = `<span style="display:block;">ID: ${rv.idVal?escHtml(rv.idVal):'-'}</span><span style="display:block;">PW: ${rv.pwVal?escHtml(rv.pwVal):'-'}</span>`;
+      } else {
+        contentCell = ciRevealBtnHtml(it.id);
+      }
+    } else {
+      if(!it.sensitiveEnc) contentCell = escHtml(it.content||'-');
+      else if(ciRevealedValues[it.id]) contentCell = escHtml(ciRevealedValues[it.id].content||'-');
+      else contentCell = ciRevealBtnHtml(it.id);
+    }
+    return `<tr>
+      <td style="font-weight:700;">${escHtml(it.label||'')}</td>
+      <td style="white-space:pre-wrap; max-width:260px;">${contentCell}</td>
+      <td>${noteCell(it)}</td>
+      ${ciRowButtons(admin, category, it.id, person, it.history&&it.history.length, showControls)}
+    </tr>`;
+  }).join('');
+  return `<div class="table-scroll"><table><thead><tr><th>항목명</th><th>내용</th><th></th>${withControls?'<th>관리</th>':''}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 // "공용ID/PW"(개인용, 평문 저장) - 사내정보 > 개인 탭 전용
 function buildCiPersonalAccountTable(list){
@@ -13601,12 +13647,9 @@ async function renderCompanyInfoTeam(wrapId, generalWrapId, showControls){
   // 맞지 않는 표현이기도 함)
   wrap.innerHTML = persons.map(p=>{
     const items = p.items||[];
-    const infoList = items.filter(it=>(it.type||'account')==='info');
-    const acctList = items.filter(it=>(it.type||'account')==='account');
-    const infoHtml = buildCiInfoTable(infoList, 'team', admin, p.person, '', showControls);
-    // 표 자체의 제목은 카드 제목(팀원 이름)과 겹쳐서 항상 생략함(hideTitle:true)
-    const acctHtml = buildCiAccountTable(acctList, 'team', admin, p.person, '', showControls, true);
-    const bodyHtml = (infoHtml + acctHtml) || `<div class="empty-state" style="padding:10px;">등록된 항목이 없습니다.</div>`;
+    // "ID/PW 표랑 정보 표가 따로 나뉘어 있어서 번거롭다"는 요청으로, 종류(정보/계정) 구분 없이 표 하나로
+    // 통합함(buildCiUnifiedTable) - 예전엔 buildCiInfoTable/buildCiAccountTable 두 표를 이어붙였음
+    const bodyHtml = buildCiUnifiedTable(items, 'team', admin, p.person, showControls) || `<div class="empty-state" style="padding:10px;">등록된 항목이 없습니다.</div>`;
     const titleLabel = p.title ? `${escHtml(p.person)} <span style="font-weight:600; color:var(--ink-soft); font-size:12px;">(${escHtml(p.title)})</span>` : escHtml(p.person);
     return `
     <div style="background:var(--indigo-bg); border-radius:12px; padding:14px 16px; margin-bottom:14px;">
@@ -21773,30 +21816,63 @@ function itAllTimingBlockHtml(c, period, timingKey){
   </div>`;
 }
 // period 한 칸의 표시 상태를 계산 - 신고대상 미등록/미대상/(대상인데) 미신고/한쪽만신고/신고완료 다섯 단계
-function itAllMonthCellState(clientId, period){
+// timingKeyOverride를 넘기면("당월지급/익월지급을 줄로 나눠서 보여달라"는 요청으로 생긴 것) 그 지급시기
+// 하나만 놓고 판단함 - 그 달에 그 지급시기가 아예 등록 안 돼 있으면(예: 당월 줄인데 그 달은 익월만 등록된
+// 경우) 그 칸만 미대상으로 봄. 안 넘기면(지급시기를 하나만 등록해서 줄을 안 나눈 거래처) 예전처럼 등록된
+// 지급시기를 그대로 씀
+function itAllMonthCellState(clientId, period, timingKeyOverride){
   if(!filingApplicableAt(clientId, period)) return { state:'locked' };
   const target = filingTargetEntry(clientId, period);
   if(!target.marked) return { state:'unset' };
   if(!target.applicable) return { state:'notarget' };
-  const timings = [];
-  if(target.sameMonthPay) timings.push(['sameMonth', incomeTaxFilingEntry(period, clientId).sameMonth]);
-  if(target.nextMonthPay) timings.push(['nextMonth', incomeTaxFilingEntry(period, clientId).nextMonth]);
+  let timings;
+  if(timingKeyOverride){
+    const marked = timingKeyOverride === 'sameMonth' ? target.sameMonthPay : target.nextMonthPay;
+    if(!marked) return { state:'notarget' };
+    timings = [[timingKeyOverride, incomeTaxFilingEntry(period, clientId)[timingKeyOverride]]];
+  } else {
+    timings = [];
+    if(target.sameMonthPay) timings.push(['sameMonth', incomeTaxFilingEntry(period, clientId).sameMonth]);
+    if(target.nextMonthPay) timings.push(['nextMonth', incomeTaxFilingEntry(period, clientId).nextMonth]);
+  }
   if(!timings.length) return { state:'target', target };
   const allDone = timings.every(([,t])=> t.national && t.local);
   const noneDone = timings.every(([,t])=> !t.national && !t.local);
   const tip = timings.map(([k,t])=> `${k==='sameMonth'?'당월지급':'익월지급'} 원천세:${t.national||'-'} 지방세:${t.local||'-'}`).join('\n');
-  // 완료된 칸의 표시 글자 - "미신고" 배지 대신 실제 신고일자를 짧게(M/D) 보여줌. 지급시기가 둘이거나
-  // 원천세·지방세 날짜가 서로 다르면 그중 가장 늦은(마지막에 신고 마무리된) 날짜를 대표로 보여주고,
-  // 세부 내역은 그대로 title 툴팁(위 tip)으로 남겨서 마우스를 올리면 전체가 보임
-  let doneDateLabel = '';
-  if(allDone){
-    const dates = [];
-    timings.forEach(([,t])=>{ if(t.national) dates.push(t.national); if(t.local) dates.push(t.local); });
-    dates.sort();
-    const latest = dates[dates.length-1];
-    if(latest){ const [,mm,dd] = latest.split('-'); doneDateLabel = `${Number(mm)}/${Number(dd)}`; }
+  // "국세·지방세가 칸 하나에 한 줄로 뭉쳐 있어서 뭐가 신고됐고 뭐가 안 됐는지 헷갈린다"는 요청으로, 이제
+  // 국세(원천세)/지방세를 각각 완전히 독립된 표시로 나눠서 돌려줌(자기 날짜·자기 완료여부만 가짐) - 지급시기가
+  // 둘 다 섞인 경우(timingKeyOverride 없이 당월+익월 둘 다 등록된 거래처)엔 그중 더 늦은 날짜를 대표로 보여줌
+  function pickLatest(field){
+    const vals = timings.map(([,t])=>t[field]).filter(Boolean).sort();
+    return vals.length ? vals[vals.length-1] : null;
   }
-  return { state: allDone ? 'done' : noneDone ? 'target' : 'partial', target, tip, doneDateLabel };
+  const national = { done: timings.every(([,t])=>t.national), date: pickLatest('national') };
+  const local = { done: timings.every(([,t])=>t.local), date: pickLatest('local') };
+  return { state: allDone ? 'done' : noneDone ? 'target' : 'partial', target, tip, national, local };
+}
+// itAllMonthCellState가 돌려준 national/local(각자 {done,date}) 하나를 "국 9/10"/"지 -" 같은 짧은 글자로
+// 그리고, 자기 값에 대한 title 툴팁만 갖게 함(옆 칸과 완전히 독립적으로 마우스를 올려야 그 세목 날짜가 보임)
+function itAllCellSubLabelHtml(kind, info){
+  const shortLabel = kind === 'national' ? '국' : '지';
+  const fullLabel = kind === 'national' ? '원천세' : '지방세';
+  if(info && info.done && info.date){
+    const [,mm,dd] = info.date.split('-');
+    return `<span title="${fullLabel} 신고일: ${info.date}" style="display:block; font-size:9px; font-weight:800; color:var(--mint);">${shortLabel} ${Number(mm)}/${Number(dd)}</span>`;
+  }
+  return `<span title="${fullLabel} 미신고" style="display:block; font-size:9px; font-weight:700; color:var(--ink-soft);">${shortLabel} -</span>`;
+}
+// 이 거래처가 year 안에서 어느 한 달이라도 당월지급·익월지급을 동시에 등록해둔 적이 있는지 - "그렇다면 줄을
+// 나눠서 보여달라"는 요청의 기준. sharedFilingTargets를 직접 읽기만 하고 filingTargetEntry(등록되지 않은
+// 달에 기본값을 만들어 저장해버림)는 쓰지 않음 - 매 렌더링마다 12개월×전체 거래처를 훑는 이 판정 때문에
+// 아직 아무도 안 본 달까지 데이터가 조용히 생겨버리는 걸 막기 위함
+function clientHasDualTiming(clientId, year){
+  const byPeriod = sharedFilingTargets[clientId];
+  if(!byPeriod) return false;
+  for(let m=1;m<=12;m++){
+    const t = byPeriod[`${year}-${String(m).padStart(2,'0')}`];
+    if(t && t.marked && t.applicable && t.sameMonthPay && t.nextMonthPay) return true;
+  }
+  return false;
 }
 function renderIncomeTaxUnified(){
   renderItAllPeriodControls();
@@ -21811,54 +21887,63 @@ function renderIncomeTaxUnified(){
   const monthHeaderCells = Array.from({length:12},(_,i)=>i+1).map(m=>`<th class="cvb" style="width:66px;">${m}월</th>`).join('');
   // "미신고일 때는 아무 표시 없이 비워두고, 신고완료됐을 때는 신고일자를 텍스트로만 보여달라"는 요청 -
   // target(미신고)은 아직 아무 행동도 안 한 상태라 unset과 똑같이 빈 칸(테두리만 있는 클릭 가능한 칸)으로,
-  // done(신고완료)은 칩 배지 대신 테두리·배경 없는 순수 텍스트로 실제 신고일자(위 doneDateLabel)를 보여줌
+  // done(신고완료)/partial(한쪽만)/target(등록됐지만 미신고)은 국세·지방세를 각각 독립된 두 줄(itAllCellSubLabelHtml)로 보여줌
   const CELL_STYLE = {
-    locked:  { label:'-',  color:'var(--border)',    bg:'transparent',              text:'var(--ink-soft)',   disabled:true, plain:false },
-    unset:   { label:'-',  color:'var(--border)',    bg:'transparent',              text:'var(--ink-soft)',   disabled:false, plain:false },
+    locked:  { label:'-',  color:'var(--border)',    bg:'transparent',  disabled:true,  sub:false },
+    unset:   { label:'-',  color:'var(--border)',    bg:'transparent',  disabled:false, sub:false },
     // "미대상은 배경칩 없어도 될듯하다"는 의견으로 배경 채움은 빼고 테두리·글자색만 회색으로 남김
-    notarget:{ label:'미대상', color:'var(--ink-soft)', bg:'transparent',             text:'var(--ink-soft)',   disabled:false, plain:false },
-    target:  { label:'',   color:'var(--border)',    bg:'transparent',              text:'var(--ink-soft)',   disabled:false, plain:false },
-    partial: { label:'한쪽만', color:'var(--coral)',   bg:'var(--coral-bg)',        text:'var(--coral)',      disabled:false, plain:false },
-    done:    { label:'',   color:'transparent',      bg:'transparent',              text:'var(--mint)',       disabled:false, plain:true }
+    notarget:{ label:'미대상', color:'var(--ink-soft)', bg:'transparent', disabled:false, sub:false },
+    target:  { label:'',   color:'var(--border)',    bg:'transparent',  disabled:false, sub:true },
+    partial: { label:'',   color:'var(--coral)',     bg:'var(--coral-bg)', disabled:false, sub:true },
+    done:    { label:'',   color:'transparent',      bg:'transparent',  disabled:false, sub:true }
   };
-  const rows = list.map((c, idx)=>{
+  const rowsHtml = [];
+  let rowNo = 0;
+  list.forEach(c=>{
     const entityColor = c.entityType === '법인' ? '#0B5A78' : c.entityType === '개인' ? '#BE185D' : 'inherit';
     const cycleRecs = filingCycleRecordsOf(c.id);
     const latestCycleRec = cycleRecs.length ? cycleRecs[cycleRecs.length-1] : null;
     const latestApplicable = latestCycleRec ? filingCycleRecApplicable(latestCycleRec) : null;
-    const cycleLabel = !latestCycleRec ? '미등록' : (latestApplicable ? (latestCycleRec.cycle || '매월') : '미대상');
+    const cycleLabelBase = !latestCycleRec ? '미등록' : (latestApplicable ? (latestCycleRec.cycle || '매월') : '미대상');
     // "매월/반기/미대상이 다 비슷한 색이라 구분이 안 된다"는 의견으로 나눴다가, "미대상은 코랄(빨강)보다
     // 회색이 낫겠다"는 의견으로 renderFilingTargetTable과 똑같이 회색 톤으로 바꿈
     const isBiannual = latestApplicable && latestCycleRec && latestCycleRec.cycle === '반기';
     const cycleCellColor = !latestCycleRec ? 'var(--border)' : (!latestApplicable ? 'var(--ink-soft)' : (isBiannual ? 'var(--amber)' : 'var(--indigo)'));
     const cycleCellBg = !latestCycleRec ? 'transparent' : (!latestApplicable ? 'rgba(117,120,154,0.14)' : (isBiannual ? 'var(--amber-bg)' : 'var(--indigo-bg)'));
     const cycleCellText = !latestCycleRec ? 'var(--ink-soft)' : (!latestApplicable ? 'var(--ink-soft)' : (isBiannual ? 'var(--amber)' : 'var(--indigo-deep)'));
-    const cycleCell = `<td class="cvb"><button type="button" class="filing-cycle-chip" data-client-id="${c.id}" style="border:1.5px solid ${cycleCellColor}; border-radius:6px; padding:3px 9px; background:${cycleCellBg}; color:${cycleCellText}; font-size:10.5px; font-weight:700; cursor:pointer;">${escHtml(cycleLabel)}</button></td>`;
-    const monthCells = Array.from({length:12},(_,i)=>i+1).map(m=>{
-      const period = `${year}-${String(m).padStart(2,'0')}`;
-      const cs = itAllMonthCellState(c.id, period);
-      const st = CELL_STYLE[cs.state];
-      const clickAttr = st.disabled ? 'disabled' : `data-client-id="${c.id}" data-period="${period}" data-cellstate="${cs.state}"`;
-      // done(신고완료) 칸은 칩 배지 느낌을 빼고 테두리·배경 없이 신고일자(doneDateLabel)만 텍스트로 보여줌
-      const cellLabel = cs.state === 'done' ? (cs.doneDateLabel || '') : st.label;
-      const cellBorder = st.plain ? 'none' : `1.5px solid ${st.color}`;
-      return `<td class="cvb"><button type="button" class="it-all-month-cell-btn" ${clickAttr} title="${cs.tip ? escHtml(cs.tip) : ''}" style="width:100%; border:${cellBorder}; border-radius:6px; padding:4px 2px; background:${st.bg}; color:${st.text}; font-size:10.5px; font-weight:700; cursor:${st.disabled?'not-allowed':'pointer'}; opacity:${st.disabled?'0.35':'1'};">${escHtml(cellLabel)}</button></td>`;
-    }).join('');
-    // 아이콘만으로는 급여검증/납부세액검증 중 뭔지 구분이 안 된다는 의견 - 아이콘 대신 짧은 글자(급여/세액)를
-    // 그대로 칩 버튼 라벨로 써서 한눈에 알아볼 수 있게 함(색 구분은 기존 인디고/민트 톤 그대로 유지)
-    const verifyCell = `<td class="cvb">
-      <span style="display:inline-flex; align-items:center; gap:5px; vertical-align:middle;">
-        <button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}" data-section="income" title="급여검증 전체화면으로 열기" style="height:22px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; background:var(--indigo-bg); color:var(--indigo-deep); border:1.5px solid var(--indigo-bg); border-radius:6px; font-size:10.5px; font-weight:800;">급여</button>
-        <button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}" data-section="tax" title="납부세액검증 전체화면으로 열기" style="height:22px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; background:var(--mint-bg); color:var(--mint); border:1.5px solid var(--mint-bg); border-radius:6px; font-size:10.5px; font-weight:800;">세액</button>
-      </span>
-    </td>`;
-    return `<tr>
-      <td class="num cvb" style="color:var(--ink-soft);">${idx+1}</td>
-      <td class="cvb" style="color:${entityColor}; font-weight:800; white-space:nowrap;">${escHtml(c.name)}</td>
-      ${cycleCell}${monthCells}${verifyCell}
-    </tr>`;
-  }).join('');
-  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th class="cvb" rowspan="2">순번</th><th class="cvb" rowspan="2">거래처</th><th class="cvb" rowspan="2">신고</th><th class="cvb" colspan="12">귀속월</th><th class="cvb" rowspan="2" style="width:70px;">검증</th></tr><tr>${monthHeaderCells}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    // "당월지급/익월지급을 둘 다 등록해둔 거래처는 줄을 나눠서, 신고구분 칸에 매월/당월·매월/익월처럼
+    // 지급시기를 붙여서 보여달라"는 요청 - 그런 달이 하나도 없으면 예전처럼 거래처당 한 줄 그대로 씀
+    const dual = clientHasDualTiming(c.id, year);
+    const lanes = dual ? [['sameMonth','당월'], ['nextMonth','익월']] : [[null, null]];
+    lanes.forEach(([timingKey, timingSuffix], laneIdx)=>{
+      rowNo++;
+      const cycleLabel = timingSuffix ? `${cycleLabelBase}/${timingSuffix}` : cycleLabelBase;
+      const cycleCell = `<td class="cvb"><button type="button" class="filing-cycle-chip" data-client-id="${c.id}" style="border:1.5px solid ${cycleCellColor}; border-radius:6px; padding:3px 9px; background:${cycleCellBg}; color:${cycleCellText}; font-size:10.5px; font-weight:700; cursor:pointer;">${escHtml(cycleLabel)}</button></td>`;
+      const monthCells = Array.from({length:12},(_,i)=>i+1).map(m=>{
+        const period = `${year}-${String(m).padStart(2,'0')}`;
+        const cs = itAllMonthCellState(c.id, period, timingKey);
+        const st = CELL_STYLE[cs.state];
+        const clickAttr = st.disabled ? 'disabled' : `data-client-id="${c.id}" data-period="${period}" data-cellstate="${cs.state}"`;
+        const innerHtml = st.sub ? (itAllCellSubLabelHtml('national', cs.national) + itAllCellSubLabelHtml('local', cs.local)) : escHtml(st.label);
+        return `<td class="cvb"><button type="button" class="it-all-month-cell-btn" ${clickAttr} style="width:100%; border:1.5px solid ${st.color}; border-radius:6px; padding:${st.sub?'2px 2px':'4px 2px'}; background:${st.bg}; color:var(--ink-soft); font-size:10.5px; font-weight:700; cursor:${st.disabled?'not-allowed':'pointer'}; opacity:${st.disabled?'0.35':'1'};">${innerHtml}</button></td>`;
+      }).join('');
+      // 아이콘만으로는 급여검증/납부세액검증 중 뭔지 구분이 안 된다는 의견 - 아이콘 대신 짧은 글자(급여/세액)를
+      // 그대로 칩 버튼 라벨로 써서 한눈에 알아볼 수 있게 함(색 구분은 기존 인디고/민트 톤 그대로 유지). 줄이
+      // 나뉜 거래처는 첫 줄에만 달아서 같은 버튼이 중복으로 여러 번 보이지 않게 함
+      const verifyCell = laneIdx > 0 ? `<td class="cvb"></td>` : `<td class="cvb">
+        <span style="display:inline-flex; align-items:center; gap:5px; vertical-align:middle;">
+          <button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}" data-section="income" title="급여검증 전체화면으로 열기" style="height:22px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; background:var(--indigo-bg); color:var(--indigo-deep); border:1.5px solid var(--indigo-bg); border-radius:6px; font-size:10.5px; font-weight:800;">급여</button>
+          <button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}" data-section="tax" title="납부세액검증 전체화면으로 열기" style="height:22px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; background:var(--mint-bg); color:var(--mint); border:1.5px solid var(--mint-bg); border-radius:6px; font-size:10.5px; font-weight:800;">세액</button>
+        </span>
+      </td>`;
+      rowsHtml.push(`<tr>
+        <td class="num cvb" style="color:var(--ink-soft);">${rowNo}</td>
+        <td class="cvb" style="color:${entityColor}; font-weight:800; white-space:nowrap;">${escHtml(c.name)}</td>
+        ${cycleCell}${monthCells}${verifyCell}
+      </tr>`);
+    });
+  });
+  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th class="cvb" rowspan="2">순번</th><th class="cvb" rowspan="2">거래처</th><th class="cvb" rowspan="2">신고</th><th class="cvb" colspan="12">귀속월</th><th class="cvb" rowspan="2" style="width:70px;">검증</th></tr><tr>${monthHeaderCells}</tr></thead><tbody>${rowsHtml.join('')}</tbody></table></div>`;
   wrap.querySelectorAll('.review-it-open-btn').forEach(btn=>{
     btn.addEventListener('click', ()=> openReviewItFullscreen(btn.dataset.clientId, btn.dataset.section));
   });
@@ -22158,14 +22243,35 @@ function bindSubmitDateTriggers(wrap){
     btn.addEventListener('mouseenter', ()=>openSubmitDatePicker(input));
     btn.addEventListener('click', ()=>openSubmitDatePicker(input));
     input.addEventListener('input', ()=>{
-      // 날짜가 바뀌면 아이콘 버튼의 title은 물론, 상태 select 쪽 title(마우스를 상태 글자에 바로 올렸을 때
-      // 보이는 툴팁)도 같이 최신 날짜로 맞춰줌
+      // 날짜가 바뀌면 아이콘 버튼의 title(마우스를 올렸을 때 보이는 툴팁)도 같이 최신 날짜로 맞춰줌
+      // (예전엔 옆에 있던 상태 select의 title도 같이 맞췄는데, 그 select 자체가 해당여부 체크박스로
+      // 바뀌면서 이제 이 아이콘 하나에만 날짜를 보여주면 됨)
       const label = input.value ? `제출일: ${input.value}` : '제출일을 입력하세요';
       btn.title = label;
       btn.style.color = input.value ? 'var(--indigo-deep)' : 'var(--ink-soft)';
-      const sel = btn.closest('.submit-status-cell')?.querySelector('.submit-status-subitem-select');
-      if(sel) sel.title = input.value ? `제출일: ${input.value}` : '';
     });
+  });
+}
+// 제출현황이 "신고대상"과 무관하게 전체 기장거래처를 다 보여줘서, 애초에 원천세 신고대상도 아닌 거래처까지
+// 매번 걸러가며 봐야 한다는 의견 - 신고현황(원천세)이 쓰는 기준(그 기간에 신고대상(applicable)이면서
+// 당월지급/익월지급 중 하나라도 등록된 거래처)을 그대로 가져다 씀. 제출현황은 월별/반기/연간 세 가지
+// 단위를 다 지원해서, 신고대상은 늘 월 단위(sharedFilingTargets)인 것과 기간 단위가 다름 - 반기/연간이면
+// 그 기간에 속한 달 중 하나라도 신고대상이면 명단에 포함시킴(그 기간 전체를 놓고 보면 어차피 지급명세서
+// 대상이라는 뜻이라)
+function submitStatusPeriodMonths(){
+  ensureSubmitStateInit();
+  const y = submitState.year;
+  if(submitState.sourceMode === '연간') return Array.from({length:12},(_,i)=>`${y}-${String(i+1).padStart(2,'0')}`);
+  if(submitState.sourceMode === '반기'){
+    const months = submitState.half === 'H1' ? [1,2,3,4,5,6] : [7,8,9,10,11,12];
+    return months.map(m=>`${y}-${String(m).padStart(2,'0')}`);
+  }
+  return [`${y}-${String(submitState.month).padStart(2,'0')}`];
+}
+function isSubmitStatusPayrollTarget(clientId){
+  return submitStatusPeriodMonths().some(period=>{
+    const t = (sharedFilingTargets[clientId]||{})[period];
+    return t && t.applicable && (t.sameMonthPay || t.nextMonthPay);
   });
 }
 function renderSubmitStatusTable(){
@@ -22174,10 +22280,10 @@ function renderSubmitStatusTable(){
   const period = submitPeriodKey();
   const titleEl = document.getElementById('submitStatusTitle');
   if(titleEl) titleEl.textContent = '지급명세서 제출현황';
-  const list = bookkeepingClientList();
+  const list = bookkeepingClientList().filter(c=>isSubmitStatusPayrollTarget(c.id));
   const wrap = document.getElementById('submitStatusTableWrap');
   if(!wrap) return;
-  if(!list.length){ wrap.innerHTML = `<div class="empty-state">해당하는 거래처가 없습니다.</div>`; return; }
+  if(!list.length){ wrap.innerHTML = `<div class="empty-state">이 기간에 원천세 신고대상으로 지정된 거래처가 없어요.<br>먼저 "신고대상" 메뉴에서 대상 거래처를 지정해주세요.</div>`; return; }
   sharedFilingStatus['원천세'] = sharedFilingStatus['원천세'] || {};
   sharedFilingStatus['원천세'][period] = sharedFilingStatus['원천세'][period] || {};
   const periodData = sharedFilingStatus['원천세'][period];
@@ -22188,26 +22294,21 @@ function renderSubmitStatusTable(){
     entry.items = entry.items || {};
     entry.itemDates = entry.itemDates || {};
     const entityColor = c.entityType === '법인' ? '#0B5A78' : c.entityType === '개인' ? '#BE185D' : 'inherit';
-    // 예전엔 "제출완료"를 고르면 체크박스+날짜칸이 항상 상태 아래에 펼쳐져서 칸 모양이 검토중/해당없음일
-    // 때와 완전히 달라 보였음 - 이제 한 줄(가로) 배치로 통일하고, 일괄적용 체크박스는 상태 select 왼쪽에
-    // 두고(다른 세무신고 표들과 같은 위치), 날짜는 평소엔 숨어있다가 마우스를 올리면만 나타나는 작은 달력
-    // 아이콘(submitDateTriggerHtml)으로만 다루게 함. 이미 입력된 날짜는 select 자체의 title(네이티브 툴팁)로
-    // 표시되어 "제출완료" 글자에 바로 마우스를 올려도 날짜가 보임
+    // 예전엔 해당없음/검토중/제출완료 3단계 select였는데, "제출했는지 아닌지, 날짜만 있으면 되는 거 아니냐"는
+    // 요청으로 해당여부 체크박스 하나 + 제출일(비어있으면 아직 미제출) 하나로 단순화함. 날짜는 여전히
+    // submitDateTriggerHtml(평소엔 숨어있다가 마우스를 올리면만 나타나는 작은 달력 아이콘)을 그대로 재사용해서
+    // 표가 들쭉날쭉해지지 않게 하고, 옆에 "오늘" 버튼을 새로 추가해서 한 번에 오늘 날짜를 넣을 수 있게 함
     const subitemCells = subitems.map(it=>{
-      const v = normalizeSubmitItemStatus(entry.items[it.key]);
-      const showDate = v === '제출완료';
+      const applicable = submitItemApplicable(entry.items[it.key]);
       const dateVal = entry.itemDates[it.key] || '';
-      const checkboxHtml = showDate ? `<input type="checkbox" class="submit-date-check" data-target="submit-date-${c.id}-${it.key}" style="width:auto; margin:0; flex:none;" title="일괄적용 대상으로 선택">` : '';
-      const titleAttr = showDate && dateVal ? ` title="제출일: ${dateVal}"` : '';
+      const checkboxHtml = applicable ? `<input type="checkbox" class="submit-date-check" data-target="submit-date-${c.id}-${it.key}" style="width:auto; margin:0; flex:none;" title="일괄적용 대상으로 선택">` : '';
+      const todayBtnHtml = applicable ? `<button type="button" class="del-btn submit-status-today-btn" data-client-id="${c.id}" data-item-key="${it.key}" style="font-size:9.5px; padding:1px 6px; flex-shrink:0;">오늘</button>` : `<span style="font-size:10.5px; color:var(--ink-soft);">해당없음</span>`;
       return `<td class="cvb submit-status-cell" style="white-space:nowrap;">
-        <div style="display:flex; align-items:center; justify-content:center; gap:3px;">
+        <div style="display:flex; align-items:center; justify-content:center; gap:4px;">
+          <input type="checkbox" class="submit-status-applicable-check" data-client-id="${c.id}" data-item-key="${it.key}" ${applicable?'checked':''} title="해당 여부(체크하면 제출 대상)" style="width:auto; margin:0;">
           ${checkboxHtml}
-          <select class="submit-status-subitem-select" data-client-id="${c.id}" data-item-key="${it.key}"${titleAttr} style="font-size:11px; border:1.5px solid var(--border); border-radius:6px; padding:2px 3px;">
-            <option value="해당없음" ${v==='해당없음'?'selected':''}>해당없음</option>
-            <option value="검토중" ${v==='검토중'?'selected':''}>검토중</option>
-            <option value="제출완료" ${v==='제출완료'?'selected':''}>제출완료</option>
-          </select>
-          ${submitDateTriggerHtml(c.id, it.key, dateVal, showDate)}
+          ${submitDateTriggerHtml(c.id, it.key, dateVal, applicable)}
+          ${todayBtnHtml}
         </div>
       </td>`;
     }).join('');
@@ -22228,16 +22329,24 @@ function renderSubmitStatusTable(){
   wrap.innerHTML = bulkDateApplyToolbarHtml('submitDate', '날짜일괄적용', { compact:true, extraHtml: submitSaveBtnHtml }) + `<div class="table-scroll"><table><thead><tr><th class="cvb">#</th><th class="cvb">상호명</th>${subitemHeaderCells}</tr></thead><tbody>${rows}</tbody></table></div>`;
   bindBulkDateApplyToolbar(wrap, 'submitDate', 'submit-date-check');
   bindSubmitStatusSaveBtn(wrap);
-  wrap.querySelectorAll('.submit-status-subitem-select').forEach(sel=>{
-    sel.addEventListener('change', ()=>{
-      const cid = sel.dataset.clientId, key = sel.dataset.itemKey;
+  wrap.querySelectorAll('.submit-status-applicable-check').forEach(cb=>{
+    cb.addEventListener('change', ()=>{
+      const cid = cb.dataset.clientId, key = cb.dataset.itemKey;
       periodData[cid] = periodData[cid] || { memo:'' };
       periodData[cid].items = periodData[cid].items || {};
-      periodData[cid].items[key] = sel.value;
+      periodData[cid].items[key] = cb.checked;
       setSubmitStatusDirty(true);
-      // 체크박스(제출완료일 때만 존재)까지 새로 나타나거나 사라져야 해서, dateWrap만 토글하는 대신
-      // 이 표를 다시 그림(같은 periodData 객체를 그대로 다시 읽으니 방금 바꾼 값은 그대로 유지됨)
+      // 날짜칸·오늘 버튼까지 새로 나타나거나 사라져야 해서, 그 부분만 토글하는 대신 표를 다시 그림
+      // (같은 periodData 객체를 그대로 다시 읽으니 방금 바꾼 값은 그대로 유지됨)
       renderSubmitStatusTable();
+    });
+  });
+  wrap.querySelectorAll('.submit-status-today-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const inp = document.getElementById(`submit-date-${btn.dataset.clientId}-${btn.dataset.itemKey}`);
+      if(!inp) return;
+      inp.value = todayStr();
+      inp.dispatchEvent(new Event('input', { bubbles:true }));
     });
   });
   wrap.querySelectorAll('.submit-date-input').forEach(inp=>{
@@ -22251,13 +22360,12 @@ function renderSubmitStatusTable(){
   });
   bindSubmitDateTriggers(wrap);
 }
-// 예전엔 세부항목 상태가 해당없음/미확인/완료 3단계였는데, "미확인"이라는 말이 검토 중이라는 뜻과 헷갈린다는
-// 의견으로 검토중/제출완료로 이름을 바꿈 - 이미 저장돼 있던 옛 값(미확인/완료)도 그대로 새 이름으로 보여줌
-// (저장된 원본 값은 사용자가 그 칸을 직접 다시 저장하기 전까진 안 건드림)
-function normalizeSubmitItemStatus(v){
-  if(v === '완료') return '제출완료';
-  if(v === '미확인') return '검토중';
-  return v || '해당없음';
+// 예전엔 세부항목이 해당없음/검토중/제출완료 3단계 select였는데("미확인"이라 부르던 시절도 있었음), "제출
+// 여부만 체크하고 날짜만 입력하면 되지 굳이 단계를 나눌 필요가 있나"는 요청으로 해당여부(체크박스)+제출일
+// (날짜, 비어있으면 아직 미제출) 2단계로 단순화함. 예전에 저장돼 있던 문자열 값들은 그대로 두고 읽을 때만
+// "해당됨"으로 변환해줌(저장된 원본은 사용자가 그 항목을 직접 다시 저장하기 전까진 안 건드림)
+function submitItemApplicable(v){
+  return v === true || v === '검토중' || v === '제출완료' || v === '완료';
 }
 function setSubmitStatusDirty(isDirty){
   document.getElementById('submitStatusSaveBtn')?.classList.toggle('is-dirty', !!isDirty);
