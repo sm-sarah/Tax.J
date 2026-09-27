@@ -1780,6 +1780,16 @@
      자체 여백을 줄여서 가깝게 붙임 */
   #ad-leave-target-row input[type="date"], #ad-leave-target-row select{ height:36px; box-sizing:border-box; }
   #ad-leave-target-row input[type="date"]::-webkit-calendar-picker-indicator{ margin-left:4px; padding:2px; }
+  /* 특고신고/학자금상환 등 표 상단의 "날짜일괄적용" 툴바(bulkDateApplyToolbarHtml) - 날짜칸이 브라우저
+     기본 스타일 그대로라 같은 줄의 전체선택 체크박스/일괄적용 버튼, 그리고 표 안 상태 select들과 어울리지
+     않고 확 튀어 보인다는 의견 - 같은 줄 다른 요소들과 폰트/테두리/모서리 둥글기를 맞추고, 달력 아이콘도
+     기본 검정 그대로면 튀어서 옅게 눌러줌 */
+  .bulk-date-apply-input{
+    height:24px; box-sizing:border-box; font-family:'Pretendard',sans-serif;
+    border:1.5px solid var(--border); border-radius:8px; padding:0 8px; font-size:11px; color:var(--ink); background:var(--surface);
+  }
+  .bulk-date-apply-input:focus{ outline:none; border-color:var(--indigo); }
+  .bulk-date-apply-input::-webkit-calendar-picker-indicator{ margin-left:4px; padding:1px; filter:opacity(0.55); cursor:pointer; }
   /* 기안 상세 팝업 모달(openApprovalDetailModal)에서는 "목록"으로 돌아갈 목록 표 자체가 이 모달 밖에 있어서
      버튼이 아무 동작도 안 하므로, 이 모달 안에서만 숨김(목록 표 안에서 펼친 상세카드에서는 그대로 보임) */
   #approvalDetailModalOverlay .approval-back-to-list-btn{ display:none; }
@@ -2770,10 +2780,11 @@
           <input type="checkbox" id="u-advance" style="width:auto;">
           <label for="u-advance" id="advanceFieldLabel" style="margin:0; font-size:11.5px; color:var(--indigo-deep); font-weight:700;">당겨쓰기</label>
         </div>
-        <!-- 휴가·재택근무 등록에서는 메모 입력을 없애달라는 요청 - 다만 기존에 저장된 메모를 불러와 보여주거나
-             수정하는 다른 코드가 여러 군데서 이 input을 그대로 참조하고 있어서(예: 이력에서 수정하러 들어올 때),
-             완전히 DOM에서 지우는 대신 화면에서만 숨김(값은 항상 빈 문자열로 저장됨) -->
-        <div class="field" style="display:none;"><label>메모</label><input type="text" id="u-memo" placeholder="예: 개인 사유"></div>
+        <!-- 휴가·재택근무 "등록"(신규)에서는 메모 입력을 없애달라는 요청으로 숨겼었는데, "수정 누를 때
+             메모 수정하는 곳이 없다"는 지적대로 기존 항목을 고치러 들어온 경우(이미 메모가 저장돼있을 수
+             있음)에는 다시 보여줘야 함 - openCalRegisterModal()이 editingUsageId/editingUsageGroupIds/
+             editingRemoteId 중 하나라도 있으면(=수정 모드) 이 필드를 보이게, 새 등록이면 계속 숨기게 함 -->
+        <div class="field" id="u-memo-field" style="display:none;"><label>메모</label><input type="text" id="u-memo" placeholder="예: 개인 사유"></div>
         <div style="display:flex; justify-content:center; gap:8px;">
           <button type="submit" class="submit-btn" style="width:auto; padding:9px 20px; margin:0;">등록</button>
           <button type="button" id="usage-cancel" class="del-btn" style="display:none;">취소</button>
@@ -3831,6 +3842,10 @@
 
   <!-- 근태관리 -->
   <section id="tab-attendance" class="tab-panel">
+    <!-- "개인 메뉴의 하위메뉴(개인캘린더/근태경비/출퇴근현황)를 눌렀을 때 그 이름이 제목으로 위에 떠야지,
+         다른 화면들(거래처 등)처럼" 요청 - 원래 이 탭은 연월 네비게이션(cal-header-nav)만 있고 탭 이름
+         자체를 보여주는 제목이 없었음. 다른 탭들의 .section-title과 완전히 같은 모양(가운데 정렬, 24px)으로 추가함 -->
+    <h2 class="section-title" style="justify-content:center; font-size:24px;">근태경비</h2>
     <!-- id="workdaysAutoValue"(이번달 근무가능일수 값)과 id="quickPrintReportBtn"(지출결의서 출력)은
          칩 형태를 벗어나 각각 경비정산 제목 왼쪽 / 경비정산 카드 묶음 안쪽 우측 하단으로 옮겼어요.
          직원선택·조회월선택은 개인캘린더 탭 상단과 완전히 같은 스타일("이름 ‹ 2026년 9월 › 📅")로 가운데
@@ -4006,7 +4021,9 @@
        전용 항목이 생긴 지금은 다른 메뉴들처럼 팝업이 아니라 조회 화면으로 보여줌(내용 자체는 그대로) -->
   <section id="tab-clockhistory" class="tab-panel">
     <div style="max-width:480px; margin:0 auto;">
-      <h2 class="section-title">출퇴근현황</h2>
+      <!-- "하위메뉴 제목 스타일을 다 동일하게" 요청으로 다른 탭(근태경비/개인캘린더)들과 같은 .section-title
+           모양(가운데 정렬, 24px)으로 맞춤 - 원래는 스타일 지정 없이 기본 크기로만 떠있었음 -->
+      <h2 class="section-title" style="justify-content:center; font-size:24px;">출퇴근현황</h2>
       <!-- 직원선택·조회월선택을 근태경비/개인캘린더 탭과 완전히 같은 스타일("이름 ‹ 2026년 9월 › 📅")로
            통일함 - 실제 상태를 쥔 #clockHistoryProfileSelect·#clockHistoryMonth는 화면 밖에 숨겨서 그대로
            유지하고(기존 change 핸들러가 그대로 동작), 화면엔 renderClockHistoryView()가 같이 채워주는
@@ -4043,6 +4060,8 @@
   <!-- 달력 -->
   <section id="tab-calendar" class="tab-panel">
     <div class="calendar-panel">
+      <!-- 근태경비 탭과 같은 이유로 추가한 제목 - 같은 .section-title 스타일로 통일함 -->
+      <h2 class="section-title" style="justify-content:center; font-size:24px;">개인캘린더</h2>
       <div class="cal-header-nav">
         <div></div>
         <!-- 소유자 라벨(이름)을 연월 타이틀과 같은 줄에 왼쪽으로 붙여서, 예전처럼 카드 구석에 따로 떨어져
@@ -9418,6 +9437,7 @@ function bindNotificationListModalEvents(body){
   });
   body.querySelector('.notification-mark-all-btn')?.addEventListener('click', ()=>{
     markAllNotificationsRead();
+    updateNotificationUnreadBadge(); // "읽었는데 종 아이콘 개수가 그대로 남아있다" - 여기서 누락돼있었음(팝업 안 목록만 다시 그리고 배지는 안 건드림)
     renderNotificationListModal();
   });
   body.querySelectorAll('.notification-page-btn').forEach(btn=>{
@@ -9430,6 +9450,7 @@ function bindNotificationListModalEvents(body){
     row.addEventListener('click', (e)=>{
       if(e.target.closest('.notification-del-btn')) return;
       markNotificationRead(row.dataset.id);
+      updateNotificationUnreadBadge(); // 위 "모두 읽음"과 같은 이유로 누락돼있었음
       renderNotificationListModal();
     });
   });
@@ -10239,6 +10260,12 @@ document.getElementById('cal-reg-type-usage').addEventListener('change', updateC
 function openCalRegisterModal(type){
   document.getElementById(type==='usage' ? 'cal-reg-type-usage' : 'cal-reg-type-schedule').checked = true;
   updateCalRegisterTypeFields();
+  // "수정 누를 때 메모 수정하는 곳이 없다"는 지적 - 새 등록일 땐 계속 숨기고(위 #u-memo-field 주석 참고),
+  // 기존 항목을 고치러 들어온 경우(editingUsageId/editingUsageGroupIds/editingRemoteId 중 하나라도 있음)만
+  // 다시 보여줌. 이 함수가 각 "수정" 버튼 클릭 핸들러에서 그 값들을 채운 직후에 호출되므로 여기 한 곳에서만
+  // 처리하면 모든 수정 진입 경로(휴가이력/재택이력/이번달 근태표 등)에 다 적용됨
+  const memoField = document.getElementById('u-memo-field');
+  if(memoField) memoField.style.display = (type==='usage' && (editingUsageId || editingUsageGroupIds || editingRemoteId)) ? 'flex' : 'none';
   document.getElementById('calRegisterModalOverlay').style.display = 'flex';
 }
 function closeCalRegisterModal(){
@@ -19753,14 +19780,15 @@ function chipifySettingsCategory(catKey){
 
   // 위쪽 회사/직원/설정/데이터 대분류 버튼(.settings-cat-btn)과 같은 .policy-category-toggle 스타일을 그대로 재사용 -
   // 새 CSS 없이도 active 버튼 강조가 자동으로 먹힘
-  // 예전엔 "왼쪽 사이드바 목록과 중복"이라는 이유로 이 버튼 줄을 화면에서 숨겼는데, 그 사이드바(홈 화면의
-  // .home-menu-col 안 설정 항목들)는 실제로는 "홈" 탭에 있을 때만 보이고 설정 탭 자체로 들어오면(사이드바
-  // 항목을 눌러 들어왔든, 상단 톱니바퀴 아이콘으로 바로 들어왔든) 사라져버림 - "설정 눌러서 들어왔어도
-  // 하위메뉴는 떠야지, 자리배치도가 설정의 하위메뉴잖아"라는 지적대로, 설정 화면 안에서도 지금 어떤
-  // 소메뉴를 보고 있는지 알 수 있게 다시 화면에 띄움
+  // 한때 "왼쪽 사이드바 목록과 중복"이라는 이유로 이 버튼 줄을 화면에서 숨겼다가, 그 사이드바(왼쪽 레일의
+  // 펼침 패널)가 설정 화면에서 안 뜨는 경우가 있어서 "그럼 설정 화면 안에서도 보이게" 잠깐 다시 띄웠던
+  // 적이 있음 - 그 왼쪽 패널이 안 뜨는 문제 자체를 goToSettingsSubsection에서 고친 뒤, "상단에 이 하위메뉴
+  // 줄은 필요없다, 지워달라"는 요청으로 다시 원래대로 되돌림. 버튼 클릭 로직(어느 소메뉴를 보여줄지 결정,
+  // 사이드바·바로가기에서 원격으로 이 버튼을 찾아 눌러주는 것 등)은 이 화면 밖 다른 곳에서도 그대로
+  // 쓰이므로 버튼 자체는 그대로 만들어두고 화면에만 안 보이게 함(display:none)
   const toggleRow = document.createElement('div');
   toggleRow.className = 'policy-category-toggle settings-subsection-toggle';
-  toggleRow.style.cssText = 'margin:16px 0 22px; flex-wrap:wrap;';
+  toggleRow.style.cssText = 'margin:16px 0 22px; flex-wrap:wrap; display:none;';
 
   const panelWrap = document.createElement('div');
   panelWrap.className = 'settings-subsection-panels';
@@ -21239,7 +21267,7 @@ function incomeTaxStatusBadgeHtml(t){
 function bulkDateApplyToolbarHtml(idPrefix, label){
   return `<div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; justify-content:flex-end;">
     <label style="display:flex; align-items:center; gap:4px; font-size:12px; font-weight:700; color:var(--ink-soft); cursor:pointer;"><input type="checkbox" id="${idPrefix}SelectAll" style="width:auto;">전체선택</label>
-    <input type="date" id="${idPrefix}BulkDate" style="border:1.5px solid var(--border); border-radius:6px; padding:4px 6px; font-size:12px;">
+    <input type="date" id="${idPrefix}BulkDate" class="bulk-date-apply-input">
     <button type="button" id="${idPrefix}BulkApplyBtn" class="del-btn" style="background:var(--indigo); color:#fff;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> ${escHtml(label||'선택 항목 일괄적용')}</button>
   </div>`;
 }
@@ -29520,8 +29548,12 @@ function goToSettingsSubsection(subsectionId){
   // 전용 레일모드 IIFE 안), 여기서는 activateTab/버튼 클릭만 직접 흉내내다보니 그 라벨을 누른 적이 없어서
   // 패널이 계속 닫힌 채로 남아있었음. 새로 만들지 않고, 이 subsectionId를 담고 있는 사이드바 그룹의 라벨을
   // 그대로 한 번 눌러서 이미 붙어있는 그 클릭 이벤트를 재사용함 - 레일모드가 아니면(모바일 등) 그 리스너
-  // 안에서 스스로 아무 것도 안 하므로 여기서 따로 분기할 필요 없음
-  document.querySelector(`.home-submenu-item[data-settings-target-id="${subsectionId}"]`)
+  // 안에서 스스로 아무 것도 안 하므로 여기서 따로 분기할 필요 없음.
+  // 처음엔 셀렉터를 문서 전체(document.querySelector)에서 찾았는데, 즐겨찾기에 이 항목을 등록해둔 경우
+  // 즐겨찾기 줄(#homeFavoritesSection)에도 같은 data-settings-target-id를 가진 복사본이 있어서 그게 먼저
+  // 걸리면 엉뚱한(즐겨찾기) 그룹의 라벨을 누르게 돼 패널이 안 열렸음 - 진짜 설정 목록이 있는 두 그룹
+  // (#homeSectionSettingsWelfare, #homeSectionSettingsData) 안에서만 찾도록 좁힘
+  document.querySelector(`#homeSectionSettingsWelfare .home-submenu-item[data-settings-target-id="${subsectionId}"], #homeSectionSettingsData .home-submenu-item[data-settings-target-id="${subsectionId}"]`)
     ?.closest('.home-section-row')?.querySelector('.home-section-label')?.click();
   activateTab('settings', true);
   document.querySelector('.settings-cat-btn[data-settings-cat="company"]')?.click();
