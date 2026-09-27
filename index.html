@@ -2201,6 +2201,18 @@
     background:var(--indigo); cursor:nwse-resize; touch-action:none; z-index:3;
     box-shadow:0 0 0 1.5px var(--surface);
   }
+  /* "위아래 양옆 다 마우스로 크기 조절 할 수 있어야 되는데" 요청 - 오른쪽 아래 모서리 손잡이(가로+세로
+     동시) 하나뿐이던 걸, 위/아래/왼쪽/오른쪽 네 변 가운데에도 각각 하나씩(그 방향만 늘고 줆) 추가함.
+     왼쪽/위쪽은 끌면 반대쪽 변은 고정한 채 그쪽 변이 움직여야 해서(칸의 기준점 자체가 이동), JS에서
+     끄는 동안 style.left/top도 같이 옮기고 놓을 때 cell.col/row까지 다시 계산함(seatChartResizeHandlePointerDown 참고) */
+  .seat-resize-handle-edge{
+    position:absolute; background:var(--indigo); touch-action:none; z-index:3;
+    box-shadow:0 0 0 1.5px var(--surface); border-radius:3px;
+  }
+  .seat-resize-handle-right{ right:1px; top:50%; width:7px; height:16px; margin-top:-8px; cursor:ew-resize; }
+  .seat-resize-handle-left{ left:1px; top:50%; width:7px; height:16px; margin-top:-8px; cursor:ew-resize; }
+  .seat-resize-handle-top{ top:1px; left:50%; width:16px; height:7px; margin-left:-8px; cursor:ns-resize; }
+  .seat-resize-handle-bottom{ bottom:1px; left:50%; width:16px; height:7px; margin-left:-8px; cursor:ns-resize; }
   /* "모니터 방향을 화살표 말고 책상 위 굵은 선으로 표기해달라"는 요청 - 모니터가 있는 변에 굵은 색 바
      (seat-dir-monitor)를 그림. 한때 반대쪽(의자가 있는 변)에 의자 표시(등받이 있는 사각형 등)도 같이
      그려봤는데, "모니터 위치만 표시되면 의자 표시는 필요 없을 것 같다"는 의견으로 다시 뺌 - 모니터가
@@ -2212,6 +2224,20 @@
   .seat-dir-monitor.rot90{ right:-2px; top:20%; bottom:20%; width:4px; }
   .seat-dir-monitor.rot180{ bottom:-2px; left:20%; right:20%; height:4px; }
   .seat-dir-monitor.rot270{ left:-2px; top:20%; bottom:20%; width:4px; }
+  /* "방 형태 영역을 추가해달라, 문도 있고" 요청 - 구역표시(label)를 회의실처럼 방 모양으로 크게 쓸 때, 한쪽
+     테두리에 출입구(문) 표시를 붙임. 실제 벽(테두리)이 끊긴 것처럼 보이게 그 구간만 배경색 막대(door-gap
+     역할, ::before 없이 이 엘리먼트 자체)로 덮고, 그 끝에서 45도로 삐져나온 얇은 선(door-leaf, ::after)으로
+     열린 문짝을 표현함 - 실측 도면의 간단한 문 기호를 흉내낸 것 */
+  .seat-door-mark{ position:absolute; z-index:2; pointer-events:none; background:var(--bg); }
+  .seat-door-mark::after{ content:''; position:absolute; background:var(--navy); border-radius:2px; }
+  .seat-door-mark.top{ top:-2px; left:calc(50% - 12px); width:24px; height:4px; }
+  .seat-door-mark.top::after{ left:0; bottom:-14px; width:2.5px; height:16px; transform-origin:bottom left; transform:rotate(35deg); }
+  .seat-door-mark.bottom{ bottom:-2px; left:calc(50% - 12px); width:24px; height:4px; }
+  .seat-door-mark.bottom::after{ left:0; top:-14px; width:2.5px; height:16px; transform-origin:top left; transform:rotate(-35deg); }
+  .seat-door-mark.left{ left:-2px; top:calc(50% - 12px); width:4px; height:24px; }
+  .seat-door-mark.left::after{ top:0; right:-14px; width:16px; height:2.5px; transform-origin:top right; transform:rotate(-35deg); }
+  .seat-door-mark.right{ right:-2px; top:calc(50% - 12px); width:4px; height:24px; }
+  .seat-door-mark.right::after{ top:0; left:-14px; width:16px; height:2.5px; transform-origin:top left; transform:rotate(35deg); }
   /* [시범 적용 v6] 라벨 칸을 168px로 고정폭 줘서 "날짜"처럼 짧은 라벨과 입력칸 사이에 여백이 크게 남는다는
      의견 - 라벨을 고정폭 대신 글자 길이만큼만 차지하게(auto) 바꾸고, 줄마다("날짜"/"구분"/"일수"/"조정사유"
      등) 테두리 하나로 묶어서 구분되게 함. v5에서 흰 배경을 채웠었는데 "그게 싫었던 것"이라는 피드백 -
@@ -2355,14 +2381,18 @@
   .cal-nav-arrow:hover{ transform:scale(1.15); }
   .cal-nav-arrow svg{ display:block; }
   .cal-title-big{ font-size:23px; font-weight:900; color:var(--navy); letter-spacing:-0.01em; text-align:center; }
-  /* 개인캘린더/근태경비/출퇴근현황 맨 위 탭 이름(h2.section-title)이 바로 아래 큰 연월 글자(.cal-title-big)와
-     크기(24px vs 23px)·굵기(800 vs 900)·색(검정 계열 vs 네이비)이 다 비슷해서 "제목인지 구분이 잘 안 갈 수도
-     있겠다"는 의견 - 탭 제목 쪽을 작게(13px)·인디고 색·자간을 넓히고 아래 옅은 밑줄을 준 라벨 형태로 낮춰서,
-     아래 크고 진한 네이비의 연월 글자가 화면에서 실제 시선을 받는 "타이틀"처럼, 위쪽은 그걸 감싸는 작은
-     구간표시(eyebrow)처럼 보이게 확실히 구분함 */
+  /* 개인캘린더/근태경비/출퇴근현황 맨 위 탭 이름(h2.section-title)이 바로 아래 큰 연월 글자(.cal-title-big,
+     23px 네이비)와 비슷해서 구분이 안 간다는 의견으로 처음엔 작은 인디고색 라벨(13px)로 낮췄는데, 그마저도
+     옆의 "장선민" 소유자 이름(인디고색)과 색이 겹쳐 헷갈린다는 의견 + 예시 5안 중 "진한 잉크색 + 왼쪽
+     세로 악센트 바"(3안)를 고르면서 "제목 크기는 달력(연월 글자, 23px)보다 더 커야 한다"는 요청 - 색은
+     인디고 계열을 완전히 벗어난 진한 잉크색으로, 크기는 27px로 연월 글자보다 오히려 크게 키움
+  */
   .section-title-tab-header{
-    font-size:13px; font-weight:800; color:var(--indigo-deep); letter-spacing:0.03em;
-    padding-bottom:8px; margin-bottom:14px; border-bottom:1.5px solid var(--border);
+    font-size:27px; font-weight:800; color:var(--ink); letter-spacing:-0.01em;
+    margin-bottom:16px; gap:10px;
+  }
+  .section-title-tab-header::before{
+    content:''; width:5px; height:24px; background:var(--navy); border-radius:2px; flex-shrink:0;
   }
   /* 전월에 당겨쓰기(선사용)로 이번 달 재택 한도를 미리 소진한 경우, 그 항목은 등록일 기준 그리드(전월 쪽)에만 표시되어
      이번 달 화면에서는 흔적이 안보이므로, 월 타이틀 아래에 별도 안내 문구로 보여줌 */
@@ -3933,7 +3963,7 @@
         </div>
         <div class="card-sub" id="grantUsedDisplay"></div>
       </div>
-      <div class="card card-coral card-hero">
+      <div class="card card-coral card-hero" id="monthUsedCard" title="클릭하면 휴가 이력(전체 기간)을 볼 수 있어요" style="cursor:pointer;">
         <div class="card-ring-wrap">
           <svg viewBox="0 0 64 64"><circle class="card-ring-bg" cx="32" cy="32" r="26"></circle><circle class="card-ring-fg" id="monthUsedRing" cx="32" cy="32" r="26" stroke-dasharray="163.36" stroke-dashoffset="163.36"></circle></svg>
           <div class="card-ring-center"><div class="card-value num" id="monthUsedDisplay">-</div></div>
@@ -5422,8 +5452,14 @@
       </div>
 
       <div class="settings-sub-title" id="ssTitle-seatChart" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="4" width="18" height="16" rx="1"></rect><path d="M3 10h18"></path><path d="M9 10v10"></path></svg> 좌석배치도</div>
-      <p class="hint" style="text-align:center;">아래 미리보기에서 자리를 마우스(또는 손가락)로 눌러서 그대로 끌어다 옮겨요. 자리를 살짝 누르기만 하면 이름·크기를 바꾸거나 지울 수 있고, 칸에 마우스를 올리면 뜨는 × 버튼으로 바로 지울 수도 있어요. 선택된 칸의 오른쪽 아래 모서리를 끌면 자유롭게 크기를 바꿀 수 있어요. "자리"는 빈칸이면 미점유로 보이고, "구역표시"는 화장실·계단실처럼 이름표만 있는 칸, "소품"은 사물함처럼 작은 비품, "구분선"은 구획을 나누는 테두리예요. 저장할 때마다 이력이 남아요.</p>
-      <div class="flat-panel" style="max-width:900px;">
+      <p class="hint" style="text-align:center;">아래 미리보기에서 자리를 마우스(또는 손가락)로 눌러서 그대로 끌어다 옮겨요. 자리를 살짝 누르기만 하면 이름·크기를 바꾸거나 지울 수 있고, 칸에 마우스를 올리면 뜨는 × 버튼으로 바로 지울 수도 있어요. 선택된 칸을 누르면 나오는 네 변·모서리 손잡이를 끌면 자유롭게 크기를 바꿀 수 있어요. "자리"는 빈칸이면 미점유로 보이고, "구역표시"는 화장실·계단실처럼 이름표만 있는 칸, "소품"은 사물함처럼 작은 비품, "구분선"은 구획을 나누는 테두리예요. 저장할 때마다 이력이 남아요.</p>
+      <!-- "가로스크롤이 안 나오게 영역을 넓혀서 가로폭을 최대한 활용하게 해달라"는 요청 - 이 패널이 900px로
+           묶여 있어서, 정작 그 안의 배치도 그리드(#seatChartPreviewWrap)는 칸이 몇 개만 넘어가도 900px보다
+           넓어져 항상 가로 스크롤이 생겼음. 화면 전체 폭(.app-shell 안쪽 콘텐츠 영역)은 이보다 훨씬 넓게
+           쓸 수 있어서(다른 화면의 가장 넓은 팝업이 1400px), 이 패널도 그만큼 넓혀서 어지간한 사무실
+           배치도는 스크롤 없이 한 화면에 다 들어오게 함 - 안의 제목/기준일자 같은 좁은 입력줄은 각자
+           .flat-row에 걸린 좁은 max-width(280px)로 이미 가운데 정렬돼 있어 폭만 넓어져도 그대로 예쁘게 보임 -->
+      <div class="flat-panel" style="max-width:1400px;">
         <!-- "이력/인쇄 버튼은 아이콘만 남겨서 박스 가장 바깥 테두리 위쪽에 오른쪽 정렬로 두는 게 낫겠다"는
              요청 - 예전엔 아래쪽 저장 버튼 옆에 텍스트까지 있는 버튼으로 나란히 있었는데, 이 박스(.flat-panel)
              맨 위로 옮기고 아이콘만 남김. 저장은 실제로 반영되는 중요한 동작이라 아래쪽에 그대로 크게 남겨두고,
@@ -10388,6 +10424,14 @@ document.getElementById('leaveAsOfIconBtn')?.addEventListener('click', ()=>{
   document.getElementById('leaveQueryResult').style.display = 'none';
   document.getElementById('leave-query-date').value = '';
   document.getElementById('leaveAsOfModalOverlay').style.display = 'flex';
+});
+// "이번달 휴가 사용 카드를 눌러도 재택근무 카드처럼 이력이 나오게 해달라"는 요청 - "잔여 연차" 카드와
+// 똑같은 휴가 이력(전체 기간) 팝업을 그대로 재사용함(두 카드 다 같은 휴가 데이터를 보는 것뿐이라 이력
+// 화면을 새로 만들 필요 없이 그대로 열면 됨)
+document.getElementById('monthUsedCard')?.addEventListener('click', (e)=>{
+  if(e.target.closest('button')) return;
+  renderAllLeaveHistory();
+  document.getElementById('leaveHistoryModalOverlay').style.display = 'flex';
 });
 // "이번달 재택근무" 카드도 "잔여 연차" 카드와 똑같이 카드 전체 클릭으로 이력(재택근무 이력, 전체 기간)을 봄
 document.getElementById('monthRemoteCard')?.addEventListener('click', ()=>{
@@ -16882,6 +16926,12 @@ relocateSidebarNodes();
     const tiles = row.querySelector('.home-tiles');
     if(!label || !tiles) return;
     if(!railHomeMap.has(tiles)) railHomeMap.set(tiles, { parent: row });
+    // "새로고침하면 왼쪽 하위메뉴 목록이 사라진다"는 제보 - 새로고침 복원(worklog_last_tab)은 activateTab만
+    // 다시 불러 탭 내용만 되돌리고, 이 팝오버는 실제로 라벨을 눌러야만(openPopoverFor) 열리기 때문에 복원
+    // 직후엔 계속 닫힌 채였음. 탭 이름 하나로는 어느 레일 그룹을 열어야 할지 알 수 없는 경우가 많아서
+    // (예: 신고/제출/설정처럼 한 그룹 안에 세부화면이 여럿이라 data-goto가 tab 이름과 안 맞음) 탭 이름을
+    // 거꾸로 찾는 대신, 지금 연 그룹(row)의 id 자체를 그때그때 기억해뒀다가 새로고침 시 그대로 다시 열어줌
+    if(row.id){ try{ localStorage.setItem('worklog_last_rail_row', row.id); }catch(e){} }
     // 예전엔 여기서 body로 옮기고 position:fixed로 좌표를 계산해 띄웠는데(팝오버), 이제는 아이콘 레일
     // 바로 옆에 항상 붙어있는 #railExpandPanel 안에 그대로 옮겨 넣기만 함 - 화면에 붕 뜨는 대신 레이아웃
     // 안에서 실제로 그 자리를 차지하게 되므로, 좌표 계산도 스크롤에 따른 재조정도 필요 없어짐
@@ -16900,6 +16950,27 @@ relocateSidebarNodes();
     const firstItem = firstNavigableItem(tiles);
     if(firstItem) firstItem.click();
   }
+
+  // 새로고침 복원 전용 - openPopoverFor와 거의 같지만 "첫 하위메뉴로 이동"(firstItem.click()) 없이 패널만
+  // 그대로 열어줌. activateTab으로 이미 마지막 화면을 되돌려놓은 뒤라 여기서 또 첫 항목을 눌러버리면
+  // "근태경비를 보다가 새로고침했더니 개인캘린더로 옮겨가버린다"는 문제가 생기기 때문에 따로 뺌
+  function restoreLastRailPanel(){
+    if(!sidebar.classList.contains('rail-mode')) return; // 레일모드가 아니면(모바일 등) 이 패널 자체가 없음
+    let rowId = '';
+    try{ rowId = localStorage.getItem('worklog_last_rail_row') || ''; }catch(e){}
+    if(!rowId) return;
+    const row = document.getElementById(rowId);
+    if(!row || row.classList.contains('rail-open')) return;
+    const tiles = row.querySelector('.home-tiles');
+    const expandPanel = document.getElementById('railExpandPanel');
+    if(!tiles || !expandPanel) return;
+    closeAllPopovers();
+    row.classList.add('rail-open');
+    if(!railHomeMap.has(tiles)) railHomeMap.set(tiles, { parent: row });
+    expandPanel.appendChild(tiles);
+    tiles.classList.add('rail-popover-open', 'rail-panel-inline');
+  }
+  window.restoreLastRailPanel = restoreLastRailPanel;
 
   function firstNavigableItem(tiles){
     // 즐겨찾기 목록은 배열 순서(사용자가 ▲▼로 직접 정한 자리)와 무관하게, 별표로 고른 "메인" 항목이
@@ -19221,6 +19292,10 @@ document.getElementById('exclusionForm').addEventListener('submit', async (e)=>{
   renderWorkdaysSuggestion();
   renderCalendar();
   renderAdminCalendar(); // 개인캘린더만 즉시 갱신되고 팀캘린더는 예전 상태로 남아있던 문제 - 공휴일 추가/수정 시에도 같이 새로고침
+  // "공휴일 추가했는데 대시보드는 전혀 반영이 안 된다"는 제보 - 위 두 줄은 팀캘린더/개인캘린더 탭 자체는
+  // 갱신하지만, 홈 대시보드의 팀 일정·근태 미리보기 카드(renderDashboardCalendarPreview 등)는 그 탭들과
+  // 별개로 각자 자기만의 캐시된 DOM을 들고 있어서 따로 다시 그려주지 않으면 공휴일 추가 전 상태로 남아있었음
+  if(typeof renderHomeDashboard === 'function') renderHomeDashboard();
 });
 
 document.getElementById('exclusion-cancel').addEventListener('click', ()=>{
@@ -19285,6 +19360,9 @@ document.getElementById('exAutoFillHolidaysBtn').addEventListener('click', async
   renderWorkdaysSuggestion();
   renderCalendar();
   renderAdminCalendar();
+  // "공휴일 자동추가 눌렀는데 팀캘린더·개인캘린더·대시보드 어디에도 반영이 안 된다"는 제보 - 위 개별 탭
+  // 재렌더링과 별개로, 홈 대시보드 미리보기 카드들은 각자 자기 DOM을 캐시하고 있어서 따로 다시 그려줘야 함
+  if(typeof renderHomeDashboard === 'function') renderHomeDashboard();
 });
 
 document.getElementById('settingsForm').addEventListener('submit', async (e)=>{
@@ -20867,9 +20945,10 @@ function renderFilingTargetTable(){
       const label = filingTargetCellLabel(entry, c.id, period);
       const isOn = entry && entry.applicable;
       const isNotTarget = entry && entry.marked && !entry.applicable;
-      // 미대상은 코랄(빨강)보다 회색이 낫다는 의견 - "신고" 열 칩과 같은 회색 톤으로 통일
+      // 미대상은 코랄(빨강)보다 회색이 낫다는 의견 - "신고" 열 칩과 같은 회색 톤으로 통일했다가,
+      // "미대상은 배경칩 없어도 될듯하다"는 의견으로 배경 채움은 다시 빼고 테두리·글자색만 회색으로 남김
       const cellColor = isOn ? 'var(--indigo)' : isNotTarget ? 'var(--ink-soft)' : 'var(--border)';
-      const cellBg = isOn ? 'var(--indigo-bg)' : isNotTarget ? 'rgba(117,120,154,0.14)' : 'transparent';
+      const cellBg = isOn ? 'var(--indigo-bg)' : 'transparent';
       const cellText = isOn ? 'var(--indigo-deep)' : isNotTarget ? 'var(--ink-soft)' : 'var(--ink-soft)';
       return `<td class="cvb"><button type="button" class="filing-target-cell-btn" data-client-id="${c.id}" data-period="${period}" style="width:100%; border:1.5px solid ${cellColor}; border-radius:6px; padding:4px 2px; background:${cellBg}; color:${cellText}; font-size:10.5px; font-weight:700; cursor:pointer;">${escHtml(label)}</button></td>`;
     }).join('');
@@ -21603,10 +21682,12 @@ function itAllTimingBlockHtml(c, period, timingKey){
     <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
       <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:34px;">원천세</span>
       <input type="date" class="it-all-date-input" data-field="national" value="${t.national||''}" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink); flex:1 1 auto; min-width:0;">
+      <button type="button" class="del-btn it-all-today-btn" data-field="national" style="flex-shrink:0; padding:5px 9px; font-size:11px;">오늘</button>
     </div>
     <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
       <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:34px;">지방세</span>
       <input type="date" class="it-all-date-input" data-field="local" value="${t.local||''}" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink); flex:1 1 auto; min-width:0;">
+      <button type="button" class="del-btn it-all-today-btn" data-field="local" style="flex-shrink:0; padding:5px 9px; font-size:11px;">오늘</button>
     </div>
     <input type="text" class="it-all-memo-input" value="${escHtml(t.memo||'')}" placeholder="메모" style="width:100%; border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink); box-sizing:border-box;">
   </div>`;
@@ -21654,7 +21735,8 @@ function renderIncomeTaxUnified(){
   const CELL_STYLE = {
     locked:  { label:'-',  color:'var(--border)',    bg:'transparent',              text:'var(--ink-soft)',   disabled:true, plain:false },
     unset:   { label:'-',  color:'var(--border)',    bg:'transparent',              text:'var(--ink-soft)',   disabled:false, plain:false },
-    notarget:{ label:'미대상', color:'var(--ink-soft)', bg:'rgba(117,120,154,0.14)', text:'var(--ink-soft)',   disabled:false, plain:false },
+    // "미대상은 배경칩 없어도 될듯하다"는 의견으로 배경 채움은 빼고 테두리·글자색만 회색으로 남김
+    notarget:{ label:'미대상', color:'var(--ink-soft)', bg:'transparent',             text:'var(--ink-soft)',   disabled:false, plain:false },
     target:  { label:'',   color:'var(--border)',    bg:'transparent',              text:'var(--ink-soft)',   disabled:false, plain:false },
     partial: { label:'한쪽만', color:'var(--coral)',   bg:'var(--coral-bg)',        text:'var(--coral)',      disabled:false, plain:false },
     done:    { label:'',   color:'transparent',      bg:'transparent',              text:'var(--mint)',       disabled:false, plain:true }
@@ -21758,6 +21840,18 @@ function renderItAllDateEditBody(){
       entry[block.dataset.timing][inp.dataset.field] = inp.value || null;
       const badge = block.querySelector('.it-all-status-badge');
       if(badge) badge.innerHTML = incomeTaxStatusBadgeHtml(entry[block.dataset.timing]);
+    });
+  });
+  // "신고일자에 오늘 날짜를 바로 넣는 버튼이 있으면 좋겠다"는 요청 - 날짜칸 옆에 "오늘" 버튼을 두고,
+  // 누르면 오늘 날짜를 넣은 뒤 실제 입력칸의 input 이벤트를 그대로 발생시켜서 위 저장 로직을 그대로 탐
+  body.querySelectorAll('.it-all-today-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const block = btn.closest('.it-all-timing-block');
+      if(!block) return;
+      const inp = block.querySelector(`.it-all-date-input[data-field="${btn.dataset.field}"]`);
+      if(!inp) return;
+      inp.value = todayStr();
+      inp.dispatchEvent(new Event('input', { bubbles:true }));
     });
   });
   body.querySelectorAll('.it-all-memo-input').forEach(inp=>{
@@ -28903,6 +28997,11 @@ function seatDirArrowHtml(dir){
   // 굳이 표시할 필요가 없고, 표시하면 오히려 화면이 복잡해 보임
   return `<span class="seat-dir-monitor rot${rot}" title="모니터(화면)가 이 방향을 향해요"></span>`;
 }
+// 구역표시(label)에 문(출입구) 표시 - cell.doorSide('top'/'bottom'/'left'/'right')가 있을 때만 그림
+function seatDoorMarkHtml(cell){
+  if(cell.type!=='label' || !cell.doorSide) return '';
+  return `<span class="seat-door-mark ${cell.doorSide}" title="출입구"></span>`;
+}
 // "구획을 나누는 경계선도 있으면" 요청으로 추가한 구분선(divider)과 "사물함 같은 작은 소품"용 item -
 // 자리·구역표시와 같은 칸 데이터(row/col/rowSpan/colSpan)를 그대로 쓰되 생김새만 다름. 구분선은 속이
 // 비어있어서 다른 칸과 겹쳐도 내용을 가리지 않아야 하므로, 그리는 순서 자체를 구분선이 먼저(맨 뒤에)
@@ -28982,6 +29081,7 @@ function seatCellViewHtml(cell){
   else if(cell.type==='item') bg = 'background:#F1F0FB; border:1.5px dashed var(--indigo); color:var(--indigo-deep); font-weight:700; font-size:10.5px;';
   else if(empty) bg = 'background:#FEF9C3; color:#92660A; font-weight:700;';
   const dirArrow = cell.type==='seat' ? seatDirArrowHtml(cell.dir) : '';
+  const doorMark = seatDoorMarkHtml(cell);
   const z = cell.type==='divider' ? 'z-index:0;' : 'z-index:1;';
   // 세로 2칸으로 늘어난(auto-inflate) 자리는 그 2칸 폭을 다 채우지 않고 절반 너비로 좁혀서 가운데 놓아,
   // 실제로 가늘고 긴 책상이 회전해 들어간 것처럼 보이게 함(자리가 차지하는 격자 영역 자체는 그대로 2칸)
@@ -29004,7 +29104,7 @@ function seatCellViewHtml(cell){
   const bodyHtml = (cell.type==='label' || cell.type==='item')
     ? seatCellIconBodyHtml(cell, escHtml(cell.text||''), '')
     : seatTextHtml;
-  return `<div style="position:relative; grid-row:${cell.row} / span ${rowSpan}; grid-column:${cell.col} / span ${colSpan}; ${SEAT_CELL_STYLE_COMMON} ${bg} ${z} ${narrowStyle}">${dividerBar}${dirArrow}${bodyHtml}</div>`;
+  return `<div style="position:relative; grid-row:${cell.row} / span ${rowSpan}; grid-column:${cell.col} / span ${colSpan}; ${SEAT_CELL_STYLE_COMMON} ${bg} ${z} ${narrowStyle}">${dividerBar}${dirArrow}${doorMark}${bodyHtml}</div>`;
 }
 // 구분선(divider)을 배열 맨 앞으로 보내 먼저 그리게 함 - CSS grid는 같은 자리를 두고 여러 칸이 겹치면
 // "나중에 그려진 쪽"이 위로 덮으므로, 구분선을 항상 먼저 그려야 자리/구역표시/소품 글자가 안 가려짐
@@ -29129,6 +29229,7 @@ function seatChartEditCellHtml(cell){
     w = SEAT_EDIT_CELL_H;
   }
   const dirArrow = cell.type==='seat' ? seatDirArrowHtml(cell.dir) : '';
+  const doorMark = seatDoorMarkHtml(cell);
   // "이것도 칩밖으로 이름이 나가" - 세로쓰기는 글자 수만큼 칸 높이를 그대로 잡아먹어서, 이름+직함이 길면
   // 칸을 넘어 카드 밖으로 삐져나왔음. 글자 수에 맞춰 미리 글씨를 줄여서(최소 7.5px) 최대한 칸 안에 담기게
   // 함(overflow:hidden은 안 씀 - 이 칸엔 반쯤 밖으로 걸쳐 그려지는 의자/모니터 표시가 같이 들어있어서,
@@ -29156,7 +29257,13 @@ function seatChartEditCellHtml(cell){
   // 이동용 손바닥 커서가 먼저 뜬다"는 지적으로 버튼(15→19px)과 같이 아이콘도 9→11px로 키움
   const editBtn = `<button type="button" class="seat-edit-cell-edit" data-id="${cell.id}" title="${escHtml(seatCellTypeLabel(cell))} 수정" aria-label="수정"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>`;
   const deleteBtn = `<button type="button" class="seat-edit-cell-delete" data-id="${cell.id}" title="${escHtml(seatCellTypeLabel(cell))} 삭제" aria-label="삭제">✕</button>`;
-  const resizeHandle = isSel ? `<div class="seat-resize-handle" data-id="${cell.id}" title="끌어서 크기 바꾸기"></div>` : '';
+  // "위아래 양옆 다 크기 조절 되게 해달라"는 요청으로, 기존 오른쪽 아래 모서리(대각선, 가로+세로 동시)
+  // 손잡이에 더해 네 변 가운데에도 손잡이를 하나씩 더 둠 - data-edge로 어느 쪽을 끄는지 구분함
+  const resizeHandle = isSel ? `<div class="seat-resize-handle" data-id="${cell.id}" data-edge="corner" title="끌어서 크기 바꾸기(가로+세로)"></div>
+    <div class="seat-resize-handle-edge seat-resize-handle-right" data-id="${cell.id}" data-edge="right" title="끌어서 가로 크기 바꾸기"></div>
+    <div class="seat-resize-handle-edge seat-resize-handle-left" data-id="${cell.id}" data-edge="left" title="끌어서 가로 크기 바꾸기"></div>
+    <div class="seat-resize-handle-edge seat-resize-handle-top" data-id="${cell.id}" data-edge="top" title="끌어서 세로 크기 바꾸기"></div>
+    <div class="seat-resize-handle-edge seat-resize-handle-bottom" data-id="${cell.id}" data-edge="bottom" title="끌어서 세로 크기 바꾸기"></div>` : '';
   // "이름없음 이런것도 왜 나오는지 모르겠고" - 구분선은 이름이 꼭 필요한 칸이 아니라서(테두리/선 자체가
   // 표시), 비어있으면 그냥 빈칸으로 두고 자리/구역표시/소품에서만 안내 문구를 보여줌
   const labelHtml = (cell.type==='label' || cell.type==='item')
@@ -29164,7 +29271,7 @@ function seatChartEditCellHtml(cell){
     : cell.type==='divider'
       ? `<span class="seat-edit-cell-label">${escHtml(cell.text||'')}</span>`
       : `<span class="seat-edit-cell-label${seatLabelClass}"${seatLabelStyle}>${escHtml(empty ? '미점유' : (cell.text||'(이름없음)'))}</span>`;
-  return `<div class="seat-edit-cell${isSel ? ' is-selected' : ''}" data-id="${cell.id}" style="position:absolute; left:${visualLeft}px; top:${top}px; width:${w}px; height:${h}px; ${bg}${sel} border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11.5px; text-align:center; padding:2px; cursor:grab; touch-action:none; user-select:none; box-sizing:border-box; line-height:1.2;">${dividerBar}${dirArrow}${labelHtml}${editBtn}${deleteBtn}${resizeHandle}</div>`;
+  return `<div class="seat-edit-cell${isSel ? ' is-selected' : ''}" data-id="${cell.id}" style="position:absolute; left:${visualLeft}px; top:${top}px; width:${w}px; height:${h}px; ${bg}${sel} border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11.5px; text-align:center; padding:2px; cursor:grab; touch-action:none; user-select:none; box-sizing:border-box; line-height:1.2;">${dividerBar}${dirArrow}${doorMark}${labelHtml}${editBtn}${deleteBtn}${resizeHandle}</div>`;
 }
 function renderSeatChartEditPreview(){
   const wrap = document.getElementById('seatChartPreviewWrap');
@@ -29202,8 +29309,9 @@ function bindSeatChartEditCellEvents(){
     btn.addEventListener('pointerdown', e=>{ e.stopPropagation(); });
     btn.addEventListener('click', seatChartOpenCellEditorClick);
   });
-  // "화살표로 +/- 하는 것 말고 마우스로 자유롭게 끌어서 크기를 바꾸고 싶다" 요청으로 만든 크기조절 손잡이
-  document.querySelectorAll('#seatChartEditGrid .seat-resize-handle').forEach(handle=>{
+  // "화살표로 +/- 하는 것 말고 마우스로 자유롭게 끌어서 크기를 바꾸고 싶다" 요청으로 만든 크기조절 손잡이 -
+  // "위아래 양옆 다 되게" 요청으로 모서리(.seat-resize-handle) 하나뿐이던 걸 네 변(.seat-resize-handle-edge)까지 넓힘
+  document.querySelectorAll('#seatChartEditGrid .seat-resize-handle, #seatChartEditGrid .seat-resize-handle-edge').forEach(handle=>{
     handle.addEventListener('pointerdown', seatChartResizeHandlePointerDown);
   });
 }
@@ -29236,28 +29344,54 @@ async function seatChartDeleteCellClick(e){
 // renderSeatChartEditPreview()를 다시 부르면 그 사이 이 손잡이 엘리먼트 자체가 DOM에서 새로 교체돼버려
 // setPointerCapture가 깨질 수 있음 - 끄는 동안은 부모 칸의 style.width/height만 직접 바꿔서 부드럽게
 // 보여주고(픽셀 단위로 자유롭게), 손을 뗄 때 한 번만 가장 가까운 칸 수로 스냅해서 실제 값에 반영함
+// "위아래 양옆 다 마우스로 크기 조절 할 수 있어야" 요청으로, 오른쪽 아래 모서리(edge='corner', 가로+세로
+// 동시)만 되던 걸 네 변(edge='right'/'left'/'top'/'bottom', 그 방향만)까지 넓힘. 왼쪽/위쪽은 반대쪽 변은
+// 그대로 둔 채 그 변만 움직여야 하므로, 끄는 동안 너비/높이뿐 아니라 style.left/top도 같이 옮기고,
+// 손을 뗄 때 그만큼 밀린 칸 수를 cell.col/row에도 반영함(다른 세 방향은 기준점(col/row)이 안 바뀜)
 function seatChartResizeHandlePointerDown(e){
   e.preventDefault();
   e.stopPropagation();
   const handle = e.currentTarget;
   const id = handle.dataset.id;
+  const edge = handle.dataset.edge || 'corner';
   const cell = seatChartDraft?.cells.find(c=>c.id===id);
   const parentEl = handle.parentElement;
   if(!cell || !parentEl) return;
+  const growW = edge==='corner' || edge==='right' || edge==='left';
+  const growH = edge==='corner' || edge==='bottom' || edge==='top';
+  const fromLeft = edge==='left';
+  const fromTop = edge==='top';
   const startX = e.clientX, startY = e.clientY;
   const startW = parentEl.offsetWidth, startH = parentEl.offsetHeight;
+  const startLeft = parseFloat(parentEl.style.left) || 0;
+  const startTop = parseFloat(parentEl.style.top) || 0;
   const startEff = seatCellEffectiveSpans(cell);
+  const startCol = cell.col||1, startRow = cell.row||1;
   let finalEffRowSpan = startEff.rowSpan, finalEffColSpan = startEff.colSpan;
+  let finalCol = startCol, finalRow = startRow;
   try{ handle.setPointerCapture(e.pointerId); }catch(err){}
   function onMove(ev){
     const dx = ev.clientX-startX, dy = ev.clientY-startY;
-    const newW = Math.max(SEAT_EDIT_CELL_W, startW+dx);
-    const newH = Math.max(SEAT_EDIT_CELL_H, startH+dy);
+    let newW = startW, newH = startH, newLeft = startLeft, newTop = startTop;
+    if(growW){
+      newW = fromLeft ? Math.max(SEAT_EDIT_CELL_W, startW-dx) : Math.max(SEAT_EDIT_CELL_W, startW+dx);
+      if(fromLeft) newLeft = startLeft + (startW-newW);
+    }
+    if(growH){
+      newH = fromTop ? Math.max(SEAT_EDIT_CELL_H, startH-dy) : Math.max(SEAT_EDIT_CELL_H, startH+dy);
+      if(fromTop) newTop = startTop + (startH-newH);
+    }
     parentEl.style.width = newW+'px';
     parentEl.style.height = newH+'px';
+    parentEl.style.left = newLeft+'px';
+    parentEl.style.top = newTop+'px';
     const rawCols = Math.round((newW+SEAT_EDIT_GAP)/(SEAT_EDIT_CELL_W+SEAT_EDIT_GAP));
     const rawRows = Math.round((newH+SEAT_EDIT_GAP)/(SEAT_EDIT_CELL_H+SEAT_EDIT_GAP));
-    const maxColSpan = Math.max(1, (seatChartDraft.cols||9) - (cell.col||1) + 1);
+    const colDelta = Math.round((newLeft-startLeft)/(SEAT_EDIT_CELL_W+SEAT_EDIT_GAP));
+    const rowDelta = Math.round((newTop-startTop)/(SEAT_EDIT_CELL_H+SEAT_EDIT_GAP));
+    finalCol = Math.max(1, startCol + colDelta);
+    finalRow = Math.max(1, startRow + rowDelta);
+    const maxColSpan = Math.max(1, (seatChartDraft.cols||9) - finalCol + 1);
     finalEffColSpan = Math.max(1, Math.min(maxColSpan, Math.min(20, rawCols)));
     finalEffRowSpan = Math.max(1, Math.min(20, rawRows));
   }
@@ -29272,6 +29406,8 @@ function seatChartResizeHandlePointerDown(e){
     if(finalEffRowSpan !== startEff.rowSpan || finalEffColSpan !== startEff.colSpan){
       seatSetEffectiveSpans(cell, finalEffRowSpan, finalEffColSpan);
     }
+    if(finalCol !== startCol) cell.col = finalCol;
+    if(finalRow !== startRow) cell.row = finalRow;
     renderSeatChartEditPreview();
   }
   handle.addEventListener('pointermove', onMove);
@@ -29465,6 +29601,20 @@ function renderSeatChartCellEditor(){
     <div class="flat-row"><div class="flat-row-label">이름</div><div class="flat-row-control">
       <input type="text" id="seatEditText" class="flat-input" placeholder="이름 또는 구역명" autocomplete="off" value="${escHtml(cell.text||'')}">
     </div></div>
+    ${cell.type==='label' ? `
+    <!-- "방 형태 영역을 하나 추가해달라, 문도 있고" 요청 - 구역표시(label)를 회의실 등 방 모양으로 크게
+         늘려 쓰는 경우가 많아져서(RM1/RM2 등), 그 방 테두리의 한쪽 변에 문(출입구) 표시를 붙일 수 있게 함.
+         값이 없으면(기존에 만들어둔 label들) 문 표시 없이 예전 그대로 나옴 -->
+    <div class="flat-row"><div class="flat-row-label">문 표시</div><div class="flat-row-control">
+      <select id="seatEditDoorSide" class="flat-input">
+        <option value="" ${!cell.doorSide?'selected':''}>없음</option>
+        <option value="top" ${cell.doorSide==='top'?'selected':''}>위쪽</option>
+        <option value="bottom" ${cell.doorSide==='bottom'?'selected':''}>아래쪽</option>
+        <option value="left" ${cell.doorSide==='left'?'selected':''}>왼쪽</option>
+        <option value="right" ${cell.doorSide==='right'?'selected':''}>오른쪽</option>
+      </select>
+    </div></div>
+    ` : ''}
     ${(cell.type==='label' || cell.type==='item') ? `
     <!-- "화장실·회의실·탕비실은 아이콘으로 보여줄 수 있으면" 요청 - 구역표시/소품에서만 아이콘을 고를 수
          있게 함(자리는 이름이 핵심이라 제외, 구분선은 테두리/선 자체가 표시라 아이콘 자리가 없음).
@@ -29617,6 +29767,7 @@ function renderSeatChartCellEditor(){
     });
   });
   document.getElementById('seatEditDividerColor')?.addEventListener('input', (e)=>{ cell.dividerColor = e.target.value; renderSeatChartEditPreview(); });
+  document.getElementById('seatEditDoorSide')?.addEventListener('change', (e)=>{ cell.doorSide = e.target.value || ''; renderSeatChartEditPreview(); });
   // 구분선 위치 자유 슬라이더 - 끄는 동안(input) renderSeatChartEditPreview()로 전체를 다시 그리면
   // 슬라이더 엘리먼트 자체가 매번 새로 만들어져 드래그가 끊기므로, 이름 입력칸(seatEditText)과 같은
   // 방식으로 그리드 위 그 칸의 선(.seat-divider-line-bar) 위치만 직접 바꿔치기함
@@ -29648,8 +29799,11 @@ function renderSeatChartCellEditor(){
     renderSeatChartEditPreview();
   });
   // 저장 - 지금까지 이 패널에서 바꾼 내용(과 열려있는 동안 그리드에서 직접 옮기거나 크기를 바꾼 것)을
-  // 그대로 인정하고 닫음
+  // 그대로 인정하고 닫음. "저장하고 나면 다른 빈 공간을 눌러야만 수정·삭제 아이콘이 없어진다"는 요청으로,
+  // 삭제·✕닫기 버튼과 마찬가지로 여기서도 선택 상태(seatChartSelectedId)를 같이 지워서 저장 즉시 그 칸의
+  // 강조 테두리·아이콘이 바로 사라지게 함
   document.getElementById('seatEditSaveBtn').addEventListener('click', ()=>{
+    seatChartSelectedId = null;
     seatChartCloseCellEditor(true);
     renderSeatChartEditPreview();
   });
@@ -30740,6 +30894,11 @@ try{
     // 보다가 새로고침하면 항상 회사정보로 돌아간다"는 제보로 추가
     if(lastTab === 'settings' && typeof restoreSettingsSubviewState === 'function') restoreSettingsSubviewState();
   }
+  // "새로고침하면 왼쪽 하위메뉴 목록이 사라진다"는 제보 - 위에서 탭 내용만 복원해준 것과 별개로, 그 탭이
+  // 속했던 레일 그룹의 하위메뉴 패널(#railExpandPanel)도 마지막 상태 그대로 다시 열어줌. lastTab이 home이라
+  // 로그인 직후처럼 탭 자체는 복원할 게 없어도, 열려있던 그룹은 그대로 남아있을 수 있으니 이 호출은 위
+  // if문 밖에서 로그인 유지 여부(restoredGdriveToken)만 보고 항상 시도함
+  if(restoredGdriveToken && typeof window.restoreLastRailPanel === 'function') window.restoreLastRailPanel();
 }catch(e){}
 scheduleTwemojiParse();
 
