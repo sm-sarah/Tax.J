@@ -8201,7 +8201,14 @@ function getGdriveMergeBaseline(){
   try{ const raw = localStorage.getItem('worklog_gdrive_merge_baseline'); return raw ? JSON.parse(raw) : null; }catch(e){ return null; }
 }
 function setGdriveMergeBaseline(payload){
-  try{ localStorage.setItem('worklog_gdrive_merge_baseline', JSON.stringify(payload)); }catch(e){}
+  try{ localStorage.setItem('worklog_gdrive_merge_baseline', JSON.stringify(payload)); }
+  catch(e){
+    // 병합 기준점을 못 남기면 옛 기준점이 그대로 남아 다음 병합이 틀어질 수 있음 - 차라리 지워서 다음엔 Drive
+    // 최신본을 그대로 받아오게 함(이 기기의 저장 안 된 변경만 잃을 수 있고, 회사 데이터를 덮어쓰진 않음)
+    try{ localStorage.removeItem('worklog_gdrive_merge_baseline'); }catch(e2){}
+    console.error('병합 기준점 저장 실패(저장 공간 부족 가능성)', e);
+    if(typeof gdriveWarnStorageFull === 'function') gdriveWarnStorageFull('worklog_gdrive_merge_baseline');
+  }
 }
 // 직원 삭제는 "다른 기기/브라우저에 예전 목록이 남아있다가, 거기서 뭔가 저장되는 순간 그 예전 목록이
 // 그대로 Drive에 다시 올라가면서 방금 지운 직원이 부활하는" 문제가 생기기 쉬움(여러 명이 같은 Drive
@@ -29325,6 +29332,17 @@ async function gdriveEnsureFile(){
   } else {
     // 3) 어디에도 없음(진짜 최초 생성) - 공유 드라이브를 쓸 수 있으면 그 안에 바로 만들고, 아니면(공유 드라이브
     // 접근이 안 되는 예외적인 경우) 예전처럼 이 계정의 개인 드라이브에 만듦
+    // ⚠️ 데이터 안전장치 - 새 직원·새 PC가 공유 드라이브 권한이 없거나 파일 검색이 일시적으로 실패하면, 예전엔
+    // 여기서 조용히 "빈 회사 데이터 파일"을 새로 만들어버렸음. 그러면 그 사람 화면은 리셋된 것처럼 텅 비고,
+    // 회사 데이터와 따로 노는 사본이 생김. 이제는 반드시 사람에게 확인을 받고, 처음 설치하는 경우에만 만듦
+    const createOk = await appConfirm(`회사 데이터 파일을 찾지 못했어요.\n\n` +
+      (driveId ? '' : '이 계정은 회사 공유 드라이브("01.기장대리")에 접근 권한이 없어요. 관리자에게 권한을 요청한 뒤 다시 로그인해 주세요.\n\n') +
+      `처음 설치하는 경우가 아니라면 "취소"를 눌러주세요. "새로 만들기"를 누르면 빈 데이터로 시작하고, 다른 직원들과 데이터가 따로 놀게 돼요.`,
+      { okText:'새로 만들기', cancelText:'취소' });
+    if(!createOk){
+      gdriveFileId = '';
+      throw new Error('회사 데이터 파일에 접근할 수 없어요 · 관리자에게 공유 드라이브("01.기장대리") 권한을 요청해 주세요');
+    }
     const metadata = driveId
       ? JSON.stringify({ name: GDRIVE_FILE_NAME, mimeType: 'application/json', parents:[driveId] })
       : JSON.stringify({ name: GDRIVE_FILE_NAME, mimeType: 'application/json' });
@@ -29366,6 +29384,7 @@ async function gdriveGetModifiedTime(){
     return data.modifiedTime || null;
   }catch(e){ return null; }
 }
+let gdriveSafeRetryTimer = null;
 async function gdrivePush(retrying){
   if(!gdriveAccessToken || !gdriveFileId) return false;
   const MAX_RACE_RETRIES = 3;
@@ -29381,6 +29400,7 @@ async function gdrivePush(retrying){
       // 저장 자체는 막히지 않게 하기 위한 최소한의 보완책)
       let payload = gdriveBuildPayload();
       let modifiedTimeAtMerge = null;
+      let remoteReadOk = false;
       try{
         const [metaBefore, getRes] = await Promise.all([
           gdriveGetModifiedTime(),
@@ -29389,23 +29409,42 @@ async function gdrivePush(retrying){
           })
         ]);
         modifiedTimeAtMerge = metaBefore;
+        if(getRes.status === 401){ gdriveHandleUnauthorized(); return false; }
         if(getRes.ok){
           const remote = await getRes.json();
+          remoteReadOk = true;
           if(remote && remote.profiles){
             const merged = gdriveComputeMerged(remote);
             gdriveApplyMergedLocally(merged); // 이 기기의 localStorage도 병합 결과로 맞춰둬서, 다음 화면 갱신 때 최신 내용이 보이게 함
             payload = merged;
           }
         }
-      }catch(e2){ console.error('저장 전 원격 병합 실패(로컬 내용을 그대로 올려요)', e2); }
+      }catch(e2){ console.error('저장 전 원격 병합 실패', e2); }
+      // ⚠️ 데이터 안전장치 - "다른 PC나 다른 직원이 접속하면 리셋된 것처럼 데이터가 없어진다"의 가장 유력한
+      // 원인이었음: 예전엔 Drive 최신본을 못 읽어온 경우(일시적 네트워크 오류, Google 쪽 일시 오류·요청 제한 등)
+      // 이 기기의 로컬 내용을 병합 없이 그대로 Drive에 덮어썼음. 그 기기가 오래 안 켰던 PC이거나 처음 접속한
+      // PC(거의 빈 데이터)였다면, 회사 전체 데이터가 그 옛날/빈 내용으로 통째로 바뀌어 버림. 이제는 최신본을
+      // 확인하지 못하면 절대 올리지 않고, "저장 대기" 상태로 남겨뒀다가 잠시 후 다시 시도함(로컬 입력은 그대로 보존)
+      if(!remoteReadOk && !gdriveFileWasJustCreated){
+        try{ localStorage.setItem('worklog_gdrive_pending_push', '1'); }catch(e){}
+        gdriveSetStatus('저장 대기 중 · Drive 최신 데이터를 확인하지 못해 잠시 후 다시 저장할게요 (입력한 내용은 이 기기에 안전하게 남아있어요)');
+        clearTimeout(gdriveSafeRetryTimer);
+        gdriveSafeRetryTimer = setTimeout(()=>{ gdriveSafeRetryTimer = null; gdriveScheduleSync(); }, 20000);
+        return false;
+      }
       // PATCH 직전에 다시 한번 확인 - 병합을 시작한 뒤로(위 modifiedTimeAtMerge 확인 이후) 누가 이미 또
       // 저장해서 modifiedTime이 바뀌었다면, 그 내용을 모른 채로 지금 올리면 그 변경을 통째로 지우게 되므로
       // 올리지 않고 처음부터(다시 받기→병합) 재시도함
-      if(modifiedTimeAtMerge && attempt < MAX_RACE_RETRIES){
+      if(modifiedTimeAtMerge){
         const modifiedTimeNow = await gdriveGetModifiedTime();
         if(modifiedTimeNow && modifiedTimeNow !== modifiedTimeAtMerge){
-          console.error(`Drive 파일이 병합 중에 또 바뀜 - 다시 병합해서 재시도함 (${attempt+1}/${MAX_RACE_RETRIES})`);
-          continue;
+          // 예전엔 마지막 재시도 때는 이 확인을 건너뛰고 그냥 올려서, 여러 명이 동시에 저장하면 그 사이
+          // 다른 사람의 변경을 덮어쓸 수 있었음 - 이제 마지막까지 겹치면 올리지 않고 잠시 뒤 다시 시도함
+          if(attempt < MAX_RACE_RETRIES){ console.error(`Drive 파일이 병합 중에 또 바뀜 - 다시 병합해서 재시도함 (${attempt+1}/${MAX_RACE_RETRIES})`); continue; }
+          try{ localStorage.setItem('worklog_gdrive_pending_push', '1'); }catch(e){}
+          clearTimeout(gdriveSafeRetryTimer);
+          gdriveSafeRetryTimer = setTimeout(()=>{ gdriveSafeRetryTimer = null; gdriveScheduleSync(); }, 5000);
+          return false;
         }
       }
       return await gdrivePushUpload(payload, retrying);
@@ -29653,64 +29692,82 @@ function gdriveComputeMerged(remote){
 // gdriveComputeMerged()가 만들어낸 병합 결과를 이 기기의 로컬 저장소(localStorage)에도 그대로 반영함 -
 // pull 때는 물론, 이제 push 때도(먼저 병합한 뒤 올리므로) 똑같이 호출해서 이 기기 화면도 항상 병합된
 // 최신 상태를 보게 함
+// ⚠️ 데이터 안전장치 - 브라우저 저장 공간(보통 약 5MB)이 가득 차면 localStorage 저장이 실패하는데, 예전엔 그
+// 실패가 중간에 예외로 터져서 병합 결과가 일부만 반영되거나(어떤 목록은 새 것, 어떤 목록은 옛 것), 병합
+// 기준점 저장 실패가 조용히 묻혀서 다음 병합이 엉뚱하게 계산될 수 있었음. 이제 항목 하나가 실패해도 나머지는
+// 끝까지 반영하고, 실패하면 화면에 분명히 알려줌
+let gdriveLocalWriteFailed = null;
+let gdriveStorageWarned = false;
+function gdrivePutLocal(key, value){
+  try{ localStorage.setItem(key, value); }
+  catch(e){ gdriveLocalWriteFailed = key; console.error('브라우저 저장 실패(저장 공간 부족 가능성)', key, e); }
+}
+function gdriveWarnStorageFull(key){
+  gdriveSetStatus('⚠️ 이 브라우저의 저장 공간이 가득 차서 일부 데이터를 저장하지 못했어요');
+  if(gdriveStorageWarned) return;
+  gdriveStorageWarned = true;
+  appAlert('이 브라우저의 저장 공간이 가득 차서 일부 데이터를 저장하지 못했어요.\n\n휴지통 비우기, 오래된 첨부 정리 후 새로고침해 주세요. 계속 반복되면 관리자에게 알려주세요.\n(' + key + ')');
+}
 function gdriveApplyMergedLocally(merged){
+  gdriveLocalWriteFailed = null;
   setGdriveMergeBaseline(merged);
   saveProfiles(merged.profiles || []);
   Object.keys(merged.data || {}).forEach(pid=>{
     const d = merged.data[pid];
-    if(d.settings) localStorage.setItem(`worklog_settings__${pid}`, JSON.stringify(d.settings));
-    if(d.attendance) localStorage.setItem(`worklog_attendance__${pid}`, JSON.stringify(d.attendance));
-    if(d.expense) localStorage.setItem(`worklog_expense__${pid}`, JSON.stringify(d.expense));
-    if(d.schedule) localStorage.setItem(`worklog_schedule__${pid}`, JSON.stringify(d.schedule));
+    if(d.settings) gdrivePutLocal(`worklog_settings__${pid}`, JSON.stringify(d.settings));
+    if(d.attendance) gdrivePutLocal(`worklog_attendance__${pid}`, JSON.stringify(d.attendance));
+    if(d.expense) gdrivePutLocal(`worklog_expense__${pid}`, JSON.stringify(d.expense));
+    if(d.schedule) gdrivePutLocal(`worklog_schedule__${pid}`, JSON.stringify(d.schedule));
   });
   if(merged.shared){
-    if(merged.shared.exclusionDays) localStorage.setItem('worklog_shared_exclusions', JSON.stringify(merged.shared.exclusionDays));
-    if(merged.shared.workHourExceptions) localStorage.setItem('worklog_shared_workhours', JSON.stringify(merged.shared.workHourExceptions));
-    if(merged.shared.noticeHistory) localStorage.setItem('worklog_shared_notice_history', JSON.stringify(merged.shared.noticeHistory));
-    if(merged.shared.noticeReadState !== undefined) localStorage.setItem('worklog_shared_notice_read', JSON.stringify(merged.shared.noticeReadState));
-    if(merged.shared.notificationLog !== undefined) localStorage.setItem('worklog_shared_notifications', JSON.stringify(merged.shared.notificationLog));
-    if(merged.shared.notificationReadState !== undefined) localStorage.setItem('worklog_shared_notification_read', JSON.stringify(merged.shared.notificationReadState));
-    if(merged.shared.adminEmails) localStorage.setItem('worklog_shared_admins', JSON.stringify(merged.shared.adminEmails));
-    if(merged.shared.manageSalt !== undefined) localStorage.setItem('worklog_shared_managesalt', merged.shared.manageSalt);
-    if(merged.shared.manageVerifier !== undefined) localStorage.setItem('worklog_shared_manageverifier', JSON.stringify(merged.shared.manageVerifier));
-    if(merged.shared.companyInfo !== undefined) localStorage.setItem('worklog_shared_companyinfo', JSON.stringify(merged.shared.companyInfo));
-    if(merged.shared.companyName !== undefined) localStorage.setItem('worklog_shared_companyname', merged.shared.companyName);
-    if(merged.shared.teamInfo !== undefined) localStorage.setItem('worklog_shared_teaminfo', JSON.stringify(merged.shared.teamInfo));
-    if(merged.shared.specialPeriods !== undefined) localStorage.setItem('worklog_shared_specialperiods', JSON.stringify(merged.shared.specialPeriods));
-    if(merged.shared.specialPeriodHistory !== undefined) localStorage.setItem('worklog_shared_specialperiod_history', JSON.stringify(merged.shared.specialPeriodHistory));
-    if(merged.shared.filingStatus !== undefined) localStorage.setItem('worklog_shared_filingstatus', JSON.stringify(merged.shared.filingStatus));
-    if(merged.shared.reviewStatus !== undefined) localStorage.setItem('worklog_shared_reviewstatus', JSON.stringify(merged.shared.reviewStatus));
-    if(merged.shared.filingHelp !== undefined) localStorage.setItem('worklog_shared_filinghelp', JSON.stringify(merged.shared.filingHelp));
-    if(merged.shared.approvals !== undefined) localStorage.setItem('worklog_shared_approvals', JSON.stringify(merged.shared.approvals));
-    if(merged.shared.approvalReadState !== undefined) localStorage.setItem('worklog_shared_approval_read', JSON.stringify(merged.shared.approvalReadState));
-    if(merged.shared.reviewFigures !== undefined) localStorage.setItem('worklog_shared_reviewfigures', JSON.stringify(merged.shared.reviewFigures));
-    if(merged.shared.reviewMeta !== undefined) localStorage.setItem('worklog_shared_reviewmeta', JSON.stringify(merged.shared.reviewMeta));
-    if(merged.shared.profitLossReports !== undefined) localStorage.setItem('worklog_shared_plreports', JSON.stringify(merged.shared.profitLossReports));
-    if(merged.shared.filingTargets !== undefined) localStorage.setItem('worklog_shared_filingtargets', JSON.stringify(merged.shared.filingTargets));
-    if(merged.shared.filingCycles !== undefined) localStorage.setItem('worklog_shared_filingCycles', JSON.stringify(merged.shared.filingCycles));
-    if(merged.shared.autoPhrases !== undefined) localStorage.setItem('worklog_shared_autophrases', JSON.stringify(merged.shared.autoPhrases));
-    if(merged.shared.itFilingStatus !== undefined) localStorage.setItem('worklog_shared_itfilingstatus', JSON.stringify(merged.shared.itFilingStatus));
-    if(merged.shared.vatFilingTargets !== undefined) localStorage.setItem('worklog_shared_vatfilingtargets', JSON.stringify(merged.shared.vatFilingTargets));
-    if(merged.shared.vatReviewFigures !== undefined) localStorage.setItem('worklog_shared_vatreviewfigures', JSON.stringify(merged.shared.vatReviewFigures));
-    if(merged.shared.clients !== undefined) localStorage.setItem('worklog_shared_clients', JSON.stringify(merged.shared.clients));
-    if(merged.shared.personalInfo !== undefined) localStorage.setItem('worklog_shared_personalinfo', JSON.stringify(merged.shared.personalInfo));
-    if(merged.shared.trash !== undefined) localStorage.setItem('worklog_shared_trash', JSON.stringify(merged.shared.trash));
-    if(merged.shared.lunchLimitHistory !== undefined) localStorage.setItem('worklog_shared_lunchlimit', JSON.stringify(merged.shared.lunchLimitHistory));
-    if(merged.shared.taxScheduleOverrides !== undefined) localStorage.setItem('worklog_shared_taxschedule_overrides', JSON.stringify(merged.shared.taxScheduleOverrides));
-    if(merged.shared.taxScheduleCustomItems !== undefined) localStorage.setItem('worklog_shared_taxschedule_custom', JSON.stringify(merged.shared.taxScheduleCustomItems));
-    if(merged.shared.teamPolicyHistory !== undefined) localStorage.setItem('worklog_shared_teampolicyhistory', JSON.stringify(merged.shared.teamPolicyHistory));
-    if(merged.shared.opsPolicyHistory !== undefined) localStorage.setItem('worklog_shared_opspolicyhistory', JSON.stringify(merged.shared.opsPolicyHistory));
-    if(merged.shared.quickGuideHistory !== undefined) localStorage.setItem('worklog_shared_quickguidehistory', JSON.stringify(merged.shared.quickGuideHistory));
-    if(merged.shared.pushTokens !== undefined) localStorage.setItem('worklog_shared_pushtokens', JSON.stringify(merged.shared.pushTokens));
-    if(merged.shared.notificationPrefs !== undefined) localStorage.setItem('worklog_shared_notificationprefs', JSON.stringify(merged.shared.notificationPrefs));
-    if(merged.shared.seatChart !== undefined) localStorage.setItem('worklog_shared_seatchart', JSON.stringify(merged.shared.seatChart));
-    if(merged.shared.orgChart !== undefined) localStorage.setItem('worklog_shared_orgchart', JSON.stringify(merged.shared.orgChart));
-    if(merged.shared.hrTeamInfo !== undefined) localStorage.setItem('worklog_shared_hrteaminfo', JSON.stringify(merged.shared.hrTeamInfo));
+    if(merged.shared.exclusionDays) gdrivePutLocal('worklog_shared_exclusions', JSON.stringify(merged.shared.exclusionDays));
+    if(merged.shared.workHourExceptions) gdrivePutLocal('worklog_shared_workhours', JSON.stringify(merged.shared.workHourExceptions));
+    if(merged.shared.noticeHistory) gdrivePutLocal('worklog_shared_notice_history', JSON.stringify(merged.shared.noticeHistory));
+    if(merged.shared.noticeReadState !== undefined) gdrivePutLocal('worklog_shared_notice_read', JSON.stringify(merged.shared.noticeReadState));
+    if(merged.shared.notificationLog !== undefined) gdrivePutLocal('worklog_shared_notifications', JSON.stringify(merged.shared.notificationLog));
+    if(merged.shared.notificationReadState !== undefined) gdrivePutLocal('worklog_shared_notification_read', JSON.stringify(merged.shared.notificationReadState));
+    if(merged.shared.adminEmails) gdrivePutLocal('worklog_shared_admins', JSON.stringify(merged.shared.adminEmails));
+    if(merged.shared.manageSalt !== undefined) gdrivePutLocal('worklog_shared_managesalt', merged.shared.manageSalt);
+    if(merged.shared.manageVerifier !== undefined) gdrivePutLocal('worklog_shared_manageverifier', JSON.stringify(merged.shared.manageVerifier));
+    if(merged.shared.companyInfo !== undefined) gdrivePutLocal('worklog_shared_companyinfo', JSON.stringify(merged.shared.companyInfo));
+    if(merged.shared.companyName !== undefined) gdrivePutLocal('worklog_shared_companyname', merged.shared.companyName);
+    if(merged.shared.teamInfo !== undefined) gdrivePutLocal('worklog_shared_teaminfo', JSON.stringify(merged.shared.teamInfo));
+    if(merged.shared.specialPeriods !== undefined) gdrivePutLocal('worklog_shared_specialperiods', JSON.stringify(merged.shared.specialPeriods));
+    if(merged.shared.specialPeriodHistory !== undefined) gdrivePutLocal('worklog_shared_specialperiod_history', JSON.stringify(merged.shared.specialPeriodHistory));
+    if(merged.shared.filingStatus !== undefined) gdrivePutLocal('worklog_shared_filingstatus', JSON.stringify(merged.shared.filingStatus));
+    if(merged.shared.reviewStatus !== undefined) gdrivePutLocal('worklog_shared_reviewstatus', JSON.stringify(merged.shared.reviewStatus));
+    if(merged.shared.filingHelp !== undefined) gdrivePutLocal('worklog_shared_filinghelp', JSON.stringify(merged.shared.filingHelp));
+    if(merged.shared.approvals !== undefined) gdrivePutLocal('worklog_shared_approvals', JSON.stringify(merged.shared.approvals));
+    if(merged.shared.approvalReadState !== undefined) gdrivePutLocal('worklog_shared_approval_read', JSON.stringify(merged.shared.approvalReadState));
+    if(merged.shared.reviewFigures !== undefined) gdrivePutLocal('worklog_shared_reviewfigures', JSON.stringify(merged.shared.reviewFigures));
+    if(merged.shared.reviewMeta !== undefined) gdrivePutLocal('worklog_shared_reviewmeta', JSON.stringify(merged.shared.reviewMeta));
+    if(merged.shared.profitLossReports !== undefined) gdrivePutLocal('worklog_shared_plreports', JSON.stringify(merged.shared.profitLossReports));
+    if(merged.shared.filingTargets !== undefined) gdrivePutLocal('worklog_shared_filingtargets', JSON.stringify(merged.shared.filingTargets));
+    if(merged.shared.filingCycles !== undefined) gdrivePutLocal('worklog_shared_filingCycles', JSON.stringify(merged.shared.filingCycles));
+    if(merged.shared.autoPhrases !== undefined) gdrivePutLocal('worklog_shared_autophrases', JSON.stringify(merged.shared.autoPhrases));
+    if(merged.shared.itFilingStatus !== undefined) gdrivePutLocal('worklog_shared_itfilingstatus', JSON.stringify(merged.shared.itFilingStatus));
+    if(merged.shared.vatFilingTargets !== undefined) gdrivePutLocal('worklog_shared_vatfilingtargets', JSON.stringify(merged.shared.vatFilingTargets));
+    if(merged.shared.vatReviewFigures !== undefined) gdrivePutLocal('worklog_shared_vatreviewfigures', JSON.stringify(merged.shared.vatReviewFigures));
+    if(merged.shared.clients !== undefined) gdrivePutLocal('worklog_shared_clients', JSON.stringify(merged.shared.clients));
+    if(merged.shared.personalInfo !== undefined) gdrivePutLocal('worklog_shared_personalinfo', JSON.stringify(merged.shared.personalInfo));
+    if(merged.shared.trash !== undefined) gdrivePutLocal('worklog_shared_trash', JSON.stringify(merged.shared.trash));
+    if(merged.shared.lunchLimitHistory !== undefined) gdrivePutLocal('worklog_shared_lunchlimit', JSON.stringify(merged.shared.lunchLimitHistory));
+    if(merged.shared.taxScheduleOverrides !== undefined) gdrivePutLocal('worklog_shared_taxschedule_overrides', JSON.stringify(merged.shared.taxScheduleOverrides));
+    if(merged.shared.taxScheduleCustomItems !== undefined) gdrivePutLocal('worklog_shared_taxschedule_custom', JSON.stringify(merged.shared.taxScheduleCustomItems));
+    if(merged.shared.teamPolicyHistory !== undefined) gdrivePutLocal('worklog_shared_teampolicyhistory', JSON.stringify(merged.shared.teamPolicyHistory));
+    if(merged.shared.opsPolicyHistory !== undefined) gdrivePutLocal('worklog_shared_opspolicyhistory', JSON.stringify(merged.shared.opsPolicyHistory));
+    if(merged.shared.quickGuideHistory !== undefined) gdrivePutLocal('worklog_shared_quickguidehistory', JSON.stringify(merged.shared.quickGuideHistory));
+    if(merged.shared.pushTokens !== undefined) gdrivePutLocal('worklog_shared_pushtokens', JSON.stringify(merged.shared.pushTokens));
+    if(merged.shared.notificationPrefs !== undefined) gdrivePutLocal('worklog_shared_notificationprefs', JSON.stringify(merged.shared.notificationPrefs));
+    if(merged.shared.seatChart !== undefined) gdrivePutLocal('worklog_shared_seatchart', JSON.stringify(merged.shared.seatChart));
+    if(merged.shared.orgChart !== undefined) gdrivePutLocal('worklog_shared_orgchart', JSON.stringify(merged.shared.orgChart));
+    if(merged.shared.hrTeamInfo !== undefined) gdrivePutLocal('worklog_shared_hrteaminfo', JSON.stringify(merged.shared.hrTeamInfo));
     if(merged.shared.__fieldUpdatedAt !== undefined){
       sharedFieldUpdatedAt = merged.shared.__fieldUpdatedAt || {};
-      try{ localStorage.setItem('worklog_shared_field_updatedat', JSON.stringify(sharedFieldUpdatedAt)); }catch(e){ console.error('필드 갱신시각 저장 실패', e); }
+      try{ gdrivePutLocal('worklog_shared_field_updatedat', JSON.stringify(sharedFieldUpdatedAt)); }catch(e){ console.error('필드 갱신시각 저장 실패', e); }
     }
   }
+  if(gdriveLocalWriteFailed) gdriveWarnStorageFull(gdriveLocalWriteFailed);
 }
 async function gdrivePull(){
   if(!gdriveAccessToken || !gdriveFileId) return;
@@ -29805,7 +29862,7 @@ function setGdriveSyncingIndicator(active){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.27 21:30';
+const APP_BUILD = '2026.09.27 21:50';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
