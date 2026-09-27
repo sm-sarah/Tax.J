@@ -1611,6 +1611,9 @@
   /* 신고구분 팝업의 1단계 "대상/미대상" 토글 - 원천세 자체가 없는 거래처를 골라낼 수 있게 새로 추가함.
      대상/미대상 팝업(#filingTargetApplicableToggle)과 같은 톤(인디고/코랄)을 그대로 씀 */
   #filingCycleApplicableToggle .fc-applicable-btn{ border:1.5px solid var(--border); }
+  /* "최초등록" - 변경일자를 물을 필요 없는 첫 등록 전용 버튼(대상/미대상 왼쪽에 추가) - 대상과 같은 "적용됨"
+     의미라 같은 인디고 톤을 쓰되, 나중에 실제로 "몇 월부터 바뀜" 이력이 쌓이는 대상/미대상과는 구분되게 함 */
+  #filingCycleApplicableToggle .fc-applicable-btn[data-value="initial"].active{background:var(--indigo-deep); border-color:var(--indigo-deep);}
   #filingCycleApplicableToggle .fc-applicable-btn[data-value="target"].active{background:var(--indigo); border-color:var(--indigo-deep);}
   #filingCycleApplicableToggle .fc-applicable-btn[data-value="not-target"].active{background:var(--coral); border-color:#B91C1C;}
   /* "신고" 열 칩(매월/반기) 오른쪽 위의 * 표시 - 연도 중간에 신고구분이 바뀐 거래처를 표시함(기장거래처
@@ -3266,13 +3269,24 @@
      "등록" 버튼, 이미 이력이 있어서 최신 레코드를 수정하는 중이면 "수정완료" 버튼으로 문구가 바뀜 -->
 <div id="filingCycleEditModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:400px; width:100%; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
-    <div style="text-align:center; margin-bottom:16px;">
-      <div id="filingCycleEditClientName" style="font-weight:800; font-size:16px; color:var(--ink);"></div>
-      <div class="hint" style="margin:4px 0 0;">원천세 대상 여부 · 신고구분(매월/반기)</div>
+    <!-- 닫기(✕)가 아래 이력/등록 버튼줄에 같이 있어서 "닫기만 화면 오른쪽 위로 옮겨달라"는 요청 - 다른
+         팝업들(신고구분 변경이력 팝업 등)과 같은 자리(제목 옆 오른쪽 위)로 맞춤 -->
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:16px;">
+      <div style="flex:1; text-align:center;">
+        <div id="filingCycleEditClientName" style="font-weight:800; font-size:16px; color:var(--ink);"></div>
+        <div class="hint" style="margin:4px 0 0;">원천세 대상 여부 · 신고구분(매월/반기)</div>
+      </div>
+      <button type="button" id="filingCycleEditCloseBtn" class="del-btn modal-close-btn" style="flex-shrink:0;">✕</button>
     </div>
     <div style="display:flex; flex-direction:column; gap:12px; font-size:12.5px;">
+      <!-- "최초등록"을 대상/미대상 왼쪽에 추가함 - 신규 거래처를 처음 등록할 때도 "변경일자"를 꼭 골라야 해서
+           헷갈렸는데(이 값이 그 달 이전 기간은 전부 미대상으로 잠그는 기준이라, 아무 날짜나 넣으면 그 이전
+           달이 전부 잠겨서 "방금 등록했는데 초기화됐다"처럼 보임) - 최초등록은 "언제부터"를 따질 필요가
+           없는 등록이라 변경일자 입력 자체를 없애고, 저장 시 아주 이른 날짜(FILING_CYCLE_INITIAL_EFFECTIVE_FROM)를
+           내부적으로 넣어서 과거 어느 달을 조회해도 잠기지 않게 함 -->
       <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
         <span class="policy-category-toggle ft-cycle-toggle" id="filingCycleApplicableToggle" style="margin-bottom:0;">
+          <button type="button" class="fc-applicable-btn" data-value="initial">최초등록</button>
           <button type="button" class="fc-applicable-btn" data-value="target">대상</button>
           <button type="button" class="fc-applicable-btn" data-value="not-target">미대상</button>
         </span>
@@ -3283,16 +3297,15 @@
           <button type="button" class="fc-cycle-btn" data-cycle="반기">반기</button>
         </span>
       </div>
-      <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
+      <div id="filingCycleEffectiveRow" style="display:flex; align-items:center; justify-content:center; gap:8px;">
         <span style="font-weight:700; color:var(--ink-soft);">변경일자</span>
-        <input type="month" id="fc-effective-from" style="border:1.5px solid var(--border); border-radius:6px; padding:4px 8px; font-size:12.5px;">
+        <input type="month" id="fc-effective-from" class="bulk-date-apply-input" style="width:auto;">
       </div>
       <input type="text" id="fc-memo" placeholder="메모 (선택)" style="border:1.5px solid var(--border); border-radius:6px; padding:6px 10px; font-size:12.5px; width:100%;">
     </div>
     <div style="text-align:center; margin-top:16px; display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
-      <button type="button" id="filingCycleHistoryBtn" class="del-btn">이력</button>
-      <button type="button" id="filingCycleSaveBtn" class="submit-btn" style="width:auto; padding:8px 18px;">등록</button>
-      <button type="button" id="filingCycleEditCloseBtn" class="del-btn modal-close-btn">✕</button>
+      <button type="button" id="filingCycleHistoryBtn" class="del-btn seat-chart-action-btn">이력</button>
+      <button type="button" id="filingCycleSaveBtn" class="submit-btn seat-chart-action-btn">등록</button>
     </div>
   </div>
 </div>
@@ -4834,7 +4847,6 @@
           <select id="itAllYear" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
           <input type="text" id="itAllSearch" placeholder="거래처 검색" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 10px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px;">
         </div>
-        <div style="text-align:right; margin-bottom:6px;"><span class="hint" style="font-size:11px; margin:0;">칸을 눌러서 신고대상 여부를 등록하고, 신고대상인 달은 눌러서 신고일자를 입력하세요. 신고완료된 칸은 마우스를 올리면 신고일자가 보여요.</span></div>
         <div id="itAllTableWrap"></div>
       </div>
       <!-- 신고일자 입력 팝업(원천세 통합) -->
@@ -5636,6 +5648,19 @@
 
       <div class="settings-sub-title" id="ssTitle-exclusionDays" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> 제외일수 <span class="badge">공휴일·회식 등</span></div>
       <p class="hint">전 직원 공통으로 반영돼요. 점심회식·공휴일·기타는 식대계산 근무일수에서 빠지고, 저녁회식은 일정 공유용이라 식대계산에는 영향 없어요.</p>
+      <!-- "세무일정처럼 공휴일도 매달 수동으로 안 넣게 자동으로 되면 좋겠다"는 요청 - 신정·삼일절·어린이날·
+           현충일·광복절·개천절·한글날·크리스마스는 해마다 날짜가 고정이라 자동으로 채워줄 수 있지만,
+           설날·추석·부처님오신날(음력 기준)과 대체공휴일은 해마다 날짜가 달라지고 그 해 정부 발표를
+           따로 확인해야 해서 이 버튼 대상에서 제외함(그 연휴들은 예전처럼 아래 폼에서 직접 등록) -
+           이미 등록된 날짜(같은 해·같은 이름)는 중복으로 또 추가하지 않음 -->
+      <div class="flat-panel flat-panel-narrow" style="background:var(--indigo-bg); border:none; padding:12px 14px; margin-bottom:10px;">
+        <div style="display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;">
+          <span style="font-size:12px; color:var(--navy); font-weight:700;">날짜가 매년 고정인 공휴일(신정·삼일절·어린이날·현충일·광복절·개천절·한글날·크리스마스)만 한 번에 추가</span>
+          <select id="ex-autofill-year" class="flat-input" style="width:auto; padding:4px 8px; font-size:12px;"></select>
+          <button type="button" id="exAutoFillHolidaysBtn" class="submit-btn" style="width:auto; padding:6px 12px; font-size:12px;">공휴일 자동추가</button>
+        </div>
+        <p class="hint" style="margin:6px 0 0;">설날·추석·부처님오신날처럼 해마다 날짜가 바뀌는 연휴와 대체공휴일은 자동 대상이 아니에요 - 아래에서 직접 등록해주세요.</p>
+      </div>
       <div class="flat-panel flat-panel-narrow">
         <form id="exclusionForm">
           <div class="flat-row">
@@ -7922,6 +7947,30 @@ function recordRecentClockEntryEdit(pid, entry){
     const list = getRecentClockEntryEdits().filter(e=>e.key!==key);
     list.push({ key, pid, entry: JSON.parse(JSON.stringify(entry)), at: Date.now() });
     localStorage.setItem('worklog_recent_clock_edits', JSON.stringify(list));
+  }catch(e){}
+}
+// 사내정보(회사/팀 공용정보, 팀원별 기본정보 등)를 저장했는데 몇 초 뒤 사라져서 다시 입력해야 하는 문제 -
+// sharedCompanyInfo.team은 개인정보/공용 목록과 달리 "사람 카드" 자체(person으로만 구분, id 없음) 단위라
+// gdriveMergeValue가 배열을 항목별로 병합하지 못하고 통째로 한쪽을 고르는 규칙을 타는데, 그 "고르는 쪽"이
+// 항상 방금 이 기기에서 저장한 내용을 담고 있다는 보장이 없음(15초마다 도는 자동 pull이 하필 그 사이에
+// 끼어들면 통째로 못 보고 지나칠 수 있음) - 결재 결정/출퇴근 기록과 같은 원리로, 방금 저장한 항목을
+// 따로 기억해뒀다가 병합 직후 다시 확인해서 없거나 다르면 되살림
+function getRecentCiEntryWrites(){
+  try{
+    const raw = JSON.parse(localStorage.getItem('worklog_recent_ci_writes') || '[]');
+    const now = Date.now();
+    const fresh = raw.filter(e=> e && e.key && (now - e.at) < RECENT_DELETION_TTL_MS);
+    if(fresh.length !== raw.length) localStorage.setItem('worklog_recent_ci_writes', JSON.stringify(fresh));
+    return fresh;
+  }catch(e){ return []; }
+}
+function recordRecentCiEntryWrite(category, person, entry){
+  try{
+    if(!entry || !entry.id) return;
+    const key = `${category}::${person||''}::${entry.id}`;
+    const list = getRecentCiEntryWrites().filter(e=>e.key!==key);
+    list.push({ key, category, person: person||null, entry: JSON.parse(JSON.stringify(entry)), at: Date.now() });
+    localStorage.setItem('worklog_recent_ci_writes', JSON.stringify(list));
   }catch(e){}
 }
 // 공지사항 삭제할 때도 직원·결재문서와 똑같은 문제(지운 직후 다른 기기/탭이 아직 들고 있던 예전 목록이
@@ -13752,10 +13801,13 @@ document.getElementById('ciEntryModalForm').addEventListener('submit', async (e)
         const changes = diffCiEntryFields(entry, label, noteIsLink, note, credChanged, content);
         entry.type=type; entry.label=label; entry.noteIsLink=noteIsLink; entry.note=note; entry.content=content; entry.idVal=idVal; entry.pwVal=pwVal; entry.updatedAt = todayStr();
         if(changes.length){ if(!entry.history) entry.history=[]; entry.history.unshift({date:new Date().toLocaleString('ko-KR'), changes}); }
+        recordRecentCiEntryWrite('personal', null, entry);
       }
     } else {
       if(!sharedCompanyInfo.personal) sharedCompanyInfo.personal = [];
-      sharedCompanyInfo.personal.push({ id: genId(), owner, type, label, noteIsLink, note, content, idVal, pwVal, updatedAt: todayStr(), history:[] });
+      const newEntry = { id: genId(), owner, type, label, noteIsLink, note, content, idVal, pwVal, updatedAt: todayStr(), history:[] };
+      sharedCompanyInfo.personal.push(newEntry);
+      recordRecentCiEntryWrite('personal', null, newEntry);
     }
   } else {
     // 이제 corp/teamGeneral/team은 기본적으로 암호화하지 않음 - "🔒 암호화"를 체크한 항목만 sensitiveEnc로
@@ -13779,10 +13831,13 @@ document.getElementById('ciEntryModalForm').addEventListener('submit', async (e)
           const changes = diffCiEntryFields(entry, label, noteIsLink, note, credChanged, content);
           entry.type=type; entry.label=label; entry.noteIsLink=noteIsLink; entry.note=note; entry.content=savedContent; entry.idVal=savedIdVal; entry.pwVal=savedPwVal; entry.sensitiveEnc=sensitiveEnc; entry.updatedAt = todayStr();
           if(changes.length){ if(!entry.history) entry.history=[]; entry.history.unshift({date:new Date().toLocaleString('ko-KR'), changes}); }
+          recordRecentCiEntryWrite('corp', null, entry);
         }
       } else {
         if(!sharedCompanyInfo.corp) sharedCompanyInfo.corp = [];
-        sharedCompanyInfo.corp.push({ id: genId(), type, label, noteIsLink, note, content:savedContent, idVal:savedIdVal, pwVal:savedPwVal, sensitiveEnc, updatedAt: todayStr(), history:[] });
+        const newEntry = { id: genId(), type, label, noteIsLink, note, content:savedContent, idVal:savedIdVal, pwVal:savedPwVal, sensitiveEnc, updatedAt: todayStr(), history:[] };
+        sharedCompanyInfo.corp.push(newEntry);
+        recordRecentCiEntryWrite('corp', null, newEntry);
       }
     } else if(category==='teamGeneral'){
       if(id){
@@ -13791,10 +13846,13 @@ document.getElementById('ciEntryModalForm').addEventListener('submit', async (e)
           const changes = diffCiEntryFields(entry, label, noteIsLink, note, credChanged, content);
           entry.type=type; entry.label=label; entry.noteIsLink=noteIsLink; entry.note=note; entry.content=savedContent; entry.idVal=savedIdVal; entry.pwVal=savedPwVal; entry.sensitiveEnc=sensitiveEnc; entry.updatedAt = todayStr();
           if(changes.length){ if(!entry.history) entry.history=[]; entry.history.unshift({date:new Date().toLocaleString('ko-KR'), changes}); }
+          recordRecentCiEntryWrite('teamGeneral', null, entry);
         }
       } else {
         if(!sharedCompanyInfo.teamGeneral) sharedCompanyInfo.teamGeneral = [];
-        sharedCompanyInfo.teamGeneral.push({ id: genId(), type, label, noteIsLink, note, content:savedContent, idVal:savedIdVal, pwVal:savedPwVal, sensitiveEnc, updatedAt: todayStr(), history:[] });
+        const newEntry = { id: genId(), type, label, noteIsLink, note, content:savedContent, idVal:savedIdVal, pwVal:savedPwVal, sensitiveEnc, updatedAt: todayStr(), history:[] };
+        sharedCompanyInfo.teamGeneral.push(newEntry);
+        recordRecentCiEntryWrite('teamGeneral', null, newEntry);
       }
     } else if(category==='team'){
       if(!sharedCompanyInfo.team) sharedCompanyInfo.team = [];
@@ -13812,10 +13870,13 @@ document.getElementById('ciEntryModalForm').addEventListener('submit', async (e)
           const changes = diffCiEntryFields(entry, label, noteIsLink, note, credChanged, content);
           entry.type=type; entry.label=label; entry.noteIsLink=noteIsLink; entry.note=note; entry.content=savedContent; entry.idVal=savedIdVal; entry.pwVal=savedPwVal; entry.sensitiveEnc=sensitiveEnc; entry.updatedAt = todayStr();
           if(changes.length){ if(!entry.history) entry.history=[]; entry.history.unshift({date:new Date().toLocaleString('ko-KR'), changes}); }
+          recordRecentCiEntryWrite('team', person, entry);
         }
       } else {
         if(!p.items) p.items = [];
-        p.items.push({ id: genId(), type, label, noteIsLink, note, content:savedContent, idVal:savedIdVal, pwVal:savedPwVal, sensitiveEnc, updatedAt: todayStr(), history:[] });
+        const newEntry = { id: genId(), type, label, noteIsLink, note, content:savedContent, idVal:savedIdVal, pwVal:savedPwVal, sensitiveEnc, updatedAt: todayStr(), history:[] };
+        p.items.push(newEntry);
+        recordRecentCiEntryWrite('team', person, newEntry);
       }
     }
   }
@@ -19163,6 +19224,51 @@ document.getElementById('ex-reason').addEventListener('change', (e)=>{
   }
 });
 
+// 매년 날짜가 고정인 국가공휴일 자동추가용 - 설날/추석(음력)·부처님오신날·대체공휴일은 해마다 날짜가
+// 달라져서 일부러 뺌(ex-autofill 버튼 위 안내문구 참고). { month, day, name } - month는 1~12
+const FIXED_NATIONAL_HOLIDAYS = [
+  { month:1, day:1, name:'신정' },
+  { month:3, day:1, name:'삼일절' },
+  { month:5, day:5, name:'어린이날' },
+  { month:6, day:6, name:'현충일' },
+  { month:8, day:15, name:'광복절' },
+  { month:10, day:3, name:'개천절' },
+  { month:10, day:9, name:'한글날' },
+  { month:12, day:25, name:'크리스마스' },
+];
+function populateExAutofillYearSelect(){
+  const sel = document.getElementById('ex-autofill-year');
+  if(!sel || sel.options.length) return; // 이미 채워져 있으면 다시 만들지 않음(선택값 유지)
+  const thisYear = new Date().getFullYear();
+  for(let y = thisYear - 1; y <= thisYear + 3; y++){
+    const opt = document.createElement('option');
+    opt.value = String(y); opt.textContent = `${y}년`;
+    if(y === thisYear) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+populateExAutofillYearSelect();
+document.getElementById('exAutoFillHolidaysBtn').addEventListener('click', async ()=>{
+  const year = parseInt(document.getElementById('ex-autofill-year').value, 10);
+  if(!year) return;
+  const toAdd = FIXED_NATIONAL_HOLIDAYS.filter(h=>{
+    const ds = `${year}-${String(h.month).padStart(2,'0')}-${String(h.day).padStart(2,'0')}`;
+    return !sharedExclusionDays.some(x=>x.date===ds && x.reason==='공휴일');
+  });
+  if(!toAdd.length){ appAlert(`${year}년 고정 공휴일은 이미 다 등록돼 있어요.`); return; }
+  toAdd.forEach(h=>{
+    const ds = `${year}-${String(h.month).padStart(2,'0')}-${String(h.day).padStart(2,'0')}`;
+    sharedExclusionDays.push({ id: genId(), date: ds, reason:'공휴일', name: h.name });
+  });
+  await saveSharedExclusions();
+  showCenterToast(`${year}년 고정 공휴일 ${toAdd.length}개 추가됐어요`);
+  renderExclusionList();
+  renderExpense();
+  renderWorkdaysSuggestion();
+  renderCalendar();
+  renderAdminCalendar();
+});
+
 document.getElementById('settingsForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
   settings.employeeName = document.getElementById('s-name').value.trim();
@@ -20690,9 +20796,12 @@ function renderFilingTargetTable(){
     const cycleStarMark = cycleChanges.some(ch=>ch.stars==='**') ? '**' : '*';
     const cycleStar = cycleNote ? `<sup class="chip-star" data-tip="${escHtml(cycleNote)}" style="position:absolute; top:-5px; right:-4px; cursor:pointer; font-size:10px; font-weight:900; line-height:1; color:var(--indigo-deep);">${cycleStarMark}</sup>` : '';
     const cycleLabel = !latestCycleRec ? '미등록' : (latestApplicable ? (latestCycleRec.cycle || '매월') : '미대상');
-    const cycleCellColor = !latestCycleRec ? 'var(--border)' : (latestApplicable ? 'var(--indigo)' : 'var(--coral)');
-    const cycleCellBg = !latestCycleRec ? 'transparent' : (latestApplicable ? 'var(--indigo-bg)' : 'var(--coral-bg)');
-    const cycleCellText = !latestCycleRec ? 'var(--ink-soft)' : (latestApplicable ? 'var(--indigo-deep)' : 'var(--coral)');
+    // "매월/반기/미대상이 다 비슷한 색이라 구분이 안 된다"는 의견 - 미등록(회색)·미대상(코랄)은 그대로 두고,
+    // 대상인 경우엔 신고구분(매월/반기)에 따라서도 서로 다른 색을 쓰게 함(매월=인디고, 반기=amber)
+    const isBiannual = latestApplicable && latestCycleRec && latestCycleRec.cycle === '반기';
+    const cycleCellColor = !latestCycleRec ? 'var(--border)' : (!latestApplicable ? 'var(--coral)' : (isBiannual ? 'var(--amber)' : 'var(--indigo)'));
+    const cycleCellBg = !latestCycleRec ? 'transparent' : (!latestApplicable ? 'var(--coral-bg)' : (isBiannual ? 'var(--amber-bg)' : 'var(--indigo-bg)'));
+    const cycleCellText = !latestCycleRec ? 'var(--ink-soft)' : (!latestApplicable ? 'var(--coral)' : (isBiannual ? 'var(--amber)' : 'var(--indigo-deep)'));
     const cycleCell = `<td class="cvb"><button type="button" class="filing-cycle-chip" data-client-id="${c.id}" style="border:1.5px solid ${cycleCellColor}; border-radius:6px; padding:3px 9px; background:${cycleCellBg}; color:${cycleCellText}; font-size:10.5px; font-weight:700; cursor:pointer;">${escHtml(cycleLabel)}${cycleStar}</button></td>`;
     const monthCells = Array.from({length:12},(_,i)=>i+1).map(m=>{
       const period = `${year}-${String(m).padStart(2,'0')}`;
@@ -20825,10 +20934,16 @@ document.getElementById('filingTargetEditCloseBtn')?.addEventListener('click', (
 // 신고구분(대상/미대상 · 매월/반기) 등록·수정 팝업 - clientId + 수정 중인 레코드 id(신규 등록이면 null)를 들고 있음
 // 1단계로 대상/미대상을 먼저 고르고, "대상"을 골랐을 때만 그 아래 매월/반기 칩이 나타남(syncFilingCycleModalUI)
 let filingCycleEditCtx = null;
+// "최초등록"용 내부 effectiveFrom 값 - 실제 변경 시점이 없는(=이 거래처를 맡은 이후 쭉 같았던) 첫 등록에
+// 이 아주 이른 날짜를 넣어두면, filingApplicableAt()이 과거 어느 달을 조회해도 "이 레코드 이전이라 잠김"
+// 처리를 하지 않게 됨(제외일수 폼의 min 날짜와 같은 값 - 이 앱에서 "맨 처음"을 뜻하는 관례적인 날짜)
+const FILING_CYCLE_INITIAL_EFFECTIVE_FROM = '2015-01';
 function syncFilingCycleModalUI(){
   const applicableBtn = document.querySelector('#filingCycleApplicableToggle .fc-applicable-btn.active');
-  const isTarget = applicableBtn ? applicableBtn.dataset.value === 'target' : false;
-  document.getElementById('filingCycleDetailFields').style.display = isTarget ? 'flex' : 'none';
+  const value = applicableBtn ? applicableBtn.dataset.value : null;
+  document.getElementById('filingCycleDetailFields').style.display = (value === 'target' || value === 'initial') ? 'flex' : 'none';
+  // 최초등록은 "언제부터 바뀌었는지"를 물을 필요가 없는 등록이라 변경일자 입력 자체를 숨김
+  document.getElementById('filingCycleEffectiveRow').style.display = value === 'initial' ? 'none' : 'flex';
 }
 function openFilingCycleEditModal(clientId, recordId){
   const client = (clients.list||[]).find(c=>c.id===clientId);
@@ -20836,10 +20951,14 @@ function openFilingCycleEditModal(clientId, recordId){
   const editingRecord = recordId ? recs.find(r=>r.id===recordId) : null;
   filingCycleEditCtx = { clientId, editingRecordId: editingRecord ? editingRecord.id : null };
   document.getElementById('filingCycleEditClientName').textContent = client ? client.name : '';
-  // 신규 등록의 기본값은 "대상"(가장 흔한 경우) - 기존 이력을 수정하는 중이면 그 레코드의 값을 그대로 채움
+  // 이 레코드가 "최초등록"으로 저장된 것인지(맨 첫 레코드이면서 effectiveFrom이 그 관례적인 이른 날짜) 판단
+  const isInitialRecord = !!editingRecord && recs[0] && recs[0].id === editingRecord.id && editingRecord.effectiveFrom === FILING_CYCLE_INITIAL_EFFECTIVE_FROM;
+  // 신규 등록의 기본값 - 이 거래처에 등록된 이력이 아예 없으면(첫 등록) "최초등록", 있으면 "대상"(가장 흔한 경우)
+  const defaultValue = recs.length ? 'target' : 'initial';
   const isApplicable = editingRecord ? filingCycleRecApplicable(editingRecord) : true;
+  const activeValue = editingRecord ? (isInitialRecord ? 'initial' : (isApplicable ? 'target' : 'not-target')) : defaultValue;
   document.querySelectorAll('#filingCycleApplicableToggle .fc-applicable-btn').forEach(b=>{
-    b.classList.toggle('active', (b.dataset.value === 'target') === isApplicable);
+    b.classList.toggle('active', b.dataset.value === activeValue);
   });
   document.querySelectorAll('#filingCycleToggle .fc-cycle-btn').forEach(b=>{
     b.classList.toggle('active', editingRecord ? b.dataset.cycle === editingRecord.cycle : false);
@@ -20866,12 +20985,16 @@ document.getElementById('filingCycleSaveBtn')?.addEventListener('click', async (
   const { clientId, editingRecordId } = filingCycleEditCtx;
   const applicableBtn = document.querySelector('#filingCycleApplicableToggle .fc-applicable-btn.active');
   const cycleBtn = document.querySelector('#filingCycleToggle .fc-cycle-btn.active');
-  const effectiveFrom = document.getElementById('fc-effective-from').value;
   const memo = document.getElementById('fc-memo').value.trim();
-  if(!applicableBtn){ appAlert('대상/미대상 중 하나를 선택해주세요.'); return; }
-  const applicable = applicableBtn.dataset.value === 'target';
+  if(!applicableBtn){ appAlert('최초등록/대상/미대상 중 하나를 선택해주세요.'); return; }
+  const isInitial = applicableBtn.dataset.value === 'initial';
+  const applicable = isInitial ? true : applicableBtn.dataset.value === 'target';
   if(applicable && !cycleBtn){ appAlert('매월/반기 중 하나를 선택해주세요.'); return; }
-  if(!effectiveFrom){ appAlert('변경일자를 선택해주세요.'); return; }
+  let effectiveFrom = FILING_CYCLE_INITIAL_EFFECTIVE_FROM;
+  if(!isInitial){
+    effectiveFrom = document.getElementById('fc-effective-from').value;
+    if(!effectiveFrom){ appAlert('변경일자를 선택해주세요.'); return; }
+  }
   const cycle = applicable ? cycleBtn.dataset.cycle : null;
   sharedFilingCycles[clientId] = sharedFilingCycles[clientId] || [];
   if(editingRecordId){
@@ -21435,9 +21558,11 @@ function renderIncomeTaxUnified(){
     const latestCycleRec = cycleRecs.length ? cycleRecs[cycleRecs.length-1] : null;
     const latestApplicable = latestCycleRec ? filingCycleRecApplicable(latestCycleRec) : null;
     const cycleLabel = !latestCycleRec ? '미등록' : (latestApplicable ? (latestCycleRec.cycle || '매월') : '미대상');
-    const cycleCellColor = !latestCycleRec ? 'var(--border)' : (latestApplicable ? 'var(--indigo)' : 'var(--coral)');
-    const cycleCellBg = !latestCycleRec ? 'transparent' : (latestApplicable ? 'var(--indigo-bg)' : 'var(--coral-bg)');
-    const cycleCellText = !latestCycleRec ? 'var(--ink-soft)' : (latestApplicable ? 'var(--indigo-deep)' : 'var(--coral)');
+    // "매월/반기/미대상이 다 비슷한 색이라 구분이 안 된다"는 의견 - renderFilingTargetTable과 같은 톤 구성
+    const isBiannual = latestApplicable && latestCycleRec && latestCycleRec.cycle === '반기';
+    const cycleCellColor = !latestCycleRec ? 'var(--border)' : (!latestApplicable ? 'var(--coral)' : (isBiannual ? 'var(--amber)' : 'var(--indigo)'));
+    const cycleCellBg = !latestCycleRec ? 'transparent' : (!latestApplicable ? 'var(--coral-bg)' : (isBiannual ? 'var(--amber-bg)' : 'var(--indigo-bg)'));
+    const cycleCellText = !latestCycleRec ? 'var(--ink-soft)' : (!latestApplicable ? 'var(--coral)' : (isBiannual ? 'var(--amber)' : 'var(--indigo-deep)'));
     const cycleCell = `<td class="cvb"><button type="button" class="filing-cycle-chip" data-client-id="${c.id}" style="border:1.5px solid ${cycleCellColor}; border-radius:6px; padding:3px 9px; background:${cycleCellBg}; color:${cycleCellText}; font-size:10.5px; font-weight:700; cursor:pointer;">${escHtml(cycleLabel)}</button></td>`;
     const monthCells = Array.from({length:12},(_,i)=>i+1).map(m=>{
       const period = `${year}-${String(m).padStart(2,'0')}`;
@@ -21446,10 +21571,12 @@ function renderIncomeTaxUnified(){
       const clickAttr = st.disabled ? 'disabled' : `data-client-id="${c.id}" data-period="${period}" data-cellstate="${cs.state}"`;
       return `<td class="cvb"><button type="button" class="it-all-month-cell-btn" ${clickAttr} title="${cs.tip ? escHtml(cs.tip) : ''}" style="width:100%; border:1.5px solid ${st.color}; border-radius:6px; padding:4px 2px; background:${st.bg}; color:${st.text}; font-size:10.5px; font-weight:700; cursor:${st.disabled?'not-allowed':'pointer'}; opacity:${st.disabled?'0.35':'1'};">${escHtml(st.label)}</button></td>`;
     }).join('');
+    // 아이콘만으로는 급여검증/납부세액검증 중 뭔지 구분이 안 된다는 의견 - 아이콘 대신 짧은 글자(급여/세액)를
+    // 그대로 칩 버튼 라벨로 써서 한눈에 알아볼 수 있게 함(색 구분은 기존 인디고/민트 톤 그대로 유지)
     const verifyCell = `<td class="cvb">
       <span style="display:inline-flex; align-items:center; gap:5px; vertical-align:middle;">
-        <button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}" data-section="income" title="급여검증 전체화면으로 열기" style="width:24px; height:24px; padding:0; display:inline-flex; align-items:center; justify-content:center; background:var(--surface); color:var(--indigo-deep); border:1.5px solid var(--indigo-bg); border-radius:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="8" y1="2" x2="8" y2="6"></line><line x1="16" y1="2" x2="16" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></button>
-        <button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}" data-section="tax" title="납부세액검증 전체화면으로 열기" style="width:24px; height:24px; padding:0; display:inline-flex; align-items:center; justify-content:center; background:var(--surface); color:var(--mint); border:1.5px solid var(--mint-bg); border-radius:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></button>
+        <button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}" data-section="income" title="급여검증 전체화면으로 열기" style="height:22px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; background:var(--indigo-bg); color:var(--indigo-deep); border:1.5px solid var(--indigo-bg); border-radius:6px; font-size:10.5px; font-weight:800;">급여</button>
+        <button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}" data-section="tax" title="납부세액검증 전체화면으로 열기" style="height:22px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; background:var(--mint-bg); color:var(--mint); border:1.5px solid var(--mint-bg); border-radius:6px; font-size:10.5px; font-weight:800;">세액</button>
       </span>
     </td>`;
     return `<tr>
@@ -28125,6 +28252,28 @@ function gdriveComputeMerged(remote){
     merged.shared.approvals = merged.shared.approvals.map(a=>{
       const decided = decisionMap.get(a.id);
       return (decided && a.status !== decided) ? { ...a, status: decided } : a;
+    });
+  }
+  // 사내정보(회사/팀 공용정보, 팀원별 기본정보 등) 항목도 같은 이유로 같은 안전장치 적용 - 방금 저장한
+  // 항목이 병합 결과에 없거나 저장한 값과 다르면 병합 직후 다시 맞춰 넣음(팀원별 항목은 person으로만
+  // 구분되는 카드라 카드 자체가 없으면 새로 만들어서라도 넣음 - getRecentCiEntryWrites 주석 참고)
+  const recentCiWrites = getRecentCiEntryWrites();
+  if(recentCiWrites.length && merged.shared){
+    if(!merged.shared.companyInfo) merged.shared.companyInfo = { corp:[], team:[], teamGeneral:[], personal:[] };
+    const ci = merged.shared.companyInfo;
+    recentCiWrites.forEach(({category, person, entry})=>{
+      if(category==='team'){
+        if(!ci.team) ci.team = [];
+        let p = ci.team.find(x=>x.person===person);
+        if(!p){ p = { person, title:'', items:[] }; ci.team.push(p); }
+        if(!p.items) p.items = [];
+        const idx = p.items.findIndex(x=>x.id===entry.id);
+        if(idx===-1) p.items.push(entry); else if(!gdriveDeepEqual(p.items[idx], entry)) p.items[idx] = entry;
+      } else {
+        if(!ci[category]) ci[category] = [];
+        const idx = ci[category].findIndex(x=>x.id===entry.id);
+        if(idx===-1) ci[category].push(entry); else if(!gdriveDeepEqual(ci[category][idx], entry)) ci[category][idx] = entry;
+      }
     });
   }
   // 알림 읽음 처리도 같은 이유로 한 번 더 안전장치 - notificationReadState는 계정키별 배열을 담은 객체라
