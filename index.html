@@ -2161,9 +2161,14 @@
   /* "수정·닫기 아이콘이 너무 작아서 누르려면 이동용 손바닥 커서가 먼저 떠버린다"는 지적으로 15px→19px로
      키움(칸 자체도 108×54로 같이 키워서 여유가 생김) - 버튼이 커진 만큼 실제로 누를 수 있는 영역도
      넓어져서, 칸을 끌려고 한(이동용 cursor:grab이 뜨는) 게 아니라 이 버튼을 누른 게 더 잘 인식됨 */
+  /* "동그라미 친 것들(수정·닫기·크기조절 손잡이)이 동시에 눌러지고 움직여지지 않는다"는 제보 - 칸이
+     작을 땐 왼쪽/오른쪽 위 모서리(수정·삭제)와 위/아래/좌우 손잡이(.seat-resize-handle-edge)가 1px
+     안팎으로 거의 맞닿아서, 같은 z-index(3)에선 DOM 순서상 나중에 그려지는 손잡이가 위에 깔려 수정·
+     삭제를 누른 게 손잡이 드래그로 잘못 잡히는 경우가 있었음. 수정·삭제 버튼의 z-index를 손잡이보다
+     높여서, 겹치는 경계에서는 항상 수정·삭제가 먼저 눌리게 함 */
   .seat-edit-cell-delete, .seat-chart-tray-chip-delete{
     position:absolute; top:1px; right:1px; width:19px; height:19px; border-radius:50%; border:none;
-    background:#DC2626; color:#fff; font-size:11px; font-weight:800; line-height:1; padding:0; z-index:3;
+    background:#DC2626; color:#fff; font-size:11px; font-weight:800; line-height:1; padding:0; z-index:5;
     display:flex; align-items:center; justify-content:center; cursor:pointer;
     opacity:0; pointer-events:none; transition:opacity .12s ease;
   }
@@ -2173,7 +2178,7 @@
      .seat-edit-cell-label/.seat-chart-tray-chip-label 규칙에서 호버·선택 중에만 글자를 살짝 줄여 피함 */
   .seat-edit-cell-edit, .seat-chart-tray-chip-edit{
     position:absolute; top:1px; left:1px; width:19px; height:19px; border-radius:50%; border:none;
-    background:var(--indigo); color:#fff; padding:0; z-index:3;
+    background:var(--indigo); color:#fff; padding:0; z-index:5;
     display:flex; align-items:center; justify-content:center; cursor:pointer;
     opacity:0; pointer-events:none; transition:opacity .12s ease;
   }
@@ -2209,8 +2214,10 @@
     position:absolute; background:var(--indigo); touch-action:none; z-index:3;
     box-shadow:0 0 0 1.5px var(--surface); border-radius:3px;
   }
-  .seat-resize-handle-right{ right:1px; top:50%; width:7px; height:16px; margin-top:-8px; cursor:ew-resize; }
-  .seat-resize-handle-left{ left:1px; top:50%; width:7px; height:16px; margin-top:-8px; cursor:ew-resize; }
+  /* 위/아래쪽 모서리(수정·삭제 버튼, top:1px~20px)와 살짝 맞닿을 수 있어서, 세로 중심에서 살짝
+     아래로 내려(margin-top을 -8px→-6px로) 여유를 둠 - 좁은 칸일수록 효과가 큼 */
+  .seat-resize-handle-right{ right:1px; top:50%; width:7px; height:16px; margin-top:-6px; cursor:ew-resize; }
+  .seat-resize-handle-left{ left:1px; top:50%; width:7px; height:16px; margin-top:-6px; cursor:ew-resize; }
   .seat-resize-handle-top{ top:1px; left:50%; width:16px; height:7px; margin-left:-8px; cursor:ns-resize; }
   .seat-resize-handle-bottom{ bottom:1px; left:50%; width:16px; height:7px; margin-left:-8px; cursor:ns-resize; }
   /* "모니터 방향을 화살표 말고 책상 위 굵은 선으로 표기해달라"는 요청 - 모니터가 있는 변에 굵은 색 바
@@ -21815,12 +21822,15 @@ function itAllTimingBlockHtml(c, period, timingKey){
     <input type="text" class="it-all-memo-input" value="${escHtml(t.memo||'')}" placeholder="메모" style="width:100%; border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink); box-sizing:border-box;">
   </div>`;
 }
-// period 한 칸의 표시 상태를 계산 - 신고대상 미등록/미대상/(대상인데) 미신고/한쪽만신고/신고완료 다섯 단계
+// period 한 칸의 표시 상태를 계산 - 신고대상 미등록/미대상/(대상인데) 미신고/신고완료 네 단계
 // timingKeyOverride를 넘기면("당월지급/익월지급을 줄로 나눠서 보여달라"는 요청으로 생긴 것) 그 지급시기
 // 하나만 놓고 판단함 - 그 달에 그 지급시기가 아예 등록 안 돼 있으면(예: 당월 줄인데 그 달은 익월만 등록된
 // 경우) 그 칸만 미대상으로 봄. 안 넘기면(지급시기를 하나만 등록해서 줄을 안 나눈 거래처) 예전처럼 등록된
-// 지급시기를 그대로 씀
-function itAllMonthCellState(clientId, period, timingKeyOverride){
+// 지급시기를 그대로 씀. taxKey('national'|'local')는 "국세·지방세를 한 칸에 위아래로 합쳐 보여주지 말고,
+// 아예 국세 줄/지방세 줄을 따로 추가해서 각 열에 그 세목 신고일만 나오게 해달라"는 요청으로 추가됨 - 이제
+// 이 함수는 한 세목만 놓고 완료 여부/날짜를 계산함(그래서 "한쪽만 신고"라는 중간 상태 자체가 없어짐 -
+// 세목이 이미 나뉘어 있으니 그 줄은 완료 아니면 미신고 둘 중 하나일 뿐)
+function itAllMonthCellState(clientId, period, timingKeyOverride, taxKey){
   if(!filingApplicableAt(clientId, period)) return { state:'locked' };
   const target = filingTargetEntry(clientId, period);
   if(!target.marked) return { state:'unset' };
@@ -21836,30 +21846,10 @@ function itAllMonthCellState(clientId, period, timingKeyOverride){
     if(target.nextMonthPay) timings.push(['nextMonth', incomeTaxFilingEntry(period, clientId).nextMonth]);
   }
   if(!timings.length) return { state:'target', target };
-  const allDone = timings.every(([,t])=> t.national && t.local);
-  const noneDone = timings.every(([,t])=> !t.national && !t.local);
-  const tip = timings.map(([k,t])=> `${k==='sameMonth'?'당월지급':'익월지급'} 원천세:${t.national||'-'} 지방세:${t.local||'-'}`).join('\n');
-  // "국세·지방세가 칸 하나에 한 줄로 뭉쳐 있어서 뭐가 신고됐고 뭐가 안 됐는지 헷갈린다"는 요청으로, 이제
-  // 국세(원천세)/지방세를 각각 완전히 독립된 표시로 나눠서 돌려줌(자기 날짜·자기 완료여부만 가짐) - 지급시기가
-  // 둘 다 섞인 경우(timingKeyOverride 없이 당월+익월 둘 다 등록된 거래처)엔 그중 더 늦은 날짜를 대표로 보여줌
-  function pickLatest(field){
-    const vals = timings.map(([,t])=>t[field]).filter(Boolean).sort();
-    return vals.length ? vals[vals.length-1] : null;
-  }
-  const national = { done: timings.every(([,t])=>t.national), date: pickLatest('national') };
-  const local = { done: timings.every(([,t])=>t.local), date: pickLatest('local') };
-  return { state: allDone ? 'done' : noneDone ? 'target' : 'partial', target, tip, national, local };
-}
-// itAllMonthCellState가 돌려준 national/local(각자 {done,date}) 하나를 "국 9/10"/"지 -" 같은 짧은 글자로
-// 그리고, 자기 값에 대한 title 툴팁만 갖게 함(옆 칸과 완전히 독립적으로 마우스를 올려야 그 세목 날짜가 보임)
-function itAllCellSubLabelHtml(kind, info){
-  const shortLabel = kind === 'national' ? '국' : '지';
-  const fullLabel = kind === 'national' ? '원천세' : '지방세';
-  if(info && info.done && info.date){
-    const [,mm,dd] = info.date.split('-');
-    return `<span title="${fullLabel} 신고일: ${info.date}" style="display:block; font-size:9px; font-weight:800; color:var(--mint);">${shortLabel} ${Number(mm)}/${Number(dd)}</span>`;
-  }
-  return `<span title="${fullLabel} 미신고" style="display:block; font-size:9px; font-weight:700; color:var(--ink-soft);">${shortLabel} -</span>`;
+  const field = taxKey === 'local' ? 'local' : 'national';
+  const dates = timings.map(([,t])=>t[field]).filter(Boolean).sort();
+  const done = timings.every(([,t])=>t[field]);
+  return { state: done ? 'done' : 'target', target, doneDate: dates[dates.length-1] || null };
 }
 // 이 거래처가 year 안에서 어느 한 달이라도 당월지급·익월지급을 동시에 등록해둔 적이 있는지 - "그렇다면 줄을
 // 나눠서 보여달라"는 요청의 기준. sharedFilingTargets를 직접 읽기만 하고 filingTargetEntry(등록되지 않은
@@ -21874,6 +21864,7 @@ function clientHasDualTiming(clientId, year){
   }
   return false;
 }
+const IT_ALL_TAX_KEYS = [['national','국세'], ['local','지방세']];
 function renderIncomeTaxUnified(){
   renderItAllPeriodControls();
   if(!itAllYear) itAllYear = String(Number(todayStr().slice(0,4)));
@@ -21887,15 +21878,14 @@ function renderIncomeTaxUnified(){
   const monthHeaderCells = Array.from({length:12},(_,i)=>i+1).map(m=>`<th class="cvb" style="width:66px;">${m}월</th>`).join('');
   // "미신고일 때는 아무 표시 없이 비워두고, 신고완료됐을 때는 신고일자를 텍스트로만 보여달라"는 요청 -
   // target(미신고)은 아직 아무 행동도 안 한 상태라 unset과 똑같이 빈 칸(테두리만 있는 클릭 가능한 칸)으로,
-  // done(신고완료)/partial(한쪽만)/target(등록됐지만 미신고)은 국세·지방세를 각각 독립된 두 줄(itAllCellSubLabelHtml)로 보여줌
+  // done(신고완료)은 칩 배지 대신 테두리·배경 없는 순수 텍스트로 실제 신고일자를 보여줌
   const CELL_STYLE = {
-    locked:  { label:'-',  color:'var(--border)',    bg:'transparent',  disabled:true,  sub:false },
-    unset:   { label:'-',  color:'var(--border)',    bg:'transparent',  disabled:false, sub:false },
+    locked:  { label:'-',  color:'var(--border)',    bg:'transparent', text:'var(--ink-soft)', disabled:true,  plain:false },
+    unset:   { label:'-',  color:'var(--border)',    bg:'transparent', text:'var(--ink-soft)', disabled:false, plain:false },
     // "미대상은 배경칩 없어도 될듯하다"는 의견으로 배경 채움은 빼고 테두리·글자색만 회색으로 남김
-    notarget:{ label:'미대상', color:'var(--ink-soft)', bg:'transparent', disabled:false, sub:false },
-    target:  { label:'',   color:'var(--border)',    bg:'transparent',  disabled:false, sub:true },
-    partial: { label:'',   color:'var(--coral)',     bg:'var(--coral-bg)', disabled:false, sub:true },
-    done:    { label:'',   color:'transparent',      bg:'transparent',  disabled:false, sub:true }
+    notarget:{ label:'미대상', color:'var(--ink-soft)', bg:'transparent', text:'var(--ink-soft)', disabled:false, plain:false },
+    target:  { label:'',   color:'var(--border)',    bg:'transparent', text:'var(--ink-soft)', disabled:false, plain:false },
+    done:    { label:'',   color:'transparent',      bg:'transparent', text:'var(--mint)',      disabled:false, plain:true }
   };
   const rowsHtml = [];
   let rowNo = 0;
@@ -21912,38 +21902,51 @@ function renderIncomeTaxUnified(){
     const cycleCellBg = !latestCycleRec ? 'transparent' : (!latestApplicable ? 'rgba(117,120,154,0.14)' : (isBiannual ? 'var(--amber-bg)' : 'var(--indigo-bg)'));
     const cycleCellText = !latestCycleRec ? 'var(--ink-soft)' : (!latestApplicable ? 'var(--ink-soft)' : (isBiannual ? 'var(--amber)' : 'var(--indigo-deep)'));
     // "당월지급/익월지급을 둘 다 등록해둔 거래처는 줄을 나눠서, 신고구분 칸에 매월/당월·매월/익월처럼
-    // 지급시기를 붙여서 보여달라"는 요청 - 그런 달이 하나도 없으면 예전처럼 거래처당 한 줄 그대로 씀
+    // 지급시기를 붙여서 보여달라"는 요청 - 그런 달이 하나도 없으면 예전처럼 거래처당 한 묶음 그대로 씀
     const dual = clientHasDualTiming(c.id, year);
     const lanes = dual ? [['sameMonth','당월'], ['nextMonth','익월']] : [[null, null]];
-    lanes.forEach(([timingKey, timingSuffix], laneIdx)=>{
-      rowNo++;
+    // "국세·지방세를 한 칸에 위아래로 합치지 말고, 1월 아래 국세/지방세로 나눠서 행을 추가해달라"는 요청 -
+    // 지급시기 줄(lanes)마다 다시 국세 줄/지방세 줄 두 개로 더 나눔(단일 지급시기 거래처도 국세/지방세
+    // 두 줄은 항상 나옴). "세목" 칸을 새로 넣어 그 줄이 국세인지 지방세인지 보여줌
+    let rowIdxInClient = 0;
+    lanes.forEach(([timingKey, timingSuffix])=>{
       const cycleLabel = timingSuffix ? `${cycleLabelBase}/${timingSuffix}` : cycleLabelBase;
       const cycleCell = `<td class="cvb"><button type="button" class="filing-cycle-chip" data-client-id="${c.id}" style="border:1.5px solid ${cycleCellColor}; border-radius:6px; padding:3px 9px; background:${cycleCellBg}; color:${cycleCellText}; font-size:10.5px; font-weight:700; cursor:pointer;">${escHtml(cycleLabel)}</button></td>`;
-      const monthCells = Array.from({length:12},(_,i)=>i+1).map(m=>{
-        const period = `${year}-${String(m).padStart(2,'0')}`;
-        const cs = itAllMonthCellState(c.id, period, timingKey);
-        const st = CELL_STYLE[cs.state];
-        const clickAttr = st.disabled ? 'disabled' : `data-client-id="${c.id}" data-period="${period}" data-cellstate="${cs.state}"`;
-        const innerHtml = st.sub ? (itAllCellSubLabelHtml('national', cs.national) + itAllCellSubLabelHtml('local', cs.local)) : escHtml(st.label);
-        return `<td class="cvb"><button type="button" class="it-all-month-cell-btn" ${clickAttr} style="width:100%; border:1.5px solid ${st.color}; border-radius:6px; padding:${st.sub?'2px 2px':'4px 2px'}; background:${st.bg}; color:var(--ink-soft); font-size:10.5px; font-weight:700; cursor:${st.disabled?'not-allowed':'pointer'}; opacity:${st.disabled?'0.35':'1'};">${innerHtml}</button></td>`;
-      }).join('');
-      // 아이콘만으로는 급여검증/납부세액검증 중 뭔지 구분이 안 된다는 의견 - 아이콘 대신 짧은 글자(급여/세액)를
-      // 그대로 칩 버튼 라벨로 써서 한눈에 알아볼 수 있게 함(색 구분은 기존 인디고/민트 톤 그대로 유지). 줄이
-      // 나뉜 거래처는 첫 줄에만 달아서 같은 버튼이 중복으로 여러 번 보이지 않게 함
-      const verifyCell = laneIdx > 0 ? `<td class="cvb"></td>` : `<td class="cvb">
-        <span style="display:inline-flex; align-items:center; gap:5px; vertical-align:middle;">
-          <button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}" data-section="income" title="급여검증 전체화면으로 열기" style="height:22px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; background:var(--indigo-bg); color:var(--indigo-deep); border:1.5px solid var(--indigo-bg); border-radius:6px; font-size:10.5px; font-weight:800;">급여</button>
-          <button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}" data-section="tax" title="납부세액검증 전체화면으로 열기" style="height:22px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; background:var(--mint-bg); color:var(--mint); border:1.5px solid var(--mint-bg); border-radius:6px; font-size:10.5px; font-weight:800;">세액</button>
-        </span>
-      </td>`;
-      rowsHtml.push(`<tr>
-        <td class="num cvb" style="color:var(--ink-soft);">${rowNo}</td>
-        <td class="cvb" style="color:${entityColor}; font-weight:800; white-space:nowrap;">${escHtml(c.name)}</td>
-        ${cycleCell}${monthCells}${verifyCell}
-      </tr>`);
+      IT_ALL_TAX_KEYS.forEach(([taxKey, taxLabel])=>{
+        rowNo++;
+        const taxCell = `<td class="cvb" style="font-size:10.5px; font-weight:700; color:${taxKey==='national'?'var(--indigo-deep)':'var(--amber)'};">${taxLabel}</td>`;
+        const monthCells = Array.from({length:12},(_,i)=>i+1).map(m=>{
+          const period = `${year}-${String(m).padStart(2,'0')}`;
+          const cs = itAllMonthCellState(c.id, period, timingKey, taxKey);
+          const st = CELL_STYLE[cs.state];
+          const clickAttr = st.disabled ? 'disabled' : `data-client-id="${c.id}" data-period="${period}" data-cellstate="${cs.state}"`;
+          let cellLabel = st.label;
+          if(cs.state === 'done' && cs.doneDate){ const [,mm,dd] = cs.doneDate.split('-'); cellLabel = `${Number(mm)}/${Number(dd)}`; }
+          const cellBorder = st.plain ? 'none' : `1.5px solid ${st.color}`;
+          return `<td class="cvb"><button type="button" class="it-all-month-cell-btn" ${clickAttr} style="width:100%; border:${cellBorder}; border-radius:6px; padding:4px 2px; background:${st.bg}; color:${st.text}; font-size:10.5px; font-weight:700; cursor:${st.disabled?'not-allowed':'pointer'}; opacity:${st.disabled?'0.35':'1'};">${escHtml(cellLabel)}</button></td>`;
+        }).join('');
+        // 아이콘만으로는 급여검증/납부세액검증 중 뭔지 구분이 안 된다는 의견 - 아이콘 대신 짧은 글자(급여/세액)를
+        // 그대로 칩 버튼 라벨로 써서 한눈에 알아볼 수 있게 함(색 구분은 기존 인디고/민트 톤 그대로 유지). 거래처당
+        // 첫 줄에만 달아서 같은 버튼이 중복으로 여러 번 보이지 않게 함
+        const verifyCell = rowIdxInClient > 0 ? `<td class="cvb"></td>` : `<td class="cvb">
+          <span style="display:inline-flex; align-items:center; gap:5px; vertical-align:middle;">
+            <button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}" data-section="income" title="급여검증 전체화면으로 열기" style="height:22px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; background:var(--indigo-bg); color:var(--indigo-deep); border:1.5px solid var(--indigo-bg); border-radius:6px; font-size:10.5px; font-weight:800;">급여</button>
+            <button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}" data-section="tax" title="납부세액검증 전체화면으로 열기" style="height:22px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; background:var(--mint-bg); color:var(--mint); border:1.5px solid var(--mint-bg); border-radius:6px; font-size:10.5px; font-weight:800;">세액</button>
+          </span>
+        </td>`;
+        // 신고구분 칸(cycleCell)은 국세/지방세 두 줄이 한 지급시기를 이루므로 그 첫 줄(국세)에만 넣고,
+        // 지방세 줄은 rowspan=2로 이어붙여 세로로 합쳐 보이게 함(같은 지급시기라는 걸 한눈에 알 수 있게)
+        const cycleCellOut = taxKey==='national' ? `<td class="cvb" rowspan="2"><button type="button" class="filing-cycle-chip" data-client-id="${c.id}" style="border:1.5px solid ${cycleCellColor}; border-radius:6px; padding:3px 9px; background:${cycleCellBg}; color:${cycleCellText}; font-size:10.5px; font-weight:700; cursor:pointer;">${escHtml(cycleLabel)}</button></td>` : '';
+        rowsHtml.push(`<tr>
+          <td class="num cvb" style="color:var(--ink-soft);">${rowNo}</td>
+          <td class="cvb" style="color:${entityColor}; font-weight:800; white-space:nowrap;">${escHtml(c.name)}</td>
+          ${cycleCellOut}${taxCell}${monthCells}${verifyCell}
+        </tr>`);
+        rowIdxInClient++;
+      });
     });
   });
-  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th class="cvb" rowspan="2">순번</th><th class="cvb" rowspan="2">거래처</th><th class="cvb" rowspan="2">신고</th><th class="cvb" colspan="12">귀속월</th><th class="cvb" rowspan="2" style="width:70px;">검증</th></tr><tr>${monthHeaderCells}</tr></thead><tbody>${rowsHtml.join('')}</tbody></table></div>`;
+  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th class="cvb" rowspan="2">순번</th><th class="cvb" rowspan="2">거래처</th><th class="cvb" rowspan="2">신고</th><th class="cvb" rowspan="2">세목</th><th class="cvb" colspan="12">귀속월</th><th class="cvb" rowspan="2" style="width:70px;">검증</th></tr><tr>${monthHeaderCells}</tr></thead><tbody>${rowsHtml.join('')}</tbody></table></div>`;
   wrap.querySelectorAll('.review-it-open-btn').forEach(btn=>{
     btn.addEventListener('click', ()=> openReviewItFullscreen(btn.dataset.clientId, btn.dataset.section));
   });
