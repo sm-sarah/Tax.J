@@ -6411,11 +6411,11 @@
           <span class="hint" id="githubDeployTokenStatus" style="display:block; margin-top:4px;"></span>
         </div>
         <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center; width:100%; padding-top:2px; border-top:1px dashed var(--border);">
-          <label class="del-btn" id="githubDeployFileLabel" style="cursor:pointer; background:var(--indigo-bg); color:var(--indigo-deep); white-space:nowrap; padding:7px 13px; font-size:12px; margin-top:10px; max-width:220px; overflow:hidden; text-overflow:ellipsis;">
-            📄 <span id="githubDeployFileLabelText">index.html 파일 선택</span>
+          <label class="del-btn" id="githubDeployFileLabel" style="cursor:pointer; background:var(--indigo-bg); color:var(--indigo-deep); white-space:nowrap; height:32px; box-sizing:border-box; display:inline-flex; align-items:center; gap:5px; padding:0 13px; font-size:12px; margin-top:10px; max-width:220px; overflow:hidden;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span id="githubDeployFileLabelText" style="overflow:hidden; text-overflow:ellipsis;">파일 선택</span>
             <input type="file" id="githubDeployFile" accept=".html,text/html" style="display:none;">
           </label>
-          <button type="button" id="githubDeployBtn" class="del-btn" style="cursor:pointer; background:var(--indigo); color:#fff; white-space:nowrap; padding:7px 13px; font-size:12px; margin-top:10px;" disabled><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg> GitHub에 배포</button>
+          <button type="button" id="githubDeployBtn" class="del-btn" style="cursor:pointer; background:var(--indigo); color:#fff; white-space:nowrap; height:32px; box-sizing:border-box; display:inline-flex; align-items:center; gap:5px; padding:0 13px; font-size:12px; margin-top:10px;" disabled><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg> GitHub에 배포</button>
         </div>
         <span class="save-msg" id="githubDeployMsg" style="margin-top:0;"></span>
       </div>
@@ -17207,7 +17207,13 @@ function getTaxScheduleForMonth(year, month){
     const overrideKey = taxScheduleOverrideKey(it.id, year, month);
     const overrideDate = (sharedTaxScheduleOverrides||{})[overrideKey];
     const date = overrideDate || taxScheduleShiftToBusinessDay(raw);
-    return { id:overrideKey, title:it.title, date, shifted: !overrideDate && date !== raw, overridden: !!overrideDate, kind:'built-in', ruleId:it.id };
+    // "(전월분)" 대신 "몇 년 몇 월 귀속"으로 표기(대시보드·설정 > 세무일정 관리 등 모든 화면 공통) - 기한 달의 전달이 귀속월
+    let title = it.title;
+    if(it.id === TAX_SCHEDULE_MONTHLY.id){
+      const ay = month === 1 ? year - 1 : year, am = month === 1 ? 12 : month - 1;
+      title = title.replace('(전월분)', `(${String(ay).slice(2)}년 ${String(am).padStart(2,'0')}월 귀속)`);
+    }
+    return { id:overrideKey, title, date, shifted: !overrideDate && date !== raw, overridden: !!overrideDate, kind:'built-in', ruleId:it.id };
   });
   const custom = getCustomTaxScheduleItemsForMonth(year, month);
   return built.concat(custom).sort((a,b)=>a.date.localeCompare(b.date));
@@ -28456,7 +28462,7 @@ document.getElementById('githubDeployTokenSaveBtn')?.addEventListener('click', (
 document.getElementById('githubDeployFile')?.addEventListener('change', function(){
   githubDeploySelectedFile = this.files && this.files[0] ? this.files[0] : null;
   const labelText = document.getElementById('githubDeployFileLabelText');
-  if(labelText) labelText.textContent = githubDeploySelectedFile ? githubDeploySelectedFile.name : 'index.html 파일 선택';
+  if(labelText) labelText.textContent = githubDeploySelectedFile ? githubDeploySelectedFile.name : '파일 선택';
   // 이전 배포에서 남은 "배포 완료!" 문구가 새 파일을 올린 뒤에도 그대로 남아있어서, 방금 배포된 것처럼
   // 착각할 수 있었음 - 새 파일을 고르는 순간 그 문구를 지우고, 아직 배포 버튼을 누르기 전이라는 걸 알 수
   // 있게 "업로드 완료" 문구로 바꿔줌
@@ -28506,7 +28512,7 @@ document.getElementById('githubDeployBtn')?.addEventListener('click', async ()=>
     if(msgEl) msgEl.textContent = '배포 완료! 잠시 후 실제 서비스 화면에 반영돼요.';
     githubDeploySelectedFile = null;
     const labelText = document.getElementById('githubDeployFileLabelText');
-    if(labelText) labelText.textContent = 'index.html 파일 선택';
+    if(labelText) labelText.textContent = '파일 선택';
     const fileInput = document.getElementById('githubDeployFile');
     if(fileInput) fileInput.value = '';
   }catch(err){
@@ -30658,7 +30664,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.28 15:40';
+const APP_BUILD = '2026.09.28 16:00';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
