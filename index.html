@@ -1759,7 +1759,8 @@
      아래 검색 패널의 입력칸·버튼들과도 높이(34px)를 맞춰서, 두 줄이 서로 다른 화면처럼 안 보이고 하나의
      통일된 툴바처럼 보이게 함 */
   .notice-toolbar-chip{
-    width:72px; height:34px; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center;
+    /* "알림/등록/검색도 아이콘만" 요청 - 글자를 없애고 34px 정사각형 아이콘 칩으로(설명은 title 말풍선) */
+    width:34px; height:34px; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center;
     gap:4px; padding:0; white-space:nowrap;
   }
   .notice-search-ctrl{ height:34px; box-sizing:border-box; }
@@ -3991,8 +3992,8 @@
       <div style="display:flex; align-items:center; gap:6px;">
         <button type="button" id="noticeSearchBackBtn" class="notice-back-chip" style="display:none;" title="돌아가기"><span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg></span><span class="notice-back-chip-label">돌아가기</span></button>
         <button type="button" id="noticeNotifyToggleBtn" class="del-btn notice-toolbar-chip" style="background:var(--surface); border:1.3px solid var(--border); color:var(--ink);"></button>
-        <button type="button" id="noticeAddBtn" class="del-btn notice-toolbar-chip" style="background:var(--indigo); color:#fff;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 등록</button>
-        <button type="button" id="noticeSearchToggleBtn" class="del-btn notice-toolbar-chip" style="background:var(--surface); border:1.3px solid var(--border); color:var(--ink);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> 검색</button>
+        <button type="button" id="noticeAddBtn" class="del-btn notice-toolbar-chip" title="등록" style="background:var(--indigo); color:#fff;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+        <button type="button" id="noticeSearchToggleBtn" class="del-btn notice-toolbar-chip" title="검색" style="background:var(--surface); border:1.3px solid var(--border); color:var(--ink);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
       </div>
     </div>
     <div id="noticeSearchPanel" style="display:none; background:var(--bg); border-radius:12px; padding:12px; margin-bottom:14px; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;">
@@ -6455,6 +6456,20 @@
 <div id="chipTooltip"></div>
 
 <script>
+// ── 팝업 바깥(어두운 배경) 클릭으로 닫히는 문제 방지 ──
+// "메모를 지우려고 드래그하다 보면 창이 사라진다" - 입력칸 안에서 마우스를 누른 채 글자를 선택하다가 팝업
+// 밖에서 손을 떼면, 브라우저가 그 클릭을 배경(…Overlay)에서 일어난 것으로 처리해서 창이 닫혔음. 이제 마우스를
+// 누른 곳과 뗀 곳이 모두 배경일 때만 "바깥 클릭"으로 인정함(모든 팝업 공통)
+(function(){
+  let downTarget = null;
+  window.addEventListener('pointerdown', (e)=>{ downTarget = e.target; }, true);
+  window.addEventListener('click', (e)=>{
+    const t = e.target;
+    if(!t || !t.id || !/Overlay$/.test(t.id)) return;
+    if(downTarget && downTarget !== t){ e.stopImmediatePropagation(); }
+    downTarget = null;
+  }, true);
+})();
 let settings = { hireDate:'', lunchLimitHistory:[] };
 
 const DEFAULT_POLICY_TEXT = `1. 근무 시간 및 운영
@@ -6881,6 +6896,8 @@ document.querySelectorAll('.notif-pref-toggle').forEach(cb=>{
     sharedNotificationPrefs[myEmail] = sharedNotificationPrefs[myEmail] || {};
     sharedNotificationPrefs[myEmail][cb.dataset.category] = cb.checked;
     saveSharedNotificationPrefs();
+    if(typeof updateNoticeNotifyBtn === 'function') updateNoticeNotifyBtn();
+    if(typeof updateApprovalNotifyBtn === 'function') updateApprovalNotifyBtn();
   });
 });
 // 위 종류별 스위치(sharedNotificationPrefs)는 "이미 동의된 기기"에서 어떤 종류를 받을지만 정할 뿐, 이 기기가
@@ -6917,7 +6934,7 @@ function renderMyPushDeviceList(){
   let myToken = null;
   try{ myToken = localStorage.getItem('worklog_my_push_token'); }catch(e){}
   const mine = (sharedPushTokens||[]).filter(t=>(t.email||'').toLowerCase()===myEmail).sort((a,b)=> (b.updatedAt||'').localeCompare(a.updatedAt||''));
-  const thisDeviceRegistered = Notification.permission === 'granted' && mine.some(t=>t.token===myToken) && noticeNotifyEnabled() && approvalNotifyEnabled();
+  const thisDeviceRegistered = thisDeviceNotifyReady() && mine.some(t=>t.token===myToken);
   setNotifCategoryPanelLocked(!thisDeviceRegistered);
 
   let noticeHtml = '';
@@ -6964,6 +6981,7 @@ function renderMyPushDeviceList(){
       const newName = await appPromptText('이 기기의 이름을 정해주세요.', { inputValue: target.deviceName || guessDeviceLabel(), okText:'변경' });
       if(newName === null) return;
       target.deviceName = newName.trim() || guessDeviceLabel();
+      target.nameUpdatedAt = new Date().toISOString(); // 동기화 병합 때 이름만 따로 최신값을 지키기 위한 시각
       if(target.token === myToken){ try{ localStorage.setItem('worklog_my_device_name', target.deviceName); }catch(e){} }
       await saveSharedPushTokens();
       renderMyPushDeviceList();
@@ -7011,7 +7029,11 @@ async function registerThisDeviceForPush(isRetry){
   if(perm !== 'granted'){ appAlert('알림 권한이 허용되지 않았어요.'); renderMyPushDeviceList(); return; }
   let myDeviceName = null;
   try{ myDeviceName = localStorage.getItem('worklog_my_device_name'); }catch(e){}
-  const typedName = await appPromptText('이 기기를 구별할 이름을 정해주세요.\n(예: 회사 PC, 제 휴대폰 - 알림 등록 목록에서 어느 기기인지 바로 알아볼 수 있어요)', { inputValue: myDeviceName || guessDeviceLabel(), okText:'이 이름으로 등록' });
+  // "다시등록은 기기 등록인데 왜 이름을 또 묻나" - 다시등록이고 이미 이름이 있으면 묻지 않고 그 이름 그대로 씀
+  if(isRetry && !myDeviceName){
+    try{ const mt = localStorage.getItem('worklog_my_push_token'); const me = (sharedPushTokens||[]).find(t=>t.token===mt); if(me && me.deviceName) myDeviceName = me.deviceName; }catch(e){}
+  }
+  const typedName = (isRetry && myDeviceName) ? myDeviceName : await appPromptText('이 기기를 구별할 이름을 정해주세요.\n(예: 회사 PC, 제 휴대폰 - 알림 등록 목록에서 어느 기기인지 바로 알아볼 수 있어요)', { inputValue: myDeviceName || guessDeviceLabel(), okText:'이 이름으로 등록' });
   if(typedName !== null){
     myDeviceName = typedName.trim() || guessDeviceLabel();
     try{ localStorage.setItem('worklog_my_device_name', myDeviceName); }catch(e){}
@@ -7309,6 +7331,8 @@ async function registerPushToken(){
     let lastToken = null;
     try{ lastToken = localStorage.getItem('worklog_my_push_token'); }catch(e){}
     if(lastToken && lastToken !== token){
+      const old = sharedPushTokens.find(t=>t.token === lastToken);
+      if(old && old.deviceName){ try{ if(!localStorage.getItem('worklog_my_device_name')) localStorage.setItem('worklog_my_device_name', old.deviceName); }catch(e){} }
       sharedPushTokens = sharedPushTokens.filter(t=>t.token !== lastToken);
     }
     try{ localStorage.setItem('worklog_my_push_token', token); }catch(e){}
@@ -7318,9 +7342,12 @@ async function registerPushToken(){
     if(existing){
       existing.email = email; // 같은 기기에서 이메일이 바뀐 경우(다른 계정으로 로그인)에도 최신 이메일로 갱신
       existing.updatedAt = new Date().toISOString();
-      if(myDeviceName) existing.deviceName = myDeviceName;
+      if(myDeviceName && existing.deviceName !== myDeviceName){ existing.deviceName = myDeviceName; existing.nameUpdatedAt = new Date().toISOString(); }
+      else if(!myDeviceName && existing.deviceName){ try{ localStorage.setItem('worklog_my_device_name', existing.deviceName); }catch(e){} }
     } else {
-      sharedPushTokens.push({ id: genId(), email, token, updatedAt: new Date().toISOString(), deviceName: myDeviceName || null });
+      // 토큰이 새로 바뀐 경우에도, 지운 예전 줄에 붙어있던 이름을 이어받음
+      const prevName = myDeviceName || null;
+      sharedPushTokens.push({ id: genId(), email, token, updatedAt: new Date().toISOString(), deviceName: prevName, nameUpdatedAt: prevName ? new Date().toISOString() : null });
     }
     // 대신, 90일 넘게 갱신이 안 된(오랫동안 켜본 적 없는 = 더 이상 안 쓰는 기기일 가능성이 큰) 토큰은
     // 조용히 정리해서 무한정 쌓이지 않게 함
@@ -8241,7 +8268,11 @@ function gdriveMergeValue(base, local, remote){
     const out = {};
     keys.forEach(k=>{
       if(k === '__fieldUpdatedAt'){ out[k] = gdriveMergeFieldTimestampMap(localFieldTimes, remoteFieldTimes); return; }
-      if(localFieldTimes && remoteFieldTimes && !gdriveDeepEqual(local[k], remote[k])){
+      // id가 있는 목록(공지·기기목록 등)은 "나중에 저장한 쪽 목록 통째로"가 아니라 항목별로 합침 - 예전엔 집에서
+      // 기기 이름을 바꾼 뒤 회사 PC가 접속하면서 기기목록을 저장하면, 회사 PC 쪽 목록이 통째로 이겨서 집에서
+      // 바꾼 이름이 사라졌음("집에서 이름 등록했는데 회사에서 보니 없어졌다")
+      const idArrays = gdriveArrayAllHaveIds(local[k]) && gdriveArrayAllHaveIds(remote[k]);
+      if(localFieldTimes && remoteFieldTimes && !idArrays && !gdriveDeepEqual(local[k], remote[k])){
         const ltime = localFieldTimes[k] ? new Date(localFieldTimes[k]).getTime() : NaN;
         const rtime = remoteFieldTimes[k] ? new Date(remoteFieldTimes[k]).getTime() : NaN;
         if(!isNaN(ltime) && !isNaN(rtime) && ltime !== rtime){ out[k] = rtime > ltime ? remote[k] : local[k]; return; }
@@ -8645,10 +8676,28 @@ function updateNoticeUnreadBadge(){
 // 새 공지 브라우저 알림 - 이 기기(브라우저)에서만 켜고 끌 수 있는 설정이라 계정 동기화는 하지 않음
 const NOTICE_NOTIFY_KEY = 'worklog_notice_browser_notify';
 function noticeNotifyEnabled(){ return localStorage.getItem(NOTICE_NOTIFY_KEY) === '1'; }
+// "공지사항에서 알림을 껐는데 설정에는 켜져 있다 - 연동되게" 요청 - 예전엔 공지/결재 화면의 종 버튼이 이 기기
+// 전용 스위치(localStorage)라서 설정 > 알림의 종류별 스위치(계정 기준, 실제 푸시 발송 기준)와 따로 놀았음.
+// 이제 종 버튼은 "이 기기 알림 등록"이 안 돼 있을 때만 등록을 해주고, 등록된 뒤에는 설정의 종류별 스위치를
+// 그대로 켜고 끔(설정 화면과 항상 같은 값). NOTICE/APPROVAL_NOTIFY_KEY는 이제 "이 기기에서 알림을 켰는지"만 뜻함
+function thisDeviceNotifyReady(){
+  return typeof Notification !== 'undefined' && Notification.permission === 'granted' && noticeNotifyEnabled() && approvalNotifyEnabled();
+}
+function myNotifPref(category){ return notificationCategoryEnabled((currentUserEmail||'').toLowerCase(), category); }
+async function setMyNotifPrefs(categories, on){
+  const myEmail = (currentUserEmail||'').toLowerCase();
+  if(!myEmail) return;
+  sharedNotificationPrefs[myEmail] = sharedNotificationPrefs[myEmail] || {};
+  categories.forEach(c=>{ sharedNotificationPrefs[myEmail][c] = on; });
+  await saveSharedNotificationPrefs();
+  if(typeof renderNotificationPrefsUI === 'function') renderNotificationPrefsUI();
+  if(typeof updateNoticeNotifyBtn === 'function') updateNoticeNotifyBtn();
+  if(typeof updateApprovalNotifyBtn === 'function') updateApprovalNotifyBtn();
+}
 function updateNoticeNotifyBtn(){
   const btn = document.getElementById('noticeNotifyToggleBtn');
   if(!btn) return;
-  const on = noticeNotifyEnabled() && typeof Notification !== 'undefined' && Notification.permission === 'granted';
+  const on = thisDeviceNotifyReady() && myNotifPref('notice');
   const bellSvg = on
     ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`
     : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M13.73 21a2 2 0 0 1-3.46 0"></path><path d="M18.63 13A17.89 17.89 0 0 1 18 8"></path><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"></path><path d="M18 8a6 6 0 0 0-9.33-5"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
@@ -8656,7 +8705,7 @@ function updateNoticeNotifyBtn(){
   // 서로 다른 버튼이라는 게 한눈에 보이게 함. 글자도 "알림 받는 중"/"알림 받기"로 칩 길이가 서로 달라지는
   // 대신 항상 "알림"으로 고정하고(다른 두 칩과 가로폭이 똑같아지도록), 지금 상태는 종 아이콘 모양(꺼짐:
   // 선 그어진 종)으로만 구분하며, 마우스를 올렸을 때 뜨는 title 툴팁으로 "알림 받는 중"/"알림 받기"를 안내함
-  btn.innerHTML = `${bellSvg} 알림`;
+  btn.innerHTML = bellSvg.replace('width="12" height="12"','width="14" height="14"');
   btn.title = on ? '알림 받는 중' : '알림 받기';
   btn.style.background = on ? 'var(--mint)' : '';
   btn.style.borderColor = on ? 'var(--mint)' : '';
@@ -8664,11 +8713,16 @@ function updateNoticeNotifyBtn(){
 }
 async function toggleNoticeNotify(){
   if(typeof Notification === 'undefined'){ appAlert('이 브라우저는 알림 기능을 지원하지 않아요.'); return; }
-  if(noticeNotifyEnabled()){
-    localStorage.setItem(NOTICE_NOTIFY_KEY, '0');
-    updateNoticeNotifyBtn();
+  if(thisDeviceNotifyReady()){
+    const next = !myNotifPref('notice');
+    await setMyNotifPrefs(['notice'], next);
+    showCenterToast(next ? '공지 알림을 켰어요 (설정 > 알림과 같이 바뀌어요)' : '공지 알림을 껐어요 (설정 > 알림과 같이 바뀌어요)');
     return;
   }
+  await registerThisDeviceForPush(false);
+  if(thisDeviceNotifyReady() && !myNotifPref('notice')) await setMyNotifPrefs(['notice'], true);
+  updateNoticeNotifyBtn();
+  return;
   if(Notification.permission === 'denied'){
     appAlert('브라우저 알림 권한이 차단되어 있어요. 주소창 왼쪽 자물쇠(사이트 정보) 아이콘에서 이 사이트의 알림 권한을 허용해주세요.');
     return;
@@ -8770,7 +8824,7 @@ function checkNewNoticesForBrowserNotify(){
   (sharedNoticeHistory||[]).filter(n=>(n.authorName||'')!==me0).forEach(n=>{
     pushNotificationLogEntry({ type:'notice', icon:'notice', title:`새 공지: ${n.title || '(제목 없음)'}`, body:(n.content||'').slice(0,150), author:n.authorName||'', targetEmail:'*', relatedId:n.id, eventAt:n.savedAt||'' });
   });
-  if(!noticeNotifyEnabled()) return;
+  if(!noticeNotifyEnabled() || !myNotifPref('notice')) return;
   if(typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
   let notified = [];
   try{ notified = JSON.parse(localStorage.getItem('worklog_notified_notice_ids') || '[]'); }catch(e){ notified = []; }
@@ -16280,7 +16334,10 @@ function renderDashboardCalendarPreview(monthStr){
   // 전부 지난 일정뿐이면(오늘 이후 일정이 없으면) 굳이 마지막 페이지로 보낼 이유는 없어서 1페이지 그대로 둠
   if(noMonthGiven){
     const upcomingIdx = items.findIndex(it => it.date >= today0);
-    dashCalendarPage = upcomingIdx > 0 ? Math.floor(upcomingIdx / DASH_CAL_PAGE_SIZE) + 1 : 1;
+    // "9/28인데 1페이지가 나온다" - 이번 달에 오늘 이후 일정이 없으면(뒤쪽 일정도 전부 지난 날짜) 예전엔
+    // 1페이지로 두었는데, 그러면 오늘과 가장 먼 일정부터 보이게 됨. 이제 그 경우엔 오늘에 가장 가까운
+    // (가장 최근) 일정이 있는 마지막 페이지를 보여줌
+    dashCalendarPage = upcomingIdx === -1 ? totalPages : (upcomingIdx > 0 ? Math.floor(upcomingIdx / DASH_CAL_PAGE_SIZE) + 1 : 1);
   }
   if(dashCalendarPage > totalPages) dashCalendarPage = totalPages;
   const pageItems = items.slice((dashCalendarPage-1)*DASH_CAL_PAGE_SIZE, dashCalendarPage*DASH_CAL_PAGE_SIZE);
@@ -27022,7 +27079,7 @@ function approvalNotifyEnabled(){ return localStorage.getItem(APPROVAL_NOTIFY_KE
 function updateApprovalNotifyBtn(){
   const btn = document.getElementById('approvalNotifyToggleBtn');
   if(!btn) return;
-  const on = approvalNotifyEnabled() && typeof Notification !== 'undefined' && Notification.permission === 'granted';
+  const on = thisDeviceNotifyReady() && (myNotifPref('approvalNew') || myNotifPref('approvalDecision'));
   // "공지사항 알림 칩이랑 똑같이 맞춰달라"는 요청 - 공지사항 쪽(updateNoticeNotifyBtn)과 같은 규칙으로
   // 통일함: 켜져있을 때 종 아이콘(꺼져있으면 선 그어진 종), 글자는 항상 "알림"으로 고정, 켜졌을 때 색은
   // 인디고 대신 민트(다른 화면의 파란 강조 버튼과 안 헷갈리게), 지금 상태(받는 중/받기)는 title 툴팁으로 안내
@@ -27037,11 +27094,17 @@ function updateApprovalNotifyBtn(){
 }
 async function toggleApprovalNotify(){
   if(typeof Notification === 'undefined'){ appAlert('이 브라우저는 알림 기능을 지원하지 않아요.'); return; }
-  if(approvalNotifyEnabled()){
-    localStorage.setItem(APPROVAL_NOTIFY_KEY, '0');
-    updateApprovalNotifyBtn();
+  // 공지 종 버튼과 같은 규칙 - 설정 > 알림의 "결재 요청"/"결재 결과" 스위치를 같이 켜고 끔
+  if(thisDeviceNotifyReady()){
+    const next = !(myNotifPref('approvalNew') || myNotifPref('approvalDecision'));
+    await setMyNotifPrefs(['approvalNew','approvalDecision'], next);
+    showCenterToast(next ? '결재 알림을 켰어요 (설정 > 알림과 같이 바뀌어요)' : '결재 알림을 껐어요 (설정 > 알림과 같이 바뀌어요)');
     return;
   }
+  await registerThisDeviceForPush(false);
+  if(thisDeviceNotifyReady() && !(myNotifPref('approvalNew') || myNotifPref('approvalDecision'))) await setMyNotifPrefs(['approvalNew','approvalDecision'], true);
+  updateApprovalNotifyBtn();
+  return;
   if(Notification.permission === 'denied'){
     appAlert('브라우저 알림 권한이 차단되어 있어요. 주소창 왼쪽 자물쇠(사이트 정보) 아이콘에서 이 사이트의 알림 권한을 허용해주세요.');
     return;
@@ -27070,7 +27133,7 @@ function checkNewApprovalsForBrowserNotify(){
       pushNotificationLogEntry({ type:'approval-new', icon:'approval-request', title:`결재 요청: ${a.title || '(제목 없음)'}`, body:`기안자 ${a.drafterName||a.drafterEmail||''}`, author:a.drafterName||a.drafterEmail||'', targetEmail:myEmail0, relatedId:a.id, eventAt:a.createdAt||'' });
     });
   }
-  if(!approvalNotifyEnabled()) return;
+  if(!approvalNotifyEnabled() || !myNotifPref('approvalNew')) return;
   if(typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
   const myEmail = (currentUserEmail||'').toLowerCase();
   if(!myEmail) return;
@@ -27106,7 +27169,7 @@ function checkApprovalDecisionsForBrowserNotify(){
       pushNotificationLogEntry({ type:'approval-decision', icon:icon0, title:`${label0}: ${a.title || '(제목 없음)'}`, body:`결재자 ${a.approverName||a.approverEmail||''}${a.comment ? ' · '+a.comment : ''}`, author:a.drafterName||a.drafterEmail||'', targetEmail:myEmail0, relatedId:a.id+'|'+a.status, eventAt:a.decidedAt||'' });
     });
   }
-  if(!approvalNotifyEnabled()) return;
+  if(!approvalNotifyEnabled() || !myNotifPref('approvalDecision')) return;
   if(typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
   const myEmail = (currentUserEmail||'').toLowerCase();
   if(!myEmail) return;
@@ -29649,6 +29712,21 @@ function gdriveComputeMerged(remote){
       if(l || r) merged.shared[f] = gdriveUnionReadStateMaps(r, l, merged.shared[f]);
     });
   }
+  // 기기 이름은 등록시각(updatedAt)과 따로 움직이므로, 병합 뒤 이름만 따로 "가장 최근에 정한 이름"으로 맞춤
+  try{
+    if(merged && merged.shared && Array.isArray(merged.shared.pushTokens)){
+      const pools = [localPayload && localPayload.shared && localPayload.shared.pushTokens, remote && remote.shared && remote.shared.pushTokens].filter(Array.isArray);
+      merged.shared.pushTokens.forEach(t=>{
+        pools.forEach(pool=>{
+          const o = pool.find(x=>x && x.id===t.id);
+          if(!o || !o.deviceName) return;
+          const ot = o.nameUpdatedAt ? new Date(o.nameUpdatedAt).getTime() : 0;
+          const tt = t.nameUpdatedAt ? new Date(t.nameUpdatedAt).getTime() : 0;
+          if(!t.deviceName || ot > tt){ t.deviceName = o.deviceName; t.nameUpdatedAt = o.nameUpdatedAt || t.nameUpdatedAt || null; }
+        });
+      });
+    }
+  }catch(e){}
   // 그래도 직원 삭제만큼은 한 번 더 안전장치 - 최근에 지운 직원 id는 병합 결과에 남아있어도 확실히 제거
   const deletedIds = new Set(getRecentlyDeletedProfileIds().map(e=>e.id));
   if(deletedIds.size) merged.profiles = (merged.profiles||[]).filter(p=>!deletedIds.has(p.id));
@@ -29916,7 +29994,7 @@ function setGdriveSyncingIndicator(active){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.28 11:20';
+const APP_BUILD = '2026.09.28 12:20';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -31619,6 +31697,7 @@ function orgChartAdminResetForm(){
   document.getElementById('orgChartAddBtnLabel').textContent = '등록';
   document.getElementById('orgChartCancelEditBtn').style.display = 'none';
 }
+const orgChartSelected = new Set();
 function renderOrgChartAdminList(){
   const wrap = document.getElementById('orgChartAdminListWrap');
   if(!wrap) return;
@@ -31627,13 +31706,53 @@ function renderOrgChartAdminList(){
     wrap.innerHTML = `<div class="empty-state" style="padding:14px;">등록된 사람이 없습니다.</div>`;
     return;
   }
+  // "사람을 골라서 팀·직책을 일괄 적용" 요청 - 맨 앞 체크박스로 여러 명을 고르면 표 위에 일괄 적용 줄이 나타남
+  orgChartSelected.forEach(id=>{ if(!list.some(p=>p.id===id)) orgChartSelected.delete(id); });
   const rows = list.map(p=> `<tr>
+    <td style="text-align:center; width:34px;"><input type="checkbox" class="orgchart-sel" data-id="${p.id}" style="width:auto;" ${orgChartSelected.has(p.id)?'checked':''}></td>
     <td style="text-align:center; font-weight:700;">${escHtml(p.name)}</td>
     <td style="text-align:center;">${escHtml(p.team||'')}</td>
     <td style="text-align:center;">${escHtml(p.position||'')}</td>
     <td style="white-space:nowrap; text-align:center;"><button type="button" class="del-btn orgchart-edit-btn" data-id="${p.id}" style="margin-right:6px;">수정</button><button type="button" class="del-btn orgchart-del-btn" data-id="${p.id}">삭제</button></td>
   </tr>`);
-  renderPaginatedRows(wrap, '<tr><th style="text-align:center;">이름</th><th style="text-align:center;">팀</th><th style="text-align:center;">직책</th><th style="text-align:center;">관리</th></tr>', rows, 10);
+  renderPaginatedRows(wrap, '<tr><th style="text-align:center; width:34px;"><input type="checkbox" id="orgChartSelAll" style="width:auto;" title="전체 선택"></th><th style="text-align:center;">이름</th><th style="text-align:center;">팀</th><th style="text-align:center;">직책</th><th style="text-align:center;">관리</th></tr>', rows, rows.length); // "처음부터 전체 목록이 나오게" 요청 - 10명 이후 접힘 없이 모두 표시
+  const bulk = document.createElement('div');
+  bulk.id = 'orgChartBulkBar';
+  bulk.style.cssText = 'display:none; gap:8px; flex-wrap:wrap; justify-content:center; align-items:center; margin-bottom:10px;';
+  bulk.innerHTML = `<span id="orgChartBulkCount" style="font-size:12px; font-weight:800; color:var(--indigo-deep);"></span>
+    <input type="text" id="orgChartBulkTeam" placeholder="팀 (비우면 그대로)" class="flat-input" autocomplete="off" style="width:130px; text-align:center;">
+    <input type="text" id="orgChartBulkPosition" placeholder="직책 (비우면 그대로)" class="flat-input" autocomplete="off" style="width:130px; text-align:center;">
+    <button type="button" class="del-btn" id="orgChartBulkApplyBtn">일괄 적용</button>
+    <button type="button" class="del-btn" id="orgChartBulkClearBtn">선택 해제</button>`;
+  wrap.prepend(bulk);
+  const syncBulk = ()=>{
+    bulk.style.display = orgChartSelected.size ? 'flex' : 'none';
+    document.getElementById('orgChartBulkCount').textContent = `${orgChartSelected.size}명 선택`;
+    const all = document.getElementById('orgChartSelAll');
+    if(all){ all.checked = orgChartSelected.size === list.length; all.indeterminate = orgChartSelected.size > 0 && orgChartSelected.size < list.length; }
+  };
+  wrap.querySelectorAll('.orgchart-sel').forEach(cb=> cb.addEventListener('change', ()=>{
+    if(cb.checked) orgChartSelected.add(cb.dataset.id); else orgChartSelected.delete(cb.dataset.id);
+    syncBulk();
+  }));
+  document.getElementById('orgChartSelAll')?.addEventListener('change', (e)=>{
+    wrap.querySelectorAll('.orgchart-sel').forEach(cb=>{ cb.checked = e.target.checked; if(cb.checked) orgChartSelected.add(cb.dataset.id); else orgChartSelected.delete(cb.dataset.id); });
+    syncBulk();
+  });
+  document.getElementById('orgChartBulkClearBtn').addEventListener('click', ()=>{ orgChartSelected.clear(); renderOrgChartAdminList(); });
+  document.getElementById('orgChartBulkApplyBtn').addEventListener('click', async ()=>{
+    const team = document.getElementById('orgChartBulkTeam').value.trim();
+    const position = document.getElementById('orgChartBulkPosition').value.trim();
+    if(!team && !position){ appAlert('적용할 팀이나 직책을 입력해주세요.'); return; }
+    let n = 0;
+    sharedOrgChart.forEach(p=>{ if(orgChartSelected.has(p.id)){ if(team) p.team = team; if(position) p.position = position; n++; } });
+    await saveSharedOrgChart();
+    orgChartSelected.clear();
+    renderOrgChartAdminList();
+    if(typeof renderOrgChartView === 'function') renderOrgChartView();
+    showCenterToast(`${n}명에게 적용했어요`);
+  });
+  syncBulk();
   wrap.querySelectorAll('.orgchart-edit-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const p = sharedOrgChart.find(x=>x.id===btn.dataset.id);
