@@ -33034,7 +33034,7 @@ function orgChartGroups(){
   // 좌석 칸 글자는 사람 단위로 나눠서 넣음 - 명단에 이미 있는 사람(이름 기준)은 중복으로 안 나옴
   (cells||[]).forEach(c=>{ if(c.type==='seat' && c.text) seatTextToPeople(c.text, c.team, c.position).forEach(pp=> addPerson(pp.name, pp.team, pp.position)); });
   // 대표회계사는 항상 맨 앞, 소속회계사·고문실은 팀들 다음, "미지정"(팀을 아직 안 채운 사람들)은 항상 맨 뒤로
-  const rank = t => t===ORG_CEO_GROUP ? 0 : t===ORG_STAFF_CPA_GROUP ? 2 : t===ORG_ADVISOR_GROUP ? 3 : t==='미지정' ? 4 : 1;
+  const rank = t => t===ORG_CEO_GROUP ? 0 : t===ORG_STAFF_CPA_GROUP ? 2 : t===ORG_ADVISOR_GROUP ? 3 : t==='기타' ? 3.5 : t==='미지정' ? 4 : 1;
   order.sort((a,b)=> rank(a) - rank(b));
   return order.map(team=>({ team, members: groups[team] }));
 }
@@ -33164,14 +33164,17 @@ function orgLeadTeamNames(){
 }
 function orgTeamOptionsHtml(current, placeholder){
   const leads = orgLeadTeamNames();
-  const known = new Set([ORG_MGMT_TEAM, ...leads]);
+  // 경영지원실 아래에 고문실·소속회계사·기타도 팀으로 직접 고를 수 있게 함(조직도에서 그 이름의 카드로 묶임)
+  const extraTeams = ['고문실', '소속회계사', '기타'];
+  const known = new Set([ORG_MGMT_TEAM, ...extraTeams, ...leads]);
   const legacy = current && !known.has(current) ? `<option value="${escHtml(current)}" selected>${escHtml(current)} (기존값)</option>` : '';
   const leadOpts = leads.length
     ? leads.map(t=>`<option value="${escHtml(t)}" ${t===current?'selected':''}>${escHtml(t)}</option>`).join('')
     : `<option value="" disabled>팀장회계사를 먼저 지정해주세요</option>`;
   return `<option value="">${placeholder||'팀 선택'}</option>
     <optgroup label="회계사팀">${leadOpts}</optgroup>
-    <option value="${ORG_MGMT_TEAM}" ${current===ORG_MGMT_TEAM?'selected':''}>${ORG_MGMT_TEAM}</option>${legacy}`;
+    <option value="${ORG_MGMT_TEAM}" ${current===ORG_MGMT_TEAM?'selected':''}>${ORG_MGMT_TEAM}</option>
+    ${extraTeams.map(t=>`<option value="${t}" ${current===t?'selected':''}>${t}</option>`).join('')}${legacy}`;
 }
 function orgPositionOptionsHtml(placeholder){
   return `<option value="">${placeholder||'직책'}</option>` + ORG_POSITIONS.map(x=>`<option value="${x}">${x}</option>`).join('') + `<option value="기타">기타(입력)</option>`;
@@ -33210,6 +33213,12 @@ function orgChartAdminResetForm(){
   document.getElementById('orgChartCancelEditBtn').style.display = 'none';
 }
 const orgChartSelected = new Set();
+// 구분(대표/팀장/경지실) 체크 변경 대기 - { 사람id: { isCeo/isLead/isMgmtLead: true|false } }, "저장"을 눌러야 반영
+const orgChartPendingFlags = {};
+function orgFlag(p, key){
+  const pend = orgChartPendingFlags[p.id];
+  return pend && key in pend ? pend[key] : !!p[key];
+}
 function renderOrgChartAdminList(){
   const wrap = document.getElementById('orgChartAdminListWrap');
   if(!wrap) return;
@@ -33221,15 +33230,19 @@ function renderOrgChartAdminList(){
   }
   // "사람을 골라서 팀·직책을 일괄 적용" 요청 - 맨 앞 체크박스로 여러 명을 고르면 표 위에 일괄 적용 줄이 나타남
   orgChartSelected.forEach(id=>{ if(!list.some(p=>p.id===id)) orgChartSelected.delete(id); });
-  const rows = list.map(p=> `<tr>
+  // 명단은 직책 순서(고문 → 회계사 → 매니저 → 기타)로 보여줌 - 같은 직책 안에서는 등록된 순서 그대로(저장 순서는 안 바뀜)
+  const ORG_LIST_POS_ORDER = ['고문','회계사','매니저'];
+  const posRank = p=>{ const i = ORG_LIST_POS_ORDER.indexOf((p.position||'').trim()); return i < 0 ? ORG_LIST_POS_ORDER.length : i; };
+  const sortedList = list.map((p,i)=>({p,i})).sort((a,b)=> posRank(a.p)-posRank(b.p) || a.i-b.i).map(x=>x.p);
+  const rows = sortedList.map(p=> `<tr>
     <td style="text-align:center; width:34px;"><input type="checkbox" class="orgchart-sel" data-id="${p.id}" style="width:auto;" ${orgChartSelected.has(p.id)?'checked':''}></td>
     <td style="text-align:center; font-weight:700;">${escHtml(p.name)}</td>
     <td style="text-align:center;">${escHtml(p.team||'')}</td>
     <td style="text-align:center;">${escHtml(p.position||'')}</td>
     <td style="text-align:center;">${p.position==='회계사' ? `<span style="display:inline-flex; gap:8px; vertical-align:middle; white-space:nowrap;">${[
-        ['orgchart-ceo-btn', p.isCeo, '대표', '대표회계사로 지정하면 조직도 맨 앞 대표회계사 카드에 나와요'],
-        ['orgchart-lead-btn', p.isLead, '팀장', '팀장회계사로 지정하면 팀 드롭다운에 이 사람 팀이 생겨요'],
-        ['orgchart-mgmtlead-btn', p.isMgmtLead, '경지실', '경영지원실 팀장회계사로 지정(한 명만 지정돼요)']
+        ['orgchart-ceo-btn', orgFlag(p,'isCeo'), '대표', '대표회계사로 지정하면 조직도 맨 앞 대표회계사 카드에 나와요'],
+        ['orgchart-lead-btn', orgFlag(p,'isLead'), '팀장', '팀장회계사로 지정하면 팀 드롭다운에 이 사람 팀이 생겨요'],
+        ['orgchart-mgmtlead-btn', orgFlag(p,'isMgmtLead'), '경지실', '경영지원실 팀장회계사로 지정(한 명만 지정돼요)']
       ].map(([cls, on, label, tip])=>`<label title="${tip}" style="display:inline-flex; align-items:center; gap:3px; font-size:11.5px; font-weight:700; color:${on?'var(--indigo-deep)':'var(--ink-soft)'}; cursor:pointer; margin:0;"><input type="checkbox" class="${cls}" data-id="${p.id}" ${on?'checked':''} style="width:auto; margin:0;">${label}</label>`).join('')}</span>` : ''}</td>
     <td style="white-space:nowrap; text-align:center;"><button type="button" class="del-btn orgchart-edit-btn" data-id="${p.id}" style="margin-right:6px;">수정</button><button type="button" class="del-btn orgchart-del-btn" data-id="${p.id}">삭제</button></td>
   </tr>`);
@@ -33239,8 +33252,8 @@ function renderOrgChartAdminList(){
   // 위쪽 등록 줄과 헷갈리지 않게, 체크했을 때만 나타나는 "선택 모드" 영역으로 보이도록 연한 인디고 박스로 감쌈
   bulk.style.cssText = 'display:none; gap:8px; flex-wrap:wrap; justify-content:center; align-items:center; margin-bottom:10px; background:var(--indigo-bg); border:1.5px solid var(--indigo); border-radius:12px; padding:8px 12px;';
   bulk.innerHTML = `<span id="orgChartBulkCount" style="font-size:12px; font-weight:800; color:var(--indigo-deep);"></span>
-    <select id="orgChartBulkTeam" class="flat-input" style="width:140px; text-align:center;">${orgTeamOptionsHtml('', '팀 (그대로)')}</select>
-    <select id="orgChartBulkPosition" class="flat-input org-pos-select" data-etc="orgChartBulkPositionEtc" style="width:120px; text-align:center;">${orgPositionOptionsHtml('직책 (그대로)')}</select>
+    <select id="orgChartBulkTeam" class="flat-input" style="width:140px; text-align:center;">${orgTeamOptionsHtml('', '팀')}</select>
+    <select id="orgChartBulkPosition" class="flat-input org-pos-select" data-etc="orgChartBulkPositionEtc" style="width:120px; text-align:center;">${orgPositionOptionsHtml('직책')}</select>
     <input type="text" id="orgChartBulkPositionEtc" placeholder="직책 입력" class="flat-input" autocomplete="off" style="width:100px; text-align:center; display:none;">
     <button type="button" class="del-btn" id="orgChartBulkApplyBtn" style="background:var(--indigo); color:#fff; border-color:var(--indigo);">일괄 적용</button>
     <button type="button" class="del-btn" id="orgChartBulkClearBtn">선택 해제</button>`;
@@ -33273,47 +33286,61 @@ function renderOrgChartAdminList(){
     showCenterToast(`${n}명에게 적용했어요`);
   });
   syncBulk();
-  // 팀장회계사 지정/해제 - 지정하면 그 사람 팀("○○○팀")이 팀 드롭다운에 생기고, 본인 팀이 비어 있으면 자기 팀으로 채움
-  wrap.querySelectorAll('.orgchart-lead-btn').forEach(btn=>{
-    btn.addEventListener('change', async ()=>{
-      const p = sharedOrgChart.find(x=>x.id===btn.dataset.id);
-      if(!p) return;
-      p.isLead = !p.isLead;
-      if(p.isLead && !p.team) p.team = `${p.name}팀`;
-      if(!p.isLead){
-        const teamName = `${p.name}팀`;
-        const members = sharedOrgChart.filter(x=>x.id!==p.id && x.team===teamName).length;
-        if(members) showCenterToast(`${teamName} 소속 ${members}명은 팀이 그대로 남아 있어요`);
-      }
+  // 구분(대표/팀장/경지실) 체크는 바로 저장하지 않고 "저장"을 눌러야 반영됨 - 체크를 바꾸면 변경 대기
+  // (orgChartPendingFlags)에만 담기고, 표 위에 "저장 / 취소" 줄이 나타남
+  const toggleFlag = (id, key)=>{
+    const p = sharedOrgChart.find(x=>x.id===id);
+    if(!p) return;
+    const setPending = (person, k, v)=>{
+      const cur = orgChartPendingFlags[person.id] || {};
+      if(!!person[k] === v) delete cur[k]; else cur[k] = v;
+      if(Object.keys(cur).length) orgChartPendingFlags[person.id] = cur; else delete orgChartPendingFlags[person.id];
+    };
+    const on = !orgFlag(p, key);
+    // 경지실 팀장회계사는 한 명만 - 다른 사람을 체크하면 기존 체크는 풀림
+    if(key === 'isMgmtLead' && on) sharedOrgChart.forEach(x=>{ if(x.id!==p.id && orgFlag(x,'isMgmtLead')) setPending(x, 'isMgmtLead', false); });
+    setPending(p, key, on);
+    renderOrgChartAdminList();
+  };
+  [['orgchart-ceo-btn','isCeo'],['orgchart-lead-btn','isLead'],['orgchart-mgmtlead-btn','isMgmtLead']].forEach(([cls,key])=>{
+    wrap.querySelectorAll('.'+cls).forEach(cb=> cb.addEventListener('change', ()=> toggleFlag(cb.dataset.id, key)));
+  });
+  Object.keys(orgChartPendingFlags).forEach(id=>{ if(!list.some(p=>p.id===id)) delete orgChartPendingFlags[id]; });
+  const pendingCount = Object.values(orgChartPendingFlags).reduce((n,o)=>n+Object.keys(o).length, 0);
+  if(pendingCount){
+    const saveBar = document.createElement('div');
+    saveBar.style.cssText = 'display:flex; gap:8px; flex-wrap:wrap; justify-content:center; align-items:center; margin-bottom:10px; background:var(--amber-bg); border:1.5px solid var(--amber); border-radius:12px; padding:8px 12px;';
+    saveBar.innerHTML = `<span style="font-size:12px; font-weight:800; color:#8A5A05;">구분 변경 ${pendingCount}건 · 저장해야 반영돼요</span>
+      <button type="button" class="del-btn" id="orgChartFlagSaveBtn" style="background:var(--indigo); color:#fff; border-color:var(--indigo);">저장</button>
+      <button type="button" class="del-btn" id="orgChartFlagCancelBtn">취소</button>`;
+    bulk.after(saveBar);
+    document.getElementById('orgChartFlagCancelBtn').addEventListener('click', ()=>{
+      Object.keys(orgChartPendingFlags).forEach(k=> delete orgChartPendingFlags[k]);
+      renderOrgChartAdminList();
+    });
+    document.getElementById('orgChartFlagSaveBtn').addEventListener('click', async ()=>{
+      const leftTeams = [];
+      Object.entries(orgChartPendingFlags).forEach(([id, flags])=>{
+        const p = sharedOrgChart.find(x=>x.id===id);
+        if(!p) return;
+        Object.entries(flags).forEach(([k,v])=>{ p[k] = v ? true : undefined; });
+        // 팀장 지정 시 본인 팀이 비어 있으면 자기 팀("○○○팀")으로 채움, 해제 시 남아있는 팀원 수 안내
+        if('isLead' in flags){
+          if(p.isLead && !p.team) p.team = `${p.name}팀`;
+          if(!p.isLead){
+            const teamName = `${p.name}팀`;
+            const members = sharedOrgChart.filter(x=>x.id!==p.id && x.team===teamName).length;
+            if(members) leftTeams.push(`${teamName} ${members}명`);
+          }
+        }
+      });
+      Object.keys(orgChartPendingFlags).forEach(k=> delete orgChartPendingFlags[k]);
       await saveSharedOrgChart();
       renderOrgChartAdminList();
       if(typeof renderOrgChartView === 'function') renderOrgChartView();
+      showCenterToast(leftTeams.length ? `저장했어요 (${leftTeams.join(', ')}은 팀이 그대로 남아 있어요)` : '저장했어요');
     });
-  });
-  // 경영지원실 팀장회계사 - 바뀔 수 있어서 버튼으로 지정/해제. 한 명만이라 다른 사람을 지정하면 기존 지정은 풀림
-  wrap.querySelectorAll('.orgchart-mgmtlead-btn').forEach(btn=>{
-    btn.addEventListener('change', async ()=>{
-      const p = sharedOrgChart.find(x=>x.id===btn.dataset.id);
-      if(!p) return;
-      const on = !p.isMgmtLead;
-      sharedOrgChart.forEach(x=>{ if(x.isMgmtLead) x.isMgmtLead = undefined; });
-      if(on) p.isMgmtLead = true;
-      await saveSharedOrgChart();
-      renderOrgChartAdminList();
-      if(typeof renderOrgChartView === 'function') renderOrgChartView();
-    });
-  });
-  // 대표회계사 지정/해제 - 여러 명(현재 두 분) 지정 가능
-  wrap.querySelectorAll('.orgchart-ceo-btn').forEach(btn=>{
-    btn.addEventListener('change', async ()=>{
-      const p = sharedOrgChart.find(x=>x.id===btn.dataset.id);
-      if(!p) return;
-      p.isCeo = p.isCeo ? undefined : true;
-      await saveSharedOrgChart();
-      renderOrgChartAdminList();
-      if(typeof renderOrgChartView === 'function') renderOrgChartView();
-    });
-  });
+  }
   wrap.querySelectorAll('.orgchart-edit-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const p = sharedOrgChart.find(x=>x.id===btn.dataset.id);
