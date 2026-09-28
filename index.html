@@ -2959,7 +2959,7 @@
   /* 하위메뉴: 왼쪽 세로선(인디고→민트) + 항목마다 짧은 가지 */
   .app-sidebar.rail-mode #railExpandPanel .home-tiles.rail-panel-inline{ position:relative; padding-left:18px; }
   .app-sidebar.rail-mode #railExpandPanel .home-tiles.rail-panel-inline::before{
-    content:''; position:absolute; left:5px; top:25px; bottom:25px; width:2px; border-radius:2px;
+    content:''; position:absolute; left:5px; top:20px; bottom:20px; width:2px; border-radius:2px;
     background:linear-gradient(#B9BCF5, #8FD8C3);
   }
   .app-sidebar.rail-mode #railExpandPanel .home-tiles.rail-panel-inline > .home-submenu-item,
@@ -2974,13 +2974,7 @@
     content:''; position:absolute; left:-13px; top:50%; width:9px; height:2px; border-radius:2px; background:#B9BCF5;
   }
   .app-sidebar.rail-mode #railExpandPanel .home-tiles.rail-panel-inline > .home-tile.home-tile-plain::before{ display:none; }
-  /* 세로선은 묶음(회사/Tax.J/일반)마다 따로 한 줄씩, 첫 가지~마지막 가지까지 인디고→민트 그라데이션(JS가 위치 계산) */
-  .app-sidebar.rail-mode #railExpandPanel .home-tiles.rail-panel-inline::before{ display:none; }
   .home-tiles > .rail-tree-line{ display:none; }
-  .app-sidebar.rail-mode #railExpandPanel .home-tiles.rail-panel-inline > .rail-tree-line{
-    display:block; position:absolute; left:5px; width:2px; border-radius:2px; pointer-events:none;
-    background:linear-gradient(#B9BCF5, #8FD8C3);
-  }
   .app-sidebar.rail-mode #railExpandPanel .home-tiles.rail-panel-inline > .home-submenu-item:hover,
   .app-sidebar.rail-mode #railExpandPanel .home-tiles.rail-panel-inline > .home-tile:hover{ color:var(--indigo); }
   /* 휴대폰 평소 화면: 하단 메뉴 줄을 떠 있는 둥근 알약으로, 지금 보고 있는 메뉴만 인디고 원 */
@@ -17855,6 +17849,33 @@ relocateSidebarNodes();
     tiles.style.top = Math.max(10, Math.min(curTop, maxTop)) + 'px';
   }
 
+  // 하위메뉴를 누른 대메뉴 아이콘 높이에 맞춰 내려서 시작하게 함(개인웹처럼 선이 그 아이콘에서 뻗어 나온 느낌) -
+  // 첫 하위메뉴 항목의 가운데가 아이콘 가운데와 같은 높이가 되게 하고, 레일 아래로 넘치면 넘치지 않을 만큼만 위로 올림
+  function alignRailPanelToRow(row, tiles){
+    try{
+      const panel = document.getElementById('railExpandPanel');
+      const label = row.querySelector('.home-section-label');
+      const col = sidebar.querySelector(':scope > .home-menu-col');
+      if(!panel || !label || !tiles) return;
+      tiles.style.marginTop = '0px';
+      const icon = label.querySelector('svg') || label;
+      const ir = icon.getBoundingClientRect();
+      const anchorY = ir.top + ir.height/2;
+      const tr = tiles.getBoundingClientRect();
+      const first = [...tiles.children].find(el=> el.offsetParent && !el.classList.contains('rail-tree-line'));
+      const firstCenter = first ? (first.getBoundingClientRect().top + first.getBoundingClientRect().height/2 - tr.top) : 20;
+      let mt = anchorY - tr.top - firstCenter;
+      const bottomLimit = col ? col.getBoundingClientRect().bottom : (tr.top + tr.height);
+      const maxMt = bottomLimit - tr.top - tr.height;
+      mt = Math.min(mt, maxMt);
+      tiles.style.marginTop = Math.max(0, Math.round(mt)) + 'px';
+    }catch(e){}
+  }
+  window.addEventListener('resize', ()=>{
+    const row = document.querySelector('.home-section-row.rail-open');
+    const tiles = document.querySelector('#railExpandPanel > .home-tiles.rail-panel-inline');
+    if(row && tiles && sidebar.classList.contains('rail-mode')) alignRailPanelToRow(row, tiles);
+  });
   function openPopoverFor(row){
     if(row.classList.contains('rail-open')) return; // 이미 이 그룹이 열려있으면 그대로 둠(같은 아이콘을 다시 눌러도 닫히지 않음)
     closeAllPopovers();
@@ -17880,6 +17901,8 @@ relocateSidebarNodes();
     // 요청으로 다시 단순하게 패널 맨 위(고정된 자리)에서 시작하게 되돌림
     expandPanel.appendChild(tiles);
     tiles.classList.add('rail-popover-open', 'rail-panel-inline');
+    // (다시) "하위메뉴가 상단에 고정돼서 어색하다" - 누른 대메뉴 높이에 맞춰 시작
+    alignRailPanelToRow(row, tiles);
     // "대메뉴를 누르면 그 안의 첫 번째 하위메뉴가 바로 화면에 조회됐으면 좋겠다"는 요청(예: 개인 →
     // 개인캘린더가 목록만 펼쳐지고 화면은 그대로인 게 아니라, 목록이 펼쳐짐과 동시에 화면도 그 첫 항목
     // 내용으로 바로 넘어감) - 갈 곳이 있는(elHasNavigation) 첫 항목을 찾아 실제로 눌러준 것과 똑같이
@@ -17906,46 +17929,9 @@ relocateSidebarNodes();
     if(!railHomeMap.has(tiles)) railHomeMap.set(tiles, { parent: row });
     expandPanel.appendChild(tiles);
     tiles.classList.add('rail-popover-open', 'rail-panel-inline');
+    alignRailPanelToRow(row, tiles);
   }
   window.restoreLastRailPanel = restoreLastRailPanel;
-  // 하위메뉴 세로선: 묶음(구역표시 사이)마다 첫 항목 가지~마지막 항목 가지까지 한 줄로 그림
-  function drawRailTreeLines(){
-    const panel = document.getElementById('railExpandPanel');
-    if(!panel) return;
-    panel.querySelectorAll(':scope > .home-tiles').forEach(tiles=>{
-      tiles.querySelectorAll(':scope > .rail-tree-line').forEach(x=>x.remove());
-      if(!tiles.classList.contains('rail-panel-inline')) return;
-      const groups = []; let cur = [];
-      [...tiles.children].forEach(el=>{
-        if(el.classList.contains('home-tiles-subgroup-label')){ if(cur.length) groups.push(cur); cur = []; return; }
-        if(!(el.classList.contains('home-submenu-item') || (el.classList.contains('home-tile') && !el.classList.contains('home-tile-plain')))) return;
-        if(!el.offsetParent) return; // 권한 등으로 숨겨진 항목은 제외
-        cur.push(el);
-      });
-      if(cur.length) groups.push(cur);
-      groups.forEach(g=>{
-        const first = g[0], last = g[g.length-1];
-        const top = first.offsetTop + first.offsetHeight/2 - 3;
-        const bottom = last.offsetTop + last.offsetHeight/2 + 3;
-        const line = document.createElement('div');
-        line.className = 'rail-tree-line';
-        line.style.top = top + 'px'; line.style.height = Math.max(0, bottom - top) + 'px';
-        tiles.appendChild(line);
-      });
-    });
-  }
-  window.drawRailTreeLines = drawRailTreeLines;
-  (function(){
-    const panel = document.getElementById('railExpandPanel');
-    if(!panel || !window.MutationObserver) return;
-    let raf = 0;
-    const schedule = ()=>{ cancelAnimationFrame(raf); raf = requestAnimationFrame(drawRailTreeLines); };
-    new MutationObserver(muts=>{
-      if(muts.every(m=> [...m.addedNodes, ...m.removedNodes].every(n=> n.classList && n.classList.contains('rail-tree-line')))) return;
-      schedule();
-    }).observe(panel, { childList:true, subtree:true, attributes:true, attributeFilter:['class','style'] });
-    window.addEventListener('resize', schedule);
-  })();
 
   function firstNavigableItem(tiles){
     // 즐겨찾기 목록은 배열 순서(사용자가 ▲▼로 직접 정한 자리)와 무관하게, 별표로 고른 "메인" 항목이
@@ -30882,7 +30868,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.28 17:40';
+const APP_BUILD = '2026.09.28 18:00';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
