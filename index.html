@@ -16712,10 +16712,14 @@ function clockMinutesForEntry(entry){
   const [oh,om] = entry.checkOut.split(':').map(Number);
   const startMin = ih*60+im, endMin = oh*60+om;
   let mins = endMin - startMin;
+  // 퇴근이 출근보다 이른 시각이면 자정을 넘겨 다음날 퇴근한 야근으로 보고 하루(24h)를 더해서 계산
+  // (예: 17:02 출근 → 다음날 09:00 퇴근, 특별기간 09:05 출근 → 다음날 07:35 퇴근)
+  if(mins < 0) mins += 24*60;
   if(mins <= 0) return 0;
-  const overlapsLunch = startMin < LUNCH_BREAK_END_MIN && endMin > LUNCH_BREAK_START_MIN;
+  const effEndMin = startMin + mins; // 익일 퇴근이면 24h를 더한 값이라, 점심시간 겹침도 이 값으로 판단
+  const overlapsLunch = startMin < LUNCH_BREAK_END_MIN && effEndMin > LUNCH_BREAK_START_MIN;
   if(overlapsLunch){
-    const overlapMin = Math.min(endMin, LUNCH_BREAK_END_MIN) - Math.max(startMin, LUNCH_BREAK_START_MIN);
+    const overlapMin = Math.min(effEndMin, LUNCH_BREAK_END_MIN) - Math.max(startMin, LUNCH_BREAK_START_MIN);
     mins -= Math.max(0, overlapMin);
   }
   return mins > 0 ? mins : 0;
@@ -17039,7 +17043,7 @@ function renderClockHistoryTable(){
     return `<tr>
       <td class="cvb">${Number(m)}/${Number(d)} (${dow})</td>
       <td class="cvb" style="color:#1E9E6C; font-weight:700;">${e.checkInFull || e.checkIn || '-'}</td>
-      <td class="cvb" style="color:#DC4364; font-weight:700;">${e.checkOutFull || e.checkOut || '-'}</td>
+      <td class="cvb" style="color:#DC4364; font-weight:700;">${e.checkOutFull || e.checkOut || '-'}${(e.checkIn && e.checkOut && e.checkOut < e.checkIn) ? '<span style="font-size:10px; font-weight:600; margin-left:2px;">(익일)</span>' : ''}</td>
       <td class="cvb">${hrs}</td>
       <td class="cvb">${escHtml(e.status||'')}</td>
       <td>
@@ -29519,6 +29523,12 @@ document.getElementById('clockImportRunBtn')?.addEventListener('click', async ()
       if(activeProfileId === p.profileId) attendance = att;
     });
     saveSharedTrash();
+    // 예전엔 로컬에만 쓰고(드라이브 저장은 2초 디바운스 예약) 바로 새로고침해서, 예약된 업로드가 돌기 전에
+    // 페이지가 끊겨 가져온 기록이 드라이브에 안 올라가고 다음 동기화 때 사라질 수 있었음 - 출근 버튼처럼 즉시 저장
+    if(gdriveAccessToken && gdriveFileId){
+      msgEl.textContent = '드라이브에 저장 중...';
+      try{ await gdrivePush(); }catch(e){ console.error('출퇴근기록 가져오기 후 드라이브 저장 실패', e); }
+    }
     document.getElementById('clockImportModalOverlay').style.display = 'none';
     await appAlert('출퇴근 기록을 가져왔어요.\n\n적용된 화면을 보려면 새로고침해주세요.');
     location.reload();
