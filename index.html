@@ -31514,7 +31514,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 00:06';
+const APP_BUILD = '2026.09.29 00:12';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -33183,41 +33183,74 @@ function renderOrgChartView(){
 // 인쇄되면 좋겠다"는 요청으로 회사명을 맨 위에 두고 그 아래로 팀 상자들이 가지처럼 뻗어나가는 트리 구조로
 // 따로 만듦. 팀마다 다른 포인트색을 순서대로 돌려써서("컬러감있게") 한눈에 팀이 구분되게 함
 const ORG_CHART_PRINT_COLORS = ['#5B5FEF','#0FB88A','#F0A93B','#F0506E','#3D9CF0','#8B5CF6','#EA580C','#0EA5E9'];
+// 시안 A(계층형 트리)로 바꿈 - 회사 → 대표회계사 → [회계사팀 | 소속회계사 | 경영지원실·고문실·기타] 세 갈래로
+// 선이 이어지는 구조. 회계사팀 안에서는 팀장(팀장 지정된 회계사)을 맨 위에 "팀장"으로 표시함
 function orgChartPrintHtml(){
   const groups = orgChartGroups();
   if(!groups.length) return `<div style="text-align:center; color:#75789A; padding:40px 0;">좌석배치도에 이름을 채우면 여기 조직도에 나와요.</div>`;
-  const branches = groups.map((g,i)=>{
-    const color = ORG_CHART_PRINT_COLORS[i % ORG_CHART_PRINT_COLORS.length];
-    const rows = g.members.map(m=>`<div class="org-print-member"><span class="org-print-name">${escHtml(m.name)}</span>${m.position ? `<span class="org-print-pos">${escHtml(m.position)}</span>` : ''}</div>`).join('');
-    return `<div class="org-print-branch">
-      <div class="org-print-line" style="background:${color};"></div>
-      <div class="org-print-box" style="border-top-color:${color};">
-        <div class="org-print-box-head" style="background:${color};">${escHtml(g.team)} <span>(${g.members.length}명)</span></div>
-        <div class="org-print-box-body">${rows}</div>
-      </div>
-    </div>`;
+  const byName = {};
+  (sharedOrgChart||[]).forEach(p=>{ const n=(p.name||'').trim(); if(n && !byName[n]) byName[n] = p; });
+  const special = ['대표회계사','소속회계사','경영지원실','고문실','기타','미지정'];
+  const get = t => (groups.find(g=>g.team===t)||{}).members || [];
+  const ceos = get('대표회계사');
+  const teamGroups = groups.filter(g=>!special.includes(g.team));
+  const staff = get('소속회계사');
+  const mgmt = get('경영지원실');
+  const misc = [...get('고문실'), ...get('기타')];
+  const unassigned = get('미지정');
+  const memberRow = (m, pos)=> `<div class="opa-row"><span class="opa-name">${escHtml(m.name)}</span>${pos ? `<span class="opa-pos">${escHtml(pos)}</span>` : ''}</div>`;
+  const listBox = list => `<div class="opa-box">${list.map(m=>memberRow(m, m.position)).join('')}</div>`;
+  const teamCards = teamGroups.map(g=>{
+    const leadName = (g.team.endsWith('팀') ? g.team.slice(0,-1) : '');
+    const isLead = m => m.name === leadName && byName[m.name] && byName[m.name].isLead;
+    const sorted = [...g.members].sort((x,y)=> (isLead(y)?1:0) - (isLead(x)?1:0));
+    return `<div class="opa-team"><b>${escHtml(g.team)}</b>${sorted.map(m=>memberRow(m, isLead(m) ? '팀장' : m.position)).join('')}</div>`;
   }).join('');
-  return `<div class="org-print-root">
-    <div class="org-print-ceo">${escHtml(sharedCompanyName || '조직도')}</div>
-    <div class="org-print-trunk"></div>
-    <div class="org-print-branches">${branches}</div>
+  const divisions = [];
+  if(teamGroups.length) divisions.push(`<div class="opa-div" style="flex:1.35;"><div class="opa-v"></div><div class="opa-head" style="background:#5B5FEF;">회계사팀 (${teamGroups.length}팀)</div><div class="opa-teams">${teamCards}</div></div>`);
+  if(staff.length) divisions.push(`<div class="opa-div"><div class="opa-v"></div><div class="opa-head" style="background:#0FB88A;">소속회계사 (${staff.length}명)</div>${listBox(staff)}</div>`);
+  if(mgmt.length || misc.length || unassigned.length){
+    let right = '';
+    if(mgmt.length) right += `<div class="opa-head" style="background:#F0A93B;">경영지원실 (${mgmt.length}명)</div>${listBox(mgmt)}`;
+    if(misc.length){
+      const miscTitle = [get('고문실').length ? '고문실' : '', get('기타').length ? '기타' : ''].filter(Boolean).join(' · ');
+      right += `<div class="opa-head" style="background:#F0506E;${right?' margin-top:10px;':''}">${miscTitle} (${misc.length}명)</div>${listBox(misc)}`;
+    }
+    if(unassigned.length) right += `<div class="opa-head" style="background:#75789A;${right?' margin-top:10px;':''}">미지정 (${unassigned.length}명)</div>${listBox(unassigned)}`;
+    divisions.push(`<div class="opa-div"><div class="opa-v"></div>${right}</div>`);
+  }
+  const repsHtml = ceos.length
+    ? `<div class="opa-v"></div><div class="opa-reps">${ceos.map(m=>`<div class="opa-rep">${escHtml(m.name)}<small>대표회계사</small></div>`).join('')}</div>`
+    : '';
+  return `<div class="opa-root">
+    <div class="opa-ceo">${escHtml(sharedCompanyName || '조직도')}</div>
+    ${repsHtml}
+    <div class="opa-v"></div>
+    <div class="opa-divs">${divisions.join('')}</div>
   </div>
   <style>
-    .org-print-root{ display:flex; flex-direction:column; align-items:center; }
-    .org-print-ceo{ display:inline-block; padding:11px 30px; border-radius:10px; background:#1D1E33; color:#fff; font-weight:800; font-size:15px; letter-spacing:0.4px; }
-    .org-print-trunk{ width:2px; height:24px; background:#C7C9DA; }
-    .org-print-branches{ display:flex; flex-wrap:wrap; justify-content:center; gap:0 26px; }
-    .org-print-branch{ display:flex; flex-direction:column; align-items:center; margin-bottom:26px; }
-    .org-print-line{ width:2px; height:20px; }
-    .org-print-box{ width:210px; border:1px solid #E2E3EE; border-top:4px solid #5B5FEF; border-radius:10px; overflow:hidden; box-shadow:0 1px 4px rgba(29,30,51,0.08); background:#fff; }
-    .org-print-box-head{ color:#fff; font-weight:800; font-size:13px; padding:9px 10px; text-align:center; }
-    .org-print-box-head span{ font-weight:600; opacity:.85; font-size:11px; }
-    .org-print-box-body{ padding:2px 12px; }
-    .org-print-member{ display:flex; justify-content:space-between; gap:10px; padding:7px 2px; border-bottom:1px dashed #EEF0F5; font-size:12.5px; }
-    .org-print-member:last-child{ border-bottom:none; }
-    .org-print-name{ font-weight:700; color:#1D1E33; }
-    .org-print-pos{ color:#75789A; }
-    @media print{ .org-print-branch{ break-inside:avoid; } }
+    .opa-root{ width:1040px; margin:0 auto; text-align:left; }
+    .opa-ceo{ margin:0 auto; width:max-content; background:#1D1E33; color:#fff; border-radius:10px; padding:10px 26px; font-weight:800; font-size:15px; }
+    .opa-v{ width:2px; height:16px; background:#C7C9DA; margin:0 auto; }
+    .opa-reps{ display:flex; justify-content:center; gap:10px; }
+    .opa-rep{ border:2px solid #1D1E33; border-radius:10px; padding:6px 16px; font-weight:800; font-size:13px; background:#F4F4FA; }
+    .opa-rep small{ color:#75789A; font-weight:600; margin-left:4px; font-size:11px; }
+    .opa-divs{ display:flex; justify-content:space-between; gap:14px; align-items:flex-start; }
+    .opa-div{ flex:1; display:flex; flex-direction:column; min-width:0; position:relative; }
+    /* 갈래를 잇는 가로선 - 각 갈래 위에 선을 깔고, 첫 갈래는 가운데부터·마지막 갈래는 가운데까지만 그려서
+       갈래 가운데의 세로선들과 정확히 이어지게 함 */
+    .opa-divs > .opa-div::before{ content:''; position:absolute; top:0; left:-7px; right:-7px; height:2px; background:#C7C9DA; }
+    .opa-divs > .opa-div:first-child::before{ left:50%; }
+    .opa-divs > .opa-div:last-child::before{ right:50%; }
+    .opa-divs > .opa-div:only-child::before{ display:none; }
+    .opa-head{ color:#fff; font-weight:800; font-size:13px; border-radius:8px; padding:7px 12px; text-align:center; }
+    .opa-teams{ display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px; }
+    .opa-team, .opa-box{ border:1px solid #E2E3EE; border-radius:8px; overflow:hidden; font-size:11.5px; background:#fff; break-inside:avoid; }
+    .opa-box{ margin-top:8px; }
+    .opa-team b{ display:block; background:#ECEBFE; color:#4640D6; padding:4px 6px; font-size:11.5px; text-align:center; }
+    .opa-row{ display:flex; justify-content:space-between; gap:8px; padding:2.5px 8px; }
+    .opa-name{ color:#1D1E33; }
+    .opa-pos{ color:#75789A; }
   </style>`;
 }
 document.getElementById('orgChartPrintBtn')?.addEventListener('click', ()=>{
