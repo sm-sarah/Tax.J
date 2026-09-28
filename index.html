@@ -3472,6 +3472,16 @@
     <div id="allRemoteHistoryWrap"></div>
   </div>
 </div>
+<!-- 제외일수 이력 팝업 - 조회월이 아닌 다른 달(지난·앞선)의 제외일을 연도별로 접고 펼쳐 봄(renderExclusionHistory 참고) -->
+<div id="exclusionHistoryModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:640px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div class="modal-sticky-head" style="position:sticky; top:-20px; z-index:5; background:var(--surface); margin:-20px 0 10px; padding:16px 0 10px; text-align:center;">
+      <div style="font-weight:800; font-size:17px; color:var(--ink);">제외일수 이력</div>
+      <button type="button" id="exclusionHistoryModalClose" class="del-btn modal-close-btn" style="position:absolute; right:0; top:50%; transform:translateY(-50%);">✕</button>
+    </div>
+    <div id="exclusionHistoryWrap"></div>
+  </div>
+</div>
 <div id="leaveAsOfModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:420px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
     <div style="position:relative; text-align:center; margin-bottom:6px;">
@@ -12234,27 +12244,21 @@ function renderLunchLimitHistory(){
   });
 }
 
-function renderExclusionList(){
-  const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
-  const wrap = document.getElementById('exclusionListWrap');
-  const monthList = (sharedExclusionDays||[]).filter(x=>x.date.startsWith(monthStr)).sort((a,b)=> a.date < b.date ? 1 : -1);
-  if(!monthList.length){
-    wrap.innerHTML = `<div class="empty-state" style="padding:14px;">이번달 등록된 제외일이 없습니다.</div>`;
-    return;
-  }
-  const rows = monthList.map(x=>{
-    const reasonCls = x.reason==='공휴일' ? 'holiday' : x.reason==='점심회식' ? 'lunchparty' : x.reason==='저녁회식' ? 'party' : 'other';
-    return `<tr>
+// 제외일 한 줄(날짜·사유·관리) - 이번달 목록과 이력 팝업이 같은 모양을 씀
+function exclusionRowHtml(x){
+  const reasonCls = x.reason==='공휴일' ? 'holiday' : x.reason==='점심회식' ? 'lunchparty' : x.reason==='저녁회식' ? 'party' : 'other';
+  return `<tr>
     <td class="num" style="text-align:center;">${x.date}</td>
     <td style="text-align:center;"><span class="tag tag-excl ${reasonCls}">${escHtml(x.reason)}</span>${x.name ? ` <span style="font-size:11px; color:var(--ink-soft);">${escHtml(x.name)}</span>` : ''}</td>
     <td style="white-space:nowrap; text-align:center;"><button class="del-btn exclusion-edit-btn" data-id="${x.id}" style="margin-right:6px;">수정</button><button class="del-btn exclusion-del-btn" data-id="${x.id}">삭제</button></td>
   </tr>`;
-  });
-  renderPaginatedRows(wrap, '<tr><th style="text-align:center;">날짜</th><th style="text-align:center;">사유</th><th style="text-align:center;">관리</th></tr>', rows, 10);
-  wrap.querySelectorAll('.exclusion-edit-btn').forEach(btn=>{
+}
+function bindExclusionRowActions(scope){
+  scope.querySelectorAll('.exclusion-edit-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const en = sharedExclusionDays.find(x=>x.id===btn.dataset.id);
       if(!en) return;
+      document.getElementById('exclusionHistoryModalOverlay').style.display = 'none';
       editingExclusionId = en.id;
       document.getElementById('ex-date').value = en.date;
       document.getElementById('ex-reason').value = en.reason;
@@ -12265,7 +12269,7 @@ function renderExclusionList(){
       document.getElementById('exclusionForm').scrollIntoView({behavior:'smooth', block:'center'});
     });
   });
-  wrap.querySelectorAll('.exclusion-del-btn').forEach(btn=>{
+  scope.querySelectorAll('.exclusion-del-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       recordDeletedExclusionId(btn.dataset.id); // 삭제 직후 동기화로 되살아나지 않도록 기록
       sharedExclusionDays = sharedExclusionDays.filter(x=>x.id!==btn.dataset.id);
@@ -12280,9 +12284,76 @@ function renderExclusionList(){
       renderWorkdaysSuggestion();
       renderCalendar();
       renderAdminCalendar(); // 삭제 시에도 팀캘린더까지 같이 갱신
+      if(document.getElementById('exclusionHistoryModalOverlay').style.display === 'flex') renderExclusionHistory();
     });
   });
 }
+// 조회월 목록 아래 "이력" 버튼 - 조회월이 아닌 다른 달(지난·앞선) 제외일이 있을 때만 보임
+function exclusionOtherMonthList(){
+  const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
+  return (sharedExclusionDays||[]).filter(x=>!x.date.startsWith(monthStr));
+}
+function renderExclusionList(){
+  const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
+  const wrap = document.getElementById('exclusionListWrap');
+  const monthList = (sharedExclusionDays||[]).filter(x=>x.date.startsWith(monthStr)).sort((a,b)=> a.date < b.date ? 1 : -1);
+  const otherCount = exclusionOtherMonthList().length;
+  const historyBtnHtml = otherCount ? `<div style="text-align:center; margin-top:10px;"><button type="button" class="del-btn" id="exclusionHistoryOpenBtn" style="display:inline-flex; align-items:center; gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><polyline points="3 3 3 8 8 8"></polyline><polyline points="12 7 12 12 15 14"></polyline></svg>이력 (${otherCount}건)</button></div>` : '';
+  if(!monthList.length){
+    wrap.innerHTML = `<div class="empty-state" style="padding:14px;">이번달 등록된 제외일이 없습니다.</div>` + historyBtnHtml;
+  } else {
+    renderPaginatedRows(wrap, '<tr><th style="text-align:center;">날짜</th><th style="text-align:center;">사유</th><th style="text-align:center;">관리</th></tr>', monthList.map(exclusionRowHtml), 10);
+    if(historyBtnHtml) wrap.insertAdjacentHTML('beforeend', historyBtnHtml);
+    bindExclusionRowActions(wrap);
+  }
+  document.getElementById('exclusionHistoryOpenBtn')?.addEventListener('click', ()=>{
+    renderExclusionHistory();
+    document.getElementById('exclusionHistoryModalOverlay').style.display = 'flex';
+  });
+}
+// 이력 팝업 - 조회월 외 제외일을 연도별로 묶어 최신 연도부터, 올해(또는 가장 가까운 연도)만 펼쳐둠
+function renderExclusionHistory(){
+  const wrap = document.getElementById('exclusionHistoryWrap');
+  if(!wrap) return;
+  const list = exclusionOtherMonthList().sort((a,b)=> a.date < b.date ? 1 : -1);
+  if(!list.length){ wrap.innerHTML = `<div class="empty-state">다른 달에 등록된 제외일이 없습니다.</div>`; return; }
+  const byYear = {};
+  list.forEach(x=>{ (byYear[x.date.slice(0,4)] = byYear[x.date.slice(0,4)] || []).push(x); });
+  const years = Object.keys(byYear).sort((a,b)=> b.localeCompare(a));
+  const curYear = (document.getElementById('monthSelect').value || todayStr()).slice(0,4);
+  const openYear = years.includes(curYear) ? curYear : years[0];
+  wrap.innerHTML = years.map(yy=>{
+    const isOpen = yy === openYear;
+    return `
+      <div style="margin-bottom:10px;">
+        <button type="button" class="year-toggle-btn" data-year="${yy}" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:${isOpen ? 'var(--indigo-bg)' : 'var(--bg)'}; color:${isOpen ? 'var(--indigo-deep)' : 'var(--ink-soft)'}; border:none; border-left:3px solid ${isOpen ? 'var(--indigo)' : 'transparent'}; border-radius:8px; padding:9px 10px; font-weight:800; font-size:12.5px; cursor:pointer;">
+          ${yy}년 <span style="font-weight:600; font-size:11px; opacity:0.85;">(${byYear[yy].length}건)</span>
+          <span style="margin-left:auto; font-size:11px;">${isOpen ? '▲' : '▼'}</span>
+        </button>
+        <div class="year-table-wrap" data-year="${yy}" style="display:${isOpen ? 'block' : 'none'}; margin-top:8px;">
+          <table><thead><tr><th style="text-align:center;">날짜</th><th style="text-align:center;">사유</th><th style="text-align:center;">관리</th></tr></thead><tbody>${byYear[yy].map(exclusionRowHtml).join('')}</tbody></table>
+        </div>
+      </div>`;
+  }).join('');
+  wrap.querySelectorAll('.year-toggle-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const tableWrap = wrap.querySelector(`.year-table-wrap[data-year="${btn.dataset.year}"]`);
+      const nowOpen = tableWrap.style.display !== 'none';
+      tableWrap.style.display = nowOpen ? 'none' : 'block';
+      btn.style.background = nowOpen ? 'var(--bg)' : 'var(--indigo-bg)';
+      btn.style.color = nowOpen ? 'var(--ink-soft)' : 'var(--indigo-deep)';
+      btn.style.borderLeftColor = nowOpen ? 'transparent' : 'var(--indigo)';
+      btn.querySelector('span[style*="margin-left"]').textContent = nowOpen ? '▼' : '▲';
+    });
+  });
+  bindExclusionRowActions(wrap);
+}
+document.getElementById('exclusionHistoryModalClose')?.addEventListener('click', ()=>{
+  document.getElementById('exclusionHistoryModalOverlay').style.display = 'none';
+});
+document.getElementById('exclusionHistoryModalOverlay')?.addEventListener('click', (e)=>{
+  if(e.target.id === 'exclusionHistoryModalOverlay') e.currentTarget.style.display = 'none';
+});
 
 function renderCalendar(){
   updateCalHeader();
