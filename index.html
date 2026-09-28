@@ -5920,7 +5920,7 @@
         <!-- 날짜칸 폭이 150px로 빠듯해서(다른 화면의 date input엔 이 폭 제한이 없음) 네이티브 날짜 위젯이
              연-월-일 세 구획을 표시할 자리가 좁아 "숫자를 연달아 치면 연월/월일이 이상하게 밀려 보인다"는
              문제가 있었음 - 조금 더 넉넉한 폭으로 늘려서 세 구획이 여유 있게 표시되게 함 -->
-        <div class="flat-row" style="max-width:280px;"><div class="flat-row-label">기준일자</div><div class="flat-row-control"><input type="date" id="seatChartAsOf" class="flat-input" style="width:168px; text-align:center;"></div></div>
+        <div class="flat-row" style="max-width:280px;"><div class="flat-row-label">기준일자</div><div class="flat-row-control"><input type="date" id="seatChartAsOf" max="2099-12-31" class="flat-input" style="width:168px; text-align:center;"></div></div>
         <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin:6px 0 4px; flex-wrap:wrap;">
           <!-- "구역표시추가하고 소품추가 자리추가 이게 너무 중복인데 그냥 추가버튼 하나로 다 통일되게
                해주면 좋겠어" 요청 - 종류별로 따로 있던 4개 버튼(자리/구역표시/소품/구분선 추가)을 없애고,
@@ -11514,6 +11514,9 @@ function renderManualGrantList(){
 }
 
 function guardDateInput(el){
+  // max가 없으면 브라우저가 연도 칸에 6자리까지 받아서(예: 202608-04-일) 연월일이 밀려 입력됨 - max를 4자리 연도로
+  // 잡아두면 연도 칸이 4자리에서 자동으로 월 칸으로 넘어감
+  if(!el.max) el.max = '2099-12-31';
   const check = () => {
     const v = el.value;
     if(!v) return; // 비어있는 건 정상 (아직 입력 안 함)
@@ -11528,6 +11531,11 @@ function guardDateInput(el){
   el.addEventListener('change', check);
 }
 document.querySelectorAll('input[type="date"]').forEach(guardDateInput);
+// 나중에 화면에 그려지는 날짜칸(표 안 입력칸, 팝업 등)도 처음 누르는 순간 연도 4자리 제한(max)을 걸어줌
+document.addEventListener('focusin', (e)=>{
+  const el = e.target;
+  if(el && el.tagName === 'INPUT' && el.type === 'date' && !el.max) el.max = '2099-12-31';
+}, true);
 
 function isNextWeekday(dateStr1, dateStr2){
   let cur = parseDate(dateStr1);
