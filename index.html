@@ -585,6 +585,12 @@
   }
   /* 홈/로그인/공지사항/메일/휴지통 아이콘이 이제 한 묶음(navHomeGroup)이라, 배경 없는 가로 줄 형태로
      풀어두고 - 로고 중앙 정렬과 안 겹치도록 화면 왼쪽 끝에 그대로 둠(오른쪽으로 미는 margin-left:auto 제거) */
+  /* "모바일에서 데이터 동기화 정보가 둥둥 떠다닌다" - 휴대폰에선 스크롤해서 내용이 그 밑을 지나가기 시작하면 동기화 표시를 숨김(맨 위에서만 보임) */
+  /* 휴대폰에서 "PC 화면처럼 보기"를 켜도 똑같이 적용되도록, 화면 모드가 아니라 손가락 터치 기기인지(pointer:coarse)로 판단 */
+  @media (pointer:coarse){
+    #syncStatusChip{ transition:opacity .15s ease; }
+    html.page-scrolled #syncStatusChip{ opacity:0; pointer-events:none; }
+  }
   #navHomeGroup{
     display:inline-flex; flex-direction:row; align-items:center; gap:8px;
     background:none; padding:0; border-radius:0;
@@ -955,6 +961,14 @@
   .home-dash-clock-flow-time.in.filled{ color:#1E9E6C; background:#E3F6EC; }
   .home-dash-clock-flow-time.out.filled{ color:#DC4364; background:#FCE7EC; }
   .home-dash-clock-flow-arrow{ font-size:17px; color:var(--indigo); font-weight:900; }
+  /* "모바일에서 출퇴근 칩이 잘려 보인다" - 카드 폭이 좁으면 시각 칩 글자·여백을 카드 폭에 맞춰 줄임(넓을 땐 지금 그대로) */
+  .home-dash-clock-flow{ container-type:inline-size; }
+  @supports (width:1cqw){
+    .home-dash-clock-flow{ gap:min(14px, 3cqw); }
+    .home-dash-clock-flow-item{ min-width:0; }
+    .home-dash-clock-flow-time{ font-size:min(19px, 7.4cqw); padding:6px min(14px, 2.6cqw); min-width:0; }
+    .home-dash-clock-flow-arrow{ font-size:min(17px, 6cqw); }
+  }
   .home-dash-clock-mood{ text-align:center; font-size:13.5px; font-weight:700; color:var(--indigo-deep); margin-bottom:16px; }
   .home-dash-week-bar-wrap{ margin:0 auto 12px; max-width:280px; }
   .home-dash-week-bar-labels{ display:flex; justify-content:space-between; font-size:11px; font-weight:700; color:var(--ink-soft); margin-bottom:4px; }
@@ -3207,6 +3221,12 @@
              메모 수정하는 곳이 없다"는 지적대로 기존 항목을 고치러 들어온 경우(이미 메모가 저장돼있을 수
              있음)에는 다시 보여줘야 함 - openCalRegisterModal()이 editingUsageId/editingUsageGroupIds/
              editingRemoteId 중 하나라도 있으면(=수정 모드) 이 필드를 보이게, 새 등록이면 계속 숨기게 함 -->
+        <!-- 결재 없이 직접 등록하는 휴가(공가 등)는 등록할 때 팀원들에게 알림을 보낼지 고를 수 있음(새 등록일 때만 보임 -
+             수정할 땐 알림을 다시 보내지 않음). 기안(결재)으로 올린 휴가는 결재 알림이 따로 가서 여기 해당 없음 -->
+        <div class="field" id="notifyLeaveField" style="display:none; flex-direction:row; align-items:center; gap:6px; background:var(--indigo-bg); border-radius:8px; padding:8px 10px;">
+          <input type="checkbox" id="u-notify" style="width:auto;">
+          <label for="u-notify" style="margin:0; font-size:11.5px; color:var(--indigo-deep); font-weight:700;">팀원에게 알림 보내기</label>
+        </div>
         <div class="field" id="u-memo-field" style="display:none;"><label>메모</label><input type="text" id="u-memo" placeholder="예: 개인 사유"></div>
         <div style="display:flex; justify-content:center; gap:8px;">
           <button type="submit" class="submit-btn" style="width:auto; padding:9px 20px; margin:0;">등록</button>
@@ -7572,7 +7592,7 @@ function pushNotificationLogEntry({type, title, body, targetEmail, relatedId, ic
   // 사람의 브라우저에서) 반복 호출되기 때문에, 여기서 막아줘야 알림함이 같은 항목으로 도배되지 않음
   const dupKey = `${type}|${relatedId}|${email}`;
   if((sharedNotificationLog||[]).some(n => `${n.type}|${n.relatedId}|${n.targetEmail}` === dupKey)) return;
-  const newEntry = { id: genId(), type: type||'', icon: icon||'', title: title||'', body: body||'', author: author||'', targetEmail: email, relatedId: relatedId||'', eventAt: eventAt||'', createdAt: new Date().toISOString() };
+  const newEntry = { id: notificationIdFor(dupKey), type: type||'', icon: icon||'', title: title||'', body: body||'', author: author||'', targetEmail: email, relatedId: relatedId||'', eventAt: eventAt||'', createdAt: new Date().toISOString() };
   sharedNotificationLog.unshift(newEntry);
   if(sharedNotificationLog.length > 1000) sharedNotificationLog.length = 1000;
   saveSharedNotificationLog();
@@ -7614,7 +7634,34 @@ function notificationLogAccountKey(){
 // 지금 로그인한 사람(또는 이 기기 프로필)이 봐야 할 알림만 추려냄 - 전체 알림('*') + 내 이메일로 온 알림
 function myNotificationLogEntries(){
   const myEmail = (currentUserEmail||'').toLowerCase();
-  return (sharedNotificationLog||[]).filter(n => n.targetEmail === '*' || (myEmail && n.targetEmail === myEmail));
+  const all = (sharedNotificationLog||[]).filter(n => n.targetEmail === '*' || (myEmail && n.targetEmail === myEmail));
+  // 지운 알림(지움 표시)과 같은 건(종류+일정+대상)은 다른 기기가 만든 사본이 있어도 보여주지 않음
+  const deletedKeys = new Set(all.filter(n=>n.deleted).map(n=>`${n.type}|${n.relatedId}|${n.targetEmail}`));
+  const mine = all.filter(n=> !n.deleted && !deletedKeys.has(`${n.type}|${n.relatedId}|${n.targetEmail}`));
+  // "휴가 메모만 고쳤는데 알림이 또 왔다" - 여러 기기가 거의 동시에 같은 알림(같은 종류+같은 일정+같은 대상)을
+  // 각자 다른 id로 만들면 동기화 병합에서 둘 다 남아서, 이미 읽은 것 말고 새 id 쪽이 '안읽음'으로 또 떴음.
+  // 같은 건은 하나로만 보여주고, 그중 이미 읽은 게 있으면 그걸 남겨서 다시 안읽음으로 뜨지 않게 함
+  let readSet = null;
+  try{ readSet = getReadNotificationIds(); }catch(e){ readSet = new Set(); }
+  const pick = new Map();
+  mine.forEach(n=>{
+    const k = `${n.type}|${n.relatedId}|${n.targetEmail}`;
+    const cur = pick.get(k);
+    if(!cur){ pick.set(k, n); return; }
+    const nRead = readSet.has(n.id), cRead = readSet.has(cur.id);
+    if(nRead && !cRead) pick.set(k, n);
+    else if(nRead === cRead && String(n.createdAt||'') < String(cur.createdAt||'')) pick.set(k, n);
+  });
+  const keep = new Set([...pick.values()]);
+  return mine.filter(n=> keep.has(n));
+}
+// 알림 id를 "종류+연관항목+대상"에서 만들어서, 여러 기기가 같은 알림을 동시에 만들어도 같은 id가 되어 병합 때 하나로 합쳐지게 함
+function notificationIdFor(dupKey){
+  let h = 0x811c9dc5;
+  for(let i=0;i<dupKey.length;i++){ h ^= dupKey.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  let h2 = 0;
+  for(let i=dupKey.length-1;i>=0;i--){ h2 = (Math.imul(h2, 31) + dupKey.charCodeAt(i)) >>> 0; }
+  return 'nk' + h.toString(36) + h2.toString(36);
 }
 function getReadNotificationIds(){
   const arr = sharedNotificationReadState[notificationLogAccountKey()];
@@ -7665,12 +7712,16 @@ function updateNotificationUnreadBadge(){
 // 알림은 한 달(30일)만 보관하고, 그 이후는 휴지통으로 옮김(완전삭제 아님 - 휴지통에서 복원 가능)
 function sweepExpiredNotifications(){
   const cutoff = Date.now() - 30*24*60*60*1000;
+  const today0 = todayStr();
   const expired = (sharedNotificationLog||[]).filter(n=>{
     const t = new Date(n.createdAt||'').getTime();
-    return !isNaN(t) && t < cutoff;
+    if(isNaN(t) || t >= cutoff) return false;
+    // 지움 표시는 그 일정 날짜가 지난 뒤에만 정리(아직 다가오는 일정이면 정리하는 순간 알림이 다시 만들어짐)
+    if(n.deleted && n.eventAt && String(n.eventAt).slice(0,10) >= today0) return false;
+    return true;
   });
   if(!expired.length) return;
-  expired.forEach(n=>{ pushToSharedTrash('notification', 'log', n.title || '(제목 없음)', n); });
+  expired.filter(n=>!n.deleted).forEach(n=>{ pushToSharedTrash('notification', 'log', n.title || '(제목 없음)', n); });
   const expiredIds = new Set(expired.map(n=>n.id));
   sharedNotificationLog = (sharedNotificationLog||[]).filter(n=>!expiredIds.has(n.id));
   saveSharedTrash();
@@ -9001,11 +9052,13 @@ function checkNewTeamScheduleForBrowserNotify(){
         author:name||'', targetEmail:'*', relatedId:r.id, eventAt:r.date
       });
     });
-    (att.leaveUsage||[]).filter(u=>u.date >= today0).forEach(u=>{
+    // 휴가는 등록할 때 "팀원에게 알림 보내기"를 체크한 것만(notify) 알림 - 기안으로 올라온 휴가는 결재 알림이 따로 가고,
+    // 기존 휴가를 수정해도 다시 알리지 않음
+    (att.leaveUsage||[]).filter(u=>u.date >= today0 && u.notify === true).forEach(u=>{
       pushNotificationLogEntry({
         type:'team-schedule', icon:'team-schedule',
         title:`팀 일정 등록: ${leaveTeamCalShortType(u.type, u.subtype)}`,
-        body:`${name} · ${shortDateLabel(u.date)}`,
+        body:`${name} · ${shortDateLabel(u.date)}${u.notifyUntil && u.notifyUntil !== u.date ? '~'+shortDateLabel(u.notifyUntil) : ''}`,
         author:name||'', targetEmail:'*', relatedId:u.id, eventAt:u.date
       });
     });
@@ -9724,7 +9777,9 @@ async function restoreTrashItem(id){
       renderEmployeeRoster();
     } else if(sharedItem.type==='notification'){
       sharedNotificationLog = sharedNotificationLog || [];
-      sharedNotificationLog.unshift(sharedItem.data);
+      const restored = { ...sharedItem.data }; delete restored.deleted; delete restored.deletedAt;
+      sharedNotificationLog = sharedNotificationLog.filter(x=> x.id !== restored.id);
+      sharedNotificationLog.unshift(restored);
       await saveSharedNotificationLog();
       updateNotificationUnreadBadge();
     } else if(sharedItem.type==='approval'){
@@ -10106,6 +10161,40 @@ function renderNotificationListModal(){
   body.innerHTML = `${headerHtml}${tabsHtml}<div>${rowsHtml}</div>${pagerHtml}`;
   bindNotificationListModalEvents(body);
 }
+// 알림 종류별로 관련 화면을 엶 - 이동했으면 true(팝업은 닫힘), 갈 곳이 없으면 false(목록 그대로)
+function openNotificationTarget(n){
+  try{
+    const type = n.type || '';
+    const relId = String(n.relatedId||'');
+    if(type === 'notice'){
+      const notice = (sharedNoticeHistory||[]).find(x=>x.id===relId);
+      if(!notice) return false;
+      closeMemoModal();
+      activateTab('notice', true);
+      setTimeout(()=>openNoticeViewPopup(notice), 80);
+      return true;
+    }
+    if(type.startsWith('approval')){
+      const apId = relId.split('|')[0];
+      if(!(sharedApprovals||[]).some(a=>a.id===apId)) return false;
+      closeMemoModal();
+      setTimeout(()=>openApprovalDetailModal(apId), 60);
+      return true;
+    }
+    if(type === 'team-schedule' || type === 'leave-direct'){
+      // 일정·휴가 알림은 팀캘린더의 그 달로
+      const dateStr = type === 'leave-direct' ? (relId.split('|')[2] || '') : String(n.eventAt||'').slice(0,10);
+      closeMemoModal();
+      document.querySelector('.tab-btn[data-tab="teamcalendar"]')?.click();
+      if(/^\d{4}-\d{2}/.test(dateStr)){
+        const ms = document.getElementById('monthSelect');
+        if(ms && ms.value !== dateStr.slice(0,7)){ ms.value = dateStr.slice(0,7); ms.dispatchEvent(new Event('change', { bubbles:true })); }
+      }
+      return true;
+    }
+  }catch(e){ console.error('알림 이동 실패', e); }
+  return false;
+}
 function bindNotificationListModalEvents(body){
   body.querySelectorAll('.notification-filter-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -10130,6 +10219,9 @@ function bindNotificationListModalEvents(body){
       if(e.target.closest('.notification-del-btn')) return;
       markNotificationRead(row.dataset.id);
       updateNotificationUnreadBadge(); // 위 "모두 읽음"과 같은 이유로 누락돼있었음
+      // "알림을 누르면 관련된 메뉴로 화면 이동" - 읽음 처리 후 팝업을 닫고 그 알림의 화면으로 바로 이동
+      const n = (sharedNotificationLog||[]).find(x=>x.id===row.dataset.id);
+      if(n && openNotificationTarget(n)) return;
       renderNotificationListModal();
     });
   });
@@ -10138,8 +10230,11 @@ function bindNotificationListModalEvents(body){
       e.stopPropagation();
       const n = (sharedNotificationLog||[]).find(x=>x.id===btn.dataset.id);
       if(!n) return;
-      pushToSharedTrash('notification', 'log', n.title || '(제목 없음)', n);
-      sharedNotificationLog = (sharedNotificationLog||[]).filter(x=>x.id!==n.id);
+      pushToSharedTrash('notification', 'log', n.title || '(제목 없음)', { ...n });
+      // "알림을 지웠는데(또는 일정 메모만 고쳤는데) 같은 알림이 또 온다" - 목록에서 아예 빼버리면 다음 동기화 때
+      // "아직 알림이 없는 일정"으로 보고 새로 만들어서 다시 떴음. 지운 알림은 '지움' 표시만 남겨두고(목록엔 안 보임)
+      // 같은 건이 다시 만들어지지 않게 함 - 30일 보관 기간이 지나면 자동 정리됨
+      n.deleted = true; n.deletedAt = new Date().toISOString();
       await saveSharedTrash();
       await saveSharedNotificationLog();
       renderNotificationListModal();
@@ -10438,7 +10533,15 @@ function syncDateFieldsToMonth(){
   const defaultDate = (!m || today.startsWith(m)) ? today : m + '-01';
   ['g-date','u-date','sc-date','ex-date','exp-date'].forEach(id=>{
     const el = document.getElementById(id);
-    if(el) el.value = defaultDate;
+    if(!el) return;
+    // "휴가 수정 중에 날짜가 갑자기 오늘로 바뀌어서 날짜까지 바뀌었다" - 실시간 동기화로 데이터를 다시
+    // 불러올 때(loadAll)도 이 함수가 불려서, 열려 있는 등록/수정 창의 날짜칸까지 오늘로 덮어썼음.
+    // 입력 중인 칸(열려 있는 팝업 안에 있거나, 수정 중이거나, 커서가 있는 칸)은 건드리지 않음
+    const ov = el.closest('[id$="Overlay"]');
+    if(ov && ov.style.display && ov.style.display !== 'none') return;
+    if(document.activeElement === el) return;
+    if(id === 'u-date'){ let editing = false; try{ editing = !!(editingUsageId || editingUsageGroupIds || editingRemoteId); }catch(e){} if(editing) return; }
+    el.value = defaultDate;
   });
 }
 
@@ -10994,8 +11097,18 @@ function openCalRegisterModal(type){
   // 처리하면 모든 수정 진입 경로(휴가이력/재택이력/이번달 근태표 등)에 다 적용됨
   const memoField = document.getElementById('u-memo-field');
   if(memoField) memoField.style.display = (type==='usage' && (editingUsageId || editingUsageGroupIds || editingRemoteId)) ? 'flex' : 'none';
+  updateNotifyLeaveFieldVisibility();
   document.getElementById('calRegisterModalOverlay').style.display = 'flex';
 }
+function updateNotifyLeaveFieldVisibility(){
+  const f = document.getElementById('notifyLeaveField');
+  if(!f) return;
+  let editing = false; try{ editing = !!(editingUsageId || editingUsageGroupIds || editingRemoteId); }catch(e){}
+  const isLeave = document.getElementById('u-kind')?.value === 'leave';
+  f.style.display = (isLeave && !editing) ? 'flex' : 'none';
+  if(editing || !isLeave){ const cb = document.getElementById('u-notify'); if(cb) cb.checked = false; }
+}
+document.getElementById('u-kind')?.addEventListener('change', ()=> updateNotifyLeaveFieldVisibility());
 function closeCalRegisterModal(){
   document.getElementById('calRegisterModalOverlay').style.display = 'none';
 }
@@ -19290,17 +19403,21 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
       return;
     }
 
-    notifyAdminsOfDirectLeave(type, subtype, dates.length > 1 ? dates : [date]);
+    // "결재 필요 없는 휴가는 알림 보낼지 선택" - 체크했을 때만 팀 일정 알림(관리자 포함 전원)이 가도록 표시(notify)를 붙임.
+    // 예전엔 관리자 전용 알림(leave-direct)과 팀 일정 알림이 둘 다 가서 관리자에겐 같은 휴가 알림이 두 번 갔음
+    const wantNotify = !!document.getElementById('u-notify')?.checked;
     let addedCount = 0;
     if(dates.length > 1){
-      dates.forEach(ds=>{
-        attendance.leaveUsage.push({id:genId(), date:ds, type, subtype:null, days: isSpecial ? 1 : null, memo});
+      dates.forEach((ds,i)=>{
+        // 여러 날짜면 알림은 첫날 한 건만(기간을 같이 표시)
+        attendance.leaveUsage.push({id:genId(), date:ds, type, subtype:null, days: isSpecial ? 1 : null, memo, ...(wantNotify && i===0 ? {notify:true, notifyUntil: dates[dates.length-1]} : {})});
         addedCount++;
       });
     } else {
-      attendance.leaveUsage.push({id:genId(), date, type, subtype, days, memo});
+      attendance.leaveUsage.push({id:genId(), date, type, subtype, days, memo, ...(wantNotify ? {notify:true} : {})});
       addedCount = 1;
     }
+    { const cb = document.getElementById('u-notify'); if(cb) cb.checked = false; }
     await saveAttendance();
     document.getElementById('usageSaveMsg').textContent = addedCount > 1 ? `${addedCount}일 추가됨 (주말 제외)` : '추가됨';
     setTimeout(()=>document.getElementById('usageSaveMsg').textContent='',1800);
@@ -30912,7 +31029,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.28 19:00';
+const APP_BUILD = '2026.09.28 19:40';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -33489,6 +33606,10 @@ setInterval(()=>{ if(gdriveAccessToken && gdriveFileId) gdrivePull(true); }, 15*
 // 계정을 누르면 그 창이 닫히면서, 손가락을 뗀 터치가 같은 자리에 있던 앱 화면 버튼(상단 메일 아이콘 등)에
 // 그대로 한 번 더 전달되는 경우가 있음. 로그인 직후와 이 화면으로 되돌아온 직후 잠깐은 버튼 클릭을 무시함
 let ghostTapBlockUntil = 0;
+(function(){
+  const upd = ()=> document.documentElement.classList.toggle('page-scrolled', (window.scrollY || document.documentElement.scrollTop || 0) > 12);
+  window.addEventListener('scroll', upd, { passive:true }); upd();
+})();
 function suppressGhostTaps(ms){ ghostTapBlockUntil = Math.max(ghostTapBlockUntil, Date.now() + (ms||800)); }
 ['click','pointerup','touchend','mouseup'].forEach(evName=>{
   document.addEventListener(evName, (ev)=>{
