@@ -7460,7 +7460,14 @@ function myNotificationLogEntries(){
 }
 function getReadNotificationIds(){
   const arr = sharedNotificationReadState[notificationLogAccountKey()];
-  return new Set(Array.isArray(arr) ? arr : []);
+  const set = new Set(Array.isArray(arr) ? arr : []);
+  // 로그인 이메일을 알아내기 전(새로고침 직후 몇 초)에 읽은 알림은 이 기기 프로필 키로 저장돼 있음 - 이메일을
+  // 안 뒤에도 그 기록까지 같이 읽음으로 쳐서, 그 사이에 읽은 게 다시 안읽음으로 뜨지 않게 함
+  if(currentUserEmail){
+    const early = sharedNotificationReadState[`profile:${activeProfileId}`];
+    if(Array.isArray(early)) early.forEach(id=> set.add(id));
+  }
+  return set;
 }
 function markNotificationRead(id){
   if(!id) return;
@@ -29567,10 +29574,36 @@ let lastGdrivePulledSnapshot = null;
 // 데이터 유실이 있었음 - "기안이 올렸는데 사라진다", "휴지통을 비웠는데 다시 채워진다"는 문제가 바로 이것임.
 // 이제 push도 pull과 똑같이 "먼저 원격 최신본을 받아와서 baseline 기준으로 병합 → 그 결과를 저장" 순서로
 // 동작해서, 마지막으로 저장을 누른 기기가 무조건 이기는 게 아니라 항목 단위로 최신 내용이 전부 살아남음
+// 읽음 기록(공지·결재·알림)은 "읽은 id 목록"이라 한 번 읽은 건 다시 안읽음이 되지 않음(안읽음으로 되돌리는 기능 없음).
+// 그런데 일반 병합 규칙으로는 (1) 목록이 문자열 배열이라 양쪽이 다 바뀌면 "지금 저장하는 기기 쪽"을 통째로
+// 고르고, (2) 공용설정 필드별 저장시각(__fieldUpdatedAt)이 더 최신인 쪽 목록 전체를 고르기 때문에, 오랜만에
+// 켠 폰에서 알림 하나만 눌러도 폰의 옛 목록이 PC에서 읽은 기록 전체를 덮어써서 "읽은 알림이 또 떠 있는" 문제가
+// 생겼음. 읽음 기록은 계정별로 항상 합집합으로 합침 - 어느 기기에서 읽었든 절대 사라지지 않음
+const GDRIVE_READ_STATE_FIELDS = ['noticeReadState', 'approvalReadState', 'notificationReadState'];
+function gdriveUnionReadStateMaps(...maps){
+  const out = {};
+  maps.forEach(m=>{
+    if(!m || typeof m !== 'object' || Array.isArray(m)) return;
+    Object.keys(m).forEach(k=>{
+      if(!Array.isArray(m[k])) return;
+      const set = new Set(out[k] || []);
+      m[k].forEach(id=> set.add(id));
+      out[k] = [...set];
+    });
+  });
+  return out;
+}
 function gdriveComputeMerged(remote){
   const localPayload = gdriveBuildPayload();
   const baseline = getGdriveMergeBaseline();
   const merged = baseline ? gdriveMergeValue(baseline, localPayload, remote) : remote;
+  if(merged && merged.shared){
+    GDRIVE_READ_STATE_FIELDS.forEach(f=>{
+      const l = localPayload && localPayload.shared ? localPayload.shared[f] : null;
+      const r = remote && remote.shared ? remote.shared[f] : null;
+      if(l || r) merged.shared[f] = gdriveUnionReadStateMaps(r, l, merged.shared[f]);
+    });
+  }
   // 그래도 직원 삭제만큼은 한 번 더 안전장치 - 최근에 지운 직원 id는 병합 결과에 남아있어도 확실히 제거
   const deletedIds = new Set(getRecentlyDeletedProfileIds().map(e=>e.id));
   if(deletedIds.size) merged.profiles = (merged.profiles||[]).filter(p=>!deletedIds.has(p.id));
@@ -29838,7 +29871,7 @@ function setGdriveSyncingIndicator(active){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.27 22:05';
+const APP_BUILD = '2026.09.28 09:25';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
