@@ -2933,6 +2933,8 @@
      대신 전역 firebase 객체를 쓰는 compat 빌드를 씀 - 이 파일이 <script type="module">이 아닌 일반 스크립트라서 -->
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-messaging-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
 <!-- 월 선택용 보조 input(showPicker로 브라우저 기본 달력 팝업을 띄우는 용도) - 근태현황·개인캘린더 두 탭에서
@@ -6262,6 +6264,11 @@
             <button type="button" id="gdriveSyncBtn" class="submit-btn" style="width:auto; min-width:0; margin:0; padding:7px 13px; font-size:12px; background:var(--mint);" disabled><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg> 지금 동기화</button>
           </div>
           <span class="save-msg" id="gdriveStatusMsg" style="margin-top:0; font-size:10.5px;">연결 안 됨</span>
+          <!-- 데이터 저장소(드라이브 파일 ↔ Firebase 실시간) 전환 - 관리자에게만 보임 -->
+          <div id="fsBackendRow" style="display:none; margin-top:4px; text-align:center; font-size:11px; color:var(--ink-soft);">
+            <span id="fsBackendLabel"></span>
+            <button type="button" id="fsBackendBtn" class="del-btn" style="margin-left:6px; font-size:11px; padding:4px 10px;"></button>
+          </div>
         </div>
       </div>
 
@@ -7384,6 +7391,10 @@ const NOTIFICATION_TYPE_TO_CATEGORY = { 'notice':'notice', 'approval-new':'appro
 const sentPushDupKeys = new Set();
 async function alreadyPushedRemotely(dupKey){
   try{
+    if(typeof fsActive !== 'undefined' && fsActive){
+      const log = fsRemoteDocs['s__notificationLog'];
+      return !!(Array.isArray(log) && log.some(n=>`${n.type}|${n.relatedId}|${n.targetEmail}` === dupKey));
+    }
     if(!gdriveAccessToken || !gdriveFileId) return false;
     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${gdriveFileId}?alt=media&supportsAllDrives=true`, {
       headers: { Authorization: `Bearer ${gdriveAccessToken}` }
@@ -21110,6 +21121,10 @@ document.getElementById('savePolicyBtn').addEventListener('click', async functio
     }catch(e){}
   }
   renderPolicyDetail();
+  if(cat === 'guide' && typeof renderQuickGuideDetail === 'function') renderQuickGuideDetail();
+  // "수정했는데 이력이 안 생긴다" - 이력 팝업을 열어둔 채 수정하면, 저장은 됐는데 열려있던 팝업은 예전
+  // 내용("저장된 이력이 없습니다") 그대로 남아있었음 - 저장 직후 열려있는 같은 종류의 이력 팝업도 새로 그림
+  refreshOpenPolicyHistoryPopups(cat);
   const msgEl = document.getElementById('policySaveMsg');
   if(msgEl) msgEl.style.cssText = 'font-size:13px; font-weight:800;';
   setTimeout(()=>{ closePolicyRegisterModal(); }, 1500);
@@ -27782,12 +27797,21 @@ function bindPolicyHistoryPopupEvents(container, cat){
     });
   });
 }
+function refreshOpenPolicyHistoryPopups(cat){
+  document.querySelectorAll(`.floating-popup[data-policy-hist-cat="${cat}"]`).forEach(el=>{
+    const body = el.querySelector('.floating-popup-body');
+    if(!body) return;
+    body.innerHTML = policyHistoryPopupBodyHtml(cat);
+    bindPolicyHistoryPopupEvents(el, cat);
+  });
+}
 function openPolicyHistoryPopup(cat){
   // 이 팝업 안의 "수정" 버튼은 openPolicyRegisterModal(entry)를 부르는데, 그 함수는 어느 카테고리인지를
   // viewingPolicyCategory 전역값으로만 판단함 - Quick Guide(cat='guide')에서 이 팝업을 열었을 때도 그 값을
   // 여기서 미리 맞춰둬야 "수정"이 엉뚱하게 인사지침/운영지침으로 저장되지 않음
   viewingPolicyCategory = cat;
   const el = openDraggablePopup({ title: `${policyCategoryLabel(cat)} 이력`, html: policyHistoryPopupBodyHtml(cat), width: 500 });
+  el.dataset.policyHistCat = cat;
   bindPolicyHistoryPopupEvents(el, cat);
 }
 
@@ -29140,6 +29164,10 @@ async function afterGdriveConnected(){
   }
   try{
     await gdriveEnsureFile();
+    // Firebase로 전환된 상태면(관리자가 전환 완료) 드라이브 파일 대신 실시간 저장소를 씀 - 로그인 계정을 먼저
+    // 확인해야 Firebase에도 같은 계정으로 들어가므로 이메일부터 확인함. 연결이 안 되면 예전 드라이브 방식 그대로
+    try{ await fetchCurrentUserEmail(); }catch(e){}
+    if(await fsInit() && fsMeta && fsMeta.backend === 'firestore') await fsActivate();
     await gdrivePull();
     await fetchCurrentUserEmail();
     // "분명히 다 읽었는데 로그인하는 PC마다 알림함(종 아이콘) 배지가 계속 떠있다"는 제보의 원인 - 바로 위
@@ -29175,6 +29203,8 @@ async function afterGdriveConnected(){
     gdriveSetStatus('연결됨 · 방금 동기화함' + (currentUserEmail ? ` (${currentUserEmail}${isCurrentUserAdmin ? ' · 관리자' : ''})` : '') + gdriveSharedDriveMoveWarning + gdriveSharedDriveAccessWarning);
     gdriveUpdateFileLink();
     updatePolicyLockUI();
+    fsRenderBackendRow();
+    if(fsActive) gdriveSetStatus('연결됨 · 실시간 동기화 중' + (currentUserEmail ? ` (${currentUserEmail}${isCurrentUserAdmin ? ' · 관리자' : ''})` : ''));
     // 로그인 직후 다른 기기에서 만든 최신 sharedExclusionDays로 막 덮어써진 시점이라, 여기서도 한 번 더
     // 고정 공휴일 자동추가를 돌려서 어느 기기로 로그인하든 빠짐없이 채워지게 함
     if(typeof autoFillFixedHolidaysIfNeeded === 'function') autoFillFixedHolidaysIfNeeded();
@@ -29244,6 +29274,7 @@ async function gdriveLogout(){
   if(!(await appConfirm(`${who} 로그아웃할까요? 다시 쓰려면 로그인 버튼을 눌러 재연결하시면 돼요.`))) return;
   const tokenToRevoke = gdriveAccessToken;
   const finishLogout = ()=>{
+    if(typeof fsSignOut === 'function') fsSignOut();
     clearGdriveTokenStorage();
     gdriveAccessToken = null;
     currentUserEmail = null;
@@ -29860,6 +29891,7 @@ function gdriveApplyMergedLocally(merged){
   saveProfiles(merged.profiles || []);
   Object.keys(merged.data || {}).forEach(pid=>{
     const d = merged.data[pid];
+    if(!d) return; // 양쪽에서 모두 지워진 직원(값 없음) - 건너뜀
     if(d.settings) gdrivePutLocal(`worklog_settings__${pid}`, JSON.stringify(d.settings));
     if(d.attendance) gdrivePutLocal(`worklog_attendance__${pid}`, JSON.stringify(d.attendance));
     if(d.expense) gdrivePutLocal(`worklog_expense__${pid}`, JSON.stringify(d.expense));
@@ -29914,6 +29946,11 @@ function gdriveApplyMergedLocally(merged){
     }
   }
   if(gdriveLocalWriteFailed) gdriveWarnStorageFull(gdriveLocalWriteFailed);
+  // ⚠️ "혼자 쓰는데도 저장한 게 되돌아간다"의 또 다른 원인 - 저장(gdrivePush) 때도 원격 최신본과 합친 결과를
+  // 브라우저 저장소에는 써두지만, 화면 메모리(shared* 변수)는 다음 화면 갱신 전까지 옛 값 그대로였음. 그 사이
+  // 다시 저장하면 메모리의 옛 값이 "이 기기에서 지운/바꾼 것"으로 오인돼, 방금 합쳐 받은 다른 기기의 변경을
+  // 지워버렸음. 합친 결과를 쓰는 즉시 메모리도 저장소에서 다시 읽어서 항상 같게 맞춤
+  try{ loadSharedData(); }catch(e){ console.error('공용 데이터 다시 읽기 실패', e); }
 }
 async function gdrivePull(){
   if(!gdriveAccessToken || !gdriveFileId) return;
@@ -29987,6 +30024,480 @@ function setGdriveSyncingIndicator(active){
   const spinner = document.getElementById('gdriveSyncSpinner');
   if(spinner) spinner.style.display = gdriveSyncActiveCount > 0 ? 'block' : 'none';
 }
+// ══════════════════════════════════════════════════════════
+// ☁️ Firebase(Firestore) 실시간 저장소 - 회사 계정(accdesk@ciacc.co.kr)이 소유한 taxj-a3e01 프로젝트에 저장.
+// 사용자(관리자)가 회사 소유로 정리한 뒤 이전을 명시적으로 승인함(2026-09-28)
+// "실시간 동기화에서 오류가 안 나는 방법" 요청으로, 드라이브 파일 하나를 통째로 받고-합치고-올리던 방식 대신
+// Firestore에 항목 묶음별로 따로 저장함. 핵심은 세 가지:
+//  1) 묶음별 저장 - 공용 데이터는 종류별(신고구분, 결재, 공지...)로, 직원 데이터는 직원별로 문서를 나눠서,
+//     한 곳을 고칠 때 다른 묶음은 건드리지 않음
+//  2) 트랜잭션 저장 - 저장할 때 서버의 최신본을 읽고-합치고-쓰는 과정을 한 번에(원자적으로) 처리하고, 그
+//     사이에 누가 먼저 저장하면 Firestore가 자동으로 다시 시도함 → "나중에 올린 쪽이 앞사람 것을 덮는" 일이 없음
+//  3) 실시간 반영 - 15초마다 파일을 받아오는 대신, 다른 기기가 저장하는 즉시 서버가 알려줌
+// 합치는 규칙(누가 지웠는지·누가 나중인지 등)은 기존 병합 엔진(gdriveComputeMerged)을 그대로 씀.
+// 관리자가 설정 > Google Drive 연동의 "Firebase로 전환"을 눌러야 시작되고(그 전까지는 예전 드라이브 방식 그대로),
+// 문제가 생기면 "드라이브로 되돌리기" 한 번으로 모든 기기가 예전 방식으로 돌아감(_meta 문서의 backend 값으로 제어).
+// 접근 제한은 Firestore 보안 규칙(@ciacc.co.kr 회사 계정만 읽기·쓰기 허용)으로 서버에서 막음
+// ══════════════════════════════════════════════════════════
+const FS_COLLECTION = 'taxj';
+const FS_META_ID = '_meta';
+const FS_PART_CHARS = 250000; // 문서 하나 최대 1MB - 한글은 글자당 3바이트라 넉넉히 25만 글자씩 나눠 담음
+let fsActive = false;   // 지금 Firestore를 실제 저장소로 쓰는 중인지
+let fsReady = false;    // Firebase 로그인 + DB 준비 완료
+let fsInitError = '';
+let fsDb = null;
+let fsMeta = null;
+let fsMetaUnsub = null, fsCollUnsub = null;
+let fsRemoteDocs = {};  // 서버 최신 상태(문서키 → 값)
+let fsHasServerSnapshot = false;
+let fsFirstSnapshotWaiters = [];
+let fsPushInFlight = null, fsPushAgain = false;
+let fsUiRefreshTimer = null;
+let fsDriveCheckTimer = null;
+let gdriveDriveOnlyPush = null, gdriveDriveOnlyPull = null; // 드라이브 방식 원본 함수(전환·되돌리기 때 직접 씀)
+
+function fsPayloadToDocs(p){
+  const out = {};
+  if(!p) return out;
+  if(p.profiles !== undefined) out['profiles'] = p.profiles;
+  Object.keys(p.data || {}).forEach(pid=>{ if(p.data[pid] !== undefined) out['data__' + pid] = p.data[pid]; });
+  Object.keys(p.shared || {}).forEach(f=>{ if(p.shared[f] !== undefined) out['s__' + f] = p.shared[f]; });
+  return out;
+}
+function fsDocsToPayload(docs){
+  const p = { schemaVersion: SCHEMA_VERSION, syncedAt: '', profiles: [], data: {}, shared: {} };
+  Object.keys(docs || {}).forEach(k=>{
+    const v = docs[k];
+    if(v === undefined) return;
+    if(k === 'profiles') p.profiles = v || [];
+    else if(k.startsWith('data__')) p.data[k.slice(6)] = v;
+    else if(k.startsWith('s__')) p.shared[k.slice(3)] = v;
+  });
+  return p;
+}
+function fsStripVolatile(p){ if(!p) return p; const c = { ...p }; delete c.syncedAt; delete c.schemaVersion; return c; }
+function fsRef(id){ return fsDb.collection(FS_COLLECTION).doc(id); }
+function fsPartId(key, i){ return i === 0 ? key : `${key}~p${i}`; }
+// 값 하나를 JSON 글자로 바꿔 25만 글자씩 나눔(이모지 같은 2칸짜리 글자가 중간에 잘리지 않게 경계를 조정)
+function fsEncodeParts(value){
+  const json = JSON.stringify(value === undefined ? null : value);
+  const chunks = [];
+  let i = 0;
+  while(i < json.length){
+    let end = Math.min(i + FS_PART_CHARS, json.length);
+    if(end < json.length){ const c = json.charCodeAt(end - 1); if(c >= 0xD800 && c <= 0xDBFF) end--; }
+    chunks.push(json.slice(i, end));
+    i = end;
+  }
+  if(!chunks.length) chunks.push('null');
+  const w = genId();
+  return chunks.map((j, idx)=>({ j, n: chunks.length, i: idx, w }));
+}
+// 실시간 수신한 문서들을 원래 값으로 조립 - 여러 조각으로 나뉜 값은 같은 저장(w)의 조각이 다 모였을 때만 씀
+function fsAssembleSnapshot(snap){
+  const mains = {}, parts = {};
+  snap.forEach(d=>{
+    const id = d.id, data = d.data();
+    if(id === FS_META_ID) return;
+    const m = id.match(/^(.*)~p(\d+)$/);
+    if(m){ (parts[m[1]] = parts[m[1]] || {})[Number(m[2])] = data; }
+    else mains[id] = data;
+  });
+  const out = {};
+  Object.keys(mains).forEach(k=>{
+    const m = mains[k];
+    const n = m.n || 1;
+    let json = m.j || 'null', ok = true;
+    for(let i=1;i<n;i++){
+      const p = parts[k] && parts[k][i];
+      if(!p || p.w !== m.w){ ok = false; break; }
+      json += p.j;
+    }
+    if(ok){ try{ out[k] = JSON.parse(json); return; }catch(e){ ok = false; } }
+    if(k in fsRemoteDocs) out[k] = fsRemoteDocs[k]; // 아직 조각이 덜 모였으면 직전 값 유지
+  });
+  return out;
+}
+async function fsTxnReadKey(tx, key){
+  const s = await tx.get(fsRef(key));
+  if(!s.exists) return { exists:false, n:0 };
+  const m = s.data();
+  const n = m.n || 1;
+  let json = m.j || 'null';
+  for(let i=1;i<n;i++){
+    const ps = await tx.get(fsRef(fsPartId(key, i)));
+    if(!ps.exists || ps.data().w !== m.w) throw new Error('저장 조각이 맞지 않아요(다시 시도)');
+    json += ps.data().j;
+  }
+  return { exists:true, n, value: JSON.parse(json) };
+}
+function fsTxnWriteKey(tx, key, value, oldN){
+  const parts = fsEncodeParts(value);
+  parts.forEach((p, i)=> tx.set(fsRef(fsPartId(key, i)), p));
+  for(let i=parts.length;i<(oldN||0);i++) tx.delete(fsRef(fsPartId(key, i)));
+}
+function fsTxnDeleteKey(tx, key, oldN){
+  for(let i=0;i<Math.max(oldN||0, 1);i++) tx.delete(fsRef(fsPartId(key, i)));
+}
+
+// Firebase 로그인(드라이브 로그인 때 받은 구글 토큰을 그대로 씀) + 저장소 준비 + 전환 여부(_meta) 실시간 확인
+async function fsInit(){
+  if(fsReady) return true;
+  try{
+    if(typeof firebase === 'undefined' || !firebase.firestore || !firebase.auth) throw new Error('Firebase 라이브러리를 불러오지 못했어요');
+    if(!initFirebaseMessaging()) throw new Error('Firebase 초기화 실패');
+    if(!fsDb){
+      fsDb = firebase.firestore();
+      try{ await fsDb.enablePersistence({ synchronizeTabs: true }); }catch(e){ /* 이미 켜졌거나 지원 안 하는 브라우저 - 없어도 동작함 */ }
+    }
+    const auth = firebase.auth();
+    const cur = auth.currentUser;
+    const wantEmail = (currentUserEmail || '').toLowerCase();
+    if(!cur || (wantEmail && (cur.email || '').toLowerCase() !== wantEmail)){
+      if(!gdriveAccessToken) throw new Error('구글 로그인이 필요해요');
+      if(cur) await auth.signOut();
+      await auth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(null, gdriveAccessToken));
+    }
+    const metaSnap = await fsRef(FS_META_ID).get();
+    fsMeta = metaSnap.exists ? metaSnap.data() : null;
+    fsReady = true;
+    fsInitError = '';
+    if(!fsMetaUnsub){
+      fsMetaUnsub = fsRef(FS_META_ID).onSnapshot(s=>{
+        fsMeta = s.exists ? s.data() : null;
+        fsOnMetaChanged();
+      }, err=>{ console.error('Firebase 전환상태 확인 실패', err); });
+    }
+    fsRenderBackendRow();
+    return true;
+  }catch(e){
+    console.error('Firebase 연결 실패', e);
+    fsInitError = (e && (e.code || e.message)) ? String(e.code || e.message) : String(e);
+    fsRenderBackendRow();
+    return false;
+  }
+}
+function fsOnMetaChanged(){
+  const want = !!(fsMeta && fsMeta.backend === 'firestore');
+  if(want && !fsActive) fsActivate();
+  else if(!want && fsActive) fsDeactivate();
+  fsRenderBackendRow();
+}
+function fsWaitFirstSnapshot(timeoutMs){
+  if(fsHasServerSnapshot) return Promise.resolve(true);
+  return new Promise(res=>{
+    const t = setTimeout(()=>res(false), timeoutMs || 15000);
+    fsFirstSnapshotWaiters.push(()=>{ clearTimeout(t); res(true); });
+  });
+}
+async function fsActivate(){
+  if(fsActive) return;
+  fsActive = true;
+  fsHasServerSnapshot = false;
+  if(!fsCollUnsub){
+    fsCollUnsub = fsDb.collection(FS_COLLECTION).onSnapshot({ includeMetadataChanges: false }, snap=>{
+      if(snap.metadata && snap.metadata.fromCache) return; // 서버에서 확인된 내용만 반영(오프라인 캐시는 건너뜀)
+      fsRemoteDocs = fsAssembleSnapshot(snap);
+      fsHasServerSnapshot = true;
+      const waiters = fsFirstSnapshotWaiters; fsFirstSnapshotWaiters = [];
+      waiters.forEach(f=>f());
+      if(fsActive) fsApplyRemote();
+    }, err=>{
+      console.error('Firebase 실시간 수신 오류', err);
+      gdriveSetStatus('실시간 연결이 끊겼어요 · 새로고침해 주세요 (입력한 내용은 이 기기에 안전하게 남아있어요)');
+    });
+  }
+  clearInterval(fsDriveCheckTimer);
+  fsDriveCheckTimer = setInterval(()=>{ fsCheckDriveForOldClients(); }, 5*60*1000);
+  await fsWaitFirstSnapshot(20000);
+  gdriveSetStatus('연결됨 · 실시간 동기화 중' + (currentUserEmail ? ` (${currentUserEmail}${isCurrentUserAdmin ? ' · 관리자' : ''})` : ''));
+}
+function fsDeactivate(){
+  fsActive = false;
+  if(fsCollUnsub){ try{ fsCollUnsub(); }catch(e){} fsCollUnsub = null; }
+  clearInterval(fsDriveCheckTimer);
+  fsHasServerSnapshot = false;
+  gdriveSetStatus('저장소가 드라이브로 바뀌었어요 · 동기화 중...');
+  if(gdriveAccessToken && gdriveFileId) gdrivePull();
+}
+function fsScheduleUiRefresh(){
+  clearTimeout(fsUiRefreshTimer);
+  fsUiRefreshTimer = setTimeout(async ()=>{
+    try{
+      if(!getActiveProfileId() || !(getProfiles()||[]).find(p=>p.id===getActiveProfileId())){
+        const ps = getProfiles(); if(ps && ps.length) setActiveProfileId(ps[0].id);
+      }
+      await loadAll();
+    }catch(e){ console.error('화면 갱신 실패', e); }
+  }, 150);
+}
+// 서버 최신 상태를 이 기기에 반영 - 이 기기에만 있는(아직 못 올린) 변경은 기존 병합 규칙으로 살려두고 곧바로 올림
+function fsApplyRemote(){
+  if(gdriveSuspendPull) return;
+  gdriveRefreshIfOtherTabChanged();
+  const remotePayload = fsDocsToPayload(fsRemoteDocs);
+  if(!remotePayload.profiles || !remotePayload.profiles.length) return; // 아직 전환 전(빈 저장소) - 건드리지 않음
+  const before = gdriveBuildPayload();
+  const merged = gdriveComputeMerged(remotePayload);
+  gdriveApplyMergedLocally(merged);
+  // 화면 메모리도 곧바로 저장소와 맞춤 - 화면 갱신(loadAll)을 기다리는 사이에 저장이 끼어들면 메모리에 남은 옛 값이
+  // "이 기기에서 새로 바꾼 것"처럼 보여서 방금 받은 삭제·수정을 되돌려버릴 수 있음
+  try{ loadSharedData(); }catch(e){ console.error(e); }
+  setGdriveMergeBaseline(remotePayload); // 병합 기준점 = 서버가 가진 상태
+  const mergedDocs = fsPayloadToDocs(merged);
+  const needPush = Object.keys({ ...mergedDocs, ...fsRemoteDocs }).some(k=> !k.startsWith('_') && !gdriveDeepEqual(mergedDocs[k], fsRemoteDocs[k]));
+  if(needPush) gdriveScheduleSync();
+  if(!gdriveDeepEqual(fsStripVolatile(before), fsStripVolatile(merged))) fsScheduleUiRefresh();
+}
+// 저장 - 이 기기에서 바뀐 묶음만 골라, 트랜잭션 안에서 서버 최신본과 합쳐서 씀
+async function fsPush(){
+  if(!fsActive || !fsReady) return false;
+  if(fsPushInFlight){ fsPushAgain = true; return fsPushInFlight; }
+  fsPushInFlight = (async ()=>{
+    try{
+      if(!fsHasServerSnapshot) await fsWaitFirstSnapshot(15000);
+      if(!fsHasServerSnapshot){
+        try{ localStorage.setItem('worklog_gdrive_pending_push', '1'); }catch(e){}
+        gdriveSetStatus('저장 대기 중 · 서버 연결을 기다리는 중이에요 (입력한 내용은 이 기기에 안전하게 남아있어요)');
+        setTimeout(()=> gdriveScheduleSync(), 20000);
+        return false;
+      }
+      const local = gdriveBuildPayload();
+      const baseline = getGdriveMergeBaseline() || {};
+      const localDocs = fsPayloadToDocs(local), baseDocs = fsPayloadToDocs(baseline);
+      const changed = [...new Set([...Object.keys(localDocs), ...Object.keys(baseDocs)])].filter(k=> !gdriveDeepEqual(localDocs[k], baseDocs[k]));
+      if(!changed.length){
+        try{ localStorage.removeItem('worklog_gdrive_pending_push'); }catch(e){}
+        return true;
+      }
+      let result = null;
+      await fsDb.runTransaction(async tx=>{
+        const fresh = {}, oldN = {};
+        for(const k of changed){
+          const r = await fsTxnReadKey(tx, k);
+          oldN[k] = r.n;
+          if(r.exists) fresh[k] = r.value;
+        }
+        const remoteDocs = { ...fsRemoteDocs };
+        changed.forEach(k=>{ if(k in fresh) remoteDocs[k] = fresh[k]; else delete remoteDocs[k]; });
+        const merged = gdriveComputeMerged(fsDocsToPayload(remoteDocs));
+        const mergedDocs = fsPayloadToDocs(merged);
+        changed.forEach(k=>{
+          if(mergedDocs[k] === undefined){ if(k in fresh) fsTxnDeleteKey(tx, k, oldN[k]); }
+          else if(!(k in fresh) || !gdriveDeepEqual(mergedDocs[k], fresh[k])) fsTxnWriteKey(tx, k, mergedDocs[k], oldN[k]);
+        });
+        result = { merged, remoteDocs, mergedDocs };
+      });
+      // 저장 성공 - 방금 저장한 묶음만 이 기기 화면과 기준점에 반영함. 저장하는 사이에 실시간으로 받은 다른
+      // 묶음(다른 기기 변경)이나, 저장 도중 이 기기에서 또 고친 내용은 덮어쓰지 않음(덮으면 방금 받은 삭제가
+      // 되살아나는 등 되돌아감이 생김)
+      const nowDocs = fsPayloadToDocs(gdriveBuildPayload());
+      const baseNow = fsPayloadToDocs(getGdriveMergeBaseline() || {});
+      let uiChanged = false, editedMeanwhile = false;
+      changed.forEach(k=>{
+        const mv = result.mergedDocs[k];
+        if(mv === undefined){ delete fsRemoteDocs[k]; delete baseNow[k]; } else { fsRemoteDocs[k] = mv; baseNow[k] = mv; }
+        if(gdriveDeepEqual(nowDocs[k], localDocs[k])){ // 저장하는 동안 이 기기에서 다시 고치지 않았으면 합친 결과로 맞춤
+          if(!gdriveDeepEqual(nowDocs[k], mv)){ if(mv === undefined) delete nowDocs[k]; else nowDocs[k] = mv; uiChanged = true; }
+        } else editedMeanwhile = true;
+      });
+      const newLocal = fsDocsToPayload(nowDocs);
+      if(uiChanged){ gdriveApplyMergedLocally(newLocal); try{ loadSharedData(); }catch(e){ console.error(e); } }
+      setGdriveMergeBaseline(fsDocsToPayload(baseNow));
+      if(uiChanged) fsScheduleUiRefresh();
+      if(editedMeanwhile) fsPushAgain = true;
+      try{ localStorage.removeItem('worklog_gdrive_pending_push'); }catch(e){}
+      gdriveSetStatus(`연결됨 · 실시간 동기화 · ${new Date().toLocaleTimeString('ko-KR')} 저장됨`);
+      maybeRunDailyGdriveBackup(newLocal); // 3시간마다 드라이브 "자동백업" 폴더에 스냅샷(관리자 기기에서만)
+      return true;
+    }catch(e){
+      console.error('Firebase 저장 실패', e);
+      try{ localStorage.setItem('worklog_gdrive_pending_push', '1'); }catch(e2){}
+      const denied = e && (e.code === 'permission-denied');
+      gdriveSetStatus(denied ? '저장 권한이 없어요 · 회사 계정으로 로그인했는지 확인해 주세요' : '저장 대기 중 · 잠시 후 다시 저장할게요 (입력한 내용은 이 기기에 안전하게 남아있어요)');
+      if(!denied) setTimeout(()=> gdriveScheduleSync(), 15000);
+      return false;
+    }
+  })();
+  try{ return await fsPushInFlight; }
+  finally{
+    fsPushInFlight = null;
+    if(fsPushAgain){ fsPushAgain = false; setTimeout(()=> gdriveScheduleSync(), 50); }
+  }
+}
+// 병합 기준점은 그대로 두고 이 기기 데이터만 바꿈(→ 바뀐 부분이 다음 저장 때 서버로 올라감)
+function fsApplyLocalOnly(merged){
+  const b = getGdriveMergeBaseline();
+  gdriveApplyMergedLocally(merged);
+  try{ loadSharedData(); }catch(e){ console.error(e); }
+  if(b) setGdriveMergeBaseline(b);
+}
+// 옛 버전 안전망용 "더하기만 하는" 병합 - 지우거나 덮지는 않고, 없는 항목만 추가(같은 항목은 더 나중 기록만 채택)
+function fsAdditiveMerge(target, incoming){
+  if(incoming === undefined || incoming === null) return target;
+  if(target === undefined || target === null) return incoming;
+  if(Array.isArray(target) && Array.isArray(incoming)){
+    if(gdriveArrayAllHaveIds(incoming) && (target.length === 0 || gdriveArrayAllHaveIds(target))){
+      const out = target.slice();
+      incoming.forEach(it=>{
+        const idx = out.findIndex(x=>x && x.id === it.id);
+        if(idx === -1){ out.push(it); return; }
+        const tt = gdriveRecordTimestamp(out[idx]), it2 = gdriveRecordTimestamp(it);
+        if(tt !== null && it2 !== null && it2 > tt) out[idx] = it;
+      });
+      return out;
+    }
+    if(incoming.every(x=> typeof x !== 'object') && target.every(x=> typeof x !== 'object')){
+      return [...new Set([...target, ...incoming])];
+    }
+    return target;
+  }
+  if(gdriveIsPlainObject(target) && gdriveIsPlainObject(incoming)){
+    const tt = gdriveRecordTimestamp(target), it = gdriveRecordTimestamp(incoming);
+    if(tt !== null && it !== null) return it > tt ? incoming : target;
+    const out = { ...target };
+    Object.keys(incoming).forEach(k=>{
+      if(k === '__fieldUpdatedAt' || k === 'syncedAt') return;
+      out[k] = (k in target) ? fsAdditiveMerge(target[k], incoming[k]) : incoming[k];
+    });
+    return out;
+  }
+  return target;
+}
+// 전환 뒤에도 새로고침을 안 해서 옛 버전으로 켜져 있는 기기는 계속 드라이브 파일에 저장함 - 관리자 기기가
+// 5분마다 드라이브 파일이 전환 이후에 바뀌었는지 보고, 바뀌었으면 그 내용을 빠짐없이 가져와 합침
+async function fsCheckDriveForOldClients(){
+  try{
+    if(!fsActive || !isCurrentUserAdmin || !gdriveAccessToken || !gdriveFileId || !fsMeta || !fsMeta.driveMtime) return;
+    const mt = await gdriveGetModifiedTime();
+    if(!mt || mt === fsMeta.driveMtime || new Date(mt) <= new Date(fsMeta.driveMtime)) return;
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${gdriveFileId}?alt=media&supportsAllDrives=true`, { headers:{ Authorization:`Bearer ${gdriveAccessToken}` } });
+    if(!res.ok) return;
+    const drivePayload = await res.json();
+    if(!drivePayload || !drivePayload.profiles) return;
+    const local = gdriveBuildPayload();
+    // 전환(또는 지난번 가져오기) 때의 드라이브 내용을 기준점으로 3방향 병합 - 옛 버전 기기가 새로 추가·수정한 것만
+    // 가져오고, 그 사이 Firebase에서 지운 항목이 드라이브에 남아있다는 이유로 되살아나지는 않게 함.
+    // 기준점이 없으면(예전 전환분) 지우지 않고 더하기만 하는 병합으로 대신함
+    const driveBase = fsRemoteDocs['_driveBase'];
+    let merged;
+    if(driveBase && driveBase.shared){
+      merged = gdriveMergeValue(driveBase, local, drivePayload);
+      if(merged && merged.shared) GDRIVE_READ_STATE_FIELDS.forEach(f=>{ merged.shared[f] = gdriveUnionReadStateMaps(drivePayload.shared && drivePayload.shared[f], local.shared && local.shared[f], merged.shared[f]); });
+    } else merged = fsAdditiveMerge(local, drivePayload);
+    await fsWriteDriveBase(drivePayload);
+    if(!gdriveDeepEqual(fsStripVolatile(local), fsStripVolatile(merged))){
+      fsApplyLocalOnly(merged);
+      fsScheduleUiRefresh();
+      gdriveScheduleSync();
+      showCenterToast('옛 버전으로 켜진 기기가 드라이브에 저장한 내용을 가져왔어요 · 그 기기를 새로고침해 주세요');
+    }
+    await fsRef(FS_META_ID).set({ driveMtime: mt, lastDriveImportAt: new Date().toISOString() }, { merge: true });
+  }catch(e){ console.error('드라이브(옛 버전) 변경 확인 실패', e); }
+}
+// 옛 버전 가져오기의 기준점(드라이브 내용)을 Firebase에 같이 보관 - 어느 관리자 기기에서 확인하든 같은 기준으로 합침
+async function fsWriteDriveBase(payload){
+  const parts = fsEncodeParts(payload);
+  const batch = fsDb.batch();
+  parts.forEach((p, i)=> batch.set(fsRef(fsPartId('_driveBase', i)), p));
+  for(let i=parts.length;i<parts.length+20;i++) batch.delete(fsRef(fsPartId('_driveBase', i)));
+  await batch.commit();
+  fsRemoteDocs['_driveBase'] = payload;
+}
+// 관리자: 드라이브 → Firebase 전환(처음 한 번, 또는 되돌렸다가 다시 전환할 때)
+async function fsMigrateFromDrive(){
+  if(!isCurrentUserAdmin){ appAlert('관리자 계정만 전환할 수 있어요.'); return; }
+  const ok = await appConfirm('지금 드라이브에 있는 회사 데이터 전체를 Firebase(실시간 저장소)로 옮기고, 모든 기기가 Firebase를 쓰도록 전환할까요?\n\n· 드라이브 원본 파일과 자동백업은 그대로 남아요.\n· 전환 후에는 다른 PC·휴대폰도 한 번씩 새로고침해 주세요.', { okText:'전환할게요', cancelText:'취소' });
+  if(!ok) return;
+  const msg = (t)=> gdriveSetStatus(t);
+  try{
+    msg('Firebase 연결 중...');
+    if(!(await fsInit())) throw new Error(fsInitError || 'Firebase 연결 실패');
+    msg('드라이브 최신 데이터 확인 중...');
+    if(gdriveDriveOnlyPull) await gdriveDriveOnlyPull();
+    if(gdriveDriveOnlyPush){ const pushed = await gdriveDriveOnlyPush(); if(!pushed) throw new Error('드라이브 최신 데이터를 확인하지 못했어요'); }
+    await loadAll(); // 방금 받은 드라이브 최신본을 화면 메모리에도 확실히 반영한 뒤 옮김(안 그러면 직전 값이 옮겨질 수 있음)
+    const payload = gdriveBuildPayload();
+    const docs = fsPayloadToDocs(payload);
+    docs['_driveBase'] = payload; // 옛 버전 기기 가져오기용 기준점
+    msg('Firebase로 옮기는 중...');
+    const existing = await fsDb.collection(FS_COLLECTION).get();
+    const keep = new Set([FS_META_ID]);
+    const ops = [];
+    Object.keys(docs).forEach(k=>{
+      fsEncodeParts(docs[k]).forEach((p, i)=>{ keep.add(fsPartId(k, i)); ops.push({ id: fsPartId(k, i), data: p, size: p.j.length * 3 + 200 }); });
+    });
+    existing.forEach(d=>{ if(!keep.has(d.id)) ops.push({ id: d.id, del: true, size: 100 }); });
+    // 한 번에 보낼 수 있는 양(약 10MB·500건) 안에서 나눠 저장 - 전환 표시(_meta)는 맨 마지막에 해서, 다 옮겨지기 전엔 아무도 전환되지 않음
+    let batch = fsDb.batch(), cnt = 0, bytes = 0;
+    for(const op of ops){
+      if(cnt >= 400 || bytes + op.size > 8*1024*1024){ await batch.commit(); batch = fsDb.batch(); cnt = 0; bytes = 0; }
+      if(op.del) batch.delete(fsRef(op.id)); else batch.set(fsRef(op.id), op.data);
+      cnt++; bytes += op.size;
+    }
+    if(cnt) await batch.commit();
+    const driveMtime = await gdriveGetModifiedTime();
+    setGdriveMergeBaseline(payload);
+    await fsRef(FS_META_ID).set({ backend:'firestore', migratedAt: new Date().toISOString(), by: currentUserEmail || '', driveFileId: gdriveFileId || '', driveMtime: driveMtime || '', build: APP_BUILD }, { merge: true });
+    await fsActivate();
+    msg('연결됨 · 실시간 동기화 중 (Firebase로 전환 완료)');
+    appAlert('Firebase로 전환했어요.\n\n다른 PC·휴대폰에 켜져 있는 Tax.J도 한 번씩 새로고침해 주세요.');
+  }catch(e){
+    console.error('Firebase 전환 실패', e);
+    msg('Firebase 전환 실패 · 드라이브 방식 그대로 쓰는 중');
+    appAlert('Firebase로 전환하지 못했어요. 데이터는 그대로 드라이브에 있어요.\n\n' + (e && (e.code || e.message) ? (e.code || e.message) : e));
+  }
+  fsRenderBackendRow();
+}
+// 관리자: Firebase → 드라이브로 되돌리기(비상용) - 지금 최신 데이터를 드라이브 파일에 먼저 써두고 모든 기기를 되돌림
+async function fsRollbackToDrive(){
+  if(!isCurrentUserAdmin){ appAlert('관리자 계정만 되돌릴 수 있어요.'); return; }
+  const ok = await appConfirm('모든 기기의 저장소를 예전 드라이브 방식으로 되돌릴까요?\n\n지금의 최신 데이터를 드라이브 파일에 먼저 저장한 뒤 되돌려요.', { okText:'되돌릴게요', cancelText:'취소' });
+  if(!ok) return;
+  try{
+    gdriveSetStatus('최신 데이터 저장 중...');
+    await fsPush();
+    const payload = gdriveBuildPayload();
+    await gdriveEnsureFile();
+    const uploaded = await gdrivePushUpload(payload);
+    if(!uploaded) throw new Error('드라이브 파일에 저장하지 못했어요');
+    await fsRef(FS_META_ID).set({ backend:'drive', rolledBackAt: new Date().toISOString(), rolledBackBy: currentUserEmail || '' }, { merge: true });
+    appAlert('드라이브 방식으로 되돌렸어요. 다른 기기도 한 번씩 새로고침해 주세요.');
+  }catch(e){
+    console.error('드라이브로 되돌리기 실패', e);
+    appAlert('되돌리지 못했어요: ' + (e && e.message ? e.message : e));
+  }
+  fsRenderBackendRow();
+}
+function fsRenderBackendRow(){
+  const row = document.getElementById('fsBackendRow');
+  if(!row) return;
+  const admin = !!gdriveAccessToken && isCurrentUserAdmin;
+  row.style.display = admin ? 'block' : 'none';
+  const label = document.getElementById('fsBackendLabel');
+  const btn = document.getElementById('fsBackendBtn');
+  if(!label || !btn) return;
+  if(fsActive){
+    label.textContent = '데이터 저장소: Firebase (실시간 동기화)';
+    btn.textContent = '드라이브로 되돌리기';
+    btn.dataset.action = 'rollback';
+  } else {
+    label.textContent = '데이터 저장소: Google Drive 파일' + (fsInitError ? ` · Firebase 연결 안 됨 (${fsInitError})` : '');
+    btn.textContent = 'Firebase로 전환';
+    btn.dataset.action = 'migrate';
+  }
+}
+document.getElementById('fsBackendBtn')?.addEventListener('click', (e)=>{
+  if(e.currentTarget.dataset.action === 'rollback') fsRollbackToDrive(); else fsMigrateFromDrive();
+});
+async function fsSignOut(){
+  try{ if(fsCollUnsub){ fsCollUnsub(); fsCollUnsub = null; } }catch(e){}
+  try{ if(fsMetaUnsub){ fsMetaUnsub(); fsMetaUnsub = null; } }catch(e){}
+  clearInterval(fsDriveCheckTimer);
+  fsActive = false; fsReady = false; fsHasServerSnapshot = false; fsMeta = null; fsRemoteDocs = {};
+  try{ if(typeof firebase !== 'undefined' && firebase.auth) await firebase.auth().signOut(); }catch(e){}
+}
+
 // ── 같은 브라우저에 앱을 여러 개(탭·창·설치 앱) 열어둔 경우의 "되돌아감" 방지 ──
 // "나 혼자 쓰는데도 방금 저장한 게 돌아간다" - 탭 A에서 저장하면 브라우저 저장소(localStorage)와 병합 기준점은
 // 두 탭이 같이 쓰지만, 탭 B의 화면 메모리에는 예전 값이 그대로 남아있었음. 탭 B가 15초마다 동기화하면서 그
@@ -30006,10 +30517,12 @@ function gdriveRefreshIfOtherTabChanged(){
 }
 (function(){
   const origPush = gdrivePush, origPull = gdrivePull;
+  gdriveDriveOnlyPush = (...a)=> origPush(...a);
+  gdriveDriveOnlyPull = (...a)=> origPull(...a);
   gdrivePush = async function(...args){
     setGdriveSyncingIndicator(true);
     gdriveRefreshIfOtherTabChanged();
-    try{ return await origPush.apply(this, args); }
+    try{ return fsActive ? await fsPush() : await origPush.apply(this, args); }
     finally{ setGdriveSyncingIndicator(false); }
   };
   // quiet=true(15초 자동 폴링·포커스 복귀 때만 씀)면 링을 안 띄움 - "로그인 중이라고 계속 돌아가는거"라는
@@ -30018,6 +30531,14 @@ function gdriveRefreshIfOtherTabChanged(){
   // 로그인/새로고침할 때(gdrivePull(false 또는 인자 없음))만 링을 보여주고, 눈에 안 보여도 되는 배경
   // 폴링은 조용히 돌게 함
   gdrivePull = async function(quiet, ...args){
+    // Firebase 실시간 모드에서는 서버가 바뀔 때마다 알아서 알려주므로 주기적으로 받아올 필요가 없음 -
+    // 대신 아직 못 올린 변경이 있으면 올리고, 없으면 마지막으로 받은 서버 상태를 한 번 더 반영만 함
+    if(fsActive){
+      gdriveRefreshIfOtherTabChanged();
+      if(gdriveSyncTimer || localStorage.getItem('worklog_gdrive_pending_push') === '1'){ clearTimeout(gdriveSyncTimer); gdriveSyncTimer = null; return gdrivePush(); }
+      if(!quiet && fsHasServerSnapshot) fsApplyRemote();
+      return;
+    }
     if(!quiet) setGdriveSyncingIndicator(true);
     gdriveRefreshIfOtherTabChanged();
     try{ return await origPull.apply(this, args); }
@@ -30027,7 +30548,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.28 12:50';
+const APP_BUILD = '2026.09.28 14:30';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
