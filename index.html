@@ -3078,6 +3078,7 @@
               <option value="반반차">반반차 (0.25일, 연차 차감)</option>
               <option value="포상휴가">포상휴가 (연차 차감 없음)</option>
               <option value="경조사휴가">경조사휴가 (연차 차감 없음)</option>
+              <option value="공가">공가 (건강검진 등, 연차 차감 없음)</option>
               <option value="기타휴가">기타휴가 (연차 차감 없음)</option>
             </select>
           </div>
@@ -5478,6 +5479,7 @@
                       <option value="반반차">반반차</option>
                       <option value="포상휴가">포상휴가</option>
                       <option value="경조사휴가">경조사휴가</option>
+                      <option value="공가">공가</option>
                       <option value="기타휴가">기타휴가</option>
                     </select>
                     <select id="ad-leave-subtype" style="flex:1 1 170px; display:none;"></select>
@@ -6368,6 +6370,7 @@
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:center;">
           <select id="pointInTimeBackupSelect" class="flat-input" style="min-width:240px;"><option value="">목록 새로고침을 눌러주세요</option></select>
           <button type="button" id="pointInTimeRefreshBtn" class="del-btn">목록 새로고침</button>
+          <button type="button" id="pointInTimeRecoverMissingBtn" class="submit-btn" style="width:auto; padding:7px 13px; font-size:12px; background:var(--mint);" title="지금 데이터는 그대로 두고, 그 시점엔 있었는데 지금 없는 항목만 다시 넣어요">빠진 항목만 되살리기</button>
           <button type="button" id="pointInTimeRestoreBtn" class="submit-btn" style="width:auto; padding:7px 13px; font-size:12px; background:var(--coral);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M3 12a9 9 0 1 0 2.64-6.36"/><path d="M3 3v6h6"/></svg> 이 시점으로 전체 복구</button>
         </div>
         <span class="save-msg" id="pointInTimeBackupMsg" style="margin-top:0;"></span>
@@ -11013,7 +11016,7 @@ function calcWorkdays(monthStr){
   monthUsage.forEach(u=>{
     if(u.type==='연차') noLunchDays += 1;
     else if(u.type==='반차' && (u.subtype==='오전반차' || u.subtype==='오후반차_식사X')) noLunchDays += 1;
-    else if(['포상휴가','경조사휴가','기타휴가'].includes(u.type)) noLunchDays += (Number(u.days)||0);
+    else if(['포상휴가','경조사휴가','공가','기타휴가'].includes(u.type)) noLunchDays += (Number(u.days)||0);
     // 오후반차(식사O)와 반반차는 점심을 먹으므로 근무일수에서 제외하지 않음
   });
   const monthExclusions = (sharedExclusionDays||[]).filter(x=>x.date.startsWith(monthStr));
@@ -11057,7 +11060,7 @@ function calcWorkdaysExclusionBreakdown(monthStr){
     if(u.type==='연차') add('연차', 1);
     else if(u.type==='반차' && u.subtype==='오전반차') add('오전반차', 1);
     else if(u.type==='반차' && u.subtype==='오후반차_식사X') add('오후반차(식사X)', 1);
-    else if(['포상휴가','경조사휴가','기타휴가'].includes(u.type)) add(u.type, Number(u.days)||0);
+    else if(['포상휴가','경조사휴가','공가','기타휴가'].includes(u.type)) add(u.type, Number(u.days)||0);
   });
   const monthExclusions = (sharedExclusionDays||[]).filter(x=>x.date.startsWith(monthStr));
   monthExclusions.forEach(x=>{
@@ -11113,7 +11116,7 @@ function calcAttendanceSummary(monthStr){
   const monthUsage = attendance.leaveUsage.filter(u => u.date.startsWith(monthStr));
   const monthUsedDays = monthUsage.reduce((s,u)=>s+leaveDeductDays(u), 0);
   const monthSpecialDays = monthUsage
-    .filter(u => ['포상휴가','경조사휴가','기타휴가'].includes(u.type))
+    .filter(u => ['포상휴가','경조사휴가','공가','기타휴가'].includes(u.type))
     .reduce((s,u)=>s+(Number(u.days)||0), 0);
   // 재택 이력(달력·이력표·"이번달 재택근무" 건수)은 기본적으로 실제 사용일(date) 기준으로 그 달에 보여주되,
   // 당겨쓰기(advance) 항목은 실제로는 그 달 한도(creditMonth)에서 차감되는 것이므로 사용일이 지난 달이어도
@@ -11265,7 +11268,7 @@ function isNextWeekday(dateStr1, dateStr2){
   return fmt(cur) === dateStr2;
 }
 
-const GROUPABLE_LEAVE_TYPES = ['연차','포상휴가','경조사휴가','기타휴가'];
+const GROUPABLE_LEAVE_TYPES = ['연차','포상휴가','경조사휴가','공가','기타휴가'];
 function groupConsecutiveLeave(entries){
   const asc = [...entries].sort((a,b)=> a.date < b.date ? -1 : 1);
   const groups = [];
@@ -11579,7 +11582,7 @@ function renderAttendance(){
     return;
   }
   const subtypeLabel = { '오전반차':'오전', '오후반차_식사O':'오후·식사O', '오후반차_식사X':'오후·식사X' };
-  const specialTypes = ['포상휴가','경조사휴가','기타휴가'];
+  const specialTypes = ['포상휴가','경조사휴가','공가','기타휴가'];
   const rows = all.map(en=>{
     let tag, detail;
     if(en.kind==='grant'){ tag = `<span class="tag tag-grant">부여 · ${en.type}</span>`; detail = `+${en.days}일`; }
@@ -14776,7 +14779,7 @@ function buildExpenseReportHTML(monthStr){
   const monthUsageForBreakdown = attendance.leaveUsage.filter(u=>u.date.startsWith(monthStr));
   const bAnnual = monthUsageForBreakdown.filter(u=>u.type==='연차').length;
   const bHalfNoLunch = monthUsageForBreakdown.filter(u=>u.type==='반차' && (u.subtype==='오전반차' || u.subtype==='오후반차_식사X')).length;
-  const bSpecial = monthUsageForBreakdown.filter(u=>['포상휴가','경조사휴가','기타휴가'].includes(u.type)).reduce((sum,u)=>sum+(Number(u.days)||0),0);
+  const bSpecial = monthUsageForBreakdown.filter(u=>['포상휴가','경조사휴가','공가','기타휴가'].includes(u.type)).reduce((sum,u)=>sum+(Number(u.days)||0),0);
   const monthExclForBreakdown = (sharedExclusionDays||[]).filter(x=>x.date.startsWith(monthStr));
   const bLunchParty = monthExclForBreakdown.filter(x=>x.reason==='점심회식').length;
   const bEtc = monthExclForBreakdown.filter(x=>x.reason==='기타').length;
@@ -15526,7 +15529,7 @@ function buildCalendarHTML(monthStr){
   // 하단 요약: 달력에 표기된 아이콘들을 유형별로 집계
   const monthUsage = attendance.leaveUsage.filter(u=>u.date.startsWith(monthStr));
   const halfDayNoLunchCount = monthUsage.filter(u=>u.type==='반차' && (u.subtype==='오전반차' || u.subtype==='오후반차_식사X')).length;
-  const specialLeaveDays = monthUsage.filter(u=>['포상휴가','경조사휴가','기타휴가'].includes(u.type)).reduce((s,u)=>s+(Number(u.days)||0),0);
+  const specialLeaveDays = monthUsage.filter(u=>['포상휴가','경조사휴가','공가','기타휴가'].includes(u.type)).reduce((s,u)=>s+(Number(u.days)||0),0);
   const annualLeaveCount = monthUsage.filter(u=>u.type==='연차').length;
   const monthRemoteAll = attendance.remoteEntries.filter(r=>r.date.startsWith(monthStr));
   const regularRemoteCount = monthRemoteAll.filter(r=>!r.bonus).length;
@@ -18894,8 +18897,8 @@ const uSubtypeSelect = document.getElementById('u-subtype');
 const specialDaysField = document.getElementById('specialDaysField');
 const familyPresetField = document.getElementById('familyPresetField');
 const familyPresetSelect = document.getElementById('u-familypreset');
-const SPECIAL_LEAVE_TYPES = ['포상휴가','경조사휴가','기타휴가'];
-const PERIOD_ENABLED_TYPES = ['연차', '포상휴가', '경조사휴가', '기타휴가'];
+const SPECIAL_LEAVE_TYPES = ['포상휴가','경조사휴가','공가','기타휴가'];
+const PERIOD_ENABLED_TYPES = ['연차', '포상휴가', '경조사휴가', '공가', '기타휴가'];
 const HALF_SUBTYPE_OPTIONS = [
   { value:'오후반차_식사O', text:'오후반차 (점심 먹고 퇴근)' },
   { value:'오전반차', text:'오전반차 (14:00 출근, 점심 X)' },
@@ -28307,7 +28310,7 @@ async function loadPointInTimeBackupList(){
     const listData = await res.json();
     const files = listData.files || [];
     if(!files.length){ sel.innerHTML = '<option value="">아직 쌓인 백업이 없어요</option>'; return; }
-    sel.innerHTML = files.map(f=>{
+    sel.innerHTML = (gdriveFileId ? `<option value="${gdriveFileId}">드라이브 데이터 파일 (Firebase 전환 직전 상태)</option>` : '') + files.map(f=>{
       const label = new Date(f.modifiedTime).toLocaleString('ko-KR');
       return `<option value="${f.id}">${escHtml(label)}</option>`;
     }).join('');
@@ -28339,6 +28342,47 @@ document.getElementById('pointInTimeRestoreBtn')?.addEventListener('click', asyn
   }catch(err){
     console.error('시점 복구 실패', err);
     if(msgEl) msgEl.textContent = '복구 실패: ' + (err && err.message ? err.message : err);
+  }
+});
+// "빠진 항목만 되살리기" - 시점 복구와 달리 지금 데이터를 지우거나 덮지 않고, 고른 백업에는 있는데 지금은 없는
+// 항목(식대·근태·일정·공지·신고구분 등 id가 있는 기록)만 다시 채워 넣음. 전환·동기화 과정에서 빠진 기록을 되살리는 용도
+function recoverDiffSummary(beforeP, afterP){
+  const labelOf = (k)=>{
+    if(k === 'profiles') return '직원 목록';
+    if(k.startsWith('data__')){ const pid = k.slice(6); const p = (afterP.profiles||[]).find(x=>x.id===pid); return `${p ? p.name : '직원'} 근태·경비·일정`; }
+    const map = { specialPeriods:'특별기간', noticeHistory:'공지사항', approvals:'결재', filingCycles:'신고구분', filingTargets:'신고대상', itFilingStatus:'원천세 신고현황', reviewFigures:'검증표', clients:'거래처', exclusionDays:'제외일수', lunchLimitHistory:'점심식대 한도', companyInfo:'회사정보', orgChart:'조직도', teamPolicyHistory:'인사지침', opsPolicyHistory:'운영지침', quickGuideHistory:'Quick Guide', workHourExceptions:'근무시간', notificationLog:'알림' };
+    const f = k.slice(3); return map[f] || f;
+  };
+  const a = fsPayloadToDocs(beforeP), b = fsPayloadToDocs(afterP);
+  return Object.keys(b).filter(k=> !k.includes('__fieldUpdatedAt') && !gdriveDeepEqual(a[k], b[k])).map(labelOf);
+}
+document.getElementById('pointInTimeRecoverMissingBtn')?.addEventListener('click', async ()=>{
+  const sel = document.getElementById('pointInTimeBackupSelect');
+  const msgEl = document.getElementById('pointInTimeBackupMsg');
+  const fileId = sel && sel.value;
+  if(!fileId){ appAlert('먼저 위 목록에서 백업 시점을 골라주세요. (목록이 비어있으면 "목록 새로고침")'); return; }
+  try{
+    if(msgEl) msgEl.textContent = '백업 파일 받는 중...';
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`, { headers:{ Authorization:`Bearer ${gdriveAccessToken}` } });
+    if(!res.ok) throw new Error(`백업 파일 다운로드 실패 (${res.status})`);
+    const backup = await res.json();
+    if(!backup || !backup.profiles) throw new Error('백업 파일 형식이 올바르지 않아요');
+    const local = gdriveBuildPayload();
+    const merged = fsAdditiveMerge(local, backup);
+    const changed = recoverDiffSummary(local, merged);
+    if(!changed.length){ if(msgEl) msgEl.textContent = '빠진 항목이 없어요 · 지금 데이터에 이미 다 들어있어요'; return; }
+    const label = sel.options[sel.selectedIndex].textContent;
+    const ok = await appConfirm(`"${label}" 백업에만 있는 항목을 다시 넣을까요?\n\n되살아나는 곳: ${changed.join(', ')}\n\n지금 데이터는 지우거나 덮지 않아요. 다만 그 시점 이후 일부러 지운 항목이 있다면 그것도 다시 나타날 수 있어요.`, { okText:'되살리기', cancelText:'취소' });
+    if(!ok){ if(msgEl) msgEl.textContent = ''; return; }
+    fsApplyLocalOnly(merged);
+    await loadAll();
+    renderAll && renderAll();
+    gdriveScheduleSync();
+    if(msgEl) msgEl.textContent = `되살렸어요 · ${changed.join(', ')}`;
+    showCenterToast('빠진 항목을 되살렸어요');
+  }catch(err){
+    console.error('빠진 항목 되살리기 실패', err);
+    if(msgEl) msgEl.textContent = '실패: ' + (err && err.message ? err.message : err);
   }
 });
 // "전체직원" 탭을 처음 열 때 시점 목록을 자동으로 한 번 불러와둠(매번 새로고침 버튼을 누르지 않아도 되게)
@@ -29976,6 +30020,18 @@ function gdriveApplyMergedLocally(merged){
   // 다시 저장하면 메모리의 옛 값이 "이 기기에서 지운/바꾼 것"으로 오인돼, 방금 합쳐 받은 다른 기기의 변경을
   // 지워버렸음. 합친 결과를 쓰는 즉시 메모리도 저장소에서 다시 읽어서 항상 같게 맞춤
   try{ loadSharedData(); }catch(e){ console.error('공용 데이터 다시 읽기 실패', e); }
+  // 지금 화면에 열려있는 직원(내 근태·경비·일정)도 같은 이유로 곧바로 다시 읽음 - 안 그러면 다른 기기에서 넣은
+  // 식대·근태 기록이 저장소엔 들어왔는데 화면 메모리엔 없어서, 이 기기에서 경비 하나만 저장해도 그 기록들이 지워졌음
+  try{
+    const ad = activeProfileId && merged.data && merged.data[activeProfileId];
+    if(ad){
+      const rd = (k)=>{ try{ const v = localStorage.getItem(skey(k)); return v ? JSON.parse(v) : null; }catch(e){ return null; } };
+      if(ad.settings){ const v = rd('settings'); if(v) settings = v; }
+      if(ad.attendance){ const v = rd('attendance'); if(v){ attendance = v; ['leaveGrants','leaveUsage','remoteEntries','clockLog'].forEach(k=>{ attendance[k] = attendance[k] || []; }); } }
+      if(ad.expense){ const v = rd('expense'); if(v){ expense = v; ['lunchEntries','dinnerEntries','otherExpenses','taxiEntries','prepaidEntries'].forEach(k=>{ expense[k] = expense[k] || []; }); } }
+      if(ad.schedule){ const v = rd('schedule'); if(v){ schedule = v; schedule.events = schedule.events || []; } }
+    }
+  }catch(e){ console.error('내 데이터 다시 읽기 실패', e); }
 }
 async function gdrivePull(){
   if(!gdriveAccessToken || !gdriveFileId) return;
@@ -30575,7 +30631,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.28 14:50';
+const APP_BUILD = '2026.09.28 15:10';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
