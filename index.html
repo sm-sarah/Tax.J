@@ -2958,10 +2958,8 @@
   }
   /* 하위메뉴: 왼쪽 세로선(인디고→민트) + 항목마다 짧은 가지 */
   .app-sidebar.rail-mode #railExpandPanel .home-tiles.rail-panel-inline{ position:relative; padding-left:18px; }
-  .app-sidebar.rail-mode #railExpandPanel .home-tiles.rail-panel-inline::before{
-    content:''; position:absolute; left:5px; top:20px; bottom:20px; width:2px; border-radius:2px;
-    background:linear-gradient(#B9BCF5, #8FD8C3);
-  }
+  /* 세로선은 없이 가로선만(상단 고정 하위메뉴라 아이콘과 이어지는 세로선이 어색했음) */
+  .app-sidebar.rail-mode #railExpandPanel .home-tiles.rail-panel-inline::before{ display:none; }
   .app-sidebar.rail-mode #railExpandPanel .home-tiles.rail-panel-inline > .home-submenu-item,
   .app-sidebar.rail-mode #railExpandPanel .home-tiles.rail-panel-inline > .home-tile{
     position:relative; overflow:visible; color:var(--ink); font-weight:700; border-bottom:none;
@@ -2971,7 +2969,7 @@
   .app-sidebar.rail-mode #railExpandPanel .home-tiles.rail-panel-inline > .home-tiles-subgroup-label{ padding-left:6px; }
   .app-sidebar.rail-mode #railExpandPanel .home-tiles.rail-panel-inline > .home-submenu-item::after,
   .app-sidebar.rail-mode #railExpandPanel .home-tiles.rail-panel-inline > .home-tile::after{
-    content:''; position:absolute; left:-13px; top:50%; width:9px; height:2px; border-radius:2px; background:#B9BCF5;
+    content:''; position:absolute; left:-13px; top:50%; width:9px; height:2px; border-radius:2px; background:var(--rail-branch-color, #B9BCF5);
   }
   .app-sidebar.rail-mode #railExpandPanel .home-tiles.rail-panel-inline > .home-tile.home-tile-plain::before{ display:none; }
   .home-tiles > .rail-tree-line{ display:none; }
@@ -17849,33 +17847,17 @@ relocateSidebarNodes();
     tiles.style.top = Math.max(10, Math.min(curTop, maxTop)) + 'px';
   }
 
-  // 하위메뉴를 누른 대메뉴 아이콘 높이에 맞춰 내려서 시작하게 함(개인웹처럼 선이 그 아이콘에서 뻗어 나온 느낌) -
-  // 첫 하위메뉴 항목의 가운데가 아이콘 가운데와 같은 높이가 되게 하고, 레일 아래로 넘치면 넘치지 않을 만큼만 위로 올림
-  function alignRailPanelToRow(row, tiles){
+  // 하위메뉴 가로선 색: 첫 항목 인디고톤(#B9BCF5) → 마지막 항목 민트톤(#8FD8C3)으로 항목마다 조금씩 바뀜
+  function colorRailBranches(tiles){
     try{
-      const panel = document.getElementById('railExpandPanel');
-      const label = row.querySelector('.home-section-label');
-      const col = sidebar.querySelector(':scope > .home-menu-col');
-      if(!panel || !label || !tiles) return;
-      tiles.style.marginTop = '0px';
-      const icon = label.querySelector('svg') || label;
-      const ir = icon.getBoundingClientRect();
-      const anchorY = ir.top + ir.height/2;
-      const tr = tiles.getBoundingClientRect();
-      const first = [...tiles.children].find(el=> el.offsetParent && !el.classList.contains('rail-tree-line'));
-      const firstCenter = first ? (first.getBoundingClientRect().top + first.getBoundingClientRect().height/2 - tr.top) : 20;
-      let mt = anchorY - tr.top - firstCenter;
-      const bottomLimit = col ? col.getBoundingClientRect().bottom : (tr.top + tr.height);
-      const maxMt = bottomLimit - tr.top - tr.height;
-      mt = Math.min(mt, maxMt);
-      tiles.style.marginTop = Math.max(0, Math.round(mt)) + 'px';
+      const items = [...tiles.children].filter(el=> el.classList.contains('home-submenu-item') || (el.classList.contains('home-tile') && !el.classList.contains('home-tile-plain')));
+      const A=[0xB9,0xBC,0xF5], B=[0x8F,0xD8,0xC3];
+      items.forEach((el,i)=>{
+        const t = items.length > 1 ? i/(items.length-1) : 0;
+        el.style.setProperty('--rail-branch-color', 'rgb('+A.map((v,k)=>Math.round(v+(B[k]-v)*t)).join(',')+')');
+      });
     }catch(e){}
   }
-  window.addEventListener('resize', ()=>{
-    const row = document.querySelector('.home-section-row.rail-open');
-    const tiles = document.querySelector('#railExpandPanel > .home-tiles.rail-panel-inline');
-    if(row && tiles && sidebar.classList.contains('rail-mode')) alignRailPanelToRow(row, tiles);
-  });
   function openPopoverFor(row){
     if(row.classList.contains('rail-open')) return; // 이미 이 그룹이 열려있으면 그대로 둠(같은 아이콘을 다시 눌러도 닫히지 않음)
     closeAllPopovers();
@@ -17901,8 +17883,8 @@ relocateSidebarNodes();
     // 요청으로 다시 단순하게 패널 맨 위(고정된 자리)에서 시작하게 되돌림
     expandPanel.appendChild(tiles);
     tiles.classList.add('rail-popover-open', 'rail-panel-inline');
-    // (다시) "하위메뉴가 상단에 고정돼서 어색하다" - 누른 대메뉴 높이에 맞춰 시작
-    alignRailPanelToRow(row, tiles);
+    // 하위메뉴는 상단 고정 그대로, 세로선 없이 가로선만 - 위→아래로 인디고→민트 색을 항목마다 조금씩
+    colorRailBranches(tiles);
     // "대메뉴를 누르면 그 안의 첫 번째 하위메뉴가 바로 화면에 조회됐으면 좋겠다"는 요청(예: 개인 →
     // 개인캘린더가 목록만 펼쳐지고 화면은 그대로인 게 아니라, 목록이 펼쳐짐과 동시에 화면도 그 첫 항목
     // 내용으로 바로 넘어감) - 갈 곳이 있는(elHasNavigation) 첫 항목을 찾아 실제로 눌러준 것과 똑같이
@@ -17929,7 +17911,7 @@ relocateSidebarNodes();
     if(!railHomeMap.has(tiles)) railHomeMap.set(tiles, { parent: row });
     expandPanel.appendChild(tiles);
     tiles.classList.add('rail-popover-open', 'rail-panel-inline');
-    alignRailPanelToRow(row, tiles);
+    colorRailBranches(tiles);
   }
   window.restoreLastRailPanel = restoreLastRailPanel;
 
@@ -30868,7 +30850,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.28 18:00';
+const APP_BUILD = '2026.09.28 18:10';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
