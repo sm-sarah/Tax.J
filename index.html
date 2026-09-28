@@ -6804,15 +6804,23 @@ function loadSharedData(){
   // 흩어져 있던 한도 이력을 한 번만 자동으로 합쳐줌
   migrateLunchLimitToSharedStore();
   try{ sharedLunchLimitHistory = JSON.parse(localStorage.getItem('worklog_shared_lunchlimit') || '[]') || []; }catch(e){ sharedLunchLimitHistory = []; }
-  try{ sharedReviewFigures = JSON.parse(localStorage.getItem('worklog_shared_reviewfigures') || '{}') || {}; }catch(e){ sharedReviewFigures = {}; }
-  try{ sharedReviewMeta = JSON.parse(localStorage.getItem('worklog_shared_reviewmeta') || '{}') || {}; }catch(e){ sharedReviewMeta = {}; }
+  // "금액이 같은데 검증이 X" - 급여/납부세액검증은 저장 버튼을 눌러야 저장되는 화면이라, 입력 중인(아직 저장
+  // 안 한) 숫자는 화면 메모리에만 있음. 그런데 자동 동기화(15초마다)가 데이터를 다시 읽어올 때 이 메모리를
+  // 저장된 옛 값으로 통째로 갈아끼워서, 입력칸에는 숫자가 보이는데 계산(총지급액)은 0이 되고 검증이 X로 떴음.
+  // 저장 안 한 입력이 있는 동안에는 이 두 값을 다시 읽어오지 않고 그대로 둠(저장하면 정상 동기화됨)
+  if(!document.getElementById('reviewItSaveBtn')?.classList.contains('is-dirty')){
+    try{ sharedReviewFigures = JSON.parse(localStorage.getItem('worklog_shared_reviewfigures') || '{}') || {}; }catch(e){ sharedReviewFigures = {}; }
+    try{ sharedReviewMeta = JSON.parse(localStorage.getItem('worklog_shared_reviewmeta') || '{}') || {}; }catch(e){ sharedReviewMeta = {}; }
+  }
   try{ sharedProfitLossReports = JSON.parse(localStorage.getItem('worklog_shared_plreports') || '{}') || {}; }catch(e){ sharedProfitLossReports = {}; }
   try{ sharedFilingTargets = JSON.parse(localStorage.getItem('worklog_shared_filingtargets') || '{}') || {}; }catch(e){ sharedFilingTargets = {}; }
   try{ sharedFilingCycles = JSON.parse(localStorage.getItem('worklog_shared_filingCycles') || '{}') || {}; }catch(e){ sharedFilingCycles = {}; }
   try{ sharedAutoPhrases = JSON.parse(localStorage.getItem('worklog_shared_autophrases') || '{}') || {}; }catch(e){ sharedAutoPhrases = {}; }
   try{ sharedIncomeTaxFilingStatus = JSON.parse(localStorage.getItem('worklog_shared_itfilingstatus') || '{}') || {}; }catch(e){ sharedIncomeTaxFilingStatus = {}; }
   try{ sharedVatFilingTargets = JSON.parse(localStorage.getItem('worklog_shared_vatfilingtargets') || '{}') || {}; }catch(e){ sharedVatFilingTargets = {}; }
-  try{ sharedVatReviewFigures = JSON.parse(localStorage.getItem('worklog_shared_vatreviewfigures') || '{}') || {}; }catch(e){ sharedVatReviewFigures = {}; }
+  if(!document.getElementById('reviewVatSaveBtn')?.classList.contains('is-dirty')){ // 부가세 검증도 같은 이유
+    try{ sharedVatReviewFigures = JSON.parse(localStorage.getItem('worklog_shared_vatreviewfigures') || '{}') || {}; }catch(e){ sharedVatReviewFigures = {}; }
+  }
   try{ sharedTaxScheduleOverrides = JSON.parse(localStorage.getItem('worklog_shared_taxschedule_overrides') || '{}') || {}; }catch(e){ sharedTaxScheduleOverrides = {}; }
   try{ sharedTaxScheduleOverrideHistory = JSON.parse(localStorage.getItem('worklog_shared_taxschedule_override_history') || '{}') || {}; }catch(e){ sharedTaxScheduleOverrideHistory = {}; }
   try{ sharedTaxScheduleCustomItems = JSON.parse(localStorage.getItem('worklog_shared_taxschedule_custom') || '[]') || []; }catch(e){ sharedTaxScheduleCustomItems = []; }
@@ -29979,10 +29987,28 @@ function setGdriveSyncingIndicator(active){
   const spinner = document.getElementById('gdriveSyncSpinner');
   if(spinner) spinner.style.display = gdriveSyncActiveCount > 0 ? 'block' : 'none';
 }
+// ── 같은 브라우저에 앱을 여러 개(탭·창·설치 앱) 열어둔 경우의 "되돌아감" 방지 ──
+// "나 혼자 쓰는데도 방금 저장한 게 돌아간다" - 탭 A에서 저장하면 브라우저 저장소(localStorage)와 병합 기준점은
+// 두 탭이 같이 쓰지만, 탭 B의 화면 메모리에는 예전 값이 그대로 남아있었음. 탭 B가 15초마다 동기화하면서 그
+// 예전 값을 "B에서 새로 바꾼 값"으로 오인해 Drive에 다시 올려서, A에서 한 변경을 되돌려버렸음.
+// 이제 다른 탭이 저장소를 바꾸면 이 탭도 즉시 저장소에서 다시 읽어오고, 동기화 직전에도 한 번 더 확인함
+let gdriveOtherTabDirty = false, gdriveOtherTabTimer = null;
+window.addEventListener('storage', (e)=>{
+  if(e.key && !e.key.startsWith('worklog_')) return;
+  gdriveOtherTabDirty = true;
+  clearTimeout(gdriveOtherTabTimer);
+  gdriveOtherTabTimer = setTimeout(()=>{ if(gdriveOtherTabDirty){ gdriveOtherTabDirty = false; try{ loadAll(); }catch(err){ console.error('다른 탭 변경 반영 실패', err); } } }, 400);
+});
+function gdriveRefreshIfOtherTabChanged(){
+  if(!gdriveOtherTabDirty) return;
+  gdriveOtherTabDirty = false;
+  try{ loadSharedData(); }catch(err){ console.error('다른 탭 변경 반영 실패', err); }
+}
 (function(){
   const origPush = gdrivePush, origPull = gdrivePull;
   gdrivePush = async function(...args){
     setGdriveSyncingIndicator(true);
+    gdriveRefreshIfOtherTabChanged();
     try{ return await origPush.apply(this, args); }
     finally{ setGdriveSyncingIndicator(false); }
   };
@@ -29993,6 +30019,7 @@ function setGdriveSyncingIndicator(active){
   // 폴링은 조용히 돌게 함
   gdrivePull = async function(quiet, ...args){
     if(!quiet) setGdriveSyncingIndicator(true);
+    gdriveRefreshIfOtherTabChanged();
     try{ return await origPull.apply(this, args); }
     finally{ if(!quiet) setGdriveSyncingIndicator(false); }
   };
@@ -30000,7 +30027,7 @@ function setGdriveSyncingIndicator(active){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.28 12:30';
+const APP_BUILD = '2026.09.28 12:50';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
