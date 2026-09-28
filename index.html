@@ -806,6 +806,9 @@
     background-image:repeating-linear-gradient(135deg, rgba(29,30,51,0.035) 0 6px, transparent 6px 12px);
     background-color:rgba(29,30,51,0.025);
   }
+  /* 긴 내역 팝업(근태/휴가/재택 내역)에서 스크롤해도 제목·닫기 버튼이 위에 고정되게 함 - 팝업 안쪽 여백(20px)만큼
+     위로 끌어올려 붙이고, 아래 내용이 비쳐 보이지 않도록 팝업과 같은 배경색을 깔아둠 */
+  .modal-sticky-head{ box-shadow:0 6px 8px -8px rgba(29,30,51,0.25); }
   .home-dash-card-link{ font-size:12px; font-weight:700; color:var(--indigo); white-space:nowrap; }
   /* 결재현황처럼 "내가 처리할 건수"가 바로 보이면 유용한 위젯의 제목 옆 카운트 배지 - 0건이면 숨김 */
   .home-dash-badge-count{
@@ -3406,7 +3409,7 @@
 </div>
 <div id="calAttendanceHistoryModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:720px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
-    <div style="position:relative; text-align:center; margin-bottom:10px;">
+    <div class="modal-sticky-head" style="position:sticky; top:-20px; z-index:5; background:var(--surface); margin:-20px 0 10px; padding:16px 0 10px; text-align:center;">
       <div style="font-weight:800; font-size:17px; color:var(--ink);">근태내역</div>
       <button type="button" id="calAttendanceHistoryModalClose" class="del-btn modal-close-btn" style="position:absolute; right:0; top:50%; transform:translateY(-50%);">✕</button>
     </div>
@@ -3432,7 +3435,7 @@
 </div>
 <div id="leaveHistoryModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:760px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
-    <div style="position:relative; text-align:center; margin-bottom:6px;">
+    <div class="modal-sticky-head" style="position:sticky; top:-20px; z-index:5; background:var(--surface); margin:-20px 0 10px; padding:16px 0 10px; text-align:center;">
       <div style="font-weight:800; font-size:17px; color:var(--ink);" id="leaveHistoryModalTitle">휴가 내역</div>
       <button type="button" id="leaveHistoryModalClose" class="del-btn modal-close-btn" style="position:absolute; right:0; top:50%; transform:translateY(-50%);">✕</button>
     </div>
@@ -3444,7 +3447,7 @@
      "이번달 재택근무" 카드를 눌러야만 뜸(renderAllRemoteHistory 참고) -->
 <div id="remoteHistoryModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:640px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
-    <div style="position:relative; text-align:center; margin-bottom:6px;">
+    <div class="modal-sticky-head" style="position:sticky; top:-20px; z-index:5; background:var(--surface); margin:-20px 0 10px; padding:16px 0 10px; text-align:center;">
       <div style="font-weight:800; font-size:17px; color:var(--ink);">재택 내역</div>
       <button type="button" id="remoteHistoryModalClose" class="del-btn modal-close-btn" style="position:absolute; right:0; top:50%; transform:translateY(-50%);">✕</button>
     </div>
@@ -10915,9 +10918,29 @@ function openLeaveScheduleModal(){
 // (키+날짜+일수)까지 일치하는 것"만 유효한 자동부여로 인정하고, 일치하지 않는 자동부여 항목(다른
 // 입사일 기준으로 잘못 들어온 것)은 정리한 뒤, 빠진 항목만 다시 채워넣음 - 수동으로 등록한 항목(!autoKey)은
 // 이 정리 대상이 아니라 항상 그대로 유지됨
+// "법정휴가가 엄청 추가됐다" - 자동 부여 항목이 매번 무작위 id(genId)로 만들어져서, 드라이브에서 받기 전에 먼저
+// 채워넣은 기기/탭이 있으면 병합(id 단위로 합침) 때 같은 자동부여가 서로 다른 id로 여러 벌 남았음. 이제
+// 자동 부여 id를 "auto-키-날짜"로 고정해서 어느 기기에서 만들어도 같은 항목으로 합쳐지게 하고, 이미 여러 벌
+// 생긴 건 같은 autoKey+날짜 중 하나만 남기고 정리함(수동 등록 항목은 건드리지 않음)
+function dedupeAutoGrants(att){
+  if(!att || !Array.isArray(att.leaveGrants)) return false;
+  const seen = new Set();
+  const before = att.leaveGrants.length;
+  // 고정 id(auto-...)를 가진 항목을 우선 남기도록 먼저 앞으로 정렬해서 살펴봄
+  const ordered = [...att.leaveGrants].sort((a,b)=> (String(b.id||'').startsWith('auto-')?1:0) - (String(a.id||'').startsWith('auto-')?1:0));
+  const keep = new Set();
+  ordered.forEach(g=>{
+    if(!g.autoKey){ keep.add(g); return; }
+    const sig = `${g.autoKey}|${g.date}`;
+    if(seen.has(sig)) return;
+    seen.add(sig); keep.add(g);
+  });
+  att.leaveGrants = att.leaveGrants.filter(g=>keep.has(g));
+  return att.leaveGrants.length !== before;
+}
 async function syncAutoGrants(){
   if(!settings.hireDate) return;
-  let changed = false;
+  let changed = dedupeAutoGrants(attendance);
   // 정리(유효성 검증)용으로는 미래 항목까지 넉넉히 포함해 계산 - 아직 today가 지나지 않은 정상 항목까지
   // "유효하지 않다"고 오판해 지우는 일이 없도록 함
   const farFuture = fmt(addYears(parseDate(settings.hireDate), 60));
@@ -10934,7 +10957,7 @@ async function syncAutoGrants(){
   const existingKeys = new Set(attendance.leaveGrants.filter(g=>g.autoKey).map(g=>g.autoKey));
   candidates.forEach(c=>{
     if(!existingKeys.has(c.autoKey)){
-      attendance.leaveGrants.push({id:genId(), date:c.date, type:c.type, days:c.days, memo:c.memo, autoKey:c.autoKey});
+      attendance.leaveGrants.push({id:`auto-${c.autoKey}-${c.date}`, date:c.date, type:c.type, days:c.days, memo:c.memo, autoKey:c.autoKey});
       changed = true;
     }
   });
@@ -30643,7 +30666,7 @@ function gdriveApplyMergedLocally(merged){
     if(ad){
       const rd = (k)=>{ try{ const v = localStorage.getItem(skey(k)); return v ? JSON.parse(v) : null; }catch(e){ return null; } };
       if(ad.settings){ const v = rd('settings'); if(v) settings = v; }
-      if(ad.attendance){ const v = rd('attendance'); if(v){ attendance = v; ['leaveGrants','leaveUsage','remoteEntries','clockLog'].forEach(k=>{ attendance[k] = attendance[k] || []; }); } }
+      if(ad.attendance){ const v = rd('attendance'); if(v){ attendance = v; ['leaveGrants','leaveUsage','remoteEntries','clockLog'].forEach(k=>{ attendance[k] = attendance[k] || []; }); if(typeof dedupeAutoGrants === 'function' && dedupeAutoGrants(attendance)){ try{ saveAttendance(); }catch(e){} } } }
       if(ad.expense){ const v = rd('expense'); if(v){ expense = v; ['lunchEntries','dinnerEntries','otherExpenses','taxiEntries','prepaidEntries'].forEach(k=>{ expense[k] = expense[k] || []; }); } }
       if(ad.schedule){ const v = rd('schedule'); if(v){ schedule = v; schedule.events = schedule.events || []; } }
     }
