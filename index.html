@@ -3242,8 +3242,19 @@
         <!-- 공가는 종류(사유)를 적으면 달력에 "공가(사유)"로 표시됨(일수 입력은 없음 - 하루 1일씩) -->
         <div class="field field-tile" id="publicReasonField" style="display:none; background:rgba(91,95,239,0.05);">
           <label>공가 종류</label>
-          <input type="text" id="u-public-reason" list="publicReasonOptions" placeholder="예: 건강검진, 예비군, 민방위" autocomplete="off">
-          <datalist id="publicReasonOptions"><option value="건강검진"></option><option value="예비군"></option><option value="민방위"></option><option value="병가"></option><option value="투표"></option></datalist>
+          <!-- 브라우저 기본 자동완성 목록(datalist)이 다른 입력칸과 모양이 달라 어색해서, 다른 칸들과 같은 select로
+               고르고 "직접 입력"을 고를 때만 입력칸이 나오게 함. 실제 값은 숨은 u-public-reason에 모아둠 -->
+          <select id="u-public-reason-select">
+            <option value="">선택 안 함</option>
+            <option value="건강검진">건강검진</option>
+            <option value="예비군">예비군</option>
+            <option value="민방위">민방위</option>
+            <option value="병가">병가</option>
+            <option value="투표">투표</option>
+            <option value="__etc">직접 입력</option>
+          </select>
+          <input type="text" id="u-public-reason-etc" placeholder="공가 종류 입력" autocomplete="off" style="display:none; margin-top:6px;">
+          <input type="hidden" id="u-public-reason">
         </div>
         <div class="field field-tile" id="familyPresetField" style="display:none; background:rgba(91,95,239,0.05);">
           <label>경조사 사유 (선택 시 일수 자동 입력)</label>
@@ -11261,7 +11272,7 @@ document.getElementById('calRegisterBtn')?.addEventListener('click', ()=>{
   document.getElementById('scheduleForm').querySelector('button[type="submit"]').textContent = '등록';
   document.getElementById('schedule-cancel').style.display = 'none';
   { const a = document.getElementById('sc-allday'); if(a) a.checked = false; const n = document.getElementById('sc-notify'); if(n) n.checked = true; syncScheduleFormToggles(); }
-  { const r = document.getElementById('u-public-reason'); if(r) r.value = ''; }
+  setPublicReasonForm('');
   resetUsageFormEditState();
   openCalRegisterModal('schedule');
 });
@@ -11787,7 +11798,7 @@ function renderAllLeaveHistory(monthOnly){
         if(en.subtype) document.getElementById('u-subtype').value = en.subtype;
         if(en.days) document.getElementById('u-days').value = en.days;
         document.getElementById('u-memo').value = en.memo || '';
-        document.getElementById('u-public-reason').value = en.publicReason || '';
+        setPublicReasonForm(en.publicReason);
       } else {
         // 여러 날짜가 하나의 기간으로 묶인 그룹(연차/포상휴가/경조사휴가/기타휴가만 이렇게 묶일 수 있음) -
         // 기존엔 이런 그룹은 수정 버튼이 아예 없어서 삭제 후 다시 등록해야만 했는데, 기간 입력 폼을 그
@@ -11801,7 +11812,7 @@ function renderAllLeaveHistory(monthOnly){
         document.getElementById('u-type').value = entries[0].type;
         document.getElementById('u-type').dispatchEvent(new Event('change'));
         document.getElementById('u-memo').value = entries[0].memo || '';
-        document.getElementById('u-public-reason').value = entries[0].publicReason || '';
+        setPublicReasonForm(entries[0].publicReason);
       }
       updateEndDateVisibility();
       // 휴가 폼에서는 당겨쓰기 입력이 빠져서 u-advance가 항상 숨겨진 채 체크 해제된 상태이고(updateAdvanceFieldVisibility),
@@ -12057,7 +12068,7 @@ function renderAttendance(){
         if(en.subtype) document.getElementById('u-subtype').value = en.subtype;
         if(en.days) document.getElementById('u-days').value = en.days;
         document.getElementById('u-memo').value = en.memo || '';
-        document.getElementById('u-public-reason').value = en.publicReason || '';
+        setPublicReasonForm(en.publicReason);
         // 휴가 폼에는 당겨쓰기 입력이 없어져서(updateAdvanceFieldVisibility가 항상 숨김) 여기서 따로 채우지 않음 -
         // 기존 en.advance 값은 건드리지 않고 그대로 유지됨
         document.getElementById('usageForm').querySelector('button[type="submit"]').textContent = '수정 완료';
@@ -19693,6 +19704,28 @@ rTypeSelect.addEventListener('change', updateAdvanceFieldVisibility);
 rHalfSelect.addEventListener('change', ()=>{ syncRemoteTypeOptions(); updateAdvanceFieldVisibility(); });
 document.getElementById('u-single-day').addEventListener('change', updateEndDateVisibility);
 updateUsageKindFields();
+// 공가 종류 select ↔ 숨은 값(u-public-reason) 동기화 - 저장·수정 코드는 u-public-reason 값만 읽고 씀
+const PUBLIC_REASON_PRESETS = ['건강검진','예비군','민방위','병가','투표'];
+function syncPublicReasonHidden(){
+  const sel = document.getElementById('u-public-reason-select');
+  const etc = document.getElementById('u-public-reason-etc');
+  const hid = document.getElementById('u-public-reason');
+  if(!sel || !etc || !hid) return;
+  etc.style.display = sel.value === '__etc' ? '' : 'none';
+  hid.value = sel.value === '__etc' ? etc.value.trim() : sel.value;
+}
+function setPublicReasonForm(v){
+  const sel = document.getElementById('u-public-reason-select');
+  const etc = document.getElementById('u-public-reason-etc');
+  if(!sel || !etc) return;
+  v = (v||'').trim();
+  if(!v){ sel.value = ''; etc.value = ''; }
+  else if(PUBLIC_REASON_PRESETS.includes(v)){ sel.value = v; etc.value = ''; }
+  else { sel.value = '__etc'; etc.value = v; }
+  syncPublicReasonHidden();
+}
+document.getElementById('u-public-reason-select')?.addEventListener('change', ()=>{ syncPublicReasonHidden(); if(document.getElementById('u-public-reason-select').value==='__etc') document.getElementById('u-public-reason-etc').focus(); });
+document.getElementById('u-public-reason-etc')?.addEventListener('input', syncPublicReasonHidden);
 familyPresetSelect.addEventListener('change', ()=>{
   if(!familyPresetSelect.value) return;
   document.getElementById('u-days').value = familyPresetSelect.value;
@@ -19751,6 +19784,7 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
     const subtype = (type === '반차' || type === '반반차') ? document.getElementById('u-subtype').value : null;
     const isSpecial = SPECIAL_LEAVE_TYPES.includes(type);
     const days = type === '공가' ? 1 : (isSpecial ? (Number(document.getElementById('u-days').value) || 1) : null);
+    syncPublicReasonHidden();
     const publicReason = type === '공가' ? (document.getElementById('u-public-reason').value || '').trim() : '';
     const reasonExtra = publicReason ? { publicReason } : {};
 
@@ -19828,7 +19862,7 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
     setTimeout(()=>document.getElementById('usageSaveMsg').textContent='',1800);
     document.getElementById('u-memo').value='';
     document.getElementById('u-end-date').value='';
-    document.getElementById('u-public-reason').value='';
+    setPublicReasonForm('');
     closeCalRegisterModal();
     renderAll();
   } else {
@@ -31572,7 +31606,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 00:45';
+const APP_BUILD = '2026.09.29 00:57';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -33247,7 +33281,7 @@ function renderOrgChartView(){
 // 따로 만듦. 팀마다 다른 포인트색을 순서대로 돌려써서("컬러감있게") 한눈에 팀이 구분되게 함
 const ORG_CHART_PRINT_COLORS = ['#5B5FEF','#0FB88A','#F0A93B','#F0506E','#3D9CF0','#8B5CF6','#EA580C','#0EA5E9'];
 // 시안 A(계층형 트리)로 바꿈 - 회사 → 대표회계사 → [회계사팀 | 소속회계사 | 경영지원실·고문실·기타] 세 갈래로
-// 선이 이어지는 구조. 회계사팀 안에서는 팀장(팀장 지정된 회계사)을 맨 위에 "팀장"으로 표시함
+// 선이 이어지는 구조. 회계사팀 안에서는 팀장(팀장 지정된 회계사)을 맨 위에 두되 직책은 그대로 "회계사"로 표시함
 function orgChartPrintHtml(){
   const groups = orgChartGroups();
   if(!groups.length) return `<div style="text-align:center; color:#75789A; padding:40px 0;">좌석배치도에 이름을 채우면 여기 조직도에 나와요.</div>`;
@@ -33267,7 +33301,7 @@ function orgChartPrintHtml(){
     const leadName = (g.team.endsWith('팀') ? g.team.slice(0,-1) : '');
     const isLead = m => m.name === leadName && byName[m.name] && byName[m.name].isLead;
     const sorted = [...g.members].sort((x,y)=> (isLead(y)?1:0) - (isLead(x)?1:0));
-    return `<div class="opa-team"><b>${escHtml(g.team)}</b>${sorted.map(m=>memberRow(m, isLead(m) ? '팀장' : m.position)).join('')}</div>`;
+    return `<div class="opa-team"><b>${escHtml(g.team)}</b>${sorted.map(m=>memberRow(m, m.position)).join('')}</div>`;
   }).join('');
   const divisions = [];
   if(teamGroups.length) divisions.push(`<div class="opa-div opa-div-side"><div class="opa-v"></div><div class="opa-head wide" style="background:#5B5FEF;">회계사팀 (${teamGroups.length}팀)</div><div class="opa-teams">${teamCards}</div></div>`);
@@ -33294,8 +33328,8 @@ function orgChartPrintHtml(){
     <div class="opa-divs">${divisions.join('')}</div>
   </div>
   <style>
-    /* 조직도 출력엔 제목 아래 구분선(print-bar)을 쓰지 않음 */
-    .print-header .print-bar{ display:none; }
+    /* 조직도 출력엔 위쪽 회사명·구분선은 빼고 "조직도" 제목만 남김 - 회사명은 트리 맨 위 상자에 이미 있음 */
+    .print-header h1, .print-header .print-bar{ display:none; }
     .opa-root{ width:max-content; margin:0 auto; text-align:left; }
     .opa-ceo{ margin:0 auto; width:max-content; background:#1D1E33; color:#fff; border-radius:10px; padding:10px 26px; font-weight:800; font-size:15px; }
     .opa-v{ width:2px; height:16px; background:#C7C9DA; margin:0 auto; }
@@ -33826,8 +33860,8 @@ function printHtmlSection(docTitle, subtitle, bodyHtml){
       #printFitWrap{ display:inline-block; }
       /* 인쇄 전에 화면으로 먼저 크게 보고 확인할 수 있게, 창을 열면 바로 인쇄창을 띄우지 않고 위에 인쇄 버튼을 둠
          (화면에선 원래 크기, 실제 인쇄할 때만 한 장에 맞게 축소) */
-      .print-toolbar{ position:sticky; top:0; z-index:10; display:flex; justify-content:center; gap:8px; padding:10px 0; margin:-14px -18px 14px; background:rgba(255,255,255,0.95); border-bottom:1px solid #E2E3EE; }
-      .print-toolbar button{ font-family:inherit; font-size:13px; font-weight:800; border-radius:10px; padding:8px 18px; cursor:pointer; border:1.5px solid #D5D7E6; background:#fff; color:#1D1E33; }
+      .print-toolbar{ position:sticky; top:0; z-index:10; display:flex; justify-content:center; gap:6px; padding:7px 0; margin:-14px -18px 14px; background:rgba(255,255,255,0.95); border-bottom:1px solid #E2E3EE; }
+      .print-toolbar button{ font-family:inherit; font-size:11.5px; font-weight:700; border-radius:7px; padding:4px 12px; cursor:pointer; border:1.5px solid #D5D7E6; background:#fff; color:#1D1E33; }
       .print-toolbar button.primary{ background:#5B5FEF; border-color:#5B5FEF; color:#fff; }
       @media print{ @page{ size:landscape; margin:10mm; } .print-toolbar{ display:none !important; } }
     </style></head><body>
