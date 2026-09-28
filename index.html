@@ -1554,6 +1554,14 @@
   /* 사내정보(법인/팀)는 거래처 목록처럼 데이터가 쭉 나열되는 화면이 아니라 항목 수가 적은 정보성 화면이라
      페이지 전체 폭을 다 쓰지 않고 적당히 좁은 폭으로 가운데 정렬함 */
   .ci-view{ max-width:760px; margin:0 auto; }
+  /* ── 모바일 배치(휴대폰에서 "PC 화면 보기"를 끈 상태, html.is-touch-device)에서만 적용 - PC 화면은 그대로 ── */
+  /* 출퇴근현황: "연간 전체보기" 버튼이 오른쪽에 겹쳐 떠 있어서 좁은 화면에선 "총 근무시간" 글자를 가렸음 - 아래 줄로 내림 */
+  .is-touch-device #clockYearlyOverviewBtn{ position:static !important; transform:none !important; display:inline-flex; margin:0; }
+  /* 내규(복리후생·인사지침·운영지침) 제목줄: 오른쪽 아이콘들이 제목과 겹쳐 "Quick Gui"처럼 잘렸음 - 아이콘을 제목 아래 줄 가운데로 */
+  .is-touch-device .policy-title-row{ flex-direction:column; gap:6px; }
+  .is-touch-device .policy-title-chips{ position:static; transform:none; }
+  /* 내규 표: 좁은 칸에서 "상/반/기"처럼 한 글자씩 줄이 바뀌던 것 - 단어 단위로만 줄바꿈 */
+  .is-touch-device .policy-table th, .is-touch-device .policy-table td{ word-break:keep-all; }
   .review-timing-note{ font-size:11.5px; font-weight:700; color:#B4830E; background:var(--amber-bg); border-radius:8px; padding:3px 10px; }
   .pc-only-blocked > :not(.pc-only-notice){ display:none !important; }
   .pc-only-notice{ text-align:center; padding:28px 16px; color:var(--ink-soft); }
@@ -27462,13 +27470,17 @@ let floatPopupZ = 10000;
 let floatPopupOpenCount = 0;
 function openDraggablePopup(opts){
   const { title, html, width } = opts;
-  const cascade = (floatPopupOpenCount % 6) * 26;
+  const w = width || 460;
+  // 팝업 폭이 화면보다 넓으면(휴대폰에서 좌석배치도·이력 팝업 등) 실제 폭은 92vw로 줄어드는데, 가운데 정렬 계산은
+  // 원래 폭 기준이라 팝업이 화면 왼쪽 밖으로 밀려났음 - 실제로 보일 폭 기준으로 가운데 정렬하고, 좁은 화면에선
+  // 여러 개 열 때의 계단식 어긋남(cascade)도 없앰. PC처럼 화면이 넉넉하면 예전과 완전히 같음
+  const narrow = window.innerWidth < w + 40;
+  const cascade = narrow ? 0 : (floatPopupOpenCount % 6) * 26;
   floatPopupOpenCount++;
   const el = document.createElement('div');
   el.className = 'floating-popup';
-  const w = width || 460;
   el.style.top = (70 + cascade) + 'px';
-  el.style.left = `calc(50% - ${w/2}px + ${cascade}px)`;
+  el.style.left = `calc(50% - min(${w}px, 92vw) / 2 + ${cascade}px)`;
   el.style.width = w + 'px';
   el.style.maxWidth = '92vw';
   el.style.zIndex = String(++floatPopupZ);
@@ -29875,7 +29887,7 @@ function setGdriveSyncingIndicator(active){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.28 09:45';
+const APP_BUILD = '2026.09.28 10:10';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
