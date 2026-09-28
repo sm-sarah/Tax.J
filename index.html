@@ -8272,7 +8272,13 @@ function gdriveMergeValue(base, local, remote){
       // 기기 이름을 바꾼 뒤 회사 PC가 접속하면서 기기목록을 저장하면, 회사 PC 쪽 목록이 통째로 이겨서 집에서
       // 바꾼 이름이 사라졌음("집에서 이름 등록했는데 회사에서 보니 없어졌다")
       const idArrays = gdriveArrayAllHaveIds(local[k]) && gdriveArrayAllHaveIds(remote[k]);
-      if(localFieldTimes && remoteFieldTimes && !idArrays && !gdriveDeepEqual(local[k], remote[k])){
+      // 거래처별로 묶인 저장소(신고구분 이력 filingCycles, 신고대상 filingTargets 등)도 같은 이유로 통째로
+      // 고르지 않고 거래처·항목 단위로 합침 - "미대상으로 등록했는데 다시 미등록으로 돌아간다"는 제보의 원인:
+      // 다른 PC(또는 다른 직원)가 그 사이에 다른 거래처의 신고구분을 저장하면, 더 나중에 저장한 쪽 묶음
+      // 전체가 이겨서 이 PC에서 방금 등록한 거래처들이 통째로 사라졌음. (updatedAt 같은 시각 필드가 있는
+      // 객체는 gdriveMergeValue 안에서 여전히 "더 나중 것" 기준으로 통째로 고름)
+      const maps = gdriveIsPlainObject(local[k]) && gdriveIsPlainObject(remote[k]);
+      if(localFieldTimes && remoteFieldTimes && !idArrays && !maps && !gdriveDeepEqual(local[k], remote[k])){
         const ltime = localFieldTimes[k] ? new Date(localFieldTimes[k]).getTime() : NaN;
         const rtime = remoteFieldTimes[k] ? new Date(remoteFieldTimes[k]).getTime() : NaN;
         if(!isNaN(ltime) && !isNaN(rtime) && ltime !== rtime){ out[k] = rtime > ltime ? remote[k] : local[k]; return; }
@@ -29994,7 +30000,7 @@ function setGdriveSyncingIndicator(active){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.28 12:20';
+const APP_BUILD = '2026.09.28 12:30';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
