@@ -9731,7 +9731,7 @@ function renderAdminCalendar(){
       // 윗줄 핀 아이콘 + "특별기간) 내용", 아랫줄 시계(선) 아이콘 + 시간 - 두 줄 모두 아이콘 뒤 글자 시작을 맞춤
       const spLine = (icon, txt, extra)=> `<span style="display:flex; gap:4px; align-items:flex-start;${extra||''}"><span style="flex-shrink:0;">${icon}</span><span style="min-width:0;">${txt}</span></span>`;
       const label = isStart
-        ? spLine(calIconSvg('pin'), `특별기간)${row.content ? ' '+escHtml(row.content) : ''}`) + (timeParts.length ? spLine(calIconSvg('subarrow'), timeParts.join(' · '), ' font-size:0.88em; font-weight:600; color:var(--ink-soft);') : '')
+        ? spLine(calIconSvg('pin'), `특별기간)${row.content ? ' '+escHtml(row.content) : ''}`) + (timeParts.length ? spLine(calIconSvg('subarrow'), timeParts.join(' · '), ' font-size:0.88em; font-weight:600; color:var(--ink-soft); padding-left:calc(16px + 2.27em);') : '')
         : (timeParts.length ? '&nbsp;<br>&nbsp;' : '&nbsp;');
       (byDate[dateStr]=byDate[dateStr]||[]).push(`<span class="cal-badge schedule cal-badge-span" style="display:block; text-align:${isStart?'left':'center'}; ${radiusStyle} ${marginStyle} position:relative; z-index:1;">${label}</span>`);
     });
@@ -12474,7 +12474,7 @@ function renderCalendar(){
       // 윗줄 핀 아이콘 + "특별기간) 내용", 아랫줄 시계(선) 아이콘 + 시간 - 두 줄 모두 아이콘 뒤 글자 시작을 맞춤
       const spLine = (icon, txt, extra)=> `<span style="display:flex; gap:4px; align-items:flex-start;${extra||''}"><span style="flex-shrink:0;">${icon}</span><span style="min-width:0;">${txt}</span></span>`;
       const label = isStart
-        ? spLine(calIconSvg('pin'), `특별기간)${row.content ? ' '+escHtml(row.content) : ''}`) + (timeParts.length ? spLine(calIconSvg('subarrow'), timeParts.join(' · '), ' font-size:0.88em; font-weight:600; color:var(--ink-soft);') : '')
+        ? spLine(calIconSvg('pin'), `특별기간)${row.content ? ' '+escHtml(row.content) : ''}`) + (timeParts.length ? spLine(calIconSvg('subarrow'), timeParts.join(' · '), ' font-size:0.88em; font-weight:600; color:var(--ink-soft); padding-left:calc(16px + 2.27em);') : '')
         : (timeParts.length ? '&nbsp;<br>&nbsp;' : '&nbsp;');
       badges += `<span class="cal-badge schedule cal-badge-span" style="display:block; text-align:${isStart?'left':'center'}; ${radiusStyle} ${marginStyle} position:relative; z-index:1;">${label}</span>`;
     });
@@ -31514,7 +31514,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 00:12';
+const APP_BUILD = '2026.09.29 00:20';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -33207,17 +33207,19 @@ function orgChartPrintHtml(){
     return `<div class="opa-team"><b>${escHtml(g.team)}</b>${sorted.map(m=>memberRow(m, isLead(m) ? '팀장' : m.position)).join('')}</div>`;
   }).join('');
   const divisions = [];
-  if(teamGroups.length) divisions.push(`<div class="opa-div" style="flex:1.35;"><div class="opa-v"></div><div class="opa-head" style="background:#5B5FEF;">회계사팀 (${teamGroups.length}팀)</div><div class="opa-teams">${teamCards}</div></div>`);
+  if(teamGroups.length) divisions.push(`<div class="opa-div opa-div-side"><div class="opa-v"></div><div class="opa-head wide" style="background:#5B5FEF;">회계사팀 (${teamGroups.length}팀)</div><div class="opa-teams">${teamCards}</div></div>`);
   if(staff.length) divisions.push(`<div class="opa-div"><div class="opa-v"></div><div class="opa-head" style="background:#0FB88A;">소속회계사 (${staff.length}명)</div>${listBox(staff)}</div>`);
   if(mgmt.length || misc.length || unassigned.length){
-    let right = '';
-    if(mgmt.length) right += `<div class="opa-head" style="background:#F0A93B;">경영지원실 (${mgmt.length}명)</div>${listBox(mgmt)}`;
+    // 오른쪽 갈래는 경영지원실 | 고문실·기타를 나란히 두 칸으로(미지정은 그 아래) - 왼쪽 회계사팀과 폭을 맞춰
+    // 가운데 소속회계사가 대표회계사 바로 아래에 오도록 좌우 대칭을 맞춤
+    const subs = [];
+    if(mgmt.length) subs.push(`<div class="opa-sub"><div class="opa-head" style="background:#F0A93B;">경영지원실 (${mgmt.length}명)</div>${listBox(mgmt)}</div>`);
     if(misc.length){
       const miscTitle = [get('고문실').length ? '고문실' : '', get('기타').length ? '기타' : ''].filter(Boolean).join(' · ');
-      right += `<div class="opa-head" style="background:#F0506E;${right?' margin-top:10px;':''}">${miscTitle} (${misc.length}명)</div>${listBox(misc)}`;
+      subs.push(`<div class="opa-sub"><div class="opa-head" style="background:#F0506E;">${miscTitle} (${misc.length}명)</div>${listBox(misc)}</div>`);
     }
-    if(unassigned.length) right += `<div class="opa-head" style="background:#75789A;${right?' margin-top:10px;':''}">미지정 (${unassigned.length}명)</div>${listBox(unassigned)}`;
-    divisions.push(`<div class="opa-div"><div class="opa-v"></div>${right}</div>`);
+    if(unassigned.length) subs.push(`<div class="opa-sub"><div class="opa-head" style="background:#75789A;">미지정 (${unassigned.length}명)</div>${listBox(unassigned)}</div>`);
+    divisions.push(`<div class="opa-div opa-div-side"><div class="opa-v"></div><div class="opa-subs">${subs.join('')}</div></div>`);
   }
   const repsHtml = ceos.length
     ? `<div class="opa-v"></div><div class="opa-reps">${ceos.map(m=>`<div class="opa-rep">${escHtml(m.name)}<small>대표회계사</small></div>`).join('')}</div>`
@@ -33229,17 +33231,33 @@ function orgChartPrintHtml(){
     <div class="opa-divs">${divisions.join('')}</div>
   </div>
   <style>
-    .opa-root{ width:1040px; margin:0 auto; text-align:left; }
+    /* 조직도 출력엔 제목 아래 구분선(print-bar)을 쓰지 않음 */
+    .print-header .print-bar{ display:none; }
+    .opa-root{ width:max-content; margin:0 auto; text-align:left; }
     .opa-ceo{ margin:0 auto; width:max-content; background:#1D1E33; color:#fff; border-radius:10px; padding:10px 26px; font-weight:800; font-size:15px; }
     .opa-v{ width:2px; height:16px; background:#C7C9DA; margin:0 auto; }
     .opa-reps{ display:flex; justify-content:center; gap:10px; }
     .opa-rep{ border:2px solid #1D1E33; border-radius:10px; padding:6px 16px; font-weight:800; font-size:13px; background:#F4F4FA; }
     .opa-rep small{ color:#75789A; font-weight:600; margin-left:4px; font-size:11px; }
-    .opa-divs{ display:flex; justify-content:space-between; gap:14px; align-items:flex-start; }
-    .opa-div{ flex:1; display:flex; flex-direction:column; min-width:0; position:relative; }
+    /* 세 갈래를 같은 폭으로 나눠서 가운데 갈래가 대표회계사 바로 아래에 오게 함(가지 위치가 좌우 대칭),
+       각 갈래 안의 상자는 내용 폭(이름-직책 간격이 과하게 벌어지지 않는 정도)으로 가운데 정렬 */
+    .opa-divs{ display:grid; grid-auto-flow:column; grid-auto-columns:max-content; justify-content:center; column-gap:24px; align-items:start; }
+    .opa-div{ display:flex; flex-direction:column; align-items:center; min-width:0; position:relative; }
+    .opa-div-side{ width:330px; }
+    .opa-div > .opa-head, .opa-div > .opa-box{ width:180px; }
+    .opa-div > .opa-head.wide, .opa-div > .opa-teams{ width:330px; }
+    .opa-subs{ display:grid; grid-template-columns:1fr 1fr; gap:8px; width:330px; }
+    .opa-subs .opa-head{ font-size:12px; padding:7px 6px; }
+    /* 오른쪽 갈래에서 두 칸(경영지원실 | 고문실·기타)으로 한 번 더 갈라지는 가지 */
+    .opa-sub{ position:relative; }
+    .opa-subs > .opa-sub:nth-child(-n+2){ padding-top:10px; }
+    .opa-subs > .opa-sub:nth-child(-n+2)::after{ content:''; position:absolute; top:0; left:50%; width:2px; height:10px; background:#C7C9DA; }
+    .opa-subs > .opa-sub:nth-child(1)::before{ content:''; position:absolute; top:0; left:50%; right:-4px; height:2px; background:#C7C9DA; }
+    .opa-subs > .opa-sub:nth-child(2)::before{ content:''; position:absolute; top:0; left:-4px; right:50%; height:2px; background:#C7C9DA; }
+    .opa-subs > .opa-sub:only-child::before{ display:none; }
     /* 갈래를 잇는 가로선 - 각 갈래 위에 선을 깔고, 첫 갈래는 가운데부터·마지막 갈래는 가운데까지만 그려서
        갈래 가운데의 세로선들과 정확히 이어지게 함 */
-    .opa-divs > .opa-div::before{ content:''; position:absolute; top:0; left:-7px; right:-7px; height:2px; background:#C7C9DA; }
+    .opa-divs > .opa-div::before{ content:''; position:absolute; top:0; left:-12px; right:-12px; height:2px; background:#C7C9DA; }
     .opa-divs > .opa-div:first-child::before{ left:50%; }
     .opa-divs > .opa-div:last-child::before{ right:50%; }
     .opa-divs > .opa-div:only-child::before{ display:none; }
