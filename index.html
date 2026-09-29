@@ -16216,6 +16216,8 @@ async function activateTab(tabName, pushHistory){
   // "직원선택" 팝업(캘린더/근태현황/출퇴근현황에서 다른 직원 것을 보려고 띄우는 팝업)은 다른 메뉴로 넘어가면
   // 의미가 없어지는데 닫기 버튼을 직접 눌러야만 없어졌음 - 탭이 바뀌는 순간 열려있으면 같이 닫아줌
   if(tabName !== currentActiveTabName) document.querySelector('.cal-owner-switch-popup')?.remove();
+  // 사내정보에서 띄운 조직도(상세)·좌석배치도 팝업도 다른 메뉴로 넘어가면 같이 닫음
+  if(tabName !== currentActiveTabName) document.querySelectorAll('.floating-popup[data-ci-chart="1"]').forEach(p=> p.querySelector('.floating-popup-close')?.click());
   // 관리자가 개인캘린더/근태경비/출퇴근현황에서 다른 직원을 보다가 그 화면을 벗어나면, 기억해둔 "보던 사람"을
   // 지워서 다음에 이 화면에 다시 들어왔을 때는 항상 본인 계정부터 보이게 함(다른 직원을 계속 보고 있다는
   // 걸 잊고 실수로 등록/수정하는 걸 막기 위함) - 같은 화면 안에서의 이동(예: 탭은 그대로인 채 월만 바뀜)엔
@@ -29304,7 +29306,7 @@ document.getElementById('githubDeployFile')?.addEventListener('change', function
   // 착각할 수 있었음 - 새 파일을 고르는 순간 그 문구를 지우고, 아직 배포 버튼을 누르기 전이라는 걸 알 수
   // 있게 "업로드 완료" 문구로 바꿔줌
   const msgEl = document.getElementById('githubDeployMsg');
-  if(msgEl) msgEl.textContent = githubDeploySelectedFile ? `업로드 완료: ${githubDeploySelectedFile.name} (아직 배포 전이에요)` : '';
+  if(msgEl) msgEl.textContent = githubDeploySelectedFile ? `업로드 완료: ${githubDeploySelectedFile.name} (배포하세요)` : '';
   githubDeployUpdateBtnState();
 });
 // 문자열(UTF-8, 한글 포함)을 GitHub Contents API가 요구하는 base64로 안전하게 변환
@@ -31606,7 +31608,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 09:50';
+const APP_BUILD = '2026.09.29 09:58';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -33413,6 +33415,7 @@ function openCiChartPopup(kind){
   const body = (src ? src.innerHTML : '').replace(/id="seatChartPrintArea"/g, '');
   const html = `<div class="ci-pop-actions"><button type="button" class="ci-pop-settings" title="설정으로 이동">${gear}</button><button type="button" class="ci-pop-print" title="인쇄">${printer}</button></div><div style="overflow:auto; max-height:72vh;">${body}</div>`;
   const el = openDraggablePopup({ title: isSeat ? '좌석배치도' : '조직도(상세)', html, width: isSeat ? 980 : 720 });
+  el.dataset.ciChart = '1'; // 다른 메뉴로 이동하면 자동으로 닫히게 표시(activateTab 참고)
   // 조직도 팝업은 제목을 가운데로 - 오른쪽 닫기 버튼 폭만큼 왼쪽을 비워서 정확히 가운데에 오게 함
   if(!isSeat){
     const titleEl = el.querySelector('.floating-popup-header > span');
