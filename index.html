@@ -1710,8 +1710,11 @@
   /* 경영지원실 - 직원별 카드(연락처 + 담당 업무) */
   /* 직원 수와 상관없이 "경영지원실" 제목 기준 가운데로 모이게(flex 가운데 정렬, 카드 폭 고정) */
   .hr-card-grid{ display:flex; flex-wrap:wrap; justify-content:center; gap:12px; }
-  .hr-card-grid > .hr-card{ flex:0 1 250px; min-width:220px; }
-  .hr-card-memo{ font-size:11.5px; color:var(--ink-soft); margin-top:10px; padding-top:8px; border-top:1px dashed var(--border); white-space:pre-wrap; overflow-wrap:anywhere; }
+  .hr-card-grid > .hr-card{ flex:0 1 250px; min-width:220px; display:flex; flex-direction:column; min-height:320px; }
+  .hr-card-grid > .hr-card > .hr-card-duties, .hr-card-grid > .hr-card > .hr-card-empty{ flex:1 1 auto; }
+  /* 메모 - 카드 맨 아래에 고정 높이(3줄)로, 비어있어도 자리를 차지해서 카드끼리 메모 칸이 나란히 맞음 */
+  .hr-card-memo{ font-size:11.5px; line-height:1.5; color:var(--ink-soft); margin-top:auto; padding-top:8px; border-top:1px dashed var(--border); white-space:pre-wrap; overflow-wrap:anywhere; min-height:calc(11.5px * 1.5 * 3 + 8px); box-sizing:border-box; }
+  .hr-card-grid > .hr-card > .hr-card-memo{ margin-top:10px; }
   .hr-card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px 16px; box-shadow:0 1px 2px rgba(29,30,51,.04); text-align:left; }
   .hr-card-name{ font-weight:800; font-size:14px; color:var(--ink); display:flex; align-items:center; gap:6px; }
   .hr-card-title{ font-size:11px; font-weight:700; color:var(--indigo-deep); background:var(--indigo-bg); border-radius:999px; padding:2px 8px; }
@@ -7831,6 +7834,15 @@ function pushNotificationLogEntry({type, title, body, targetEmail, relatedId, ic
   // 사람의 브라우저에서) 반복 호출되기 때문에, 여기서 막아줘야 알림함이 같은 항목으로 도배되지 않음
   const dupKey = `${type}|${relatedId}|${email}`;
   if((sharedNotificationLog||[]).some(n => `${n.type}|${n.relatedId}|${n.targetEmail}` === dupKey)) return;
+  // 팀 일정은 등록한 사람이 지웠다가 같은 날 같은 내용으로 다시 등록하면(또는 다른 기기 동기화로 항목 id가 바뀌면)
+  // relatedId만 달라져서 이미 본 알림이 새 알림으로 또 떴음 - 같은 사람·같은 날짜·같은 제목의 알림이 이미 있으면 새로 만들지 않음
+  if(type === 'team-schedule'){
+    const sameContent = n => n && n.type === type && (n.targetEmail||'') === email && (n.author||'') === (author||'') && String(n.eventAt||'') === String(eventAt||'') && (n.title||'') === (title||'');
+    if((sharedNotificationLog||[]).some(sameContent)) return;
+    if((sharedTrash||[]).some(t => t && t.type === 'notification' && sameContent(t.data))) return;
+  }
+  // 기간이 지나 휴지통으로 옮겨진 알림과 같은 건이면 새로 만들지 않음(이미 한 번 알린 일정을 새 알림으로 또 띄우지 않게)
+  if((sharedTrash||[]).some(t => t && t.type === 'notification' && t.data && `${t.data.type}|${t.data.relatedId}|${t.data.targetEmail}` === dupKey)) return;
   const newEntry = { id: notificationIdFor(dupKey), type: type||'', icon: icon||'', title: title||'', body: body||'', author: author||'', targetEmail: email, relatedId: relatedId||'', eventAt: eventAt||'', createdAt: new Date().toISOString() };
   sharedNotificationLog.unshift(newEntry);
   if(sharedNotificationLog.length > 1000) sharedNotificationLog.length = 1000;
@@ -7957,8 +7969,10 @@ function sweepExpiredNotifications(){
   const expired = (sharedNotificationLog||[]).filter(n=>{
     const t = new Date(n.createdAt||'').getTime();
     if(isNaN(t) || t >= cutoff) return false;
-    // 지움 표시는 그 일정 날짜가 지난 뒤에만 정리(아직 다가오는 일정이면 정리하는 순간 알림이 다시 만들어짐)
-    if(n.deleted && n.eventAt && String(n.eventAt).slice(0,10) >= today0) return false;
+    // 아직 다가오는 일정(eventAt이 오늘 이후)의 알림은 30일이 지나도 정리하지 않음 - 예전엔 한 달 전에 미리 등록한
+    // 재택·휴가 알림이 30일이 지나 정리되는 순간, 팀 일정 확인(checkNewTeamScheduleForBrowserNotify)이 "처음 보는
+    // 일정"으로 다시 만들어서 이미 본 알림이 새 알림(안읽음·푸시)으로 또 떴음. 일정 날짜가 지난 뒤에만 정리함
+    if(n.eventAt && String(n.eventAt).slice(0,10) >= today0) return false;
     return true;
   });
   if(!expired.length) return;
@@ -10198,12 +10212,19 @@ function notificationMainText(n){
       return leaveTeamCalShortType(doc.leaveType, doc.leaveSubtype);
     }
   }
-  return stripRedundantTitlePrefix(stripLeadingEmoji(n.title||''));
+  const t = stripRedundantTitlePrefix(stripLeadingEmoji(n.title||''));
+  // 팀 일정은 제목 뒤에 일정 날짜를 "(10/8)"처럼 붙임 - 오른쪽 아래는 알림 온 시각이라 일정 날짜는 여기서 보여줌
+  if(n.type === 'team-schedule' && n.eventAt){
+    const m = String(n.eventAt).match(/^\d{4}-(\d{2})-(\d{2})/);
+    if(m) return `${t} (${Number(m[1])}/${Number(m[2])})`;
+  }
+  return t;
 }
 // eventAt(실제 기안/결정/공지 시각)이 있으면 그대로 쓰고, 옛날 방식으로 남아있던 항목만 createdAt(알림이
 // 처음 기록된 시각)으로라도 보여줌 - fixNotificationLogEntries()가 로딩 때 대부분 eventAt으로 보정해줌
 function notificationTimeLabel(n){
-  if(n.eventAt) return n.eventAt;
+  // 팀 일정의 eventAt은 "일정 날짜"(예: 2026-10-08)라 알림 시각이 아님 - 알림이 온 시각(createdAt)을 보여줌
+  if(n.eventAt && n.type !== 'team-schedule') return n.eventAt;
   const t = new Date(n.createdAt||'');
   if(isNaN(t.getTime())) return '';
   return t.toLocaleString('ko-KR');
@@ -32775,7 +32796,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 16:55';
+const APP_BUILD = '2026.09.29 17:15';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -35518,7 +35539,8 @@ function renderHrTeamView(){
     const duties = (s.duties||[]).length
       ? `<ul class="hr-card-duties">${s.duties.map(d=>`<li>${escHtml(d)}</li>`).join('')}</ul>`
       : `<div class="hr-card-empty">등록된 담당 업무가 없어요.</div>`;
-    const memo = s.memo ? `<div class="hr-card-memo">${escHtml(s.memo)}</div>` : '';
+    // 메모 칸은 비어있어도 카드 맨 아래 고정 높이로 항상 둠 - 카드마다 메모 위치·크기가 같게
+    const memo = `<div class="hr-card-memo">${escHtml(s.memo||'')}</div>`;
     return `<div class="hr-card"><div class="hr-card-name">${escHtml(s.name)}${s.title ? `<span class="hr-card-title">${escHtml(s.title)}</span>` : ''}</div><div class="hr-card-contact">${contact}</div>${duties}${memo}</div>`;
   }).join('');
   const left = hrLeftoverDuties();
