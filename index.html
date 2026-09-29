@@ -2957,8 +2957,15 @@
     body *{visibility:hidden;}
     #printArea, #printArea *{visibility:visible;}
     #printArea{display:block; position:absolute; left:0; top:0; width:100%;}
+    /* 근태달력만 가로 용지로 뽑으려면(named page) 인쇄 영역이 문서 흐름 안에 있어야 해서, 인쇄할 땐 나머지
+       화면 요소를 아예 빼고(display:none) 인쇄 영역을 일반 흐름(static)으로 둠 */
+    body > *:not(#printArea){display:none !important;}
+    #printArea{position:static;}
     body{background:#fff;}
     @page{ margin:15mm; }
+    /* 지출결의서와 같이 인쇄할 때 근태달력 쪽만 가로 용지로 - 칸이 넓어져 내용이 두 줄로 쪼개지지 않게 */
+    @page calLandscape{ size:A4 landscape; margin:10mm 12mm; }
+    .cal-landscape-page{ page:calLandscape; }
   }
 
   /* ══ 사이드바 B 스타일(개인웹 모양 + Tax.J 색) - "PC는 보여준 예시대로, 휴대폰은 평소 하단 메뉴 줄만" 요청 ══
@@ -16170,7 +16177,7 @@ function buildCalendarHTML(monthStr){
       ${baseChipsHtml}
     </div>`;
 
-  return `
+  return `<div class="cal-landscape-page">
     <div class="doc">
       <h1>${yy}년 ${Number(mm)}월 근태 달력</h1>
       <div style="display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
@@ -16183,7 +16190,7 @@ function buildCalendarHTML(monthStr){
         <tbody>${rowsHtml}</tbody>
       </table>
     </div>
-  `;
+  </div>`;
 }
 
 let navExpanded = false;
@@ -31771,7 +31778,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 11:50';
+const APP_BUILD = '2026.09.29 11:58';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
