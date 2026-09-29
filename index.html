@@ -2485,7 +2485,8 @@
   .seat-wall-pick{ pointer-events:auto; cursor:pointer; touch-action:none; }
   .seat-wall-pick::before{ content:''; position:absolute; inset:-6px; }
   .seat-wall-pick-v{ cursor:ew-resize; } .seat-wall-pick-h{ cursor:ns-resize; }
-  .seat-wall-pick.is-sel{ box-shadow:0 0 0 2px #fff, 0 0 0 4px var(--indigo); }
+  /* 선택 테두리 - 선택한 토막과 위치가 같아 한 줄로 이어진 이웃 토막까지 하나의 테두리로 합쳐서 감쌈 */
+  .seat-wall-selbox{ position:absolute; pointer-events:none; border:2px solid var(--indigo); border-radius:5px; box-shadow:inset 0 0 0 2px #fff; z-index:2; }
   .seat-wall-overlay{ position:absolute; inset:0; z-index:50; cursor:crosshair; touch-action:none; }
   .seat-grid-vline{ position:absolute; top:0; width:1px; background:var(--border); pointer-events:none; }
   .seat-grid-hline{ position:absolute; left:0; height:1px; background:var(--border); pointer-events:none; }
@@ -32770,7 +32771,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 16:30';
+const APP_BUILD = '2026.09.29 16:45';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -33258,13 +33259,41 @@ function seatEditWallRect(w, cols, rows){
 }
 // 편집 화면 - 평소(격자선 굿기 모드가 아닐 때)엔 선을 눌러 선택하고, 끌어서 옆으로 옮기거나 삭제할 수 있음
 function seatEditWallsHtml(walls, cols, rows, pickable){
-  return (walls||[]).map((w, i)=>{
+  const linked = (pickable && seatWallSelIdx !== null && (walls||[])[seatWallSelIdx]) ? seatWallLinkedIdxs(walls, seatWallSelIdx) : new Set();
+  const html = (walls||[]).map((w, i)=>{
     const rc = seatEditWallRect(w, cols, rows);
-    const cls = pickable ? ` seat-wall-pick seat-wall-pick-${w.t}${i===seatWallSelIdx ? ' is-sel' : ''}` : '';
+    const cls = pickable ? ` seat-wall-pick seat-wall-pick-${w.t}${i===seatWallSelIdx ? ' is-sel' : ''}${linked.has(i) ? ' is-sel-link' : ''}` : '';
     return `<span class="seat-wall${cls}" data-wall-idx="${i}" style="left:${rc.left}px; top:${rc.top}px; width:${rc.width}px; height:${rc.height}px; background:${w.color||'#1E2A5E'};"></span>`;
   }).join('');
+  if(!pickable || seatWallSelIdx === null || !(walls||[])[seatWallSelIdx]) return html;
+  const b = seatWallSelBoxRect(walls, seatWallSelIdx, linked, cols, rows);
+  return html + `<span class="seat-wall-selbox" style="left:${b.left}px; top:${b.top}px; width:${b.width}px; height:${b.height}px;"></span>`;
+}
+// 선택 토막 + 이어진 토막 전체를 감싸는 테두리 위치(선 바깥으로 4px 여유)
+function seatWallSelBoxRect(walls, idx, linked, cols, rows){
+  const rs = [idx, ...linked].map(i=> seatEditWallRect(walls[i], cols, rows));
+  const l = Math.min(...rs.map(r=>r.left)), t = Math.min(...rs.map(r=>r.top));
+  const r = Math.max(...rs.map(x=>x.left + x.width)), btm = Math.max(...rs.map(x=>x.top + x.height));
+  return { left:l - 4, top:t - 4, width:(r - l) + 8, height:(btm - t) + 8 };
 }
 var seatWallSelIdx = null;
+// 같은 격자선 위에서 바로 이웃한 토막(세로선이면 위·아래 줄, 가로선이면 좌·우 칸) 인덱스들
+function seatWallNeighborIdxs(walls, i){
+  const w = walls[i]; if(!w) return [];
+  const out = [];
+  walls.forEach((o, j)=>{
+    if(j === i || o.t !== w.t) return;
+    if(w.t === 'v' ? (o.c === w.c && Math.abs(o.r - w.r) === 1) : (o.r === w.r && Math.abs(o.c - w.c) === 1)) out.push(j);
+  });
+  return out;
+}
+const seatWallSameOff = (a, b) => Math.abs((Number(a.off)||0) - (Number(b.off)||0)) < 0.0005;
+// 선택한 토막과 위치(off)가 같아서 한 줄로 이어지는 토막들 - 선택 표시를 같이 해서 "위치가 같다"는 걸 보여줌
+function seatWallLinkedIdxs(walls, i){
+  const seen = new Set([i]); const q = [i];
+  while(q.length){ const k = q.shift(); seatWallNeighborIdxs(walls, k).forEach(j=>{ if(!seen.has(j) && seatWallSameOff(walls[j], walls[k])){ seen.add(j); q.push(j); } }); }
+  seen.delete(i); return seen;
+}
 let seatChartWallMode = false;
 let seatWallStyle = { color:'#1E2A5E', w:3 };
 // 마우스 위치에서 가장 가까운 격자선 구간을 찾음 - 선에서 10px 넘게 떨어져 있으면(칸 한가운데 등) 없음
@@ -33669,7 +33698,8 @@ function renderSeatChartEditPreview(){
     </div>`;
   }
   if(seatChartSelectedId || seatChartWallMode || !(seatChartDraft.walls||[])[seatWallSelIdx]) seatWallSelIdx = null;
-  const wallsLayer = `<div class="seat-walls-layer" style="position:absolute; inset:0; pointer-events:none; z-index:3;">${seatEditWallsHtml(seatChartDraft.walls, cols, rows, !seatChartWallMode)}</div>`;
+  // 평소엔 그려둔 선을 눌러 옮길 수 있게 칸·방보다 위(z-index 30)에 둠 - 방 테두리 등에 가려 선이 안 눌리던 문제
+  const wallsLayer = `<div class="seat-walls-layer" style="position:absolute; inset:0; pointer-events:none; z-index:${seatChartWallMode ? 3 : 30};">${seatEditWallsHtml(seatChartDraft.walls, cols, rows, !seatChartWallMode)}</div>`;
   // 선택한 격자선 옆에 뜨는 도구줄(옮기기·원위치·삭제)
   if(seatWallSelIdx !== null && !toolbar){
     const sw = seatChartDraft.walls[seatWallSelIdx];
@@ -33800,14 +33830,27 @@ function bindSeatChartEditCellEvents(){
       const startLeft = parseFloat(el.style.left), startTop = parseFloat(el.style.top);
       let moved = false;
       try{ el.setPointerCapture(e.pointerId); }catch(_){}
+      const walls = seatChartDraft.walls;
+      const neighbors = seatWallNeighborIdxs(walls, idx);
       const onMove = (ev)=>{
         const d = (vert ? ev.clientX : ev.clientY) - start;
         if(Math.abs(d) > 2) moved = true;
         if(!moved) return;
-        const off = Math.max(-0.95, Math.min(0.95, startOff + d/base));
+        let off = Math.max(-0.95, Math.min(0.95, startOff + d/base));
+        // 이웃 토막 위치(또는 원래 격자선)에 5px 안으로 가까워지면 딱 맞춰 붙임
+        const snaps = neighbors.map(j=> Number(walls[j].off)||0).concat([0]);
+        for(const so of snaps){ if(Math.abs((off - so) * base) <= 5){ off = so; break; } }
         w.off = Math.round(off*1000)/1000;
         const px = (w.off - startOff) * base;
         if(vert) el.style.left = (startLeft + px) + 'px'; else el.style.top = (startTop + px) + 'px';
+        // 끄는 동안에도 위치가 같아진 이웃 토막은 같이 선택 표시 - 한 줄로 이어졌다는 걸 바로 알 수 있게
+        const linked = seatWallLinkedIdxs(walls, idx);
+        const layer = el.parentElement;
+        let box = layer.querySelector('.seat-wall-selbox');
+        if(!box){ box = document.createElement('span'); box.className = 'seat-wall-selbox'; layer.appendChild(box); }
+        const cols = Math.max(1, seatChartDraft.cols||9), rows = seatChartRowsNeeded();
+        const bx = seatWallSelBoxRect(walls, idx, linked, cols, rows);
+        Object.assign(box.style, { left:bx.left+'px', top:bx.top+'px', width:bx.width+'px', height:bx.height+'px' });
       };
       const onUp = ()=>{
         el.removeEventListener('pointermove', onMove); el.removeEventListener('pointerup', onUp); el.removeEventListener('pointercancel', onUp);
@@ -35287,8 +35330,10 @@ function printHtmlSection(docTitle, subtitle, bodyHtml){
 function seatChartPrintAndBody(){
   const cells = seatChartCellsForRender(sharedSeatChart);
   const cols = seatChartColsForRender(sharedSeatChart);
-  const asOfLine = sharedSeatChart.asOf ? `<p style="text-align:center; color:#75789A; font-size:12px; margin-top:-14px; margin-bottom:18px;">${escHtml(sharedSeatChart.asOf)} 기준</p>` : '';
-  printHtmlSection(sharedSeatChart.title || '자리배치도', sharedSeatChart.title || '자리배치도', asOfLine + renderSeatGridHtml(cells, cols, seatChartHasAnyData() ? sharedSeatChart.walls : [], seatChartHasAnyData() ? seatChartLayoutOf(sharedSeatChart) : null, true));
+  // 기준일은 "2026.08.04 기준"처럼 점으로, 글씨는 작게, 아래 배치도와는 간격을 넉넉히
+  const asOfLine = sharedSeatChart.asOf ? `<p style="text-align:center; color:#75789A; font-size:10.5px; margin-top:-12px; margin-bottom:34px;">${escHtml(String(sharedSeatChart.asOf).replace(/-/g,'.'))} 기준</p>` : '';
+  // 보라색 부제목은 배치도 제목이 아니라 항상 "자리배치도"(큰 제목이 회사명이라 제목과 겹쳐 두 번 나왔음)
+  printHtmlSection(sharedSeatChart.title || '자리배치도', '자리배치도', asOfLine + renderSeatGridHtml(cells, cols, seatChartHasAnyData() ? sharedSeatChart.walls : [], seatChartHasAnyData() ? seatChartLayoutOf(sharedSeatChart) : null, true));
 }
 document.getElementById('seatChartPrintBtn')?.addEventListener('click', seatChartPrintAndBody);
 document.getElementById('seatChartViewPrintBtn')?.addEventListener('click', seatChartPrintAndBody);
