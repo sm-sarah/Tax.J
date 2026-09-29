@@ -15312,12 +15312,11 @@ function buildExpenseReportHTML(monthStr){
   // 차감일 세부내역을 따로 줄을 빼지 않고 "차감일3일(연차1일, 미식사 반차1일 ...)"처럼 차감일 칩 하나에
   // 괄호로 바로 붙여서 보여줌 - 요청에 따라 아래쪽 별도 "차감내역" 줄은 삭제함
   const deductedBreakdownText = breakdownChipData.map(([label, val, unit]) => `${label}${val}${unit}`).join(', ');
-  // 차감일 칸엔 "N일*"만 두고, 표 아래에 "* 차감 상세내역 (정기재택 4회, 특별재택 1회)"처럼 항목별로 나눠 표시 -
+  // 차감일 칸엔 "N일"만 두고, "1. 점심식대 한도" 제목 줄 오른쪽 끝에 "*차감내역: 정기재택 4일, 특별재택 1일"처럼 표시 -
   // 식대기준일수 계산과 똑같은 집계(calcWorkdaysExclusionBreakdown)를 써서 특별재택·반일재택도 빠짐없이 나옴
   const deductNoteText = Object.entries(calcWorkdaysExclusionBreakdown(monthStr)).map(([label, n])=>{
     const short = label.replace(/\(식대미포함\)|\(식대제외\)/, '');
-    const unit = /재택|회식/.test(short) ? '회' : '일';
-    return `${escHtml(short)} ${n}${unit}`;
+    return `${escHtml(short)} ${n}일`;
   }).join(', ');
 
   return `
@@ -15361,7 +15360,7 @@ function buildExpenseReportHTML(monthStr){
           <td style="text-align:center; font-size:16px; font-weight:800; color:var(--ink-soft); padding:0 2px; border:none; background:transparent;">−</td>
           <td style="text-align:center; background:var(--coral-bg); color:var(--coral); border-radius:10px; padding:7px 14px; border:none;">
             <div style="font-size:10px; font-weight:700;">차감일</div>
-            <div style="font-family:'IBM Plex Mono',monospace; font-weight:800; font-size:15px; margin-top:2px;">${s.deductedDays}일${deductNoteText ? '*' : ''}</div>
+            <div style="font-family:'IBM Plex Mono',monospace; font-weight:800; font-size:15px; margin-top:2px;">${s.deductedDays}일</div>
           </td>
           <td style="text-align:center; font-size:16px; font-weight:800; color:var(--ink-soft); padding:0 2px; border:none; background:transparent;">=</td>
           <td style="text-align:center; background:var(--amber-bg); color:#8A6D1E; border-radius:10px; padding:7px 14px; border:none;">
@@ -15370,10 +15369,9 @@ function buildExpenseReportHTML(monthStr){
           </td>
         </tr>
       </table>
-      ${deductNoteText ? `<div style="text-align:center; font-size:10.5px; color:var(--ink-soft); margin:4px 0 0;">* 차감 상세내역 (${deductNoteText})</div>` : ''}
 
       <div style="--doc-accent:var(--amber); --doc-accent-bg:var(--amber-bg);">
-        <h2>1. 점심식대 한도 및 사용 내역</h2>
+        <h2>1. 점심식대 한도 및 사용 내역${deductNoteText ? `<span style="float:right; margin-top:3px; font-size:10.5px; font-weight:600; color:var(--ink-soft); letter-spacing:0;">*차감내역: ${deductNoteText}</span>` : ''}</h2>
         <table class="doc-meta">
           <tr><th>당월 식대 한도</th><td>${won(s.monthlyLimit)} <span style="font-weight:400; color:#888; font-size:10.5px;">(${s.workdays}일 × ${won(s.dailyAmount)})</span></td><th>식대 사용액</th><td>${won(s.lunchSpend)}</td></tr>
         </table>
@@ -31649,7 +31647,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 11:00';
+const APP_BUILD = '2026.09.29 11:05';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
