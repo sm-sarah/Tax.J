@@ -22,6 +22,11 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// 새 버전 파일을 올리면, 예전 버전이 앱을 완전히 닫을 때까지 계속 일하는 걸 막고 바로 새 버전으로 교체함
+// (예전 버전이 남아있으면 받는 기기에서 알림이 동시에 두 개씩 뜸)
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+
 // 앱/탭이 꺼져있거나 백그라운드일 때 FCM 메시지가 도착하면 여기서 받아서, OS 알림(배너)으로 띄움
 // ⚠️ "모바일에서 같은 알림이 두 번씩 온다"의 원인 - 서버가 notification(제목·내용)을 담아 보내면 Firebase가
 // 알아서 알림을 한 번 띄우는데, 예전엔 여기서 또 한 번 showNotification을 불러서 두 번 떴음.
