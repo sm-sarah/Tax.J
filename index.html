@@ -9260,8 +9260,9 @@ function markClockReminderSent(kind){
   try{ localStorage.setItem(`worklog_clock_reminder_sent_${todayStr()}_${kind}`, '1'); }catch(e){}
 }
 function fireClockReminderNotification(kind, timeStr){
-  const title = kind === 'checkIn' ? '출근 시간 5분 전이에요' : '퇴근 시간 5분 전이에요';
-  const body = kind === 'checkIn' ? `표준 출근 시간(${timeStr})이 얼마 안 남았어요. 출근 도장을 잊지 마세요!` : `표준 퇴근 시간(${timeStr})이 얼마 안 남았어요.`;
+  // 시스템 알림은 글자 굵기·색을 바꿀 수 없어서, 굵게 보이는 제목 맨 앞에 "출근/퇴근"과 시각을 크게 드러냄(+ 구분용 기호)
+  const title = kind === 'checkIn' ? `🟢 출근 ${timeStr} · 5분 전` : `🔴 퇴근 ${timeStr} · 5분 전`;
+  const body = kind === 'checkIn' ? `【출근】 곧 출근 시간이에요. 출근 도장을 잊지 마세요!` : `【퇴근】 곧 퇴근 시간이에요. 퇴근 도장을 잊지 마세요!`;
   // 출퇴근 알림도 다른 푸시와 같은 시스템 알림으로(서비스워커가 있으면 그걸로 띄워야 앱·PC에서 푸시처럼 보임), 닫기 전까지 유지
   const opts = { body, icon: 'icon-192.png', tag: 'clock-' + kind + '-' + todayStr(), requireInteraction: true };
   (async()=>{
@@ -17992,7 +17993,10 @@ function renderDashboardApprovalAllPreview(){
       // 예전엔 줄을 클릭하면 결재 탭으로도 같이 이동시켰는데, 대시보드에서는 "바로가기" 링크를 눌렀을 때만
       // 탭 이동하고 나머지 영역 클릭은 그 자리에서 상세 모달만 열리게 해달라는 요청으로 탭 이동 부분을 뺌
       e.stopPropagation();
-      if(typeof openApprovalDetailModal === 'function') openApprovalDetailModal(row.dataset.approvalId);
+      // 대시보드에서 내가 기안한 문서를 열어보는 건 "기안자로서 확인"이라 검토중으로 넘기지 않음(결재자로서 결재함에서 열 때만)
+      const ap = (sharedApprovals||[]).find(a=>a.id===row.dataset.approvalId);
+      const asDrafter = !!(ap && (ap.drafterEmail||'').toLowerCase() === (currentUserEmail||'').toLowerCase());
+      if(typeof openApprovalDetailModal === 'function') openApprovalDetailModal(row.dataset.approvalId, { asDrafter });
     });
   });
 }
@@ -27793,7 +27797,8 @@ function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
       if(approvalExpandedId === id){
         markApprovalRowRead(id);
         const item = (sharedApprovals||[]).find(a=>a.id===id);
-        if(item && markApprovalViewedIfNeeded(item)){
+        // 결재자가 결재함(또는 전체이력)에서 열어볼 때만 검토중으로 - 기안함·반려함·임시저장함은 기안자 입장이라 제외
+        if(item && bucket !== 'mine' && bucket !== 'rejected' && bucket !== 'draft' && markApprovalViewedIfNeeded(item)){
           await saveSharedApprovals();
         }
         // 목록에서 행을 펼쳐 실제로 문서를 열어보는 순간도 팝업으로 열 때와 똑같이 "의견을 봤다"로 처리함
@@ -28181,10 +28186,11 @@ function bindApprovalDetailBodyEvents(scopeEl, id, onChange){
 }
 // 대시보드·브라우저 알림에서 바로 열릴 때만 쓰는 팝업(목록 안에서는 목록 아래로 펼치는 인라인 방식을 씀 -
 // 공지사항처럼 "팝업 말고 목록 아래에 보이게 해달라"는 요청)
-function openApprovalDetailModal(id){
+function openApprovalDetailModal(id, opts){
   const item = (sharedApprovals||[]).find(a=>a.id===id);
   if(!item) return;
-  if(markApprovalViewedIfNeeded(item)){
+  // "결재자가 읽었을 때만 검토중으로" - 기안자 자격으로 여는 경우(대시보드에서 내가 기안한 문서 등)는 검토중으로 넘기지 않음
+  if(!(opts && opts.asDrafter) && markApprovalViewedIfNeeded(item)){
     saveSharedApprovals();
     renderApprovalInbox(); renderApprovalMine(); renderApprovalRejected(); renderApprovalAll(); renderApprovalAllBadges();
   }
@@ -32864,7 +32870,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 17:50';
+const APP_BUILD = '2026.09.29 18:00';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
