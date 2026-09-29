@@ -2534,7 +2534,7 @@
      테두리에 출입구(문) 표시를 붙임. 실제 벽(테두리)이 끊긴 것처럼 보이게 그 구간만 배경색 막대(door-gap
      역할, ::before 없이 이 엘리먼트 자체)로 덮고, 그 끝에서 45도로 삐져나온 얇은 선(door-leaf, ::after)으로
      열린 문짝을 표현함 - 실측 도면의 간단한 문 기호를 흉내낸 것 */
-  .seat-door-mark{ position:absolute; z-index:2; pointer-events:none; background:var(--bg); }
+  .seat-door-mark{ position:absolute; z-index:5; pointer-events:none; background:var(--bg); } /* 이름표(z4)에 가려지지 않게 문을 위로 */
   .seat-door-mark::after{ content:''; position:absolute; background:var(--navy); border-radius:2px; }
   .seat-door-mark.top{ top:-2px; left:calc(50% - 9px); width:18px; height:4px; }
   .seat-door-mark.top::after{ left:0; bottom:-14px; width:2.5px; height:16px; transform-origin:bottom left; transform:rotate(35deg); }
@@ -2567,6 +2567,8 @@
   .seat-room-band{ position:absolute; left:8px; top:-11px; max-width:calc(100% - 16px); z-index:4; pointer-events:none;
     background:#1E2A5E; color:#fff; border-radius:8px; box-shadow:0 2px 6px -2px rgba(30,42,94,0.45);
     display:inline-flex; flex-wrap:wrap; align-items:baseline; justify-content:center; column-gap:4px; row-gap:0; padding:3px 8px; line-height:1.2; text-align:center; }
+  /* 가로 1칸짜리 좁은 방은 이름표가 방보다 넓어 글자가 잘렸음 - 방 가운데 기준으로 두고 폭 제한을 풀어 이름이 다 보이게 함 */
+  .seat-room-band.is-narrow{ left:50%; transform:translateX(-50%); max-width:none; width:min-content; }
   .seat-room-band-name{ font-size:12px; font-weight:600; letter-spacing:0.02em; color:#fff !important; white-space:nowrap; }
   .seat-room-band-pos{ font-size:9.5px; font-weight:500; opacity:0.85; white-space:nowrap; }
   .seat-room-band svg{ flex:none; }
@@ -32635,7 +32637,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 15:00';
+const APP_BUILD = '2026.09.29 15:10';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -32926,9 +32928,7 @@ function seatSetEffectiveSpans(cell, effRowSpan, effColSpan){
 // (.seat-dir-monitor의 rot0~270)에서 방향별로 미리 정의해뒀고, 여기서는 dir에 맞는 rot 클래스만 붙여줌
 function seatDirArrowHtml(dir){
   const rot = ((dir||0)%360+360)%360;
-  if(!rot) return '';
-  // dir=0(회전 없음, 기본값)은 예전 화살표와 마찬가지로 표시하지 않음 - 대부분의 자리가 기본 방향이라
-  // 굳이 표시할 필요가 없고, 표시하면 오히려 화면이 복잡해 보임
+  // "모니터가 위에 있을 때는 표기가 안 된다"는 지적으로 dir=0(기본, 위쪽)도 위쪽 막대를 그림
   return `<span class="seat-dir-monitor rot${rot}" title="모니터(화면)가 이 방향을 향해요"></span>`;
 }
 // 좌석에 적힌 게 이름뿐이면 조직도 직책을 붙여 "장선민 매니저"처럼(회계사는 CPA) - 이미 직책까지 적혀 있으면 그대로
@@ -32977,7 +32977,8 @@ function seatRoomBandHtml(cell, text, nameClass){
   const p = (sharedOrgChart||[]).find(x=>(x.name||'').trim()===t);
   const pos = p && (p.position||'').trim() ? (p.position.trim()==='회계사' ? 'CPA' : p.position.trim()) : '';
   const icon = cell.icon && SEAT_ICON_DEFS[cell.icon] ? SEAT_ICON_DEFS[cell.icon].svg+' ' : '';
-  return `<span class="seat-room-band">${icon}<span class="seat-room-band-name${nameClass ? ' '+nameClass : ''}">${escHtml(t)}</span>${pos ? `<span class="seat-room-band-pos">${escHtml(pos)}</span>` : ''}</span>`;
+  const effW = typeof seatCellEffectiveSpans === 'function' ? (seatCellEffectiveSpans(cell).colSpan||1) : (cell.colSpan||1);
+  return `<span class="seat-room-band${effW<=1 ? ' is-narrow' : ''}">${icon}<span class="seat-room-band-name${nameClass ? ' '+nameClass : ''}">${escHtml(t)}</span>${pos ? `<span class="seat-room-band-pos">${escHtml(pos)}</span>` : ''}</span>`;
 }
 // 방 이름표 - 방 이름이 조직도 명단의 사람 이름과 같으면 직책을 붙여 "이정헌 CPA"처럼 보여줌(회계사는 CPA로 표기)
 function seatRoomLabelText(text){
@@ -33511,6 +33512,8 @@ function renderSeatChartEditPreview(){
     toolbar = `<div class="seat-cell-toolbar" style="left:${tx}px; top:${ty}px;${flipBelow ? ' transform:translate(-100%, 6px);' : ''}">
       <button type="button" data-act="edit" data-id="${selCell.id}" title="수정"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>
       <button type="button" data-act="rotate" data-id="${selCell.id}" title="90도 회전">↻</button>
+      <button type="button" data-act="copysize" data-id="${selCell.id}" title="크기 복사 (이 칸의 가로·세로 칸 수를 기억)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+      ${seatSizeClipboard ? `<button type="button" data-act="pastesize" data-id="${selCell.id}" title="크기 붙여넣기 (가로 ${seatSizeClipboard.colSpan}칸 × 세로 ${seatSizeClipboard.rowSpan}칸)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1"></rect></svg></button>` : ''}
       <button type="button" data-act="delete" data-id="${selCell.id}" title="삭제" class="danger">✕</button>
     </div>`;
   }
@@ -33528,6 +33531,24 @@ function renderSeatChartEditPreview(){
   renderSeatChartTray();
   renderSeatChartCellEditor();
 }
+// "이 사이즈를 복사·붙여넣기 하고 싶다" 요청 - 선택한 칸 도구줄의 "크기 복사"로 화면에 보이는 가로·세로 칸 수를
+// 기억해두고, 다른 칸을 골라 "크기 붙여넣기"를 누르면 그 칸도 같은 크기로 맞춤(돌려놓은 칸이면 가로·세로를 바꿔서 맞춤)
+var seatSizeClipboard = null;
+function seatPasteSizeTo(cell){
+  if(!seatSizeClipboard || !cell) return;
+  const rot = ((cell.dir||0)%360+360)%360;
+  const turned = rot===90 || rot===270;
+  const next = { ...cell, rowSpan: turned ? seatSizeClipboard.colSpan : seatSizeClipboard.rowSpan, colSpan: turned ? seatSizeClipboard.rowSpan : seatSizeClipboard.colSpan };
+  const eff = seatCellEffectiveSpans(next);
+  if(cell.col + (eff.colSpan||1) - 1 > (seatChartDraft.cols||9)){ showCenterToast('오른쪽 끝을 넘어가서 붙여넣을 수 없어요'); return; }
+  const nonOcc = t => t==='divider' || t==='room';
+  if(!nonOcc(cell.type)){
+    const hit = seatChartDraft.cells.find(c=> c.id!==cell.id && !nonOcc(c.type) && c.row && c.col && seatChartRangesOverlap(c, next));
+    if(hit){ showCenterToast('다른 칸과 겹쳐서 붙여넣을 수 없어요'); return; }
+  }
+  cell.rowSpan = next.rowSpan; cell.colSpan = next.colSpan;
+  renderSeatChartEditPreview();
+}
 function bindSeatChartEditCellEvents(){
   document.querySelectorAll('#seatChartEditGrid .seat-edit-cell').forEach(el=>{
     el.addEventListener('pointerdown', seatChartCellPointerDown);
@@ -33544,6 +33565,8 @@ function bindSeatChartEditCellEvents(){
       if(!cell) return;
       if(act==='edit') seatChartOpenCellEditorClick({ stopPropagation(){}, currentTarget:{ dataset:{ id } } });
       else if(act==='rotate'){ seatRotateCell(cell); renderSeatChartEditPreview(); }
+      else if(act==='copysize'){ seatSizeClipboard = seatCellEffectiveSpans(cell); showCenterToast(`크기 복사: 가로 ${seatSizeClipboard.colSpan}칸 × 세로 ${seatSizeClipboard.rowSpan}칸`); renderSeatChartEditPreview(); }
+      else if(act==='pastesize') seatPasteSizeTo(cell);
       else if(act==='delete') seatChartDeleteCellClick({ stopPropagation(){}, currentTarget:{ dataset:{ id } } });
     });
   });
