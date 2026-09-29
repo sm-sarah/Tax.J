@@ -6130,6 +6130,9 @@
           <!-- "조직도 목록 가져오기"(조직도 명단을 배치예정으로) / "초기화"(격자선만 남기고 전부 비움) -->
           <button type="button" class="del-btn" id="seatChartImportOrgBtn" title="조직도에 등록된 사람을 배치예정으로 가져와요(이미 자리가 있는 사람은 팀·직책만 최신화)" style="padding:5px 10px; font-size:11.5px;">조직도 목록 가져오기</button>
           <button type="button" class="del-btn" id="seatChartPasteBtn" title="복사해 둔 칸과 같은 칸(종류·크기·방향·문)을 새로 추가해요" style="padding:5px 10px; font-size:11.5px; display:none;">붙여넣기</button>
+          <!-- "복사붙여넣기 취소 어떻게 해?" - 방금 한 붙여넣기 되돌리기(Ctrl+Z도 됨) / 복사해 둔 것 비우기(Esc도 됨) -->
+          <button type="button" class="del-btn" id="seatChartPasteUndoBtn" title="방금 한 붙여넣기를 되돌려요 (Ctrl+Z)" style="padding:5px 10px; font-size:11.5px; display:none;">붙여넣기 취소</button>
+          <button type="button" class="del-btn" id="seatChartCopyClearBtn" title="복사해 둔 칸을 비워요 (Esc)" style="padding:5px 8px; font-size:11.5px; display:none;">복사 해제</button>
           <button type="button" class="del-btn" id="seatChartResetBtn" title="자리·구역·방·구분선을 모두 지우고 격자선만 남겨요(저장해야 반영)" style="padding:5px 10px; font-size:11.5px; color:var(--coral);">초기화</button>
           <span style="width:1px; height:16px; background:var(--border); margin:0 4px;"></span>
           <select id="seatChartAddTypeSelect" class="flat-input" style="width:110px;">
@@ -7349,10 +7352,18 @@ function renderMyPushDeviceList(){
     setNotifCategoryPanelLocked(true);
     return;
   }
-  const myEmail = (currentUserEmail||'').toLowerCase();
   let myToken = null;
   try{ myToken = localStorage.getItem('worklog_my_push_token'); }catch(e){}
-  const mine = (sharedPushTokens||[]).filter(t=>(t.email||'').toLowerCase()===myEmail).sort((a,b)=> (b.updatedAt||'').localeCompare(a.updatedAt||''));
+  // "이름 하나 바꿨더니 기기 목록이 다 사라졌다" - 로그인 이메일 확인(currentUserEmail)이 아직 안 끝났거나
+  // 잠깐 비어있는 순간에 다시 그려지면 내 기기가 0대로 보였음. 이메일이 비어있으면 이 기기 토큰의 이메일로
+  // 대신 찾고, 그래도 없으면 목록은 건드리지 않고 "확인 중" 안내만 띄움(로그인 확인이 끝나면 다시 그림)
+  let myEmail = (currentUserEmail||'').toLowerCase();
+  if(!myEmail && myToken){ const own = (sharedPushTokens||[]).find(t=>t.token===myToken); if(own && own.email) myEmail = String(own.email).toLowerCase(); }
+  if(!myEmail){
+    wrap.innerHTML = `<p class="hint" style="margin:6px 0 0;">로그인 확인 중이에요. 잠시 후 기기 목록이 보여요.</p>`;
+    return;
+  }
+  const mine = (sharedPushTokens||[]).filter(t=>(t.email||'').toLowerCase()===myEmail || (myToken && t.token===myToken)).sort((a,b)=> (b.updatedAt||'').localeCompare(a.updatedAt||''));
   const thisDeviceRegistered = thisDeviceNotifyReady() && mine.some(t=>t.token===myToken);
   setNotifCategoryPanelLocked(!thisDeviceRegistered);
 
@@ -28736,6 +28747,8 @@ async function fetchCurrentUserEmail(){
   try{
     const data = await res.json();
     currentUserEmail = (data.email || '').toLowerCase();
+    // 로그인 확인 전에 그려진 알림 설정(기기 목록)을 내 이메일 기준으로 다시 그림
+    setTimeout(()=>{ try{ if(typeof renderNotificationPrefsUI === 'function') renderNotificationPrefsUI(); }catch(e){} }, 0);
     isCurrentUserAdmin = sharedAdminEmails.map(e=>e.toLowerCase()).includes(currentUserEmail);
     // 이 기기에서 관리자로 확인됐는지 기억해둠 - 다음 새로고침 때 확인이 끝나기 전에도 설정 화면을 먼저 보여주는 데 씀
     try{ if(isCurrentUserAdmin) localStorage.setItem('worklog_last_admin_ok', '1'); else localStorage.removeItem('worklog_last_admin_ok'); }catch(e){}
@@ -33148,7 +33161,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 19:45';
+const APP_BUILD = '2026.09.29 21:45';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -33907,6 +33920,7 @@ function seatRotateCell(cell){
 let seatChartLastClick = { id:null, t:0 };
 function seatChartCloneCells(cells){ return (cells||[]).map(c=>({ ...c })); }
 function seatChartInitDraft(){
+  seatPasteUndoStack = [];
   seatChartDraft = {
     asOf: seatChartHasAnyData() ? (sharedSeatChart.asOf || '') : '',
     title: seatChartHasAnyData() ? (sharedSeatChart.title || '') : '',
@@ -34131,6 +34145,30 @@ var seatSizeClipboard = null;
 function seatUpdatePasteBtn(){
   const b = document.getElementById('seatChartPasteBtn');
   if(b) b.style.display = (seatSizeClipboard && seatSizeClipboard.src) ? '' : 'none';
+  const u = document.getElementById('seatChartPasteUndoBtn');
+  if(u) u.style.display = seatPasteUndoStack.length ? '' : 'none';
+  const x = document.getElementById('seatChartCopyClearBtn');
+  if(x) x.style.display = seatSizeClipboard ? '' : 'none';
+}
+// 붙여넣기 되돌리기용 기록 - {kind:'new', id} 새로 붙인 칸 / {kind:'size', id, rowSpan, colSpan} 크기만 바꾼 칸
+var seatPasteUndoStack = [];
+function seatPasteUndo(){
+  const last = seatPasteUndoStack.pop();
+  if(!last || !seatChartDraft){ seatUpdatePasteBtn(); return; }
+  if(last.kind === 'new'){
+    seatChartDraft.cells = seatChartDraft.cells.filter(c=>c.id!==last.id);
+    if(seatChartSelectedId === last.id) seatChartSelectedId = null;
+  } else {
+    const c = seatChartDraft.cells.find(c=>c.id===last.id);
+    if(c){ c.rowSpan = last.rowSpan; c.colSpan = last.colSpan; }
+  }
+  renderSeatChartEditPreview();
+  showCenterToast('붙여넣기를 취소했어요');
+}
+function seatCopyClear(){
+  seatSizeClipboard = null;
+  renderSeatChartEditPreview();
+  showCenterToast('복사를 해제했어요');
 }
 function seatPasteNewCell(){
   if(!seatChartDraft || !seatSizeClipboard || !seatSizeClipboard.src) return;
@@ -34152,6 +34190,7 @@ function seatPasteNewCell(){
     }
   }
   seatChartDraft.cells.push(cell);
+  seatPasteUndoStack.push({ kind:'new', id: cell.id });
   seatChartSelectedId = cell.id;
   renderSeatChartEditPreview();
   showCenterToast(cell.row ? '붙여넣었어요 · 끌어서 원하는 자리로 옮겨주세요' : '빈 곳이 없어 배치예정에 넣었어요');
@@ -34168,6 +34207,7 @@ function seatPasteSizeTo(cell){
     const hit = seatChartDraft.cells.find(c=> c.id!==cell.id && !nonOcc(c.type) && c.row && c.col && seatChartRangesOverlap(c, next));
     if(hit){ showCenterToast('다른 칸과 겹쳐서 붙여넣을 수 없어요'); return; }
   }
+  seatPasteUndoStack.push({ kind:'size', id: cell.id, rowSpan: cell.rowSpan, colSpan: cell.colSpan });
   cell.rowSpan = next.rowSpan; cell.colSpan = next.colSpan;
   renderSeatChartEditPreview();
 }
@@ -34865,6 +34905,17 @@ document.getElementById('seatChartImportOrgBtn')?.addEventListener('click', ()=>
   showCenterToast(added || updated ? `배치예정 ${added}명 추가${updated ? ` · 팀/직책 ${updated}명 최신화` : ''}` : '이미 모두 가져와져 있어요');
 });
 document.getElementById('seatChartPasteBtn')?.addEventListener('click', seatPasteNewCell);
+document.getElementById('seatChartPasteUndoBtn')?.addEventListener('click', seatPasteUndo);
+document.getElementById('seatChartCopyClearBtn')?.addEventListener('click', seatCopyClear);
+// 자리배치도 편집 화면이 보일 때만: Ctrl+Z(⌘Z) = 붙여넣기 취소, Esc = 복사 해제(입력칸에 글자 치는 중엔 무시)
+document.addEventListener('keydown', (e)=>{
+  const pb = document.getElementById('seatChartResetBtn');
+  if(!pb || !pb.offsetParent || !seatChartDraft) return;
+  const tag = (e.target && e.target.tagName) || '';
+  if(tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target && e.target.isContentEditable)) return;
+  if((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z') && seatPasteUndoStack.length){ e.preventDefault(); seatPasteUndo(); }
+  else if(e.key === 'Escape' && seatSizeClipboard){ e.stopPropagation(); seatCopyClear(); }
+}, true);
 document.getElementById('seatChartResetBtn')?.addEventListener('click', async ()=>{
   if(!seatChartDraft) return;
   if(!(await appConfirm('자리·구역·방·구분선을 모두 지우고 격자선만 남길까요?\n(저장 버튼을 눌러야 실제로 반영돼요)'))) return;
