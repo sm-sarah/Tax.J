@@ -2554,6 +2554,14 @@
   /* 방 이름은 방 안 자리 카드에 가려지지 않게, 도면처럼 방 윗테두리 위에 이름표로 걸쳐 둠 */
   .seat-room-name{ position:absolute; top:-8px; left:10px; background:var(--bg); padding:0 6px; line-height:14px;
     font-size:10.5px; font-weight:800; color:var(--ink-soft); z-index:4; white-space:nowrap; pointer-events:none; }
+  /* 방 이름표 - 원래처럼 방 윗테두리 선 위에 걸쳐 두되, 남색 알약에 흰 글씨로 강조. 폭이 좁은(세로) 방은
+     직책이 자동으로 아랫줄로 내려가 두 줄이 됨. 방을 돌려도 글자는 항상 똑바로 */
+  .seat-room-band{ position:absolute; left:8px; top:-11px; max-width:calc(100% - 16px); z-index:4; pointer-events:none;
+    background:#1E2A5E; color:#fff; border-radius:8px; box-shadow:0 2px 6px -2px rgba(30,42,94,0.45);
+    display:inline-flex; flex-wrap:wrap; align-items:baseline; justify-content:center; column-gap:4px; row-gap:0; padding:3px 8px; line-height:1.2; text-align:center; }
+  .seat-room-band-name{ font-size:12px; font-weight:800; color:#fff !important; white-space:nowrap; }
+  .seat-room-band-pos{ font-size:9.5px; font-weight:700; opacity:0.8; white-space:nowrap; }
+  .seat-room-band svg{ flex:none; }
   .seat-room-name svg{ vertical-align:-2px; }
   /* [시범 적용 v6] 라벨 칸을 168px로 고정폭 줘서 "날짜"처럼 짧은 라벨과 입력칸 사이에 여백이 크게 남는다는
      의견 - 라벨을 고정폭 대신 글자 길이만큼만 차지하게(auto) 바꾸고, 줄마다("날짜"/"구분"/"일수"/"조정사유"
@@ -31801,7 +31809,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 12:25';
+const APP_BUILD = '2026.09.29 12:35';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -32097,6 +32105,15 @@ function seatDirArrowHtml(dir){
   // 굳이 표시할 필요가 없고, 표시하면 오히려 화면이 복잡해 보임
   return `<span class="seat-dir-monitor rot${rot}" title="모니터(화면)가 이 방향을 향해요"></span>`;
 }
+// 방 위쪽 남색 이름띠 - "이름 직책"을 한 줄로, 폭이 좁으면(세로 방) 직책이 자동으로 아랫줄로 내려가 두 줄이 됨.
+// 방을 돌려도 글자는 항상 똑바로, 띠는 항상 위쪽
+function seatRoomBandHtml(cell, text, nameClass){
+  const t = String(text||'').trim();
+  const p = (sharedOrgChart||[]).find(x=>(x.name||'').trim()===t);
+  const pos = p && (p.position||'').trim() ? (p.position.trim()==='회계사' ? 'CPA' : p.position.trim()) : '';
+  const icon = cell.icon && SEAT_ICON_DEFS[cell.icon] ? SEAT_ICON_DEFS[cell.icon].svg+' ' : '';
+  return `<span class="seat-room-band">${icon}<span class="seat-room-band-name${nameClass ? ' '+nameClass : ''}">${escHtml(t)}</span>${pos ? `<span class="seat-room-band-pos">${escHtml(pos)}</span>` : ''}</span>`;
+}
 // 방 이름표 - 방 이름이 조직도 명단의 사람 이름과 같으면 직책을 붙여 "이정헌 CPA"처럼 보여줌(회계사는 CPA로 표기)
 function seatRoomLabelText(text){
   const t = String(text||'').trim();
@@ -32191,7 +32208,9 @@ function seatInsetsInsideRoom(cell, cells, inset){
     const rs = seatCellEffectiveSpans(room);
     const R1 = room.row, R2 = R1 + (rs.rowSpan||1) - 1, C1 = room.col, C2 = C1 + (rs.colSpan||1) - 1;
     if(r1>=R1 && r2<=R2 && c1>=C1 && c2<=C2){
-      return { t: r1===R1 ? inset : 0, b: r2===R2 ? inset : 0, l: c1===C1 ? inset : 0, r: c2===C2 ? inset : 0 };
+      // 방 맨 윗줄에 놓인 자리는 윗테두리에 걸친 이름표(세로로 좁은 방은 두 줄)에 가리지 않게 조금 더 내려서 그림
+      const bandH = (rs.colSpan||1) < (rs.rowSpan||1) ? 24 : 14;
+      return { t: r1===R1 ? bandH : 0, b: r2===R2 ? inset : 0, l: c1===C1 ? inset : 0, r: c2===C2 ? inset : 0 };
     }
   }
   return null;
@@ -32349,7 +32368,7 @@ function seatCellViewHtml(cell){
     ? `margin-top:${roomIns.t}px; margin-bottom:${roomIns.b}px;`
     : `margin:${roomIns.t}px ${roomIns.r}px ${roomIns.b}px ${roomIns.l}px;`;
   const bodyHtml = cell.type==='room'
-    ? (cell.text || cell.icon ? `<span class="seat-room-name">${cell.icon && SEAT_ICON_DEFS[cell.icon] ? SEAT_ICON_DEFS[cell.icon].svg+' ' : ''}${escHtml(seatRoomLabelText(cell.text||''))}</span>` : '')
+    ? (cell.text || cell.icon ? seatRoomBandHtml(cell, cell.text||'') : '')
     : (cell.type==='label' || cell.type==='item')
     ? seatCellIconBodyHtml(cell, escHtml(cell.text||''), '')
     : seatTextHtml;
@@ -32555,7 +32574,7 @@ function seatChartEditCellHtml(cell){
   // 끌어서 크기를 바꿈 - 좌석·방·구역 모두 똑같이(선택하지 않아도) 됨
   const rz = ['left','right','top','bottom','corner'].map(edge=>`<div class="seat-rz seat-rz-${edge}" data-id="${cell.id}" data-edge="${edge}"></div>`).join('');
   const labelHtml = cell.type==='room'
-    ? `<span class="seat-room-name">${cell.icon && SEAT_ICON_DEFS[cell.icon] ? SEAT_ICON_DEFS[cell.icon].svg+' ' : ''}<span class="seat-edit-cell-label">${escHtml(cell.text ? seatRoomLabelText(cell.text) : '(이름없음)')}</span></span>`
+    ? seatRoomBandHtml(cell, cell.text || '(이름없음)', 'seat-edit-cell-label')
     : (cell.type==='label' || cell.type==='item')
     ? seatCellIconBodyHtml(cell, escHtml(cell.text||'(이름없음)'), 'seat-edit-cell-label')
     : `<span class="seat-edit-cell-label${seatLabelClass}"${seatLabelStyle}>${escHtml(empty ? '미점유' : (cell.text||'(이름없음)'))}</span>`;
