@@ -2488,7 +2488,7 @@
      향한 방향의 반대쪽이 곧 의자가 있는 쪽이라 이거 하나만으로도 방향을 알 수 있음. rot0/180은 칸이
      가로로 긴 채라 가로로 넓적한 바를, rot90/270은 칸이 세로로 길어진 채라(아래 seatCellEffectiveSpans
      참고 - 1×1 자리도 이때는 세로로 늘어남) 세로로 긴 바를 씀 */
-  .seat-dir-monitor{ position:absolute; background:var(--indigo); border-radius:3px; z-index:2; }
+  .seat-dir-monitor{ position:absolute; background:var(--indigo); opacity:0.45; border-radius:2px; z-index:2; } /* 모니터 선이 너무 진하고 굵다는 의견 - 연하게·가늘게 */
   /* 격자선 구분선(벽) - 편집화면/조회화면 공용 */
   .seat-wall{ position:absolute; pointer-events:none; z-index:3; border-radius:2px; }
   /* 편집 화면의 격자선(벽)은 눌러서 선택·끌어서 옮길 수 있게 - 선이 얇아서 눌리는 영역을 앞뒤로 넓혀둠 */
@@ -2542,10 +2542,10 @@
   .seat-wall-popup-hint{ font-size:11px; color:var(--ink-soft); margin-bottom:8px; line-height:1.45; }
   .seat-wall-hover{ position:absolute; pointer-events:none; z-index:51; border-radius:2px; opacity:0.45; }
   #seatChartWallModeBtn.on{ background:var(--indigo); color:#fff; border-color:var(--indigo); }
-  .seat-dir-monitor.rot0{ top:-2px; left:20%; right:20%; height:4px; }
-  .seat-dir-monitor.rot90{ right:-2px; top:20%; bottom:20%; width:4px; }
-  .seat-dir-monitor.rot180{ bottom:-2px; left:20%; right:20%; height:4px; }
-  .seat-dir-monitor.rot270{ left:-2px; top:20%; bottom:20%; width:4px; }
+  .seat-dir-monitor.rot0{ top:-1px; left:20%; right:20%; height:2.5px; }
+  .seat-dir-monitor.rot90{ right:-1px; top:20%; bottom:20%; width:2.5px; }
+  .seat-dir-monitor.rot180{ bottom:-1px; left:20%; right:20%; height:2.5px; }
+  .seat-dir-monitor.rot270{ left:-1px; top:20%; bottom:20%; width:2.5px; }
   /* "방 형태 영역을 추가해달라, 문도 있고" 요청 - 구역표시(label)를 회의실처럼 방 모양으로 크게 쓸 때, 한쪽
      테두리에 출입구(문) 표시를 붙임. 실제 벽(테두리)이 끊긴 것처럼 보이게 그 구간만 배경색 막대(door-gap
      역할, ::before 없이 이 엘리먼트 자체)로 덮고, 그 끝에서 45도로 삐져나온 얇은 선(door-leaf, ::after)으로
@@ -33161,7 +33161,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 21:55';
+const APP_BUILD = '2026.09.29 22:10';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -33516,6 +33516,14 @@ function seatRoomLabelText(text){
 }
 // 구역(label)·방(room)에 문(출입구) 표시 - cell.doorSide('top'/'bottom'/'left'/'right')가 있을 때만 그림.
 // "방의 경우는 기본 테두리에 문 방향이 있으면 좋겠고" 요청으로 방(room)도 구역표시와 똑같이 문 표시를 씀
+// "격자 칸 안에서 방을 자유롭게 크기조절" - 방(room)만, 차지한 격자 영역 대비 네 변을 안쪽으로 줄인 비율
+// {l,r,t,b}(0~0.9). 비율이라 조회·출력 크기가 달라도 같은 모양. 값이 거의 0이면 없는 것으로 봄
+function seatRoomTrim(cell){
+  const t = cell && cell.type==='room' && cell.trim;
+  if(!t) return null;
+  const v = { l:+t.l||0, r:+t.r||0, t:+t.t||0, b:+t.b||0 };
+  return (v.l>0.001 || v.r>0.001 || v.t>0.001 || v.b>0.001) ? v : null;
+}
 function seatDoorMarkHtml(cell){
   if(cell.type!=='room' || !cell.doorSide) return '';
   return `<span class="seat-door-mark ${cell.doorSide}" title="출입구"></span>`;
@@ -33803,6 +33811,11 @@ function seatCellViewHtml(cell){
     : (cell.type==='label' || cell.type==='item')
     ? seatCellIconBodyHtml(cell, escHtml(cell.text||''), '')
     : seatTextHtml;
+  // 방을 격자 칸 안에서 자유롭게 줄인 경우(trim) - 격자 영역은 그대로 차지하고, 테두리 상자만 비율(%)대로 안쪽에 그림
+  const tr = seatRoomTrim(cell);
+  if(tr){
+    return `<div style="position:relative; grid-row:${cell.row} / span ${rowSpan}; grid-column:${cell.col} / span ${colSpan}; ${z} min-height:34px; pointer-events:none;"><div style="position:absolute; left:${(tr.l*100).toFixed(2)}%; right:${(tr.r*100).toFixed(2)}%; top:${(tr.t*100).toFixed(2)}%; bottom:${(tr.b*100).toFixed(2)}%; box-sizing:border-box; ${SEAT_CELL_STYLE_COMMON} ${bg} min-height:0;">${doorMark}${bodyHtml}</div></div>`;
+  }
   return `<div style="position:relative; grid-row:${cell.row} / span ${rowSpan}; grid-column:${cell.col} / span ${colSpan}; ${SEAT_CELL_STYLE_COMMON} ${bg} ${z} ${narrowStyle} ${roomInsStyle}">${dividerBar}${dirArrow}${doorMark}${bodyHtml}</div>`;
 }
 // 구분선(divider)을 배열 맨 앞으로 보내 먼저 그리게 함 - CSS grid는 같은 자리를 두고 여러 칸이 겹치면
@@ -33914,6 +33927,7 @@ function seatNearestRowEnd(yEnd, fromR, maxR){ let best = fromR, bd = Infinity; 
 // 맞바꿔도 모양이 같아서 회전해도 아무 변화가 없어 보였음. 문이 같이 돌아가야 회전한 게 보임)
 function seatRotateCell(cell){
   cell.dir = ((cell.dir||0) + 90) % 360;
+  if(cell.trim){ const o = cell.trim; cell.trim = { l:o.b||0, t:o.l||0, r:o.t||0, b:o.r||0 }; }
   const next = { top:'right', right:'bottom', bottom:'left', left:'top' };
   if(cell.doorSide && next[cell.doorSide]) cell.doorSide = next[cell.doorSide];
 }
@@ -34013,6 +34027,8 @@ function seatChartEditCellHtml(cell){
     w = nw;
   }
   let drawTop = top, drawH = h;
+  const trm = seatRoomTrim(cell);
+  if(trm){ const W0 = w, H0 = h; visualLeft += W0*trm.l; w = W0*(1-trm.l-trm.r); drawTop += H0*trm.t; drawH = H0*(1-trm.t-trm.b); }
   const roomIns = seatInsetsInsideRoom(cell, seatChartDraft ? seatChartDraft.cells : [], 8);
   if(roomIns){
     drawTop += roomIns.t; drawH -= roomIns.t + roomIns.b;
@@ -34177,6 +34193,7 @@ function seatPasteNewCell(){
   if(src.doorSide) cell.doorSide = src.doorSide;
   if(src.icon) cell.icon = src.icon;
   if(src.dividerColor) cell.dividerColor = src.dividerColor;
+  if(src.trim && src.type==='room') cell.trim = { ...src.trim };
   const cols = seatChartDraft.cols || 9;
   const eff = seatCellEffectiveSpans(cell);
   const nonOcc = t => t==='divider' || t==='room';
@@ -34229,7 +34246,7 @@ function bindSeatChartEditCellEvents(){
       else if(act==='rotate'){ seatRotateCell(cell); renderSeatChartEditPreview(); }
       else if(act==='copysize'){
         // 복사 - 크기뿐 아니라 칸 종류·방향·문 위치까지 기억해서, 위쪽 "붙여넣기"로 똑같은 칸을 새로 만들 수 있게 함
-        seatSizeClipboard = { ...seatCellEffectiveSpans(cell), src: { type: cell.type, rowSpan: cell.rowSpan||1, colSpan: cell.colSpan||1, dir: cell.dir||0, doorSide: cell.doorSide||'', icon: cell.icon||'', dividerColor: cell.dividerColor } };
+        seatSizeClipboard = { ...seatCellEffectiveSpans(cell), src: { type: cell.type, rowSpan: cell.rowSpan||1, colSpan: cell.colSpan||1, dir: cell.dir||0, doorSide: cell.doorSide||'', icon: cell.icon||'', dividerColor: cell.dividerColor, trim: cell.trim ? { ...cell.trim } : null } };
         showCenterToast(`복사했어요 · 위쪽 "붙여넣기"로 같은 칸 추가, 다른 칸을 골라 도구줄의 붙여넣기로 크기만 맞추기`);
         renderSeatChartEditPreview(); seatUpdatePasteBtn();
       }
@@ -34391,6 +34408,31 @@ async function seatChartDeleteCellClick(e){
 // 동시)만 되던 걸 네 변(edge='right'/'left'/'top'/'bottom', 그 방향만)까지 넓힘. 왼쪽/위쪽은 반대쪽 변은
 // 그대로 둔 채 그 변만 움직여야 하므로, 끄는 동안 너비/높이뿐 아니라 style.left/top도 같이 옮기고,
 // 손을 뗄 때 그만큼 밀린 칸 수를 cell.col/row에도 반영함(다른 세 방향은 기준점(col/row)이 안 바뀜)
+// 끌어서 정한 방 상자(px)를 "차지하는 격자 칸 + 안쪽으로 줄인 비율(trim)"로 바꿈. 격자선에서 8px 안이면 선에 붙임
+function seatRoomFreeFit(left, top, w, h, maxC, maxR){
+  const SNAP = 8;
+  const axis = (a, b, maxN, posOf, sizeOf)=>{
+    const endOf = n => posOf(n) + sizeOf(n);
+    // 시작 변: 들어있는 칸(간격에 걸치면 다음 칸)
+    let s = maxN; for(let n=1;n<=maxN;n++){ if(a < endOf(n)){ s = n; break; } }
+    if(a < posOf(s) + SNAP) a = posOf(s);
+    else if(a > endOf(s) - SNAP && s < maxN){ s = s + 1; a = posOf(s); }
+    // 끝 변
+    let e = maxN; for(let n=s;n<=maxN;n++){ if(b <= endOf(n) + SEAT_EDIT_GAP/2){ e = n; break; } }
+    if(b > endOf(e) - SNAP) b = endOf(e);
+    else if(b < posOf(e) + SNAP && e > s){ e = e - 1; b = endOf(e); }
+    const start = posOf(s), full = endOf(e) - start;
+    a = Math.max(start, a); b = Math.min(start + full, Math.max(b, a + 16));
+    let t1 = full > 0 ? (a - start) / full : 0, t2 = full > 0 ? (start + full - b) / full : 0;
+    if(t1 + t2 > 0.9){ const k = 0.9 / (t1 + t2); t1 *= k; t2 *= k; }
+    return { n: s, span: e - s + 1, t1: Math.round(t1*1000)/1000, t2: Math.round(t2*1000)/1000 };
+  };
+  const X = axis(left, left + w, maxC, seatColX, seatColW);
+  const Y = axis(top, top + h, maxR, seatRowY, seatRowH);
+  const trim = { l:X.t1, r:X.t2, t:Y.t1, b:Y.t2 };
+  const any = trim.l || trim.r || trim.t || trim.b;
+  return { col:X.n, row:Y.n, colSpan:Math.min(20, X.span), rowSpan:Math.min(20, Y.span), trim: any ? trim : null };
+}
 function seatChartResizeHandlePointerDown(e){
   e.preventDefault();
   e.stopPropagation();
@@ -34412,6 +34454,8 @@ function seatChartResizeHandlePointerDown(e){
   const startCol = cell.col||1, startRow = cell.row||1;
   let finalEffRowSpan = startEff.rowSpan, finalEffColSpan = startEff.colSpan;
   let finalCol = startCol, finalRow = startRow;
+  const isRoom = cell.type === 'room';
+  let roomFree = null;
   try{ handle.setPointerCapture(e.pointerId); }catch(err){}
   function onMove(ev){
     const dx = ev.clientX-startX, dy = ev.clientY-startY;
@@ -34438,6 +34482,8 @@ function seatChartResizeHandlePointerDown(e){
     const endRow = (growH && !fromTop) ? seatNearestRowEnd(newTop + newH, finalRow, maxRows) : startEndRow;
     finalEffColSpan = Math.max(1, Math.min(20, endCol - finalCol + 1));
     finalEffRowSpan = Math.max(1, Math.min(20, endRow - finalRow + 1));
+    // 방은 격자선에 딱 맞추지 않고 끈 만큼 자유롭게(격자선 8px 안쪽으로 가까이 가면 선에 붙음)
+    if(isRoom) roomFree = seatRoomFreeFit(newLeft, newTop, newW, newH, maxCols, maxRows);
   }
   function finish(){
     handle.removeEventListener('pointermove', onMove);
@@ -34447,6 +34493,10 @@ function seatChartResizeHandlePointerDown(e){
     // 하는 것)는 실제 크기를 바꾼 게 아니므로, 손잡이를 눌렀다가 그대로(안 끌고) 떼는 것처럼 화면에
     // 보이던 크기와 끝난 크기가 같으면 굳이 seatSetEffectiveSpans를 불러 저장용 rowSpan/colSpan을
     // 건드리지 않음 - 그냥 두면 1×1이 조용히 다른 값으로 바뀌어버릴 수 있었음
+    if(isRoom && roomFree){
+      finalCol = roomFree.col; finalRow = roomFree.row; finalEffColSpan = roomFree.colSpan; finalEffRowSpan = roomFree.rowSpan;
+      if(roomFree.trim) cell.trim = roomFree.trim; else delete cell.trim;
+    }
     if(finalEffRowSpan !== startEff.rowSpan || finalEffColSpan !== startEff.colSpan){
       seatSetEffectiveSpans(cell, finalEffRowSpan, finalEffColSpan);
     }
