@@ -24,6 +24,11 @@ const messaging = firebase.messaging();
 
 // 새 버전 파일을 올리면, 예전 버전이 앱을 완전히 닫을 때까지 계속 일하는 걸 막고 바로 새 버전으로 교체함
 // (예전 버전이 남아있으면 받는 기기에서 알림이 동시에 두 개씩 뜸)
+// 설정 › 알림에서 "이 기기가 새 버전 알림 파일을 쓰고 있는지" 확인할 때 쓰는 버전 표시
+const TAXJ_SW_VERSION = '2026.09.29-2';
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'taxj-sw-version' && event.ports && event.ports[0]) event.ports[0].postMessage({ version: TAXJ_SW_VERSION });
+});
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 

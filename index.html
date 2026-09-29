@@ -7343,6 +7343,29 @@ document.getElementById('pushTestSendBtn')?.addEventListener('click', async ()=>
     msg.textContent = '보내지 못했어요. 인터넷 연결을 확인해주세요.';
   }
 });
+// "받는 기기에만 알림이 동시에 두 개" 확인용 - 이 기기에 알림 연결(Service Worker 등록)이 몇 개인지, 알림 파일이
+// 새 버전인지 보여줌. 예전 버전이면 한 알림을 두 번 띄우고, 연결이 두 개면 같은 알림을 두 번 받음
+const TAXJ_SW_EXPECTED = '2026.09.29-2';
+function pushSwRegsOfApp(regs){ return (regs||[]).filter(r=>{ const w = r.active || r.waiting || r.installing; return w && /firebase-messaging-sw\.js/.test(w.scriptURL||''); }); }
+async function pushDiagnoseThisDevice(){
+  const el = document.getElementById('pushSwDiag');
+  if(!el || !('serviceWorker' in navigator)) return;
+  try{
+    const regs = pushSwRegsOfApp(await navigator.serviceWorker.getRegistrations());
+    const main = regs.find(r=> r.active) || regs[0];
+    let ver = '';
+    if(main && main.active){
+      ver = await new Promise(res=>{ try{ const ch = new MessageChannel(); const t = setTimeout(()=>res(''), 1500); ch.port1.onmessage = e=>{ clearTimeout(t); res((e.data&&e.data.version)||''); }; main.active.postMessage({ type:'taxj-sw-version' }, [ch.port2]); }catch(e){ res(''); } });
+    }
+    const waiting = regs.some(r=> r.waiting);
+    const verOk = ver === TAXJ_SW_EXPECTED;
+    let msg = `이 기기 알림 파일: ${ver ? (verOk ? '최신 버전' : '버전 '+ver) : '예전 버전'} · 알림 연결 ${regs.length}개`;
+    if(regs.length > 1) msg += ' ⚠️ 연결이 2개 이상이면 같은 알림이 두 번 와요 - 이 기기 줄의 [다시등록]을 눌러주세요.';
+    else if(!verOk || waiting) msg += ' ⚠️ 예전 버전이면 알림이 두 번 와요 - 앱(탭)을 완전히 닫았다가 다시 열어주세요.';
+    el.textContent = msg;
+    el.style.color = (regs.length > 1 || !verOk || waiting) ? 'var(--coral)' : '';
+  }catch(e){}
+}
 function renderMyPushDeviceList(){
   renderPushTestTargets();
   const wrap = document.getElementById('myPushDeviceListWrap');
@@ -7402,7 +7425,8 @@ function renderMyPushDeviceList(){
       <button type="button" class="del-btn my-push-device-del-btn" data-id="${t.id}" style="font-size:11px; padding:4px 10px;">삭제</button>
     </div>`;
   }).join('');
-  wrap.innerHTML = noticeHtml + `<div style="border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-top:6px;">${rows}</div>`;
+  wrap.innerHTML = noticeHtml + `<div style="border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-top:6px;">${rows}</div><p class="hint" id="pushSwDiag" style="margin:6px 0 0; font-size:11px;"></p>`;
+  pushDiagnoseThisDevice();
   wrap.querySelectorAll('.my-push-device-retry-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>registerThisDeviceForPush(true));
   });
@@ -7478,6 +7502,14 @@ async function registerThisDeviceForPush(isRetry){
   try{ localStorage.setItem('worklog_notified_approval_ids', JSON.stringify((sharedApprovals||[]).map(x=>x.id))); }catch(e){}
   if(typeof updateNoticeNotifyBtn === 'function') updateNoticeNotifyBtn();
   if(typeof updateApprovalNotifyBtn === 'function') updateApprovalNotifyBtn();
+  if(isRetry && 'serviceWorker' in navigator){
+    // 같은 기기에 알림 연결이 여러 개 남아 있으면(예전 방식으로 등록된 것 등) 우리 앱 것 하나만 남기고 정리
+    try{
+      const own = new URL('./', location.href).href;
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for(const r of regs){ if(r.scope !== own && /firebase/.test(((r.active||r.waiting||r.installing)||{}).scriptURL||'') ) await r.unregister(); }
+    }catch(e){ console.error('여분 알림 연결 정리 실패', e); }
+  }
   await registerPushToken();
   renderMyPushDeviceList();
   appAlert(isRetry ? '다시 등록했어요. 알림 문제가 있었다면 이제 해결됐을 거예요.' : '이 기기에서 알림을 켰어요. 새 공지·결재 요청·결재 결과 알림이 이 기기로 와요.');
@@ -33161,7 +33193,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 22:30';
+const APP_BUILD = '2026.09.29 22:45';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
