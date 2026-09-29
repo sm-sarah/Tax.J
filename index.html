@@ -2481,6 +2481,11 @@
   .seat-dir-monitor{ position:absolute; background:var(--indigo); border-radius:3px; z-index:2; }
   /* 격자선 구분선(벽) - 편집화면/조회화면 공용 */
   .seat-wall{ position:absolute; pointer-events:none; z-index:3; border-radius:2px; }
+  /* 편집 화면의 격자선(벽)은 눌러서 선택·끌어서 옮길 수 있게 - 선이 얇아서 눌리는 영역을 앞뒤로 넓혀둠 */
+  .seat-wall-pick{ pointer-events:auto; cursor:pointer; touch-action:none; }
+  .seat-wall-pick::before{ content:''; position:absolute; inset:-6px; }
+  .seat-wall-pick-v{ cursor:ew-resize; } .seat-wall-pick-h{ cursor:ns-resize; }
+  .seat-wall-pick.is-sel{ box-shadow:0 0 0 2px #fff, 0 0 0 4px var(--indigo); }
   .seat-wall-overlay{ position:absolute; inset:0; z-index:50; cursor:crosshair; touch-action:none; }
   .seat-grid-vline{ position:absolute; top:0; width:1px; background:var(--border); pointer-events:none; }
   .seat-grid-hline{ position:absolute; left:0; height:1px; background:var(--border); pointer-events:none; }
@@ -32765,7 +32770,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 16:05';
+const APP_BUILD = '2026.09.29 16:30';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -33220,15 +33225,17 @@ function seatWallsGridHtml(walls, gap){
   const half = gap/2;
   return (walls||[]).map(w=>{
     const th = w.w || 3, col = w.color || '#1E2A5E';
+    // off = 선을 옆으로 옮긴 정도(그 칸 크기에 대한 비율, +면 오른쪽/아래) - 칸 크기에 대한 %로 옮겨서 조회·인쇄 크기가 달라도 같은 위치
+    const pct = (Number(w.off)||0) * 100;
     if(w.t==='h'){
       const k = w.r - 1; // 위에서부터 k번째 격자선(0이면 맨 위 바깥선)
       const row = k>=1 ? k : 1;
-      const pos = k>=1 ? `bottom:${-half - th/2}px;` : `top:${-half - th/2}px;`;
+      const pos = k>=1 ? `bottom:calc(${-half - th/2}px - ${pct}%);` : `top:calc(${-half - th/2}px + ${pct}%);`;
       return `<div style="grid-row:${row}; grid-column:${w.c}; position:relative; pointer-events:none; z-index:3; min-height:0;"><span class="seat-wall" style="${pos} left:${-half-1}px; right:${-half-1}px; height:${th}px; background:${col};"></span></div>`;
     }
     const k = w.c - 1;
     const colIdx = k>=1 ? k : 1;
-    const pos = k>=1 ? `right:${-half - th/2}px;` : `left:${-half - th/2}px;`;
+    const pos = k>=1 ? `right:calc(${-half - th/2}px - ${pct}%);` : `left:calc(${-half - th/2}px + ${pct}%);`;
     return `<div style="grid-row:${w.r}; grid-column:${colIdx}; position:relative; pointer-events:none; z-index:3; min-height:0;"><span class="seat-wall" style="${pos} top:${-half-1}px; bottom:${-half-1}px; width:${th}px; background:${col};"></span></div>`;
   }).join('');
 }
@@ -33236,21 +33243,28 @@ function seatWallsGridHtml(walls, gap){
 // 구분선도 정확히 그 선 위에 올라가게 맞춤. 맨 오른쪽/맨 아래 바깥선만은 배경 격자선이 없어서 그리드 끝에 맞춤
 function seatEditLineX(k, cols){ return k<=0 ? 0 : k>=cols ? seatColX(cols+1) - SEAT_EDIT_GAP : seatColX(k+1) - 0.5; }
 function seatEditLineY(k, rows){ return k<=0 ? 0 : k>=rows ? seatRowY(rows+1) - SEAT_EDIT_GAP : seatRowY(k+1) - 0.5; }
+// 선을 옆으로 옮길 때 기준이 되는 칸 크기 - 세로선은 선 왼쪽 칸(맨 왼쪽 바깥선이면 첫 칸), 가로선은 선 위쪽 줄(맨 위면 첫 줄)
+function seatWallOffBase(w){ return w.t==='h' ? seatRowH(Math.max(1, w.r-1)) : seatColW(Math.max(1, w.c-1)); }
+function seatWallOffPx(w){ return (Number(w.off)||0) * seatWallOffBase(w); }
 function seatEditWallRect(w, cols, rows){
   const th = w.w || 3;
+  const d = seatWallOffPx(w);
   if(w.t==='h'){
-    const y = seatEditLineY(w.r-1, rows), x1 = seatEditLineX(w.c-1, cols), x2 = seatEditLineX(w.c, cols);
+    const y = seatEditLineY(w.r-1, rows) + d, x1 = seatEditLineX(w.c-1, cols), x2 = seatEditLineX(w.c, cols);
     return { left:x1 - th/2, top:y - th/2, width:(x2-x1) + th, height:th };
   }
-  const x = seatEditLineX(w.c-1, cols), y1 = seatEditLineY(w.r-1, rows), y2 = seatEditLineY(w.r, rows);
+  const x = seatEditLineX(w.c-1, cols) + d, y1 = seatEditLineY(w.r-1, rows), y2 = seatEditLineY(w.r, rows);
   return { left:x - th/2, top:y1 - th/2, width:th, height:(y2-y1) + th };
 }
-function seatEditWallsHtml(walls, cols, rows){
-  return (walls||[]).map(w=>{
+// 편집 화면 - 평소(격자선 굿기 모드가 아닐 때)엔 선을 눌러 선택하고, 끌어서 옆으로 옮기거나 삭제할 수 있음
+function seatEditWallsHtml(walls, cols, rows, pickable){
+  return (walls||[]).map((w, i)=>{
     const rc = seatEditWallRect(w, cols, rows);
-    return `<span class="seat-wall" style="left:${rc.left}px; top:${rc.top}px; width:${rc.width}px; height:${rc.height}px; background:${w.color||'#1E2A5E'};"></span>`;
+    const cls = pickable ? ` seat-wall-pick seat-wall-pick-${w.t}${i===seatWallSelIdx ? ' is-sel' : ''}` : '';
+    return `<span class="seat-wall${cls}" data-wall-idx="${i}" style="left:${rc.left}px; top:${rc.top}px; width:${rc.width}px; height:${rc.height}px; background:${w.color||'#1E2A5E'};"></span>`;
   }).join('');
 }
+var seatWallSelIdx = null;
 let seatChartWallMode = false;
 let seatWallStyle = { color:'#1E2A5E', w:3 };
 // 마우스 위치에서 가장 가까운 격자선 구간을 찾음 - 선에서 10px 넘게 떨어져 있으면(칸 한가운데 등) 없음
@@ -33654,7 +33668,21 @@ function renderSeatChartEditPreview(){
       <button type="button" data-act="delete" data-id="${selCell.id}" title="삭제" class="danger">✕</button>
     </div>`;
   }
-  const wallsLayer = `<div class="seat-walls-layer" style="position:absolute; inset:0; pointer-events:none; z-index:3;">${seatEditWallsHtml(seatChartDraft.walls, cols, rows)}</div>`;
+  if(seatChartSelectedId || seatChartWallMode || !(seatChartDraft.walls||[])[seatWallSelIdx]) seatWallSelIdx = null;
+  const wallsLayer = `<div class="seat-walls-layer" style="position:absolute; inset:0; pointer-events:none; z-index:3;">${seatEditWallsHtml(seatChartDraft.walls, cols, rows, !seatChartWallMode)}</div>`;
+  // 선택한 격자선 옆에 뜨는 도구줄(옮기기·원위치·삭제)
+  if(seatWallSelIdx !== null && !toolbar){
+    const sw = seatChartDraft.walls[seatWallSelIdx];
+    const rc = seatEditWallRect(sw, cols, rows);
+    const vert = sw.t === 'v';
+    const flipBelow = rc.top < 40;
+    toolbar = `<div class="seat-cell-toolbar" style="left:${rc.left + rc.width}px; top:${flipBelow ? rc.top + rc.height : rc.top}px;${flipBelow ? ' transform:translate(-100%, 6px);' : ''}">
+      <button type="button" data-wact="neg" title="${vert ? '왼쪽' : '위쪽'}으로 옮기기">${vert ? '←' : '↑'}</button>
+      <button type="button" data-wact="pos" title="${vert ? '오른쪽' : '아래쪽'}으로 옮기기">${vert ? '→' : '↓'}</button>
+      <button type="button" data-wact="reset" title="원래 격자선 위치로">⟲</button>
+      <button type="button" data-wact="delete" title="이 선 삭제" class="danger">✕</button>
+    </div>`;
+  }
   const wallOverlay = seatChartWallMode ? `<div class="seat-wall-overlay"></div><span class="seat-wall-hover" style="display:none;"></span>` : '';
   wrap.innerHTML = `<div id="seatChartEditGrid" style="position:relative; width:${gridW}px; height:${gridH}px; min-width:${gridW}px;">${lines}${cellsHtml}${wallsLayer}${rulers}${toolbar}${wallOverlay}</div>`;
   const colsLabel = document.getElementById('seatChartColsLabel');
@@ -33753,9 +33781,58 @@ function bindSeatChartEditCellEvents(){
   // 빈 격자(칸이 없는 곳)를 누르면 선택 해제 - 도구줄도 같이 사라짐
   const gridEl = document.getElementById('seatChartEditGrid');
   gridEl?.addEventListener('pointerdown', (e)=>{
-    if(e.target !== gridEl || !seatChartSelectedId) return;
-    seatChartSelectedId = null;
+    if(e.target !== gridEl || (!seatChartSelectedId && seatWallSelIdx === null)) return;
+    seatChartSelectedId = null; seatWallSelIdx = null;
     renderSeatChartEditPreview();
+  });
+  // 격자선(벽) 선택·끌어서 옮기기 - "격자선을 한 번 그리면 수정·삭제가 안 된다"·"선을 특정 부분만 옮기고 싶다" 요청.
+  // 선을 누르면 선택되고(도구줄: ←→ 옮기기 / 원위치 / 삭제), 누른 채 옆으로 끌면 그 한 토막만 칸 안쪽으로 옮겨짐
+  document.querySelectorAll('#seatChartEditGrid .seat-wall-pick').forEach(el=>{
+    el.addEventListener('pointerdown', (e)=>{
+      e.preventDefault(); e.stopPropagation();
+      const idx = Number(el.dataset.wallIdx);
+      const w = seatChartDraft.walls[idx]; if(!w) return;
+      seatChartSelectedId = null;
+      const vert = w.t === 'v';
+      const base = seatWallOffBase(w);
+      const start = vert ? e.clientX : e.clientY;
+      const startOff = Number(w.off)||0;
+      const startLeft = parseFloat(el.style.left), startTop = parseFloat(el.style.top);
+      let moved = false;
+      try{ el.setPointerCapture(e.pointerId); }catch(_){}
+      const onMove = (ev)=>{
+        const d = (vert ? ev.clientX : ev.clientY) - start;
+        if(Math.abs(d) > 2) moved = true;
+        if(!moved) return;
+        const off = Math.max(-0.95, Math.min(0.95, startOff + d/base));
+        w.off = Math.round(off*1000)/1000;
+        const px = (w.off - startOff) * base;
+        if(vert) el.style.left = (startLeft + px) + 'px'; else el.style.top = (startTop + px) + 'px';
+      };
+      const onUp = ()=>{
+        el.removeEventListener('pointermove', onMove); el.removeEventListener('pointerup', onUp); el.removeEventListener('pointercancel', onUp);
+        if(!w.off) delete w.off;
+        seatWallSelIdx = idx;
+        renderSeatChartEditPreview();
+      };
+      el.addEventListener('pointermove', onMove); el.addEventListener('pointerup', onUp); el.addEventListener('pointercancel', onUp);
+    });
+  });
+  document.querySelectorAll('#seatChartEditGrid .seat-cell-toolbar [data-wact]').forEach(btn=>{
+    btn.addEventListener('pointerdown', e=> e.stopPropagation());
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const w = seatChartDraft.walls[seatWallSelIdx]; if(!w) return;
+      const act = btn.dataset.wact;
+      if(act === 'delete'){ seatChartDraft.walls.splice(seatWallSelIdx, 1); seatWallSelIdx = null; }
+      else if(act === 'reset') delete w.off;
+      else {
+        const step = 6 / seatWallOffBase(w); // 한 번에 6px씩
+        const off = Math.max(-0.95, Math.min(0.95, (Number(w.off)||0) + (act === 'pos' ? step : -step)));
+        w.off = Math.round(off*1000)/1000; if(!w.off) delete w.off;
+      }
+      renderSeatChartEditPreview();
+    });
   });
   bindRuler('#seatChartEditGrid .seat-ruler-h', true);
   bindRuler('#seatChartEditGrid .seat-ruler-v', false);
@@ -34366,7 +34443,7 @@ function seatWallPopupOpen(){
   pop.innerHTML = `<div class="seat-wall-popup-head"><span>격자선 긋기</span><button type="button" class="seat-wall-popup-x" title="끄기">✕</button></div>
     <div class="seat-wall-popup-row"><span class="lb">색상</span>${colors.map(([c,n])=>`<button type="button" class="sw${seatWallStyle.color===c?' on':''}" data-color="${c}" title="${n}" style="background:${c};"></button>`).join('')}</div>
     <div class="seat-wall-popup-row"><span class="lb">굵기</span>${thicks.map(([t,n])=>`<button type="button" class="tk${seatWallStyle.w===t?' on':''}" data-w="${t}" title="${n}"><span style="height:${t}px;"></span></button>`).join('')}</div>
-    <div class="seat-wall-popup-hint">격자선을 누르거나 끌면 선이 생기고, 같은 선을 다시 누르면 지워져요.</div>
+    <div class="seat-wall-popup-hint">격자선을 누르거나 끌면 선이 생기고, 같은 선을 다시 누르면 지워져요. 완료한 뒤엔 그려진 선을 눌러 옆으로 옮기거나 삭제할 수 있어요.</div>
     <div style="text-align:right;"><button type="button" class="submit-btn seat-wall-popup-done" style="padding:6px 14px; font-size:12px;">완료</button></div>`;
   document.body.appendChild(pop);
   const r = btn ? btn.getBoundingClientRect() : { left:20, bottom:80 };
@@ -35142,7 +35219,9 @@ function printHtmlSection(docTitle, subtitle, bodyHtml){
       :root{ --bg:#EAECF7; --surface:#FFFFFF; --ink:#1D1E33; --ink-soft:#75789A; --border:rgba(29,30,51,0.14);
         --indigo:#5B5FEF; --indigo-bg:#ECEBFE; --indigo-deep:#4640D6; --navy:#1E2A5E;
         --mint:#0FB88A; --mint-bg:#E1F8F0; --coral:#F0506E; --coral-bg:#FDE9EE; }
-      *{ box-sizing:border-box; }
+      /* 브라우저 인쇄 기본값("배경 그래픽" 꺼짐)이면 배경색으로 그린 벽선·모니터 막대·이름표·문 표시가 빠져서
+         "출력하면 격자선이 안 보인다"는 문제가 있었음 - 배경색도 화면 그대로 인쇄되게 함 */
+      *{ box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
       body{ font-family:'Pretendard',sans-serif; padding:14px 18px; margin:0; color:#1D1E33; }
       .print-header{ text-align:center; margin-bottom:18px; }
       .print-header h1{ font-size:25px; font-weight:800; margin:0 0 6px; letter-spacing:-0.3px; }
@@ -35153,10 +35232,13 @@ function printHtmlSection(docTitle, subtitle, bodyHtml){
          (화면에선 원래 크기, 실제 인쇄할 때만 한 장에 맞게 축소) */
       .print-toolbar{ position:sticky; top:0; z-index:10; display:flex; justify-content:center; gap:6px; padding:7px 0; margin:-14px -18px 14px; background:rgba(255,255,255,0.95); border-bottom:1px solid #E2E3EE; }
       .print-toolbar button{ font-family:inherit; font-size:11.5px; font-weight:700; border-radius:7px; padding:4px 12px; cursor:pointer; border:1.5px solid #D5D7E6; background:#fff; color:#1D1E33; }
+      .print-toolbar{ align-items:center; }
+      .print-toolbar-tip{ font-size:11px; color:#75789A; }
+      .print-toolbar-tip b{ color:#1D1E33; }
       .print-toolbar button.primary{ background:#5B5FEF; border-color:#5B5FEF; color:#fff; }
       @media print{ @page{ size:landscape; margin:10mm; } .print-toolbar{ display:none !important; } }
     </style></head><body>
-    <div class="print-toolbar"><button type="button" class="primary" onclick="window.print()">인쇄</button><button type="button" onclick="window.close()">닫기</button></div>
+    <div class="print-toolbar"><button type="button" class="primary" onclick="window.print()">인쇄</button><span class="print-toolbar-tip">색·선이 빠져 보이면 인쇄 창의 <b>설정 더보기 → 배경 그래픽</b>을 체크해주세요</span></div>
     <div style="text-align:center;">
       <div class="print-header"><h1>${escHtml(companyName)}</h1><div class="print-sub">${escHtml(subtitle)}</div><div class="print-bar"></div></div>
       <div id="printFitWrap">${bodyHtml}</div>
