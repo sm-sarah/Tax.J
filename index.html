@@ -31925,7 +31925,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 14:10';
+const APP_BUILD = '2026.09.29 14:15';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -32903,14 +32903,20 @@ function seatChartOpenCellEditorClick(e){
   seatChartEditorBackup = { ...cell };
   renderSeatChartEditPreview();
 }
+function seatChartDeleteGoesToTray(cell){
+  return !!(cell && cell.type==='seat' && String(cell.text||'').trim() && cell.row && cell.col);
+}
 async function seatChartDeleteCellClick(e){
   e.stopPropagation();
   const id = e.currentTarget.dataset.id;
   const cell = seatChartDraft?.cells.find(c=>c.id===id);
   if(!cell) return;
   const name = cell.text || (cell.type==='room' ? '방' : cell.type==='divider' ? '구분선' : (cell.type==='label' || cell.type==='item') ? '구역' : '(이름없음)');
-  if(!(await appConfirm(`"${name}" 칸을 삭제할까요?`))) return;
-  seatChartDraft.cells = seatChartDraft.cells.filter(c=>c.id!==id);
+  // 이름이 있는 자리를 배치도에서 지우면 사람까지 없어지지 않게 "배치예정"으로 보냄(배치예정에서 지우면 그때 완전 삭제)
+  const toTray = seatChartDeleteGoesToTray(cell);
+  if(!(await appConfirm(toTray ? `"${name}" 자리를 배치도에서 빼서 배치예정으로 보낼까요?` : `"${name}" 칸을 삭제할까요?`))) return;
+  if(toTray){ cell.row = null; cell.col = null; }
+  else seatChartDraft.cells = seatChartDraft.cells.filter(c=>c.id!==id);
   if(seatChartSelectedId===id) seatChartSelectedId = null;
   if(seatChartEditorOpenId===id) seatChartCloseCellEditor(true); // 지워졌으니 되돌릴 필요 없이 그냥 닫음
   renderSeatChartEditPreview();
@@ -33391,7 +33397,8 @@ function renderSeatChartCellEditor(){
   document.getElementById('seatEditColSpanPlus').addEventListener('click', ()=>{ cell.colSpan = Math.min(20,(cell.colSpan||1)+1); renderSeatChartEditPreview(); });
   document.getElementById('seatEditRotateBtn').addEventListener('click', ()=>{ seatRotateCell(cell); renderSeatChartEditPreview(); });
   document.getElementById('seatEditDeleteBtn').addEventListener('click', ()=>{
-    seatChartDraft.cells = seatChartDraft.cells.filter(c=>c.id!==cell.id);
+    if(seatChartDeleteGoesToTray(cell)){ cell.row = null; cell.col = null; } // 이름 있는 자리는 배치예정으로
+    else seatChartDraft.cells = seatChartDraft.cells.filter(c=>c.id!==cell.id);
     seatChartSelectedId = null;
     seatChartCloseCellEditor(true); // 지워졌으니 되돌릴 필요 없이 그냥 닫음
     renderSeatChartEditPreview();
