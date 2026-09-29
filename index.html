@@ -6130,6 +6130,7 @@
                선에 가까워서 이 드롭다운에서 빼고 바로 옆에 작은 전용 버튼으로 뺌(기능은 그대로) -->
           <!-- "조직도 목록 가져오기"(조직도 명단을 배치예정으로) / "초기화"(격자선만 남기고 전부 비움) -->
           <button type="button" class="del-btn" id="seatChartImportOrgBtn" title="조직도에 등록된 사람을 배치예정으로 가져와요(이미 자리가 있는 사람은 팀·직책만 최신화)" style="padding:5px 10px; font-size:11.5px;">조직도 목록 가져오기</button>
+          <button type="button" class="del-btn" id="seatChartPasteBtn" title="복사해 둔 칸과 같은 칸(종류·크기·방향·문)을 새로 추가해요" style="padding:5px 10px; font-size:11.5px; display:none;">붙여넣기</button>
           <button type="button" class="del-btn" id="seatChartResetBtn" title="자리·구역·방·구분선을 모두 지우고 격자선만 남겨요(저장해야 반영)" style="padding:5px 10px; font-size:11.5px; color:var(--coral);">초기화</button>
           <span style="width:1px; height:16px; background:var(--border); margin:0 4px;"></span>
           <select id="seatChartAddTypeSelect" class="flat-input" style="width:110px;">
@@ -33148,7 +33149,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 19:25';
+const APP_BUILD = '2026.09.29 19:40';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -33489,7 +33490,8 @@ function seatRoomBandHtml(cell, text, nameClass){
   const pos = p && (p.position||'').trim() ? (p.position.trim()==='회계사' ? 'CPA' : p.position.trim()) : '';
   const icon = cell.icon && SEAT_ICON_DEFS[cell.icon] ? SEAT_ICON_DEFS[cell.icon].svg+' ' : '';
   const effW = typeof seatCellEffectiveSpans === 'function' ? (seatCellEffectiveSpans(cell).colSpan||1) : (cell.colSpan||1);
-  return `<span class="seat-room-band${effW<=1 ? ' is-narrow' : ''}">${icon}<span class="seat-room-band-name${nameClass ? ' '+nameClass : ''}">${escHtml(t)}</span>${pos ? `<span class="seat-room-band-pos">${escHtml(pos)}</span>` : ''}</span>`;
+  // 방 크기와 상관없이 모든 방의 이름표를 같은 모양(이름 위·직책 아래, 가운데)으로 - "왜 방마다 다르게 나오냐"는 지적
+  return `<span class="seat-room-band is-narrow">${icon}<span class="seat-room-band-name${nameClass ? ' '+nameClass : ''}">${escHtml(t)}</span>${pos ? `<span class="seat-room-band-pos">${escHtml(pos)}</span>` : ''}</span>`;
 }
 // 방 이름표 - 방 이름이 조직도 명단의 사람 이름과 같으면 직책을 붙여 "이정헌 CPA"처럼 보여줌(회계사는 CPA로 표기)
 function seatRoomLabelText(text){
@@ -33735,8 +33737,10 @@ function bindSeatChartWallOverlay(grid, cols, rows){
 let _seatViewCellsCtx = [];
 function _seatCellsMaxRow(cells){ return (cells||[]).reduce((m,c)=>{ if(!c.row || c.type==='divider') return m; const sp = seatCellEffectiveSpans(c); return Math.max(m, c.row + (sp.rowSpan||1) - 1); }, 0); }
 function seatChartLayoutOf(chart){ return chart ? { cellW: chart.cellW||108, cellH: chart.cellH||54, colWidths: chart.colWidths||null, rowHeights: chart.rowHeights||null } : null; }
+// "미점유"·"공석"처럼 적혀 있는 자리도 빈 자리로(노란 칸) - 어떤 건 흰 칸 "미점유", 어떤 건 노란 칸으로 달라 보였음
+function seatIsEmptySeat(cell){ return cell.type==='seat' && (!cell.text || /^(미점유|공석|빈자리|예정)$/.test(String(cell.text).trim())); }
 function seatCellViewHtml(cell){
-  const empty = cell.type==='seat' && !cell.text;
+  const empty = seatIsEmptySeat(cell);
   const { rowSpan, colSpan } = seatCellEffectiveSpans(cell);
   let bg = 'background:var(--surface);';
   let dividerBar = '';
@@ -33975,7 +33979,7 @@ function seatCellTypeLabel(cell){
   return cell.type==='label' ? '구역' : cell.type==='item' ? '구역' : cell.type==='room' ? '방' : cell.type==='divider' ? '구분선' : '좌석';
 }
 function seatChartEditCellHtml(cell){
-  const empty = cell.type==='seat' && !cell.text;
+  const empty = seatIsEmptySeat(cell);
   const { rowSpan, colSpan } = seatCellEffectiveSpans(cell);
   let bg = 'background:var(--surface); border:1.5px solid var(--border); z-index:1;';
   if(cell.type==='label') bg = 'background:var(--bg); color:var(--ink-soft); font-weight:700; border:1.5px dashed var(--border); z-index:1;';
@@ -34119,10 +34123,40 @@ function renderSeatChartEditPreview(){
   if(seatChartWallMode) bindSeatChartWallOverlay(document.getElementById('seatChartEditGrid'), cols, rows);
   renderSeatChartTray();
   renderSeatChartCellEditor();
+  seatUpdatePasteBtn();
 }
 // "이 사이즈를 복사·붙여넣기 하고 싶다" 요청 - 선택한 칸 도구줄의 "크기 복사"로 화면에 보이는 가로·세로 칸 수를
 // 기억해두고, 다른 칸을 골라 "크기 붙여넣기"를 누르면 그 칸도 같은 크기로 맞춤(돌려놓은 칸이면 가로·세로를 바꿔서 맞춤)
 var seatSizeClipboard = null;
+// 위쪽 "붙여넣기" - 복사해 둔 칸과 같은 종류·크기·방향·문 위치의 새 칸(이름은 비움)을 격자의 빈 곳에 추가하고 선택함
+function seatUpdatePasteBtn(){
+  const b = document.getElementById('seatChartPasteBtn');
+  if(b) b.style.display = (seatSizeClipboard && seatSizeClipboard.src) ? '' : 'none';
+}
+function seatPasteNewCell(){
+  if(!seatChartDraft || !seatSizeClipboard || !seatSizeClipboard.src) return;
+  const src = seatSizeClipboard.src;
+  const cell = { id: genId(), type: src.type, text:'', row:null, col:null, rowSpan: src.rowSpan, colSpan: src.colSpan, dir: src.dir };
+  if(src.doorSide) cell.doorSide = src.doorSide;
+  if(src.icon) cell.icon = src.icon;
+  if(src.dividerColor) cell.dividerColor = src.dividerColor;
+  const cols = seatChartDraft.cols || 9;
+  const eff = seatCellEffectiveSpans(cell);
+  const nonOcc = t => t==='divider' || t==='room';
+  // 방은 다른 방과, 그 외 칸은 다른 자리·구역과 안 겹치는 첫 빈 곳
+  const clash = (cand)=> seatChartDraft.cells.some(c=> c.row && c.col && c.id!==cand.id && (cell.type==='room' ? c.type==='room' : !nonOcc(c.type)) && seatChartRangesOverlap(c, cand));
+  const maxRow = seatChartRowsNeeded() + 10;
+  outer: for(let r=1; r<=maxRow; r++){
+    for(let c=1; c + (eff.colSpan||1) - 1 <= cols; c++){
+      const cand = { ...cell, row:r, col:c };
+      if(!clash(cand)){ cell.row = r; cell.col = c; break outer; }
+    }
+  }
+  seatChartDraft.cells.push(cell);
+  seatChartSelectedId = cell.id;
+  renderSeatChartEditPreview();
+  showCenterToast(cell.row ? '붙여넣었어요 · 끌어서 원하는 자리로 옮겨주세요' : '빈 곳이 없어 배치예정에 넣었어요');
+}
 function seatPasteSizeTo(cell){
   if(!seatSizeClipboard || !cell) return;
   const rot = ((cell.dir||0)%360+360)%360;
@@ -34154,7 +34188,12 @@ function bindSeatChartEditCellEvents(){
       if(!cell) return;
       if(act==='edit') seatChartOpenCellEditorClick({ stopPropagation(){}, currentTarget:{ dataset:{ id } } });
       else if(act==='rotate'){ seatRotateCell(cell); renderSeatChartEditPreview(); }
-      else if(act==='copysize'){ seatSizeClipboard = seatCellEffectiveSpans(cell); showCenterToast(`크기 복사: 가로 ${seatSizeClipboard.colSpan}칸 × 세로 ${seatSizeClipboard.rowSpan}칸`); renderSeatChartEditPreview(); }
+      else if(act==='copysize'){
+        // 복사 - 크기뿐 아니라 칸 종류·방향·문 위치까지 기억해서, 위쪽 "붙여넣기"로 똑같은 칸을 새로 만들 수 있게 함
+        seatSizeClipboard = { ...seatCellEffectiveSpans(cell), src: { type: cell.type, rowSpan: cell.rowSpan||1, colSpan: cell.colSpan||1, dir: cell.dir||0, doorSide: cell.doorSide||'', icon: cell.icon||'', dividerColor: cell.dividerColor } };
+        showCenterToast(`복사했어요 · 위쪽 "붙여넣기"로 같은 칸 추가, 다른 칸을 골라 도구줄의 붙여넣기로 크기만 맞추기`);
+        renderSeatChartEditPreview(); seatUpdatePasteBtn();
+      }
       else if(act==='pastesize') seatPasteSizeTo(cell);
       else if(act==='delete') seatChartDeleteCellClick({ stopPropagation(){}, currentTarget:{ dataset:{ id } } });
     });
@@ -34826,6 +34865,7 @@ document.getElementById('seatChartImportOrgBtn')?.addEventListener('click', ()=>
   renderSeatChartEditPreview();
   showCenterToast(added || updated ? `배치예정 ${added}명 추가${updated ? ` · 팀/직책 ${updated}명 최신화` : ''}` : '이미 모두 가져와져 있어요');
 });
+document.getElementById('seatChartPasteBtn')?.addEventListener('click', seatPasteNewCell);
 document.getElementById('seatChartResetBtn')?.addEventListener('click', async ()=>{
   if(!seatChartDraft) return;
   if(!(await appConfirm('자리·구역·방·구분선을 모두 지우고 격자선만 남길까요?\n(저장 버튼을 눌러야 실제로 반영돼요)'))) return;
@@ -35719,8 +35759,25 @@ function printHtmlSection(docTitle, subtitle, bodyHtml){
         if(!wrap) return;
         wrap.style.transform = 'none'; wrap.style.zoom = ''; wrap.style.marginBottom = '';
       }
+      // 미리보기 창에서는 창 크기에 맞춰 한눈에 다 보이게 줄여서 보여줌("출력 누르면 너무 확대돼 보인다") -
+      // 실제 인쇄할 때는 용지 기준으로 다시 맞추고, 인쇄가 끝나면 다시 창 크기에 맞춤
+      function fitPreview(){
+        var wrap = document.getElementById('printFitWrap');
+        if(!wrap) return;
+        wrap.style.transform = 'none'; wrap.style.zoom = ''; wrap.style.marginBottom = '';
+        var rect = wrap.getBoundingClientRect();
+        var tb = document.querySelector('.print-toolbar');
+        var hd = document.querySelector('.print-header');
+        var availW = window.innerWidth - 48;
+        var availH = window.innerHeight - (tb ? tb.offsetHeight : 0) - (hd ? hd.offsetHeight : 0) - 70;
+        var scale = Math.min(1, availW / rect.width, availH / rect.height);
+        if(scale < 1 && scale > 0.2) wrap.style.zoom = String(Math.round(scale*1000)/1000);
+      }
       window.addEventListener('beforeprint', fitPrintContent);
-      window.addEventListener('afterprint', resetPrintFit);
+      window.addEventListener('afterprint', fitPreview);
+      window.addEventListener('resize', fitPreview);
+      window.addEventListener('load', fitPreview);
+      setTimeout(fitPreview, 50);
     <\/script>
     </body></html>`);
   win.document.close();
