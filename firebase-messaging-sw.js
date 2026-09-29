@@ -23,25 +23,45 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 // 앱/탭이 꺼져있거나 백그라운드일 때 FCM 메시지가 도착하면 여기서 받아서, OS 알림(배너)으로 띄움
+// ⚠️ "모바일에서 같은 알림이 두 번씩 온다"의 원인 - 서버가 notification(제목·내용)을 담아 보내면 Firebase가
+// 알아서 알림을 한 번 띄우는데, 예전엔 여기서 또 한 번 showNotification을 불러서 두 번 떴음.
+// 이제 notification이 담겨 온 메시지는 Firebase가 띄우는 것 하나만 두고, data만 담겨 온 메시지일 때만 여기서 띄움
 messaging.onBackgroundMessage((payload) => {
-  const title = (payload.notification && payload.notification.title) || (payload.data && payload.data.title) || 'Tax.J';
-  const body = (payload.notification && payload.notification.body) || (payload.data && payload.data.body) || '';
-  self.registration.showNotification(title, {
+  if (payload && payload.notification) return; // Firebase가 이미 띄움(중복 방지)
+  const d = (payload && payload.data) || {};
+  const title = d.title || 'Tax.J';
+  const body = d.body || '';
+  return self.registration.showNotification(title, {
     body,
-    icon: undefined, // 별도 아이콘 파일을 리포지토리 루트에 추가하면 여기에 경로를 넣어줄 수 있음
-    tag: 'taxj-push-' + Date.now()
+    icon: d.icon || 'icon-192.png',
+    // 같은 사건이 혹시 두 번 도착해도 알림 하나로 합쳐지게(같은 tag면 덮어씀)
+    tag: d.tag || ('taxj-' + title + '|' + body),
+    requireInteraction: true, // 직접 닫기 전까지 유지(지원하는 기기에서)
+    data: { link: d.link || '' }
   });
 });
 
-// 알림(배너)을 클릭하면 이미 열려있는 Tax.J 탭이 있으면 그 탭으로 포커스하고, 없으면 새로 열어줌
+// 알림(배너)을 클릭하면 - 알림에 "열 주소"(link)가 있으면 그 화면(결재 문서·공지·팀캘린더)으로 바로 가고,
+// 없으면 예전처럼 Tax.J를 앞으로 가져오거나 새로 엶
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const nd = event.notification.data || {};
+  let link = nd.link || '';
+  // Firebase가 자동으로 띄운 알림은 원본 메시지가 FCM_MSG 안에 들어있음
+  try{
+    const fcm = nd.FCM_MSG || {};
+    link = link || (fcm.data && fcm.data.link) || (fcm.fcmOptions && fcm.fcmOptions.link) || (fcm.notification && fcm.notification.click_action) || '';
+  }catch(e){}
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
-        if ('focus' in client) return client.focus();
+        if ('focus' in client){
+          // 이미 열린 Tax.J가 있으면 새로 열지 않고, 그 화면에 "이 알림 열어줘"라고 전달함
+          if (link) client.postMessage({ type: 'taxj-open-link', link });
+          return client.focus();
+        }
       }
-      if (clients.openWindow) return clients.openWindow('./');
+      if (clients.openWindow) return clients.openWindow(link || './');
     })
   );
 });

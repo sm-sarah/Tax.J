@@ -2235,6 +2235,9 @@
   /* 테두리 없이 옅은 box-shadow만으로 네 모서리를 표현하던 방식이 흐릿하게 보인다는 의견이 있어서,
      또렷한 1px 테두리를 같이 둬서 모서리가 선명하게 보이게 함(그림자는 아주 살짝만 남겨서 카드가
      배경 위에 붕 떠 보이는 느낌만 유지함) */
+  /* 결재 문서목록 - 고정폭 칸들 합이 화면보다 넓은 모바일에선 문서제목 칸이 0이 되어 결재자와 겹쳤음. 좁은 화면에선
+     표 최소폭을 줘서 제목 칸 자리를 확보하고, 대신 옆으로 스크롤되게 함 */
+  @media (max-width:1000px){ .approval-list-table{ min-width:980px; } }
   .table-scroll{overflow:auto; max-height:68vh; border-radius:14px; border:1px solid var(--border); box-shadow:0 1px 2px rgba(29,30,51,0.04), 0 6px 16px -12px rgba(29,30,51,0.14); background:var(--surface);}
   /* 신고현황(원천세/부가세/법인세/종소세)의 거래처 목록은 항목 수가 많지 않고, 현황을 스크롤 없이 한눈에 봐야 하는 화면이라
      다른 표들과 달리 내부 스크롤(max-height)을 두지 않고 페이지 자체 스크롤로만 늘어나게 함. 다만 원천세 매월/반기/연간
@@ -7649,7 +7652,7 @@ function recoverMissingClientMemoAndPersonalInfo(){
 }
 async function saveSharedExclusions(){ try{ localStorage.setItem('worklog_shared_exclusions', JSON.stringify(sharedExclusionDays)); }catch(e){ console.error('공통 제외일 저장 실패', e); } touchSharedField('exclusionDays'); gdriveScheduleSync(); }
 async function saveSharedWorkHourExceptions(){ try{ localStorage.setItem('worklog_shared_workhours', JSON.stringify(sharedWorkHourExceptions)); }catch(e){ console.error('공통 근무시간 예외 저장 실패', e); } touchSharedField('workHourExceptions'); gdriveScheduleSync(); }
-async function saveSharedNoticeHistory(){ try{ localStorage.setItem('worklog_shared_notice_history', JSON.stringify(sharedNoticeHistory)); }catch(e){ console.error('공지사항 저장 실패', e); } touchSharedField('noticeHistory'); gdriveScheduleSync();
+async function saveSharedNoticeHistory(){ markLocalAction('notice'); try{ localStorage.setItem('worklog_shared_notice_history', JSON.stringify(sharedNoticeHistory)); }catch(e){ console.error('공지사항 저장 실패', e); } touchSharedField('noticeHistory'); gdriveScheduleSync();
   // 공지를 쓴 즉시 쓴 사람 기기에서 알림·푸시를 보냄
   if(typeof checkNewNoticesForBrowserNotify === 'function') checkNewNoticesForBrowserNotify(); }
 async function saveSharedNotificationLog(){ try{ localStorage.setItem('worklog_shared_notifications', JSON.stringify(sharedNotificationLog)); }catch(e){ console.error('알림 저장 실패', e); } touchSharedField('notificationLog'); gdriveScheduleSync(); }
@@ -7739,9 +7742,29 @@ function setupForegroundPush(messaging, reg){
       const title = n.title || d.title || 'Tax.J';
       const body = n.body || d.body || '';
       // requireInteraction: 사용자가 닫기 전까지 알림이 화면에서 사라지지 않게(PC 크롬 등 지원하는 곳에서)
-      const opts = { body, icon: n.icon || d.icon || 'icon-192.png', tag: 'fg-' + (d.tag || title + '|' + body), requireInteraction: true };
-      if(reg && typeof reg.showNotification === 'function') reg.showNotification(title, opts);
-      else if(typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification(title, opts);
+      // 출퇴근 알림은 서버가 그림을 안 실어 보내도 제목으로 알아보고 비숑 그림을 붙임
+      const clockIcon = /출근 \d/.test(title) ? CLOCK_BICHON_ICON.checkIn : /퇴근 \d/.test(title) ? CLOCK_BICHON_ICON.checkOut : '';
+      const opts = { body, icon: n.icon || d.icon || clockIcon || 'icon-192.png', tag: 'fg-' + (d.tag || title + '|' + body), requireInteraction: true };
+      // 화면이 열려 있을 때 온 푸시는 이 페이지가 직접 띄워서, 누르면 관련 화면(결재 문서·공지·팀캘린더)으로 바로 이동하게 함.
+      // 알림함에서 같은 제목의 가장 최근 알림을 찾아 그걸 연 것처럼 처리. (휴대폰은 페이지가 직접 못 띄워서 기존 방식으로)
+      const openTarget = ()=>{
+        try{
+          window.focus();
+          const link = d.link || (payload && payload.fcmOptions && payload.fcmOptions.link) || '';
+          if(link && link.includes('nt=')){ const q = new URL(link).searchParams; openNotificationTarget({ type:q.get('nt'), relatedId:q.get('nr')||'', eventAt:q.get('ne')||'' }); return; }
+          const hit = (sharedNotificationLog||[]).filter(x=> x.title === title).sort((x,y)=> String(y.createdAt||'').localeCompare(String(x.createdAt||'')))[0];
+          if(hit){ markNotificationRead(hit.id); updateNotificationUnreadBadge(); openNotificationTarget(hit); }
+        }catch(e){}
+      };
+      let shown = false;
+      try{
+        if(typeof Notification !== 'undefined' && Notification.permission === 'granted'){
+          const nf = new Notification(title, opts);
+          nf.onclick = ()=>{ openTarget(); nf.close(); };
+          shown = true;
+        }
+      }catch(e){ shown = false; }
+      if(!shown && reg && typeof reg.showNotification === 'function') reg.showNotification(title, opts);
       if(typeof updateNotificationUnreadBadge === 'function') updateNotificationUnreadBadge();
     }catch(e){ console.error('화면이 열린 상태의 푸시 표시 실패', e); }
   });
@@ -7868,6 +7891,50 @@ function markSentPushDupKeyLocally(dupKey){
     localStorage.setItem('worklog_sent_push_dupkeys', JSON.stringify(arr));
   }catch(e){}
 }
+// "푸시를 누르면 그냥 홈으로 들어간다" - 푸시에 "눌렀을 때 열 주소"(link)를 같이 실어 보내고, 그 주소로 앱이 열리면
+// 해당 결재 문서·공지·팀캘린더를 바로 띄움. 주소 끝의 ?nt=종류&nr=연관id&ne=일정날짜 를 읽어서 알림함에서 누른 것과 똑같이 처리
+function notificationDeepLinkUrl(entry){
+  try{
+    const u = new URL(location.href);
+    u.search = ''; u.hash = '';
+    u.searchParams.set('nt', entry.type || '');
+    u.searchParams.set('nr', entry.relatedId || '');
+    if(entry.eventAt) u.searchParams.set('ne', String(entry.eventAt).slice(0, 40));
+    return u.href;
+  }catch(e){ return ''; }
+}
+// 이미 열려 있는 Tax.J에서 알림을 누르면 서비스워커가 "이 링크 열어줘"를 보내옴 - 새로고침 없이 그 화면을 바로 띄움
+try{
+  if('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (ev)=>{
+    const m = ev.data || {};
+    if(m.type !== 'taxj-open-link' || !m.link) return;
+    try{
+      const q = new URL(m.link).searchParams;
+      if(!q.get('nt')) return;
+      const n = { type:q.get('nt'), relatedId:q.get('nr')||'', eventAt:q.get('ne')||'' };
+      const hit = (sharedNotificationLog||[]).find(x=> x.type === n.type && String(x.relatedId||'') === n.relatedId);
+      if(hit){ markNotificationRead(hit.id); updateNotificationUnreadBadge(); }
+      openNotificationTarget(n);
+    }catch(e){}
+  });
+}catch(e){}
+let _deepLinkHandled = false;
+function handleNotificationDeepLink(){
+  if(_deepLinkHandled) return;
+  try{
+    const q = new URLSearchParams(location.search);
+    const type = q.get('nt');
+    if(!type) return;
+    _deepLinkHandled = true;
+    const n = { type, relatedId: q.get('nr') || '', eventAt: q.get('ne') || '' };
+    // 주소창에서 표시를 지워서 새로고침해도 다시 열리지 않게
+    history.replaceState(null, '', location.pathname);
+    // 알림함의 그 알림도 읽음 처리
+    const hit = (sharedNotificationLog||[]).find(x=> x.type === n.type && String(x.relatedId||'') === n.relatedId);
+    if(hit && typeof markNotificationRead === 'function'){ markNotificationRead(hit.id); updateNotificationUnreadBadge(); }
+    if(typeof openNotificationTarget === 'function') openNotificationTarget(n);
+  }catch(e){ console.error('알림 바로가기 실패', e); }
+}
 async function sendPushForLogEntry(entry){
   try{
     if(!entry || !entry.targetEmail || !(sharedPushTokens||[]).length) return;
@@ -7900,7 +7967,7 @@ async function sendPushForLogEntry(entry){
     await fetch(PUSH_SEND_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tokens: targets.map(t=>t.token), title: entry.title || 'Tax.J', body: entry.body || '', requireInteraction: true })
+      body: JSON.stringify({ tokens: targets.map(t=>t.token), title: entry.title || 'Tax.J', body: entry.body || '', requireInteraction: true, link: notificationDeepLinkUrl(entry), ...(entry.pushIcon ? { icon: entry.pushIcon } : {}) })
     });
     // 이 알림을 실제로 보냈다는 걸(지연 없이) 드라이브에 최대한 빨리 반영해서, 다른 기기가 이어서
     // alreadyPushedRemotely로 확인할 때 곧바로 알 수 있게 함
@@ -7913,7 +7980,13 @@ async function sendPushForLogEntry(entry){
 // "지금 이 순간"(new Date())을 시각으로 쓰면 실제 있었던 시각이 아니라 "이 알림이 내 화면에 처음 잡힌 시각"이
 // 되어버림(예: 접속할 때마다 그 접속 시각이 알림 시각으로 보이는 문제). createdAt(ISO)은 만료(30일) 계산에만
 // 내부적으로 쓰고, 화면에 보여줄 시각은 항상 eventAt을 우선으로 씀
-function pushNotificationLogEntry({type, title, body, targetEmail, relatedId, icon, eventAt, author, authorEmail, noPush}){
+// "같은 사람이 PC·휴대폰 둘 다 켜둔 상태에서 결재하면 휴대폰에 두 번 온다" - 두 기기 모두 "내가 기안자(행동한 사람)"라서
+// 둘 다 푸시를 보냈음. 실제로 저장 버튼을 누른 그 기기만 보내도록, 이 기기에서 직접 저장한 시각을 기억해두고
+// 그 직후(20초 안)에만 푸시를 보냄 - 다른 기기는 동기화로 받은 거라 알림함에만 기록
+const _localActionAt = {};
+function markLocalAction(kind){ _localActionAt[kind] = Date.now(); }
+function isRecentLocalAction(kind){ return !!_localActionAt[kind] && (Date.now() - _localActionAt[kind]) < 20000; }
+function pushNotificationLogEntry({type, title, body, targetEmail, relatedId, icon, eventAt, author, authorEmail, noPush, pushIcon}){
   if(!targetEmail) return;
   sharedNotificationLog = sharedNotificationLog || [];
   const email = targetEmail === '*' ? '*' : (targetEmail||'').toLowerCase();
@@ -7932,6 +8005,7 @@ function pushNotificationLogEntry({type, title, body, targetEmail, relatedId, ic
   if((sharedTrash||[]).some(t => t && t.type === 'notification' && t.data && `${t.data.type}|${t.data.relatedId}|${t.data.targetEmail}` === dupKey)) return;
   const newEntry = { id: notificationIdFor(dupKey), type: type||'', icon: icon||'', title: title||'', body: body||'', author: author||'', targetEmail: email, relatedId: relatedId||'', eventAt: eventAt||'', createdAt: new Date().toISOString() };
   if(authorEmail) newEntry.authorEmail = String(authorEmail).toLowerCase();
+  if(pushIcon) newEntry.pushIcon = pushIcon;
   sharedNotificationLog.unshift(newEntry);
   if(sharedNotificationLog.length > 1000) sharedNotificationLog.length = 1000;
   saveSharedNotificationLog();
@@ -8093,6 +8167,7 @@ async function saveSharedFilingHelp(){ try{ localStorage.setItem('worklog_shared
 // 첫 로딩 이후로 "알림 받기"를 켜놔도 다시는 알림 조건을 확인할 일이 없었음(같은 브라우저에서 새로 기안/결재가
 // 생겨도 알림이 영영 안 오는 원인). 결재 데이터가 바뀌어 저장될 때마다(=지금) 같이 확인하도록 여기서도 호출함
 async function saveSharedApprovals(){
+  markLocalAction('approval');
   try{ localStorage.setItem('worklog_shared_approvals', JSON.stringify(sharedApprovals)); }catch(e){ console.error('결재 저장 실패', e); }
   touchSharedField('approvals');
   gdriveScheduleSync();
@@ -9313,12 +9388,14 @@ function clockReminderAlreadySent(kind){
 function markClockReminderSent(kind){
   try{ localStorage.setItem(`worklog_clock_reminder_sent_${todayStr()}_${kind}`, '1'); }catch(e){}
 }
+const CLOCK_BICHON_ICON = { checkIn:'bichon-in.png', checkOut:'bichon-out.png' };
 function fireClockReminderNotification(kind, timeStr){
   // 시스템 알림은 글자 굵기·색을 바꿀 수 없어서, 굵게 보이는 제목 맨 앞에 "출근/퇴근"과 시각을 크게 드러냄(+ 구분용 기호)
   const title = kind === 'checkIn' ? `🟢 출근 ${timeStr} · 5분 전` : `🔴 퇴근 ${timeStr} · 5분 전`;
   const body = kind === 'checkIn' ? `【출근】 곧 출근 시간이에요. 출근 도장을 잊지 마세요!` : `【퇴근】 곧 퇴근 시간이에요. 퇴근 도장을 잊지 마세요!`;
   // 출퇴근 알림도 다른 푸시와 같은 시스템 알림으로(서비스워커가 있으면 그걸로 띄워야 앱·PC에서 푸시처럼 보임), 닫기 전까지 유지
-  const opts = { body, icon: 'icon-192.png', tag: 'clock-' + kind + '-' + todayStr(), requireInteraction: true };
+  // 출근은 비장한 비숑, 퇴근은 신나는 비숑 그림(bichon-in.png / bichon-out.png - index.html과 같은 폴더에 올려둬야 함)
+  const opts = { body, icon: CLOCK_BICHON_ICON[kind] || 'icon-192.png', tag: 'clock-' + kind + '-' + todayStr(), requireInteraction: true };
   markClockReminderSent(kind);
   // "출퇴근 알림은 PC랑 모바일 둘 다" - 이 기기에서 시간이 되면 내 계정에 등록된 모든 기기(PC·휴대폰)로 푸시를 보냄.
   // 같은 날 같은 알림은 한 번만(알림 기록으로 중복 차단). 이 기기가 푸시 등록이 안 돼 있으면 이 기기엔 바로 띄움
@@ -9326,7 +9403,7 @@ function fireClockReminderNotification(kind, timeStr){
   let myToken = null; try{ myToken = localStorage.getItem('worklog_my_push_token'); }catch(e){}
   const myTokens = (sharedPushTokens||[]).filter(t=> t.token && (t.email||'').toLowerCase() === myEmail);
   if(myEmail && myTokens.length){
-    pushNotificationLogEntry({ type:'clock-reminder', icon:'clock', title, body, author:'', targetEmail: myEmail, relatedId:`${todayStr()}|${kind}`, eventAt: new Date().toISOString() });
+    pushNotificationLogEntry({ type:'clock-reminder', icon:'clock', title, body, author:'', targetEmail: myEmail, relatedId:`${todayStr()}|${kind}`, eventAt: new Date().toISOString(), pushIcon: new URL(CLOCK_BICHON_ICON[kind], location.href).href });
     if(myToken && myTokens.some(t=>t.token === myToken)) return; // 이 기기로도 푸시가 오니 따로 띄우지 않음(중복 방지)
   }
   (async()=>{
@@ -9373,7 +9450,7 @@ function checkNewNoticesForBrowserNotify(){
   (sharedNoticeHistory||[]).forEach(n=>{
     const mine = (n.authorName||'') === me0;
     if(mine && !recentNotice(n)) return; // 내가 쓴 옛 공지는 새로 알리지 않음
-    pushNotificationLogEntry({ type:'notice', icon:'notice', title:`새 공지: ${n.title || '(제목 없음)'}`, body:(n.content||'').slice(0,150), author:n.authorName||'', targetEmail:'*', relatedId:n.id, eventAt:n.savedAt||'', noPush: !mine });
+    pushNotificationLogEntry({ type:'notice', icon:'notice', title:`새 공지: ${n.title || '(제목 없음)'}`, body:(n.content||'').slice(0,150), author:n.authorName||'', targetEmail:'*', relatedId:n.id, eventAt:n.savedAt||'', noPush: !mine || !isRecentLocalAction('notice') });
   });
   if(!noticeNotifyEnabled() || !myNotifPref('notice')) return;
   if(typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
@@ -9417,7 +9494,7 @@ function checkNewTeamScheduleForBrowserNotify(){
         type:'team-schedule', icon:'team-schedule',
         title:`팀 일정 등록: ${e.type || '일정'}`,
         body:`${name} · ${shortDateLabel(e.date)}${e.memo ? ' · '+e.memo : ''}`,
-        author:name||'', authorEmail, targetEmail:'*', relatedId:e.id, eventAt:e.date, noPush: authorEmail !== myEmailTS
+        author:name||'', authorEmail, targetEmail:'*', relatedId:e.id, eventAt:e.date, noPush: authorEmail !== myEmailTS || !isRecentLocalAction('schedule')
       });
     });
     // "재택 등록하면 팀캘린더엔 뜨는데 알림이 없다"는 요청으로 추가함 - 휴가·재택은 개인일정(sch.events)이
@@ -9428,7 +9505,7 @@ function checkNewTeamScheduleForBrowserNotify(){
         type:'team-schedule', icon:'team-schedule',
         title:`팀 일정 등록: ${remoteTypeLabel(r, false)}`,
         body:`${name} · ${shortDateLabel(r.date)}`,
-        author:name||'', authorEmail, targetEmail:'*', relatedId:r.id, eventAt:r.date, noPush: authorEmail !== myEmailTS
+        author:name||'', authorEmail, targetEmail:'*', relatedId:r.id, eventAt:r.date, noPush: authorEmail !== myEmailTS || !isRecentLocalAction('schedule')
       });
     });
     // 휴가는 등록할 때 "팀원에게 알림 보내기"를 체크한 것만(notify) 알림 - 기안으로 올라온 휴가는 결재 알림이 따로 가고,
@@ -9438,7 +9515,7 @@ function checkNewTeamScheduleForBrowserNotify(){
         type:'team-schedule', icon:'team-schedule',
         title:`팀 일정 등록: ${leaveTeamCalShortType(u.type, u.subtype, u.publicReason)}`,
         body:`${name} · ${shortDateLabel(u.date)}${u.notifyUntil && u.notifyUntil !== u.date ? '~'+shortDateLabel(u.notifyUntil) : ''}`,
-        author:name||'', authorEmail, targetEmail:'*', relatedId:u.id, eventAt:u.date, noPush: authorEmail !== myEmailTS
+        author:name||'', authorEmail, targetEmail:'*', relatedId:u.id, eventAt:u.date, noPush: authorEmail !== myEmailTS || !isRecentLocalAction('schedule')
       });
     });
   });
@@ -10978,12 +11055,15 @@ async function loadAll(){
   checkApprovalDecisionsForBrowserNotify();
   checkNewTeamScheduleForBrowserNotify();
   updateNotificationUnreadBadge();
+  // 불러온 데이터를 다시 저장하는 것뿐이라 "이 기기에서 직접 저장한 것"으로 치지 않음(푸시 중복 방지 - markLocalAction 참고)
+  const _prevLocalAction = { ..._localActionAt };
   await saveSettings();
   await saveAttendance();
   await saveExpense();
   await saveSchedule();
   await saveClients();
   await savePersonalInfo();
+  Object.keys(_localActionAt).forEach(k=>{ if(_prevLocalAction[k]) _localActionAt[k] = _prevLocalAction[k]; else delete _localActionAt[k]; });
 
   document.getElementById('s-name').value = settings.employeeName || '';
   // 직책은 settings 스냅샷이 아니라 profiles 배열 쪽에 저장되는 값이라 여기서 별도로 채워야 함
@@ -11085,11 +11165,12 @@ async function loadAll(){
 }
 
 async function saveSettings(){ try{ localStorage.setItem(skey('settings'), JSON.stringify(settings)); syncProfileName(); }catch(e){ console.error('설정 저장 실패', e); } gdriveScheduleSync(); }
-async function saveAttendance(){ try{ localStorage.setItem(skey('attendance'), JSON.stringify(attendance)); }catch(e){ console.error('근태 저장 실패', e); } gdriveScheduleSync();
+async function saveAttendance(){ markLocalAction('schedule'); try{ localStorage.setItem(skey('attendance'), JSON.stringify(attendance)); }catch(e){ console.error('근태 저장 실패', e); } gdriveScheduleSync();
   // 재택·휴가도 등록하는 즉시 팀 알림(푸시)이 가도록 - 일정(saveSchedule)과 같은 처리
   if(typeof checkNewTeamScheduleForBrowserNotify === 'function') checkNewTeamScheduleForBrowserNotify(); }
 async function saveExpense(){ try{ localStorage.setItem(skey('expense'), JSON.stringify(expense)); }catch(e){ console.error('경비 저장 실패', e); } gdriveScheduleSync(); }
 async function saveSchedule(){
+  markLocalAction('schedule');
   try{ localStorage.setItem(skey('schedule'), JSON.stringify(schedule)); }catch(e){ console.error('일정 저장 실패', e); }
   gdriveScheduleSync();
   // saveSharedApprovals()와 같은 이유 - 이 브라우저에서 방금 바뀐 일정을 계기로도 알림 조건을 바로 한 번
@@ -27853,7 +27934,7 @@ function renderApprovalTable(wrapId, list, emptyText, bucket, onChange){
   if(hintEl) hintEl.style.display = '';
   // 종류/기안일/기안자/결재자/진행상황은 헤더에서 정한 좁은 고정폭을 그대로 지키고, 문서제목만 남는 공간을
   // 다 가져가도록 이 표에 한해 table-layout:fixed를 줌(다른 표들의 기본 table-layout:auto에는 영향 없음)
-  wrap.innerHTML = `${chipsHtml}${searchBarHtml}<div class="table-scroll"><table style="table-layout:fixed;"><thead>${approvalTableHeaderHtml()}</thead><tbody>${rows}</tbody></table></div>${paginationHtml}`;
+  wrap.innerHTML = `${chipsHtml}${searchBarHtml}<div class="table-scroll"><table class="approval-list-table" style="table-layout:fixed;"><thead>${approvalTableHeaderHtml()}</thead><tbody>${rows}</tbody></table></div>${paginationHtml}`;
   bindApprovalDocTypeChips(wrap.querySelector('.approval-doctype-chips'), onChange);
   bindApprovalSearchBar(wrap.querySelector('.approval-search-bar'), onChange);
   bindApprovalPagination(wrap.querySelector('.approval-pagination'), onChange);
@@ -28480,7 +28561,7 @@ function checkNewApprovalsForBrowserNotify(){
     // 있는 결재자에겐 푸시가 갈 수가 없었음. 이제 기안자 기기에서도 상신하는 즉시 결재자 앞으로 알림을 만들고 푸시를 보냄.
     // 반려·회수 후 다시 상신하면(resubmitCount) 새 결재 요청으로 보고 다시 알림
     (sharedApprovals||[]).filter(a => a.status==='기안' && a.approverEmail && ((a.approverEmail||'').toLowerCase()===myEmail0 || (a.drafterEmail||'').toLowerCase()===myEmail0)).forEach(a=>{
-      pushNotificationLogEntry({ type:'approval-new', icon:'approval-request', title:`결재 요청: ${a.title || '(제목 없음)'}`, body:`기안자 ${a.drafterName||a.drafterEmail||''}`, author:a.drafterName||a.drafterEmail||'', targetEmail:(a.approverEmail||'').toLowerCase(), relatedId: a.id + (a.submitSeq ? `|r${a.submitSeq}` : ''), eventAt:a.createdAt||'', noPush: (a.drafterEmail||'').toLowerCase() !== myEmail0 });
+      pushNotificationLogEntry({ type:'approval-new', icon:'approval-request', title:`결재 요청: ${a.title || '(제목 없음)'}`, body:`기안자 ${a.drafterName||a.drafterEmail||''}`, author:a.drafterName||a.drafterEmail||'', targetEmail:(a.approverEmail||'').toLowerCase(), relatedId: a.id + (a.submitSeq ? `|r${a.submitSeq}` : ''), eventAt:a.createdAt||'', noPush: (a.drafterEmail||'').toLowerCase() !== myEmail0 || !isRecentLocalAction('approval') });
     });
   }
   if(!approvalNotifyEnabled() || !myNotifPref('approvalNew')) return;
@@ -28519,7 +28600,7 @@ function checkApprovalDecisionsForBrowserNotify(){
     (sharedApprovals||[]).filter(a => (a.status==='승인' || a.status==='반려') && a.drafterEmail && ((a.drafterEmail||'').toLowerCase()===myEmail0 || ((a.approverEmail||'').toLowerCase()===myEmail0 && recent(a)))).forEach(a=>{
       const label0 = a.status==='승인' ? '결재 승인' : '결재 반려';
       const icon0 = a.status==='승인' ? 'approval-approved' : 'approval-rejected';
-      pushNotificationLogEntry({ type:'approval-decision', icon:icon0, title:`${label0}: ${a.title || '(제목 없음)'}`, body:`결재자 ${a.approverName||a.approverEmail||''}${a.comment ? ' · '+a.comment : ''}`, author:a.drafterName||a.drafterEmail||'', targetEmail:(a.drafterEmail||'').toLowerCase(), relatedId:a.id+'|'+a.status + (a.submitSeq ? `|r${a.submitSeq}` : ''), eventAt:a.decidedAt||'', noPush: (a.approverEmail||'').toLowerCase() !== myEmail0 });
+      pushNotificationLogEntry({ type:'approval-decision', icon:icon0, title:`${label0}: ${a.title || '(제목 없음)'}`, body:`결재자 ${a.approverName||a.approverEmail||''}${a.comment ? ' · '+a.comment : ''}`, author:a.drafterName||a.drafterEmail||'', targetEmail:(a.drafterEmail||'').toLowerCase(), relatedId:a.id+'|'+a.status + (a.submitSeq ? `|r${a.submitSeq}` : ''), eventAt:a.decidedAt||'', noPush: (a.approverEmail||'').toLowerCase() !== myEmail0 || !isRecentLocalAction('approval') });
     });
   }
   if(!approvalNotifyEnabled() || !myNotifPref('approvalDecision')) return;
@@ -31550,6 +31631,7 @@ async function afterGdriveConnected(){
     if(typeof autoFillFixedHolidaysIfNeeded === 'function') autoFillFixedHolidaysIfNeeded();
     fixRemoteClockStatusIfNeeded();
     renderAll();
+    setTimeout(handleNotificationDeepLink, 600);
   }catch(err){
     console.error('Drive 연동 오류', err);
     gdriveSetStatus('로그인은 됐지만 데이터 동기화 실패: ' + err.message + ' (관리자에게 드라이브 파일 편집 권한을 요청해주세요)');
@@ -32425,6 +32507,119 @@ function setGdriveSyncingIndicator(active){
 // 접근 제한은 Firestore 보안 규칙(@ciacc.co.kr 회사 계정만 읽기·쓰기 허용)으로 서버에서 막음
 // ══════════════════════════════════════════════════════════
 const FS_COLLECTION = 'taxj';
+// ══════════════════════════════════════════════════════════
+// 👥 동시 수정 알림 - "공용 정보를 여러 명이 동시에 수정하고 있으면 서로 알 수 있게" 요청
+// · 지금 이 기기에서 수정 화면(거래처 수정·설정·자리배치도·신고/제출현황·공지·지침 편집)을 보고 있으면, Firestore에
+//   "_presence__<이메일>" 문서로 {이름, 어디, 시각}을 15초마다 남김(단순 조회 화면은 남기지 않음)
+// · 같은 곳을 다른 사람이 최근 45초 안에 보고 있으면 화면 위에 안내 띠를 띄우고, 저장 버튼을 누를 때 한 번 더 확인함
+// · 막는 기능이 아니라 알려주는 기능 - Firestore 저장소를 쓰는 중(fsActive)일 때만 동작
+// ══════════════════════════════════════════════════════════
+const PRESENCE_PREFIX = '_presence__';
+const PRESENCE_STALE_MS = 45000;
+let presenceOthers = {}; // 이메일 → {name, key, label, at}
+let presenceMine = null; // {key, label}
+let presenceLastWrite = 0;
+function presenceDocId(email){ return PRESENCE_PREFIX + String(email||'').toLowerCase().replace(/[^a-z0-9]/g, '_'); }
+// 지금 이 기기가 "수정하고 있는" 곳 - 없으면 null(조회 화면)
+function presenceCurrentArea(){
+  try{
+    const vis = id => { const el = document.getElementById(id); return !!(el && el.style.display !== 'none' && getComputedStyle(el).display !== 'none'); };
+    if(vis('noticeFormModalOverlay')) return { key:'notice-edit', label:'공지사항' };
+    if(vis('policyRegisterModalOverlay')) return { key:'policy-edit:' + (typeof viewingPolicyCategory !== 'undefined' ? viewingPolicyCategory : ''), label:'지침' };
+    if(typeof editingClientId !== 'undefined' && editingClientId){
+      const c = (clients.list||[]).find(x=>x.id===editingClientId);
+      return { key:'client:' + editingClientId, label:`거래처 "${(c && c.name) || ''}"` };
+    }
+    const panel = document.querySelector('.tab-panel.active');
+    const tab = panel ? panel.id.replace(/^tab-/, '') : '';
+    if(tab === 'settings'){
+      const sp = document.getElementById('seatChartPreviewWrap');
+      if(sp && typeof seatChartDraft !== 'undefined' && seatChartDraft){
+        const r = sp.getBoundingClientRect();
+        if(r.height > 0 && r.bottom > 0 && r.top < window.innerHeight) return { key:'seatchart', label:'자리배치도' };
+      }
+      return null; // 설정 화면은 같이 있다는 것만으로는 알리지 않음(자리배치도 편집 중일 때만)
+    }
+    if(tab === 'clients-edit') return { key:'clients-edit', label:'거래처 등록·수정' };
+    if(tab === 'approval'){
+      const btn = document.querySelector('.approval-cat-btn.active');
+      const cat = btn ? btn.dataset.approvalCat : '';
+      const names = { status:'신고현황', submit:'제출현황', itall:'원천세 신고현황', vatall:'부가세 신고현황', target:'신고대상', review:'검토표' };
+      if(names[cat]){
+        const sub = cat === 'status' || cat === 'review' || cat === 'target' ? (typeof viewingFilingType !== 'undefined' ? viewingFilingType : '') : '';
+        return { key:`filing:${cat}:${sub}`, label: sub ? `${names[cat]}(${sub})` : names[cat] };
+      }
+    }
+  }catch(e){}
+  return null;
+}
+function presenceIngestSnapshot(snap){
+  try{
+    const me = (currentUserEmail||'').toLowerCase();
+    const next = {};
+    snap.forEach(d=>{
+      if(!d.id.startsWith(PRESENCE_PREFIX)) return;
+      const v = d.data() || {};
+      if(!v.email || String(v.email).toLowerCase() === me || !v.key) return;
+      next[String(v.email).toLowerCase()] = v;
+    });
+    presenceOthers = next;
+    presenceRenderBanner();
+  }catch(e){}
+}
+function presenceOthersHere(){
+  if(!presenceMine) return [];
+  const now = Date.now();
+  return Object.values(presenceOthers).filter(v=> v.key === presenceMine.key && (now - Number(v.at||0)) < PRESENCE_STALE_MS);
+}
+function presenceRenderBanner(){
+  let el = document.getElementById('presenceBanner');
+  const others = presenceOthersHere();
+  if(!others.length){ if(el) el.style.display = 'none'; return; }
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'presenceBanner';
+    el.style.cssText = 'position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:10050; background:#FFF4D6; color:#7A5300; border:1.5px solid #F2C14E; border-radius:12px; padding:8px 14px; font-size:12.5px; font-weight:700; box-shadow:0 8px 20px -8px rgba(0,0,0,0.25); max-width:92vw; text-align:center; pointer-events:none;';
+    document.body.appendChild(el);
+  }
+  const names = [...new Set(others.map(v=>v.name || v.email))].join(', ');
+  el.textContent = `⚠️ ${names}님도 지금 ${presenceMine.label}을(를) 수정 중이에요. 동시에 저장하면 한쪽 내용이 덮일 수 있어요.`;
+  el.style.display = 'block';
+}
+async function presenceTick(force){
+  try{
+    if(!fsActive || !fsDb || !currentUserEmail) return;
+    const area = presenceCurrentArea();
+    const changed = JSON.stringify(area) !== JSON.stringify(presenceMine);
+    presenceMine = area;
+    presenceRenderBanner();
+    const now = Date.now();
+    if(!changed && !force && now - presenceLastWrite < 15000) return;
+    presenceLastWrite = now;
+    const ref = fsRef(presenceDocId(currentUserEmail));
+    if(area) await ref.set({ email: currentUserEmail.toLowerCase(), name: currentStaffDisplayName(), key: area.key, label: area.label, at: now });
+    else if(changed) await ref.set({ email: currentUserEmail.toLowerCase(), name: currentStaffDisplayName(), key: '', label: '', at: now });
+  }catch(e){ /* 표시 기능이라 실패해도 조용히 넘어감 */ }
+}
+setInterval(()=> presenceTick(false), 3000);
+window.addEventListener('pagehide', ()=>{ try{ if(fsActive && fsDb && currentUserEmail) fsRef(presenceDocId(currentUserEmail)).set({ email: currentUserEmail.toLowerCase(), key:'', label:'', at: Date.now() }); }catch(e){} });
+// 저장 버튼을 누를 때 같은 곳을 다른 사람이 수정 중이면 한 번 확인받음(확인하면 그대로 저장 진행)
+let presenceBypassOnce = false;
+document.addEventListener('click', async (e)=>{
+  if(presenceBypassOnce) return;
+  const btn = e.target.closest && e.target.closest('button[type="submit"], .submit-btn, [id$="SaveBtn"], [id$="saveBtn"]');
+  if(!btn || btn.disabled) return;
+  if(btn.closest('#appConfirmModalOverlay, .app-confirm-modal')) return;
+  presenceMine = presenceCurrentArea();
+  const others = presenceOthersHere();
+  if(!others.length) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  const names = [...new Set(others.map(v=>v.name || v.email))].join(', ');
+  const ok = await appConfirm(`${names}님도 지금 ${presenceMine.label}을(를) 수정 중이에요.\n지금 저장하면 상대방이 저장할 때 내 내용이 덮이거나, 내가 상대방 내용을 덮을 수 있어요.\n\n그래도 저장할까요?`, { okText:'저장', cancelText:'잠깐 기다리기' });
+  if(!ok) return;
+  presenceBypassOnce = true;
+  try{ btn.click(); } finally { setTimeout(()=>{ presenceBypassOnce = false; }, 0); }
+}, true);
 const FS_META_ID = '_meta';
 const FS_PART_CHARS = 250000; // 문서 하나 최대 1MB - 한글은 글자당 3바이트라 넉넉히 25만 글자씩 나눠 담음
 let fsActive = false;   // 지금 Firestore를 실제 저장소로 쓰는 중인지
@@ -32483,7 +32678,7 @@ function fsAssembleSnapshot(snap){
   const mains = {}, parts = {};
   snap.forEach(d=>{
     const id = d.id, data = d.data();
-    if(id === FS_META_ID) return;
+    if(id === FS_META_ID || id.startsWith(PRESENCE_PREFIX)) return; // 편집 중 표시 문서는 데이터가 아님
     const m = id.match(/^(.*)~p(\d+)$/);
     if(m){ (parts[m[1]] = parts[m[1]] || {})[Number(m[2])] = data; }
     else mains[id] = data;
@@ -32586,7 +32781,9 @@ async function fsActivate(){
     // 보였음. 서버 확인 여부(metadata)가 바뀔 때도 알림을 받도록 켜서, 서버와 연결되는 즉시 저장이 풀리게 함
     fsCollUnsub = fsDb.collection(FS_COLLECTION).onSnapshot({ includeMetadataChanges: true }, snap=>{
       if(snap.metadata && snap.metadata.fromCache) return; // 서버에서 확인된 내용만 반영(오프라인 캐시는 건너뜀)
-      const dataChanged = !fsHasServerSnapshot || (typeof snap.docChanges === 'function' ? snap.docChanges().length > 0 : true);
+      presenceIngestSnapshot(snap);
+      // "편집 중" 표시 문서만 바뀐 알림이면 데이터 반영(loadAll 등)은 건너뜀 - 30초마다 오는 표시 갱신 때문에 화면이 다시 그려지지 않게
+      const dataChanged = !fsHasServerSnapshot || (typeof snap.docChanges === 'function' ? snap.docChanges().filter(ch=> !ch.doc.id.startsWith(PRESENCE_PREFIX)).length > 0 : true);
       if(!dataChanged) return; // 내용은 그대로이고 상태 표시만 바뀐 알림
       fsRemoteDocs = fsAssembleSnapshot(snap);
       fsHasServerSnapshot = true;
@@ -32940,7 +33137,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 18:25';
+const APP_BUILD = '2026.09.29 19:15';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
