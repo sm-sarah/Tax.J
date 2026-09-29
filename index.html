@@ -18101,6 +18101,7 @@ function splitKrDateTime(s){
   const time = rawTime.replace(/(:\d{2}):\d{2}\s*$/, '$1');
   return { date, time };
 }
+var dashApprovalPage = 1;
 function renderDashboardApprovalAllPreview(){
   const body = document.getElementById('dashApprovalAllBody');
   if(!body) return;
@@ -18128,7 +18129,12 @@ function renderDashboardApprovalAllPreview(){
       <span class="home-dash-table-col-person">기안자</span><span class="home-dash-table-col-main">기안명</span>
       <span class="home-dash-table-col-person">결재자</span><span class="home-dash-table-col-status">진행상황</span>
     </div>`;
-  const rowsHtml = sorted.slice(0,5).map(a=>{
+  // "많아지면 스크롤 말고 페이지로" - 한 페이지 4건(카드 높이 안에 스크롤 없이 들어가는 만큼), 아래 ‹ 1/3 › 로 넘김
+  const DASH_AP_PAGE = 4;
+  const totalPages = Math.max(1, Math.ceil(sorted.length / DASH_AP_PAGE));
+  if(dashApprovalPage > totalPages) dashApprovalPage = totalPages;
+  if(dashApprovalPage < 1) dashApprovalPage = 1;
+  const rowsHtml = sorted.slice((dashApprovalPage-1)*DASH_AP_PAGE, dashApprovalPage*DASH_AP_PAGE).map(a=>{
     const { date, time } = splitKrDateTime(a.decidedAt || a.createdAt || '');
     return `<div class="home-dash-table-row" data-approval-id="${a.id}" style="cursor:pointer;">
       <span class="home-dash-table-col-draftdate">${escHtml(date)} ${escHtml(time)}</span>
@@ -18138,7 +18144,12 @@ function renderDashboardApprovalAllPreview(){
       <span class="home-dash-table-col-status">${typeof approvalProgressStepperHtml === 'function' ? approvalProgressStepperHtml(a.status, undefined, undefined, a.decidedAt) : escHtml(a.status||'')}</span>
     </div>`;
   }).join('');
-  body.innerHTML = `<div class="home-dash-table">${headHtml}${rowsHtml}</div>`;
+  const pagerBtn = (dir, dis) => `<button type="button" class="dash-ap-page-btn" data-dir="${dir}" ${dis?'disabled':''} style="border:none; background:transparent; color:${dis?'var(--border)':'var(--indigo)'}; font-size:14px; font-weight:800; cursor:${dis?'default':'pointer'}; padding:0 6px; font-family:inherit;">${dir<0?'‹':'›'}</button>`;
+  // 페이지 표시는 표 아래 카드 여백(패딩) 안에 겹쳐 둬서, 표 높이를 늘리지 않고(스크롤 안 생기게) 보여줌
+  if(body.parentElement && getComputedStyle(body.parentElement).position === 'static') body.parentElement.style.position = 'relative';
+  const pagerHtml = totalPages > 1 ? `<div style="position:absolute; right:16px; bottom:1px; display:flex; justify-content:center; align-items:center; gap:0; line-height:14px; font-size:10.5px; color:var(--ink-soft); font-weight:700;">${pagerBtn(-1, dashApprovalPage<=1)}<span>${dashApprovalPage} / ${totalPages}</span>${pagerBtn(1, dashApprovalPage>=totalPages)}</div>` : '';
+  body.innerHTML = `<div class="home-dash-table">${headHtml}${rowsHtml}</div>${pagerHtml}`;
+  body.querySelectorAll('.dash-ap-page-btn').forEach(b=> b.addEventListener('click', (e)=>{ e.stopPropagation(); if(b.disabled) return; dashApprovalPage += Number(b.dataset.dir); renderDashboardApprovalAllPreview(); }));
   body.querySelectorAll('.home-dash-table-row').forEach(row=>{
     row.addEventListener('click', (e)=>{
       // 예전엔 줄을 클릭하면 결재 탭으로도 같이 이동시켰는데, 대시보드에서는 "바로가기" 링크를 눌렀을 때만
@@ -33137,7 +33148,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 19:20';
+const APP_BUILD = '2026.09.29 19:25';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
