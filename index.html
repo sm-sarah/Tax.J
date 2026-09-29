@@ -4761,7 +4761,16 @@
         </div>
       </div>
       <div class="field">
-        <label>지침 내용</label>
+        <!-- 입력은 글자(텍스트)로 하지만 조회 화면은 디자인돼서 보이므로, 저장 전에 실제로 어떻게 보일지
+             "미리보기"로 바로 확인할 수 있게 함(조회 화면과 같은 renderPolicyHTML로 그림) -->
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+          <label style="margin:0;">지침 내용</label>
+          <span style="display:inline-flex; gap:4px;">
+            <button type="button" class="notice-toggle-chip policy-preview-toggle active" data-mode="edit" style="font-size:11.5px; padding:3px 10px;">편집</button>
+            <button type="button" class="notice-toggle-chip policy-preview-toggle" data-mode="preview" style="font-size:11.5px; padding:3px 10px;">미리보기</button>
+          </span>
+        </div>
+        <div id="policyContentPreview" class="flat-panel" style="display:none; padding:22px; min-height:360px; margin-top:6px;"></div>
         <textarea id="policyContent" style="width:100%; min-height:360px; font-family:'Pretendard',sans-serif; font-size:13px; line-height:1.6; border:1.5px solid var(--border); border-radius:10px; padding:14px; background:var(--bg); color:var(--ink); resize:vertical;"></textarea>
       </div>
       <label style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:700; color:var(--ink-soft); margin:4px 0 10px; cursor:pointer;">
@@ -21910,8 +21919,29 @@ function openPolicyRegisterModal(editEntry, mode){
   const saveBtn = document.getElementById('savePolicyBtn');
   // 저장 중 잠깐 눌러뒀던 버튼을 다시 열 때 되살려놓음(연달아 등록/수정을 여러 번 하는 경우 대비)
   if(saveBtn){ saveBtn.textContent = policyRegisterMode === 'edit' ? '수정' : '등록'; saveBtn.disabled = false; }
+  setPolicyEditorMode('edit');
   document.getElementById('policyRegisterModalOverlay').style.display = 'flex';
 }
+// 편집 ↔ 미리보기 전환 - 미리보기는 조회 화면과 똑같은 renderPolicyHTML로 지금 입력한 글을 그려서 보여줌
+function setPolicyEditorMode(mode){
+  const ta = document.getElementById('policyContent');
+  const pv = document.getElementById('policyContentPreview');
+  if(!ta || !pv) return;
+  const preview = mode === 'preview';
+  if(preview){
+    try{ pv.innerHTML = renderPolicyHTML(ta.value || ''); }catch(e){ pv.textContent = ta.value || ''; }
+  }
+  pv.style.display = preview ? 'block' : 'none';
+  ta.style.display = preview ? 'none' : '';
+  document.querySelectorAll('.policy-preview-toggle').forEach(b=>{
+    const on = b.dataset.mode === (preview ? 'preview' : 'edit');
+    b.classList.toggle('active', on);
+    b.style.background = on ? 'var(--indigo)' : '';
+    b.style.color = on ? '#fff' : '';
+    b.style.borderColor = on ? 'var(--indigo)' : '';
+  });
+}
+document.querySelectorAll('.policy-preview-toggle').forEach(b=> b.addEventListener('click', ()=> setPolicyEditorMode(b.dataset.mode)));
 function closePolicyRegisterModal(){
   document.getElementById('policyRegisterModalOverlay').style.display = 'none';
   editingPolicyHistoryId = null;
@@ -31695,7 +31725,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 11:20';
+const APP_BUILD = '2026.09.29 11:30';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
