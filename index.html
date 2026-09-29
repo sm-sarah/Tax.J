@@ -4604,6 +4604,9 @@
         <button type="button" id="exportBtn" title="백업 파일 내보내기 - 내 근태·경비·개인일정 기록을 JSON 파일로 저장해요." style="border:none; background:var(--indigo-bg); color:var(--indigo-deep); width:26px; height:26px; border-radius:50%; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 19h16"/></svg></button>
         <button type="button" id="importBtn" title="백업 파일 불러오기 - 백업 파일(JSON)을 불러와서 이 브라우저에 복원해요." style="border:none; background:var(--indigo-bg); color:var(--indigo-deep); width:26px; height:26px; border-radius:50%; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg></button>
         <input type="file" id="importFile" accept="application/json" style="display:none;">
+        <!-- 타 그룹웨어에서 내려받은 경비·식대 엑셀(사용날짜/사용처/신청청구금액/사용용도/상세 사용용도)을 선택 직원의 경비에 넣음 -->
+        <button type="button" id="gwExpenseImportBtn" title="타 그룹웨어 경비·식대 엑셀 가져오기 - 식대·음료는 점심식대, 사무용품·수수료는 경비, 교통비는 택시비(야근)로 들어가요." style="border:none; background:var(--indigo-bg); color:var(--indigo-deep); border-radius:8px; padding:0 10px; height:26px; font-size:10.5px; font-weight:800; cursor:pointer; font-family:inherit;">경비엑셀</button>
+        <input type="file" id="gwExpenseImportFile" accept=".xlsx,.xls" style="display:none;">
         <button type="button" id="resetDataBtn" title="현재 선택된 근태·경비 기록만 전부 지우고 0부터 다시 시작해요. 이름·입사일은 유지돼요." style="border:none; background:var(--indigo-bg); color:var(--indigo-deep); border-radius:8px; padding:0 10px; height:26px; font-size:10.5px; font-weight:800; cursor:pointer; font-family:inherit;">초기화</button>
       </div>
       <!-- 저장 결과 메시지("저장됨" 등)는 평소엔 비어있는 span이라, 칩 안 가로줄에 같이 두면 빈 칸이 오른쪽에만 여백처럼
@@ -15577,7 +15580,25 @@ function generateExpenseReportPdfBlob(monthStr){
 // 정산월을 고르면(또는 문서종류를 지출결의서로 바꿔 기본 정산월이 채워지면) 그 달 출력물을 만들어 회사
 // 공유 드라이브에 올리고, 업로드 첨부 목록에 자동으로 끼워 넣음 - 이전에 자동으로 붙여둔 파일이 있으면
 // (정산월을 바꿔서 다시 만드는 경우) 먼저 빼고 새로 첨부해서 중복으로 쌓이지 않게 함
+// 상신 버튼을 눌렀을 때 지출결의서 PDF가 아직 만들어지는 중(몇 초 걸림)이거나 어떤 이유로 안 붙어 있으면,
+// 기안을 저장하기 전에 기다렸다가/다시 만들어서 반드시 붙인 뒤 상신함 - 예전엔 PDF 생성이 끝나기 전에 상신하면
+// 첨부 없이 올라갔음("결재 올릴 때 첨부파일이 딸려오지 않는다")
+let adExpenseAttachPromise = null;
+async function ensureExpenseReportAttachedBeforeSubmit(){
+  const docType = document.getElementById('ad-doctype')?.value;
+  const monthStr = document.getElementById('ad-expense-month')?.value;
+  if(docType !== '지출결의서' || !monthStr) return;
+  if(adExpenseAttachPromise){ try{ await adExpenseAttachPromise; }catch(e){} }
+  if(adUploadedAttachments.some(a=>a.__autoExpenseReport)) return;
+  showCenterToast('지출결의서 첨부 파일을 만드는 중이에요...');
+  try{ await attachExpenseReportForMonth(monthStr); }catch(e){}
+}
 async function attachExpenseReportForMonth(monthStr){
+  const p = attachExpenseReportForMonthInner(monthStr);
+  adExpenseAttachPromise = p;
+  try{ return await p; } finally { if(adExpenseAttachPromise === p) adExpenseAttachPromise = null; }
+}
+async function attachExpenseReportForMonthInner(monthStr){
   const statusEl = document.getElementById('ad-expense-month-status');
   adUploadedAttachments = adUploadedAttachments.filter(a=>!a.__autoExpenseReport);
   renderAdAttachUploadedList();
@@ -26496,13 +26517,15 @@ function saveApprovalDraftForm(status){
 }
 document.getElementById('approvalDraftForm')?.addEventListener('submit', async (e)=>{
   e.preventDefault();
+  await ensureExpenseReportAttachedBeforeSubmit();
   const ok = saveApprovalDraftForm('기안');
   if(ok){
     await appAlert('기안이 완료되었습니다.');
     document.querySelector('.approval-doc-btn[data-approval-doc="mine"]')?.click();
   }
 });
-document.getElementById('ad-save-draft-btn')?.addEventListener('click', ()=>{
+document.getElementById('ad-save-draft-btn')?.addEventListener('click', async ()=>{
+  await ensureExpenseReportAttachedBeforeSubmit();
   saveApprovalDraftForm('임시저장');
 });
 // 서식 툴바(굵게/기울임/밑줄/목록/글자색) - 공지사항 리치텍스트 편집기와 같은 방식으로, 드래그로 선택한
@@ -26806,6 +26829,7 @@ function openApprovalPreviewModal(){
     if(this.disabled) return;
     this.disabled = true;
     closeMemoModal();
+    await ensureExpenseReportAttachedBeforeSubmit();
     const ok = saveApprovalDraftForm('기안');
     if(ok){
       await appAlert('기안이 완료되었습니다.');
@@ -28953,6 +28977,90 @@ document.getElementById('importFile').addEventListener('change', async (e)=>{
     document.getElementById('backupSaveMsg').textContent = '불러오기 실패 (파일을 확인해주세요)';
   }
   e.target.value = '';
+});
+
+// 타 그룹웨어 경비·식대 엑셀 가져오기
+// · 날짜 = 사용날짜, 금액 = 신청청구금액(그대로)
+// · 사용용도: 식대/음료 → 점심식대(메모=사용처, 상세 사용용도가 야근식대면 저녁식대) / 사무용품·수수료 → 경비(메모=상세 사용용도) / 교통비 → 택시비(야근)
+// · 같은 종류·날짜·금액·메모가 이미 있으면 중복으로 보고 건너뜀(여러 번 가져와도 두 번 안 들어감)
+function gwExpenseDateStr(v){
+  if(typeof v === 'number' && typeof XLSX !== 'undefined'){
+    const d = XLSX.SSF.parse_date_code(v);
+    if(d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+  }
+  if(v instanceof Date && !isNaN(v)) return `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-${String(v.getDate()).padStart(2,'0')}`;
+  const m = String(v||'').trim().match(/^(\d{4})\s*[-./년]\s*(\d{1,2})\s*[-./월]\s*(\d{1,2})/);
+  return m ? `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}` : '';
+}
+function gwExpenseKindFor(purpose, detail){
+  const p = String(purpose||'').replace(/\s/g,'');
+  // 상세 사용용도가 "야근식대"인 식대는 저녁식대로
+  if(/식대|음료/.test(p)) return /야근식대/.test(String(detail||'').replace(/\s/g,'')) ? 'dinner' : 'lunch';
+  if(/사무용품|수수료/.test(p)) return 'other';
+  if(/교통비/.test(p)) return 'taxi';
+  return '';
+}
+document.getElementById('gwExpenseImportBtn').addEventListener('click', ()=>{
+  if(typeof XLSX === 'undefined'){ appAlert('엑셀 기능을 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해주세요.'); return; }
+  document.getElementById('gwExpenseImportFile').click();
+});
+document.getElementById('gwExpenseImportFile').addEventListener('change', async (e)=>{
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if(!file) return;
+  try{
+    const wb = XLSX.read(await file.arrayBuffer(), { type:'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const aoa = XLSX.utils.sheet_to_json(ws, { header:1, raw:true, defval:'' });
+    const hIdx = aoa.findIndex(r => r.some(c => String(c).replace(/\s/g,'')==='사용용도'));
+    if(hIdx < 0){ appAlert('엑셀에서 "사용용도" 열을 찾지 못했어요. 그룹웨어에서 내려받은 경비 엑셀이 맞는지 확인해주세요.'); return; }
+    const head = aoa[hIdx].map(c => String(c).replace(/\s/g,''));
+    const col = name => head.indexOf(name);
+    const cDate = col('사용날짜'), cPlace = col('사용처'), cAmt = col('신청청구금액'), cPurpose = col('사용용도'), cDetail = col('상세사용용도');
+    if(cDate < 0 || cAmt < 0){ appAlert('엑셀에서 "사용날짜" 또는 "신청청구금액" 열을 찾지 못했어요.'); return; }
+    const items = []; const skippedPurpose = {};
+    aoa.slice(hIdx+1).forEach(r=>{
+      const date = gwExpenseDateStr(r[cDate]);
+      const amount = Number(String(r[cAmt]).replace(/[^\d.-]/g,'')) || 0;
+      if(!date || !amount) return;
+      const purpose = String(r[cPurpose]||'').trim();
+      const detail = cDetail>=0 ? String(r[cDetail]||'').trim() : '';
+      const kind = gwExpenseKindFor(purpose, detail);
+      if(!kind){ skippedPurpose[purpose||'(비어있음)'] = (skippedPurpose[purpose||'(비어있음)']||0)+1; return; }
+      const place = cPlace>=0 ? String(r[cPlace]||'').trim() : '';
+      const text = (kind==='lunch' || kind==='dinner') ? place : kind==='other' ? detail : '';
+      items.push({ kind, date, amount, text });
+    });
+    const map = EXPENSE_LIST_MAP();
+    const descOf = (kind, en) => String((kind==='other' ? en.description : en.memo)||'').trim();
+    const fresh = items.filter(it => !(map[it.kind]||[]).some(en => en.date===it.date && Number(en.amount)===it.amount && descOf(it.kind,en)===it.text));
+    const dup = items.length - fresh.length;
+    const cnt = k => fresh.filter(x=>x.kind===k);
+    const sum = arr => arr.reduce((a,x)=>a+x.amount,0).toLocaleString('ko-KR');
+    const skipList = Object.entries(skippedPurpose).map(([k,v])=>`${k} ${v}건`).join(', ');
+    if(!fresh.length){ appAlert(`새로 넣을 내역이 없어요.${dup?`\n(이미 들어있는 ${dup}건은 건너뜀)`:''}${skipList?`\n(분류 안 된 사용용도: ${skipList})`:''}`); return; }
+    const dates = fresh.map(x=>x.date).sort();
+    const label = settings.employeeName || '(이름 미등록)';
+    const msg = `'${label}' 직원 경비에 ${fresh.length}건을 넣을게요. (${dates[0]} ~ ${dates[dates.length-1]})\n\n`
+      + `· 점심식대 ${cnt('lunch').length}건 / ${sum(cnt('lunch'))}원\n`
+      + `· 저녁식대 ${cnt('dinner').length}건 / ${sum(cnt('dinner'))}원\n`
+      + `· 경비 ${cnt('other').length}건 / ${sum(cnt('other'))}원\n`
+      + `· 택시비(야근) ${cnt('taxi').length}건 / ${sum(cnt('taxi'))}원`
+      + (dup ? `\n\n이미 들어있는 ${dup}건은 건너뛰어요.` : '')
+      + (skipList ? `\n분류 안 된 사용용도(건너뜀): ${skipList}` : '');
+    if(!(await appConfirm(msg, { okText:'가져오기', cancelText:'취소' }))) return;
+    if(!(await confirmOtherPersonAction('경비 가져오기'))) return;
+    fresh.forEach(it=>{
+      const item = { id:genId(), date:it.date, amount:it.amount, [it.kind==='other' ? 'description' : 'memo']: it.text };
+      map[it.kind].push(item);
+    });
+    await saveExpense();
+    renderExpense();
+    showCenterToast(`${fresh.length}건 가져왔어요`);
+  }catch(err){
+    console.error('경비 엑셀 가져오기 실패', err);
+    appAlert('엑셀을 읽지 못했어요. 파일을 확인해주세요.');
+  }
 });
 
 document.getElementById('resetDataBtn').addEventListener('click', async ()=>{
@@ -31817,7 +31925,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 13:00';
+const APP_BUILD = '2026.09.29 14:10';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -32113,6 +32221,45 @@ function seatDirArrowHtml(dir){
   // 굳이 표시할 필요가 없고, 표시하면 오히려 화면이 복잡해 보임
   return `<span class="seat-dir-monitor rot${rot}" title="모니터(화면)가 이 방향을 향해요"></span>`;
 }
+// 좌석에 적힌 게 이름뿐이면 조직도 직책을 붙여 "장선민 매니저"처럼(회계사는 CPA) - 이미 직책까지 적혀 있으면 그대로
+function seatDisplayText(text){
+  const t = String(text||'').trim();
+  if(!t || /\s/.test(t)) return t;
+  const p = (sharedOrgChart||[]).find(x=>(x.name||'').trim()===t);
+  const pos = p && (p.position||'').trim();
+  if(!pos) return t;
+  return `${t} ${pos==='회계사' ? 'CPA' : pos}`;
+}
+// 돌린(세로로 좁은) 자리 이름 - 세로쓰기 대신 방 이름표처럼 글자는 항상 똑바로 두고, 좁은 폭에 맞춰
+// "이름 / CPA"처럼 두 줄로 쌓음. 방향은 모니터 막대(seat-dir-monitor)만으로 구분
+function seatStackedNameHtml(text, cls){
+  const parts = String(text||'').trim().split(/\s+/);
+  const nm = parts.shift() || '';
+  const rest = parts.join(' ');
+  return `<span class="${cls||''}" style="display:inline-flex; flex-direction:column; align-items:center; line-height:1.2; font-size:11px; white-space:nowrap;"><span>${escHtml(nm)}</span>${rest ? `<span style="font-size:9px; opacity:0.8;">${escHtml(rest)}</span>` : ''}</span>`;
+}
+// 좌석 이름 위에 소속팀 표시 - 회계사가 아닌 사람(매니저·팀장·고문 등)만, 조직도 명단에서 이름으로 찾아 팀을 작게 올림
+function seatIsCpaText(text){
+  const nm = String(text||'').trim().split(/\s+/)[0];
+  const p = nm && (sharedOrgChart||[]).find(x=>(x.name||'').trim()===nm);
+  if(p) return (p.position||'').trim()==='회계사';
+  return /\s(CPA|회계사)$/i.test(String(text||'').trim());
+}
+function seatTeamLabelFor(text){
+  const nm = String(text||'').trim().split(/\s+/)[0];
+  if(!nm) return '';
+  const p = (sharedOrgChart||[]).find(x=>(x.name||'').trim()===nm);
+  if(!p) return seatIsCpaText(text) ? '소속' : '';
+  // 소속팀 없는 회계사도 다른 좌석과 통일되게 '소속'으로 표시
+  if((p.position||'').trim()==='회계사') return (p.team||'').trim() || '소속';
+  const t = orgDefaultGroupFor(p.team, p.position);
+  return t && t !== '미지정' ? t : '';
+}
+function seatWithTeamHtml(nameHtml, rawText){
+  const team = seatTeamLabelFor(rawText);
+  if(!team) return nameHtml;
+  return `<span style="display:inline-flex; flex-direction:column; align-items:center; line-height:1.15;"><span style="font-size:9px; font-weight:600; color:var(--ink-soft); white-space:nowrap; margin-bottom:1px;">${escHtml(team)}</span>${nameHtml}</span>`;
+}
 // 방 위쪽 남색 이름띠 - "이름 직책"을 한 줄로, 폭이 좁으면(세로 방) 직책이 자동으로 아랫줄로 내려가 두 줄이 됨.
 // 방을 돌려도 글자는 항상 똑바로, 띠는 항상 위쪽
 function seatRoomBandHtml(cell, text, nameClass){
@@ -32366,11 +32513,12 @@ function seatCellViewHtml(cell){
   // 그러면 "CPA"같은 영문만 통째로 90도 눕혀져서(고개를 옆으로 기울여야 읽히는 모양) "이게 방향이
   // 맞아?"라는 지적을 받음 - upright로 바꿔서 한글이든 영문이든 글자 하나하나를 눕히지 않고 그대로 세운
   // 채 위에서 아래로 쌓아, C·P·A가 각자 똑바로 선 채 세로로 나열되게 함(고개를 기울일 필요 없이 바로 읽힘)
-  const seatText = escHtml(empty ? '미점유' : (cell.text||''));
+  const seatText = escHtml(empty ? '미점유' : (cell.type==='seat' ? seatDisplayText(cell.text) : (cell.text||'')));
   // 세로쓰기에서는 "조종환 CPA"의 띄어쓰기가 한 글자만큼 크게 벌어져 보여서, 아주 얇은 공백으로 바꿔 줌
-  const seatTextHtml = (cell.type==='seat' && isNarrowPortrait && seatText)
-    ? `<span style="writing-mode:vertical-rl; text-orientation:upright; white-space:nowrap;">${seatText.replace(/\s+/g,'\u2006')}</span>`
+  const seatTextHtml0 = (cell.type==='seat' && (isNarrowPortrait || seatIsCpaText(cell.text)) && seatText && !empty)
+    ? seatStackedNameHtml(seatDisplayText(cell.text))
     : seatText;
+  const seatTextHtml = (cell.type==='seat' && !empty) ? seatWithTeamHtml(seatTextHtml0, cell.text) : seatTextHtml0;
   const roomIns = seatInsetsInsideRoom(cell, _seatViewCellsCtx, 6);
   const roomInsStyle = !roomIns ? '' : isNarrowPortrait
     ? `margin-top:${roomIns.t}px; margin-bottom:${roomIns.b}px;`
@@ -32571,9 +32719,8 @@ function seatChartEditCellHtml(cell){
   const dirArrow = cell.type==='seat' ? seatDirArrowHtml(cell.dir) : '';
   const doorMark = seatDoorMarkHtml(cell);
   const narrowFontSize = isNarrowPortrait ? seatNarrowPortraitFontSize(cell.text, drawH) : null;
-  const seatLabelStyle = (cell.type==='seat' && isNarrowPortrait)
-    ? ` style="writing-mode:vertical-rl; text-orientation:upright; white-space:nowrap; font-size:${narrowFontSize}px; word-spacing:-0.6em;"`
-    : '';
+  // 돌린 자리도 글자는 세로쓰기 없이 똑바로(두 줄로 쌓기는 아래 seatStackedNameHtml)
+  const seatLabelStyle = '';
   const seatLabelClass = (cell.type==='seat' && isNarrowPortrait) ? ' seat-edit-cell-label-narrow' : '';
   // "수정버튼이 손바닥 커서랑 겹쳐서 누르기 힘들다"·"굵은 손잡이 선이 더 헷갈린다" 요청 - 칸 안쪽 모서리에
   // 붙어있던 수정·삭제 버튼과 네 변의 굵은 손잡이 막대를 없앰. 대신 (1) 칸을 한 번 누르면 칸 바깥 위쪽에
@@ -32585,7 +32732,7 @@ function seatChartEditCellHtml(cell){
     ? seatRoomBandHtml(cell, cell.text || '(이름없음)', 'seat-edit-cell-label')
     : (cell.type==='label' || cell.type==='item')
     ? seatCellIconBodyHtml(cell, escHtml(cell.text||'(이름없음)'), 'seat-edit-cell-label')
-    : `<span class="seat-edit-cell-label${seatLabelClass}"${seatLabelStyle}>${escHtml(empty ? '미점유' : (cell.text||'(이름없음)'))}</span>`;
+    : (cell.type==='seat' && !empty ? seatWithTeamHtml((isNarrowPortrait || seatIsCpaText(cell.text)) ? seatStackedNameHtml(seatDisplayText(cell.text)||'(이름없음)', 'seat-edit-cell-label'+seatLabelClass) : `<span class="seat-edit-cell-label${seatLabelClass}"${seatLabelStyle}>${escHtml(seatDisplayText(cell.text)||'(이름없음)')}</span>`, cell.text) : `<span class="seat-edit-cell-label${seatLabelClass}"${seatLabelStyle}>${escHtml(empty ? '미점유' : (cell.text||'(이름없음)'))}</span>`);
   return `<div class="seat-edit-cell${isSel ? ' is-selected' : ''}" data-id="${cell.id}" style="position:absolute; left:${visualLeft}px; top:${drawTop}px; width:${w}px; height:${drawH}px; ${bg}${sel} border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11.5px; text-align:center; padding:2px; cursor:grab; touch-action:none; user-select:none; box-sizing:border-box; line-height:1.2;">${dirArrow}${doorMark}${labelHtml}${rz}</div>`;
 }
 // ── PC 전용 작업 안내 ──
@@ -34099,7 +34246,17 @@ function printHtmlSection(docTitle, subtitle, bodyHtml){
   const win = window.open('', '_blank', 'width=1000,height=700');
   if(!win){ showCenterToast('팝업이 차단됐어요. 팝업 허용 후 다시 시도해주세요.'); return; }
   const companyName = sharedCompanyName || 'Tax.J';
+  // 좌석배치도의 방 이름표·문 표시 같은 모양은 메인 화면 CSS(.seat-...)에 들어 있어서, 새로 여는 인쇄 창에는
+  // 그 규칙이 없어 예전 모양으로 나왔음 - 메인 화면에서 좌석배치도 관련 규칙만 골라 인쇄 창에도 그대로 넣어줌
+  let seatCss = '';
+  try{
+    for(const sh of document.styleSheets){
+      let rules; try{ rules = sh.cssRules; }catch(e){ continue; }
+      for(const r of rules){ if(r.selectorText && /seat-/.test(r.selectorText)) seatCss += r.cssText + '\n'; }
+    }
+  }catch(e){}
   win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escHtml(docTitle)}</title>
+    <style>${seatCss}</style>
     <style>
       /* 좌석배치도/조직도 HTML을 그대로 재사용하는데, 그 안의 색은 전부 var(--surface)/var(--border)처럼
          메인 화면의 CSS 변수(:root)에 기대고 있음 - 이 인쇄창은 메인 문서 밖의 완전히 새 문서라 그 변수들이
