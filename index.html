@@ -31606,7 +31606,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 00:57';
+const APP_BUILD = '2026.09.29 09:50';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -33241,10 +33241,12 @@ function orgChartGroups(){
     if(groups['경영지원실']) groups['경영지원실'] = groups['경영지원실'].filter(m=>m.name!==name);
     pushTo('경영지원실', name, '회계사', true);
   }
-  // 각 팀(카드) 안에서는 회계사가 항상 맨 위 - 같은 직책끼리는 등록 순서 그대로
+  // 각 팀(카드) 안에서는 회계사가 항상 맨 위, 그다음 팀장·매니저 순 - 같은 직책끼리는 등록 순서 그대로
   order.forEach(t=>{
     const list = groups[t];
-    groups[t] = list.map((m,i)=>({m,i})).sort((a,b)=> ((a.m.position==='회계사'||a.m.position==='대표회계사')?0:1) - ((b.m.position==='회계사'||b.m.position==='대표회계사')?0:1) || a.i-b.i).map(x=>x.m);
+    // 직급 순: 회계사 → 팀장 → 매니저 → 그 외(고문·부장 등은 등록 순)
+    const posRank = m => (m.position==='회계사'||m.position==='대표회계사') ? 0 : m.position==='팀장' ? 1 : m.position==='매니저' ? 2 : 3;
+    groups[t] = list.map((m,i)=>({m,i})).sort((a,b)=> posRank(a.m) - posRank(b.m) || a.i-b.i).map(x=>x.m);
   });
   // 좌석 칸 글자는 사람 단위로 나눠서 넣음 - 명단에 이미 있는 사람(이름 기준)은 중복으로 안 나옴.
   // 단, 조직도 명단이 하나라도 있으면 명단만 기준으로 함(명단에서 삭제한 사람이 좌석배치도에 이름이 남아 있다는
