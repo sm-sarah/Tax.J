@@ -1919,7 +1919,7 @@
   .backup-info-body > :last-child{ margin-bottom:0; }
   .backup-info-body .nw{ white-space:nowrap; }
   .backup-info-body .info-line{ display:block; text-wrap:balance; }
-  .backup-info-body td{ text-wrap:balance; }
+  .backup-info-body td{ text-wrap:pretty; } /* balance는 칸 오른쪽에 큰 여백이 생겨서(요청) - 폭은 다 쓰고 끝줄에 한 단어만 떨어지는 것만 막음 */
   .backup-info-body table{ border-collapse:separate; border-spacing:0; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
   .backup-info-body th, .backup-info-body td{ border:0; }
   .backup-info-body tr > * + *{ border-left:1px solid var(--border); }
@@ -2612,6 +2612,8 @@
     background:var(--indigo-bg); color:var(--indigo-deep); font-size:11.5px; font-weight:800; cursor:pointer; font-family:inherit; }
   .seat-cell-toolbar button:hover{ background:var(--indigo); color:#fff; }
   .seat-cell-toolbar button.danger{ background:var(--coral-bg); color:#C23556; }
+  .seat-cell-toolbar .seat-sz-lab{ align-self:center; font-size:11px; font-weight:700; color:var(--ink-soft); padding:0 2px 0 5px; white-space:nowrap; }
+  .seat-cell-toolbar .seat-sz-val{ align-self:center; font-size:12px; font-weight:800; color:var(--ink); min-width:30px; text-align:center; white-space:nowrap; }
   .seat-cell-toolbar button.danger:hover{ background:var(--coral); color:#fff; }
   /* 격자선 긋기 팝업 */
   .seat-wall-popup{ position:fixed; z-index:9000; width:250px; background:var(--surface); border:1px solid var(--border); border-radius:12px;
@@ -2628,6 +2630,9 @@
   .seat-wall-popup-hint{ font-size:11px; color:var(--ink-soft); margin-bottom:8px; line-height:1.45; }
   .seat-wall-hover{ position:absolute; pointer-events:none; z-index:51; border-radius:2px; opacity:0.45; }
   #seatChartWallModeBtn.on{ background:var(--indigo); color:#fff; border-color:var(--indigo); }
+  /* 자리배치도 도구줄 아이콘 버튼 - 옆의 −/+ 버튼과 같은 높이, 아이콘만 */
+  .seat-tool-ic{ display:inline-flex; align-items:center; justify-content:center; padding:5px 8px; min-width:30px; }
+  .seat-tool-lab{ display:inline-flex; align-items:center; color:var(--ink-soft); cursor:help; }
   .seat-dir-monitor.rot0{ top:-1px; left:20%; right:20%; height:2.5px; }
   .seat-dir-monitor.rot90{ right:-1px; top:20%; bottom:20%; width:2.5px; }
   .seat-dir-monitor.rot180{ bottom:-1px; left:20%; right:20%; height:2.5px; }
@@ -2821,7 +2826,10 @@
   .xls-io-row{ display:flex; justify-content:flex-end; gap:6px; margin:-4px 0 8px; }
   /* 설정 › 근무기준 - 칩 줄과 칩별 화면. 원래 소제목은 숨기고((i) 설명 연결용으로만 남김) 칩으로 전환 */
   .ws-chip-row{ display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin:0 0 18px; }
-  .ws-pane-title{ display:none; }
+  /* "상세설명은 각 항목별로"(요청) - 칩마다 화면 맨 위에 작은 소제목 + (i)를 둠(원래 소제목을 작게 보여주는 것) */
+  .ws-pane-title{ display:flex; align-items:center; justify-content:center; gap:5px; font-size:13px; font-weight:800; color:var(--navy); margin:0 0 10px; }
+  .ws-pane-title > svg{ display:none; }
+  .ws-pane-title .badge{ display:none; }
   /* 옆의 큰 연월 글자와 나란히 있으면 흰 배경칩이 붕 뜬 것처럼 보여서, 평소엔 배경 없이 아이콘만 두고 hover할 때만 살짝 배경이 보이게 함 */
   .cal-nav-btn{ border:none; background:transparent; color:var(--indigo); font-size:20px; font-weight:900; width:32px; height:32px; border-radius:10px; cursor:pointer; box-shadow:none; display:flex; align-items:center; justify-content:center; transition:background 0.12s, transform 0.12s; flex-shrink:0; }
   /* 연월 타이틀 바로 옆 달력 아이콘 버튼은 클릭 영역(32px) 자체가 아이콘(18px)보다 커서, 부모의 flex gap과
@@ -3641,6 +3649,56 @@
     <button type="button" id="backupFlowClose" class="del-btn modal-close-btn" style="position:absolute; top:14px; right:16px;">✕</button>
     <div id="backupFlowTitle" style="text-align:center; margin-bottom:14px; padding:2px 46px 0; font-weight:800; font-size:18px; color:var(--ink);"></div>
     <div id="backupFlowBody"></div>
+  </div>
+</div>
+<!-- 내 알림 설정 팝업 - 설정 › 알림의 톱니 아이콘으로 엶(예전엔 화면 아래 "알림 관리"로 늘 펼쳐져 있던 스위치 묶음) -->
+<div id="notifPrefModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:16px 22px 20px; max-width:440px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4); position:relative;">
+    <button type="button" id="notifPrefModalClose" class="del-btn modal-close-btn" style="position:absolute; top:14px; right:16px;">✕</button>
+    <div style="text-align:center; margin-bottom:14px; padding:2px 46px 0;"><div style="font-weight:800; font-size:18px; color:var(--ink);">내 알림 설정</div></div>
+      <div id="notifCategoryBlock" class="settings-flat" style="width:fit-content; max-width:100%; margin:0 auto;">
+      <p class="hint" id="notifCategoryPanelHint" style="display:none; width:0; min-width:100%;">이 기기에서 알림을 켜야 아래 스위치가 적용돼요. (휴대폰·PC 등 기기마다 각각 한 번씩 따로 켜야 해요)</p>
+      <div class="flat-panel flat-panel-narrow" id="notifCategoryPanel">
+        <div class="flat-row">
+          <div class="flat-row-label" style="flex:1 1 auto;">공지사항 등록</div>
+          <div class="flat-row-control" style="flex:0 0 auto; justify-content:flex-end;">
+            <label class="ios-toggle"><input type="checkbox" class="notif-pref-toggle" data-category="notice"><span class="ios-toggle-track"></span></label>
+          </div>
+        </div>
+        <div class="flat-row">
+          <div class="flat-row-label" style="flex:1 1 auto;">결재 요청이 나에게 왔을 때</div>
+          <div class="flat-row-control" style="flex:0 0 auto; justify-content:flex-end;">
+            <label class="ios-toggle"><input type="checkbox" class="notif-pref-toggle" data-category="approvalNew"><span class="ios-toggle-track"></span></label>
+          </div>
+        </div>
+        <div class="flat-row">
+          <div class="flat-row-label" style="flex:1 1 auto;">내 기안이 승인·반려됐을 때</div>
+          <div class="flat-row-control" style="flex:0 0 auto; justify-content:flex-end;">
+            <label class="ios-toggle"><input type="checkbox" class="notif-pref-toggle" data-category="approvalDecision"><span class="ios-toggle-track"></span></label>
+          </div>
+        </div>
+        <div class="flat-row">
+          <div class="flat-row-label" style="flex:1 1 auto;">팀캘린더에 새 일정이 등록됐을 때</div>
+          <div class="flat-row-control" style="flex:0 0 auto; justify-content:flex-end;">
+            <label class="ios-toggle"><input type="checkbox" class="notif-pref-toggle" data-category="teamSchedule"><span class="ios-toggle-track"></span></label>
+          </div>
+        </div>
+        <!-- 출근/퇴근 시간 5분 전 알림 - 위의 종류별 알림(공지·결재·팀캘린더)은 남이 등록한 일이 있어야 오는
+             알림이라 서버(sendPush)가 대신 보내주지만, 이건 "매일 정해진 시각"이 되면 오는 알림이라 그 시각을
+             지켜보고 있을 서버 쪽 장치가 없음 - 그래서 이 기기(브라우저/앱)가 켜져 있는 동안 주기적으로 시계를
+             확인하다가 표준 출근·퇴근 시간(근무시간 설정 기준) 5분 전이 되면, 아직 그날 출근/퇴근을 안 찍었을
+             때만 이 기기에서 바로 알림을 띄움 - 기기가 완전히 꺼져있거나 앱이 종료된 상태에서는 오지 않음.
+             직원별로 이 화면(설정)에서 각자 켜야만 오고, 기본값은 꺼짐(미알림). 원래는 이 항목만 따로
+             카드+버튼으로 떨어져 있었는데, 화면을 단순하게 정리하면서 위 스위치들과 같은 줄 모양(ios-toggle)
+             으로 합침 - class는 notif-pref-toggle을 안 씀(그건 sharedNotificationPrefs 저장용이라 별개 로직) -->
+        <div class="flat-row">
+          <div class="flat-row-label" style="flex:1 1 auto;">출근·퇴근 5분 전 알림</div>
+          <div class="flat-row-control" style="flex:0 0 auto; justify-content:flex-end;">
+            <label class="ios-toggle"><input type="checkbox" id="clockReminderToggle"><span class="ios-toggle-track"></span></label>
+          </div>
+        </div>
+      </div>
+      </div>
   </div>
 </div>
 <!-- 백업복구 설명 팝업 - 백업복구 화면의 (i) 아이콘을 누르면 그 항목 설명을 보여줌 -->
@@ -6262,7 +6320,7 @@
       </div>
 
       <div class="settings-sub-title" id="ssTitle-seatChart" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="4" width="18" height="16" rx="1"></rect><path d="M3 10h18"></path><path d="M9 10v10"></path></svg> 자리배치도</div>
-      <p class="hint" data-info style="text-align:center;"><b>옮기기</b>: 자리를 눌러 그대로 끌어다 놓아요<br><b>수정·삭제</b>: 자리를 한 번 누르면 위에 도구줄(수정·회전·복사·삭제)이 떠요<br><b>크기 조절</b>: 가장자리에 마우스를 대면 뜨는 화살표를 끌어요 (방은 격자 칸 안에서도 자유롭게)<br><b>자리</b>: 책상 한 칸 · 비어 있으면 미점유(연회색)<br><b>구역</b>: 화장실·계단실·사물함처럼 이름표(아이콘)만 있는 칸<br><b>방</b>: 회의실·대표실처럼 테두리 안에 자리를 얹는 큰 칸 · 문 방향 표시 가능<br><b>격자선</b>: 구획을 나누는 선 · 선을 눌러 옮기거나 지울 수 있어요<br><b>이력</b>: 저장할 때마다 남아요</p>
+      <p class="hint" data-info style="text-align:center;"><b>옮기기</b>: 자리를 눌러 그대로 끌어다 놓아요<br><b>수정·삭제</b>: 칸을 한 번 누르면 위에 도구줄(수정·회전·크기·복사·삭제)이 뜨고, 두 번 누르면 수정창이 열려요<br><b>크기 조절</b>: 가장자리에 마우스를 대면 뜨는 화살표를 끌어요 (방은 격자 칸 안에서도 자유롭게) · 도구줄의 크기 아이콘으로 한 칸씩 늘리고 줄여요 · Shift를 누른 채 다른 칸을 누르면 여러 칸을 한꺼번에<br><b>자리</b>: 책상 한 칸 · 비어 있으면 미점유(연회색)<br><b>구역</b>: 화장실·계단실·사물함처럼 이름표(아이콘)만 있는 칸<br><b>방</b>: 회의실·대표실처럼 테두리 안에 자리를 얹는 큰 칸 · 문 방향 표시 가능<br><b>격자선</b>: 구획을 나누는 선 · 선을 눌러 옮기거나 지울 수 있어요<br><b>격자 간격</b>: 위·왼쪽 눈금의 작은 손잡이를 끌면 그 줄의 간격이 바뀌어요<br><b>이력</b>: 저장할 때마다 남아요</p>
       <!-- "가로스크롤이 안 나오게 영역을 넓혀서 가로폭을 최대한 활용하게 해달라"는 요청 - 이 패널이 900px로
            묶여 있어서, 정작 그 안의 배치도 그리드(#seatChartPreviewWrap)는 칸이 몇 개만 넘어가도 900px보다
            넓어져 항상 가로 스크롤이 생겼음. 화면 전체 폭(.app-shell 안쪽 콘텐츠 영역)은 이보다 훨씬 넓게
@@ -6274,7 +6332,12 @@
              요청 - 예전엔 아래쪽 저장 버튼 옆에 텍스트까지 있는 버튼으로 나란히 있었는데, 이 박스(.flat-panel)
              맨 위로 옮기고 아이콘만 남김. 저장은 실제로 반영되는 중요한 동작이라 아래쪽에 그대로 크게 남겨두고,
              이력/인쇄는 부가 기능이라 이렇게 작은 아이콘 버튼으로 위쪽 구석에 둠 -->
-        <div style="display:flex; justify-content:flex-end; gap:6px; margin:-2px -2px 10px 0;">
+        <!-- "조직도 목록 가져오기·초기화는 이력 왼쪽에 아이콘으로, 사용설명도 아이콘으로"(요청) - 오른쪽 위 아이콘 줄: [사용설명][조직도 가져오기][초기화] | [이력][인쇄] -->
+        <div style="display:flex; justify-content:flex-end; align-items:center; gap:6px; margin:-2px -2px 10px 0;">
+          <button type="button" class="del-btn seat-chart-action-btn" id="seatChartHelpBtn" title="사용 설명" aria-label="사용 설명" style="padding:6px 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
+          <button type="button" class="del-btn seat-chart-action-btn" id="seatChartImportOrgBtn" title="조직도 목록 가져오기 - 조직도에 등록된 사람을 배치예정으로 가져와요(이미 자리가 있는 사람은 팀·직책만 최신화)" aria-label="조직도 목록 가져오기" style="padding:6px 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg></button>
+          <button type="button" class="del-btn seat-chart-action-btn" id="seatChartResetBtn" title="초기화 - 자리·구역·방·구분선을 모두 지우고 격자선만 남겨요(저장해야 반영)" aria-label="초기화" style="padding:6px 8px; color:var(--coral);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+          <span style="width:1px; height:18px; background:var(--border); margin:0 2px;"></span>
           <button type="button" class="del-btn seat-chart-action-btn" id="seatChartHistoryBtn" title="이력" style="padding:6px 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></button>
           <button type="button" class="del-btn seat-chart-action-btn" id="seatChartPrintBtn" title="인쇄" style="padding:6px 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></button>
         </div>
@@ -6301,43 +6364,39 @@
                책상(자리)을 안에 얹을 수 있는 새 종류로 추가함. 구분선은 "종류" 개념보다 격자에 바로 긋는
                선에 가까워서 이 드롭다운에서 빼고 바로 옆에 작은 전용 버튼으로 뺌(기능은 그대로) -->
           <!-- "조직도 목록 가져오기"(조직도 명단을 배치예정으로) / "초기화"(격자선만 남기고 전부 비움) -->
-          <button type="button" class="del-btn" id="seatChartImportOrgBtn" title="조직도에 등록된 사람을 배치예정으로 가져와요(이미 자리가 있는 사람은 팀·직책만 최신화)" style="padding:5px 10px; font-size:11.5px;">조직도 목록 가져오기</button>
-          <button type="button" class="del-btn" id="seatChartPasteBtn" title="복사해 둔 칸과 같은 칸(종류·크기·방향·문)을 새로 추가해요" style="padding:5px 10px; font-size:11.5px; display:none;">붙여넣기</button>
-          <!-- "복사붙여넣기 취소 어떻게 해?" - 방금 한 붙여넣기 되돌리기(Ctrl+Z도 됨) / 복사해 둔 것 비우기(Esc도 됨) -->
-          <button type="button" class="del-btn" id="seatChartPasteUndoBtn" title="방금 한 붙여넣기를 되돌려요 (Ctrl+Z)" style="padding:5px 10px; font-size:11.5px; display:none;">붙여넣기 취소</button>
-          <button type="button" class="del-btn" id="seatChartCopyClearBtn" title="복사해 둔 칸을 비워요 (Esc)" style="padding:5px 8px; font-size:11.5px; display:none;">복사 해제</button>
-          <button type="button" class="del-btn" id="seatChartResetBtn" title="자리·구역·방·구분선을 모두 지우고 격자선만 남겨요(저장해야 반영)" style="padding:5px 10px; font-size:11.5px; color:var(--coral);">초기화</button>
-          <span style="width:1px; height:16px; background:var(--border); margin:0 4px;"></span>
-          <select id="seatChartAddTypeSelect" class="flat-input" style="width:110px;">
+          <!-- "칸 추가·격자선 긋기 등도 다 아이콘으로"(요청) - 글자 버튼을 아이콘으로 바꾸고, 이름은 마우스를 올리면(title) 보임.
+               칸 추가는 아이콘을 누르면 방·좌석·구역 메뉴가 뜸(실제 추가는 숨긴 #seatChartAddTypeSelect가 그대로 처리) -->
+          <button type="button" class="del-btn seat-tool-ic" id="seatChartAddBtn" title="칸 추가 (방·좌석·구역)" aria-label="칸 추가"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></button>
+          <select id="seatChartAddTypeSelect" class="flat-input" style="display:none;">
             <option value="" selected>+ 칸 추가</option>
             <option value="room">방</option>
             <option value="seat">좌석</option>
             <option value="label">구역</option>
           </select>
-          <button type="button" class="del-btn" id="seatChartWallModeBtn" title="격자선 위에 구분선 긋기" style="padding:5px 10px; font-size:11.5px;">✏ 격자선 긋기</button>
+          <button type="button" class="del-btn seat-tool-ic" id="seatChartWallModeBtn" title="선 긋기 (격자선 위에 테두리·구분선을 긋고 지워요)" aria-label="선 긋기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M8 3v7h7"/><path d="M15 10v11"/></svg></button>
+          <button type="button" class="del-btn seat-tool-ic" id="seatChartPasteBtn" title="붙여넣기 - 복사해 둔 칸과 같은 칸(종류·크기·방향·문)을 새로 추가해요" aria-label="붙여넣기" style="display:none;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></button>
+          <button type="button" class="del-btn seat-tool-ic" id="seatChartPasteUndoBtn" title="붙여넣기 취소 - 방금 한 붙여넣기를 되돌려요 (Ctrl+Z)" aria-label="붙여넣기 취소" style="display:none;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></button>
+          <button type="button" class="del-btn seat-tool-ic" id="seatChartCopyClearBtn" title="복사 해제 - 복사해 둔 칸을 비워요 (Esc)" aria-label="복사 해제" style="display:none;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/><line x1="13" y1="13" x2="17" y2="17"/><line x1="17" y1="13" x2="13" y2="17"/></svg></button>
           <span style="width:1px; height:16px; background:var(--border); margin:0 4px;"></span>
-          <span style="font-size:11.5px; color:var(--ink-soft);">가로 칸 수</span>
-          <button type="button" class="del-btn" id="seatChartColsMinusBtn" style="padding:5px 10px;">−</button>
+          <span class="seat-tool-lab" title="가로 칸 수 (격자를 오른쪽으로 늘리고 줄여요)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/><line x1="15" y1="4" x2="15" y2="20"/></svg></span>
+          <button type="button" class="del-btn" id="seatChartColsMinusBtn" title="가로 칸 수 줄이기" style="padding:5px 10px;">−</button>
           <span id="seatChartColsLabel" style="font-size:12.5px; font-weight:700; min-width:18px; text-align:center; display:inline-block;">9</span>
-          <button type="button" class="del-btn" id="seatChartColsPlusBtn" style="padding:5px 10px;">+</button>
+          <button type="button" class="del-btn" id="seatChartColsPlusBtn" title="가로 칸 수 늘리기" style="padding:5px 10px;">+</button>
           <span style="width:1px; height:16px; background:var(--border); margin:0 4px;"></span>
-          <!-- "격자 크기를 지금처럼 고정형식이 아니라 내가 직접 수정할 수 없을까" 요청으로 추가한 칸
-               가로/세로 크기 조절 - 가로 칸 수와 같은 +/- 버튼 모양으로 통일함 -->
-          <span style="font-size:11.5px; color:var(--ink-soft);">칸 크기(가로)</span>
-          <button type="button" class="del-btn" id="seatChartCellWMinusBtn" style="padding:5px 10px;">−</button>
+          <span class="seat-tool-lab" title="칸 크기(가로, 전체 칸)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 8 3 12 7 16"/><polyline points="17 8 21 12 17 16"/><line x1="3" y1="12" x2="21" y2="12"/></svg></span>
+          <button type="button" class="del-btn" id="seatChartCellWMinusBtn" title="칸 가로 크기 줄이기" style="padding:5px 10px;">−</button>
           <span id="seatChartCellWLabel" style="font-size:12.5px; font-weight:700; min-width:22px; text-align:center; display:inline-block;">108</span>
-          <button type="button" class="del-btn" id="seatChartCellWPlusBtn" style="padding:5px 10px;">+</button>
-          <span style="font-size:11.5px; color:var(--ink-soft); margin-left:4px;">(세로)</span>
-          <button type="button" class="del-btn" id="seatChartCellHMinusBtn" style="padding:5px 10px;">−</button>
+          <button type="button" class="del-btn" id="seatChartCellWPlusBtn" title="칸 가로 크기 늘리기" style="padding:5px 10px;">+</button>
+          <span class="seat-tool-lab" title="칸 크기(세로, 전체 칸)" style="margin-left:4px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 7 12 3 16 7"/><polyline points="8 17 12 21 16 17"/><line x1="12" y1="3" x2="12" y2="21"/></svg></span>
+          <button type="button" class="del-btn" id="seatChartCellHMinusBtn" title="칸 세로 크기 줄이기" style="padding:5px 10px;">−</button>
           <span id="seatChartCellHLabel" style="font-size:12.5px; font-weight:700; min-width:22px; text-align:center; display:inline-block;">54</span>
-          <button type="button" class="del-btn" id="seatChartCellHPlusBtn" style="padding:5px 10px;">+</button>
+          <button type="button" class="del-btn" id="seatChartCellHPlusBtn" title="칸 세로 크기 늘리기" style="padding:5px 10px;">+</button>
         </div>
         <!-- "큰 책상을 끝에 배치하면 의자가 짤리네" - 의자·모니터 표시가 칸 테두리보다 6px 정도 밖으로
              튀어나오게 그려지는데, 자리가 배치도 맨 가장자리(첫 줄/첫 칸 등)에 있으면 그 튀어나온 부분이
              바로 이 스크롤 영역의 경계 밖이라 스크롤해도 보이지 않고 잘려버렸음. 이 감싸는 영역 자체에
              여백을 둬서, 그 안의 그리드(#seatChartEditGrid)는 그대로 (0,0)부터 그려지되 튀어나온 부분이
              이 여백 안에 들어오게 함(그리드 안쪽 좌표 계산·드래그 로직은 전혀 안 건드림) -->
-        <div style="text-align:center; font-size:11px; color:var(--ink-soft); margin-top:8px;">칸을 한 번 누르면 수정·회전·삭제 버튼이, 두 번 누르면 수정창이 열려요 · 가장자리에 마우스를 대면 화살표가 떠서 크기를 바꿀 수 있어요 · 위/왼쪽 눈금의 작은 손잡이를 끌면 격자 간격이 바뀌어요</div>
         <div id="seatChartPreviewWrap" style="overflow:auto; padding:34px 14px 14px 30px; margin-top:6px;"></div>
         <!-- "자리를 옮기다가 다른 자리 위에 놓으면 겹쳐 보인다"는 요청으로, 그 위에 놓으면 서로 자리를
              맞바꾸게(swap) 됨. "아니면 외부로 빼서 나중에 다시 넣게" 쪽도 같이 원해서, 이 트레이 위에
@@ -6458,9 +6517,9 @@
 
       <!-- "근무시간·식대·특별기간·제외일수·공휴일을 메뉴 하나로 통합"(요청) - 설정 소메뉴 "근무기준" 하나 안에 칩 5개
            (근무시간·식대·공휴일·제외일정·특별기간)를 두고, 누른 칩의 화면(ws-pane)만 보여줌. 각 화면의 폼·목록·이벤트는 예전 그대로이고
-           원래 소제목은 숨김 제목(.ws-pane-title)으로 남겨서 (i) 설명이 그대로 붙음 - 근무기준 제목 옆 (i)는 지금 고른 칩의 설명을 띄움.
+           원래 소제목은 칩 화면 맨 위 작은 소제목(.ws-pane-title)으로 남겨서 칩마다 (i) 설명이 따로 붙음.
            공휴일·제외일정은 같은 데이터(sharedExclusionDays)를 사유로만 나눠 보여주는 것(setExclusionViewMode 참고) -->
-      <div class="settings-sub-title" id="ssTitle-workStd" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="13" r="8"></circle><polyline points="12 9 12 13 15 15"></polyline><path d="M5 3 2 6"></path><path d="M22 6l-3-3"></path></svg> 근무기준 <button type="button" class="backup-info-btn" id="wsInfoBtn" title="설명 보기" aria-label="설명 보기" style="margin-left:6px; vertical-align:middle;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="11" x2="12" y2="16.5"></line><line x1="12" y1="7.5" x2="12.01" y2="7.5"></line></svg></button></div>
+      <div class="settings-sub-title" id="ssTitle-workStd" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="13" r="8"></circle><polyline points="12 9 12 13 15 15"></polyline><path d="M5 3 2 6"></path><path d="M22 6l-3-3"></path></svg> 근무기준</div>
       <div class="ws-chip-row"><label class="notice-toggle-chip"><input type="radio" name="wsChip" value="workHours" checked><span>근무시간</span></label><label class="notice-toggle-chip"><input type="radio" name="wsChip" value="lunch"><span>식대</span></label><label class="notice-toggle-chip"><input type="radio" name="wsChip" value="holiday"><span>공휴일</span></label><label class="notice-toggle-chip"><input type="radio" name="wsChip" value="exclusion"><span>제외일정</span></label><label class="notice-toggle-chip"><input type="radio" name="wsChip" value="specialPeriod"><span>특별기간</span></label></div>
       <div class="ws-pane" data-ws="workHours">
       <div class="ws-pane-title" id="ssTitle-workHours" data-info-title><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="13" r="8"></circle><polyline points="12 9 12 13 15 15"></polyline><path d="M5 3 2 6"></path><path d="M22 6l-3-3"></path></svg> 근무시간 <span class="badge">상/하반기 기준</span></div>
@@ -6708,66 +6767,24 @@
            접어두지 않고 맨 위로 올려 항상 보이게 하고, 알림 관리(종류별 스위치)는 그 아래에 둠 ③ "내
            계정으로 등록된 기기 목록이에요..." 같은 부연 설명 문단은 지움 -->
       <div class="settings-sub-title" id="ssTitle-notifications" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> 알림</div>
-      <p class="hint" data-info style="display:none;">내 계정 기준 · 이 기기뿐 아니라 등록된 모든 기기에 적용</p>
+      <p class="hint" data-info style="display:none;">
+        <b>기기 목록</b>: 알림이 등록된 기기예요 · 관리자는 직원을 골라 그 직원의 기기를 볼 수 있어요<br>
+        <b>종 아이콘</b>: 그 기기로만 테스트 알림(일반·출근·퇴근)을 보내요<br>
+        <b>다시등록</b>: 지금 이 기기는 바로 다시 등록해요 · 다른 기기는 요청만 남기고 그 기기에서 앱이 열리면 자동으로 다시 등록돼요<br>
+        <b>톱니 아이콘</b>: 받을 알림 종류를 켜고 꺼요 · 내 모든 기기에 똑같이 적용돼요
+      </p>
 
-      <div style="font-weight:800; font-size:13px; color:var(--ink); max-width:720px; margin:2px auto 8px;">기기 목록 관리</div>
+      <!-- "알림 화면 정리"(요청) - ① 관리자는 직원을 골라 그 직원의 기기 목록을 보고 이름변경·삭제·다시등록 요청·테스트를 할 수 있음
+           ② 테스트 알림은 큰 버튼 3개 대신 기기 줄마다 종 아이콘 하나(누르면 일반·출근·퇴근 중 골라 그 기기로만 보냄)
+           ③ 알림 관리(종류별 스위치)는 화면에서 빼고 오른쪽 톱니 아이콘 → "내 알림 설정" 팝업으로 옮김 -->
+      <div style="max-width:720px; margin:2px auto 8px; display:flex; align-items:center; gap:8px;">
+        <div style="font-weight:800; font-size:13px; color:var(--ink); white-space:nowrap;">기기 목록 관리</div>
+        <select id="pushDevOwnerSel" style="display:none; flex:0 1 200px; min-width:0; border:1.5px solid var(--border); border-radius:8px; padding:4px 8px; font-size:12px; font-family:'Pretendard',sans-serif; background:var(--surface);" title="기기 목록을 볼 직원"></select>
+        <span style="flex:1 1 auto;"></span>
+        <button type="button" class="del-btn xls-io-btn" id="notifPrefOpenBtn" title="내 알림 설정" aria-label="내 알림 설정"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
+      </div>
       <div id="myPushDeviceListWrap" style="max-width:720px; margin:0 auto;"></div>
-
-      <!-- 테스트 알림 - 고른 직원의 등록된 모든 기기로 푸시를 한 번 보내서, 실제로 잘 오는지(몇 번 오는지) 바로 확인 -->
-      <div style="font-weight:800; font-size:13px; color:var(--ink); max-width:720px; margin:20px auto 8px;">테스트 알림</div>
-      <div style="max-width:720px; margin:0 auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-        <select id="pushTestTarget" style="flex:1 1 200px; border:1.5px solid var(--border); border-radius:8px; padding:7px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface);"></select>
-        <button type="button" class="del-btn" id="pushTestSendBtn" style="background:var(--indigo); color:#fff;">테스트 알림 보내기</button>
-        <button type="button" class="del-btn push-clock-test-btn" data-kind="checkIn">출근 알림 테스트</button>
-        <button type="button" class="del-btn push-clock-test-btn" data-kind="checkOut">퇴근 알림 테스트</button>
-      </div>
-      <p class="hint" id="pushTestMsg" style="max-width:720px; margin:6px auto 0;"></p>
-
-      <!-- "알림 관리" 제목이 넓은 칸 왼쪽 끝에 떨어져 있어 어색하다는 의견 - 제목을 아래 스위치 상자 왼쪽 끝에 맞춤 -->
-      <div id="notifCategoryBlock" style="width:fit-content; max-width:100%; margin:20px auto 0;">
-      <div style="font-weight:800; font-size:13px; color:var(--ink); margin:0 0 8px;">알림 관리</div>
-      <p class="hint" id="notifCategoryPanelHint" style="display:none; width:0; min-width:100%;">이 기기에서 알림을 켜야 아래 스위치가 적용돼요. (휴대폰·PC 등 기기마다 각각 한 번씩 따로 켜야 해요)</p>
-      <div class="flat-panel flat-panel-narrow" id="notifCategoryPanel">
-        <div class="flat-row">
-          <div class="flat-row-label" style="flex:1 1 auto;">공지사항 등록</div>
-          <div class="flat-row-control" style="flex:0 0 auto; justify-content:flex-end;">
-            <label class="ios-toggle"><input type="checkbox" class="notif-pref-toggle" data-category="notice"><span class="ios-toggle-track"></span></label>
-          </div>
-        </div>
-        <div class="flat-row">
-          <div class="flat-row-label" style="flex:1 1 auto;">결재 요청이 나에게 왔을 때</div>
-          <div class="flat-row-control" style="flex:0 0 auto; justify-content:flex-end;">
-            <label class="ios-toggle"><input type="checkbox" class="notif-pref-toggle" data-category="approvalNew"><span class="ios-toggle-track"></span></label>
-          </div>
-        </div>
-        <div class="flat-row">
-          <div class="flat-row-label" style="flex:1 1 auto;">내 기안이 승인·반려됐을 때</div>
-          <div class="flat-row-control" style="flex:0 0 auto; justify-content:flex-end;">
-            <label class="ios-toggle"><input type="checkbox" class="notif-pref-toggle" data-category="approvalDecision"><span class="ios-toggle-track"></span></label>
-          </div>
-        </div>
-        <div class="flat-row">
-          <div class="flat-row-label" style="flex:1 1 auto;">팀캘린더에 새 일정이 등록됐을 때</div>
-          <div class="flat-row-control" style="flex:0 0 auto; justify-content:flex-end;">
-            <label class="ios-toggle"><input type="checkbox" class="notif-pref-toggle" data-category="teamSchedule"><span class="ios-toggle-track"></span></label>
-          </div>
-        </div>
-        <!-- 출근/퇴근 시간 5분 전 알림 - 위의 종류별 알림(공지·결재·팀캘린더)은 남이 등록한 일이 있어야 오는
-             알림이라 서버(sendPush)가 대신 보내주지만, 이건 "매일 정해진 시각"이 되면 오는 알림이라 그 시각을
-             지켜보고 있을 서버 쪽 장치가 없음 - 그래서 이 기기(브라우저/앱)가 켜져 있는 동안 주기적으로 시계를
-             확인하다가 표준 출근·퇴근 시간(근무시간 설정 기준) 5분 전이 되면, 아직 그날 출근/퇴근을 안 찍었을
-             때만 이 기기에서 바로 알림을 띄움 - 기기가 완전히 꺼져있거나 앱이 종료된 상태에서는 오지 않음.
-             직원별로 이 화면(설정)에서 각자 켜야만 오고, 기본값은 꺼짐(미알림). 원래는 이 항목만 따로
-             카드+버튼으로 떨어져 있었는데, 화면을 단순하게 정리하면서 위 스위치들과 같은 줄 모양(ios-toggle)
-             으로 합침 - class는 notif-pref-toggle을 안 씀(그건 sharedNotificationPrefs 저장용이라 별개 로직) -->
-        <div class="flat-row">
-          <div class="flat-row-label" style="flex:1 1 auto;">출근·퇴근 5분 전 알림</div>
-          <div class="flat-row-control" style="flex:0 0 auto; justify-content:flex-end;">
-            <label class="ios-toggle"><input type="checkbox" id="clockReminderToggle"><span class="ios-toggle-track"></span></label>
-          </div>
-        </div>
-      </div>
-      </div>
+      <p class="hint" id="pushTestMsg" style="max-width:720px; margin:6px auto 0; text-align:center;"></p>
     </div>
 
     <div class="settings-group settings-flat" data-settings-cat="data" style="display:none;">
@@ -7443,10 +7460,15 @@ function setNotifCategoryPanelLocked(locked){
 // 이 패널에 순번을 매겨 쭉 나열되고, 현재 이 브라우저의 줄에만 "다시등록" 버튼이 붙음
 // (worklog_my_push_token과 비교해서 "이 기기"인 줄을 가려냄)
 // 테스트 알림 받는 사람 목록 - 이메일이 있는 직원만, 이름 옆에 푸시 받을 기기 수를 같이 보여줌
+// 관리자는 기기 목록을 볼 직원을 고를 수 있음(본인이 맨 앞, 직원은 이 칸이 안 보이고 항상 본인 기기만) - 예전 "테스트 알림" 직원 선택 칸을 대신함
+let pushDevViewEmail = '';
+function pushDevIsAdmin(){ try{ return !!(gdriveAccessToken && isCurrentUserAdmin); }catch(e){ return false; } }
 function renderPushTestTargets(){
-  const sel = document.getElementById('pushTestTarget');
+  const sel = document.getElementById('pushDevOwnerSel');
   if(!sel) return;
-  const prev = sel.value;
+  const admin = pushDevIsAdmin();
+  sel.style.display = admin ? '' : 'none';
+  if(!admin){ pushDevViewEmail = ''; return; }
   const tokens = sharedPushTokens || [];
   const people = profilesSelfFirst(getProfiles()).filter(p=>(p.email||'').trim()).map(p=>{
     const email = p.email.trim().toLowerCase();
@@ -7454,33 +7476,112 @@ function renderPushTestTargets(){
     const name = (readProfileRaw(p.id,'settings')||{}).employeeName || p.name || email;
     return { email, label: `${name} (기기 ${n}대)` };
   });
-  sel.innerHTML = people.length ? people.map(x=>`<option value="${escHtml(x.email)}">${escHtml(x.label)}</option>`).join('') : '<option value="">이메일이 등록된 직원이 없어요</option>';
   const me = (currentUserEmail||'').toLowerCase();
-  sel.value = people.some(x=>x.email===prev) ? prev : (people.some(x=>x.email===me) ? me : (people[0]||{}).email || '');
+  sel.innerHTML = people.map(x=>`<option value="${escHtml(x.email)}">${escHtml(x.label)}</option>`).join('');
+  const want = pushDevViewEmail || me;
+  sel.value = people.some(x=>x.email===want) ? want : ((people[0]||{}).email || '');
+  pushDevViewEmail = (sel.value && sel.value !== me) ? sel.value : '';
 }
-document.getElementById('pushTestSendBtn')?.addEventListener('click', async ()=>{
+document.getElementById('pushDevOwnerSel')?.addEventListener('change', (e)=>{
+  const me = (currentUserEmail||'').toLowerCase();
+  pushDevViewEmail = e.target.value === me ? '' : e.target.value;
+  const m = document.getElementById('pushTestMsg'); if(m) m.textContent = '';
+  renderMyPushDeviceList();
+});
+// 기기 줄의 종 아이콘 - 그 기기 하나로만 테스트 알림(일반·출근·퇴근 중 선택)을 보냄. 출근·퇴근은 실제 알림과 같은 제목·비숑 그림
+async function sendPushTestToToken(t, kind){
   const msg = document.getElementById('pushTestMsg');
-  const email = (document.getElementById('pushTestTarget')?.value || '').toLowerCase();
-  if(!email){ msg.textContent = '받을 직원을 골라주세요.'; return; }
-  const targets = (sharedPushTokens||[]).filter(t=>t.token && (t.email||'').toLowerCase() === email);
-  const now = new Date();
-  const hhmm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  const from = currentStaffDisplayName();
-  // 알림함(종 아이콘 배지)에도 한 건 넣음 - 푸시는 아래에서 직접 보내므로 여기선 푸시 없이 기록만
-  pushNotificationLogEntry({ type:'test', icon:'notice', title:'🔔 Tax.J 테스트 알림', body:`${from}님이 보낸 테스트 알림이에요 (${hhmm})`, author: from, targetEmail: email, relatedId: 'test-' + genId(), eventAt: now.toLocaleString('ko-KR'), noPush: true });
-  if(typeof updateNotificationUnreadBadge === 'function') updateNotificationUnreadBadge();
-  if(!targets.length){ msg.textContent = '알림함에는 넣었지만, 이 직원은 푸시 받을 기기가 등록돼 있지 않아요. (그 사람 기기의 설정 › 알림에서 먼저 알림을 켜야 해요)'; return; }
+  const devName = t.deviceName || '이름 없는 기기';
+  if(!t.token){ msg.textContent = '이 기기는 알림 연결 정보가 없어요.'; return; }
+  let title, body, extra = {};
+  if(kind === 'test'){
+    const now = new Date();
+    const hhmm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    title = '🔔 Tax.J 테스트 알림';
+    body = `${currentStaffDisplayName()}님이 보낸 테스트 알림이에요 (${hhmm})`;
+  } else {
+    const d = todayStr();
+    const tm = kind === 'checkIn' ? getWorkStartTime(d) : getWorkEndTime(d);
+    title = (kind === 'checkIn' ? '🟢 출근 5분 전' : '🔴 퇴근 5분 전') + ' (테스트)';
+    body = kind === 'checkIn' ? `${tm||'09:30'} 출근이에요. 도장 찍는 거 잊지 마세요!` : `${tm||'17:00'} 퇴근이에요. 도장 찍고 퇴근하세요!`;
+    extra.icon = new URL(CLOCK_BICHON_ICON[kind], location.href).href;
+  }
   msg.textContent = '보내는 중...';
   try{
     await fetch(PUSH_SEND_ENDPOINT, { method:'POST', headers: await pushAuthHeaders(),
-      body: JSON.stringify({ tokens: targets.map(t=>t.token), title: '🔔 Tax.J 테스트 알림', body: `${from}님이 보낸 테스트 알림이에요 (${hhmm})`, requireInteraction: true }) });
-    const names = targets.map(t=> t.deviceName || '이름 없는 기기').join(', ');
-    msg.textContent = `알림함에 1건 넣고, 기기 ${targets.length}대로 푸시를 보냈어요: ${names} · 기기마다 한 번씩만 오면 정상이에요.`;
+      body: JSON.stringify({ tokens: [t.token], title, body, requireInteraction: true, ...extra }) });
+    const what = kind === 'test' ? '테스트 알림' : kind === 'checkIn' ? '출근 알림 테스트' : '퇴근 알림 테스트';
+    msg.textContent = `${devName}(으)로 ${what}를 보냈어요. 한 번만 오면 정상이에요.`;
   }catch(e){
     console.error('테스트 알림 실패', e);
     msg.textContent = '보내지 못했어요. 인터넷 연결을 확인해주세요.';
   }
-});
+}
+function openPushTestMenu(anchor, t){
+  const ex = document.querySelector('.cal-owner-dropdown');
+  if(ex){ const same = ex._anchor === anchor; ex._close(); if(same) return; }
+  const dd = document.createElement('div');
+  dd.className = 'cal-owner-dropdown';
+  dd._anchor = anchor;
+  dd.innerHTML = [['test','테스트 알림'],['checkIn','출근 알림 테스트'],['checkOut','퇴근 알림 테스트']].map(([k,l])=>`<button type="button" class="cal-owner-dd-item" data-k="${k}">${l}</button>`).join('');
+  document.body.appendChild(dd);
+  const r = anchor.getBoundingClientRect();
+  dd.style.left = Math.max(8, Math.min(window.innerWidth - dd.offsetWidth - 8, r.right - dd.offsetWidth)) + 'px';
+  dd.style.top = (r.bottom + 6) + 'px';
+  const onDoc = (e)=>{ if(!dd.contains(e.target) && !anchor.contains(e.target)) close(); };
+  const onKey = (e)=>{ if(e.key === 'Escape') close(); };
+  const onScroll = ()=> close();
+  function close(){
+    dd.remove();
+    document.removeEventListener('pointerdown', onDoc, true);
+    document.removeEventListener('keydown', onKey);
+    window.removeEventListener('scroll', onScroll, true);
+  }
+  dd._close = close;
+  setTimeout(()=>{
+    document.addEventListener('pointerdown', onDoc, true);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', onScroll, true);
+  }, 0);
+  dd.querySelectorAll('.cal-owner-dd-item').forEach(b=> b.addEventListener('click', ()=>{ close(); sendPushTestToToken(t, b.dataset.k); }));
+}
+// 관리자 "다시등록" 요청 처리 - 관리자는 다른 기기의 알림 연결을 직접 새로 만들 수 없어서(연결 정보는 그 기기 브라우저
+// 안에서만 만들어짐) 그 기기 줄에 요청 시각(reRegReqAt)만 남기고, 그 기기에서 앱이 열리면 여기서 조용히 다시등록함
+// (여분 연결 정리 + 토큰 재등록 - 직접 누르는 "다시등록"과 같은 처리, 알림 켜기·끄기 설정은 직원별 저장이라 그대로 유지됨).
+// 끝나면 adminReRegAt을 찍어서 목록의 "마지막 등록" 옆에 * 표시(마우스를 올리면 "관리자가 재등록했어요")
+let adminReRegRunning = false;
+async function maybeRunAdminReRegister(){
+  if(adminReRegRunning) return;
+  let myToken = null;
+  try{ myToken = localStorage.getItem('worklog_my_push_token'); }catch(e){}
+  if(!myToken || typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  const mine = (sharedPushTokens||[]).find(t=>t.token===myToken);
+  if(!mine || !mine.reRegReqAt || (mine.reRegDoneAt && mine.reRegDoneAt >= mine.reRegReqAt)) return;
+  if(maybeRunAdminReRegister.tried === mine.reRegReqAt) return; // 이번 요청은 이 화면에서 이미 한 번 시도함(실패해도 무한 반복 안 되게)
+  maybeRunAdminReRegister.tried = mine.reRegReqAt;
+  adminReRegRunning = true;
+  try{
+    const req = mine.reRegReqAt, by = mine.reRegReqBy || '';
+    if('serviceWorker' in navigator){
+      try{
+        const own = new URL('./', location.href).href;
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for(const r of regs){ if(r.scope !== own && /firebase/.test(((r.active||r.waiting||r.installing)||{}).scriptURL||'')) await r.unregister(); }
+      }catch(e){}
+    }
+    await registerPushToken();
+    let nt = null;
+    try{ nt = localStorage.getItem('worklog_my_push_token'); }catch(e){}
+    const cur = (sharedPushTokens||[]).find(t=>t.token===nt);
+    if(cur){
+      const now = new Date().toISOString();
+      cur.reRegReqAt = req; cur.reRegReqBy = by; cur.reRegDoneAt = now; cur.adminReRegAt = now;
+      await saveSharedPushTokens();
+    }
+  }catch(e){ console.error('관리자 요청 다시등록 실패', e); }
+  finally{ adminReRegRunning = false; }
+  renderMyPushDeviceList();
+}
 // "받는 기기에만 알림이 동시에 두 개" 확인용 - 이 기기에 알림 연결(Service Worker 등록)이 몇 개인지, 알림 파일이
 // 새 버전인지 보여줌. 예전 버전이면 한 알림을 두 번 띄우고, 연결이 두 개면 같은 알림을 두 번 받음
 const TAXJ_SW_EXPECTED = '2026.09.30-1';
@@ -7504,25 +7605,15 @@ async function pushDiagnoseThisDevice(){
     el.style.color = (regs.length > 1 || !verOk || waiting) ? 'var(--coral)' : '';
   }catch(e){}
 }
-// "출퇴근 알림은 테스트를 못 해?" - 고른 직원의 기기로 출근/퇴근 알림과 똑같은 모양(제목·비숑 그림)을 바로 한 번 보냄(알림함엔 안 남김)
-document.querySelectorAll('.push-clock-test-btn').forEach(btn=> btn.addEventListener('click', async ()=>{
-  const msg = document.getElementById('pushTestMsg');
-  const email = (document.getElementById('pushTestTarget')?.value || '').toLowerCase();
-  if(!email){ msg.textContent = '받을 직원을 골라주세요.'; return; }
-  const kind = btn.dataset.kind;
-  const targets = (sharedPushTokens||[]).filter(t=>t.token && (t.email||'').toLowerCase() === email);
-  if(!targets.length){ msg.textContent = '이 직원은 푸시 받을 기기가 등록돼 있지 않아요.'; return; }
-  const d = todayStr();
-  const tm = kind === 'checkIn' ? getWorkStartTime(d) : getWorkEndTime(d);
-  const title = (kind === 'checkIn' ? '🟢 출근 5분 전' : '🔴 퇴근 5분 전') + ' (테스트)';
-  const body = kind === 'checkIn' ? `${tm||'09:30'} 출근이에요. 도장 찍는 거 잊지 마세요!` : `${tm||'17:00'} 퇴근이에요. 도장 찍고 퇴근하세요!`;
-  msg.textContent = '보내는 중...';
-  try{
-    await fetch(PUSH_SEND_ENDPOINT, { method:'POST', headers: await pushAuthHeaders(),
-      body: JSON.stringify({ tokens: targets.map(t=>t.token), title, body, requireInteraction: true, icon: new URL(CLOCK_BICHON_ICON[kind], location.href).href }) });
-    msg.textContent = `${kind === 'checkIn' ? '출근' : '퇴근'} 알림 테스트를 기기 ${targets.length}대로 보냈어요.`;
-  }catch(e){ msg.textContent = '보내지 못했어요. 인터넷 연결을 확인해주세요.'; }
-}));
+document.getElementById('notifPrefOpenBtn')?.addEventListener('click', ()=>{
+  if(typeof renderNotificationPrefsUI === 'function'){ try{ document.querySelectorAll('.notif-pref-toggle').forEach(cb=>{ cb.checked = notificationCategoryEnabled((currentUserEmail||'').toLowerCase(), cb.dataset.category); }); }catch(e){} }
+  if(typeof updateClockReminderBtn === 'function') updateClockReminderBtn();
+  const ov = document.getElementById('notifPrefModalOverlay');
+  ov.style.display = 'flex';
+  if(typeof window.__bringOverlayToFront === 'function') window.__bringOverlayToFront(ov);
+});
+document.getElementById('notifPrefModalClose')?.addEventListener('click', ()=>{ document.getElementById('notifPrefModalOverlay').style.display = 'none'; });
+document.getElementById('notifPrefModalOverlay')?.addEventListener('click', (e)=>{ if(e.target === e.currentTarget) e.currentTarget.style.display = 'none'; });
 function renderMyPushDeviceList(){
   renderPushTestTargets();
   const wrap = document.getElementById('myPushDeviceListWrap');
@@ -7543,12 +7634,19 @@ function renderMyPushDeviceList(){
     wrap.innerHTML = `<p class="hint" style="margin:6px 0 0;">로그인 확인 중이에요. 잠시 후 기기 목록이 보여요.</p>`;
     return;
   }
-  const mine = (sharedPushTokens||[]).filter(t=>(t.email||'').toLowerCase()===myEmail || (myToken && t.token===myToken)).sort((a,b)=> (b.updatedAt||'').localeCompare(a.updatedAt||''));
-  const thisDeviceRegistered = thisDeviceNotifyReady() && mine.some(t=>t.token===myToken);
+  maybeRunAdminReRegister();
+  const ownList = (sharedPushTokens||[]).filter(t=>(t.email||'').toLowerCase()===myEmail || (myToken && t.token===myToken));
+  const thisDeviceRegistered = thisDeviceNotifyReady() && ownList.some(t=>t.token===myToken);
   setNotifCategoryPanelLocked(!thisDeviceRegistered);
+  // 관리자가 다른 직원을 골랐으면 그 직원의 기기 목록을 보여줌(이 기기 켜기 안내·현재 기기 표시·진단 문구는 본인 목록에서만)
+  const viewingOther = !!pushDevViewEmail && pushDevViewEmail !== myEmail;
+  const admin = pushDevIsAdmin();
+  const mine = (viewingOther ? (sharedPushTokens||[]).filter(t=>(t.email||'').toLowerCase()===pushDevViewEmail) : ownList).sort((a,b)=> (b.updatedAt||'').localeCompare(a.updatedAt||''));
 
   let noticeHtml = '';
-  if(Notification.permission === 'denied'){
+  if(viewingOther){
+    // 다른 직원 목록 - 이 기기 상태 안내는 안 붙임
+  } else if(Notification.permission === 'denied'){
     noticeHtml = `<p class="hint" style="margin:6px 0 10px;">알림이 차단돼 있어요. 브라우저의 사이트 설정에서 알림을 허용으로 바꾼 뒤 다시 시도해주세요.</p>`;
   } else if(!thisDeviceRegistered){
     noticeHtml = `<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border:1.5px dashed var(--border); border-radius:10px; margin:6px 0 10px;">
@@ -7558,12 +7656,14 @@ function renderMyPushDeviceList(){
   }
 
   if(!mine.length){
-    wrap.innerHTML = noticeHtml;
+    wrap.innerHTML = viewingOther ? `<p class="hint" style="margin:6px 0 0; text-align:center;">이 직원은 알림이 등록된 기기가 없어요.</p>` : noticeHtml;
     document.getElementById('myPushDeviceEnableBtn')?.addEventListener('click', ()=>registerThisDeviceForPush(false));
     return;
   }
+  const bellSvg = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>';
+  const fmtShort = iso=>{ try{ const d = new Date(iso); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }catch(e){ return ''; } };
   const rows = mine.map((t,idx)=>{
-    const isThis = t.token === myToken;
+    const isThis = !viewingOther && t.token === myToken;
     let dateLabel = '';
     try{ dateLabel = t.updatedAt ? new Date(t.updatedAt).toLocaleString('ko-KR') : ''; }catch(e){}
     // "위아래 각각 무슨 기기인지 모르겠다"는 요청으로, 등록할 때 정한 이름(deviceName)을 보여줌 - 아직 이름을
@@ -7573,17 +7673,40 @@ function renderMyPushDeviceList(){
     const devName = `<span style="display:inline-block; background:var(--indigo-bg); color:var(--indigo-deep); font-weight:800; padding:2px 8px; border-radius:6px;">${nameLabel}</span>`;
     // "다시등록" 버튼은 지금 이 브라우저(기기)의 줄에만 붙임 - 다른 기기 줄에서 눌러도 결국 이 브라우저의
     // 토큰만 다시 등록될 뿐이라 의미가 없기 때문. 가까이 가면 뜨는 title 툴팁으로 용도를 알려줌
-    const retryBtn = isThis ? `<button type="button" class="del-btn my-push-device-retry-btn" title="알림 오류시 재등록합니다." style="font-size:11px; padding:4px 10px;">다시등록</button>` : '';
+    // 관리자는 다른 기기 줄에도 "다시등록"이 붙음 - 누르면 요청만 남기고, 그 기기에서 앱이 열릴 때 자동으로 다시등록됨(maybeRunAdminReRegister)
+    const reqPending = !!t.reRegReqAt && !(t.reRegDoneAt && t.reRegDoneAt >= t.reRegReqAt);
+    const retryBtn = isThis ? `<button type="button" class="del-btn my-push-device-retry-btn" title="알림 오류시 재등록합니다." style="font-size:11px; padding:4px 10px;">다시등록</button>`
+      : admin ? `<button type="button" class="del-btn my-push-device-rereq-btn" data-id="${t.id}" title="이 기기에 다시등록을 요청해요 - 그 기기에서 앱이 열리면 자동으로 다시 등록돼요" style="font-size:11px; padding:4px 10px;">다시등록</button>` : '';
+    const byAdmin = t.adminReRegAt && (!t.selfReRegAt || t.adminReRegAt > t.selfReRegAt);
+    const star = byAdmin ? `<sup title="관리자가 재등록했어요 (${escHtml(fmtShort(t.adminReRegAt))})" style="color:var(--indigo); font-weight:800; cursor:help; margin-left:1px;">*</sup>` : '';
+    const pendingTag = (admin && reqPending) ? ` · <span style="color:var(--amber); font-weight:700;" title="그 기기에서 앱이 열리면 자동으로 다시 등록돼요">재등록 대기</span>` : '';
+    const testBtn = `<button type="button" class="del-btn my-push-device-test-btn" data-id="${t.id}" title="테스트 알림 보내기" aria-label="테스트 알림 보내기" style="font-size:11px; padding:4px 8px; display:inline-flex; align-items:center;">${bellSvg}</button>`;
     return `<div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-bottom:1px solid var(--border);">
       <span style="flex:0 0 auto; font-size:11px; color:var(--ink-soft); width:16px;">${idx+1}</span>
-      <span style="flex:1 1 auto; font-size:12px; color:var(--ink);">${isThis ? `${devName} <span style="color:var(--navy);">(현재 기기)</span>` : devName} · 마지막 등록 ${escHtml(dateLabel)}</span>
+      <span style="flex:1 1 auto; font-size:12px; color:var(--ink);">${isThis ? `${devName} <span style="color:var(--navy);">(현재 기기)</span>` : devName} · 마지막 등록 ${escHtml(dateLabel)}${star}${pendingTag}</span>
+      ${testBtn}
       ${retryBtn}
       <button type="button" class="del-btn my-push-device-rename-btn" data-id="${t.id}" style="font-size:11px; padding:4px 10px;">이름변경</button>
       <button type="button" class="del-btn my-push-device-del-btn" data-id="${t.id}" style="font-size:11px; padding:4px 10px;">삭제</button>
     </div>`;
   }).join('');
-  wrap.innerHTML = noticeHtml + `<div style="border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-top:6px;">${rows}</div><p class="hint" id="pushSwDiag" style="margin:6px 0 0; font-size:11px;"></p>`;
-  pushDiagnoseThisDevice();
+  wrap.innerHTML = noticeHtml + `<div style="border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-top:6px;">${rows}</div>` + (viewingOther ? '' : `<p class="hint" id="pushSwDiag" style="margin:6px 0 0; font-size:11px;"></p>`);
+  if(!viewingOther) pushDiagnoseThisDevice();
+  wrap.querySelectorAll('.my-push-device-test-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ const t = (sharedPushTokens||[]).find(x=>x.id===btn.dataset.id); if(t) openPushTestMenu(btn, t); });
+  });
+  wrap.querySelectorAll('.my-push-device-rereq-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const t = (sharedPushTokens||[]).find(x=>x.id===btn.dataset.id);
+      if(!t) return;
+      if(!(await appConfirm(`"${t.deviceName || '이름 없는 기기'}"에 다시등록을 요청할까요?\n그 기기에서 앱이 열리면 자동으로 다시 등록돼요. (알림 켜기·끄기 설정은 그대로예요)`, { okText:'요청', cancelText:'취소' }))) return;
+      t.reRegReqAt = new Date().toISOString();
+      t.reRegReqBy = (currentUserEmail||'').toLowerCase();
+      await saveSharedPushTokens();
+      renderMyPushDeviceList();
+      showCenterToast('다시등록을 요청했어요');
+    });
+  });
   wrap.querySelectorAll('.my-push-device-retry-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>registerThisDeviceForPush(true));
   });
@@ -7668,6 +7791,10 @@ async function registerThisDeviceForPush(isRetry){
     }catch(e){ console.error('여분 알림 연결 정리 실패', e); }
   }
   await registerPushToken();
+  if(isRetry){
+    // 직접 다시등록하면 "관리자가 재등록" 표시(*)는 내려감
+    try{ const nt = localStorage.getItem('worklog_my_push_token'); const cur = (sharedPushTokens||[]).find(t=>t.token===nt); if(cur){ cur.selfReRegAt = new Date().toISOString(); await saveSharedPushTokens(); } }catch(e){}
+  }
   renderMyPushDeviceList();
   appAlert(isRetry ? '다시 등록했어요. 알림 문제가 있었다면 이제 해결됐을 거예요.' : '이 기기에서 알림을 켰어요. 새 공지·결재 요청·결재 결과 알림이 이 기기로 와요.');
 }
@@ -13029,6 +13156,15 @@ function setExclusionViewMode(mode){
     sel.dispatchEvent(new Event('change'));
   }
   if(row) row.style.display = exclusionViewMode === 'holiday' ? 'none' : '';
+  // 칩 화면 소제목과 (i) 팝업 제목도 공휴일/제외일정으로 맞춤
+  const tEl = document.getElementById('ssTitle-exclusionDays');
+  if(tEl){
+    const label = exclusionViewMode === 'holiday' ? '공휴일' : '제외일정';
+    const tn = [...tEl.childNodes].find(n=>n.nodeType === 3 && n.nodeValue.trim());
+    if(tn) tn.nodeValue = ` ${label} `;
+    const ib = tEl.querySelector('[data-hint-info]');
+    try{ if(ib && HINT_INFO[ib.dataset.hintInfo]) HINT_INFO[ib.dataset.hintInfo].title = label; }catch(e){}
+  }
   const ht = document.querySelector('#exclusionHistoryModalOverlay [data-excl-hist-title]');
   if(ht) ht.textContent = exclusionViewMode === 'holiday' ? '공휴일 이력' : '제외일정 이력';
   renderExclusionList();
@@ -13066,13 +13202,8 @@ function showWorkStdChip(key){
   try{ localStorage.setItem(WS_CHIP_KEY, key); }catch(e){}
 }
 document.querySelectorAll('input[name="wsChip"]').forEach(r=>r.addEventListener('change', ()=>{ if(r.checked) showWorkStdChip(r.value); }));
-setTimeout(()=>{ let k = 'workHours'; try{ k = localStorage.getItem(WS_CHIP_KEY) || k; }catch(e){} if(!document.querySelector(`input[name="wsChip"][value="${k}"]`)) k = 'workHours'; showWorkStdChip(k); }, 0);
-// 근무기준 제목 옆 (i) - 지금 고른 칩 화면의 설명을 띄움(각 화면의 숨김 제목에 붙은 (i)를 대신 눌러 줌)
-document.getElementById('wsInfoBtn')?.addEventListener('click', ()=>{
-  const pane = [...document.querySelectorAll('.ws-pane')].find(p=>p.style.display !== 'none');
-  const b = pane && pane.querySelector('.ws-pane-title [data-hint-info]');
-  if(b) b.click();
-});
+setTimeout(()=>{ let k = 'workHours'; try{ k = localStorage.getItem(WS_CHIP_KEY) || k; }catch(e){} if(!document.querySelector(`input[name="wsChip"][value="${k}"]`)) k = 'workHours'; showWorkStdChip(k); }, 50); // (i) 아이콘이 붙은 뒤에 실행되게 살짝 늦춤
+
 // 이력 팝업 - 조회월 외 제외일을 연도별로 묶어 최신 연도부터, 올해(또는 가장 가까운 연도)만 펼쳐둠
 function renderExclusionHistory(){
   const wrap = document.getElementById('exclusionHistoryWrap');
@@ -33161,6 +33292,16 @@ function gdriveComputeMerged(remote){
           if(!t.deviceName || ot > tt){ t.deviceName = o.deviceName; t.nameUpdatedAt = o.nameUpdatedAt || t.nameUpdatedAt || null; }
         });
       });
+      // 관리자 다시등록 요청·완료 표시도 등록시각과 따로 움직이므로 각 값의 가장 최근 것을 남김
+      merged.shared.pushTokens.forEach(t=>{
+        if(!t) return;
+        pools.forEach(pool=>{
+          const o = pool.find(x=>x && x.id===t.id);
+          if(!o) return;
+          if(o.reRegReqAt && (!t.reRegReqAt || o.reRegReqAt > t.reRegReqAt)){ t.reRegReqAt = o.reRegReqAt; t.reRegReqBy = o.reRegReqBy || t.reRegReqBy || ''; }
+          ['reRegDoneAt','adminReRegAt','selfReRegAt'].forEach(k=>{ if(o[k] && (!t[k] || o[k] > t[k])) t[k] = o[k]; });
+        });
+      });
       // 같은 기기(deviceKey)의 줄이 병합으로 두 개가 되면 가장 최근 등록한 것만 남김
       const newestByKey = {};
       merged.shared.pushTokens.forEach(t=>{ if(t && t.deviceKey){ const cur = newestByKey[t.deviceKey]; if(!cur || (t.updatedAt||'') > (cur.updatedAt||'')) newestByKey[t.deviceKey] = t; } });
@@ -34087,7 +34228,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.30 13:09';
+const APP_BUILD = '2026.09.30 13:30';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -34803,6 +34944,32 @@ function renderSeatGridHtml(cells, cols, walls, layout, exact){
 // 만들지 않아서 끌던 도중 내용이 날아가지 않음
 let seatChartDraft = null; // { asOf, title, cols, cells:[...] }
 let seatChartSelectedId = null;
+// "선택한 칸 크기 미세조절 + 여러 칸 한꺼번에"(요청) - 도구줄의 크기 아이콘을 누르면 도구줄이 가로·세로 +/− 로 바뀜(seatSizeMode=그 칸 id).
+// Shift를 누른 채 다른 칸을 누르면 같이 고를 칸(seatMultiSel)에 넣고 빼며, 크기 +/−가 고른 칸 모두에 똑같이 적용됨.
+// 선택된 칸(seatChartSelectedId)이 바뀌면 둘 다 자동으로 풀림(seatMultiAnchor로 판단)
+let seatSizeMode = null;
+const seatMultiSel = new Set();
+let seatMultiAnchor = null;
+function seatApplySizeDelta(dRow, dCol){
+  const ids = [seatChartSelectedId, ...seatMultiSel].filter(Boolean);
+  const cols = seatChartDraft.cols || 9;
+  const nonOcc = t => t==='divider' || t==='room';
+  let fail = 0;
+  ids.forEach(id=>{
+    const cell = seatChartDraft.cells.find(c=>c.id===id && c.row && c.col);
+    if(!cell) return;
+    const eff = seatCellEffectiveSpans(cell);
+    const nr = (eff.rowSpan||1) + dRow, nc = (eff.colSpan||1) + dCol;
+    if(nr < 1 || nc < 1 || cell.col + nc - 1 > cols){ fail++; return; }
+    const next = { ...cell };
+    seatSetEffectiveSpans(next, nr, nc);
+    if(!nonOcc(cell.type) && seatChartDraft.cells.some(c=> c.id!==cell.id && !nonOcc(c.type) && c.row && c.col && seatChartRangesOverlap(c, next))){ fail++; return; }
+    seatPasteUndoStack.push({ kind:'size', id: cell.id, rowSpan: cell.rowSpan, colSpan: cell.colSpan });
+    cell.rowSpan = next.rowSpan; cell.colSpan = next.colSpan;
+  });
+  if(fail) showCenterToast(ids.length > 1 ? `${fail}칸은 끝에 닿거나 다른 칸과 겹쳐서 그대로 뒀어요` : '끝에 닿거나 다른 칸과 겹쳐서 더 바꿀 수 없어요');
+  renderSeatChartEditPreview();
+}
 // "구역누르면 자동으로 뜨는게 아니라, 가까이 마우스 가면 수정·닫기 아이콘으로 선택할 수 있으면 좋겠다"는
 // 요청 - 예전엔 seatChartSelectedId 하나로 "칸을 눌러 하이라이트(호버 아이콘 노출용)"와 "아래 수정 패널을
 // 연다"를 동시에 처리해서, 칸을 그냥 누르기만 해도(자리를 옮기려고 끌었을 때도 끝나면 selectedId가 잡혀서)
@@ -34941,7 +35108,7 @@ function seatChartEditCellHtml(cell){
   else if(cell.type==='room') bg = `background:${seatIsEmptyRoom(cell) ? '#F3F4F6' : 'var(--surface)'}; color:var(--ink-soft); font-weight:700; border:2.5px solid var(--ink-soft); z-index:0; align-items:flex-start; justify-content:flex-start;`;
   else if(cell.type==='item') bg = 'background:#F1F0FB; color:var(--indigo-deep); font-weight:700; border:1.5px dashed var(--indigo); z-index:1;';
   else if(empty) bg = 'background:#F3F4F6; color:#6B7280; font-weight:700; border:1.5px solid #E5E7EB; z-index:1;';
-  const isSel = cell.id===seatChartSelectedId;
+  const isSel = cell.id===seatChartSelectedId || seatMultiSel.has(cell.id);
   const sel = isSel ? ' box-shadow:0 0 0 2.5px var(--indigo);' : '';
   const left = seatColX(cell.col||1);
   const top = seatRowY(cell.row||1);
@@ -35011,6 +35178,8 @@ function renderSeatChartEditPreview(){
   const wrap = document.getElementById('seatChartPreviewWrap');
   if(!wrap || !seatChartDraft) return;
   if(pcOnlyGuard(wrap.closest('.flat-panel') || wrap.parentElement, 'seatChart')) return;
+  if(seatMultiAnchor !== seatChartSelectedId){ seatMultiSel.clear(); seatMultiAnchor = seatChartSelectedId; }
+  if(seatSizeMode && seatSizeMode !== seatChartSelectedId) seatSizeMode = null;
   const cols = Math.max(1, seatChartDraft.cols||9);
   const rows = seatChartRowsNeeded();
   const gridW = seatColX(cols+1) - SEAT_EDIT_GAP;
@@ -35045,12 +35214,19 @@ function renderSeatChartEditPreview(){
     const flipBelow = seatRowY(selCell.row) < 40;
     const ty = flipBelow ? seatRowY(selCell.row) + seatSpanH(selCell.row, sp.rowSpan) : seatRowY(selCell.row);
     toolbar = `<div class="seat-cell-toolbar" style="left:${tx}px; top:${ty}px;${flipBelow ? ' transform:translate(-100%, 6px);' : ''}">
+${seatSizeMode === selCell.id ? `
+      ${seatMultiSel.size ? `<span class="seat-sz-lab" title="Shift+클릭으로 더 고르거나 뺄 수 있어요">${seatMultiSel.size + 1}칸 선택 ·</span>` : ''}
+      <span class="seat-sz-lab">가로</span><button type="button" data-act="szw-" data-id="${selCell.id}" title="가로 한 칸 줄이기">−</button><span class="seat-sz-val">${sp.colSpan}칸</span><button type="button" data-act="szw+" data-id="${selCell.id}" title="가로 한 칸 늘리기">+</button>
+      <span class="seat-sz-lab">세로</span><button type="button" data-act="szh-" data-id="${selCell.id}" title="세로 한 칸 줄이기">−</button><span class="seat-sz-val">${sp.rowSpan}칸</span><button type="button" data-act="szh+" data-id="${selCell.id}" title="세로 한 칸 늘리기">+</button>
+      <button type="button" data-act="szdone" data-id="${selCell.id}" title="크기 조절 끝">✓</button>
+    </div>` : `
       <button type="button" data-act="edit" data-id="${selCell.id}" title="수정"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>
       <button type="button" data-act="rotate" data-id="${selCell.id}" title="90도 회전">↻</button>
+      <button type="button" data-act="size" data-id="${selCell.id}" title="크기 조절 (Shift+클릭으로 여러 칸을 같이 골라 한꺼번에)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg></button>
       <button type="button" data-act="copysize" data-id="${selCell.id}" title="크기 복사 (이 칸의 가로·세로 칸 수를 기억)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
       ${seatSizeClipboard ? `<button type="button" data-act="pastesize" data-id="${selCell.id}" title="크기 붙여넣기 (가로 ${seatSizeClipboard.colSpan}칸 × 세로 ${seatSizeClipboard.rowSpan}칸)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1"></rect></svg></button>` : ''}
       <button type="button" data-act="delete" data-id="${selCell.id}" title="삭제" class="danger">✕</button>
-    </div>`;
+    </div>`}`;
   }
   if(seatChartSelectedId || seatChartWallMode || !(seatChartDraft.walls||[])[seatWallSelIdx]) seatWallSelIdx = null;
   // 평소엔 그려둔 선을 눌러 옮길 수 있게 칸·방보다 위(z-index 30)에 둠 - 방 테두리 등에 가려 선이 안 눌리던 문제
@@ -35183,7 +35359,13 @@ function bindSeatChartEditCellEvents(){
       const id = btn.dataset.id, act = btn.dataset.act;
       const cell = seatChartDraft?.cells.find(c=>c.id===id);
       if(!cell) return;
-      if(act==='edit') seatChartOpenCellEditorClick({ stopPropagation(){}, currentTarget:{ dataset:{ id } } });
+      if(act==='size'){ seatSizeMode = id; renderSeatChartEditPreview(); }
+      else if(act==='szdone'){ seatSizeMode = null; renderSeatChartEditPreview(); }
+      else if(act==='szw-') seatApplySizeDelta(0,-1);
+      else if(act==='szw+') seatApplySizeDelta(0,1);
+      else if(act==='szh-') seatApplySizeDelta(-1,0);
+      else if(act==='szh+') seatApplySizeDelta(1,0);
+      else if(act==='edit') seatChartOpenCellEditorClick({ stopPropagation(){}, currentTarget:{ dataset:{ id } } });
       else if(act==='rotate'){ seatRotateCell(cell); renderSeatChartEditPreview(); }
       else if(act==='copysize'){
         // 복사 - 크기뿐 아니라 칸 종류·방향·문 위치까지 기억해서, 위쪽 "붙여넣기"로 똑같은 칸을 새로 만들 수 있게 함
@@ -35494,6 +35676,12 @@ function seatChartCellPointerDown(e){
   const id = el.dataset.id;
   const cell = seatChartDraft.cells.find(c=>c.id===id);
   if(!cell) return;
+  // Shift+클릭 - 끌기 없이 "같이 고를 칸"에 넣거나 뺌(선택된 칸이 있을 때만, 배치예정 칸은 제외)
+  if(e.shiftKey && seatChartSelectedId && cell.row && cell.col){
+    if(id !== seatChartSelectedId){ if(seatMultiSel.has(id)) seatMultiSel.delete(id); else seatMultiSel.add(id); seatMultiAnchor = seatChartSelectedId; }
+    renderSeatChartEditPreview();
+    return;
+  }
   const fromTray = !(cell.row && cell.col);
   const grid = document.getElementById('seatChartEditGrid');
   const tray = document.getElementById('seatChartTrayWrap');
@@ -35930,6 +36118,33 @@ document.getElementById('seatChartColsPlusBtn')?.addEventListener('click', ()=>{
 // 3종류(자리/구역/방)로 줄임 - 종류를 고르는 순간 바로 그 칸을 추가하고, 다음에 또 고를 수 있게 드롭다운은
 // 안내문구로 되돌림. 새로 추가한 칸은 이름부터 입력해야 하므로 바로 수정 패널을 열어주고(저장/닫기 스냅샷도
 // 같이 둠). 방(room)은 "그 안에 책상을 배치하는 형태"라 처음부터 3×3 정도로 넉넉하게 시작함
+// 칸 추가 아이콘 - 방·좌석·구역 메뉴를 띄우고, 고르면 숨긴 선택칸(#seatChartAddTypeSelect)에 값을 넣어 예전과 똑같이 추가함
+document.getElementById('seatChartAddBtn')?.addEventListener('click', (ev)=>{
+  const anchor = ev.currentTarget;
+  const ex = document.querySelector('.cal-owner-dropdown');
+  if(ex){ const same = ex._anchor === anchor; ex._close(); if(same) return; }
+  const dd = document.createElement('div');
+  dd.className = 'cal-owner-dropdown';
+  dd._anchor = anchor;
+  dd.innerHTML = [['seat','좌석'],['label','구역'],['room','방']].map(([k,l])=>`<button type="button" class="cal-owner-dd-item" data-k="${k}">${l}</button>`).join('');
+  document.body.appendChild(dd);
+  const r = anchor.getBoundingClientRect();
+  dd.style.left = Math.max(8, Math.min(window.innerWidth - dd.offsetWidth - 8, r.left)) + 'px';
+  dd.style.top = (r.bottom + 6) + 'px';
+  const onDoc = (e)=>{ if(!dd.contains(e.target) && !anchor.contains(e.target)) close(); };
+  const onKey = (e)=>{ if(e.key === 'Escape') close(); };
+  const onScroll = ()=> close();
+  function close(){ dd.remove(); document.removeEventListener('pointerdown', onDoc, true); document.removeEventListener('keydown', onKey); window.removeEventListener('scroll', onScroll, true); }
+  dd._close = close;
+  setTimeout(()=>{ document.addEventListener('pointerdown', onDoc, true); document.addEventListener('keydown', onKey); window.addEventListener('scroll', onScroll, true); }, 0);
+  dd.querySelectorAll('.cal-owner-dd-item').forEach(b=> b.addEventListener('click', ()=>{
+    close();
+    const sel = document.getElementById('seatChartAddTypeSelect');
+    sel.value = b.dataset.k; sel.dispatchEvent(new Event('change'));
+  }));
+});
+// 사용 설명 아이콘 - 자리배치도 제목 옆 (i)와 같은 설명 팝업을 띄움
+document.getElementById('seatChartHelpBtn')?.addEventListener('click', ()=>{ document.querySelector('#ssTitle-seatChart [data-hint-info]')?.click(); });
 document.getElementById('seatChartAddTypeSelect')?.addEventListener('change', (e)=>{
   const type = e.target.value;
   e.target.value = '';
