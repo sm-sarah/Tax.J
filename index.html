@@ -34977,7 +34977,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.30 17:15';
+const APP_BUILD = '2026.09.30 17:20';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -37768,6 +37768,16 @@ function printHtmlSection(docTitle, subtitle, bodyHtml){
       .print-toolbar-tip{ font-size:11px; color:#75789A; }
       .print-toolbar-tip b{ color:#1D1E33; }
       .print-toolbar button.primary{ background:#5B5FEF; border-color:#5B5FEF; color:#fff; }
+      /* [2026.09.30] 미리보기 화면에서는 인쇄 버튼 줄·제목을 작게(중요한 건 좌석) - 실제 인쇄할 때는 위 원래 크기 그대로 */
+      @media screen{
+        .print-toolbar{ padding:4px 0; margin-bottom:8px; }
+        .print-toolbar button{ font-size:11px; padding:3px 10px; }
+        .print-toolbar-tip{ font-size:10.5px; }
+        .print-header{ margin-bottom:10px; }
+        .print-header h1{ font-size:16px; margin:0 0 2px; }
+        .print-header .print-sub{ font-size:10px; letter-spacing:1.5px; }
+        .print-header .print-bar{ width:60px; height:2px; margin:6px auto 0; }
+      }
       @media print{ @page{ size:landscape; margin:10mm; } .print-toolbar{ display:none !important; } }
     </style></head><body>
     <div class="print-toolbar"><button type="button" class="primary" onclick="window.print()">인쇄</button><span class="print-toolbar-tip">색·선이 빠져 보이면 인쇄 창의 <b>설정 더보기 → 배경 그래픽</b>을 체크해주세요</span></div>
@@ -37818,9 +37828,11 @@ function printHtmlSection(docTitle, subtitle, bodyHtml){
         var tb = document.querySelector('.print-toolbar');
         var hd = document.querySelector('.print-header');
         var availW = window.innerWidth - 48;
-        var availH = window.innerHeight - (tb ? tb.offsetHeight : 0) - (hd ? hd.offsetHeight : 0) - 70;
-        var scale = Math.min(1, availW / rect.width, availH / rect.height);
-        if(scale < 1 && scale > 0.2) wrap.style.zoom = String(Math.round(scale*1000)/1000);
+        var availH = window.innerHeight - (tb ? tb.offsetHeight : 0) - (hd ? hd.offsetHeight : 0) - 40;
+        // [2026.09.30] "좌석이 더 크게 보여야" - 세로까지 한 화면에 억지로 넣느라 좌석이 너무 작아졌음. 가로폭에 맞춰
+        // 크게 보여주고(최대 1.4배), 세로는 아주 길 때만(창 높이의 1.5배 넘을 때) 줄임 - 넘치면 아래로 스크롤
+        var scale = Math.min(1.4, availW / rect.width, (availH * 1.5) / rect.height);
+        if(Math.abs(scale - 1) > 0.02 && scale > 0.2) wrap.style.zoom = String(Math.round(scale*1000)/1000);
       }
       window.addEventListener('beforeprint', fitPrintContent);
       window.addEventListener('afterprint', fitPreview);
