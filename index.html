@@ -794,7 +794,8 @@
   .home-dash-today-av:first-child{ margin-left:0; }
   .home-dash-today-av img{ width:100%; height:100%; border-radius:50%; object-fit:cover; }
   .home-dash-today-av i{ position:absolute; right:-2px; bottom:-2px; width:9px; height:9px; border-radius:50%; border:1.5px solid var(--surface); }
-  .home-dash-today-none{ font-size:12px; font-weight:700; color:var(--ink-soft); white-space:nowrap; }
+  .home-dash-today-sep{ flex:none; width:1px; height:18px; background:var(--border); }
+  .home-dash-today-none{ font-size:12px; font-weight:600; color:var(--ink-soft); white-space:nowrap; }
   .home-dash-today-dl{ margin-left:auto; display:flex; align-items:center; gap:7px; min-width:0; white-space:nowrap; }
   .home-dash-today-dl b{ font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:900; color:var(--indigo); }
   .home-dash-today-dl b.urgent{ color:var(--coral); }
@@ -18077,17 +18078,21 @@ function renderDashboardTodayStrip(){
       const leaves = (att.leaveUsage||[]).filter(u=>u.date===today);
       const remotes = (att.remoteEntries||[]).filter(r=>r.date===today);
       if(!leaves.length && !remotes.length) return;
-      const isHalf = leaves.length && leaves.every(u=>u.type==='반차' || u.type==='반반차');
-      const kind = leaves.length ? (isHalf ? 'half' : 'leave') : 'remote';
-      const labels = leaves.map(u=>leaveTeamCalShortType(u.type, u.subtype, u.publicReason)).concat(remotes.map(()=> '재택'));
-      people.push({ name, photo:p.photo||'', kind, label:labels.join(', ') });
+      // [2026.09.30] 부재(휴가·반차)와 재택을 따로 묶어 보여줌(요청) - 반차+재택처럼 둘 다면 양쪽에 다 나옴
+      if(leaves.length){
+        const isHalf = leaves.every(u=>u.type==='반차' || u.type==='반반차');
+        people.push({ name, photo:p.photo||'', kind: isHalf ? 'half' : 'leave', label: leaves.map(u=>leaveTeamCalShortType(u.type, u.subtype, u.publicReason)).join(', ') });
+      }
+      if(remotes.length) people.push({ name, photo:p.photo||'', kind:'remote', label:'재택' });
     });
   }catch(e){ console.error('오늘의 팀 계산 실패', e); }
   const dotColor = { leave:'var(--coral)', half:'var(--amber)', remote:'var(--mint)' };
   const colorOf = (name)=>{ let h=0; for(const ch of name) h = (h*31 + ch.charCodeAt(0)) >>> 0; return DASH_TODAY_AV_COLORS[h % DASH_TODAY_AV_COLORS.length]; };
-  const avsHtml = people.length
-    ? `<span class="home-dash-today-avs">${people.map(pp=>`<span class="home-dash-today-av" style="background:${colorOf(pp.name)};" title="${escHtml(pp.name)} · ${escHtml(pp.label)}">${pp.photo ? `<img src="${escHtml(pp.photo)}" alt="">` : escHtml(pp.name.trim().slice(0,1))}<i style="background:${dotColor[pp.kind]};"></i></span>`).join('')}</span>`
-    : `<span class="home-dash-today-none">모두 출근이에요</span>`;
+  const avsOf = (list)=> list.length
+    ? `<span class="home-dash-today-avs">${list.map(pp=>`<span class="home-dash-today-av" style="background:${colorOf(pp.name)};" title="${escHtml(pp.name)} · ${escHtml(pp.label)}">${pp.photo ? `<img src="${escHtml(pp.photo)}" alt="">` : escHtml(pp.name.trim().slice(0,1))}<i style="background:${dotColor[pp.kind]};"></i></span>`).join('')}</span>`
+    : `<span class="home-dash-today-none">없음</span>`;
+  const awayHtml = avsOf(people.filter(pp=>pp.kind !== 'remote'));
+  const remoteHtml = avsOf(people.filter(pp=>pp.kind === 'remote'));
   let dlHtml = '';
   try{
     const items = (typeof nextTaxScheduleItems === 'function' ? nextTaxScheduleItems() : []) || [];
@@ -18098,7 +18103,7 @@ function renderDashboardTodayStrip(){
       dlHtml = `<span class="home-dash-today-dl" title="${escHtml(it.x.title)} (${Number(it.x.date.slice(5,7))}/${Number(it.x.date.slice(8,10))})"><span class="home-dash-today-k">가까운 마감</span><b class="${it.d<=3?'urgent':''}">${it.d===0?'D-DAY':'D-'+it.d}</b><span class="t">${escHtml(short)} · ${Number(it.x.date.slice(5,7))}/${Number(it.x.date.slice(8,10))}</span></span>`;
     }
   }catch(e){ console.error('가까운 마감 계산 실패', e); }
-  wrap.innerHTML = `<span class="home-dash-today-k">오늘 부재·재택</span>${avsHtml}${dlHtml}`;
+  wrap.innerHTML = `<span class="home-dash-today-k">오늘 부재</span>${awayHtml}<span class="home-dash-today-sep"></span><span class="home-dash-today-k">재택</span>${remoteHtml}${dlHtml}`;
 }
 // 부가세 - 오늘 기준 가장 가까운(아직 안 지난) 신고기한의 기수. 1기예정 4/25, 1기확정 7/25, 2기예정 10/25, 2기확정 다음해 1/25
 function vatFocusFiling(){
@@ -34611,7 +34616,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.30 15:32';
+const APP_BUILD = '2026.09.30 15:35';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
