@@ -742,6 +742,37 @@
   .home-dashboard-pinned-row{ display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:stretch; margin-bottom:14px; }
   .home-dashboard-pinned-side{ display:grid; grid-template-columns:1fr 1fr; gap:10px; min-width:0; }
   .home-dashboard-pinned-stack{ display:flex; flex-direction:column; gap:10px; min-width:0; }
+  .home-dashboard-pinned-cal{ min-width:0; }
+  .home-dashboard-pinned-cal .home-dash-table.home-dash-table-fixed .home-dash-table-col-date{ width:84px; }
+  .home-dashboard-pinned-cal .home-dash-table.home-dash-table-fixed .home-dash-table-col-person{ width:76px; }
+  .home-dashboard-pinned-cal .home-dash-card{ height:470px; }
+  /* [2026.09.30] 실시간 근무현황(한 줄 목록 시안) */
+  .home-dash-presence-at{ font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; }
+  .home-dash-pres-sum{ display:flex; gap:5px; margin-bottom:9px; }
+  .home-dash-pres-sum span{ flex:1; text-align:center; padding:4px 0; border-radius:999px; font-size:11px; font-weight:800; white-space:nowrap; }
+  .home-dash-pres-row{ display:flex; align-items:center; gap:10px; padding:7px 10px; margin-bottom:6px; border-radius:12px; background:var(--bg); border-left:4px solid var(--border); }
+  .home-dash-pres-av{ position:relative; display:inline-flex; flex:none; }
+  .home-dash-pres-av img{ width:32px; height:32px; border-radius:50%; object-fit:cover; }
+  .home-dash-pres-av i{ position:absolute; right:-1px; bottom:-1px; width:11px; height:11px; border-radius:50%; background:#10B981; border:2px solid var(--surface); }
+  .home-dash-pres-name{ font-weight:800; font-size:13px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .home-dash-pres-dev{ display:inline-flex; align-items:center; gap:3px; font-size:10.5px; color:var(--ink-soft); white-space:nowrap; }
+  .home-dash-pres-st{ font-size:12px; font-weight:800; white-space:nowrap; }
+  /* 팀캘린더 달력 보기 */
+  .home-dash-cal-viewtoggle{ display:flex; justify-content:center; gap:4px; margin:0 0 6px; }
+  .home-dash-cal-viewtoggle button{ border:none; background:var(--bg); color:var(--ink-soft); font-family:inherit; font-size:11.5px; font-weight:800; padding:3px 12px; border-radius:999px; cursor:pointer; }
+  .home-dash-cal-viewtoggle button.active{ background:var(--navy); color:#fff; }
+  .home-dash-mcal-dow{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; font-size:11px; font-weight:700; color:var(--ink-soft); text-align:center; margin-bottom:4px; }
+  .home-dash-mcal{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+  .home-dash-mcal-cell{ height:46px; border-radius:9px; border:1px solid var(--border); padding:4px 6px; box-sizing:border-box; text-align:left; background:var(--surface); font-family:inherit; cursor:default; display:flex; flex-direction:column; justify-content:space-between; }
+  .home-dash-mcal-cell.has{ cursor:pointer; }
+  .home-dash-mcal-cell.has:hover{ border-color:var(--mint); }
+  .home-dash-mcal-cell.today{ background:var(--indigo-bg); border-color:var(--indigo); }
+  .home-dash-mcal-cell.empty{ border:none; background:transparent; }
+  .home-dash-mcal-d{ font-size:12px; font-weight:800; color:var(--ink); }
+  .home-dash-mcal-d.sun{ color:var(--coral); } .home-dash-mcal-d.sat{ color:#4A90D9; }
+  .home-dash-mcal-dots{ display:flex; gap:3px; flex-wrap:wrap; }
+  .home-dash-mcal-dots i{ width:7px; height:7px; border-radius:50%; }
+  .home-dash-mcal-legend{ margin-top:7px; font-size:11px; color:var(--ink-soft); text-align:center; }
   /* 팀캘린더 일정이 많아지면 표가 한없이 길어져서(예전엔 카드 안 스크롤로만 처리) 옆 결재현황·세무일정
      묶음(230px×2+간격10=470px로 고정)보다 카드 자체가 더 커져버리는 문제가 있었음 - grid의 align-items:
      stretch는 이미 정해진 칸 높이를 "채워주는" 것뿐이라, 내용이 그보다 크면 칸 자체가 늘어나버림. 그래서
@@ -4090,6 +4121,7 @@
     </div>
     <div id="appConfirmModalMessage" style="font-size:13.5px; font-weight:600; color:var(--ink); line-height:1.55; white-space:pre-line;"></div>
     <!-- appPromptText()로 열 때만 보이는 텍스트 입력칸(기기 이름 정하기 등) - 평소 appConfirm/appAlert에서는 display:none으로 숨어있음 -->
+    <div id="appConfirmModalChoices" class="policy-category-toggle" style="display:none; margin:12px 0 0; justify-content:center; flex-wrap:wrap;"></div>
     <input type="text" id="appConfirmModalInput" style="display:none; width:100%; margin-top:12px; padding:9px 11px; border:1px solid var(--border); border-radius:9px; font-size:13.5px; color:var(--ink); box-sizing:border-box; text-align:left;">
     <div style="margin-top:18px; display:flex; justify-content:center; gap:8px;">
       <button type="button" id="appConfirmModalCancelBtn" class="del-btn" style="min-width:76px;">취소</button>
@@ -4376,7 +4408,7 @@
           <div class="field field-tile" style="flex:1 1 100px; margin-bottom:0;">
             <label>재직상태</label>
             <select id="s-employment-status">
-              <option value="근무중">근무중</option>
+              <option value="근무중">재직중</option> <!-- [2026.09.30] 화면 표기만 "재직중"(저장값은 예전 그대로 근무중) -->
               <option value="퇴사">퇴사</option>
             </select>
           </div>
@@ -4400,10 +4432,15 @@
           <input type="hidden" id="s-photo" value="">
         </div>
         <div class="field" style="margin-top:14px;">
-          <label>이니셜 색</label>
+          <label>이니셜</label>
           <input type="hidden" id="s-avatar" value="">
           <input type="hidden" id="s-initial-color" value="">
-          <div id="s-avatar-picker" style="display:grid; grid-template-columns:repeat(8, 40px); gap:8px; justify-content:center;"></div>
+          <!-- [2026.09.30] 이니셜 글자(영어 가능, 2자까지) + 색상표 -->
+          <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:10px;">
+            <input type="text" id="s-initial-text" maxlength="2" placeholder="자동" title="비워두면 이름 첫 글자 · 영어 이니셜도 가능(예: JH)" style="width:72px; text-align:center; font-weight:800;">
+            <span style="font-size:11.5px; color:var(--ink-soft);">비워두면 이름 첫 글자 · 영어 가능 (예: JH)</span>
+          </div>
+          <div id="s-avatar-picker" style="display:grid; grid-template-columns:repeat(8, 26px); gap:8px; justify-content:center;"></div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <div class="field field-tile" style="flex:1 1 220px; margin-bottom:0;">
@@ -7865,7 +7902,7 @@ function renderMyPushDeviceList(){
     btn.addEventListener('click', async ()=>{
       const target = (sharedPushTokens||[]).find(x=>x.id===btn.dataset.id);
       if(!target) return;
-      const newName = await appPromptText('이 기기의 이름을 정해주세요.', { inputValue: target.deviceName || guessDeviceLabel(), okText:'변경' });
+      const newName = await appPromptText('어떤 기기인가요?', { inputValue: target.deviceName || guessDeviceLabel(), choices: DEVICE_NAME_CHOICES, okText:'변경' });
       if(newName === null) return;
       target.deviceName = newName.trim() || guessDeviceLabel();
       target.nameUpdatedAt = new Date().toISOString(); // 동기화 병합 때 이름만 따로 최신값을 지키기 위한 시각
@@ -7889,6 +7926,8 @@ function renderMyPushDeviceList(){
 // 이름을 정하게 함(회사PC/제 휴대폰 등). navigator.userAgent로 짐작한 이름을 기본값으로 미리 채워주고,
 // 사용자가 그대로 두거나 원하는 이름으로 바꿔서 확인하면 됨 - 한 번 정해두면 이 기기에 계속 남아있어서
 // 다음에 다시 켤 때는 그 이름이 그대로 기본값으로 뜸
+// [2026.09.30] 기기 등록 기본 선택지(요청) - 휴대폰이면 "휴대폰"도 같이 보여줌
+const DEVICE_NAME_CHOICES = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent||'') ? ['사무실 PC','개인 PC','노트북','휴대폰','기타'] : ['사무실 PC','개인 PC','노트북','기타'];
 function guessDeviceLabel(){
   const ua = navigator.userAgent || '';
   if(/iPad/i.test(ua)) return '아이패드';
@@ -7920,7 +7959,7 @@ async function registerThisDeviceForPush(isRetry){
   if(isRetry && !myDeviceName){
     try{ const mt = localStorage.getItem('worklog_my_push_token'); const me = (sharedPushTokens||[]).find(t=>t.token===mt); if(me && me.deviceName) myDeviceName = me.deviceName; }catch(e){}
   }
-  const typedName = (isRetry && myDeviceName) ? myDeviceName : await appPromptText('이 기기를 구별할 이름을 정해주세요.\n(예: 회사 PC, 제 휴대폰 - 알림 등록 목록에서 어느 기기인지 바로 알아볼 수 있어요)', { inputValue: myDeviceName || guessDeviceLabel(), okText:'이 이름으로 등록' });
+  const typedName = (isRetry && myDeviceName) ? myDeviceName : await appPromptText('어떤 기기인가요?\n(알림 기기 목록과 대시보드 실시간 근무현황에 이 이름이 보여요)', { inputValue: myDeviceName || '사무실 PC', choices: DEVICE_NAME_CHOICES, okText:'이 이름으로 등록' });
   if(typedName !== null){
     myDeviceName = typedName.trim() || guessDeviceLabel();
     try{ localStorage.setItem('worklog_my_device_name', myDeviceName); }catch(e){}
@@ -8991,15 +9030,13 @@ function staffAvatarIconSvg(key, size){
 }
 document.getElementById('s-name')?.addEventListener('input', ()=>{ renderAvatarPicker(); if(!document.getElementById('s-photo').value && typeof renderPhotoPreview === 'function') renderPhotoPreview(''); });
 function renderAvatarPicker(){
-  // [2026.09.30] 캐릭터 고르기 대신 이니셜 색 고르기(8색) - 고른 색은 사진이 없을 때 이니셜 동그라미 색으로 쓰임
+  // [2026.09.30] 이니셜 색상표(24색) - 고른 색은 사진이 없을 때 이니셜 동그라미 색으로 쓰임
   const wrap = document.getElementById('s-avatar-picker');
   if(!wrap) return;
   const name = (document.getElementById('s-name')?.value || '').trim();
   const sel = document.getElementById('s-initial-color')?.value || '';
   const cur = sel || staffDefaultInitialColor(name);
-  wrap.innerHTML = STAFF_INITIAL_COLORS.map(c=>`
-    <button type="button" class="s-avatar-opt" data-color="${c}" title="${c===cur?'선택됨':'이 색으로'}" style="width:40px; height:40px; border-radius:11px; border:1.5px solid ${c===cur?'var(--indigo)':'var(--border)'}; background:${c===cur?'var(--indigo-bg)':'var(--surface)'}; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:border-color .15s, background .15s;">${staffInitialCircleHtml(name || '가', c, 26)}</button>
-  `).join('');
+  wrap.innerHTML = STAFF_INITIAL_COLORS.map(c=>`<button type="button" class="s-avatar-opt" data-color="${c}" title="${c}" aria-label="색 ${c}" style="width:26px; height:26px; padding:0; border-radius:50%; background:${c}; border:none; cursor:pointer; box-shadow:${c===cur?'0 0 0 2px var(--surface), 0 0 0 4px var(--indigo)':'none'};"></button>`).join('');
   wrap.querySelectorAll('.s-avatar-opt').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       document.getElementById('s-initial-color').value = btn.dataset.color;
@@ -9008,6 +9045,7 @@ function renderAvatarPicker(){
     });
   });
 }
+document.getElementById('s-initial-text')?.addEventListener('input', ()=>{ if(!document.getElementById('s-photo').value && typeof renderPhotoPreview === 'function') renderPhotoPreview(''); });
 // 프로필 사진 - 캐릭터 아이콘 대신 실제 사진을 올릴 수 있게 함. 원본을 그대로 저장하면 localStorage/Drive
 // 동기화 용량이 금방 커지므로, 캔버스로 정사각형으로 잘라 480x480 정도로 줄이고 jpeg로 압축해서 data URL
 // 형태로만 저장함(작은 목록에는 CSS로 줄여서 보여주고, 눌렀을 때는 이 저장된 크기 그대로 크게 보여줄 수 있음.
@@ -9065,7 +9103,7 @@ function renderPhotoPreview(dataUrl){
   } else {
     const nm = (document.getElementById('s-name')?.value || '').trim();
     const col = document.getElementById('s-initial-color')?.value || staffDefaultInitialColor(nm);
-    box.innerHTML = staffInitialCircleHtml(nm || '?', col, 84);
+    box.innerHTML = staffInitialCircleHtml(nm || '?', col, 84, '', document.getElementById('s-initial-text')?.value || '');
     box.style.cursor = 'default';
     box.title = '';
     box.onclick = null;
@@ -9284,16 +9322,26 @@ function resolvePhotoByEmail(email){
 // [2026.09.30] 프로필 - 캐릭터 아이콘 기능을 없애고 "기본은 이니셜(성 첫 글자) 색 동그라미, 사진을 올린 사람은 사진"으로
 // 통일(요청). 이니셜 색은 개인 설정에서 고를 수 있고(profile.initialColor), 안 고르면 이름으로 정해지는 기본색
 const DASH_TODAY_AV_COLORS = ['#E86A8A','#4DB38A','#8B7CF0','#F29B4B','#4A90D9','#C76AD6','#3FB5B0','#D98B5F'];
-const STAFF_INITIAL_COLORS = DASH_TODAY_AV_COLORS;
-function staffDefaultInitialColor(name){ let h=0; for(const ch of String(name||'')) h = (h*31 + ch.charCodeAt(0)) >>> 0; return STAFF_INITIAL_COLORS[h % STAFF_INITIAL_COLORS.length]; }
+// [2026.09.30] "컬러표로"(요청) - 이니셜 색 24가지(3줄 × 8칸 색상표)
+const STAFF_INITIAL_COLORS = ['#E86A8A','#F0506E','#F29B4B','#E0A526','#D98B5F','#B7791F','#8B5E3C','#6B7280',
+  '#4DB38A','#10B981','#3FB5B0','#0FA3B1','#4A90D9','#3B6FD4','#1E2A5E','#5B5FEF',
+  '#8B7CF0','#7C3AED','#C76AD6','#DB2777','#BE185D','#0B5A78','#475569','#1D1E33'];
+function staffDefaultInitialColor(name){ let h=0; for(const ch of String(name||'')) h = (h*31 + ch.charCodeAt(0)) >>> 0; return DASH_TODAY_AV_COLORS[h % DASH_TODAY_AV_COLORS.length]; }
 function staffInitialColorOf(profile, name){
   const c = profile && profile.initialColor;
   return (c && /^#[0-9a-fA-F]{6}$/.test(c)) ? c : staffDefaultInitialColor(name || (profile && profile.name) || '');
 }
-function staffInitialCircleHtml(name, color, size, extraStyle){
+// 이니셜 글자 - 개인 설정에서 직접 정한 글자(profile.initialText, 영어 포함 최대 2자)가 있으면 그걸, 없으면 이름 첫 글자
+function staffInitialTextOf(profile, name){
+  const t = String((profile && profile.initialText) || '').trim();
+  return t ? t.slice(0,2) : (String(name || (profile && profile.name) || '').trim().slice(0,1) || '?');
+}
+function staffInitialCircleHtml(name, color, size, extraStyle, text){
   size = size || 20;
-  const ch = String(name||'').trim().slice(0,1) || '?';
-  return `<span class="staff-initial" style="display:inline-flex; width:${size}px; height:${size}px; border-radius:50%; background:${color}; color:#fff; font-size:${Math.max(9, Math.round(size*0.45))}px; font-weight:900; align-items:center; justify-content:center; flex:none; line-height:1; ${extraStyle||''}">${escHtml(ch)}</span>`;
+  if(text === undefined){ try{ const pr = getProfiles().find(x=>(x.name||'').trim()===String(name||'').trim()); if(pr && pr.initialText) text = pr.initialText; }catch(e){} }
+  const ch = String(text || '').trim().slice(0,2) || String(name||'').trim().slice(0,1) || '?';
+  const two = ch.length > 1;
+  return `<span class="staff-initial" style="display:inline-flex; width:${size}px; height:${size}px; border-radius:50%; background:${color}; color:#fff; font-size:${Math.max(8, Math.round(size*(two?0.36:0.45)))}px; letter-spacing:${two?'-0.02em':'0'}; font-weight:900; align-items:center; justify-content:center; flex:none; line-height:1; ${extraStyle||''}">${escHtml(ch)}</span>`;
 }
 function staffProfileByEmail(email){
   const lower = String(email||'').toLowerCase();
@@ -9306,7 +9354,7 @@ function staffIdentityIconHtml(email, size, fallbackName){
   const prof = staffProfileByEmail(email);
   const name = (prof && prof.name) || fallbackName || '';
   if(!name) return '';
-  return staffInitialCircleHtml(name, staffInitialColorOf(prof, name), size, `vertical-align:-${Math.round(size*0.28)}px; margin-right:4px;`);
+  return staffInitialCircleHtml(name, staffInitialColorOf(prof, name), size, `vertical-align:-${Math.round(size*0.28)}px; margin-right:4px;`, (prof && prof.initialText) || '');
 }
 let activeProfileId = '';
 function getProfiles(){ try{ const p = localStorage.getItem('worklog_profiles'); return p ? JSON.parse(p) : []; }catch(e){ return []; } }
@@ -10765,7 +10813,7 @@ function formatEmployeeSnapshot(sn){
     ['이름', sn.employeeName || '-'],
     ['생년월일', sn.birthDate || '-'],
     ['입사일', sn.hireDate || '-'],
-    ['재직상태', sn.employmentStatus || '근무중']
+    ['재직상태', sn.employmentStatus === '퇴사' ? '퇴사' : '재직중']
   ];
   if(sn.employmentStatus === '퇴사'){
     rows.push(['마지막근무일', sn.lastWorkDate || '-']);
@@ -11700,6 +11748,7 @@ async function loadAll(){
     if(typeof syncStaffPositionSelect === 'function') syncStaffPositionSelect();
     document.getElementById('s-avatar').value = '';
     document.getElementById('s-initial-color').value = (curProfile && curProfile.initialColor) || '';
+    if(document.getElementById('s-initial-text')) document.getElementById('s-initial-text').value = (curProfile && curProfile.initialText) || '';
     renderAvatarPicker();
     document.getElementById('s-photo').value = (curProfile && curProfile.photo) || '';
     currentEditRawPhotoImg = null; // 다른 직원으로 넘어왔으니 이전에 기억해둔 원본 사진은 더 이상 유효하지 않음
@@ -17631,9 +17680,10 @@ const DASHBOARD_WIDGET_DEFS = {
   attendance:  { label:'근태현황', accent:'var(--coral)' },
   // 결재현황도 출퇴근/팀캘린더/세무일정처럼 항상 고정 표시되는 4번째 고정 위젯으로 옮김(예전엔 자유
   // 배치 영역에서 켜고 끌 수 있었음) - "이 4개는 고정 위젯이면 좋겠다"는 요청
-  approval:    { label:'결재현황', mandatory:true, accent:'var(--amber)' }, // 출퇴근(인디고)과 아이콘 색이 겹쳐서 앰버로
+  approval:    { label:'결재현황', accent:'var(--amber)' }, // [2026.09.30] 결재현황·세무일정도 자유 배치로(요청)
   notice:      { label:'공지사항', accent:'var(--guide-wine)' },
-  taxSchedule: { label:'세무일정', mandatory:true, accent:'var(--guide-slate)' },
+  taxSchedule: { label:'세무일정', accent:'var(--guide-slate)' },
+  presence:    { label:'실시간 근무현황', mandatory:true, accent:'#4A90D9' },
   // [2026.09.30 D안] 아래 선택 영역에 경비정산·신고 진행률 추가
   expense:     { label:'경비정산', accent:'var(--guide-teal)' },
   filing:      { label:'신고 진행률', accent:'var(--navy)' },
@@ -17641,10 +17691,10 @@ const DASHBOARD_WIDGET_DEFS = {
 // 출퇴근/팀캘린더/결재현황/세무일정은 "위젯 설정"에서 켜고 끄거나 순서를 바꿀 수 있는 자유 배치 영역이
 // 아니라, 항상 대시보드 맨 위에 고정되는 "고정 영역"(pinned row)에 따로 그려짐 - 아래 order/enabled는
 // 그 아래 자유 배치 영역(공지사항/근태현황 + 앞으로 늘어날 위젯들)에만 적용됨
-const DASHBOARD_PINNED_WIDGET_KEYS = ['clock','calendar','approval','taxSchedule'];
+const DASHBOARD_PINNED_WIDGET_KEYS = ['clock','presence','calendar']; // [2026.09.30] 고정: 출퇴근 · 실시간 근무현황 · 팀캘린더(넓게)
 const DASHBOARD_FLEXIBLE_WIDGET_KEYS = Object.keys(DASHBOARD_WIDGET_DEFS).filter(k=>!DASHBOARD_PINNED_WIDGET_KEYS.includes(k));
-const DASHBOARD_WIDGET_DEFAULT_ORDER = ['expense','attendance','filing','notice'];
-const DASHBOARD_WIDGET_DEFAULT_ENABLED = ['notice'];
+const DASHBOARD_WIDGET_DEFAULT_ORDER = ['approval','taxSchedule','expense','attendance','filing','notice'];
+const DASHBOARD_WIDGET_DEFAULT_ENABLED = ['approval','taxSchedule','notice'];
 // 위젯 모양 4종 - 기본(1칸) / wide(가로 전체) / tall(세로 2행) / big(가로 전체+세로 2행)
 const DASHBOARD_SHAPES = { normal:{label:'기본'}, wide:{label:'가로형'}, tall:{label:'세로형'}, big:{label:'크게'} };
 // [2026.09.30] "대시보드 구성이 설정이랑 전혀 다르다" - 대시보드 배치는 그동안 "지금 보고 있는 직원"의 settings에
@@ -17690,6 +17740,16 @@ function getDashboardConfig(){
   }
   // order/enabled는 이제 고정 영역(clock/calendar/taxSchedule)을 뺀 자유 배치 위젯에만 적용됨 - 예전
   // 데이터에 고정 위젯 키가 섞여 남아있어도 여기서 걸러내서 자유 배치 목록에 실수로 다시 나타나지 않게 함
+  // [2026.09.30] 결재현황·세무일정이 고정 → 자유 배치로 바뀜 - 예전 설정에는 이 둘이 없어서 사라져 보이지 않게, 처음 한 번만 켜서 맨 앞에 넣어줌
+  if(S.dashboardWidgetConfig && !S.dashboardWidgetConfig.v2){
+    const o = Array.isArray(order) ? order.filter(k=>k!=='approval' && k!=='taxSchedule') : [...DASHBOARD_WIDGET_DEFAULT_ORDER].filter(k=>k!=='approval' && k!=='taxSchedule');
+    order = ['approval','taxSchedule', ...o];
+    const en = Array.isArray(enabledList) ? enabledList.slice() : [...DASHBOARD_WIDGET_DEFAULT_ENABLED];
+    ['approval','taxSchedule'].forEach(k=>{ if(!en.includes(k)) en.push(k); });
+    enabledList = en;
+    S.dashboardWidgetConfig = { ...S.dashboardWidgetConfig, order, enabled: en, v2:true };
+    dashOwnSettingsSave(ref);
+  }
   if(!Array.isArray(order)) order = [...DASHBOARD_WIDGET_DEFAULT_ORDER];
   order = order.filter(k=>DASHBOARD_FLEXIBLE_WIDGET_KEYS.includes(k));
   DASHBOARD_FLEXIBLE_WIDGET_KEYS.forEach(k=>{ if(!order.includes(k)) order.push(k); });
@@ -17705,7 +17765,7 @@ function saveDashboardConfig(order, enabledSet, shapeObj, cols){
   const ref = dashOwnSettingsRef();
   const S = ref.obj;
   const prevCols = S.dashboardWidgetConfig && S.dashboardWidgetConfig.cols;
-  S.dashboardWidgetConfig = { order, enabled: Array.from(enabledSet), shape: shapeObj || {}, cols: cols || prevCols || 'auto' };
+  S.dashboardWidgetConfig = { order, enabled: Array.from(enabledSet), shape: shapeObj || {}, cols: cols || prevCols || 'auto', v2:true };
   dashOwnSettingsSave(ref);
 }
 // 달력·근태 관련 이모지(🌴🏠🎁⏰🗓️🍻🎌🍱)를 앱 전체에서 쓰는 선 스타일 아이콘으로 통일하기 위한 헬퍼.
@@ -17744,6 +17804,7 @@ function dashCardTitleIcon(key){
     notice:     `<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>`,
     taxSchedule:`<path d="M4 2h16v18l-2-1-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"></path><line x1="8" y1="7" x2="16" y2="7"></line><line x1="8" y1="11" x2="16" y2="11"></line>`,
     expense:    `<rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line><line x1="6" y1="15" x2="10" y2="15"></line>`,
+    presence:   `<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>`,
     filing:     `<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1"></rect><polyline points="9 14 11 16 15 12"></polyline>`,
   };
   return `<span class="home-dash-card-title-badge"><svg ${common}>${paths[key]||''}</svg></span>`;
@@ -17760,6 +17821,7 @@ function dashboardWidgetHtml(key, shape){
     taxSchedule:{ title:'세무일정', link:'', bodyId:'dashTaxScheduleBody' },
     expense:    { goto:'expensesettle', title:'경비정산', link:'바로가기 →', bodyId:'dashExpenseBody' },
     filing:     { id:'dashFilingCard', title:'신고 진행률', link:'바로가기 →', bodyId:'dashFilingBody' },
+    presence:   { id:'dashPresenceCard', title:'실시간 근무현황', link:'', bodyId:'dashPresenceBody' },
   };
   const d = defs[key];
   if(!d) return '';
@@ -17772,7 +17834,7 @@ function dashboardWidgetHtml(key, shape){
   // 있었는데, 제목 줄에 붙이는 게 더 바로 보이고 공간도 아낄 수 있어서 옮김). 데이터에 의존하지 않는 정적
   // 버튼이라 renderDashboardTaxSchedulePreview()를 기다리지 않고 여기서 바로 만들고, 클릭 바인딩만
   // renderHomeDashboardGrid()에서 함께 해줌
-  const linkHtml = key === 'taxSchedule'
+  const linkHtml = key === 'presence' ? `<span class="home-dash-presence-at" id="dashPresenceAt"></span>` : key === 'taxSchedule'
     ? `<span class="home-dash-tax-shortcut-row-title">${TAX_FILING_STATUS_SHORTCUTS.map(t=>`<button type="button" class="home-dash-tax-shortcut-btn" data-filing-type="${t}">${escHtml(t)}</button>`).join('')}</span>`
     : `<span class="home-dash-card-link">${d.link}</span>`;
   // accent(위젯 색상)는 위젯 설정 미리보기(DASHBOARD_WIDGET_DEFS)와 항상 같은 값을 쓰도록 여기서 새로
@@ -17804,8 +17866,9 @@ function renderHomeDashboardGrid(){
   // 그림. 왼쪽 칸은 출퇴근·팀캘린더가 .home-dashboard-pinned-side 안에서 반씩 나란히 붙고, 오른쪽 칸은
   // 나누지 않고 .home-dashboard-pinned-stack 안에서 결재현황(위)·세무일정(아래)이 세로로 쌓임
   if(pinnedRow){
-    pinnedRow.innerHTML = `<div class="home-dashboard-pinned-side">${dashboardWidgetHtml('clock','normal')}${dashboardWidgetHtml('calendar','normal')}</div>
-      <div class="home-dashboard-pinned-stack">${dashboardWidgetHtml('approval','normal')}${dashboardWidgetHtml('taxSchedule','normal')}</div>`;
+    // [2026.09.30] 고정 줄: 왼쪽 절반 = 출퇴근 + 실시간 근무현황, 오른쪽 절반 = 팀캘린더(달력/일자별). 결재현황·세무일정은 아래 자유 배치로
+    pinnedRow.innerHTML = `<div class="home-dashboard-pinned-side">${dashboardWidgetHtml('clock','normal')}${dashboardWidgetHtml('presence','normal')}</div>
+      <div class="home-dashboard-pinned-cal">${dashboardWidgetHtml('calendar','normal')}</div>`;
   }
   // 그 아래 자유 배치 영역 - 공지사항/근태현황(+ 앞으로 늘어날 위젯들)은 예전처럼 ⚙ 위젯 설정에서
   // 켜고 끄거나 순서·모양을 자유롭게 바꿀 수 있음
@@ -17878,10 +17941,11 @@ function renderDashboardConfigPreview(){
   // 절반에 위아래로 쌓임)"으로 배치됨 - 미리보기도 2열 그리드라 이 넷을 순서대로(출퇴근/팀캘린더/
   // 결재현황/세무일정) 그냥 나열하면 첫 줄이 출퇴근·팀캘린더, 둘째 줄이 결재현황·세무일정으로 자연스럽게
   // 실제 배치와 같은 모양이 됨(별도 wide 처리 불필요)
-  const pinnedHtml = DASHBOARD_PINNED_WIDGET_KEYS.map(k=>{
+  // [2026.09.30] 고정 줄: 출퇴근 · 실시간 근무현황(왼쪽 절반) + 팀캘린더(오른쪽 절반) - 4칸 격자로 실제 비율 그대로
+  const pinnedHtml = `<div style="grid-column:1/-1; display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:6px;">${DASHBOARD_PINNED_WIDGET_KEYS.map(k=>{
     const def = DASHBOARD_WIDGET_DEFS[k];
-    return `<div class="dashboard-config-preview-box" style="--accent:${def.accent}; opacity:0.6;" title="항상 고정 표시돼요">${escHtml(def.label)}</div>`;
-  }).join('');
+    return `<div class="dashboard-config-preview-box" style="--accent:${def.accent}; opacity:0.6; ${k==='calendar'?'grid-column:span 2;':''}" title="항상 고정 표시돼요">${escHtml(def.label)}</div>`;
+  }).join('')}</div>`;
   // [2026.09.30 D안] 아래 선택 영역은 모양 선택 없이, 실제 대시보드처럼 고른 개수대로 폭이 나뉨
   const keys = order.filter(k=>enabled.has(k));
   const flexHtml = keys.map(k=>{
@@ -18091,9 +18155,50 @@ function renderDashboardCalendarPreview(monthStr){
     });
   };
   const items = (typeof getProfiles === 'function') ? computeMonthTeamAgenda(monthStr) : [];
-  if(!items.length){
-    body.innerHTML = headerHtml + `<div class="hint" style="margin:0; font-size:11.5px; text-align:center;">해당 달에 등록된 팀 일정이 없어요.</div>`;
+  // [2026.09.30] 달력 / 일자별 두 가지 보기(요청) - 기본은 달력, 칩으로 바꾸면 이 기기에 기억
+  let calView = 'cal';
+  try{ calView = localStorage.getItem('taxj_dash_cal_view') || 'cal'; }catch(e){}
+  const toggleHtml = `<div class="home-dash-cal-viewtoggle"><button type="button" data-cal-view="cal" class="${calView==='cal'?'active':''}">달력</button><button type="button" data-cal-view="list" class="${calView==='list'?'active':''}">일자별</button></div>`;
+  const bindToggle = ()=> body.querySelectorAll('[data-cal-view]').forEach(b=> b.addEventListener('click', (e)=>{ e.stopPropagation(); try{ localStorage.setItem('taxj_dash_cal_view', b.dataset.calView); }catch(err){} renderDashboardCalendarPreview(dashCalendarMonth); }));
+  if(calView === 'cal'){
+    const byDate = {};
+    items.forEach(it=>{ (byDate[it.date] = byDate[it.date] || []).push(it); });
+    const kindOf = (it)=> it.person === '전체' ? 'hol' : it.icon === calIconSvg('leave') ? 'leave' : (it.icon === calIconSvg('remote') || it.icon === calIconSvg('special')) ? 'remote' : 'etc';
+    const dotColor = { hol:'#9CA3AF', leave:'var(--coral)', remote:'var(--mint)', etc:'var(--amber)' };
+    const [yy, mm] = monthStr.split('-').map(Number);
+    const firstDow = new Date(yy, mm-1, 1).getDay();
+    const nDays = daysInMonth(monthStr);
+    const today1 = todayStr();
+    let cells = '';
+    for(let i=0;i<firstDow;i++) cells += '<div class="home-dash-mcal-cell empty"></div>';
+    for(let d=1; d<=nDays; d++){
+      const ds = `${monthStr}-${String(d).padStart(2,'0')}`;
+      const dow = (firstDow + d - 1) % 7;
+      const list = byDate[ds] || [];
+      const isHol = list.some(it=>it.person==='전체' && /공휴일|휴/.test(it.text||''));
+      const kinds = [...new Set(list.map(kindOf))];
+      cells += `<button type="button" class="home-dash-mcal-cell${list.length?' has':''}${ds===today1?' today':''}" ${list.length?`data-mcal-date="${ds}"`:''} title="${escHtml(list.map(it=>`${it.person}) ${it.text}`).join('\n'))}"><span class="home-dash-mcal-d${(dow===0||isHol)?' sun':dow===6?' sat':''}">${d}</span><span class="home-dash-mcal-dots">${kinds.map(k=>`<i style="background:${dotColor[k]};"></i>`).join('')}</span></button>`;
+    }
+    const weeks = Math.ceil((firstDow + nDays) / 7);
+    body.innerHTML = toggleHtml + headerHtml.replace('팀 일정</span>', '</span>') + `<div class="home-dash-mcal-dow">${['일','월','화','수','목','금','토'].map(x=>`<div>${x}</div>`).join('')}</div><div class="home-dash-mcal" style="${weeks>5?'--mcal-h:42px;':''}">${cells}</div>
+      <div class="home-dash-mcal-legend"><span style="color:var(--coral)">●</span> 휴가 · <span style="color:var(--mint)">●</span> 재택 · <span style="color:var(--amber)">●</span> 일정 · <span style="color:#9CA3AF">●</span> 공휴일·전체</div>`;
+    if(weeks > 5) body.querySelectorAll('.home-dash-mcal-cell').forEach(c=> c.style.height = '40px');
     bindDashCalNav();
+    bindToggle();
+    body.querySelectorAll('[data-mcal-date]').forEach(btn=> btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const ds = btn.dataset.mcalDate;
+      const list = byDate[ds] || [];
+      const dow = ['일','월','화','수','목','금','토'][new Date(ds+'T00:00:00').getDay()];
+      const html = `<table><thead><tr><th style="text-align:center;">대상자</th><th style="text-align:center;">일정</th></tr></thead><tbody>${list.map(it=>`<tr><td style="text-align:center; font-weight:700; white-space:nowrap;">${escHtml(it.person||'전체')}</td><td style="text-align:center;">${it.icon} ${escHtml(it.text)}</td></tr>`).join('')}</tbody></table>`;
+      openDraggablePopup({ title:`${Number(ds.slice(5,7))}/${Number(ds.slice(8,10))}(${dow}) 팀 일정`, html, width:420 });
+    }));
+    return;
+  }
+  if(!items.length){
+    body.innerHTML = toggleHtml + headerHtml + `<div class="hint" style="margin:0; font-size:11.5px; text-align:center;">해당 달에 등록된 팀 일정이 없어요.</div>`;
+    bindDashCalNav();
+    bindToggle();
     return;
   }
   // 날짜/대상자/일정을 각자 텍스트가 섞여 나오던 한 줄짜리 목록 대신, 열 제목 + 구분선이 있는 미니 표로 바꿔서
@@ -18137,8 +18242,9 @@ function renderDashboardCalendarPreview(monthStr){
   const pagerHtml = totalPages > 1
     ? `<div class="home-dash-cal-pager">${Array.from({length:totalPages}, (_,i)=>i+1).map(p=>`<button type="button" class="home-dash-cal-page-btn${p===dashCalendarPage?' active':''}" data-page="${p}">${p}</button>`).join('')}</div>`
     : '';
-  body.innerHTML = headerHtml + `<div class="home-dash-card-scroll">${tableHeadHtml}${prevRowHtml}${tableBodyHtml}</div>${pagerHtml}`;
+  body.innerHTML = toggleHtml + headerHtml + `<div class="home-dash-card-scroll">${tableHeadHtml}${prevRowHtml}${tableBodyHtml}</div>${pagerHtml}`;
   bindDashCalNav();
+  bindToggle();
   // 잘린 칸(title 툴팁으로만 보이던 나머지 내용)을 눌렀을 때도 같은 내용이 보이게 함 - 마우스 오버 자체가
   // 없는 터치기기(휴대폰)에서는 title 툴팁이 사실상 안 뜨기 때문에, 실제로 잘려있는 칸(scrollWidth >
   // clientWidth)만 눌렀을 때 토스트로 띄워줌. 안 잘린 칸은 눌러도 카드 전체 클릭(팀캘린더 이동)만 그대로 동작함
@@ -18248,7 +18354,7 @@ function renderDashboardTodayStrip(){
   const profByName = {}; getProfiles().forEach(pp=>{ if(pp && pp.name) profByName[pp.name.trim()] = pp; });
   const colorOf = (name)=> staffInitialColorOf(profByName[String(name).trim()], name);
   const avsOf = (list)=> list.length
-    ? `<span class="home-dash-today-avs">${list.map(pp=>`<span class="home-dash-today-av" style="background:${colorOf(pp.name)};" title="${escHtml(pp.name)} · ${escHtml(pp.label)}">${pp.photo ? `<img src="${escHtml(pp.photo)}" alt="">` : escHtml(pp.name.trim().slice(0,1))}<i style="background:${dotColor[pp.kind]};"></i></span>`).join('')}</span>`
+    ? `<span class="home-dash-today-avs">${list.map(pp=>`<span class="home-dash-today-av" style="background:${colorOf(pp.name)};" title="${escHtml(pp.name)} · ${escHtml(pp.label)}">${pp.photo ? `<img src="${escHtml(pp.photo)}" alt="">` : escHtml(staffInitialTextOf(profByName[pp.name.trim()], pp.name))}<i style="background:${dotColor[pp.kind]};"></i></span>`).join('')}</span>`
     : `<span class="home-dash-today-none">없음</span>`;
   const awayHtml = avsOf(people.filter(pp=>pp.kind !== 'remote'));
   const remoteHtml = avsOf(people.filter(pp=>pp.kind === 'remote'));
@@ -18264,6 +18370,65 @@ function renderDashboardTodayStrip(){
   }catch(e){ console.error('가까운 마감 계산 실패', e); }
   wrap.innerHTML = `<span class="home-dash-today-k pill away">오늘 부재</span>${awayHtml}<span class="home-dash-today-sep"></span><span class="home-dash-today-k pill remote">재택</span>${remoteHtml}${dlHtml}`;
 }
+// [2026.09.30] 실시간 근무현황 - 재직 중인 전 직원의 오늘 근무지를 한 줄씩(시안 ③)
+// 근무지: 그날 출퇴근 카드의 사무실/재택 선택 · 미출근/퇴근: 출퇴근 도장 · 휴가: 종일 휴가 등록 · 초록 점: 지금 앱이 켜져 있음
+const PRES_ST = {
+  office:{ label:'사무실', color:'var(--indigo)', bg:'var(--indigo-bg)' },
+  home:  { label:'재택',   color:'var(--mint)',   bg:'var(--mint-bg)' },
+  none:  { label:'미출근', color:'var(--ink-soft)', bg:'var(--bg)' },
+  done:  { label:'퇴근',   color:'var(--ink-soft)', bg:'var(--bg)' },
+  leave: { label:'휴가',   color:'var(--coral)',  bg:'var(--coral-bg)' },
+};
+function dashPresenceDevIcon(name){
+  const nb = /노트북|laptop|맥북/i.test(name||'');
+  return nb ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/></svg>'
+            : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
+}
+function renderDashboardPresence(){
+  const body = document.getElementById('dashPresenceBody');
+  if(!body) return;
+  const today = todayStr();
+  const nowMs = Date.now();
+  const rows = [];
+  try{
+    getProfiles().forEach(p=>{
+      const snap = readProfileRaw(p.id, 'settings') || {};
+      if((snap.employmentStatus || p.employmentStatus) === '퇴사') return;
+      const name = (p.name || snap.employeeName || '').trim();
+      if(!name || name === '관리자') return;
+      const att = readProfileRaw(p.id, 'attendance') || {};
+      const entry = (att.clockLog || []).find(e=>e.date===today);
+      const fullLeave = (att.leaveUsage || []).some(u=>u.date===today && u.type !== '반차' && u.type !== '반반차');
+      let kind;
+      if(entry && entry.checkIn && !entry.checkOut) kind = /재택/.test(String(entry.status||'')) && !/→사무실$/.test(String(entry.status||'')) ? 'home' : 'office';
+      else if(entry && entry.checkOut) kind = 'done';
+      else if(fullLeave) kind = 'leave';
+      else kind = 'none';
+      const pres = presenceAll[String(p.email||'').toLowerCase()] || null;
+      const online = !!(pres && nowMs - Number(pres.at||0) < PRESENCE_ONLINE_MS);
+      rows.push({ p, name, kind, online, device: online ? (pres.device || '') : '' });
+    });
+  }catch(e){ console.error('실시간 근무현황 계산 실패', e); }
+  const orderK = { office:0, home:1, none:2, done:3, leave:4 };
+  rows.sort((a,b)=> (orderK[a.kind]-orderK[b.kind]) || (b.online - a.online) || a.name.localeCompare(b.name, 'ko'));
+  const cnt = k => rows.filter(r=>r.kind===k).length;
+  const sumHtml = `<div class="home-dash-pres-sum">${['office','home','none','leave'].map(k=>`<span style="background:${PRES_ST[k].bg}; color:${PRES_ST[k].color};">${PRES_ST[k].label} ${cnt(k)}</span>`).join('')}</div>`;
+  const rowHtml = rows.map(r=>{
+    const st = PRES_ST[r.kind];
+    const av = r.p.photo ? `<img src="${escHtml(r.p.photo)}" alt="">` : staffInitialCircleHtml(r.name, staffInitialColorOf(r.p, r.name), 32, '', r.p.initialText || '');
+    const barColor = (r.kind === 'none' || r.kind === 'done') ? 'var(--border)' : st.color;
+    const sub = r.device ? `<span class="home-dash-pres-dev">${dashPresenceDevIcon(r.device)}${escHtml(r.device)}</span>` : `<span class="home-dash-pres-dev">${r.online ? '접속 중' : '-'}</span>`;
+    return `<div class="home-dash-pres-row" style="border-left-color:${barColor};" title="${escHtml(r.name)} · ${st.label}${r.online ? ' · 지금 접속 중' : ''}">
+      <span class="home-dash-pres-av">${av}${r.online ? '<i></i>' : ''}</span>
+      <div style="flex:1; min-width:0;"><div class="home-dash-pres-name">${escHtml(r.name)}</div>${sub}</div>
+      <span class="home-dash-pres-st" style="color:${st.color};">${st.label}</span>
+    </div>`;
+  }).join('');
+  body.innerHTML = rows.length ? sumHtml + rowHtml : `<div class="hint" style="margin:0; font-size:11.5px;">등록된 직원이 없어요.</div>`;
+  const at = document.getElementById('dashPresenceAt');
+  if(at){ const d = new Date(); at.textContent = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} 기준`; }
+}
+setInterval(()=>{ try{ if(document.getElementById('dashPresenceBody') && document.visibilityState !== 'hidden') renderDashboardPresence(); }catch(e){} }, 30000);
 // 부가세 - 오늘 기준 가장 가까운(아직 안 지난) 신고기한의 기수. 1기예정 4/25, 1기확정 7/25, 2기예정 10/25, 2기확정 다음해 1/25
 function vatFocusFiling(){
   const today = parseDate(todayStr());
@@ -19349,6 +19514,7 @@ function renderHomeDashboard(){
   if(cfg.enabled.has('attendance')) renderDashboardAttendancePreview();
   if(cfg.enabled.has('notice')) renderDashboardImportantNotices();
   renderDashboardTodayStrip();
+  renderDashboardPresence();
   if(cfg.enabled.has('expense')) renderDashboardExpensePreview();
   if(cfg.enabled.has('filing')) renderDashboardFilingPreview();
 }
@@ -22510,12 +22676,14 @@ document.getElementById('settingsForm').addEventListener('submit', async (e)=>{
     const newPosition = document.getElementById('s-position').value.trim();
     const newPhoto = document.getElementById('s-photo').value || '';
     const newColor = document.getElementById('s-initial-color').value || '';
+    const newInitText = (document.getElementById('s-initial-text')?.value || '').trim().slice(0,2);
     const profiles = getProfiles();
     const curProfile = profiles.find(pr=>pr.id===activeProfileId);
-    if(curProfile && (curProfile.position !== newPosition || (curProfile.avatar||'') !== '' || curProfile.photo !== newPhoto || (curProfile.initialColor||'') !== newColor)){
+    if(curProfile && (curProfile.position !== newPosition || (curProfile.avatar||'') !== '' || curProfile.photo !== newPhoto || (curProfile.initialColor||'') !== newColor || (curProfile.initialText||'') !== newInitText)){
       curProfile.position = newPosition;
       curProfile.avatar = ''; // 캐릭터 기능 삭제 - 저장할 때 예전 캐릭터 값도 비움
       curProfile.initialColor = newColor;
+      curProfile.initialText = newInitText;
       curProfile.photo = newPhoto;
       saveProfiles(profiles);
       renderEmployeeRoster();
@@ -23617,6 +23785,22 @@ function _appConfirmOpen(message, opts){
   cancelBtn.textContent = opts.cancelText || '취소';
   cancelBtn.style.display = opts.showCancel === false ? 'none' : '';
   _appConfirmInputMode = !!opts.input;
+  // [2026.09.30] 기기 이름처럼 자주 쓰는 답이 정해져 있을 때 - 선택지 칩(opts.choices)을 누르면 입력칸이 그 값으로 채워지고,
+  // "기타"는 입력칸을 비워서 직접 입력하게 함
+  const choicesEl = document.getElementById('appConfirmModalChoices');
+  if(choicesEl){
+    const ch = opts.input && Array.isArray(opts.choices) ? opts.choices : [];
+    choicesEl.style.display = ch.length ? 'flex' : 'none';
+    const cur = opts.inputValue || '';
+    const hit = ch.find(c=>c===cur);
+    choicesEl.innerHTML = ch.map(c=>`<button type="button" class="policy-cat-btn${(hit ? c===cur : c==='기타') ? ' active' : ''}" data-choice="${escHtml(c)}" style="padding:4px 12px; font-size:12px;">${escHtml(c==='기타' ? '기타(입력)' : c)}</button>`).join('');
+    choicesEl.querySelectorAll('[data-choice]').forEach(b=> b.addEventListener('click', ()=>{
+      choicesEl.querySelectorAll('[data-choice]').forEach(x=>x.classList.toggle('active', x===b));
+      if(!inputEl) return;
+      if(b.dataset.choice === '기타'){ inputEl.value = ''; inputEl.placeholder = '직접 입력'; inputEl.focus(); }
+      else inputEl.value = b.dataset.choice;
+    }));
+  }
   if(inputEl){
     if(opts.input){
       inputEl.style.display = '';
@@ -30924,7 +31108,7 @@ function xlsProfileSettings(pid){ return (pid===activeProfileId ? settings : rea
 XLS_SPECS['staffInfo'] = { title:'직원정보', tag:'직원정보', sheets:[{ name:'직원정보', noDelete:true,
   cols:[{k:'name',label:'이름'},{k:'position',label:'직책'},{k:'email',label:'로그인 이메일'},{k:'hireDate',label:'입사일',t:'date'},{k:'birthDate',label:'생년월일',t:'date'},{k:'employmentStatus',label:'재직상태(근무중/퇴사)'},{k:'lastWorkDate',label:'최종근무일',t:'date'},{k:'resignReason',label:'퇴사사유'}],
   records: () => getProfiles(),
-  toRow: p => { const s = p._settings || xlsProfileSettings(p.id); return { name:p.name||'', position:p.position||'', email:p.email||'', hireDate:s.hireDate||'', birthDate:s.birthDate||'', employmentStatus:s.employmentStatus||'근무중', lastWorkDate:s.lastWorkDate||'', resignReason:s.resignReason||'' }; },
+  toRow: p => { const s = p._settings || xlsProfileSettings(p.id); return { name:p.name||'', position:p.position||'', email:p.email||'', hireDate:s.hireDate||'', birthDate:s.birthDate||'', employmentStatus:s.employmentStatus==='퇴사'?'퇴사':'재직중', lastWorkDate:s.lastWorkDate||'', resignReason:s.resignReason||'' }; },
   dupKey: o => o.email ? String(o.email).toLowerCase() : xlsNorm(o.name), valid: o => !!o.name || !!o.ID,
   fromRow: (o, ex) => ({ ...(ex||{ id:genId() }), name:o.name, position:o.position||'', email:String(o.email||'').trim().toLowerCase(),
     _settings: { hireDate:o.hireDate||'', birthDate:o.birthDate||'', employmentStatus: /퇴사/.test(o.employmentStatus||'') ? '퇴사' : '근무중', lastWorkDate:o.lastWorkDate||'', resignReason:o.resignReason||'' } }),
@@ -32690,7 +32874,7 @@ function renderEmployeeRoster(){
       : '';
     const avatarTag = p.photo
       ? `<img src="${p.photo}" class="employee-roster-photo" data-id="${p.id}" style="width:34px; height:34px; border-radius:50%; object-fit:cover; margin-right:5px; cursor:pointer; flex:none;">`
-      : staffInitialCircleHtml(p.name || '?', staffInitialColorOf(p, p.name), 34, 'margin-right:5px;'); // 사진이 없으면 이니셜(고른 색) - 사진과 같은 34px 칸이라 줄 높이가 모두 같음
+      : staffInitialCircleHtml(p.name || '?', staffInitialColorOf(p, p.name), 34, 'margin-right:5px;', p.initialText || ''); // 사진이 없으면 이니셜(고른 색) - 사진과 같은 34px 칸이라 줄 높이가 모두 같음
     return `
     <div style="display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:10px; height:54px; box-sizing:border-box; padding:0 12px; background:var(--bg); border:1.5px solid var(--border); border-radius:10px; margin:0 0 6px; width:100%; box-sizing:border-box; ${terminated ? 'opacity:0.7;' : ''}">
       <span style="font-size:13px; font-weight:700; min-width:0; display:flex; align-items:center; white-space:nowrap;">${avatarTag}<span style="min-width:0; overflow:hidden; text-overflow:ellipsis;">${escHtml(p.name || '(이름 미등록)')}${p.position ? ` <span style="font-weight:600; color:var(--ink-soft); font-size:11.5px;">(${escHtml(p.position)})</span>` : ''} ${statusTag} ${p.email ? `<span style="color:var(--ink-soft); font-size:11px; font-weight:500;">(${escHtml(p.email)})</span>` : '<span style="color:var(--coral); font-size:11px; font-weight:500;">이메일 미등록</span>'}</span></span>
@@ -34158,6 +34342,8 @@ const FS_COLLECTION = 'taxj';
 const PRESENCE_PREFIX = '_presence__';
 const PRESENCE_STALE_MS = 45000;
 let presenceOthers = {}; // 이메일 → {name, key, label, at}
+let presenceAll = {}; // [2026.09.30] 실시간 근무현황용 - 나를 포함한 모든 직원의 마지막 접속 {email, name, at, device}
+const PRESENCE_ONLINE_MS = 90000; // 이 시간 안에 신호가 있으면 "지금 앱 켜져 있음"(초록 점)
 let presenceMine = null; // {key, label}
 let presenceLastWrite = 0;
 function presenceDocId(email){ return PRESENCE_PREFIX + String(email||'').toLowerCase().replace(/[^a-z0-9]/g, '_'); }
@@ -34197,15 +34383,20 @@ function presenceCurrentArea(){
 function presenceIngestSnapshot(snap){
   try{
     const me = (currentUserEmail||'').toLowerCase();
-    const next = {};
+    const next = {}, all = {};
     snap.forEach(d=>{
       if(!d.id.startsWith(PRESENCE_PREFIX)) return;
       const v = d.data() || {};
-      if(!v.email || String(v.email).toLowerCase() === me || !v.key) return;
+      if(!v.email) return;
+      all[String(v.email).toLowerCase()] = v;
+      if(String(v.email).toLowerCase() === me || !v.key) return;
       next[String(v.email).toLowerCase()] = v;
     });
     presenceOthers = next;
+    const changedAll = JSON.stringify(Object.keys(all).map(k=>[k, Number(all[k].at||0) > Date.now() - PRESENCE_ONLINE_MS, all[k].device||''])) !== JSON.stringify(Object.keys(presenceAll).map(k=>[k, Number(presenceAll[k].at||0) > Date.now() - PRESENCE_ONLINE_MS, presenceAll[k].device||'']));
+    presenceAll = all;
     presenceRenderBanner();
+    if(changedAll && typeof renderDashboardPresence === 'function') renderDashboardPresence();
   }catch(e){}
 }
 function presenceOthersHere(){
@@ -34235,15 +34426,17 @@ async function presenceTick(force){
     presenceMine = area;
     presenceRenderBanner();
     const now = Date.now();
-    if(!changed && !force && now - presenceLastWrite < 15000) return;
+    // [2026.09.30] 실시간 근무현황 - 수정 화면이 아니어도 앱이 켜져 있으면 30초마다 "접속 중" 신호(기기 이름 포함)를 남김
+    if(!changed && !force && now - presenceLastWrite < (area ? 15000 : 30000)) return;
     presenceLastWrite = now;
     const ref = fsRef(presenceDocId(currentUserEmail));
-    if(area) await ref.set({ email: currentUserEmail.toLowerCase(), name: currentStaffDisplayName(), key: area.key, label: area.label, at: now });
-    else if(changed) await ref.set({ email: currentUserEmail.toLowerCase(), name: currentStaffDisplayName(), key: '', label: '', at: now });
+    let device = '';
+    try{ device = localStorage.getItem('worklog_my_device_name') || ''; }catch(e){}
+    await ref.set({ email: currentUserEmail.toLowerCase(), name: currentStaffDisplayName(), key: area ? area.key : '', label: area ? area.label : '', at: now, device });
   }catch(e){ /* 표시 기능이라 실패해도 조용히 넘어감 */ }
 }
 setInterval(()=> presenceTick(false), 3000);
-window.addEventListener('pagehide', ()=>{ try{ if(fsActive && fsDb && currentUserEmail) fsRef(presenceDocId(currentUserEmail)).set({ email: currentUserEmail.toLowerCase(), key:'', label:'', at: Date.now() }); }catch(e){} });
+window.addEventListener('pagehide', ()=>{ try{ if(fsActive && fsDb && currentUserEmail) fsRef(presenceDocId(currentUserEmail)).set({ email: currentUserEmail.toLowerCase(), name: currentStaffDisplayName(), key:'', label:'', at: 0, lastAt: Date.now() }); }catch(e){} }); // 앱을 닫으면 바로 "접속 안 함"으로
 // 저장 버튼을 누를 때 같은 곳을 다른 사람이 수정 중이면 한 번 확인받음(확인하면 그대로 저장 진행)
 let presenceBypassOnce = false;
 document.addEventListener('click', async (e)=>{
@@ -34784,7 +34977,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.30 16:40';
+const APP_BUILD = '2026.09.30 17:10';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -35748,8 +35941,11 @@ function renderSeatChartEditPreview(){
   const cellsHtml = seatChartDraft.cells.filter(c=> c.row && c.col && c.type!=='divider').map(seatChartEditCellHtml).join('');
   // 배경 격자선 - 열/줄 크기가 제각각일 수 있어서 반복 배경(gradient) 대신 선을 하나씩 그림
   let lines = '';
-  for(let c=1;c<=cols;c++) lines += `<span class="seat-grid-vline" style="left:${seatColX(c)-1}px; height:${gridH}px;"></span>`;
-  for(let r=1;r<=rows;r++) lines += `<span class="seat-grid-hline" style="top:${seatRowY(r)-1}px; width:${gridW}px;"></span>`;
+  // [2026.09.30] "격자선 안에서 칸 여백이 좌우·위아래가 다르다" - 선이 칸 왼쪽/위쪽 가장자리에 딱 붙어 그려져서, 칸이 선에서
+  // 왼쪽·위는 0px, 오른쪽·아래는 간격(6px)만큼 떨어져 보였음. 선을 칸 사이 간격의 한가운데로 옮겨서 네 방향 여백을 같게 함
+  const half = SEAT_EDIT_GAP / 2;
+  for(let c=1;c<=cols;c++) lines += `<span class="seat-grid-vline" style="left:${seatColX(c)-half-0.5}px; top:${-half}px; height:${gridH+SEAT_EDIT_GAP}px;"></span>`;
+  for(let r=1;r<=rows;r++) lines += `<span class="seat-grid-hline" style="top:${seatRowY(r)-half-0.5}px; left:${-half}px; width:${gridW+SEAT_EDIT_GAP}px;"></span>`;
   // 격자선 간격 조절 손잡이 - 위쪽 눈금자에는 열 경계마다, 왼쪽 눈금자에는 줄 경계마다 작은 손잡이를 두고,
   // 끌면 그 경계 왼쪽(위쪽) 열(줄)의 크기가 바뀜. 두 번 누르면 기본 크기로 되돌아감
   let rulers = '';
