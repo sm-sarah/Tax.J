@@ -770,6 +770,8 @@
   /* [2026.09.30] 접속 표시 - 사진 옆 작은 초록 점 대신 이름 옆 "● 접속중" 칩(요청 · ②안), 마우스를 올리면 접속 기기 */
   .pres-online-chip{ flex:none; display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:800; color:#0E9F6E; background:var(--mint-bg); border-radius:999px; padding:1px 7px; white-space:nowrap; }
   .pres-online-chip i{ width:6px; height:6px; border-radius:50%; background:#10B981; display:inline-block; }
+  .pres-st-col{ flex:none; display:inline-flex; flex-direction:column; align-items:flex-end; gap:1px; }
+  .pres-st-time{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:700; color:var(--ink-soft); }
   .pres-sec-label{ font-size:10.5px; font-weight:800; color:var(--ink-soft); margin:0 0 2px 4px; letter-spacing:.02em; }
   .pres-acct-row.pres-b{ border-bottom:none; }
   #dashPresenceBody.pres-body-c{ display:flex; flex-direction:column; }
@@ -18711,11 +18713,13 @@ function renderDashboardPresence(){
       : r.kind === 'leave' ? (r.leaveType || '휴가')
       : '-';
     const devTip = r.online ? `지금 접속 중${r.device ? ' · '+r.device : ''}` : '';
+    // [2026.09.30] 출근·퇴근 시각(휴가면 휴가 종류)은 오른쪽 상태 글자 아래로, 이름 아래엔 접속 중인 기기(요청)
+    const subTime = subText === '-' ? '' : subText.replace(/ (출근|퇴근)$/, '');
     const stColor = (r.kind === 'none' || r.kind === 'done') ? 'var(--ink-soft)' : st.color;
     return `<div class="home-dash-pres-row pres-b" title="${escHtml(r.name)} · ${st.label}${devTip ? ' · '+devTip : ''}">
       <span class="home-dash-pres-av">${av}</span>
-      <div style="flex:1; min-width:0;"><div style="display:flex; align-items:center; gap:6px; min-width:0;"><span class="home-dash-pres-name">${escHtml(r.name)}</span>${r.online ? `<span class="pres-online-chip" title="${escHtml(devTip)}"><i></i>접속중</span>` : ''}</div><span class="home-dash-pres-dev">${escHtml(subText)}</span></div>
-      <span class="home-dash-pres-st" style="color:${stColor};"><i class="pres-dot" style="background:${(r.kind === 'none' || r.kind === 'done') ? 'var(--border)' : st.color};"></i>${st.label}</span>
+      <div style="flex:1; min-width:0;"><div style="display:flex; align-items:center; gap:6px; min-width:0;"><span class="home-dash-pres-name">${escHtml(r.name)}</span>${r.online ? `<span class="pres-online-chip" title="${escHtml(devTip)}"><i></i>접속중</span>` : ''}</div>${r.online && r.device ? `<span class="home-dash-pres-dev">${dashPresenceDevIcon(r.device)} ${escHtml(r.device)}</span>` : ''}</div>
+      <span class="pres-st-col"><span class="home-dash-pres-st" style="color:${stColor};"><i class="pres-dot" style="background:${(r.kind === 'none' || r.kind === 'done') ? 'var(--border)' : st.color};"></i>${st.label}</span>${subTime ? `<span class="pres-st-time">${escHtml(subTime)}</span>` : ''}</span>
     </div>`;
   }).join('');
   acctRows.sort((a,b)=> (b.inOffice - a.inOffice) || a.name.localeCompare(b.name, 'ko'));
@@ -35283,7 +35287,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.30 21:00';
+const APP_BUILD = '2026.09.30 21:10';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
