@@ -767,6 +767,9 @@
   .home-dash-pres-acct{ margin-bottom:8px; padding-bottom:4px; border-bottom:1.5px solid var(--border); }
   .home-dash-pres-acct .home-dash-pres-row.pres-b{ border-bottom:none; }
   .home-dash-pres-acct .home-dash-pres-name{ overflow:visible; white-space:nowrap; }
+  .s-photo-x{ position:absolute; top:-2px; right:-2px; width:22px; height:22px; padding:0; border-radius:50%; border:1.5px solid var(--surface); background:var(--coral); color:#fff; font-size:10px; font-weight:800; line-height:1; cursor:pointer; align-items:center; justify-content:center; opacity:0; transition:opacity .15s; box-shadow:0 2px 6px -2px rgba(29,30,51,0.4); }
+  .s-photo-wrap:hover .s-photo-x, .s-photo-x:focus{ opacity:1; }
+  @media (hover:none){ .s-photo-x{ opacity:1; } } /* 휴대폰은 마우스 올리기가 없어서 항상 보임 */
   .home-dash-pres-acct-tag{ display:inline-block; font-size:10.5px; font-weight:800; color:var(--navy); background:var(--indigo-bg); border-radius:999px; padding:1px 7px; margin-left:3px; vertical-align:1px; }
   .home-dash-pres-st .pres-dot{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:5px; vertical-align:1px; }
   /* 팀캘린더 달력 보기 */
@@ -4470,25 +4473,35 @@
         <div class="field" style="margin-top:14px;">
           <label>프로필 사진 <span style="font-weight:400;">(선택 - 안 올리면 이름 첫 글자가 색 동그라미로 보여요)</span></label>
           <div style="display:flex; align-items:center; gap:12px; justify-content:center; margin-bottom:4px;">
-            <div id="s-photo-preview" style="width:84px; height:84px; border-radius:50%; overflow:hidden; background:var(--indigo-bg); display:flex; align-items:center; justify-content:center; border:1.5px solid var(--border); flex-shrink:0; color:var(--indigo-deep);"></div>
+            <!-- [2026.09.30] 사진 삭제는 따로 버튼 없이, 사진에 마우스를 올리면 오른쪽 위에 ✕가 뜨게(요청) -->
+            <div class="s-photo-wrap" style="position:relative; flex-shrink:0;">
+              <div id="s-photo-preview" style="width:84px; height:84px; border-radius:50%; overflow:hidden; background:var(--indigo-bg); display:flex; align-items:center; justify-content:center; border:1.5px solid var(--border); flex-shrink:0; color:var(--indigo-deep);"></div>
+              <button type="button" id="s-photo-remove-btn" class="s-photo-x" title="사진 삭제" aria-label="사진 삭제" style="display:none;">✕</button>
+            </div>
             <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
               <label class="del-btn" title="사진 업로드" aria-label="사진 업로드" style="cursor:pointer; display:inline-flex; align-items:center; justify-content:center; width:fit-content; margin:0; padding:5px 8px;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path></svg>
                 <input type="file" id="s-photo-file" accept="image/*" style="display:none;">
               </label>
-              <button type="button" id="s-photo-remove-btn" class="del-btn" style="display:none; margin:0;">사진 제거</button>
               <!-- [2026.09.30] 색상표는 펼쳐두지 않고 이 버튼을 눌렀을 때만 보이게(요청) -->
               <button type="button" id="s-color-toggle-btn" class="del-btn" title="프로필 동그라미 색 고르기" aria-label="색 고르기" style="display:inline-flex; align-items:center; justify-content:center; margin:0; padding:5px 8px;"><svg id="s-color-toggle-dot" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 1 10-10c0 2.8-2.2 4-4 4h-2.2a1.8 1.8 0 0 0-1.3 3.1A1.8 1.8 0 0 1 12 22z"></path><circle cx="7.5" cy="10.5" r="1.4" fill="currentColor"></circle><circle cx="11" cy="6.8" r="1.4" fill="currentColor"></circle><circle cx="15.8" cy="8" r="1.4" fill="currentColor"></circle></svg></button>
+              <!-- [2026.09.30] 동그라미 글자 넣기 - "이니셜·자동" 대신 글자(T) 아이콘으로, 누르면 입력칸이 펼쳐짐(요청) -->
+              <button type="button" id="s-initial-toggle-btn" class="del-btn" title="동그라미에 넣을 글자 (사진이 없을 때)" aria-label="동그라미 글자" style="display:inline-flex; align-items:center; justify-content:center; margin:0; padding:5px 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 7 5 4 19 4 19 7"></polyline><line x1="12" y1="4" x2="12" y2="20"></line><line x1="9" y1="20" x2="15" y2="20"></line></svg></button>
             </div>
           </div>
           <input type="hidden" id="s-photo" value="">
         </div>
         <!-- [2026.09.30] "이니셜·자동이 무슨 뜻인지 헷갈린다"(요청) - 글자 직접 입력 칸은 화면에서 빼고(예전에 넣어둔 값은 그대로 유지),
              색상표는 위 "동그라미 색" 버튼을 눌렀을 때만 펼쳐짐 -->
+        <div class="field" id="s-initial-text-wrap" style="margin-top:4px; display:none; text-align:center;">
+          <div style="display:inline-flex; align-items:center; gap:8px;">
+            <input type="text" id="s-initial-text" maxlength="2" style="width:64px; text-align:center; font-weight:800;">
+            <span style="font-size:11.5px; color:var(--ink-soft);">동그라미에 넣을 글자 · 최대 2자 (예: JH) · 비우면 이름 첫 글자</span>
+          </div>
+        </div>
         <div class="field" id="s-avatar-picker-wrap" style="margin-top:4px; display:none;">
           <input type="hidden" id="s-avatar" value="">
           <input type="hidden" id="s-initial-color" value="">
-          <input type="hidden" id="s-initial-text" value="">
           <div id="s-avatar-picker" style="display:grid; grid-template-columns:repeat(8, 26px); gap:8px; justify-content:center;"></div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -9098,6 +9111,13 @@ function renderAvatarPicker(){
     });
   });
 }
+document.getElementById('s-initial-toggle-btn')?.addEventListener('click', ()=>{
+  const w = document.getElementById('s-initial-text-wrap'); if(!w) return;
+  const open = w.style.display === 'none';
+  w.style.display = open ? '' : 'none';
+  const inp = document.getElementById('s-initial-text');
+  if(open && inp){ inp.placeholder = ((document.getElementById('s-name')?.value || '').trim().charAt(0)) || ''; inp.focus(); }
+});
 document.getElementById('s-color-toggle-btn')?.addEventListener('click', ()=>{
   const pw = document.getElementById('s-avatar-picker-wrap'); if(!pw) return;
   pw.style.display = pw.style.display === 'none' ? '' : 'none';
@@ -9156,7 +9176,7 @@ function renderPhotoPreview(dataUrl){
       img.onload = ()=> openPhotoCropModal(img);
       img.src = dataUrl;
     };
-    if(removeBtn) removeBtn.style.display = '';
+    if(removeBtn) removeBtn.style.display = 'inline-flex';
   } else {
     const nm = (document.getElementById('s-name')?.value || '').trim();
     const col = document.getElementById('s-initial-color')?.value || staffDefaultInitialColor(nm);
@@ -10685,7 +10705,7 @@ async function openEmployeeModal(mode, profileId){
     // 입력/수정, 수정이력은 그 직원 프로필로 전환해서 기존 폼·이력 로직을 그대로 재사용
     setActiveProfileId(profileId);
     employeeFormFreshFill = true;
-    { const pw = document.getElementById('s-avatar-picker-wrap'); if(pw) pw.style.display = 'none'; }
+    { const pw = document.getElementById('s-avatar-picker-wrap'); if(pw) pw.style.display = 'none'; const iw = document.getElementById('s-initial-text-wrap'); if(iw) iw.style.display = 'none'; }
     await loadAll();
     // 직원등록 칩에서 이름만 먼저 등록해두고 아직 "입력/수정" 폼은 한 번도 저장한 적 없는 경우,
     // settings.employeeName이 비어있어서 폼에 이름이 빈 채로 뜨고, 그대로 저장하면 로스터 이름까지 지워짐 -> 미리 채워둠
@@ -35235,7 +35255,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.30 19:55';
+const APP_BUILD = '2026.09.30 20:10';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
