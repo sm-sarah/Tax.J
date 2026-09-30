@@ -6764,9 +6764,9 @@
             이름과 로그인할 구글 이메일을 등록하면, 아래 목록에 추가돼요. 그 직원이 처음 로그인할 때 자동으로 본인 프로필에 연결돼요.
           </p>
           <form id="addEmployeeForm" style="display:flex; flex-direction:column; gap:8px;">
-            <div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; justify-content:center;">
+            <div style="display:flex; gap:8px; align-items:stretch; flex-wrap:wrap; justify-content:center;">
               <div class="field field-tile" style="flex:1 1 120px; margin-bottom:0;"><label>이름</label><input type="text" id="new-employee-name" placeholder="예: 홍길동" required></div>
-              <div class="field field-tile" style="flex:1 1 110px; margin-bottom:0;"><label>직책 <span style="font-weight:400;">(선택)</span></label><input type="text" id="new-employee-position" placeholder="예: 대리"></div>
+              <div class="field field-tile" style="flex:1 1 110px; margin-bottom:0;"><label>직책</label><!-- [2026.09.30] 수정 창과 같이 드롭박스로(요청) - "회계사"로 고르면 대시보드 실시간 근무현황에서 회계사로 따로 표시됨 --><select id="new-employee-position-select"><option value="회계사">회계사</option><option value="매니저" selected>매니저</option><option value="직접입력">직접입력</option></select><input type="text" id="new-employee-position" placeholder="예: 대리" style="display:none; margin-top:4px;"></div>
               <div class="field field-tile" style="flex:1 1 180px; margin-bottom:0;"><label>구글 이메일 <span style="font-weight:400;">(선택)</span></label><input type="email" id="new-employee-email" placeholder="hong@gmail.com"></div>
             </div>
             <button type="submit" class="submit-btn settings-reg-btn settings-addbtn-topright" style="width:auto; padding:8px 16px;">등록</button>
@@ -33115,13 +33115,18 @@ document.getElementById('importOneFile').addEventListener('change', async (e)=>{
   e.target.value = '';
 });
 
+document.getElementById('new-employee-position-select')?.addEventListener('change', (e)=>{
+  const inp = document.getElementById('new-employee-position');
+  if(inp){ inp.style.display = e.target.value === '직접입력' ? '' : 'none'; if(e.target.value === '직접입력') inp.focus(); }
+});
 document.getElementById('addEmployeeForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
   const nameInput = document.getElementById('new-employee-name');
   const positionInput = document.getElementById('new-employee-position');
+  const positionSel = document.getElementById('new-employee-position-select');
   const emailInput = document.getElementById('new-employee-email');
   const name = nameInput.value.trim();
-  const position = positionInput ? positionInput.value.trim() : '';
+  const position = (positionSel && positionSel.value !== '직접입력') ? positionSel.value : (positionInput ? positionInput.value.trim() : '');
   const email = emailInput.value.trim().toLowerCase();
   if(!name) return;
   const profiles = getProfiles();
@@ -33131,7 +33136,8 @@ document.getElementById('addEmployeeForm').addEventListener('submit', async (e)=
   renderProfileSwitcher();
   renderEmployeeRoster();
   nameInput.value = '';
-  if(positionInput) positionInput.value = '';
+  if(positionInput){ positionInput.value = ''; positionInput.style.display = 'none'; }
+  if(positionSel) positionSel.value = '매니저';
   emailInput.value = '';
   // 등록이 끝나면 폼은 접어서 바로 아래 목록에 새로 추가된 직원이 잘 보이게 함
   const formWrap = document.getElementById('addEmployeeFormWrap');
@@ -35287,7 +35293,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.30 21:10';
+const APP_BUILD = '2026.09.30 21:20';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
