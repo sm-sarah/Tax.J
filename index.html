@@ -34977,7 +34977,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.30 17:10';
+const APP_BUILD = '2026.09.30 17:15';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -36447,8 +36447,13 @@ function seatChartCellPointerDown(e){
   const startX = e.clientX, startY = e.clientY;
   const startRect = el.getBoundingClientRect();
   let moved = false;
+  // [2026.09.30] "똑같은 칸이 두 개 생기고 하나는 안 움직인다" - 끄는 도중에 화면이 다시 그려지면(동기화 등) 원래 칸이
+  // 사라져서 손을 떼도 끝 처리가 안 불리고 고스트 사본이 화면에 그대로 남았음. 이전에 남은 고스트는 먼저 치우고,
+  // 움직임·손 떼기는 칸이 아니라 창(window) 전체에서 받아서 칸이 다시 그려져도 항상 끝 처리가 되게 함
+  document.querySelectorAll('.seat-drag-ghost').forEach(g=>g.remove());
   const ghost = el.cloneNode(true);
   ghost.removeAttribute('id');
+  ghost.classList.add('seat-drag-ghost');
   Object.assign(ghost.style, {
     position:'fixed', left:startRect.left+'px', top:startRect.top+'px',
     width:startRect.width+'px', height:startRect.height+'px', margin:'0',
@@ -36469,10 +36474,13 @@ function seatChartCellPointerDown(e){
       tray.classList.toggle('seat-tray-hover', over);
     }
   }
+  let finished = false;
   function finish(ev){
-    el.removeEventListener('pointermove', onMove);
-    el.removeEventListener('pointerup', finish);
-    el.removeEventListener('pointercancel', finish);
+    if(finished) return;
+    finished = true;
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', finish);
+    window.removeEventListener('pointercancel', finish);
     ghost.remove();
     if(tray) tray.classList.remove('seat-tray-hover');
     if(!moved){
@@ -36561,9 +36569,9 @@ function seatChartCellPointerDown(e){
     seatChartSelectedId = id;
     renderSeatChartEditPreview();
   }
-  el.addEventListener('pointermove', onMove);
-  el.addEventListener('pointerup', finish);
-  el.addEventListener('pointercancel', finish);
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', finish);
+  window.addEventListener('pointercancel', finish);
 }
 function renderSeatChartCellEditor(){
   const wrap = document.getElementById('seatChartCellEditorWrap');
