@@ -21925,13 +21925,20 @@ const FIXED_NATIONAL_HOLIDAYS = [
 // "캘린더에 재택으로 등록된 날은 출퇴근현황 근무지도 재택으로(25.11~26.6)" 요청 - 출퇴근기록 가져오기가 근무지를
 // 전부 "사무실"로 넣어서, 그 기간에 재택 등록이 있는 날인데 근무지가 사무실(또는 비어있음)인 기록만 재택으로
 // 한 번 고쳐줌. 직원별 근태 데이터에 완료 표시(remoteClockFix2511)를 남겨서 다시 돌지 않음(이후 직접 고친 값은 유지)
+// "6·7·8월도 재택 일정이 겹치는 날은 근무지 변경"(요청) - 같은 보정을 2026.06~08에도 한 번 더 적용(완료 표시 remoteClockFix2606, 6월은 겹쳐도 사무실인 기록만 바꾸므로 안전)
+const REMOTE_CLOCK_FIXES = [
+  { flag:'remoteClockFix2511', from:'2025-11-01', to:'2026-06-30' },
+  { flag:'remoteClockFix2606', from:'2026-06-01', to:'2026-08-31' }
+];
 function fixRemoteClockStatusIfNeeded(){
-  const FROM = '2025-11-01', TO = '2026-06-30';
+  REMOTE_CLOCK_FIXES.forEach(f=> fixRemoteClockStatusRange(f.flag, f.from, f.to));
+}
+function fixRemoteClockStatusRange(FLAG, FROM, TO){
   try{
     getProfiles().forEach(p=>{
       const isActive = p.id === activeProfileId;
       const att = isActive ? attendance : readProfileRaw(p.id, 'attendance');
-      if(!att || att.remoteClockFix2511) return;
+      if(!att || att[FLAG]) return;
       const inRange = (att.clockLog||[]).filter(e=> e.date >= FROM && e.date <= TO);
       if(!inRange.length) return; // 아직 기록이 안 들어온 기기에서는 표시만 남기지 않고 다음에 다시 확인
       let changed = 0;
@@ -21940,10 +21947,10 @@ function fixRemoteClockStatusIfNeeded(){
         const st = remoteClockStatusFor(e.date, att.remoteEntries||[]);
         if(st !== '사무실'){ e.status = st; changed++; }
       });
-      att.remoteClockFix2511 = true;
+      att[FLAG] = true;
       if(isActive){ attendance = att; try{ localStorage.setItem(skey('attendance'), JSON.stringify(att)); }catch(e){} gdriveScheduleSync(); }
       else writeProfileRaw(p.id, 'attendance', att);
-      if(changed) console.log(`[재택 근무지 보정] ${p.name||p.id}: ${changed}건`);
+      if(changed) console.log(`[재택 근무지 보정 ${FROM}~${TO}] ${p.name||p.id}: ${changed}건`);
     });
   }catch(e){ console.error('재택 근무지 보정 실패', e); }
 }
@@ -34260,7 +34267,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.30 13:37';
+const APP_BUILD = '2026.09.30 14:15';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
