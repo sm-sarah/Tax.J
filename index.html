@@ -765,10 +765,31 @@
   /* 근태현황·공지사항도 칩/목록 개수에 따라 카드 세로폭이 들쭉날쭉해 보인다는 요청 - 결재현황·세무일정과
      같은 방식(230px 고정 + 본문 스크롤)으로 맞춤. 다만 위젯 설정에서 일부러 세로형/큰 모양으로 키운
      경우는 그 의도를 존중해서 고정하지 않음 */
-  #homeDashboardGrid .home-dash-card[data-goto="attendance"]:not(.home-dash-card-tall):not(.home-dash-card-big),
-  #homeDashboardGrid #dashNoticeCard:not(.home-dash-card-tall):not(.home-dash-card-big){ height:230px; }
-  #homeDashboardGrid .home-dash-card[data-goto="attendance"] .home-dash-card-body,
-  #homeDashboardGrid #dashNoticeCard .home-dash-card-body{ min-height:0; overflow-y:auto; }
+  /* [2026.09.30 D안] 아래 선택 영역(경비정산·근태현황·신고 진행률·공지사항)은 모양 선택을 없애고, 모든 카드를
+     결재현황·세무일정과 같은 230px 고정 높이로 맞춤. 가로폭은 고른 개수에 따라 자동 - 1개: 전체, 2개: 반반,
+     3개: 3등분, 4개: 2칸씩 두 줄(data-count) */
+  #homeDashboardGrid .home-dash-card{ height:230px; padding:13px 14px; }
+  #homeDashboardGrid .home-dash-card .home-dash-card-body{ min-height:0; overflow-y:auto; }
+  .home-dashboard-grid[data-count="1"]{ grid-template-columns:1fr; }
+  .home-dashboard-grid[data-count="3"]{ grid-template-columns:repeat(3, 1fr); }
+  @container (max-width:640px){ .home-dashboard-grid[data-count]{ grid-template-columns:1fr; } }
+  /* 3등분일 때 근태현황 칩 3개가 가로로 안 들어가서 글자가 겹침 - 이때만 세로로 한 줄씩(라벨 왼쪽·값 오른쪽) */
+  .home-dashboard-grid[data-count="3"] .home-dash-mini-stat-row{ flex-direction:column; gap:6px; }
+  .home-dashboard-grid[data-count="3"] .home-dash-mini-stat-chip{ flex:none; padding:6px 11px; }
+  .home-dashboard-grid[data-count="3"] .home-dash-mini-stat-text{ flex:1; flex-direction:row; align-items:center; justify-content:space-between; gap:8px; }
+  .home-dashboard-grid[data-count="3"] .home-dash-mini-stat-value{ font-size:15px; }
+  /* 경비정산·신고 진행률 위젯의 막대(출퇴근 카드의 주간 근무시간 막대와 같은 모양) */
+  .home-dash-prog{ margin-bottom:10px; }
+  .home-dash-prog-labels{ display:flex; justify-content:space-between; gap:8px; font-size:11.5px; font-weight:700; color:var(--ink-soft); margin-bottom:4px; }
+  .home-dash-prog-labels b{ color:var(--ink); font-family:'IBM Plex Mono',monospace; font-weight:800; white-space:nowrap; }
+  .home-dash-prog-labels b.empty{ font-family:inherit; font-weight:700; color:var(--ink-soft); }
+  .home-dash-prog-labels span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .home-dash-prog-track{ height:9px; border-radius:6px; background:var(--bg); overflow:hidden; }
+  .home-dash-prog-fill{ height:100%; border-radius:6px; background:var(--prog-color, var(--indigo)); transition:width 0.4s ease; }
+  button.home-dash-prog{ display:block; width:100%; border:none; background:none; padding:0; font-family:inherit; text-align:left; cursor:pointer; }
+  button.home-dash-prog:hover .home-dash-prog-labels span{ color:var(--indigo-deep); }
+  .home-dash-prog-foot{ font-size:11.5px; font-weight:700; color:var(--ink-soft); margin-top:2px; }
+  .home-dash-prog-foot b{ font-family:'IBM Plex Mono',monospace; }
   @container (max-width:900px){ .home-dashboard-pinned-side{ grid-template-columns:1fr; } }
   /* 예전엔 여기서 pinned-side를 다시 1fr 1fr(2열)로 되돌려놔서, 정작 화면이 제일 좁은 휴대폰에서
      출퇴근·팀캘린더가 나란히 2열로 눌려 "출퇴근" 세 글자가 세로로 줄바꿈될 만큼 비좁아 보였음 - 좁을수록
@@ -890,6 +911,14 @@
   /* 공지사항 위젯 전용 열 - 제목·내용 가로폭이 서로 너무 차이 나 보인다는 의견으로 둘 다 넉넉한 width를 줘서
      남는 공간을 나눠 갖게 함(내용은 어차피 렌더링 전에 글자수로 잘라서 넣으니 폭이 늘어도 줄바꿈되진 않음) */
   .home-dash-table-col-title{ width:60%; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; color:var(--ink); font-weight:700; }
+  /* 공지사항 카드가 반칸·3등분처럼 좁아지면 제목이 길 때 작성자 칸이 오른쪽으로 잘렸음 - 칸 폭을 고정해서 항상 카드 안에 들어오게 함 */
+  #dashNoticeBody .home-dash-table{ table-layout:fixed; }
+  #dashNoticeBody .home-dash-table-col-date{ width:44px; }
+  #dashNoticeBody .home-dash-table-col-person{ width:64px; }
+  #dashNoticeBody .home-dash-table-col-title{ width:auto; }
+  #dashNoticeBody .home-dash-table-col-content{ width:34%; }
+  /* 3등분일 땐 칸이 너무 좁아 제목이 안 보여서 내용 칸을 숨김(제목을 누르면 전체 내용이 열림) */
+  .home-dashboard-grid[data-count="3"] #dashNoticeBody .home-dash-table-col-content{ display:none; }
   .home-dash-table-col-content{ width:60%; min-width:0; color:var(--ink-soft); font-size:12px; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .home-dash-table-row[data-approval-id]:hover, .home-dash-table-row[data-notice-id]:hover{ background:rgba(29,30,51,0.04); cursor:pointer; }
   /* 팀캘린더 위젯 - 옆의 출퇴근(freeform-hero) 카드와 세로폭이 안 맞아 혼자 짧아 보인다는 의견으로,
@@ -1129,6 +1158,10 @@
   .dashboard-config-preview-box.wide{ grid-column:1 / -1; }
   .dashboard-config-preview-box.tall{ grid-row:span 2; min-height:64px; }
   .dashboard-config-preview-box.big{ grid-column:1 / -1; grid-row:span 2; min-height:64px; }
+  /* 아래 선택 영역 미리보기 - 실제 대시보드처럼 고른 개수대로 폭이 나뉨 */
+  .dashboard-config-preview-flex{ grid-column:1 / -1; display:grid; grid-template-columns:repeat(2, 1fr); gap:6px; }
+  .dashboard-config-preview-flex[data-count="1"]{ grid-template-columns:1fr; }
+  .dashboard-config-preview-flex[data-count="3"]{ grid-template-columns:repeat(3, 1fr); }
   /* 체크박스가 라벨 글자와 따로 놀아서 정확히 작은 체크박스만 눌러야 했던 문제 - 체크박스+이름을
      <label> 하나로 묶어서 이름 텍스트 아무데나 눌러도 체크가 토글되게 하고, 크게/순서 버튼은
      오른쪽으로 확실히 떨어뜨려 둬서 실수로 다른 버튼이 눌리지 않게 함 */
@@ -1746,7 +1779,7 @@
   /* "경영지원실 카드를 직원 프로필 느낌으로, 메모는 평소엔 숨기고 아이콘으로"(요청) - 위쪽에 사진(없으면 아바타·성 글자)과
      이름·직위를 가운데로 모으고, 연락처는 아이콘과 한 줄씩. 메모는 카드 오른쪽 위 메모 아이콘을 누를 때만 작은 창으로 뜸 */
   .hr-card{ position:relative; }
-  .hr-card-profile{ display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; padding-top:4px; }
+  .hr-card-profile{ display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; padding-top:8px; }
   .hr-card-avatar{ width:56px; height:56px; border-radius:50%; background:var(--indigo-bg); color:var(--indigo-deep); display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800; overflow:hidden; flex:none; box-shadow:0 0 0 3px var(--surface), 0 0 0 4px var(--border); }
   .hr-card-avatar img{ width:100%; height:100%; object-fit:cover; }
   .hr-card-profile .hr-card-name{ justify-content:center; flex-direction:column; gap:4px; font-size:15px; }
@@ -1763,6 +1796,8 @@
   .hr-memo-btn:hover, .hr-memo-btn.on{ color:var(--indigo-deep); border-color:var(--indigo); background:var(--indigo-bg); }
   .hr-memo-pop{ position:absolute; top:44px; left:12px; right:12px; z-index:6; background:var(--surface); border:1px solid var(--border); border-radius:10px; box-shadow:0 10px 24px -8px rgba(29,30,51,.25); padding:10px 12px; font-size:12px; line-height:1.55; color:var(--ink); white-space:pre-wrap; word-break:keep-all; overflow-wrap:break-word; text-align:left; }
   .hr-memo-pop b{ display:block; font-size:11px; color:var(--ink-soft); margin-bottom:4px; }
+  .hr-memo-close{ position:absolute; top:6px; right:6px; width:22px; height:22px; border-radius:50%; border:none; background:transparent; color:var(--ink-soft); font-size:12px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; padding:0; }
+  .hr-memo-close:hover{ background:var(--bg); color:var(--ink); }
   .ci-two.ci-two-single{ grid-template-columns:minmax(0,1fr); max-width:620px; margin:0 auto; }
   .ci-two > div:empty{ display:none; }
   .ci-two:has(> div:empty){ grid-template-columns:minmax(0,1fr); max-width:620px; margin-left:auto; margin-right:auto; }
@@ -2876,6 +2911,17 @@
   .pair-btn.del-btn{ border-width:1.5px!important; font-weight:700; }
   /* (i)로 옮겨진 설명문(infoizeHints가 data-info-done 표시)은 어떤 화면 코드가 다시 보이게 해도 늘 숨김 - 설명이 이중으로 보이는 것 방지 */
   .hint[data-info-done]{ display:none !important; }
+  /* 동그란 아이콘 버튼(근태경비 경비등록·지출결의서, 개인캘린더 등록·일정) - pri는 남색 채움 */
+  .circle-ic-btn{ width:30px; height:30px; border-radius:50%; border:1.5px solid var(--border); background:var(--surface); color:var(--ink-soft); display:inline-flex; align-items:center; justify-content:center; padding:0; cursor:pointer; flex:none; }
+  .circle-ic-btn:hover{ color:var(--indigo-deep); border-color:var(--indigo); }
+  .circle-ic-btn.pri{ background:var(--indigo); border-color:var(--indigo); color:#fff; box-shadow:0 4px 10px -4px rgba(91,95,239,.5); }
+  .circle-ic-btn.pri:hover{ background:var(--indigo-deep); color:#fff; }
+  /* 제목 옆 투명 아이콘(근태현황 › 근태내역) */
+  .title-ic-btn{ border:none; background:transparent; color:var(--ink-soft); padding:2px; display:inline-flex; align-items:center; cursor:pointer; border-radius:6px; }
+  .title-ic-btn:hover{ color:var(--indigo); }
+  /* 근태경비 카드 A안(요청) - 위쪽 색 띠를 없애고 흰 카드 + 얇은 테두리(경영지원실 카드와 같은 톤). 도넛 색은 그대로 */
+  .card.card-hero{ border-top:none; border:1px solid var(--border); border-radius:14px; box-shadow:0 1px 2px rgba(29,30,51,.04); }
+  #tab-attendance[data-view="attendance"] .att-view-exp, #tab-attendance[data-view="expense"] .att-view-att{ display:none !important; }
   .ws-chip-row{ display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin:0 0 18px; }
   /* "상세설명은 각 항목별로"(요청) - 칩마다 화면 맨 위에 작은 소제목 + (i)를 둠(원래 소제목을 작게 보여주는 것) */
   .ws-pane-title{ display:flex; align-items:center; justify-content:center; gap:5px; font-size:13px; font-weight:800; color:var(--navy); margin:0 0 10px; }
@@ -3800,14 +3846,15 @@
      체크박스로 켜고 끌 수 있고 ▲▼로 순서를 바꿀 수 있음. 개인 화면 배치라 계정 공용 저장소가 아니라
      이 브라우저에만 저장됨(localStorage) -->
 <div id="dashboardConfigModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
-  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:460px; width:100%; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
-    <div data-info-title style="text-align:center; font-weight:800; font-size:15px; margin-bottom:4px;">대시보드 위젯 설정</div>
-    <p class="hint" data-info style="text-align:center; margin:0 0 12px;">아래 미리보기로 배치를 확인하면서 위젯별로 다듬어보세요.<br>맨 위는 고정된 항목이에요. 대시보드에 보여질 항목을 선택해요.<br>목록 왼쪽 손잡이(⠿)를 끌어서 순서를 바꿀 수 있어요.</p>
+  <!-- "저장·닫기 버튼 위치·크기가 이상하다"(요청) - 닫기(✕)는 다른 팝업처럼 오른쪽 위로, 저장은 다른 실행 버튼과 같은 크기로 -->
+  <div style="background:var(--surface); border-radius:16px; padding:16px 22px 20px; max-width:460px; width:100%; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4); position:relative;">
+    <button type="button" id="dashboardConfigCloseBtn" class="del-btn modal-close-btn" style="position:absolute; top:14px; right:16px;">✕</button>
+    <div data-info-title style="text-align:center; font-weight:800; font-size:15px; margin-bottom:4px; padding:4px 40px 0;">대시보드 위젯 설정</div>
+    <p class="hint" data-info style="text-align:center; margin:0 0 12px;">아래 미리보기로 배치를 확인하면서 위젯별로 다듬어보세요.<br>맨 위는 고정된 항목이에요. 대시보드에 보여질 항목을 선택해요.<br>목록 왼쪽 손잡이(⠿)를 끌어서 순서를 바꿀 수 있어요.<br>아래 줄 위젯은 높이가 같고, 고른 개수에 맞춰 폭이 자동으로 나뉘어요.</p>
     <div id="dashboardConfigPreview" class="dashboard-config-preview"></div>
     <div id="dashboardConfigList" style="display:flex; flex-direction:column; gap:6px;"></div>
     <div style="margin-top:16px; display:flex; justify-content:center; gap:8px;">
-      <button type="button" id="dashboardConfigSaveBtn" class="submit-btn" style="width:110px; padding:8px 0;">저장</button>
-      <button type="button" id="dashboardConfigCloseBtn" class="del-btn modal-close-btn">✕</button>
+      <button type="button" id="dashboardConfigSaveBtn" class="submit-btn data-btn">저장</button>
     </div>
   </div>
 </div>
@@ -4547,7 +4594,8 @@
     <div id="staffSubRow" style="display:none; flex-direction:column; align-items:center; gap:8px; margin-top:9px;">
       <div class="tab-group tg-staff">
         <button class="tab-btn" data-tab="calendar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> 개인캘린더</button>
-        <button class="tab-btn" data-tab="attendance"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 근태경비</button>
+        <button class="tab-btn" data-tab="attendance"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 근태현황</button>
+        <button class="tab-btn" data-tab="expensesettle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line><line x1="6" y1="15" x2="10" y2="15"></line></svg> 경비정산</button>
         <button class="tab-btn" data-tab="clockhistory"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 출퇴근현황</button>
       </div>
     </div>
@@ -4651,7 +4699,8 @@
           <div class="home-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> 개인</div>
           <div class="home-tiles" id="homeTilesStaff">
             <div class="home-submenu-item" data-goto="calendar"><span>개인캘린더</span></div>
-            <div class="home-submenu-item" data-goto="attendance"><span>근태경비</span></div>
+            <div class="home-submenu-item" data-goto="attendance"><span>근태현황</span></div>
+            <div class="home-submenu-item" data-goto="expensesettle"><span>경비정산</span></div>
             <!-- 대시보드 출퇴근 위젯의 "전체이력"과 같은 내용(월 선택해서 그 달 출퇴근 시각·근무시간을 보는)을
                  다른 메뉴들처럼 조회 화면으로 보여줌 - 예전엔 팝업이었는데 전용 메뉴가 생기면서 화면 전환으로 바꿈 -->
             <div class="home-submenu-item" data-goto="clockhistory"><span>출퇴근현황</span></div>
@@ -4789,7 +4838,9 @@
          자체를 보여주는 제목이 없었음. 처음엔 다른 탭들의 .section-title과 완전히 같은 모양(가운데 정렬,
          24px)으로 추가했는데, 바로 아래 큰 연월 글자(.cal-title-big)와 크기·굵기·색이 비슷해서 제목인지
          구분이 잘 안 갈 수 있다는 의견으로 .section-title-tab-header(작은 인디고색 라벨 + 밑줄)를 덧붙임 -->
-    <h2 class="section-title section-title-tab-header" style="justify-content:center;">근태경비</h2>
+    <!-- "근태현황과 경비정산을 메뉴로 분리"(요청) - 두 메뉴가 이 화면 하나를 같이 쓰고(직원·연월 선택 공유), 들어온 메뉴에 따라
+         data-view로 한쪽 묶음만 보여줌(activateTab 참고). 제목도 메뉴 이름으로 바뀜 -->
+    <h2 class="section-title section-title-tab-header" id="attTabTitle" style="justify-content:center;">근태현황</h2>
     <!-- id="workdaysAutoValue"(이번달 근무가능일수 값)과 id="quickPrintReportBtn"(지출결의서 출력)은
          칩 형태를 벗어나 각각 경비정산 제목 왼쪽 / 경비정산 카드 묶음 안쪽 우측 하단으로 옮겼어요.
          직원선택·조회월선택은 개인캘린더 탭 상단과 완전히 같은 스타일("이름 ‹ 2026년 9월 › 📅")로 가운데
@@ -4824,20 +4875,16 @@
     <!-- 예전엔 이 카드(그룹) 배경이 연보라로 채워지고 그림자까지 있어서, 그 안에 색깔 있는 카드(.card)들이
          또 들어있는 "박스 안에 박스" 느낌이 든다는 의견 - 배경/그림자를 없애고 옅은 테두리 선 하나로만
          묶어서(다른 flat 스타일 화면들과 같은 규칙) 안쪽 카드들이 더 도드라져 보이게 함 -->
-    <div class="settings-group" style="position:relative; padding-top:52px; background:transparent; box-shadow:none; border:1px solid rgba(29,30,51,0.16);">
+    <div class="settings-group att-view-att" style="position:relative; padding-top:28px; background:transparent; box-shadow:none; border:1px solid rgba(29,30,51,0.16);">
       <!-- "근태현황" 제목 옆이 아니라, 카드(그룹) 안쪽의 오른쪽 상단 모서리에 등록/일정/근태 버튼을 둠 -
            카드 밖(위쪽 그룹칩)으로 빠지지도, 가운데 제목 옆에 붙지도 않게 position:absolute로 모서리에
            고정하고, 버튼과 안 겹치도록 카드 위쪽에 여유 패딩을 둠. id는 그대로 유지해서 기존 클릭
            핸들러(openCalRegisterModal 등)가 위치와 무관하게 그대로 동작함. "등록" 버튼은 배경색
            (--indigo-bg)이 페이지 배경(--bg)과 거의 구분이 안 된다는 의견이 있어서 채워진 진한 인디고
            배경(흰 글자)으로 바꿔 대비를 줌 -->
-      <div style="position:absolute; top:16px; right:18px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-        <button type="button" id="calRegisterBtn" class="del-btn" style="background:var(--indigo); color:#fff;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 등록</button>
-        <button type="button" id="calScheduleHistoryBtn" class="del-btn" style="background:var(--mint-bg); color:var(--mint);" title="이달의 개인일정"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 일정</button>
-        <button type="button" id="calAttendanceHistoryBtn" class="del-btn" style="background:var(--amber-bg); color:var(--amber);" title="근태내역"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 근태</button>
-      </div>
       <div style="text-align:center; margin:0 0 18px;">
-        <div class="settings-group-title section-title-accent" style="font-size:19px; margin:0;">근태현황</div>
+        <!-- "근태 이력은 근태현황 제목 오른쪽 아이콘으로, 배경 투명"(요청) -->
+        <div class="settings-group-title section-title-accent" style="font-size:19px; margin:0; display:inline-flex; align-items:center; gap:6px;">근태현황<button type="button" id="calAttendanceHistoryBtn" class="title-ic-btn" title="근태내역" aria-label="근태내역"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 14"></polyline></svg></button></div>
       </div>
 
     <div class="summary-cards">
@@ -4876,11 +4923,13 @@
     </p>
     </div>
 
-    <div class="settings-group" style="position:relative; padding-top:52px; background:transparent; box-shadow:none; border:1px solid rgba(29,30,51,0.16);">
+    <div class="settings-group att-view-exp" style="position:relative; padding-top:52px; background:transparent; box-shadow:none; border:1px solid rgba(29,30,51,0.16);">
       <!-- "경비정산" 제목은 가운데 정렬하고, "경비 등록" 버튼은 제목 옆이 아니라 근태현황과 똑같이 카드
            안쪽 오른쪽 상단 모서리에 고정함(맨 위 그룹칩으로 빠지지도, 제목 옆에 붙지도 않게) -->
-      <div style="position:absolute; top:16px; right:18px;">
-        <button type="button" id="expenseRegisterBtn" class="del-btn" style="background:var(--coral-bg); color:var(--coral);" title="경비 등록"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 경비</button>
+      <div style="position:absolute; top:16px; right:18px; display:flex; gap:6px; align-items:center;">
+        <!-- "지출결의서·경비등록 버튼은 아이콘형(B안)"(요청) - 아래 따로 있던 출력 칩을 여기로 옮겨 나란히 둠 -->
+        <button type="button" id="quickPrintReportBtn" class="circle-ic-btn" title="지출결의서 출력" aria-label="지출결의서 출력"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></button>
+        <button type="button" id="expenseRegisterBtn" class="circle-ic-btn pri" title="경비 등록" aria-label="경비 등록"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
       </div>
       <div style="display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; margin-bottom:18px;">
         <span style="justify-self:end; font-size:11.5px; font-weight:700; color:var(--indigo-deep); white-space:nowrap; background:var(--indigo-bg); border-radius:999px; padding:4px 10px;">이번달 식대기준일수 <span class="num" id="workdaysAutoValue" style="font-size:12px; font-weight:800; color:var(--indigo-deep);">-</span></span>
@@ -4921,7 +4970,7 @@
         <div class="card-label">기타경비</div>
         <div class="card-value num" id="etcExpenseTotalDisplay">0원</div>
       </div>
-      <div class="card card-hero expense-history-card" data-kinds="prepaid" data-title="차액정산 이력" title="클릭하면 차액정산 이력을 볼 수 있어요" style="--accent:#64748B; border-top-color:var(--accent); cursor:pointer;">
+      <div class="card card-hero expense-history-card" data-kinds="prepaid" data-title="차액정산 이력" title="클릭하면 차액정산 이력을 볼 수 있어요" style="--accent:#64748B; cursor:pointer;">
         <div class="card-ring-wrap">
           <svg viewBox="0 0 64 64"><circle class="card-ring-bg" cx="32" cy="32" r="26"></circle></svg>
         </div>
@@ -4935,7 +4984,6 @@
          미리 보여줌(quickExpenseTotalsDisplay, renderExpense()에서 채움) -->
     <div style="display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap;">
       <div id="quickExpenseTotalsDisplay" style="font-size:11px; font-weight:700; color:var(--ink-soft); display:flex; gap:8px;"></div>
-      <button type="button" id="quickPrintReportBtn" style="cursor:pointer; border:none; background:var(--coral-bg); color:var(--coral); border-radius:8px; padding:5px 10px; font-size:11px; font-weight:800; font-family:inherit;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> 지출결의서 출력</button>
     </div>
 
     </div>
@@ -4994,7 +5042,12 @@
          다른 두 탭과 완전히 같은 위치(카드 바깥)로 옮김 -->
     <h2 class="section-title section-title-tab-header" style="justify-content:center;">개인캘린더</h2>
     <!-- "엑셀 아이콘이 달력 흰 카드 안에 있어 디자인을 해친다"(요청) - 카드 밖, 카드 오른쪽 위로 뺌(다른 화면의 엑셀 아이콘 줄과 같은 자리) -->
-    <div style="margin:-6px 0 8px;">
+    <!-- "등록·일정 이력은 개인캘린더로, 아이콘만"(요청) - 근태경비 화면에 있던 등록/일정 버튼을 옮겨 옴(id 그대로라 동작 같음) -->
+    <div style="margin:-6px 0 8px; display:flex; justify-content:space-between; align-items:center; gap:6px;">
+      <div style="display:flex; gap:6px;">
+        <button type="button" id="calRegisterBtn" class="circle-ic-btn pri" title="등록 (휴가·재택·일정)" aria-label="등록"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+        <button type="button" id="calScheduleHistoryBtn" class="circle-ic-btn" title="이달의 개인일정" aria-label="이달의 개인일정"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></button>
+      </div>
       <div class="xls-io-slot"><button type="button" class="del-btn xls-io-btn" data-xls="calendar" data-xls-act="down" title="엑셀 받기" aria-label="엑셀 받기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2" y="2" width="12" height="12" rx="2"></rect><line x1="2" y1="6.5" x2="14" y2="6.5"></line><line x1="6.5" y1="2" x2="6.5" y2="14"></line><path d="M19 8v14"></path><path d="M15 18l4 4 4-4"></path></svg></button><button type="button" class="del-btn xls-io-btn" data-xls="calendar" data-xls-act="up" title="엑셀 올리기 (추가 또는 교체)" aria-label="엑셀 올리기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2" y="2" width="12" height="12" rx="2"></rect><line x1="2" y1="6.5" x2="14" y2="6.5"></line><line x1="6.5" y1="2" x2="6.5" y2="14"></line><path d="M19 22V8"></path><path d="M15 12l4-4 4 4"></path></svg></button></div>
     </div>
     <div class="calendar-panel">
@@ -6893,7 +6946,7 @@
             <tr><td>거래처 › 설정</td><td>관리비밀번호 설정·변경</td><td>잠금 화면</td></tr>
             <tr><td>사내정보<br>(공용정보·팀원별정보)</td><td>보기 + 등록·수정</td><td>보기 (암호화 값은 관리비밀번호 입력)</td></tr>
             <tr><td>거래처 개인정보</td><td>관리비밀번호로 열람·수정</td><td>관리비밀번호로 열람</td></tr>
-            <tr><td>근태경비·출퇴근·캘린더</td><td>다른 직원으로 바꿔 보기</td><td>본인으로 고정</td></tr>
+            <tr><td>근태현황·경비정산·출퇴근·캘린더</td><td>다른 직원으로 바꿔 보기</td><td>본인으로 고정</td></tr>
             <tr><td>대시보드 출퇴근</td><td>직원 선택 가능</td><td>본인만</td></tr>
             <tr><td>공지사항</td><td>전체·개인 공지, 중요 표시, 모든 공지 수정·삭제</td><td>개인 공지만 작성, 본인 공지만 수정·삭제</td></tr>
             <tr><td>결재</td><td>모든 문서 삭제·의견</td><td>본인 기안만 삭제, 관련 문서만 의견</td></tr>
@@ -7734,7 +7787,7 @@ function renderMyPushDeviceList(){
     const byAdmin = t.adminReRegAt && (!t.selfReRegAt || t.adminReRegAt > t.selfReRegAt);
     const star = byAdmin ? `<sup title="관리자가 재등록했어요 (${escHtml(fmtShort(t.adminReRegAt))})" style="color:var(--indigo); font-weight:800; cursor:help; margin-left:1px;">*</sup>` : '';
     const pendingTag = (admin && reqPending) ? ` · <span style="color:var(--amber); font-weight:700;" title="그 기기에서 앱이 열리면 자동으로 다시 등록돼요">재등록 대기</span>` : '';
-    const testBtn = `<button type="button" class="del-btn my-push-device-test-btn" data-id="${t.id}" title="테스트 알림 보내기" aria-label="테스트 알림 보내기" style="font-size:11px; padding:4px 8px; display:inline-flex; align-items:center;">${bellSvg}</button>`;
+    const testBtn = `<button type="button" class="del-btn my-push-device-test-btn" data-id="${t.id}" title="테스트 알림 보내기 (일반·출근·퇴근)" aria-label="테스트 알림 보내기" style="font-size:11px; padding:4px 8px; display:inline-flex; align-items:center;">${bellSvg}</button>`;
     return `<div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-bottom:1px solid var(--border);">
       <span style="flex:0 0 auto; font-size:11px; color:var(--ink-soft); width:16px;">${idx+1}</span>
       <span style="flex:1 1 auto; font-size:12px; color:var(--ink);">${isThis ? `${devName} <span style="color:var(--navy);">(현재 기기)</span>` : devName} · 마지막 등록 ${escHtml(dateLabel)}${star}${pendingTag}</span>
@@ -8367,7 +8420,7 @@ async function sendPushForLogEntry(entry){
     await fetch(PUSH_SEND_ENDPOINT, {
       method: 'POST',
       headers: await pushAuthHeaders(),
-      body: JSON.stringify({ tokens: targets.map(t=>t.token), title: entry.title || 'Tax.J', body: entry.body || '', requireInteraction: true, link: notificationDeepLinkUrl(entry), ...(entry.pushIcon ? { icon: entry.pushIcon } : {}) })
+      body: JSON.stringify({ tokens: targets.map(t=>t.token), title: entry.title || 'Tax.J', body: noticePlainText(entry.body || ''), requireInteraction: true, link: notificationDeepLinkUrl(entry), ...(entry.pushIcon ? { icon: entry.pushIcon } : {}) })
     });
     // 이 알림을 실제로 보냈다는 걸(지연 없이) 드라이브에 최대한 빨리 반영해서, 다른 기기가 이어서
     // alreadyPushedRemotely로 확인할 때 곧바로 알 수 있게 함
@@ -9877,7 +9930,7 @@ function checkNewNoticesForBrowserNotify(){
   (sharedNoticeHistory||[]).forEach(n=>{
     const mine = (n.authorName||'') === me0;
     if(mine && !recentNotice(n)) return; // 내가 쓴 옛 공지는 새로 알리지 않음
-    pushNotificationLogEntry({ type:'notice', icon:'notice', title:`새 공지: ${n.title || '(제목 없음)'}`, body:(n.content||'').slice(0,150), author:n.authorName||'', targetEmail:'*', relatedId:n.id, eventAt:n.savedAt||'', noPush: !mine || !isRecentLocalAction('notice') });
+    pushNotificationLogEntry({ type:'notice', icon:'notice', title:`새 공지: ${n.title || '(제목 없음)'}`, body:noticePlainText(n.content, 150), author:n.authorName||'', targetEmail:'*', relatedId:n.id, eventAt:n.savedAt||'', noPush: !mine || !isRecentLocalAction('notice') });
   });
   if(!noticeNotifyEnabled() || !myNotifPref('notice')) return;
   if(typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
@@ -9885,10 +9938,14 @@ function checkNewNoticesForBrowserNotify(){
   try{ notified = JSON.parse(localStorage.getItem('worklog_notified_notice_ids') || '[]'); }catch(e){ notified = []; }
   const notifiedSet = new Set(notified);
   const me = currentStaffDisplayName();
-  const fresh = sharedNoticeHistory.filter(n => !notifiedSet.has(n.id) && (n.authorName||'') !== me);
+  // [2026.09.30] "회계사님 PC에 새 공지 알림이 2개씩 온다" - 결재 알림과 똑같은 원인. 이 기기(내 이메일)에 푸시가
+  // 등록돼 있으면 시스템 푸시가 이미 오므로, 탭이 직접 띄우는 이 알림은 건너뜀(결재 쪽 myTokenRegistered와 같은 방식)
+  const myEmailN = (currentUserEmail||'').toLowerCase();
+  const myTokenRegisteredN = (sharedPushTokens||[]).some(t => (t.email||'').toLowerCase() === myEmailN);
+  const fresh = myTokenRegisteredN ? [] : sharedNoticeHistory.filter(n => !notifiedSet.has(n.id) && (n.authorName||'') !== me);
   fresh.forEach(n=>{
     try{
-      const notif = new Notification(`새 공지: ${n.title || '(제목 없음)'}`, { body: (n.content||'').slice(0,150), tag: 'notice-'+n.id, icon: notificationIconDataUri('notice'), requireInteraction: true });
+      const notif = new Notification(`새 공지: ${n.title || '(제목 없음)'}`, { body: noticePlainText(n.content, 150), tag: 'notice-'+n.id, icon: notificationIconDataUri('notice'), requireInteraction: true });
       notif.onclick = ()=>{ window.focus(); activateTab('notice', true); setTimeout(()=>openNoticeViewPopup(n), 80); };
     }catch(e){ console.error('알림 표시 실패', e); }
   });
@@ -10981,7 +11038,7 @@ async function resendNotificationById(id){
     await fetch(PUSH_SEND_ENDPOINT, {
       method: 'POST',
       headers: await pushAuthHeaders(),
-      body: JSON.stringify({ tokens: targets.map(t=>t.token), title, body: n.body||'' })
+      body: JSON.stringify({ tokens: targets.map(t=>t.token), title, body: noticePlainText(n.body||'') })
     });
     showCenterToast('등록된 기기로 알림을 다시 보냈어요');
   }catch(e){
@@ -11630,7 +11687,7 @@ async function loadAll(){
 }
 
 async function saveSettings(){ try{ localStorage.setItem(skey('settings'), JSON.stringify(settings)); syncProfileName(); }catch(e){ console.error('설정 저장 실패', e); } gdriveScheduleSync(); }
-async function saveAttendance(){ markLocalAction('schedule'); try{ localStorage.setItem(skey('attendance'), JSON.stringify(attendance)); }catch(e){ console.error('근태 저장 실패', e); } gdriveScheduleSync();
+async function saveAttendance(){ markLocalAction('schedule'); try{ syncRemoteClockStatus(attendance); }catch(e){} try{ localStorage.setItem(skey('attendance'), JSON.stringify(attendance)); }catch(e){ console.error('근태 저장 실패', e); } gdriveScheduleSync();
   // 재택·휴가도 등록하는 즉시 팀 알림(푸시)이 가도록 - 일정(saveSchedule)과 같은 처리
   if(typeof checkNewTeamScheduleForBrowserNotify === 'function') checkNewTeamScheduleForBrowserNotify(); }
 async function saveExpense(){ try{ localStorage.setItem(skey('expense'), JSON.stringify(expense)); }catch(e){ console.error('경비 저장 실패', e); } gdriveScheduleSync(); }
@@ -13870,14 +13927,13 @@ function openClientDetailModal(c){
   // 6) 개인정보(암호화) - 잠겨있으면 이 팝업 안에서 바로 비밀번호를 물어보고 풀 수 있게 함(클릭 한 번으로 전체 조회)
   // 다른 구획과 같은 group() 헬퍼를 써서 제목 띠 스타일이 똑같이 적용되게 함(예전엔 이 구간만 따로
   // 하드코딩돼 있어서 소제목 스타일을 바꿔도 여기만 안 바뀌는 문제가 있었음)
-  html += group('개인정보', '<div id="clientDetailPiWrap"></div>');
+  // 개인정보(ID/PW)는 표의 ID/PW 아이콘 칸으로 옮기면서 전체정보 창에서는 뺌(요청)
 
   // 수정/이력/삭제 아이콘 줄은 이제 본문(memoModalBody) 맨 위, "기본정보" 카드 바로 위 한 줄로 렌더링되므로
   // (clientDetailIconRow, 위 참고) 상단 sticky 제목 줄(#memoModalTitleExtra)은 비워둠
   document.getElementById('memoModalTitleExtra').innerHTML = '';
   document.getElementById('memoModalBody').innerHTML = html;
   document.getElementById('memoModalOverlay').style.display = 'flex';
-  renderClientDetailPersonalInfoSection(c);
   wireClientDetailHeadIcons(c, 'detail');
 }
 // 거래처 표의 "메모" 열 아이콘을 눌렀을 때 - 상세정보 팝업(openClientDetailModal) 안에 묻혀있던 메모를
@@ -13910,20 +13966,21 @@ function openClientMemoModal(c){
 // openClientDetailModal 하단의 "개인정보" 구간 - 잠겨있으면 그 자리에서 바로 비밀번호를 물어보고, 풀리면
 // 홈택스/여신금융협회/통장비밀번호 등 등록된 항목을 전부 ID/PW·정보·비고 형태로 보여줌. 다른 항목(기본정보 등)과
 // 시각적으로 통일되도록 같은 rowHtml 스타일(라벨 왼쪽, 값 오른쪽, 일반 글꼴)로 표시함
-async function renderClientDetailPersonalInfoSection(c){
-  const wrap = document.getElementById('clientDetailPiWrap');
+async function renderClientDetailPersonalInfoSection(c, wrapId){
+  wrapId = wrapId || 'clientDetailPiWrap';
+  const wrap = document.getElementById(wrapId);
   if(!wrap) return;
   const admin = !!gdriveAccessToken; // 조회는 비밀번호만 알면 누구나(로그인 상태면)
   const unlocked = admin && adminSensitiveUnlocked && adminCryptoKey && adminSensitiveUnlockUntil && Date.now() < adminSensitiveUnlockUntil;
   if(!unlocked){
     // 설명 문구 없이 자물쇠 아이콘 버튼만 - 다른 잠금해제 버튼들과 같은 스타일
     wrap.innerHTML = `<div style="text-align:center; padding:4px 0;">
-      <button type="button" id="clientDetailPiUnlockBtn" title="비밀번호 입력하고 보기" style="border:none; background:var(--pink-bg, #FCE7F3); color:var(--pink, #DB2777); width:36px; height:36px; border-radius:50%; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;"><svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 7a5 5 0 113.61 4.804l-1.903 1.903A1 1 0 019 14H8v1a1 1 0 01-1 1H6v1a1 1 0 01-1 1H3a1 1 0 01-1-1v-2a1 1 0 01.293-.707L8.196 8.39A5.002 5.002 0 018 7zm5-3a.75.75 0 000 1.5A1.5 1.5 0 0114.5 7 .75.75 0 0016 7a3 3 0 00-3-3z" clip-rule="evenodd"/></svg></button>
+      <button type="button" data-pi-unlock="1" title="비밀번호 입력하고 보기" style="border:none; background:var(--pink-bg, #FCE7F3); color:var(--pink, #DB2777); width:36px; height:36px; border-radius:50%; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;"><svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 7a5 5 0 113.61 4.804l-1.903 1.903A1 1 0 019 14H8v1a1 1 0 01-1 1H6v1a1 1 0 01-1 1H3a1 1 0 01-1-1v-2a1 1 0 01.293-.707L8.196 8.39A5.002 5.002 0 018 7zm5-3a.75.75 0 000 1.5A1.5 1.5 0 0114.5 7 .75.75 0 0016 7a3 3 0 00-3-3z" clip-rule="evenodd"/></svg></button>
     </div>`;
-    document.getElementById('clientDetailPiUnlockBtn')?.addEventListener('click', async ()=>{
+    wrap.querySelector('[data-pi-unlock]')?.addEventListener('click', async ()=>{
       if(!admin){ appAlert('로그인한 상태여야 볼 수 있어요.'); return; }
       await unlockSensitiveView();
-      renderClientDetailPersonalInfoSection(c);
+      renderClientDetailPersonalInfoSection(c, wrapId);
     });
     return;
   }
@@ -14186,6 +14243,12 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
     // "메모를 상세정보 팝업 안에 묻어두지 말고, 폴더처럼 표에서 바로 눌러서 따로 보고 싶다"는 요청으로
     // 폴더 열 바로 오른쪽에 메모 열을 추가함 - 등록된 메모가 있으면 진한 색(indigo)+채워진 아이콘, 없으면
     // 폴더 버튼처럼 옅게 비활성 표시. 클릭하면 openClientMemoModal()이 그 거래처 메모만 따로 띄워줌
+    // "개인정보는 따로 볼 일이 많아서 폴더 오른쪽에 아이콘으로"(요청) - 누르면 그 거래처 개인정보만 작은 창으로(잠겨 있으면 비밀번호 먼저)
+    const piRec = (typeof findPersonalInfoForClient === 'function') ? findPersonalInfoForClient(c) : null;
+    const piSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><circle cx="7.5" cy="15.5" r="4.5"></circle><path d="m10.7 12.3 8.8-8.8"></path><path d="m15.5 7.5 3 3"></path><path d="m18 5 2 2"></path></svg>`;
+    const piBtn = (piRec && piRec.sensitiveEnc)
+      ? `<button type="button" class="del-btn client-action-btn client-icon-plain client-pi-btn" data-id="${c.id}" title="ID/PW 보기" style="color:var(--pink, #DB2777);">${piSvg}</button>`
+      : `<button type="button" class="del-btn client-action-btn client-icon-plain" disabled style="opacity:0.4; cursor:default; color:var(--pink, #DB2777);" title="등록된 ID/PW 없음">${piSvg}</button>`;
     const memoListForBtn = (c.memos && c.memos.length) ? c.memos : (c.memo ? [{text:c.memo}] : []);
     const memoSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line></svg>`;
     const memoBtn = memoListForBtn.length
@@ -14203,6 +14266,7 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
       <td class="num cvb">${escHtml(c.contractDate||'-')}</td>
       <td class="num cvb">${escHtml(c.start||'-')}</td>${terminationCells}
       <td>${folderBtn}</td>
+      <td>${piBtn}</td>
       <td>${memoBtn}</td>
     </tr>`;
   }).join('');
@@ -14215,8 +14279,10 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
     ? `<th class="cvb" id="clFeeHeaderTh"><span style="display:inline-flex; align-items:center; gap:4px;">수임료 <button type="button" id="clFeeIconBtn" title="월별 수임료 합계 조회" style="border:none; background:transparent; color:var(--mint); cursor:pointer; padding:0; display:inline-flex; align-items:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></button></span></th>`
     : '<th class="cvb">수임료</th>';
   const folderColHeader = `<th class="cvb" style="color:#B45309;">폴더</th>`;
+  // 제목은 "ID/PW" - 옆 칸(폴더·메모) 두 글자 제목과 칸 폭이 비슷하게 글자를 조금 작고 촘촘하게
+  const piColHeader = `<th class="cvb" style="color:var(--pink, #DB2777); font-size:10.5px; letter-spacing:-0.02em; white-space:nowrap;">ID/PW</th>`;
   const memoColHeader = `<th class="cvb" style="color:var(--indigo-deep);">메모</th>`;
-  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th class="cvb">순번</th>${groupNoHeader}<th class="cvb">수임구분</th><th class="cvb">사업자구분</th><th class="cvb">상호명</th><th class="cvb">사업자번호</th><th class="cvb">법인등록번호</th><th class="cvb">대표자</th>${feeHeader}<th class="cvb">계약일</th><th class="cvb">수임시작일</th>${terminationHeaders}${folderColHeader}${memoColHeader}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  wrap.innerHTML = `<div class="table-scroll"><table><thead><tr><th class="cvb">순번</th>${groupNoHeader}<th class="cvb">수임구분</th><th class="cvb">사업자구분</th><th class="cvb">상호명</th><th class="cvb">사업자번호</th><th class="cvb">법인등록번호</th><th class="cvb">대표자</th>${feeHeader}<th class="cvb">계약일</th><th class="cvb">수임시작일</th>${terminationHeaders}${folderColHeader}${piColHeader}${memoColHeader}</tr></thead><tbody>${rows}</tbody></table></div>`;
   if(isRegularFeeTable){
     wrap.querySelector('#clFeeIconBtn')?.addEventListener('click', (e)=>{
       e.stopPropagation();
@@ -14229,6 +14295,17 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
       const c = clients.list.find(x=>x.id===btn.dataset.id);
       if(!c) return;
       openClientMemoModal(c);
+    });
+  });
+  wrap.querySelectorAll('.client-pi-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const c = clients.list.find(x=>x.id===btn.dataset.id);
+      if(!c) return;
+      const wid = 'clientPiPop_' + c.id;
+      document.getElementById(wid)?.closest('.floating-popup')?.querySelector('.floating-popup-close')?.click();
+      openDraggablePopup({ title: `${c.name || ''} · ID/PW`, html: `<div id="${wid}" style="padding:2px 4px;"></div>`, width: 420 });
+      renderClientDetailPersonalInfoSection(c, wid);
     });
   });
   wrap.querySelectorAll('.client-subtype-marker').forEach(marker=>{
@@ -17072,7 +17149,7 @@ let activeTopGroup = null; // null | 'management' | 'staff' | 'client'
 let currentActiveTabName = null; // updateSubRows가 '지금 어느 탭으로 가는 중인지' 알아야 할 때 씀(거래처 설정 하위메뉴 분기 등)
 
 const MANAGEMENT_TABS = ['teamcalendar','quickguide','policy','companyinfo','approval'];
-const STAFF_TABS = ['calendar','attendance','clockhistory'];
+const STAFF_TABS = ['calendar','attendance','expensesettle','clockhistory'];
 const CLIENT_TABS = ['clients-regular','clients-other','clients-edit','clients-terminated','clients-settings'];
 
 function updateNavVisibility(){
@@ -17172,8 +17249,10 @@ async function activateTab(tabName, pushHistory){
   // 지워서 다음에 이 화면에 다시 들어왔을 때는 항상 본인 계정부터 보이게 함(다른 직원을 계속 보고 있다는
   // 걸 잊고 실수로 등록/수정하는 걸 막기 위함) - 같은 화면 안에서의 이동(예: 탭은 그대로인 채 월만 바뀜)엔
   // 영향 없고, 정말 다른 메뉴로 넘어갈 때만 지움
-  if(tabName !== currentActiveTabName && ['calendar','attendance','clockhistory','home'].includes(currentActiveTabName)){
-    setViewAsProfileId(currentActiveTabName, '');
+  // 근태현황·경비정산은 같은 화면(직원 선택 공유)이라 둘 사이를 오갈 때는 보던 직원을 지우지 않음
+  const viewAsKey = t => t === 'expensesettle' ? 'attendance' : t;
+  if(viewAsKey(tabName) !== viewAsKey(currentActiveTabName) && ['calendar','attendance','clockhistory','home'].includes(viewAsKey(currentActiveTabName))){
+    setViewAsProfileId(viewAsKey(currentActiveTabName), '');
   }
   currentActiveTabName = tabName;
   // 개인캘린더/근태경비/출퇴근현황/홈(출퇴근 카드)은 화면마다 "마지막으로 봤던 직원"을 따로 기억해두므로, 그
@@ -17183,6 +17262,8 @@ async function activateTab(tabName, pushHistory){
   // 아래 여러 탭별 렌더보다 먼저 실행해야 그 렌더들이 최신 데이터를 씀
   if(tabName === 'calendar' || tabName === 'attendance' || tabName === 'clockhistory' || tabName === 'home'){
     await applyScreenViewAs(tabName);
+  } else if(tabName === 'expensesettle'){
+    await applyScreenViewAs('attendance');
   }
   if(tabName === 'home'){
     navExpanded = false;
@@ -17233,7 +17314,10 @@ async function activateTab(tabName, pushHistory){
   if(typeof syncTopRightIcons === 'function') syncTopRightIcons();
   const needsLogin = tabName !== 'home' && !gdriveAccessToken;
   pendingTabAfterLogin = needsLogin ? tabName : null;
-  document.getElementById(needsLogin ? 'tab-loginlock' : 'tab-'+tabName).classList.add('active');
+  // 경비정산 메뉴는 근태현황 화면(tab-attendance)을 같이 쓰고 경비 묶음만 보여줌
+  const attSec = document.getElementById('tab-attendance');
+  if(attSec){ attSec.dataset.view = tabName === 'expensesettle' ? 'expense' : 'attendance'; const tt = document.getElementById('attTabTitle'); if(tt) tt.textContent = tabName === 'expensesettle' ? '경비정산' : '근태현황'; }
+  document.getElementById(needsLogin ? 'tab-loginlock' : (tabName === 'expensesettle' ? 'tab-attendance' : 'tab-'+tabName)).classList.add('active');
   // 새로고침해도 지금 보던 화면으로 돌아올 수 있게 마지막 탭을 기억해둠
   try{ localStorage.setItem('worklog_last_tab', tabName); }catch(e){}
   // 뒤로가기를 누르면 이 앱 안의 이전 화면으로 돌아오도록 브라우저 방문기록에 남겨둠
@@ -17402,13 +17486,16 @@ const DASHBOARD_WIDGET_DEFS = {
   approval:    { label:'결재현황', mandatory:true, accent:'var(--amber)' }, // 출퇴근(인디고)과 아이콘 색이 겹쳐서 앰버로
   notice:      { label:'공지사항', accent:'var(--guide-wine)' },
   taxSchedule: { label:'세무일정', mandatory:true, accent:'var(--guide-slate)' },
+  // [2026.09.30 D안] 아래 선택 영역에 경비정산·신고 진행률 추가
+  expense:     { label:'경비정산', accent:'var(--guide-teal)' },
+  filing:      { label:'신고 진행률', accent:'var(--navy)' },
 };
 // 출퇴근/팀캘린더/결재현황/세무일정은 "위젯 설정"에서 켜고 끄거나 순서를 바꿀 수 있는 자유 배치 영역이
 // 아니라, 항상 대시보드 맨 위에 고정되는 "고정 영역"(pinned row)에 따로 그려짐 - 아래 order/enabled는
 // 그 아래 자유 배치 영역(공지사항/근태현황 + 앞으로 늘어날 위젯들)에만 적용됨
 const DASHBOARD_PINNED_WIDGET_KEYS = ['clock','calendar','approval','taxSchedule'];
 const DASHBOARD_FLEXIBLE_WIDGET_KEYS = Object.keys(DASHBOARD_WIDGET_DEFS).filter(k=>!DASHBOARD_PINNED_WIDGET_KEYS.includes(k));
-const DASHBOARD_WIDGET_DEFAULT_ORDER = [...DASHBOARD_FLEXIBLE_WIDGET_KEYS];
+const DASHBOARD_WIDGET_DEFAULT_ORDER = ['expense','attendance','filing','notice'];
 const DASHBOARD_WIDGET_DEFAULT_ENABLED = ['notice'];
 // 위젯 모양 4종 - 기본(1칸) / wide(가로 전체) / tall(세로 2행) / big(가로 전체+세로 2행)
 const DASHBOARD_SHAPES = { normal:{label:'기본'}, wide:{label:'가로형'}, tall:{label:'세로형'}, big:{label:'크게'} };
@@ -17489,6 +17576,8 @@ function dashCardTitleIcon(key){
     approval:   `<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>`,
     notice:     `<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>`,
     taxSchedule:`<path d="M4 2h16v18l-2-1-2 1-2-1-2 1-2-1-2 1-2-1-2 1z"></path><line x1="8" y1="7" x2="16" y2="7"></line><line x1="8" y1="11" x2="16" y2="11"></line>`,
+    expense:    `<rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line><line x1="6" y1="15" x2="10" y2="15"></line>`,
+    filing:     `<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1"></rect><polyline points="9 14 11 16 15 12"></polyline>`,
   };
   return `<span class="home-dash-card-title-badge"><svg ${common}>${paths[key]||''}</svg></span>`;
 }
@@ -17502,6 +17591,8 @@ function dashboardWidgetHtml(key, shape){
     approval:   { goto:'approval', title:'결재현황', link:'바로가기 →', bodyId:'dashApprovalAllBody', badgeId:'dashApprovalCountBadge' },
     notice:     { id:'dashNoticeCard', title:'공지사항', link:'더보기 →', bodyId:'dashNoticeBody' },
     taxSchedule:{ title:'세무일정', link:'', bodyId:'dashTaxScheduleBody' },
+    expense:    { goto:'expensesettle', title:'경비정산', link:'바로가기 →', bodyId:'dashExpenseBody' },
+    filing:     { id:'dashFilingCard', title:'신고 진행률', link:'바로가기 →', bodyId:'dashFilingBody' },
   };
   const d = defs[key];
   if(!d) return '';
@@ -17537,9 +17628,14 @@ function renderHomeDashboardGrid(){
   }
   // 그 아래 자유 배치 영역 - 공지사항/근태현황(+ 앞으로 늘어날 위젯들)은 예전처럼 ⚙ 위젯 설정에서
   // 켜고 끄거나 순서·모양을 자유롭게 바꿀 수 있음
+  // [2026.09.30 D안] 모양 선택 없이 모두 같은 크기(230px) - 폭은 고른 개수(data-count)에 따라 CSS가 자동으로 나눔
   const cfg = getDashboardConfig();
   const keys = cfg.order.filter(k=>cfg.enabled.has(k));
-  if(grid) grid.innerHTML = keys.map(k=>dashboardWidgetHtml(k, cfg.shape[k])).join('');
+  if(grid){
+    grid.innerHTML = keys.map(k=>dashboardWidgetHtml(k, 'normal')).join('');
+    grid.dataset.count = String(keys.length);
+    grid.style.display = keys.length ? '' : 'none';
+  }
   // 예전엔 카드 어디를 눌러도(화살표·목록 줄 포함) 그 탭으로 이동했는데, 카드 안에 눌러야 하는 요소(팀캘린더
   // 전/다음 달 화살표 등)가 생기면서 실수로 화면이 계속 다른 탭으로 튕기는 문제가 있었음 - "바로가기/더보기"
   // 링크를 눌렀을 때만 이동하도록 바꿈(카드 본문을 눌러도 더 이상 이동하지 않음)
@@ -17578,6 +17674,11 @@ function renderHomeDashboardGrid(){
     e.stopPropagation();
     activateTab('notice', true);
   });
+  // 신고 진행률 카드 "바로가기" - 업무 탭의 신고현황(원천세)으로 이동
+  document.querySelector('#dashFilingCard > .home-dash-card-title > .home-dash-card-link')?.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    dashGotoFilingStatus('원천세');
+  });
   bindDashboardTaxScheduleShortcuts();
 }
 // 위젯 설정 팝업 - 열려있는 동안은 이 초안(order/enabled/shape)만 바꾸다가 저장을 눌러야 실제로 반영됨
@@ -17598,14 +17699,13 @@ function renderDashboardConfigPreview(){
     const def = DASHBOARD_WIDGET_DEFS[k];
     return `<div class="dashboard-config-preview-box" style="--accent:${def.accent}; opacity:0.6;" title="항상 고정 표시돼요">${escHtml(def.label)}</div>`;
   }).join('');
+  // [2026.09.30 D안] 아래 선택 영역은 모양 선택 없이, 실제 대시보드처럼 고른 개수대로 폭이 나뉨
   const keys = order.filter(k=>enabled.has(k));
   const flexHtml = keys.map(k=>{
     const def = DASHBOARD_WIDGET_DEFS[k];
-    const s = shape[k] || 'normal';
-    const shapeCls = s !== 'normal' ? ` ${s}` : '';
-    return `<div class="dashboard-config-preview-box${shapeCls}" style="--accent:${def.accent};">${escHtml(def.label)}</div>`;
+    return `<div class="dashboard-config-preview-box" style="--accent:${def.accent};">${escHtml(def.label)}</div>`;
   }).join('');
-  wrap.innerHTML = pinnedHtml + (flexHtml || `<div class="hint" style="grid-column:1/-1; margin:4px 0;">표시할 위젯이 없어요.</div>`);
+  wrap.innerHTML = pinnedHtml + (flexHtml ? `<div class="dashboard-config-preview-flex" data-count="${keys.length}">${flexHtml}</div>` : `<div class="hint" style="grid-column:1/-1; margin:4px 0;">표시할 위젯이 없어요.</div>`);
 }
 // 화살표(▲▼)로 한 칸씩 옮기던 순서 조정을, 목록에서 손잡이(⠿)를 마우스로 끌어 원하는 자리에 바로
 // 놓는 방식으로 바꿈(요청: "화살표로 조정하지 않고 마우스로 끌어댕겨서 옮기는게 더 좋을것같아") - 표준
@@ -17631,9 +17731,6 @@ function renderDashboardConfigList(){
         <input type="checkbox" class="dashboard-config-check" data-key="${key}" ${checked?'checked':''} ${locked?'disabled':''}>
         <span class="dashboard-config-row-label">${escHtml(def.label)}${locked ? ' <span class="hint" style="display:inline; font-size:10px;">(항상 표시)</span>' : ''}</span>
       </label>
-      <div class="dashboard-config-row-actions">
-        <select class="dashboard-config-shape-select" data-key="${key}" title="위젯 모양">${shapeOptsHtml(key)}</select>
-      </div>
     </div>`;
   }).join('');
   wrap.querySelectorAll('.dashboard-config-check').forEach(cb=>{
@@ -17893,6 +17990,95 @@ function renderDashboardAttendancePreview(){
         <div class="home-dash-mini-stat-value">${c.value}</div>
       </div>
     </div>`).join('')}</div>`;
+}
+// [2026.09.30 D안] 대시보드 공용 막대 한 줄(라벨 · 값 · 막대). btnAttr를 주면 버튼으로 그려서 눌러서 이동할 수 있음
+function dashProgHtml(label, valueText, ratio, color, btnAttr){
+  const pct = Math.max(0, Math.min(100, Math.round((Number(ratio)||0) * 100)));
+  const tag = btnAttr ? 'button' : 'div';
+  return `<${tag} class="home-dash-prog"${btnAttr ? ` type="button" ${btnAttr}` : ''}>
+    <div class="home-dash-prog-labels"><span>${label}</span><b${/\d/.test(valueText) ? '' : ' class="empty"'}>${valueText}</b></div>
+    <div class="home-dash-prog-track"><div class="home-dash-prog-fill" style="width:${pct}%; --prog-color:${color};"></div></div>
+  </${tag}>`;
+}
+// 대시보드 "경비정산" 위젯 - 이번 달 점심식대 사용/한도, 미사용분(네이버페이), 지출결의서 상신 마감(매월 10일)
+function renderDashboardExpensePreview(){
+  const body = document.getElementById('dashExpenseBody');
+  if(!body) return;
+  if(typeof calcExpenseSummary !== 'function'){ body.innerHTML = `<div class="hint" style="margin:0; font-size:11.5px;">경비 데이터가 없어요.</div>`; return; }
+  const month = todayStr().slice(0,7);
+  let s;
+  try{ s = calcExpenseSummary(month); }catch(e){ body.innerHTML = `<div class="hint" style="margin:0; font-size:11.5px;">경비 데이터를 불러오지 못했어요.</div>`; return; }
+  const won = (n)=> `${Math.round(Number(n)||0).toLocaleString()}원`;
+  const lunchRatio = s.monthlyLimit > 0 ? s.lunchSpend / s.monthlyLimit : 0;
+  const lunchColor = s.lunchOver > 0 ? 'var(--coral)' : 'var(--guide-teal)';
+  const naverRatio = s.monthlyLimit > 0 ? Math.max(0, s.monthlyLimit - s.lunchSpend) / s.monthlyLimit : 0;
+  // 지출결의서 - 매월 10일까지 지난달분 상신(renderDeadlineBanner와 같은 기준). 11일부터는 이번 달분의 다음 달 10일 마감
+  const t = parseDate(todayStr());
+  let ry = t.getFullYear(), rm = t.getMonth() + 1;
+  if(t.getDate() <= 10){ rm -= 1; if(rm < 1){ rm = 12; ry -= 1; } }
+  let dy = ry, dm = rm + 1; if(dm > 12){ dm = 1; dy++; }
+  const due = new Date(dy, dm - 1, 10);
+  const dday = Math.round((due - new Date(t.getFullYear(), t.getMonth(), t.getDate())) / 86400000);
+  const ddText = dday === 0 ? 'D-DAY' : `D-${dday}`;
+  const ddColor = dday <= 3 ? 'var(--coral)' : 'var(--ink)';
+  body.innerHTML = dashProgHtml(`점심식대 (${Number(month.slice(5))}월)`, s.monthlyLimit > 0 ? `${Math.round(s.lunchSpend).toLocaleString()} / ${won(s.monthlyLimit)}` : won(s.lunchSpend), lunchRatio, lunchColor)
+    + dashProgHtml('미사용분 (네이버페이)', won(s.naverPay), naverRatio, 'var(--navy)')
+    + `<div class="home-dash-prog-foot">${rm}월분 지출결의서 마감 <b style="color:${ddColor};">${ddText}</b> (${dm}/10)</div>`;
+}
+// 부가세 - 오늘 기준 가장 가까운(아직 안 지난) 신고기한의 기수. 1기예정 4/25, 1기확정 7/25, 2기예정 10/25, 2기확정 다음해 1/25
+function vatFocusFiling(){
+  const today = parseDate(todayStr());
+  const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const y = today.getFullYear();
+  const cands = [
+    { year:y-1, quarter:'Q4', due:new Date(y, 0, 25) },
+    { year:y, quarter:'Q1', due:new Date(y, 3, 25) },
+    { year:y, quarter:'Q2', due:new Date(y, 6, 25) },
+    { year:y, quarter:'Q3', due:new Date(y, 9, 25) },
+    { year:y, quarter:'Q4', due:new Date(y+1, 0, 25) },
+  ];
+  const f = cands.find(c=>c.due >= t0) || cands[cands.length-1];
+  const targetPeriod = VAT_QUARTER_TO_TARGET_PERIOD[f.quarter];
+  const period = `${f.year}-${f.quarter}`;
+  const pd = ((sharedFilingStatus||{})['부가세'] || {})[period] || {};
+  let total = 0, done = 0;
+  filingStatusClientList('부가세').forEach(c=>{
+    const st = vatEntryStatus(vatFilingTargetEntry(c.id, String(f.year), targetPeriod), targetPeriod, c.entityType);
+    if(st !== 'target' && st !== 'filing') return;
+    total++;
+    if(pd[c.id] && pd[c.id].status === '신고완료') done++;
+  });
+  const dday = Math.round((f.due - t0) / 86400000);
+  return { year:f.year, quarter:f.quarter, label:VAT_PERIOD_LABEL[f.quarter], due:f.due, dday, total, done };
+}
+function dashGotoFilingStatus(taxType, vat){
+  activateTab('approval', true);
+  document.querySelector('.approval-cat-btn[data-approval-cat="status"]')?.click();
+  if(vat && FILING_KINDS && FILING_KINDS.status){
+    ensureFilingPeriodStateInit('status');
+    FILING_KINDS.status.state.year = String(vat.year);
+    FILING_KINDS.status.state.quarter = vat.quarter;
+  }
+  document.querySelector(`#filingTypeToggle .filing-type-btn[data-filing-type="${taxType}"]`)?.click();
+}
+// 대시보드 "신고 진행률" 위젯 - 지금 챙길 원천세(itFocusFiling)·부가세(vatFocusFiling) 신고대상 중 신고완료 비율
+function renderDashboardFilingPreview(){
+  const body = document.getElementById('dashFilingBody');
+  if(!body) return;
+  const rows = [];
+  let it = null, vat = null;
+  try{ it = itFocusFiling(); }catch(e){ console.error('원천세 진행률 계산 실패', e); }
+  try{ vat = vatFocusFiling(); }catch(e){ console.error('부가세 진행률 계산 실패', e); }
+  const dd = (n)=> n === 0 ? 'D-DAY' : n > 0 ? `D-${n}` : `${-n}일 지남`;
+  if(it) rows.push(dashProgHtml(`원천세 ${it.month}월 귀속 · ${dd(it.dday)}`, it.total ? `${it.done} / ${it.total}` : '대상 없음', it.total ? it.done / it.total : 0, 'var(--indigo)', 'data-dash-filing="원천세"'));
+  if(vat) rows.push(dashProgHtml(`부가세 ${vat.year}년 ${vat.label} · ${dd(vat.dday)}`, vat.total ? `${vat.done} / ${vat.total}` : '대상 없음', vat.total ? vat.done / vat.total : 0, 'var(--mint)', 'data-dash-filing="부가세"'));
+  body.innerHTML = rows.join('') || `<div class="hint" style="margin:0; font-size:11.5px;">신고 데이터가 없어요.</div>`;
+  body.querySelectorAll('[data-dash-filing]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      dashGotoFilingStatus(btn.dataset.dashFiling, btn.dataset.dashFiling === '부가세' ? vat : null);
+    });
+  });
 }
 
 // 대시보드 출퇴근 카드 - 오늘 날짜 기준으로 출근/퇴근 시각을 눌러서 바로 찍을 수 있는 도장 위젯.
@@ -18477,6 +18663,7 @@ document.getElementById('clockEditSaveBtn')?.addEventListener('click', async ()=
   entry.checkOutFull = newCheckOutFull;
   // 수정 후에도 퇴근이 출근보다 이르면 익일 퇴근 표시는 유지, 아니면(당일 퇴근으로 고친 경우) 해제
   if(entry.checkOutNextDay && !(newCheckOut && newCheckIn && newCheckOut < newCheckIn)) entry.checkOutNextDay = undefined;
+  if(newStatus !== (entry.status||'사무실')){ entry.statusManual = true; entry.statusAuto = false; } // 직접 고른 근무지는 재택 등록과 자동으로 맞추지 않음
   entry.status = newStatus;
   entry.updatedAt = new Date().toISOString();
   if(!Array.isArray(entry.editHistory)) entry.editHistory = [];
@@ -18684,9 +18871,23 @@ function renderDashboardApprovalAllPreview(){
 // 어떤 공지인지 클릭해서 열어보지 않아도 미리 감을 잡을 수 있게 함. 내용은 표 칸이 좁아 다 못 보여주니
 // 앞 10글자만 보여주고 줄임표(…)로 나머지를 표시함
 function noticeContentPreview(text, max){
-  const flat = (text||'').replace(/\s+/g, ' ').trim();
+  const flat = noticePlainText(text);
   if(!flat) return '-';
   return flat.length > max ? flat.slice(0, max) + '…' : flat;
+}
+// 공지 본문은 서식(굵게 등) HTML로 저장돼서 대시보드·푸시 알림에 <b>, <div>, &nbsp; 같은 태그가 글자 그대로 보였음 -
+// 태그를 걷어내고 글자만 남김(max를 주면 그 길이로 자름)
+function noticePlainText(text, max){
+  let raw = String(text||'');
+  if(/<[a-z!\/][^>]*>|&[a-z#0-9]+;/i.test(raw)){
+    try{
+      // DOMParser 문서는 화면과 분리돼 있어 이미지·스크립트가 실행되지 않음(안전)
+      const doc = new DOMParser().parseFromString(raw.replace(/<br\s*\/?>/gi, ' ').replace(/<\/(p|div|li)>/gi, ' '), 'text/html');
+      raw = (doc.body && doc.body.textContent) || '';
+    }catch(e){ raw = raw.replace(/<[^>]*>/g, ' '); }
+  }
+  const flat = raw.replace(/[\s ]+/g, ' ').trim();
+  return (max && flat.length > max) ? flat.slice(0, max) : flat;
 }
 function renderDashboardImportantNotices(){
   const body = document.getElementById('dashNoticeBody');
@@ -18905,6 +19106,8 @@ function renderHomeDashboard(){
   renderDashboardTaxSchedulePreview();
   if(cfg.enabled.has('attendance')) renderDashboardAttendancePreview();
   if(cfg.enabled.has('notice')) renderDashboardImportantNotices();
+  if(cfg.enabled.has('expense')) renderDashboardExpensePreview();
+  if(cfg.enabled.has('filing')) renderDashboardFilingPreview();
 }
 
 // ⭐ 즐겨찾기: 홈 화면이 대시보드로 바뀌면서 예전엔 있던 즐겨찾기 목록이 통째로 빠졌었는데(관련 CSS는 그대로
@@ -21967,6 +22170,34 @@ const REMOTE_CLOCK_FIXES = [
 ];
 function fixRemoteClockStatusIfNeeded(){
   REMOTE_CLOCK_FIXES.forEach(f=> fixRemoteClockStatusRange(f.flag, f.from, f.to));
+  // "9월도 근무지가 안 바뀐다"(요청) - 한 번만 고치던 방식 대신, 이제는 데이터를 불러올 때마다 모든 날짜를 재택 등록과 맞춤
+  try{
+    getProfiles().forEach(p=>{
+      const isActive = p.id === activeProfileId;
+      const att = isActive ? attendance : readProfileRaw(p.id, 'attendance');
+      if(!att) return;
+      const n = syncRemoteClockStatus(att);
+      if(!n) return;
+      if(isActive){ try{ localStorage.setItem(skey('attendance'), JSON.stringify(att)); }catch(e){} gdriveScheduleSync(); }
+      else writeProfileRaw(p.id, 'attendance', att);
+    });
+  }catch(e){ console.error('재택 근무지 맞춤 실패', e); }
+}
+// 출퇴근 기록의 근무지를 그날 재택 등록과 맞춤 - 재택 등록이 있는데 근무지가 비었거나 "사무실"이면 재택(반일이면 사무실→재택/재택→사무실)으로,
+// 이렇게 자동으로 바꿨던 날(statusAuto)은 재택 등록이 지워지거나 오전/오후가 바뀌면 다시 맞춤.
+// 출퇴근현황 "수정"에서 근무지를 직접 고른 날(statusManual)은 절대 건드리지 않음
+function syncRemoteClockStatus(att){
+  let changed = 0;
+  (att.clockLog||[]).forEach(e=>{
+    if(!e || !e.date || e.statusManual) return;
+    const st = remoteClockStatusFor(e.date, att.remoteEntries||[]);
+    if(st !== '사무실'){
+      if((!e.status || e.status === '사무실' || e.statusAuto) && e.status !== st){ e.status = st; e.statusAuto = true; changed++; }
+    } else if(e.statusAuto && e.status !== '사무실'){
+      e.status = '사무실'; e.statusAuto = false; changed++;
+    }
+  });
+  return changed;
 }
 function fixRemoteClockStatusRange(FLAG, FROM, TO){
   try{
@@ -34305,7 +34536,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.30 14:32';
+const APP_BUILD = '2026.09.30 15:20';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -37349,11 +37580,7 @@ function renderHrTeamView(){
   const IC_CAL = ic('<rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>');
   const IC_MEMO = ic('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line>');
   const cards = staff.map((s,idx)=>{
-    // 사진·아바타는 직원정보(직원 프로필)에 등록된 것을 이름으로 찾아 씀 - 없으면 성(첫 글자)
-    const pf = profiles.find(p=>(p.name||'').trim() === (s.name||'').trim());
-    const avatar = pf && pf.photo ? `<img src="${pf.photo}" alt="">`
-      : (pf && pf.avatar && typeof staffAvatarIconSvg === 'function') ? staffAvatarIconSvg(pf.avatar, 26)
-      : escHtml(String(s.name||'?').trim().charAt(0));
+    // "성 글자 프로필은 빼고 이름·직책칩만"(요청) - 동그란 프로필 자리는 없앰
     const lines = [
       s.email ? `<span class="hr-card-line">${IC_MAIL}${escHtml(s.email)}</span>` : '',
       s.phone ? `<span class="hr-card-line">${IC_PHONE}${escHtml(s.phone)}</span>` : '',
@@ -37363,8 +37590,8 @@ function renderHrTeamView(){
       ? `<div class="hr-card-duties-label">담당 업무</div><ul class="hr-card-duties">${s.duties.map(d=>`<li>${escHtml(d)}</li>`).join('')}</ul>`
       : `<div class="hr-card-empty">등록된 담당 업무가 없어요.</div>`;
     // 메모는 있을 때만 아이콘이 보이고, 누르면 카드 위에 작은 창으로 뜸(다시 누르거나 바깥을 누르면 닫힘)
-    const memoBtn = (s.memo||'').trim() ? `<button type="button" class="hr-memo-btn" data-hr-memo="${idx}" title="메모 보기" aria-label="메모 보기">${IC_MEMO}</button><div class="hr-memo-pop" data-hr-memo-pop="${idx}" style="display:none;"><b>메모</b>${escHtml(s.memo)}</div>` : '';
-    return `<div class="hr-card">${memoBtn}<div class="hr-card-profile"><div class="hr-card-avatar">${avatar}</div><div class="hr-card-name">${escHtml(s.name)}${s.title ? `<span class="hr-card-title">${escHtml(s.title)}</span>` : ''}</div><div class="hr-card-contact-box"><div class="hr-card-contact">${lines}</div></div></div>${duties}</div>`;
+    const memoBtn = (s.memo||'').trim() ? `<button type="button" class="hr-memo-btn" data-hr-memo="${idx}" title="메모 보기" aria-label="메모 보기">${IC_MEMO}</button><div class="hr-memo-pop" data-hr-memo-pop="${idx}" style="display:none;"><button type="button" class="hr-memo-close" data-hr-memo-close="${idx}" title="닫기" aria-label="닫기">✕</button><b>메모</b>${escHtml(s.memo)}</div>` : '';
+    return `<div class="hr-card">${memoBtn}<div class="hr-card-profile"><div class="hr-card-name">${escHtml(s.name)}${s.title ? `<span class="hr-card-title">${escHtml(s.title)}</span>` : ''}</div><div class="hr-card-contact-box"><div class="hr-card-contact">${lines}</div></div></div>${duties}</div>`;
   }).join('');
   const left = hrLeftoverDuties();
   const leftHtml = left.length ? `<div class="hr-card" style="margin-top:12px;"><div class="hr-card-name">담당자 미지정 업무</div><ul class="hr-card-duties">${left.map(d=>`<li>${escHtml(d.task)}${d.owner ? ` <span style="color:var(--ink-soft); font-weight:500;">(${escHtml(d.owner)})</span>` : ''}</li>`).join('')}</ul></div>` : '';
@@ -37375,6 +37602,11 @@ function renderHrTeamView(){
     const open = pop.style.display === 'none';
     wrap.querySelectorAll('.hr-memo-pop').forEach(x=>x.style.display='none'); wrap.querySelectorAll('.hr-memo-btn').forEach(x=>x.classList.remove('on'));
     if(open){ pop.style.display = ''; btn.classList.add('on'); }
+  }));
+  wrap.querySelectorAll('.hr-memo-close').forEach(x=> x.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    x.closest('.hr-memo-pop').style.display = 'none';
+    wrap.querySelectorAll('.hr-memo-btn.on').forEach(b=>b.classList.remove('on'));
   }));
 }
 // 경영지원실 카드 메모 창 - 바깥을 누르면 닫힘
