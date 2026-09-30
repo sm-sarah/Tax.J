@@ -1743,6 +1743,26 @@
   .hr-card-duties li{ font-size:12.5px; font-weight:600; color:var(--ink); padding:2px 0 2px 12px; position:relative; }
   .hr-card-duties li::before{ content:''; position:absolute; left:0; top:9px; width:5px; height:5px; border-radius:50%; background:var(--indigo); }
   .hr-card-empty{ font-size:12px; color:var(--ink-soft); margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); }
+  /* "경영지원실 카드를 직원 프로필 느낌으로, 메모는 평소엔 숨기고 아이콘으로"(요청) - 위쪽에 사진(없으면 아바타·성 글자)과
+     이름·직위를 가운데로 모으고, 연락처는 아이콘과 한 줄씩. 메모는 카드 오른쪽 위 메모 아이콘을 누를 때만 작은 창으로 뜸 */
+  .hr-card{ position:relative; }
+  .hr-card-profile{ display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; padding-top:4px; }
+  .hr-card-avatar{ width:56px; height:56px; border-radius:50%; background:var(--indigo-bg); color:var(--indigo-deep); display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800; overflow:hidden; flex:none; box-shadow:0 0 0 3px var(--surface), 0 0 0 4px var(--border); }
+  .hr-card-avatar img{ width:100%; height:100%; object-fit:cover; }
+  .hr-card-profile .hr-card-name{ justify-content:center; flex-direction:column; gap:4px; font-size:15px; }
+  .hr-card-profile .hr-card-contact{ min-height:0; margin-top:2px; display:flex; flex-direction:column; align-items:center; gap:1px; }
+  .hr-card-line{ display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--ink-soft); }
+  .hr-card-line svg{ flex:none; opacity:.8; }
+  .hr-card-contact-box{ min-height:calc(12px * 1.6 * 3 + 4px); }
+  .hr-card-duties-label{ font-size:11px; font-weight:800; color:var(--ink-soft); letter-spacing:.02em; margin:12px 0 0; padding-top:10px; border-top:1px dashed var(--border); }
+  .hr-card-duties-label + .hr-card-duties{ margin-top:4px; padding-top:0; border-top:none; }
+  /* "업무분장 줄바꿈이 자연스럽게"(요청) - 단어 중간에서 안 끊기고, 끝줄에 한 단어만 떨어지지 않게 */
+  .hr-card-duties li{ word-break:keep-all; overflow-wrap:break-word; text-wrap:pretty; line-height:1.5; }
+  .hr-card-duties li::before{ top:8px; }
+  .hr-memo-btn{ position:absolute; top:10px; right:10px; width:28px; height:28px; border-radius:50%; border:1.5px solid var(--border); background:var(--surface); color:var(--ink-soft); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; padding:0; }
+  .hr-memo-btn:hover, .hr-memo-btn.on{ color:var(--indigo-deep); border-color:var(--indigo); background:var(--indigo-bg); }
+  .hr-memo-pop{ position:absolute; top:44px; left:12px; right:12px; z-index:6; background:var(--surface); border:1px solid var(--border); border-radius:10px; box-shadow:0 10px 24px -8px rgba(29,30,51,.25); padding:10px 12px; font-size:12px; line-height:1.55; color:var(--ink); white-space:pre-wrap; word-break:keep-all; overflow-wrap:break-word; text-align:left; }
+  .hr-memo-pop b{ display:block; font-size:11px; color:var(--ink-soft); margin-bottom:4px; }
   .ci-two.ci-two-single{ grid-template-columns:minmax(0,1fr); max-width:620px; margin:0 auto; }
   .ci-two > div:empty{ display:none; }
   .ci-two:has(> div:empty){ grid-template-columns:minmax(0,1fr); max-width:620px; margin-left:auto; margin-right:auto; }
@@ -34285,7 +34305,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.30 14:27';
+const APP_BUILD = '2026.09.30 14:32';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -37322,21 +37342,47 @@ function renderHrTeamView(){
   if(!wrap) return;
   const staff = hrStaffWithMergedDuties();
   if(!staff.length){ wrap.innerHTML = `<div class="empty-state">등록된 직원이 없어요.</div>`; return; }
-  const cards = staff.map(s=>{
-    // "위 정보 ~ 아래 업무 사이 점선은 입력 안 해도 고정" 요청 - 연락처 칸을 항상(비어있어도) 같은 높이로 둬서
-    // 카드마다 점선 위치가 같게 맞춤(이메일·연락처·입사일 3줄 높이)
-    const contact = [s.email, s.phone, s.hireDate ? `입사 ${String(s.hireDate).replace(/-/g,'.')}` : ''].filter(Boolean).map(escHtml).join('<br>');
+  const profiles = getProfiles();
+  const ic = (inner)=>`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+  const IC_MAIL = ic('<rect x="3" y="5" width="18" height="14" rx="2"></rect><polyline points="3 7 12 13 21 7"></polyline>');
+  const IC_PHONE = ic('<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"></path>');
+  const IC_CAL = ic('<rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>');
+  const IC_MEMO = ic('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line>');
+  const cards = staff.map((s,idx)=>{
+    // 사진·아바타는 직원정보(직원 프로필)에 등록된 것을 이름으로 찾아 씀 - 없으면 성(첫 글자)
+    const pf = profiles.find(p=>(p.name||'').trim() === (s.name||'').trim());
+    const avatar = pf && pf.photo ? `<img src="${pf.photo}" alt="">`
+      : (pf && pf.avatar && typeof staffAvatarIconSvg === 'function') ? staffAvatarIconSvg(pf.avatar, 26)
+      : escHtml(String(s.name||'?').trim().charAt(0));
+    const lines = [
+      s.email ? `<span class="hr-card-line">${IC_MAIL}${escHtml(s.email)}</span>` : '',
+      s.phone ? `<span class="hr-card-line">${IC_PHONE}${escHtml(s.phone)}</span>` : '',
+      s.hireDate ? `<span class="hr-card-line">${IC_CAL}입사 ${escHtml(String(s.hireDate).replace(/-/g,'.'))}</span>` : ''
+    ].filter(Boolean).join('');
     const duties = (s.duties||[]).length
-      ? `<ul class="hr-card-duties">${s.duties.map(d=>`<li>${escHtml(d)}</li>`).join('')}</ul>`
+      ? `<div class="hr-card-duties-label">담당 업무</div><ul class="hr-card-duties">${s.duties.map(d=>`<li>${escHtml(d)}</li>`).join('')}</ul>`
       : `<div class="hr-card-empty">등록된 담당 업무가 없어요.</div>`;
-    // 메모 칸은 비어있어도 카드 맨 아래 고정 높이로 항상 둠 - 카드마다 메모 위치·크기가 같게
-    const memo = `<div class="hr-card-memo">${escHtml(s.memo||'')}</div>`;
-    return `<div class="hr-card"><div class="hr-card-name">${escHtml(s.name)}${s.title ? `<span class="hr-card-title">${escHtml(s.title)}</span>` : ''}</div><div class="hr-card-contact">${contact}</div>${duties}${memo}</div>`;
+    // 메모는 있을 때만 아이콘이 보이고, 누르면 카드 위에 작은 창으로 뜸(다시 누르거나 바깥을 누르면 닫힘)
+    const memoBtn = (s.memo||'').trim() ? `<button type="button" class="hr-memo-btn" data-hr-memo="${idx}" title="메모 보기" aria-label="메모 보기">${IC_MEMO}</button><div class="hr-memo-pop" data-hr-memo-pop="${idx}" style="display:none;"><b>메모</b>${escHtml(s.memo)}</div>` : '';
+    return `<div class="hr-card">${memoBtn}<div class="hr-card-profile"><div class="hr-card-avatar">${avatar}</div><div class="hr-card-name">${escHtml(s.name)}${s.title ? `<span class="hr-card-title">${escHtml(s.title)}</span>` : ''}</div><div class="hr-card-contact-box"><div class="hr-card-contact">${lines}</div></div></div>${duties}</div>`;
   }).join('');
   const left = hrLeftoverDuties();
   const leftHtml = left.length ? `<div class="hr-card" style="margin-top:12px;"><div class="hr-card-name">담당자 미지정 업무</div><ul class="hr-card-duties">${left.map(d=>`<li>${escHtml(d.task)}${d.owner ? ` <span style="color:var(--ink-soft); font-weight:500;">(${escHtml(d.owner)})</span>` : ''}</li>`).join('')}</ul></div>` : '';
   wrap.innerHTML = `<div class="hr-card-grid">${cards}</div>${leftHtml}`;
+  wrap.querySelectorAll('.hr-memo-btn').forEach(btn=> btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const pop = wrap.querySelector(`[data-hr-memo-pop="${btn.dataset.hrMemo}"]`);
+    const open = pop.style.display === 'none';
+    wrap.querySelectorAll('.hr-memo-pop').forEach(x=>x.style.display='none'); wrap.querySelectorAll('.hr-memo-btn').forEach(x=>x.classList.remove('on'));
+    if(open){ pop.style.display = ''; btn.classList.add('on'); }
+  }));
 }
+// 경영지원실 카드 메모 창 - 바깥을 누르면 닫힘
+document.addEventListener('pointerdown', (e)=>{
+  if(e.target.closest && (e.target.closest('.hr-memo-pop') || e.target.closest('.hr-memo-btn'))) return;
+  document.querySelectorAll('.hr-memo-pop').forEach(x=>{ if(x.style.display !== 'none') x.style.display = 'none'; });
+  document.querySelectorAll('.hr-memo-btn.on').forEach(x=>x.classList.remove('on'));
+}, true);
 
 // 팀정보 (설정 > 회사 > 팀정보) - 세부 항목은 추후 확정 예정, 우선 메모 프레임만
 function populateTeamInfoInput(){
