@@ -46,6 +46,12 @@
        "구분<TAB>이름<TAB>주소<TAB>용도" 형식으로 준다(사용자가 개인 스프레드시트에 붙여넣어 관리함).
      - 권한 정책: 설정·데이터 메뉴와 그 수정·삭제는 관리자만 / 사내정보·거래처 개인정보는 관리비밀번호를 알면 누구나 조회 /
        전체공지 수정·삭제는 관리자만, 개인 공지는 쓴 본인이 수정·삭제.
+     - 바뀐 게 없는 항목(권한 차이표·링크 등)은 "바뀐 것 없음"이라고 따로 보고하지 않는다. 바뀐 것만 알려준다.
+
+  7. 버전 (APP_BUILD)
+     - 파일을 고칠 때마다 스크립트 아래쪽의 const APP_BUILD 값을 파일을 만든 시각(한국 시간, 'YYYY.MM.DD HH:MM')으로 반드시 바꾼다.
+     - 이 값은 로그인 화면·설정 제목 아래·GitHub 배포 칸에 표시되고, 배포 칸은 고른 파일이 현재보다 예전이면 빨간색으로 경고한다.
+       안 바꾸면 새 파일도 "현재와 같은 버전"으로 보여서 경고가 쓸모없어진다.
 -->
 <html lang="ko">
 <head>
@@ -6874,6 +6880,9 @@
           </label>
           <button type="button" id="githubDeployBtn" class="del-btn" style="cursor:pointer; background:var(--indigo); color:#fff; white-space:nowrap; height:32px; box-sizing:border-box; display:inline-flex; align-items:center; gap:5px; padding:0 13px; font-size:12px; margin-top:10px;" disabled><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg> GitHub에 배포</button>
         </div>
+        <!-- "배포 버전·파일 버전을 표기해달라"(요청) - 지금 열린 화면의 버전(APP_BUILD)과, 고른 파일 안의 APP_BUILD를 읽어
+             나란히 보여줌. 고른 파일이 지금과 같거나 더 예전이면 잘못 고른 파일일 수 있어 주의색으로 알려줌 -->
+        <span class="hint" id="githubDeployVersion" style="display:block; margin:0; text-align:center;"></span>
         <span class="save-msg" id="githubDeployMsg" style="margin-top:0;"></span>
       </div>
 
@@ -31377,6 +31386,22 @@ const GITHUB_DEPLOY_FILE_PATH = 'index.html';
 const GITHUB_DEPLOY_TOKEN_KEY = 'worklog_github_pat';
 let githubDeploySelectedFile = null;
 
+let githubDeploySelectedBuild = '';
+function githubDeployRenderVersion(){
+  const el = document.getElementById('githubDeployVersion');
+  if(!el) return;
+  let html = `현재 화면 <b>버전 ${APP_BUILD}</b>`;
+  if(githubDeploySelectedFile){
+    if(!githubDeploySelectedBuild) html += `<br>선택한 파일 <span style="color:var(--amber); font-weight:700;">버전 정보 없음</span>`;
+    else {
+      const cmp = githubDeploySelectedBuild.localeCompare(APP_BUILD);
+      const note = cmp > 0 ? '' : (cmp === 0 ? ' (현재와 같은 버전)' : ' (현재보다 예전 파일)');
+      html += `<br>선택한 파일 <b style="color:${cmp > 0 ? 'var(--indigo-deep)' : 'var(--coral)'};">버전 ${githubDeploySelectedBuild}${note}</b>`;
+    }
+  }
+  el.innerHTML = html;
+}
+setTimeout(githubDeployRenderVersion, 0);
 function githubDeployUpdateBtnState(){
   const btn = document.getElementById('githubDeployBtn');
   if(!btn) return;
@@ -31411,6 +31436,15 @@ document.getElementById('githubDeployFile')?.addEventListener('change', function
   const msgEl = document.getElementById('githubDeployMsg');
   if(msgEl) msgEl.textContent = githubDeploySelectedFile ? `업로드 완료: ${githubDeploySelectedFile.name} (배포하세요)` : '';
   githubDeployUpdateBtnState();
+  githubDeploySelectedBuild = '';
+  githubDeployRenderVersion();
+  const picked = githubDeploySelectedFile;
+  if(picked) picked.text().then(t=>{
+    if(picked !== githubDeploySelectedFile) return;
+    const m = /const\s+APP_BUILD\s*=\s*'([^']+)'/.exec(t);
+    githubDeploySelectedBuild = m ? m[1] : '';
+    githubDeployRenderVersion();
+  }).catch(()=>{});
 });
 // 문자열(UTF-8, 한글 포함)을 GitHub Contents API가 요구하는 base64로 안전하게 변환
 function utf8ToBase64(str){
@@ -31459,8 +31493,10 @@ document.getElementById('githubDeployBtn')?.addEventListener('click', async ()=>
   btn.disabled = true;
   try{
     await githubDeployContent(githubDeploySelectedFile, t=>{ if(msgEl) msgEl.textContent = t; });
-    if(msgEl) msgEl.textContent = '배포 완료! 잠시 후 실제 서비스 화면에 반영돼요.';
+    if(msgEl) msgEl.textContent = `배포 완료!${githubDeploySelectedBuild ? ' (버전 '+githubDeploySelectedBuild+')' : ''} 잠시 후 실제 서비스 화면에 반영돼요.`;
     githubDeploySelectedFile = null;
+    githubDeploySelectedBuild = '';
+    githubDeployRenderVersion();
     const labelText = document.getElementById('githubDeployFileLabelText');
     if(labelText) labelText.textContent = '파일 선택';
     const fileInput = document.getElementById('githubDeployFile');
@@ -33883,7 +33919,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.30 16:40';
+const APP_BUILD = '2026.09.30 12:15';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
