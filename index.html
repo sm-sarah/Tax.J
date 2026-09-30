@@ -932,14 +932,11 @@
   /* 공지사항 위젯 전용 열 - 제목·내용 가로폭이 서로 너무 차이 나 보인다는 의견으로 둘 다 넉넉한 width를 줘서
      남는 공간을 나눠 갖게 함(내용은 어차피 렌더링 전에 글자수로 잘라서 넣으니 폭이 늘어도 줄바꿈되진 않음) */
   .home-dash-table-col-title{ width:60%; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; color:var(--ink); font-weight:700; }
-  /* 공지사항 카드가 반칸·3등분처럼 좁아지면 제목이 길 때 작성자 칸이 오른쪽으로 잘렸음 - 칸 폭을 고정해서 항상 카드 안에 들어오게 함 */
+  /* [2026.09.30] 대시보드 공지사항은 날짜·제목·작성자만(내용 칸 뺌 - 요청). 공지사항 카드가 반칸·3등분처럼 좁아지면 제목이 길 때 작성자 칸이 오른쪽으로 잘렸음 - 칸 폭을 고정해서 항상 카드 안에 들어오게 함 */
   #dashNoticeBody .home-dash-table{ table-layout:fixed; }
   #dashNoticeBody .home-dash-table-col-date{ width:44px; }
   #dashNoticeBody .home-dash-table-col-person{ width:64px; }
   #dashNoticeBody .home-dash-table-col-title{ width:auto; }
-  #dashNoticeBody .home-dash-table-col-content{ width:34%; }
-  /* 3등분일 땐 칸이 너무 좁아 제목이 안 보여서 내용 칸을 숨김(제목을 누르면 전체 내용이 열림) */
-  .home-dashboard-grid[data-count="3"] #dashNoticeBody .home-dash-table-col-content{ display:none; }
   .home-dash-table-col-content{ width:60%; min-width:0; color:var(--ink-soft); font-size:12px; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .home-dash-table-row[data-approval-id]:hover, .home-dash-table-row[data-notice-id]:hover{ background:rgba(29,30,51,0.04); cursor:pointer; }
   /* 팀캘린더 위젯 - 옆의 출퇴근(freeform-hero) 카드와 세로폭이 안 맞아 혼자 짧아 보인다는 의견으로,
@@ -3806,7 +3803,7 @@
              지켜보고 있을 서버 쪽 장치가 없음 - 그래서 이 기기(브라우저/앱)가 켜져 있는 동안 주기적으로 시계를
              확인하다가 표준 출근·퇴근 시간(근무시간 설정 기준) 5분 전이 되면, 아직 그날 출근/퇴근을 안 찍었을
              때만 이 기기에서 바로 알림을 띄움 - 기기가 완전히 꺼져있거나 앱이 종료된 상태에서는 오지 않음.
-             직원별로 이 화면(설정)에서 각자 켜야만 오고, 기본값은 꺼짐(미알림). 원래는 이 항목만 따로
+             [2026.09.30] 이제 서버가 보내고 기본값은 켜짐 - 직원별로 이 화면(설정)에서 끈 사람만 안 옴. 원래는 이 항목만 따로
              카드+버튼으로 떨어져 있었는데, 화면을 단순하게 정리하면서 위 스위치들과 같은 줄 모양(ios-toggle)
              으로 합침 - class는 notif-pref-toggle을 안 씀(그건 sharedNotificationPrefs 저장용이라 별개 로직) -->
         <div class="flat-row">
@@ -6902,7 +6899,9 @@
         <b>기기 목록</b>: 알림이 등록된 기기예요 · 관리자는 직원을 골라 그 직원의 기기를 볼 수 있어요<br>
         <b>종 아이콘</b>: 그 기기로만 테스트 알림(일반·출근·퇴근)을 보내요<br>
         <b>다시등록</b>: 지금 이 기기는 바로 다시 등록해요 · 다른 기기는 요청만 남기고 그 기기에서 앱이 열리면 자동으로 다시 등록돼요<br>
-        <b>톱니 아이콘</b>: 받을 알림 종류를 켜고 꺼요 · 내 모든 기기에 똑같이 적용돼요
+        <b>톱니 아이콘</b>: 종류별 푸시를 켜고 꺼요 · 내 모든 기기에 똑같이 적용돼요<br>
+        <b>알림창(🔔)</b>: 스위치와 상관없이 모든 알림이 7일간 쌓여요 · 스위치는 푸시만 켜고 꺼요<br>
+        <b>출퇴근 5분 전</b>: 기본으로 켜져 있어요 · 앱·PC가 꺼져 있어도 와요 (공휴일·종일 휴가·이미 도장 찍은 날 제외)
       </p>
 
       <!-- "알림 화면 정리"(요청) - ① 관리자는 직원을 골라 그 직원의 기기 목록을 보고 이름변경·삭제·다시등록 요청·테스트를 할 수 있음
@@ -9847,7 +9846,8 @@ function clockReminderEnabled(){
   const me = (currentUserEmail||'').toLowerCase();
   const v = me && sharedNotificationPrefs && sharedNotificationPrefs[me] ? sharedNotificationPrefs[me].clockReminder : undefined;
   if(v === true || v === false) return v;
-  return localStorage.getItem(CLOCK_REMINDER_KEY) === '1';
+  // [2026.09.30] 기본값을 "켜짐"으로 바꿈(요청) - 직접 끈 사람만 안 옴(서버 sendPush도 clockReminder !== false 기준)
+  return localStorage.getItem(CLOCK_REMINDER_KEY) !== '0';
 }
 async function setClockReminderShared(on){
   const me = (currentUserEmail||'').toLowerCase();
@@ -18974,7 +18974,7 @@ function renderDashboardImportantNotices(){
   }
   const read = typeof getReadNoticeIds === 'function' ? getReadNoticeIds() : new Set();
   const headHtml = `<div class="home-dash-table-head">
-      <span class="home-dash-table-col-date">날짜</span><span class="home-dash-table-col-title">제목</span><span class="home-dash-table-col-content">내용</span><span class="home-dash-table-col-person">작성자</span>
+      <span class="home-dash-table-col-date">날짜</span><span class="home-dash-table-col-title">제목</span><span class="home-dash-table-col-person">작성자</span>
     </div>`;
   const rowsHtml = importantList.slice(0,3).map(n=>{
     const ds = noticeDateOf(n);
@@ -18982,7 +18982,6 @@ function renderDashboardImportantNotices(){
     return `<div class="home-dash-table-row" data-notice-id="${n.id}">
       <span class="home-dash-table-col-date">${md}</span>
       <span class="home-dash-table-col-title">${!read.has(n.id) ? '<span class="notice-unread-dot">N</span>' : ''}${escHtml(n.title||'(제목 없음)')}</span>
-      <span class="home-dash-table-col-content">${escHtml(noticeContentPreview(n.content, 22))}</span>
       <span class="home-dash-table-col-person">${escHtml(n.authorName||'-')}</span>
     </div>`;
   }).join('');
@@ -34612,7 +34611,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.30 15:21';
+const APP_BUILD = '2026.09.30 15:32';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
