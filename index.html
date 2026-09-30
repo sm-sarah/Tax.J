@@ -770,14 +770,15 @@
      3개: 3등분, 4개: 2칸씩 두 줄(data-count) */
   #homeDashboardGrid .home-dash-card{ height:230px; padding:13px 14px; }
   #homeDashboardGrid .home-dash-card .home-dash-card-body{ min-height:0; overflow-y:auto; }
-  .home-dashboard-grid[data-count="1"]{ grid-template-columns:1fr; }
-  .home-dashboard-grid[data-count="3"]{ grid-template-columns:repeat(3, 1fr); }
-  @container (max-width:640px){ .home-dashboard-grid[data-count]{ grid-template-columns:1fr; } }
+  /* [2026.09.30] 위젯 설정에서 "한 줄에 자동/2칸/3칸"을 고를 수 있게 함 - 6칸 격자 위에 카드마다 칸 수(span)를 줘서,
+     마지막 줄에 남는 카드는 그 줄을 똑같이 나눠 채움(예: 3칸씩에 4개 → 3개 + 넓은 1개) */
+  .home-dashboard-grid[data-count]{ grid-template-columns:repeat(6, minmax(0, 1fr)); }
+  @container (max-width:640px){ .home-dashboard-grid[data-count]{ grid-template-columns:1fr; } .home-dashboard-grid[data-count] > *{ grid-column:1 / -1 !important; } }
   /* 3등분일 때 근태현황 칩 3개가 가로로 안 들어가서 글자가 겹침 - 이때만 세로로 한 줄씩(라벨 왼쪽·값 오른쪽) */
-  .home-dashboard-grid[data-count="3"] .home-dash-mini-stat-row{ flex-direction:column; gap:6px; }
-  .home-dashboard-grid[data-count="3"] .home-dash-mini-stat-chip{ flex:none; padding:6px 11px; }
-  .home-dashboard-grid[data-count="3"] .home-dash-mini-stat-text{ flex:1; flex-direction:row; align-items:center; justify-content:space-between; gap:8px; }
-  .home-dashboard-grid[data-count="3"] .home-dash-mini-stat-value{ font-size:15px; }
+  .home-dashboard-grid .dash-narrow .home-dash-mini-stat-row{ flex-direction:column; gap:6px; }
+  .home-dashboard-grid .dash-narrow .home-dash-mini-stat-chip{ flex:none; padding:6px 11px; }
+  .home-dashboard-grid .dash-narrow .home-dash-mini-stat-text{ flex:1; flex-direction:row; align-items:center; justify-content:space-between; gap:8px; }
+  .home-dashboard-grid .dash-narrow .home-dash-mini-stat-value{ font-size:15px; }
   /* [2026.09.30] 대시보드 맨 위 "오늘의 팀 · 가까운 마감" 한 줄 - 카드와 같은 흰 배경·모서리·그림자, 높이 44px 고정 */
   .home-dash-today-strip{
     display:flex; align-items:center; gap:14px; height:44px; box-sizing:border-box; padding:0 16px; margin-bottom:14px;
@@ -1179,8 +1180,11 @@
   .dashboard-config-preview-box.big{ grid-column:1 / -1; grid-row:span 2; min-height:64px; }
   /* 아래 선택 영역 미리보기 - 실제 대시보드처럼 고른 개수대로 폭이 나뉨 */
   .dashboard-config-preview-flex{ grid-column:1 / -1; display:grid; grid-template-columns:repeat(2, 1fr); gap:6px; }
-  .dashboard-config-preview-flex[data-count="1"]{ grid-template-columns:1fr; }
-  .dashboard-config-preview-flex[data-count="3"]{ grid-template-columns:repeat(3, 1fr); }
+  .dashboard-config-preview-flex{ grid-template-columns:repeat(6, minmax(0, 1fr)); }
+  .dashboard-config-cols-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--bg); border-radius:10px; padding:8px 10px; margin-bottom:6px; }
+  .dashboard-config-cols-row .policy-category-toggle{ margin:0; }
+  .dashboard-config-cols-row .policy-cat-btn{ padding:3px 12px; font-size:11.5px; min-height:0; line-height:1.5; }
+  .dashboard-config-cols-row .dashboard-config-row-label{ flex:1; padding:3px 0; }
   /* 체크박스가 라벨 글자와 따로 놀아서 정확히 작은 체크박스만 눌러야 했던 문제 - 체크박스+이름을
      <label> 하나로 묶어서 이름 텍스트 아무데나 눌러도 체크가 토글되게 하고, 크게/순서 버튼은
      오른쪽으로 확실히 떨어뜨려 둬서 실수로 다른 버튼이 눌리지 않게 함 */
@@ -3869,7 +3873,7 @@
   <div style="background:var(--surface); border-radius:16px; padding:16px 22px 20px; max-width:460px; width:100%; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4); position:relative;">
     <button type="button" id="dashboardConfigCloseBtn" class="del-btn modal-close-btn" style="position:absolute; top:14px; right:16px;">✕</button>
     <div data-info-title style="text-align:center; font-weight:800; font-size:15px; margin-bottom:4px; padding:4px 40px 0;">대시보드 위젯 설정</div>
-    <p class="hint" data-info style="text-align:center; margin:0 0 12px;">아래 미리보기로 배치를 확인하면서 위젯별로 다듬어보세요.<br>맨 위는 고정된 항목이에요. 대시보드에 보여질 항목을 선택해요.<br>목록 왼쪽 손잡이(⠿)를 끌어서 순서를 바꿀 수 있어요.<br>아래 줄 위젯은 높이가 같고, 고른 개수에 맞춰 폭이 자동으로 나뉘어요.</p>
+    <p class="hint" data-info style="text-align:center; margin:0 0 12px;">아래 미리보기로 배치를 확인하면서 위젯별로 다듬어보세요.<br>맨 위는 고정된 항목이에요. 대시보드에 보여질 항목을 선택해요.<br>목록 왼쪽 손잡이(⠿)를 끌어서 순서를 바꿀 수 있어요.<br>아래 줄 위젯은 높이가 같고, "한 줄 칸 수"(자동·2칸·3칸)에 맞춰 폭이 나뉘어요.<br>자동: 1개 전체 · 2개 반반 · 3개 3등분 · 4개 2칸씩 두 줄</p>
     <div id="dashboardConfigPreview" class="dashboard-config-preview"></div>
     <div id="dashboardConfigList" style="display:flex; flex-direction:column; gap:6px;"></div>
     <div style="margin-top:16px; display:flex; justify-content:center; gap:8px;">
@@ -8597,6 +8601,30 @@ function markNotificationRead(id){
   recordNotificationRead(id); // 동기화 과정에서 이 읽음 처리가 도로 안읽음으로 되돌아가지 않도록 기록(결재 결정과 같은 원리)
   saveSharedNotificationReadState();
 }
+// [2026.09.30] "공지나 결재를 직접 열어봤으면 그 알림도 자동으로 읽음" - 어디서 열든(대시보드·공지 탭·결재 목록·푸시)
+// 그 공지/결재 문서에 딸린 내 알림을 한꺼번에 읽음 처리함
+function markNotificationsReadForTarget(kind, targetId){
+  try{
+    if(!targetId) return;
+    const tid = String(targetId);
+    const hits = myNotificationLogEntries().filter(n=>{
+      const t = n.type || '';
+      const rid = String(n.relatedId||'');
+      if(kind === 'notice') return t === 'notice' && rid === tid;
+      if(kind === 'approval') return t.startsWith('approval') && rid.split('|')[0] === tid;
+      return false;
+    });
+    if(!hits.length) return;
+    const key = notificationLogAccountKey();
+    const set = getReadNotificationIds();
+    let changed = false;
+    hits.forEach(n=>{ if(!set.has(n.id)){ set.add(n.id); recordNotificationRead(n.id); changed = true; } });
+    if(!changed) return;
+    sharedNotificationReadState[key] = [...set];
+    saveSharedNotificationReadState();
+    if(typeof updateNotificationUnreadBadge === 'function') updateNotificationUnreadBadge();
+  }catch(e){ console.error('알림 자동 읽음 실패', e); }
+}
 function markAllNotificationsRead(){
   const key = notificationLogAccountKey();
   const set = getReadNotificationIds();
@@ -10252,6 +10280,7 @@ function stripHtmlToText(html){
   return (tmp.textContent || tmp.innerText || '').trim();
 }
 function openNoticeViewPopup(n){
+  if(n && n.id) markNotificationsReadForTarget('notice', n.id);
   document.getElementById('memoModalTitle').textContent = n.title || '공지사항';
   const styleStr = `font-size:${n.size||13.5}px; ${n.bold ? 'font-weight:800;' : ''}`;
   const contentHtml = n.content ? (noticeContentIsRich(n.content) ? n.content : escHtml(n.content).replace(/\n/g,'<br>')) : '(내용 없음)';
@@ -17570,10 +17599,13 @@ function getDashboardConfig(){
   const enabled = new Set(enabledList.filter(k=>DASHBOARD_FLEXIBLE_WIDGET_KEYS.includes(k)));
   const shape = {};
   DASHBOARD_FLEXIBLE_WIDGET_KEYS.forEach(k=>{ shape[k] = DASHBOARD_SHAPES[shapeObj[k]] ? shapeObj[k] : 'normal'; });
-  return { order, enabled, shape };
+  const colsRaw = settings.dashboardWidgetConfig && settings.dashboardWidgetConfig.cols;
+  const cols = colsRaw === '2' || colsRaw === '3' ? colsRaw : 'auto';
+  return { order, enabled, shape, cols };
 }
-function saveDashboardConfig(order, enabledSet, shapeObj){
-  settings.dashboardWidgetConfig = { order, enabled: Array.from(enabledSet), shape: shapeObj || {} };
+function saveDashboardConfig(order, enabledSet, shapeObj, cols){
+  const prevCols = settings.dashboardWidgetConfig && settings.dashboardWidgetConfig.cols;
+  settings.dashboardWidgetConfig = { order, enabled: Array.from(enabledSet), shape: shapeObj || {}, cols: cols || prevCols || 'auto' };
   saveSettings();
 }
 // 달력·근태 관련 이모지(🌴🏠🎁⏰🗓️🍻🎌🍱)를 앱 전체에서 쓰는 선 스타일 아이콘으로 통일하기 위한 헬퍼.
@@ -17650,6 +17682,20 @@ function dashboardWidgetHtml(key, shape){
     <div class="home-dash-card-body" id="${d.bodyId}">-</div>
   </div>`;
 }
+// 아래 선택 영역 카드별 칸 수(6칸 격자 기준) - cols: 'auto'(1개 전체·2개 반반·3개 3등분·4개 2×2) / '2' / '3'.
+// 마지막 줄에 남는 카드는 그 줄을 똑같이 나눠 채움
+function dashboardFlexSpans(n, cols){
+  let c = cols === '2' ? 2 : cols === '3' ? 3 : (n === 1 ? 1 : n === 3 ? 3 : 2);
+  c = Math.max(1, Math.min(c, n || 1));
+  const out = [];
+  const full = n - (n % c);
+  for(let i=0;i<n;i++){
+    const inLast = i >= full;
+    const perRow = inLast ? (n % c) : c;
+    out.push(6 / perRow);
+  }
+  return out.map(x=> Number.isInteger(x) ? x : 3);
+}
 function renderHomeDashboardGrid(){
   const pinnedRow = document.getElementById('homeDashboardPinnedRow');
   const grid = document.getElementById('homeDashboardGrid');
@@ -17669,6 +17715,8 @@ function renderHomeDashboardGrid(){
   if(grid){
     grid.innerHTML = keys.map(k=>dashboardWidgetHtml(k, 'normal')).join('');
     grid.dataset.count = String(keys.length);
+    const spans = dashboardFlexSpans(keys.length, cfg.cols);
+    Array.from(grid.children).forEach((el, i)=>{ el.style.gridColumn = `span ${spans[i]}`; el.classList.toggle('dash-narrow', spans[i] <= 2); });
     grid.style.display = keys.length ? '' : 'none';
   }
   // 예전엔 카드 어디를 눌러도(화살표·목록 줄 포함) 그 탭으로 이동했는데, 카드 안에 눌러야 하는 요소(팀캘린더
@@ -17740,7 +17788,12 @@ function renderDashboardConfigPreview(){
     const def = DASHBOARD_WIDGET_DEFS[k];
     return `<div class="dashboard-config-preview-box" style="--accent:${def.accent};">${escHtml(def.label)}</div>`;
   }).join('');
-  wrap.innerHTML = pinnedHtml + (flexHtml ? `<div class="dashboard-config-preview-flex" data-count="${keys.length}">${flexHtml}</div>` : `<div class="hint" style="grid-column:1/-1; margin:4px 0;">표시할 위젯이 없어요.</div>`);
+  const pSpans = dashboardFlexSpans(keys.length, dashboardConfigDraft.cols);
+  const flexHtml2 = keys.map((k,i)=>{
+    const def = DASHBOARD_WIDGET_DEFS[k];
+    return `<div class="dashboard-config-preview-box" style="--accent:${def.accent}; grid-column:span ${pSpans[i]};">${escHtml(def.label)}</div>`;
+  }).join('');
+  wrap.innerHTML = pinnedHtml + (flexHtml ? `<div class="dashboard-config-preview-flex" data-count="${keys.length}">${flexHtml2}</div>` : `<div class="hint" style="grid-column:1/-1; margin:4px 0;">표시할 위젯이 없어요.</div>`);
 }
 // 화살표(▲▼)로 한 칸씩 옮기던 순서 조정을, 목록에서 손잡이(⠿)를 마우스로 끌어 원하는 자리에 바로
 // 놓는 방식으로 바꿈(요청: "화살표로 조정하지 않고 마우스로 끌어댕겨서 옮기는게 더 좋을것같아") - 표준
@@ -17756,7 +17809,10 @@ function renderDashboardConfigList(){
   const shapeOptsHtml = (key)=>Object.keys(DASHBOARD_SHAPES).filter(s=>key!=='clock' || s==='normal' || s==='wide').map(s=>`<option value="${s}" ${(shape[key]||'normal')===s?'selected':''}>${DASHBOARD_SHAPES[s].label}</option>`).join('');
   // 체크박스+이름을 <label>로 묶어서 이름 텍스트를 눌러도 체크가 토글되게 함(작은 체크박스만 정확히
   // 눌러야 했던 문제) - 모양 선택·손잡이는 오른쪽/왼쪽 별도 영역으로 확실히 떨어뜨림
-  wrap.innerHTML = order.map((key)=>{
+  const colsNow = dashboardConfigDraft.cols || 'auto';
+  const colsRowHtml = `<div class="dashboard-config-cols-row"><span class="dashboard-config-row-label">아래 위젯 한 줄 칸 수</span>
+    <div class="policy-category-toggle">${[['auto','자동'],['2','2칸'],['3','3칸']].map(([v,l])=>`<button type="button" class="policy-cat-btn dashboard-config-cols-btn${colsNow===v?' active':''}" data-cols="${v}">${l}</button>`).join('')}</div></div>`;
+  wrap.innerHTML = colsRowHtml + order.map((key)=>{
     const def = DASHBOARD_WIDGET_DEFS[key];
     const locked = !!def.mandatory;
     const checked = enabled.has(key);
@@ -17768,6 +17824,9 @@ function renderDashboardConfigList(){
       </label>
     </div>`;
   }).join('');
+  wrap.querySelectorAll('.dashboard-config-cols-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ dashboardConfigDraft.cols = btn.dataset.cols; renderDashboardConfigList(); });
+  });
   wrap.querySelectorAll('.dashboard-config-check').forEach(cb=>{
     cb.addEventListener('change', ()=>{
       if(cb.checked) dashboardConfigDraft.enabled.add(cb.dataset.key);
@@ -17817,7 +17876,7 @@ function renderDashboardConfigList(){
 }
 function openDashboardConfigModal(){
   const cfg = getDashboardConfig();
-  dashboardConfigDraft = { order:[...cfg.order], enabled:new Set(cfg.enabled), shape:{...cfg.shape} };
+  dashboardConfigDraft = { order:[...cfg.order], enabled:new Set(cfg.enabled), shape:{...cfg.shape}, cols:cfg.cols };
   renderDashboardConfigList();
   document.getElementById('dashboardConfigModalOverlay').style.display = 'flex';
 }
@@ -17827,7 +17886,7 @@ document.getElementById('dashboardConfigCloseBtn')?.addEventListener('click', ()
 });
 document.getElementById('dashboardConfigSaveBtn')?.addEventListener('click', ()=>{
   if(!dashboardConfigDraft) return;
-  saveDashboardConfig(dashboardConfigDraft.order, dashboardConfigDraft.enabled, dashboardConfigDraft.shape);
+  saveDashboardConfig(dashboardConfigDraft.order, dashboardConfigDraft.enabled, dashboardConfigDraft.shape, dashboardConfigDraft.cols);
   document.getElementById('dashboardConfigModalOverlay').style.display = 'none';
   renderHomeDashboard();
 });
@@ -29227,6 +29286,7 @@ function bindApprovalDetailBodyEvents(scopeEl, id, onChange){
 function openApprovalDetailModal(id, opts){
   const item = (sharedApprovals||[]).find(a=>a.id===id);
   if(!item) return;
+  markNotificationsReadForTarget('approval', id);
   // "결재자가 읽었을 때만 검토중으로" - 기안자 자격으로 여는 경우(대시보드에서 내가 기안한 문서 등)는 검토중으로 넘기지 않음
   if(!(opts && opts.asDrafter) && markApprovalViewedIfNeeded(item)){
     saveSharedApprovals();
@@ -34616,7 +34676,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.30 15:35';
+const APP_BUILD = '2026.09.30 16:05';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
