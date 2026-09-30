@@ -778,6 +778,27 @@
   .home-dashboard-grid[data-count="3"] .home-dash-mini-stat-chip{ flex:none; padding:6px 11px; }
   .home-dashboard-grid[data-count="3"] .home-dash-mini-stat-text{ flex:1; flex-direction:row; align-items:center; justify-content:space-between; gap:8px; }
   .home-dashboard-grid[data-count="3"] .home-dash-mini-stat-value{ font-size:15px; }
+  /* [2026.09.30] 대시보드 맨 위 "오늘의 팀 · 가까운 마감" 한 줄 - 카드와 같은 흰 배경·모서리·그림자, 높이 44px 고정 */
+  .home-dash-today-strip{
+    display:flex; align-items:center; gap:14px; height:44px; box-sizing:border-box; padding:0 16px; margin-bottom:14px;
+    background:var(--surface); border-radius:16px; box-shadow:0 1px 2px rgba(29,30,51,0.04), 0 8px 20px -14px rgba(29,30,51,0.2);
+    min-width:0; overflow:hidden;
+  }
+  .home-dash-today-strip:empty{ display:none; }
+  .home-dash-today-k{ font-size:11.5px; font-weight:800; color:var(--ink-soft); white-space:nowrap; }
+  .home-dash-today-avs{ display:flex; align-items:center; min-width:0; }
+  .home-dash-today-av{
+    position:relative; flex:none; width:28px; height:28px; border-radius:50%; margin-left:-7px; border:2px solid var(--surface);
+    display:inline-flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:900; color:#fff; cursor:default; box-sizing:border-box;
+  }
+  .home-dash-today-av:first-child{ margin-left:0; }
+  .home-dash-today-av img{ width:100%; height:100%; border-radius:50%; object-fit:cover; }
+  .home-dash-today-av i{ position:absolute; right:-2px; bottom:-2px; width:9px; height:9px; border-radius:50%; border:1.5px solid var(--surface); }
+  .home-dash-today-none{ font-size:12px; font-weight:700; color:var(--ink-soft); white-space:nowrap; }
+  .home-dash-today-dl{ margin-left:auto; display:flex; align-items:center; gap:7px; min-width:0; white-space:nowrap; }
+  .home-dash-today-dl b{ font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:900; color:var(--indigo); }
+  .home-dash-today-dl b.urgent{ color:var(--coral); }
+  .home-dash-today-dl span.t{ font-size:12px; font-weight:700; color:var(--ink); overflow:hidden; text-overflow:ellipsis; }
   /* 경비정산·신고 진행률 위젯의 막대(출퇴근 카드의 주간 근무시간 막대와 같은 모양) */
   .home-dash-prog{ margin-bottom:10px; }
   .home-dash-prog-labels{ display:flex; justify-content:space-between; gap:8px; font-size:11.5px; font-weight:700; color:var(--ink-soft); margin-bottom:4px; }
@@ -4825,6 +4846,8 @@
         <div style="text-align:right; margin:-14px 0 10px;">
           <button type="button" id="dashboardConfigOpenBtn" class="home-dash-card-link" style="background:none; border:none; cursor:pointer; font-family:inherit;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82A1.65 1.65 0 0 0 3 13.09H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> 위젯 설정</button>
         </div>
+        <!-- [2026.09.30] 오늘의 팀 · 가까운 마감 요약 한 줄(시안 1: 얼굴 동그라미 + 상태 점) - renderDashboardTodayStrip() -->
+        <div class="home-dash-today-strip" id="homeDashTodayStrip"></div>
         <div class="home-dashboard-pinned-row" id="homeDashboardPinnedRow"></div>
         <div class="home-dashboard-grid" id="homeDashboardGrid"></div>
       </div>
@@ -7691,7 +7714,7 @@ async function maybeRunAdminReRegister(){
 }
 // "받는 기기에만 알림이 동시에 두 개" 확인용 - 이 기기에 알림 연결(Service Worker 등록)이 몇 개인지, 알림 파일이
 // 새 버전인지 보여줌. 예전 버전이면 한 알림을 두 번 띄우고, 연결이 두 개면 같은 알림을 두 번 받음
-const TAXJ_SW_EXPECTED = '2026.09.30-1';
+const TAXJ_SW_EXPECTED = '2026.09.30-2';
 function pushSwRegsOfApp(regs){ return (regs||[]).filter(r=>{ const w = r.active || r.waiting || r.installing; return w && /firebase-messaging-sw\.js/.test(w.scriptURL||''); }); }
 async function pushDiagnoseThisDevice(){
   const el = document.getElementById('pushSwDiag');
@@ -8188,7 +8211,7 @@ function setupForegroundPush(messaging, reg){
       // 출퇴근 알림은 서버가 그림을 안 실어 보내도 제목으로 알아보고 비숑 그림을 붙임
       const clockIcon = /출근 \d/.test(title) ? CLOCK_BICHON_ICON.checkIn : /퇴근 \d/.test(title) ? CLOCK_BICHON_ICON.checkOut : '';
       // "새 알림이 오면 이전 알림 대신 최신 알림으로" - PC는 윈도우가 유지형 알림을 한 번에 하나만 띄워서, 같은 tag로 이전 알림을 교체하고 다시 울림(renotify)
-      const opts = { body, icon: n.icon || d.icon || clockIcon || 'icon-192.png', tag: /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent||'') ? 'fg-' + (d.tag || title + '|' + body) : 'taxj-latest', renotify: true, requireInteraction: true };
+      const opts = { body, icon: n.icon || d.icon || clockIcon || pushTypeIconFromLink(d.link, title) || 'icon-192.png', tag: /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent||'') ? 'fg-' + (d.tag || title + '|' + body) : 'taxj-latest', renotify: true, requireInteraction: true };
       // 화면이 열려 있을 때 온 푸시는 이 페이지가 직접 띄워서, 누르면 관련 화면(결재 문서·공지·팀캘린더)으로 바로 이동하게 함.
       // 알림함에서 같은 제목의 가장 최근 알림을 찾아 그걸 연 것처럼 처리. (휴대폰은 페이지가 직접 못 띄워서 기존 방식으로)
       const openTarget = ()=>{
@@ -8387,6 +8410,17 @@ function handleNotificationDeepLink(){
     if(hit && typeof markNotificationRead === 'function'){ markNotificationRead(hit.id); updateNotificationUnreadBadge(); }
     if(typeof openNotificationTarget === 'function') openNotificationTarget(n);
   }catch(e){ console.error('알림 바로가기 실패', e); }
+}
+// [2026.09.30] 푸시 알림 그림 - 서버는 우리 사이트 주소의 그림만 통과시켜서, 공지·결재 알림은 그림 없이(빈 칸) 떴음.
+// 푸시에 함께 오는 "눌렀을 때 열 주소"(?nt=종류)로 종류를 알아내서, 알림함과 같은 색 동그라미 아이콘을 여기서 붙임
+function pushTypeIconFromLink(link, title){
+  try{
+    const nt = new URL(link||'').searchParams.get('nt') || '';
+    if(!nt) return '';
+    let key = { 'notice':'notice', 'approval-new':'approval-request', 'approval-withdraw':'approval-withdraw', 'team-schedule':'team-schedule', 'leave-direct':'team-schedule' }[nt] || '';
+    if(nt === 'approval-decision') key = /^반려/.test(title||'') ? 'approval-rejected' : 'approval-approved';
+    return key ? notificationIconDataUri(key) : '';
+  }catch(e){ return ''; }
 }
 async function sendPushForLogEntry(entry){
   try{
@@ -18025,6 +18059,47 @@ function renderDashboardExpensePreview(){
     + dashProgHtml('미사용분 (네이버페이)', won(s.naverPay), naverRatio, 'var(--navy)')
     + `<div class="home-dash-prog-foot">${rm}월분 지출결의서 마감 <b style="color:${ddColor};">${ddText}</b> (${dm}/10)</div>`;
 }
+// [2026.09.30] 대시보드 맨 위 "오늘의 팀 · 가까운 마감" - 오늘 휴가·반차·재택인 직원을 얼굴 동그라미(사진이 있으면 사진)
+// + 상태 점(휴가 코럴 · 반차 앰버 · 재택 민트)으로, 오른쪽엔 가장 가까운 세무 신고기한을 D-day로 보여줌.
+// 동그라미에 마우스를 올리면 "이름 · 유형"이 뜸
+const DASH_TODAY_AV_COLORS = ['#E86A8A','#4DB38A','#8B7CF0','#F29B4B','#4A90D9','#C76AD6','#3FB5B0','#D98B5F'];
+function renderDashboardTodayStrip(){
+  const wrap = document.getElementById('homeDashTodayStrip');
+  if(!wrap) return;
+  const today = todayStr();
+  const people = [];
+  try{
+    getProfiles().filter(p=>p.employmentStatus !== '퇴사').forEach(p=>{
+      const s = readProfileRaw(p.id,'settings') || {};
+      const att = readProfileRaw(p.id,'attendance') || {};
+      const name = s.employeeName || p.name || '';
+      if(!name) return;
+      const leaves = (att.leaveUsage||[]).filter(u=>u.date===today);
+      const remotes = (att.remoteEntries||[]).filter(r=>r.date===today);
+      if(!leaves.length && !remotes.length) return;
+      const isHalf = leaves.length && leaves.every(u=>u.type==='반차' || u.type==='반반차');
+      const kind = leaves.length ? (isHalf ? 'half' : 'leave') : 'remote';
+      const labels = leaves.map(u=>leaveTeamCalShortType(u.type, u.subtype, u.publicReason)).concat(remotes.map(()=> '재택'));
+      people.push({ name, photo:p.photo||'', kind, label:labels.join(', ') });
+    });
+  }catch(e){ console.error('오늘의 팀 계산 실패', e); }
+  const dotColor = { leave:'var(--coral)', half:'var(--amber)', remote:'var(--mint)' };
+  const colorOf = (name)=>{ let h=0; for(const ch of name) h = (h*31 + ch.charCodeAt(0)) >>> 0; return DASH_TODAY_AV_COLORS[h % DASH_TODAY_AV_COLORS.length]; };
+  const avsHtml = people.length
+    ? `<span class="home-dash-today-avs">${people.map(pp=>`<span class="home-dash-today-av" style="background:${colorOf(pp.name)};" title="${escHtml(pp.name)} · ${escHtml(pp.label)}">${pp.photo ? `<img src="${escHtml(pp.photo)}" alt="">` : escHtml(pp.name.trim().slice(0,1))}<i style="background:${dotColor[pp.kind]};"></i></span>`).join('')}</span>`
+    : `<span class="home-dash-today-none">모두 출근이에요</span>`;
+  let dlHtml = '';
+  try{
+    const items = (typeof nextTaxScheduleItems === 'function' ? nextTaxScheduleItems() : []) || [];
+    const t0 = parseDate(today);
+    const it = items.map(x=>({ x, d: Math.round((parseDate(x.date) - t0) / 86400000) })).filter(o=>o.d >= 0).sort((a,b)=>a.d-b.d)[0];
+    if(it){
+      const short = String(it.x.title||'').split(/\s+/)[0] || it.x.title;
+      dlHtml = `<span class="home-dash-today-dl" title="${escHtml(it.x.title)} (${Number(it.x.date.slice(5,7))}/${Number(it.x.date.slice(8,10))})"><span class="home-dash-today-k">가까운 마감</span><b class="${it.d<=3?'urgent':''}">${it.d===0?'D-DAY':'D-'+it.d}</b><span class="t">${escHtml(short)} · ${Number(it.x.date.slice(5,7))}/${Number(it.x.date.slice(8,10))}</span></span>`;
+    }
+  }catch(e){ console.error('가까운 마감 계산 실패', e); }
+  wrap.innerHTML = `<span class="home-dash-today-k">오늘 부재·재택</span>${avsHtml}${dlHtml}`;
+}
 // 부가세 - 오늘 기준 가장 가까운(아직 안 지난) 신고기한의 기수. 1기예정 4/25, 1기확정 7/25, 2기예정 10/25, 2기확정 다음해 1/25
 function vatFocusFiling(){
   const today = parseDate(todayStr());
@@ -19106,6 +19181,7 @@ function renderHomeDashboard(){
   renderDashboardTaxSchedulePreview();
   if(cfg.enabled.has('attendance')) renderDashboardAttendancePreview();
   if(cfg.enabled.has('notice')) renderDashboardImportantNotices();
+  renderDashboardTodayStrip();
   if(cfg.enabled.has('expense')) renderDashboardExpensePreview();
   if(cfg.enabled.has('filing')) renderDashboardFilingPreview();
 }
@@ -34536,7 +34612,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.30 15:20';
+const APP_BUILD = '2026.09.30 15:21';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
