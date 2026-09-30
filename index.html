@@ -2735,6 +2735,10 @@
   .xls-io-btn{ font-size:11px !important; padding:0 !important; width:26px; height:26px; display:inline-flex !important; align-items:center; justify-content:center; flex:none; }
   .xls-io-btn svg{ vertical-align:0 !important; }
   .xls-io-slot{ display:flex; justify-content:flex-end; gap:6px; flex-wrap:wrap; }
+  .employee-tools-forms{ display:flex; flex-direction:column; gap:6px; }
+  .etf-row{ display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--border); border-radius:10px; }
+  .etf-row span{ flex:1; font-size:12.5px; font-weight:700; color:var(--ink); }
+  .etf-row button{ width:auto !important; padding:6px 12px !important; font-size:11.5px !important; margin:0 !important; }
   .employee-tools-list .del-btn{ width:100%; justify-content:center; padding:10px 12px; font-size:12.5px; }
   .emp-icon-btn.danger{ color:var(--coral); }
   .xls-io-row{ display:flex; justify-content:flex-end; gap:6px; margin:-4px 0 8px; }
@@ -3522,6 +3526,13 @@
   <div style="background:var(--surface); border-radius:16px; padding:16px 22px 22px; max-width:420px; width:100%; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4); position:relative;">
     <button type="button" id="employeeToolsModalClose" class="del-btn modal-close-btn" style="position:absolute; top:14px; right:16px;">✕</button>
     <div style="text-align:center; margin-bottom:16px; padding:2px 46px 0; font-weight:800; font-size:18px; color:var(--ink);">데이터 이관·가져오기</div>
+    <div style="font-size:12px; font-weight:800; color:var(--ink-soft); text-align:center; margin-bottom:8px;">빈 양식에 적어서 가져오기</div>
+    <div class="employee-tools-forms">
+      <div class="etf-row"><span>출퇴근기록</span><button type="button" class="del-btn" data-imp-form="imp-clock" data-imp-act="down">양식 받기</button><button type="button" class="submit-btn" data-imp-form="imp-clock" data-imp-act="up">올리기</button></div>
+      <div class="etf-row"><span>재택기록</span><button type="button" class="del-btn" data-imp-form="imp-remote" data-imp-act="down">양식 받기</button><button type="button" class="submit-btn" data-imp-form="imp-remote" data-imp-act="up">올리기</button></div>
+      <div class="etf-row"><span>경비·식대</span><button type="button" class="del-btn" data-imp-form="imp-expense" data-imp-act="down">양식 받기</button><button type="button" class="submit-btn" data-imp-form="imp-expense" data-imp-act="up">올리기</button></div>
+    </div>
+    <div style="font-size:12px; font-weight:800; color:var(--ink-soft); text-align:center; margin:16px 0 8px; padding-top:14px; border-top:1px dashed var(--border);">기존 가져오기</div>
     <div class="employee-tools-list" style="display:flex; flex-direction:column; gap:8px;">
       <button type="button" id="employeeDataTransferBtn" class="del-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="13 6 19 12 13 18"></polyline></svg> 데이터 이관</button>
       <button type="button" id="clockImportBtn" class="del-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 3v12"></path><path d="M7 10l5 5 5-5"></path><path d="M4 19h16"></path></svg> 출퇴근기록 가져오기</button>
@@ -29473,10 +29484,11 @@ function xlsDownload(key){
 function xlsDoDownload(key, mode){
   const spec = xlsResolveSpec(key);
   if(!spec || !spec.sheets.length){ appAlert('내려받을 내용이 없어요.'); return; }
-  const pids = mode === 'all' ? getProfiles().map(p=>p.id) : [activeProfileId];
+  const pids = (mode === 'all' || mode === 'blank-all') ? getProfiles().map(p=>p.id) : [activeProfileId];
+  const blank = mode === 'blank' || mode === 'blank-all';
   const wb = XLSX.utils.book_new();
   spec.sheets.forEach(sh=>{
-    const aoa = xlsSheetAoa(sh, { pids, blank: mode === 'blank' });
+    const aoa = xlsSheetAoa(sh, { pids, blank });
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     // 한글은 영문보다 폭이 넓어서 글자 수 × 2로 계산해야 칸이 잘리지 않음
     const dispLen = v => Array.from(String(v===undefined||v===null?'':v)).reduce((n,ch)=> n + (ch.charCodeAt(0) > 255 ? 2 : 1), 0);
@@ -29488,10 +29500,11 @@ function xlsDoDownload(key, mode){
     });
     XLSX.utils.book_append_sheet(wb, ws, String(sh.name).slice(0,31));
   });
-  const who = spec.perEmployee ? (mode === 'all' ? '-전체직원' : `-${xlsProfileName(activeProfileId)}`) : '';
+  if(blank && spec.guide){ const g = XLSX.utils.aoa_to_sheet(spec.guide); g['!cols'] = [{ wch:14 }, { wch:70 }]; XLSX.utils.book_append_sheet(wb, g, '작성방법'); }
+  const who = spec.perEmployee ? ((mode === 'all' || mode === 'blank-all') ? '-전체직원' : `-${xlsProfileName(activeProfileId)}`) : '';
   // 빈 양식 표시 - 올릴 때 이 표시가 있으면 "교체"를 막아 기존 기록이 지워지지 않게 함
-  if(mode === 'blank') wb.Props = { Title: `${spec.title} 양식`, Subject: 'taxj-blank-template' };
-  XLSX.writeFile(wb, `taxj-${spec.tag}${who}${mode === 'blank' ? '-양식' : ''}-${todayStr()}.xlsx`);
+  if(blank) wb.Props = { Title: `${spec.title} 양식`, Subject: 'taxj-blank-template' };
+  XLSX.writeFile(wb, `taxj-${spec.tag}${who}${blank ? '-양식' : ''}-${todayStr()}.xlsx`);
   showCenterToast('엑셀을 내려받았어요');
 }
 document.getElementById('xlsDownOpts')?.addEventListener('click', (e)=>{
@@ -29886,6 +29899,13 @@ const xlsEmpAfter = () => { renderAll(); if(typeof renderClockHistoryView==='fun
 XLS_SPECS['attendance'] = { title:'근태경비', tag:'근태경비', perEmployee:true, guard: () => confirmOtherPersonAction('엑셀 올리기'), after: xlsEmpAfter, sheets: [XLS_SHEET_LEAVE, XLS_SHEET_REMOTE, XLS_SHEET_EXPENSE] };
 XLS_SPECS['clockhistory'] = { title:'출퇴근현황', tag:'출퇴근현황', perEmployee:true, guard: () => confirmOtherPersonAction('엑셀 올리기'), after: xlsEmpAfter, sheets: [XLS_SHEET_CLOCK] };
 XLS_SPECS['calendar'] = { title:'개인캘린더', tag:'개인캘린더', perEmployee:true, guard: () => confirmOtherPersonAction('엑셀 올리기'), after: xlsEmpAfter, sheets: [XLS_SHEET_EVENTS, XLS_SHEET_LEAVE, XLS_SHEET_REMOTE] };
+// "타 그룹웨어끼리 연동이 안 되니 빈 양식에 적어서 가져오기" - 직원정보 › 도구 팝업의 빈 양식 받기·올리기 전용(전체 직원 이름이 미리 적힌 양식)
+XLS_SPECS['imp-clock'] = { title:'출퇴근기록', tag:'출퇴근기록', perEmployee:true, importOnly:true, after: xlsEmpAfter, sheets: [XLS_SHEET_CLOCK],
+  guide: [['출퇴근기록 작성 방법'],[''],['직원','직원정보에 등록된 이름 그대로 (양식에 미리 적혀 있어요. 한 사람이 여러 날이면 이름을 반복해서 적어요)'],['날짜','2026-09-01 형식'],['출근 / 퇴근','09:00 형식 (둘 중 하나만 적어도 돼요)'],['근무지','사무실 또는 재택 (비우면 사무실)'],['다음날퇴근','자정 넘어 퇴근했으면 O'],[''],['같은 날짜가 이미 있으면 건너뛰어요. ID 열은 비워두세요.']] };
+XLS_SPECS['imp-remote'] = { title:'재택기록', tag:'재택기록', perEmployee:true, importOnly:true, after: xlsEmpAfter, sheets: [XLS_SHEET_REMOTE],
+  guide: [['재택기록 작성 방법'],[''],['직원','직원정보에 등록된 이름 그대로'],['날짜','2026-09-01 형식'],['구분','정기 또는 특별 (비우면 정기)'],['반일','오전 또는 오후 (하루 전체면 비움)'],['식대제외','식대 한도에서 빼야 하면 O'],['메모','자유'],[''],['같은 날짜가 이미 있으면 건너뛰어요. ID 열은 비워두세요.']] };
+XLS_SPECS['imp-expense'] = { title:'경비·식대', tag:'경비식대', perEmployee:true, importOnly:true, after: xlsEmpAfter, sheets: [XLS_SHEET_EXPENSE],
+  guide: [['경비·식대 작성 방법'],[''],['직원','직원정보에 등록된 이름 그대로'],['구분','점심식대 / 저녁식대 / 택시비 / 경비 / 차액정산 중 하나'],['날짜','2026-09-01 형식'],['금액','숫자만 (예: 9000)'],['메모','식대는 사용처, 경비는 사용 내용'],['정산방식','차액정산일 때만: 네이버페이 또는 경비청구액'],[''],['날짜·구분·금액·메모가 모두 같은 줄은 이미 있는 걸로 보고 건너뛰어요. ID 열은 비워두세요.']] };
 XLS_SPECS['staffLeave'] = { title:'직원휴가', tag:'직원휴가', perEmployee:true, guard: () => confirmOtherPersonAction('엑셀 올리기'), after: xlsEmpAfter, sheets: [XLS_SHEET_GRANTS] };
 
 // ── 팀캘린더(조회한 달, 내려받기만) ──
@@ -30405,7 +30425,7 @@ function renderBulkExcelChooser(){
   if(!wrap) return;
   const known = new Set(BULK_XLS_GROUPS.flatMap(g=>g.items.map(i=>i[0])));
   // 나중에 새로 생긴 메뉴(XLS_SPECS)도 자동으로 "기타"에 나오게
-  const extra = Object.keys(XLS_SPECS).filter(k=>!known.has(k)).map(k=>[k, XLS_SPECS[k].title||k]);
+  const extra = Object.keys(XLS_SPECS).filter(k=>!known.has(k) && !XLS_SPECS[k].importOnly).map(k=>[k, XLS_SPECS[k].title||k]);
   const groups = extra.length ? [...BULK_XLS_GROUPS, { label:'기타', items: extra }] : BULK_XLS_GROUPS;
   const cb = (on, attrs) => `<input type="checkbox" ${attrs} ${on?'checked':''} style="width:15px; height:15px; margin:0; accent-color:var(--indigo); cursor:pointer; flex:none;">`;
   wrap.innerHTML = `<div style="border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--surface); text-align:left;">` + groups.map(g=>{
@@ -30837,6 +30857,11 @@ document.getElementById('employeeToolsBtn')?.addEventListener('click', ()=>{
   ov.style.display = 'flex';
   if(typeof window.__bringOverlayToFront === 'function') window.__bringOverlayToFront(ov);
 });
+document.querySelectorAll('[data-imp-form]').forEach(b=> b.addEventListener('click', ()=>{
+  document.getElementById('employeeToolsModalOverlay').style.display = 'none';
+  if(typeof XLSX === 'undefined'){ appAlert('엑셀 기능을 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해주세요.'); return; }
+  if(b.dataset.impAct === 'down') xlsDoDownload(b.dataset.impForm, 'blank-all'); else xlsUpload(b.dataset.impForm);
+}));
 document.getElementById('employeeToolsModalClose')?.addEventListener('click', ()=>{ document.getElementById('employeeToolsModalOverlay').style.display = 'none'; });
 document.getElementById('employeeToolsModalOverlay')?.addEventListener('click', (e)=>{
   if(e.target === e.currentTarget || e.target.closest('.employee-tools-list button')) e.currentTarget.style.display = 'none';
@@ -33422,7 +33447,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.30 10:55';
+const APP_BUILD = '2026.09.30 11:10';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
