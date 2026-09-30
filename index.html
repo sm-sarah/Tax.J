@@ -763,6 +763,11 @@
   /* [B안 · 점+글자] 카드처럼 감싼 줄·왼쪽 색 막대 대신, 점선으로만 나누고 오른쪽에 작은 색 점 + 근무지 글자 */
   .home-dash-pres-row.pres-b{ background:transparent; border:none; border-bottom:1px dashed var(--border); border-radius:0; box-shadow:none; margin:0; padding:8px 4px; }
   .home-dash-pres-row.pres-b:last-child{ border-bottom:none; }
+  /* [2026.09.30] 회계사님 줄 - 맨 위에 따로, 아래 직원 집계와는 실선으로 구분 */
+  .home-dash-pres-acct{ margin-bottom:8px; padding-bottom:4px; border-bottom:1.5px solid var(--border); }
+  .home-dash-pres-acct .home-dash-pres-row.pres-b{ border-bottom:none; }
+  .home-dash-pres-acct .home-dash-pres-name{ overflow:visible; white-space:nowrap; }
+  .home-dash-pres-acct-tag{ display:inline-block; font-size:10.5px; font-weight:800; color:var(--navy); background:var(--indigo-bg); border-radius:999px; padding:1px 7px; margin-left:3px; vertical-align:1px; }
   .home-dash-pres-st .pres-dot{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:5px; vertical-align:1px; }
   /* 팀캘린더 달력 보기 */
   .home-dash-cal-viewtoggle{ display:flex; justify-content:center; gap:4px; margin:0 0 6px; }
@@ -831,6 +836,7 @@
   .home-dash-today-strip:empty{ display:none; }
   /* [2026.09.30] 가까운 마감만 - 흰 카드 배경 없이, 글자 크기만큼만 연보라 알약으로 강조 */
   .home-dash-today-strip{ height:auto; padding:0; margin:-6px 0 12px; background:none; box-shadow:none; border-radius:0; overflow:visible; }
+  .home-dash-today-strip{ justify-content:flex-end; } /* [2026.09.30] 오른쪽 정렬(요청) */
   .home-dash-today-strip .home-dash-today-dl{ margin-left:0; display:inline-flex; }
   .home-dash-today-strip .home-dash-today-k.dl{ background:var(--indigo); color:#fff; }
   /* [2026.09.30] "요약 줄이 눈에 안 띈다"(요청) - 구역 이름을 색 칩으로, 글자·동그라미·D-day를 크게 */
@@ -18625,6 +18631,7 @@ function renderDashboardPresence(){
   const today = todayStr();
   const nowMs = Date.now();
   const rows = [];
+  const acctRows = [];
   try{
     getProfiles().forEach(p=>{
       const snap = readProfileRaw(p.id, 'settings') || {};
@@ -18642,6 +18649,12 @@ function renderDashboardPresence(){
       const pres = presenceAll[String(p.email||'').toLowerCase()] || null;
       const online = !!(pres && nowMs - Number(pres.at||0) < PRESENCE_ONLINE_MS);
       const devRaw = online ? (pres.device || '') : '';
+      // [2026.09.30] 회계사님은 직원이 아니라 "사무실에 계신지"만 보면 됨(요청) - 출퇴근·재택·휴가 대신, 사무실 PC(기기 이름에
+      // "사무실"·"회사")에서 앱이 켜져 있으면 "계세요", 아니면 "안 계세요"만 따로 한 줄로 보여주고, 아래 집계·목록에서는 뺌
+      if(String(p.position||'').trim() === '회계사'){
+        acctRows.push({ p, name, inOffice: online && /사무실|회사/.test(devRaw) });
+        return;
+      }
       const leaveRec = (att.leaveUsage || []).find(u=>u.date===today);
       rows.push({ p, name, kind, online, device: /^(집|개인)\s*PC$/i.test(devRaw.trim()) ? '자택 PC' : devRaw, // "집 PC"·"개인 PC"는 "자택 PC"로 통일해서 보여줌
         checkIn: entry && entry.checkIn || '', checkOut: entry && entry.checkOut || '', leaveType: leaveRec ? (leaveRec.type || '휴가') : '' });
@@ -18669,7 +18682,16 @@ function renderDashboardPresence(){
       <span class="home-dash-pres-st" style="color:${stColor};"><i class="pres-dot" style="background:${(r.kind === 'none' || r.kind === 'done') ? 'var(--border)' : st.color};"></i>${st.label}</span>
     </div>`;
   }).join('');
-  body.innerHTML = rows.length ? sumHtml + rowHtml : `<div class="hint" style="margin:0; font-size:11.5px;">등록된 직원이 없어요.</div>`;
+  acctRows.sort((a,b)=> (b.inOffice - a.inOffice) || a.name.localeCompare(b.name, 'ko'));
+  const acctHtml = acctRows.length ? `<div class="home-dash-pres-acct">${acctRows.map(r=>{
+    const av = r.p.photo ? `<img src="${escHtml(r.p.photo)}" alt="">` : staffInitialCircleHtml(r.name, staffInitialColorOf(r.p, r.name), 32, '', r.p.initialText || '');
+    return `<div class="home-dash-pres-row pres-b" title="${escHtml(r.name)} 회계사 · ${r.inOffice ? '사무실에 계세요' : '자리에 안 계세요'}">
+      <span class="home-dash-pres-av">${av}</span>
+      <div style="flex:1; min-width:0;"><div class="home-dash-pres-name">${escHtml(r.name)} <span class="home-dash-pres-acct-tag">회계사</span></div></div>
+      <span class="home-dash-pres-st" style="color:${r.inOffice ? 'var(--indigo)' : 'var(--ink-soft)'};"><i class="pres-dot" style="background:${r.inOffice ? 'var(--indigo)' : 'var(--border)'};"></i>${r.inOffice ? '계세요' : '안 계세요'}</span>
+    </div>`;
+  }).join('')}</div>` : '';
+  body.innerHTML = (rows.length || acctRows.length) ? acctHtml + (rows.length ? sumHtml + rowHtml : '') : `<div class="hint" style="margin:0; font-size:11.5px;">등록된 직원이 없어요.</div>`;
   const at = document.getElementById('dashPresenceAt');
   if(at){ const d = new Date(); at.textContent = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} 기준`; }
 }
@@ -35213,7 +35235,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.30 19:15';
+const APP_BUILD = '2026.09.30 19:55';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
