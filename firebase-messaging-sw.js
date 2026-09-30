@@ -25,7 +25,7 @@ const messaging = firebase.messaging();
 // 새 버전 파일을 올리면, 예전 버전이 앱을 완전히 닫을 때까지 계속 일하는 걸 막고 바로 새 버전으로 교체함
 // (예전 버전이 남아있으면 받는 기기에서 알림이 동시에 두 개씩 뜸)
 // 설정 › 알림에서 "이 기기가 새 버전 알림 파일을 쓰고 있는지" 확인할 때 쓰는 버전 표시
-const TAXJ_SW_VERSION = '2026.09.29-2';
+const TAXJ_SW_VERSION = '2026.09.30-1';
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'taxj-sw-version' && event.ports && event.ports[0]) event.ports[0].postMessage({ version: TAXJ_SW_VERSION });
 });
@@ -33,20 +33,22 @@ self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 
 // 앱/탭이 꺼져있거나 백그라운드일 때 FCM 메시지가 도착하면 여기서 받아서, OS 알림(배너)으로 띄움
-// ⚠️ "모바일에서 같은 알림이 두 번씩 온다"의 원인 - 서버가 notification(제목·내용)을 담아 보내면 Firebase가
-// 알아서 알림을 한 번 띄우는데, 예전엔 여기서 또 한 번 showNotification을 불러서 두 번 떴음.
-// 이제 notification이 담겨 온 메시지는 Firebase가 띄우는 것 하나만 두고, data만 담겨 온 메시지일 때만 여기서 띄움
+// [2026.09.30] 서버가 이제 제목·내용을 data에만 담아 보내서(notification 없음) Firebase가 자동으로 띄우지 않고,
+// 여기서 한 번만 띄움(중복 없음). "PC는 새 알림이 와도 먼저 온 알림만 떠 있다" - 윈도우는 끄기 전까지 유지되는
+// 알림을 한 번에 하나만 보여줘서, PC에서는 같은 tag로 이전 알림을 최신 알림으로 교체하고 다시 울림(renotify).
+// 휴대폰은 알림창에 차곡차곡 쌓이는 게 편하니 알림마다 다른 tag로 둠
+const IS_MOBILE = /Android|iPhone|iPad|Mobile/i.test((self.navigator && self.navigator.userAgent) || '');
 messaging.onBackgroundMessage((payload) => {
-  if (payload && payload.notification) return; // Firebase가 이미 띄움(중복 방지)
+  if (payload && payload.notification) return; // 예전 방식(서버가 notification을 담아 보낸 경우)은 Firebase가 이미 띄움(중복 방지)
   const d = (payload && payload.data) || {};
   const title = d.title || 'Tax.J';
   const body = d.body || '';
   return self.registration.showNotification(title, {
     body,
     icon: d.icon || 'icon-192.png',
-    // 같은 사건이 혹시 두 번 도착해도 알림 하나로 합쳐지게(같은 tag면 덮어씀)
-    tag: d.tag || ('taxj-' + title + '|' + body),
-    requireInteraction: true, // 직접 닫기 전까지 유지(지원하는 기기에서)
+    tag: IS_MOBILE ? ('taxj-' + title + '|' + body) : 'taxj-latest',
+    renotify: !IS_MOBILE,
+    requireInteraction: d.requireInteraction !== '0', // 직접 닫기 전까지 유지(지원하는 기기에서)
     data: { link: d.link || '' }
   });
 });
