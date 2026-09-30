@@ -1850,6 +1850,20 @@
      .policy-category-toggle button{border:none}이 더 구체적이라 테두리가 안 먹혔음 - id로 범위를
      좁혀서 우선순위를 이기고, 옅은 테두리를 둘러서 칩이 배경에 묻히지 않고 구분되게 함 */
   #bulkExcelSheetToggle button{ border:1.5px solid var(--border); }
+  /* 백업복구 항목 이름 + (i) 설명 아이콘 */
+  .backup-item-head{ text-align:center; font-size:12.5px; font-weight:800; color:var(--ink); display:flex; align-items:center; justify-content:center; gap:6px; }
+  .backup-info-btn{ width:17px; height:17px; border-radius:50%; border:1.5px solid var(--ink-soft); background:transparent; color:var(--ink-soft); font:800 10.5px/1 'Pretendard',serif; font-style:italic; padding:0; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; vertical-align:1px; flex:none; }
+  .backup-info-btn:hover{ border-color:var(--indigo); color:var(--indigo); background:var(--indigo-bg); }
+  .backup-info-body{ font-size:12.5px; line-height:1.75; color:var(--ink); }
+  .backup-info-body h4{ font-size:13px; font-weight:800; color:var(--indigo-deep); margin:14px 0 4px; }
+  .backup-info-body h4:first-child{ margin-top:0; }
+  .backup-info-body ul, .backup-info-body ol{ margin:2px 0 6px; padding-left:20px; }
+  .backup-info-body li{ margin:2px 0; }
+  .backup-info-body .warn{ color:var(--coral); font-weight:700; }
+  .backup-info-body table{ width:100%; border-collapse:collapse; margin:4px 0 8px; font-size:12px; }
+  .backup-info-body th, .backup-info-body td{ border:1px solid var(--border); padding:5px 7px; text-align:left; vertical-align:top; }
+  .backup-info-body th{ background:var(--bg); font-weight:800; white-space:nowrap; }
+  .backup-info-body td:first-child{ white-space:nowrap; font-weight:700; }
   /* 신고대상 편집 팝업의 매월/반기 칩은 글자가 2자뿐인데 공용 카테고리 칩 크기(padding:8px 18px)를 그대로 쓰면
      텍스트에 비해 과하게 커 보였음 - 이 팝업 전용으로만 좁혀서 텍스트 크기에 맞춤(다른 화면의
      .policy-category-toggle에는 영향 없음) */
@@ -3499,6 +3513,16 @@
       <button type="button" id="pwPromptModalCancel" class="del-btn" style="padding:8px 20px; font-size:12.5px; border-radius:10px;">취소</button>
       <button type="button" id="pwPromptModalOk" class="submit-btn" style="width:auto; min-width:0; display:inline-block; margin:0; padding:8px 20px; font-size:12.5px; border-radius:10px;">확인</button>
     </div>
+  </div>
+</div>
+<!-- 백업복구 설명 팝업 - 백업복구 화면의 (i) 아이콘을 누르면 그 항목 설명을 보여줌 -->
+<div id="backupInfoModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:16px 22px 20px; max-width:600px; width:100%; max-height:85vh; overflow-y:auto; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4); position:relative;">
+    <button type="button" id="backupInfoModalClose" class="del-btn modal-close-btn" style="position:absolute; top:14px; right:16px;">✕</button>
+    <div style="text-align:center; margin-bottom:14px; padding:2px 46px 0;">
+      <div id="backupInfoModalTitle" style="font-weight:800; font-size:18px; color:var(--ink);"></div>
+    </div>
+    <div id="backupInfoModalBody" class="backup-info-body"></div>
   </div>
 </div>
 <!-- 개인정보 기타 ID/PW 팝업 (구분은 직접입력, 여러 개 등록 가능) -->
@@ -6674,22 +6698,16 @@
         </div>
       </div>
 
-      <div class="settings-sub-title" id="ssTitle-backup" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> 백업복구 <span class="badge">관리자 전용</span></div>
-      <p class="hint" style="text-align:center;">
-        아래에서 범위를 고른 뒤 백업·복구하세요.<br>
-        <span style="color:var(--ink-soft);">이것과 별개로, 관리자 계정으로 접속해 저장이 일어날 때마다(최대 3시간에 1건) 회사 데이터와 이 앱 소스파일이 공유드라이브의 "0004.전자결재첨부 &gt; 자동백업" 폴더에 자동으로 저장돼요 (14일 지난 건 자동 정리). 아래 "전체직원" 탭에서 이 시점들을 골라 직접 되돌릴 수 있어요.</span>
-      </p>
+      <div class="settings-sub-title" id="ssTitle-backup" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> 백업복구 <span class="badge">관리자 전용</span> <button type="button" class="backup-info-btn" data-backup-info="overview" title="설명 보기" aria-label="설명 보기">i</button></div>
+      <!-- "설명이 너무 많아 처음 열면 복잡하다" - 화면의 긴 안내문을 없애고, 각 항목 이름 옆 (i) 아이콘을 누르면 팝업으로 설명을 보여줌.
+           "회사공통"(공통설정 내보내기/불러오기)은 초기 세팅용이라 숨김(전체직원 백업에 공통설정도 이미 포함됨) -->
       <div class="policy-category-toggle" id="backupScopeToggle" style="margin-bottom:14px;">
-        <button type="button" class="policy-cat-btn backup-scope-btn active" data-backup-scope="shared">회사공통</button>
-        <button type="button" class="policy-cat-btn backup-scope-btn" data-backup-scope="all">전체직원</button>
+        <button type="button" class="policy-cat-btn backup-scope-btn" data-backup-scope="shared" style="display:none;">회사공통</button>
+        <button type="button" class="policy-cat-btn backup-scope-btn active" data-backup-scope="all">전체직원</button>
         <button type="button" class="policy-cat-btn backup-scope-btn" data-backup-scope="one">직원선택</button>
       </div>
 
-      <div class="flat-panel backup-scope-panel" data-backup-scope="shared" style="display:flex; flex-direction:column; gap:10px; max-width:640px; margin-left:auto; margin-right:auto;">
-        <p class="hint" style="margin:0 auto;">
-          공휴일, 근무시간 예외, 공지사항, 관리자 목록 등 <b>전 직원 공통 설정만</b> 백업·복구해요.<br>
-          직원 개개인의 근태·경비 기록은 포함되지 않아요 (그건 각 직원이 본인 설정에서 관리해요).
-        </p>
+      <div class="flat-panel backup-scope-panel" data-backup-scope="shared" style="display:none; flex-direction:column; gap:10px; max-width:640px; margin-left:auto; margin-right:auto;">
         <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center;">
           <button type="button" id="exportSharedBtn" class="submit-btn" style="width:auto; padding:7px 13px; font-size:12px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 19h16"/></svg> 공통설정 내보내기</button>
           <button type="button" id="importSharedBtn" class="submit-btn" style="width:auto; padding:7px 13px; font-size:12px; background:var(--mint);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg> 공통설정 불러오기</button>
@@ -6698,37 +6716,22 @@
         </div>
       </div>
 
-      <div class="flat-panel backup-scope-panel" data-backup-scope="all" style="display:none; flex-direction:column; gap:10px; max-width:640px; margin-left:auto; margin-right:auto;">
-        <p class="hint" style="margin:0 auto;">
-          <b>전 직원의 근태·경비·개인일정 + 회사 공통설정을 전부 한 파일로</b> 백업·복구해요.<br>
-          이 브라우저가 이미 구글 드라이브와 동기화되어 있다면 모든 직원 데이터를 가지고 있으니, 여기서 회사 전체 백업본을 만들 수 있어요. 복구 시에는 <b>모든 직원 데이터가 파일 내용으로 통째로 교체</b>되니 신중하게 사용해주세요.
-        </p>
+      <div class="flat-panel backup-scope-panel" data-backup-scope="all" style="display:flex; flex-direction:column; gap:10px; max-width:640px; margin-left:auto; margin-right:auto;">
+        <div class="backup-item-head">전 직원 일괄 백업·복구 <button type="button" class="backup-info-btn" data-backup-info="all" title="설명 보기" aria-label="설명 보기">i</button></div>
         <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center;">
           <button type="button" id="exportAllBtn" class="submit-btn" style="width:auto; padding:7px 13px; font-size:12px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 19h16"/></svg> 전 직원 일괄 백업</button>
           <button type="button" id="importAllBtn" class="submit-btn" style="width:auto; padding:7px 13px; font-size:12px; background:var(--coral);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg> 전 직원 일괄 복구</button>
           <input type="file" id="importAllFile" accept="application/json" style="display:none;">
           <span class="save-msg" id="allBackupSaveMsg" style="margin-top:0;"></span>
         </div>
-        <p class="hint" style="margin:6px auto 0;">
-          예전 백업 파일에서 <b>거래처목록·개인정보</b>, 그리고 지금은 삭제되고 없는 계정에 남아있던 <b>입사일·점심식대 한도 이력</b>을 지금 화면에 합쳐 넣고 싶다면 아래 버튼을 써주세요. 직원 목록·근태·경비 등 다른 데이터는 전혀 건드리지 않고, 겹치는 거래처는 정보가 더 많이 채워진 쪽만 남겨요.
-        </p>
+        <div class="backup-item-head" style="margin-top:6px; padding-top:12px; border-top:1px dashed var(--border);">거래처·개인정보·식대한도만 복구 <button type="button" class="backup-info-btn" data-backup-info="clientsOnly" title="설명 보기" aria-label="설명 보기">i</button></div>
         <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center;">
           <button type="button" id="importClientsOnlyBtn" class="submit-btn" style="width:auto; padding:7px 13px; font-size:12px; background:var(--mint);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg> 백업 파일에서 거래처·개인정보·식대한도 복구</button>
           <input type="file" id="importClientsOnlyFile" accept="application/json" style="display:none;">
-          <!-- 위 버튼은 사람이 드라이브에서 파일을 직접 찾아 골라야 하는데, "자동백업" 폴더엔 매일 파일이 쌓여서
-               날짜를 착각해 엉뚱한(옛날) 파일을 고르기 쉬움(실제로 한 번 이런 일이 있었음) - 그 폴더에서
-               수정시각 기준 가장 최신 파일을 코드가 직접 찾아 바로 적용해서, 사람이 파일을 고르다 실수할
-               여지 자체를 없앤 버튼. 나머지(합치는 방식·안전성)는 위 버튼과 완전히 동일함 -->
           <button type="button" id="importLatestAutoBackupBtn" class="submit-btn" style="width:auto; padding:7px 13px; font-size:12px; background:var(--mint);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg> 자동백업 폴더 최신 파일로 복구</button>
           <span class="save-msg" id="clientsOnlyBackupSaveMsg" style="margin-top:0;"></span>
         </div>
-        <!-- "시점 복구" - 실수로 저장된 내용이 다른 사람 변경을 덮어썼거나, 뭔가 잘못 지워졌을 때 자동백업
-             폴더에 쌓인 과거 시점 중 하나를 직접 골라 전 직원 데이터를 통째로 그 시점으로 되돌릴 수 있게 함.
-             위 "최신 파일로 복구"는 거래처·개인정보만 안전하게 합치는 용도라 되돌릴 수 없는 반면, 이건 그
-             시점 이후의 모든 변경이 사라지는 강력한 전체 복구라 목록에서 시점을 직접 확인하고 고르게 함 -->
-        <p class="hint" style="margin:10px auto 0; padding-top:10px; border-top:1px dashed var(--border); width:100%;">
-          그래도 뭔가 잘못됐다면, 자동백업에 쌓인 과거 시점 중 하나를 직접 골라 <b>전 직원 데이터를 통째로 그 시점으로 되돌릴</b> 수도 있어요. 그 시점 이후의 모든 변경(근태·경비 입력, 결재, 삭제 등)이 사라지니 마지막 수단으로만 쓰세요.
-        </p>
+        <div class="backup-item-head" style="margin-top:6px; padding-top:12px; border-top:1px dashed var(--border);">시점 복구 <button type="button" class="backup-info-btn" data-backup-info="pit" title="설명 보기" aria-label="설명 보기">i</button></div>
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:center;">
           <select id="pointInTimeBackupSelect" class="flat-input" style="min-width:240px;"><option value="">목록 새로고침을 눌러주세요</option></select>
           <button type="button" id="pointInTimeRefreshBtn" class="del-btn">목록 새로고침</button>
@@ -6739,9 +6742,7 @@
       </div>
 
       <div class="flat-panel backup-scope-panel" data-backup-scope="one" style="display:none; flex-direction:column; gap:10px; max-width:640px; margin-left:auto; margin-right:auto;">
-        <p class="hint" style="margin:0 auto;">
-          전 직원이 아니라 <b>한 명만 골라서</b> 그 직원의 근태·경비·개인일정 기록만 백업·복구해요. 회사 공통설정과 다른 직원 데이터는 건드리지 않아요.
-        </p>
+        <div class="backup-item-head">선택 직원 백업·복구 <button type="button" class="backup-info-btn" data-backup-info="one" title="설명 보기" aria-label="설명 보기">i</button></div>
         <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center;">
           <select id="oneEmployeeBackupSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12px;"></select>
           <button type="button" id="exportOneBtn" class="submit-btn" style="width:auto; padding:7px 13px; font-size:12px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 19h16"/></svg> 선택 직원 백업</button>
@@ -6786,24 +6787,17 @@
            기장거래처/전체거래처/회사정보/팀정보 네 가지를 시트 하나씩으로 담은 파일 하나를 만들어줌 -->
       <div class="settings-sub-title" id="ssTitle-excelbackup" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg> 엑셀 일괄 다운로드 <span class="badge">관리자 전용</span></div>
       <p class="hint" style="text-align:center;">
-        <span class="nowrap-line">기장거래처·전체거래처(기장/기타/해지 포함)·회사정보·팀정보 중 원하는 항목만 골라 시트로 담은 엑셀 파일 하나로 받아요.</span>
-        <span class="nowrap-line">위 백업복구처럼 앱으로 다시 불러오는 용도가 아니라, 자료가 사라질까 걱정될 때 따로 보관하거나 다른 곳에 바로 활용하기 좋은 형태예요.</span>
-        <span class="nowrap-line" id="excelBackupLockHint">회사정보에 암호화된 계정이 있으면, 먼저 사내정보 잠금을 해제해야 실제 ID/PW까지 포함돼요.</span>
+        <span class="nowrap-line">엑셀 받기가 있는 모든 메뉴를 여기서 한 번에 볼 수 있어요. 원하는 항목을 골라 시트로 담은 엑셀 파일 하나로 받아요.</span>
+        <span class="nowrap-line">직원별 자료(근태경비·출퇴근 등)는 전체 직원 자료가 담겨요. 메뉴 화면에서 고른 기간·연도 기준인 항목은 그 기준 그대로 받아요.</span>
       </p>
-      <div class="flat-panel" style="max-width:480px; text-align:center;">
-        <!-- 아래 시트 칩을 누르기 전에 이 화면에서 바로 사내정보 잠금해제를 요청할 수 있게 하는 버튼 -
-             안 눌러도 다운로드는 되지만(잠긴 항목은 빈 값), 실제 ID/PW까지 받으려면 여기서 먼저 풀면 됨 -->
-        <div id="excelBackupUnlockWrap" style="margin-bottom:14px;"></div>
-        <!-- 어떤 시트가 받아지는지 안 보인 채로 버튼 하나만 있던 것 -> 시트별 칩을 눌러서 바로 그 시트만
-             받게 함(칩=선택이 아니라 즉시 다운로드 액션). "전체"를 누르면 네 시트 전부 담은 파일 하나로 받음 -->
-        <div class="policy-category-toggle" id="bulkExcelSheetToggle" style="justify-content:center; flex-wrap:wrap; margin-bottom:0;">
-          <button type="button" class="bulk-excel-sheet-btn" data-sheet="bk">기장거래처</button>
-          <button type="button" class="bulk-excel-sheet-btn" data-sheet="all">전체거래처</button>
-          <button type="button" class="bulk-excel-sheet-btn" data-sheet="ci">회사정보</button>
-          <button type="button" class="bulk-excel-sheet-btn" data-sheet="ti">팀정보</button>
-          <div style="width:100%; text-align:center; margin-top:12px; padding-top:12px; border-top:1px dashed var(--border);">
-            <button type="button" class="bulk-excel-sheet-btn" id="bulkExcelSelectAllBtn">전체 한 번에 받기</button>
-          </div>
+      <div class="flat-panel" style="max-width:560px; text-align:center;">
+        <div id="excelBackupUnlockWrap" style="display:none;"></div>
+        <!-- "데이터 메뉴의 엑셀다운로드에 모든 메뉴가 나와서 한 번에 보고 원하는 걸 받게" 요청 - 칩을 눌러 고르고(다시 누르면 해제),
+             아래 "선택한 항목 받기"로 고른 것들을 시트로 담은 파일 하나로 받음 -->
+        <div id="bulkExcelSheetToggle"></div>
+        <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:12px; padding-top:12px; border-top:1px dashed var(--border);">
+          <button type="button" class="del-btn" id="bulkExcelToggleAllBtn" style="padding:7px 14px; font-size:12px;">전체 선택</button>
+          <button type="button" class="submit-btn" id="bulkExcelSelectAllBtn" style="width:auto; padding:7px 16px; font-size:12px;">선택한 항목 받기</button>
         </div>
         <div class="save-msg" id="bulkExcelSaveMsg" style="margin-top:8px;"></div>
       </div>
@@ -7334,7 +7328,7 @@ document.getElementById('pushTestSendBtn')?.addEventListener('click', async ()=>
   if(!targets.length){ msg.textContent = '알림함에는 넣었지만, 이 직원은 푸시 받을 기기가 등록돼 있지 않아요. (그 사람 기기의 설정 › 알림에서 먼저 알림을 켜야 해요)'; return; }
   msg.textContent = '보내는 중...';
   try{
-    await fetch(PUSH_SEND_ENDPOINT, { method:'POST', headers:{ 'Content-Type':'application/json' },
+    await fetch(PUSH_SEND_ENDPOINT, { method:'POST', headers: await pushAuthHeaders(),
       body: JSON.stringify({ tokens: targets.map(t=>t.token), title: '🔔 Tax.J 테스트 알림', body: `${from}님이 보낸 테스트 알림이에요 (${hhmm})`, requireInteraction: true }) });
     const names = targets.map(t=> t.deviceName || '이름 없는 기기').join(', ');
     msg.textContent = `알림함에 1건 넣고, 기기 ${targets.length}대로 푸시를 보냈어요: ${names} · 기기마다 한 번씩만 오면 정상이에요.`;
@@ -7813,6 +7807,15 @@ function setupForegroundPush(messaging, reg){
   });
 }
 // 이 기기에 이미 푸시 토큰이 등록돼 있으면 앱을 열 때마다 화면용 푸시 수신도 연결해둠
+// 알림 발송 함수(sendPush)는 이제 로그인한 회사 계정의 증표(Firebase ID 토큰)가 있어야만 발송해 줌 - 호출할 때 같이 실어 보냄
+async function pushAuthHeaders(){
+  const h = { 'Content-Type':'application/json' };
+  try{
+    const u = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
+    if(u) h.Authorization = 'Bearer ' + await u.getIdToken();
+  }catch(e){ console.error('로그인 증표 가져오기 실패', e); }
+  return h;
+}
 async function initForegroundPushIfRegistered(){
   try{
     if(typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
@@ -8009,7 +8012,7 @@ async function sendPushForLogEntry(entry){
     if(!targets.length) return;
     await fetch(PUSH_SEND_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await pushAuthHeaders(),
       body: JSON.stringify({ tokens: targets.map(t=>t.token), title: entry.title || 'Tax.J', body: entry.body || '', requireInteraction: true, link: notificationDeepLinkUrl(entry), ...(entry.pushIcon ? { icon: entry.pushIcon } : {}) })
     });
     // 이 알림을 실제로 보냈다는 걸(지연 없이) 드라이브에 최대한 빨리 반영해서, 다른 기기가 이어서
@@ -10581,7 +10584,7 @@ async function resendNotificationById(id){
     const title = stripRedundantTitlePrefix(stripLeadingEmoji(n.title||'알림'));
     await fetch(PUSH_SEND_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await pushAuthHeaders(),
       body: JSON.stringify({ tokens: targets.map(t=>t.token), title, body: n.body||'' })
     });
     showCenterToast('등록된 기기로 알림을 다시 보냈어요');
@@ -13205,6 +13208,8 @@ function updateAllSensitiveUnlockButtons(){
 function updateExcelBackupUnlockUI(admin, unlocked){
   const wrap = document.getElementById('excelBackupUnlockWrap');
   if(!wrap) return;
+  // "이미 잠금 없이 쓰고 있어서 잠금해제 버튼은 필요 없다" - 엑셀 일괄 다운로드 화면의 잠금해제 버튼 없앰
+  wrap.innerHTML = ''; wrap.style.display = 'none'; return;
   if(typeof admin === 'undefined'){
     admin = !!gdriveAccessToken && isCurrentUserAdmin;
     unlocked = admin && adminSensitiveUnlocked && adminCryptoKey;
@@ -29698,13 +29703,30 @@ const XLS_CLIENT_COLS = [
   {k:'name',label:'상호명'},{k:'entityType',label:'사업자유형'},{k:'taxType',label:'세목'},{k:'taxTypeEtc',label:'세목(기타내용)'},{k:'status',label:'상태'},
   {k:'bizNo',label:'사업자등록번호'},{k:'corpRegNo',label:'법인등록번호'},{k:'bizAddress',label:'사업장주소'},{k:'openDate',label:'개업일',t:'date'},{k:'foundingDate',label:'설립일',t:'date'},
   {k:'bizType',label:'업태'},{k:'bizTypeCode',label:'업종코드'},{k:'program',label:'회계프로그램'},{k:'companyCode',label:'회사코드'},{k:'driveFolder',label:'드라이브폴더'},
-  {k:'repName',label:'대표자명'},{k:'repPhone',label:'대표자연락처'},{k:'repEmail',label:'대표자이메일'},{k:'contactsStr',label:'담당자(이름 연락처 이메일 / …)'},
+  {k:'repName',label:'대표자명'},{k:'repPhone',label:'대표자연락처'},{k:'repEmail',label:'대표자이메일'},{k:'ctName',label:'담당자 이름'},{k:'ctPhone',label:'담당자 연락처'},{k:'ctEmail',label:'담당자 이메일'},
   {k:'fee',label:'수임료',t:'number'},{k:'contractDate',label:'계약일',t:'date'},{k:'start',label:'수임시작일',t:'date'},
   {k:'terminationReason',label:'해지사유'},{k:'terminationDate',label:'해지일',t:'date'},{k:'terminationMonth',label:'해지월'},{k:'memoStr',label:'메모'}
 ];
 function xlsClientContactsStr(c){
   const contacts = (c.contacts && c.contacts.length) ? c.contacts : ((c.contact||c.phone||c.email) ? [{name:c.contact,phone:c.phone,email:c.email}] : []);
   return contacts.map(x=>[x.name,x.phone,x.email].filter(Boolean).join(' ')).filter(Boolean).join(' / ');
+}
+// 담당자를 이름/연락처/이메일 세 열로 나눠 받기 - 여러 명이면 각 열에 같은 순서로 " / "로 이어 적음
+function xlsClientContactList(c){
+  return (c.contacts && c.contacts.length) ? c.contacts : ((c.contact||c.phone||c.email) ? [{name:c.contact,phone:c.phone,email:c.email}] : []);
+}
+function xlsClientContactCols(c){
+  const list = xlsClientContactList(c).filter(x=> x && (x.name||x.phone||x.email));
+  const j = k => list.some(x=>x[k]) ? list.map(x=>String(x[k]||'').trim()).join(' / ') : '';
+  return { ctName: j('name'), ctPhone: j('phone'), ctEmail: j('email') };
+}
+function xlsParseContactCols(o){
+  const sp = v => String(v||'').trim() ? String(v).split('/').map(x=>x.trim()) : [];
+  const n = sp(o.ctName), ph = sp(o.ctPhone), em = sp(o.ctEmail);
+  const len = Math.max(n.length, ph.length, em.length);
+  const out = [];
+  for(let i=0;i<len;i++){ const c = { name:n[i]||'', phone:ph[i]||'', email:em[i]||'' }; if(c.name||c.phone||c.email) out.push(c); }
+  return out;
 }
 function xlsParseContacts(str){
   return String(str||'').split('/').map(s=>s.trim()).filter(Boolean).map(part=>{
@@ -29721,17 +29743,17 @@ function xlsClientSheet(name, inTab){
     records: () => sortClientsCanonical(clients.list.filter(inTab)),
     toRow: c => ({ ...Object.fromEntries(XLS_CLIENT_COLS.map(col=>[col.k, c[col.k]===undefined||c[col.k]===null ? '' : c[col.k]])),
       status: (c.status==='진행중' ? '수임' : c.status) || '', fee: (c.fee===null||c.fee===undefined) ? null : c.fee,
-      contactsStr: xlsClientContactsStr(c), memoStr: ((c.memos && c.memos.length) ? c.memos.map(m=>m.text).filter(Boolean).join(' / ') : (c.memo||'')) }),
+      ...xlsClientContactCols(c), memoStr: ((c.memos && c.memos.length) ? c.memos.map(m=>m.text).filter(Boolean).join(' / ') : (c.memo||'')) }),
     dupKey: o => xlsBizDigits(o.bizNo) || ('n:' + normalizeClientName(o.name||'')),
     valid: o => !!String(o.name||'').trim(),
     fromRow: (o, ex) => {
       const rec = ex ? { ...ex } : { id: genId(), editHistory: [{ date: xlsNowKo(), changes: '엑셀 올리기로 등록' }], memos:[], contacts:[], subTags:[] };
-      XLS_CLIENT_COLS.forEach(col=>{ if(col.k!=='contactsStr' && col.k!=='memoStr') rec[col.k] = o[col.k]; });
+      XLS_CLIENT_COLS.forEach(col=>{ if(!['ctName','ctPhone','ctEmail','memoStr'].includes(col.k)) rec[col.k] = o[col.k]; });
       if(!rec.status) rec.status = '수임';
       if(rec.entityType !== '법인'){ rec.corpRegNo = rec.corpRegNo || ''; }
-      const oldContacts = ex ? xlsClientContactsStr(ex) : '';
-      if(!ex || xlsNorm(o.contactsStr) !== xlsNorm(oldContacts)){
-        rec.contacts = xlsParseContacts(o.contactsStr);
+      const oc = ex ? xlsClientContactCols(ex) : { ctName:'', ctPhone:'', ctEmail:'' };
+      if(!ex || ['ctName','ctPhone','ctEmail'].some(k=> xlsNorm(o[k]) !== xlsNorm(oc[k]))){
+        rec.contacts = xlsParseContactCols(o);
         rec.contact = rec.contacts.map(c=>c.name).filter(Boolean).join(', ');
         rec.phone = rec.contacts.map(c=>c.phone).filter(Boolean).join(' ');
         rec.email = rec.contacts.map(c=>c.email).filter(Boolean).join(' ');
@@ -29741,7 +29763,7 @@ function xlsClientSheet(name, inTab){
         rec.memos = String(o.memoStr||'').trim() ? [{ id: genId(), text: String(o.memoStr).trim(), date: xlsNowKo() }] : [];
         rec.memo = rec.memos.map(m=>m.text).join(' / ');
       }
-      if(ex && JSON.stringify(XLS_CLIENT_COLS.map(c=>rec[c.k])) !== JSON.stringify(XLS_CLIENT_COLS.map(c=>ex[c.k]))){
+      if(ex && (JSON.stringify(XLS_CLIENT_COLS.map(c=>rec[c.k])) !== JSON.stringify(XLS_CLIENT_COLS.map(c=>ex[c.k])) || JSON.stringify(rec.contacts||[]) !== JSON.stringify(ex.contacts||[]))){
         rec.editHistory = [{ date: xlsNowKo(), changes: '엑셀 올리기로 수정' }, ...(Array.isArray(ex.editHistory) ? ex.editHistory : [])];
       }
       return rec;
@@ -30255,14 +30277,13 @@ document.getElementById('exportSharedBtn').addEventListener('click', async ()=>{
 // 📊 엑셀 일괄 다운로드: 기장거래처/전체거래처/회사정보/팀정보를 시트 4개짜리 .xlsx 파일 하나로 - 위 백업복구(JSON)와 달리
 // 앱으로 다시 불러오는 용도가 아니라, 사람이 바로 열어보거나 다른 곳에 활용하기 좋은 형태로 받는 별도 기능
 // ══════════════════════════════════════════════════════════
-const BULK_EXCEL_CLIENT_COLUMNS = ['#','상호명','구분','사업자유형','세목','상태','사업자등록번호','법인등록번호','사업장주소','개업일','설립일','업태','업종코드','회계프로그램','회사코드','드라이브폴더','대표자명','대표자연락처','대표자이메일','담당자','수임료','계약일','수임시작일','해지사유','해지일','해지월','메모'];
+const BULK_EXCEL_CLIENT_COLUMNS = ['#','상호명','구분','사업자유형','세목','상태','사업자등록번호','법인등록번호','사업장주소','개업일','설립일','업태','업종코드','회계프로그램','회사코드','드라이브폴더','대표자명','대표자연락처','대표자이메일','담당자 이름','담당자 연락처','담당자 이메일','수임료','계약일','수임시작일','해지사유','해지일','해지월','메모'];
 function clientGroupLabel(c){
   if(c.status === '해지') return '해지';
   return ['기장대행','신고대리'].includes(c.taxType) ? '기장' : '기타';
 }
 function bulkExcelClientRow(c, idx, groupLabel){
-  const contacts = (c.contacts && c.contacts.length) ? c.contacts : ((c.contact||c.phone||c.email) ? [{name:c.contact,phone:c.phone,email:c.email}] : []);
-  const contactStr = contacts.map(x=>[x.name,x.phone,x.email].filter(Boolean).join(' ')).filter(Boolean).join(' / ');
+  const cc = xlsClientContactCols(c);
   const memos = (c.memos && c.memos.length) ? c.memos : (c.memo ? [{text:c.memo,date:''}] : []);
   const memoStr = memos.map(m=>(m.date?`[${m.date}] `:'')+(m.text||'')).filter(Boolean).join(' / ');
   const taxTypeLabel = c.taxType === '기타' && c.taxTypeEtc ? `기타(${c.taxTypeEtc})` : (c.taxType||'');
@@ -30272,7 +30293,7 @@ function bulkExcelClientRow(c, idx, groupLabel){
     idx, c.name||'', groupLabel, c.entityType||'', taxTypeLabel, (c.status==='진행중'?'수임':c.status)||'',
     c.bizNo||'', c.corpRegNo||'', c.bizAddress||'', c.openDate||'', c.foundingDate||'',
     c.bizType||'', c.bizTypeCode||'', programLabel, c.companyCode||'', c.driveFolder||'',
-    c.repName||'', c.repPhone||'', c.repEmail||'', contactStr,
+    c.repName||'', c.repPhone||'', c.repEmail||'', cc.ctName, cc.ctPhone, cc.ctEmail,
     (c.fee===null||c.fee===undefined)?'':c.fee, c.contractDate||'', c.start||'',
     terminationReasonLabel, c.terminationDate||'', c.terminationMonth||'',
     memoStr
@@ -30364,14 +30385,130 @@ async function runBulkExcelDownload(sheets, filenameTag){
     appAlert('엑셀 파일을 만드는 중 문제가 생겼어요: ' + e.message);
   }
 }
-document.querySelectorAll('#bulkExcelSheetToggle .bulk-excel-sheet-btn[data-sheet]').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    runBulkExcelDownload({ bk:false, all:false, ci:false, ti:false, [btn.dataset.sheet]:true }, btn.textContent.trim());
-  });
+// ── 엑셀 일괄 다운로드: 엑셀 받기가 있는 모든 메뉴를 한 화면에서 골라 한 파일로 ──
+// id가 'x:'로 시작하면 이 화면 전용 시트(전체거래처·회사정보·팀정보·거래처 개인정보), 나머지는 XLS_SPECS 메뉴 키
+const BULK_XLS_GROUPS = [
+  { label:'거래처', items:[ ['clients-regular','기장거래처','기장대행·신고대리 거래처 목록'], ['clients-other','기타거래처','기장 외 거래처 목록'], ['clients-terminated','해지거래처','해지된 거래처 목록'], ['x:all','전체거래처','기장·기타·해지 전부 한 시트'], ['x:pi','거래처 개인정보','주민번호·홈택스·통장비밀번호 등'] ] },
+  { label:'신고·제출', items:[ ['filingStatus','신고현황','신고현황 화면에서 고른 세목·기간'], ['submitStatus','제출현황','제출현황 화면에서 고른 기간'], ['itAll','원천세 신고현황','선택한 연도 월별 국세·지방세'], ['vatAll','부가세 신고현황','선택한 연도 기수별 진행상태'], ['taxSchedule','세무일정','직접 추가한 세무일정'] ] },
+  { label:'직원별 자료 (전체 직원)', items:[ ['attendance','근태경비','휴가사용·재택근무·경비'], ['clockhistory','출퇴근현황','출근·퇴근 기록'], ['calendar','개인캘린더','개인일정·휴가·재택'], ['staffLeave','직원휴가','연차 부여 내역'], ['teamcalendar','팀캘린더','선택한 달의 팀 일정'] ] },
+  { label:'회사·직원 설정', items:[ ['x:ci','회사정보','법인공용·팀·개인 계정정보'], ['x:ti','팀정보','팀명·담당회계사·세무관리번호 등'], ['orgChart','조직도','이름·팀·직책'], ['hrTeam','경영지원실','경영지원실 직원 카드'], ['staffInfo','직원정보','직원 이름·이메일·입사일 등'], ['lunchLimit','점심식대','월별 식대 한도'], ['exclusionDays','제외일수','제외일수 목록'], ['specialPeriod','특별기간','특별기간 목록'] ] }
+];
+const bulkXlsSelected = new Set();
+function renderBulkExcelChooser(){
+  const wrap = document.getElementById('bulkExcelSheetToggle');
+  if(!wrap) return;
+  const known = new Set(BULK_XLS_GROUPS.flatMap(g=>g.items.map(i=>i[0])));
+  // 나중에 새로 생긴 메뉴(XLS_SPECS)도 자동으로 "기타"에 나오게
+  const extra = Object.keys(XLS_SPECS).filter(k=>!known.has(k)).map(k=>[k, XLS_SPECS[k].title||k]);
+  const groups = extra.length ? [...BULK_XLS_GROUPS, { label:'기타', items: extra }] : BULK_XLS_GROUPS;
+  const cb = (on, attrs) => `<input type="checkbox" ${attrs} ${on?'checked':''} style="width:15px; height:15px; margin:0; accent-color:var(--indigo); cursor:pointer; flex:none;">`;
+  wrap.innerHTML = `<div style="border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--surface); text-align:left;">` + groups.map(g=>{
+    const items = g.items.filter(([id])=> id.startsWith('x:') || XLS_SPECS[id]);
+    const on = items.filter(([id])=>bulkXlsSelected.has(id)).length;
+    return `<label style="display:flex; align-items:center; gap:10px; padding:8px 14px; background:var(--bg); border-bottom:1px solid var(--border); cursor:pointer;">${cb(on===items.length && items.length, `data-bulk-group="${escHtml(g.label)}"`)}<span style="flex:1; font-size:12px; font-weight:800; color:var(--ink);">${escHtml(g.label)}</span><span style="font-size:11px; color:var(--ink-soft);">${on} / ${items.length}</span></label>`
+      + items.map(([id,l,d])=>`<label style="display:flex; align-items:center; gap:10px; padding:8px 14px 8px 38px; border-bottom:1px solid var(--border); cursor:pointer;">${cb(bulkXlsSelected.has(id), `data-bulk-id="${escHtml(id)}"`)}<span style="flex:0 0 120px; font-size:12.5px; font-weight:700; color:var(--ink);">${escHtml(l)}</span><span style="flex:1; font-size:11.5px; color:var(--ink-soft);">${escHtml(d||'')}</span></label>`).join('');
+  }).join('') + `</div>`;
+  const allIds = [...wrap.querySelectorAll('[data-bulk-id]')].map(b=>b.dataset.bulkId);
+  const tb = document.getElementById('bulkExcelToggleAllBtn');
+  if(tb) tb.textContent = allIds.length && allIds.every(id=>bulkXlsSelected.has(id)) ? '전체 해제' : '전체 선택';
+  const rb = document.getElementById('bulkExcelSelectAllBtn');
+  if(rb) rb.textContent = bulkXlsSelected.size ? `선택한 ${bulkXlsSelected.size}개 받기` : '선택한 항목 받기';
+}
+document.getElementById('bulkExcelSheetToggle')?.addEventListener('change', (e)=>{
+  const t = e.target;
+  if(t.dataset.bulkId){ if(t.checked) bulkXlsSelected.add(t.dataset.bulkId); else bulkXlsSelected.delete(t.dataset.bulkId); }
+  else if(t.dataset.bulkGroup){
+    const g = BULK_XLS_GROUPS.find(x=>x.label===t.dataset.bulkGroup);
+    const ids = g ? g.items.map(i=>i[0]) : [...document.querySelectorAll('#bulkExcelSheetToggle [data-bulk-id]')].map(b=>b.dataset.bulkId).filter(id=>!BULK_XLS_GROUPS.some(x=>x.items.some(i=>i[0]===id)));
+    ids.forEach(id=> t.checked ? bulkXlsSelected.add(id) : bulkXlsSelected.delete(id));
+  } else return;
+  renderBulkExcelChooser();
 });
-document.getElementById('bulkExcelSelectAllBtn')?.addEventListener('click', ()=>{
-  runBulkExcelDownload({ bk:true, all:true, ci:true, ti:true }, '백업');
+document.getElementById('bulkExcelToggleAllBtn')?.addEventListener('click', ()=>{
+  const ids = [...document.querySelectorAll('#bulkExcelSheetToggle [data-bulk-id]')].map(b=>b.dataset.bulkId);
+  const allOn = ids.every(id=>bulkXlsSelected.has(id));
+  ids.forEach(id=> allOn ? bulkXlsSelected.delete(id) : bulkXlsSelected.add(id));
+  renderBulkExcelChooser();
 });
+// 거래처 개인정보(암호화된 ID/PW 등) - 거래처 한 줄에 기본 항목(홈택스·여신금융협회·공동인증서·통장비밀번호)은 열로, 나머지는 "기타 항목"에 모아서
+async function bulkExcelPersonalInfoAoa(){
+  const unlocked = !!(adminCryptoKey && adminSensitiveUnlocked);
+  const head = ['#','구분','상호명','사업자등록번호','대표자명','대표자 주민번호','홈택스 ID','홈택스 PW','여신금융협회 ID','여신금융협회 PW','공동인증서','통장비밀번호','기타 항목','비고'];
+  const rows = [head];
+  const list = sortClientsCanonical(clients.list||[]);
+  let i = 0;
+  for(const c of list){
+    const p = findPersonalInfoForClient(c);
+    let etc = [], locked = false;
+    if(p && p.sensitiveEnc){
+      if(!unlocked) locked = true;
+      else { try{ etc = (await decryptJSON(p.sensitiveEnc, adminCryptoKey)).etcAccounts || []; }catch(e){ locked = true; } }
+    }
+    etc = applyClPersonalInfoForcedTypes(stripRemovedClPersonalInfo(etc)).filter(a=>(a.idVal||'').trim() || (a.pwVal||'').trim() || (a.note||'').trim());
+    if(!locked && !etc.length && !c.repSsn) continue;
+    const get = (lbl)=> etc.find(a=>a.label===lbl) || {};
+    const L = '🔒(잠금 상태)';
+    const others = etc.filter(a=>!CL_PERSONAL_INFO_DEFAULT_LABELS.includes(a.label)).map(a=> `${a.label||'기타'}: ${a.type==='info' ? (a.idVal||'') : [a.idVal, a.pwVal].filter(Boolean).join(' / ')}`).join('; ');
+    const notes = etc.filter(a=>(a.note||'').trim()).map(a=>`${a.label||'기타'}: ${a.note.trim()}`).join('; ');
+    rows.push([++i, clientGroupLabel(c), c.name||'', c.bizNo||'', c.repName||'', c.repSsn||'',
+      locked?L:(get('홈택스').idVal||''), locked?L:(get('홈택스').pwVal||''), locked?L:(get('여신금융협회').idVal||''), locked?L:(get('여신금융협회').pwVal||''),
+      locked?L:(get('공동인증서').idVal||''), locked?L:(get('통장비밀번호').idVal||''), locked?L:others, locked?'':notes]);
+  }
+  return rows;
+}
+async function runBulkExcelSelected(){
+  const ids = [...document.querySelectorAll('#bulkExcelSheetToggle [data-bulk-id]')].map(b=>b.dataset.bulkId).filter(id=>bulkXlsSelected.has(id));
+  if(!ids.length){ appAlert('받을 항목을 먼저 골라주세요.'); return; }
+  if(typeof XLSX === 'undefined'){ appAlert('엑셀 기능을 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해주세요.'); return; }
+  if(!(await appConfirm(`선택한 ${ids.length}개 항목을 엑셀 파일 하나로 받을까요?`))) return;
+  const needKey = (ids.includes('x:pi') && (personalInfo.list||[]).some(p=>p.sensitiveEnc))
+    || ids.includes('x:ci') && ((sharedCompanyInfo.corp||[]).some(x=>x.sensitiveEnc) || (sharedCompanyInfo.teamGeneral||[]).some(x=>x.sensitiveEnc) || (sharedCompanyInfo.team||[]).some(p=>(p.items||[]).some(x=>x.sensitiveEnc)));
+  if(needKey && !(adminCryptoKey && adminSensitiveUnlocked)){
+    if(await appConfirm('암호화된 항목이 있어요. 지금 잠금을 해제하면 실제 ID/PW까지 포함해서 받을 수 있어요. 잠금을 해제할까요? (취소하면 암호화된 값은 "잠금 상태"로 표시돼요)')) await unlockSensitiveView();
+  }
+  const msgEl = document.getElementById('bulkExcelSaveMsg');
+  if(msgEl) msgEl.textContent = '만드는 중...';
+  try{
+    const wb = XLSX.utils.book_new();
+    const used = new Set();
+    const addSheet = (aoa, name, hideLast)=>{
+      let base = String(name).replace(/[\\\/\?\*\[\]:]/g,' ').slice(0,31), nm = base, n = 2;
+      while(used.has(nm)){ const suf = ` (${n++})`; nm = base.slice(0, 31-suf.length) + suf; }
+      used.add(nm);
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      const dispLen = v => Array.from(String(v===undefined||v===null?'':v)).reduce((k,ch)=> k + (ch.charCodeAt(0) > 255 ? 2 : 1), 0);
+      const last = (aoa[0]||[]).length - 1;
+      ws['!cols'] = (aoa[0]||[]).map((h,i)=> (hideLast && i===last) ? { wch:14, hidden:true } : { wch: Math.min(50, Math.max(8, aoa.reduce((m,r)=>Math.max(m, dispLen(r[i])), 0) + 2)) });
+      XLSX.utils.book_append_sheet(wb, ws, nm);
+    };
+    const skipped = [];
+    const pids = getProfiles().map(p=>p.id);
+    for(const id of ids){
+      if(id === 'x:all' || id === 'x:ci' || id === 'x:ti'){
+        const k = id.slice(2);
+        const sub = await buildBulkExcelWorkbook({ bk:false, all:false, ci:false, ti:false, [k]:true });
+        sub.SheetNames.forEach(n=> addSheet(XLSX.utils.sheet_to_json(sub.Sheets[n], { header:1, defval:'' }), n, false));
+        continue;
+      }
+      if(id === 'x:pi'){ addSheet(await bulkExcelPersonalInfoAoa(), '거래처개인정보', false); continue; }
+      const spec = xlsResolveSpec(id);
+      if(!spec || !spec.sheets.length){ skipped.push((XLS_SPECS[id]||{}).title || id); continue; }
+      spec.sheets.forEach(sh=>{
+        const nm = spec.sheets.length === 1 ? (spec.title || sh.name) : `${spec.title}-${sh.name}`;
+        addSheet(xlsSheetAoa(sh, { pids }), nm, true);
+      });
+    }
+    if(!wb.SheetNames.length){ if(msgEl) msgEl.textContent = ''; appAlert('받을 내용이 없어요.' + (skipped.length ? `\n(해당 메뉴 화면을 먼저 열어야 하는 항목: ${skipped.join(', ')})` : '')); return; }
+    XLSX.writeFile(wb, `taxj-엑셀일괄-${todayStr()}.xlsx`);
+    if(msgEl){ msgEl.textContent = skipped.length ? `다운로드 완료 · 건너뜀: ${skipped.join(', ')} (그 메뉴 화면을 한 번 열면 받을 수 있어요)` : '다운로드 완료'; setTimeout(()=>{ msgEl.textContent=''; }, skipped.length ? 8000 : 2500); }
+  }catch(e){
+    console.error('엑셀 일괄 다운로드 실패', e);
+    if(msgEl) msgEl.textContent = '';
+    appAlert('엑셀 파일을 만드는 중 문제가 생겼어요: ' + e.message);
+  }
+}
+document.getElementById('bulkExcelSelectAllBtn')?.addEventListener('click', runBulkExcelSelected);
+setTimeout(renderBulkExcelChooser, 0);
 
 document.getElementById('importSharedBtn').addEventListener('click', async ()=>{
   if(!(await appConfirm('가져오기를 하시겠습니까? (백업 파일(JSON)을 선택해서 회사 공통설정에 복원해요)'))) return;
@@ -30682,6 +30819,76 @@ document.getElementById('pointInTimeRecoverMissingBtn')?.addEventListener('click
     if(msgEl) msgEl.textContent = '실패: ' + (err && err.message ? err.message : err);
   }
 });
+// 백업복구 화면의 (i) 아이콘 설명 - 화면에 늘 펼쳐두던 안내문을 팝업으로 옮김
+const BACKUP_INFO = {
+  overview: { title:'백업·복구 한눈에 보기', html:`
+    <h4>데이터는 어디에 저장되나요?</h4>
+    <p>Tax.J의 모든 데이터(거래처·근태·경비·결재·설정 등)는 <b>Firebase(구글 클라우드 데이터베이스)</b>에 실시간으로 저장되고, 모든 기기가 같은 데이터를 봐요. 이 데이터를 아래처럼 여러 겹으로 보호하고 있어요.</p>
+    <h4>자동으로 돌아가는 보호 장치</h4>
+    <table>
+      <tr><th>장치</th><th>언제·얼마나</th><th>되돌리는 방법</th></tr>
+      <tr><td>앱 자동백업<br>(공유 드라이브)</td><td>관리자 계정에서 저장이 일어날 때 최대 3시간에 1건 · <b>14일</b> 보관 · 회사 데이터 전체 + 그때의 앱 파일</td><td>이 화면 <b>전체직원 › 시점 복구</b> 또는 <b>자동백업 폴더 최신 파일로 복구</b></td></tr>
+      <tr><td>Firebase 매일 백업</td><td>하루 1번 자동 · <b>14주</b> 보관</td><td>Google Cloud 콘솔에서 복원(새 데이터베이스로 만들어져서 앱에 연결하는 작업이 따로 필요)</td></tr>
+      <tr><td>Firebase 시점 복구</td><td>최근 <b>7일</b>을 1분 단위로</td><td>Google Cloud 콘솔에서 복원(위와 같음)</td></tr>
+      <tr><td>삭제 방지</td><td>항상 켜짐</td><td>데이터베이스를 통째로 지우는 실수를 막아요</td></tr>
+    </table>
+    <p>앱 자동백업 파일은 공유 드라이브 <b>"0004.전자결재첨부 › 자동백업"</b> 폴더에 쌓여요. 관리자가 며칠 앱을 안 쓰면 그동안은 쌓이지 않지만, Firebase 매일 백업은 상관없이 돌아가요.</p>
+    <h4>직접 만드는 백업</h4>
+    <ul>
+      <li><b>전 직원 일괄 백업</b>: 전체 데이터를 JSON 파일 하나로 내 컴퓨터에 받아요. 이 파일로 다시 복구할 수 있어요.</li>
+      <li><b>선택 직원 백업</b>: 한 직원의 근태·경비·개인일정만 받아요.</li>
+      <li><b>엑셀 일괄 다운로드</b>: 사람이 열어보거나 보관하기 좋은 엑셀이에요. 앱으로 되돌리는 용도는 아니에요.</li>
+    </ul>
+    <h4>문제가 생기면 이 순서로</h4>
+    <ol>
+      <li>하나를 실수로 지웠다면 → 먼저 <b>휴지통</b>에서 복원</li>
+      <li>여러 개가 사라졌다면 → <b>시점 복구 › 빠진 항목만 되살리기</b> (지금 데이터는 그대로 두고 없어진 것만 다시 넣음)</li>
+      <li>데이터가 크게 꼬였다면 → <b>시점 복구 › 이 시점으로 전체 복구</b> (그 시점 이후 변경은 모두 사라짐)</li>
+      <li>드라이브 백업으로도 안 되면 → Firebase 매일 백업·시점 복구 (관리자가 Google Cloud 콘솔에서 진행)</li>
+    </ol>` },
+  all: { title:'전 직원 일괄 백업·복구', html:`
+    <p><b>전 직원의 근태·경비·개인일정 + 회사 공통설정 + 거래처 등 전체 데이터</b>를 JSON 파일 하나로 백업하거나, 그 파일로 복구해요.</p>
+    <ul>
+      <li><b>일괄 백업</b>: 지금 데이터를 파일로 내 컴퓨터에 받아요. 큰 작업(엑셀 교체 올리기 등) 전에 한 번 받아두면 안전해요.</li>
+      <li><b>일괄 복구</b>: <span class="warn">모든 직원 데이터가 파일 내용으로 통째로 바뀌어요.</span> 파일을 만든 뒤에 입력한 내용은 전부 사라지니 신중하게 써주세요.</li>
+    </ul>` },
+  clientsOnly: { title:'거래처·개인정보·식대한도만 복구', html:`
+    <p>백업 파일에서 <b>거래처목록·거래처 개인정보</b>, 그리고 지금은 없어진 계정에 남아있던 <b>입사일·점심식대 한도 이력</b>만 지금 데이터에 <b>합쳐 넣어요</b>.</p>
+    <ul>
+      <li>직원 목록·근태·경비 등 다른 데이터는 전혀 건드리지 않아요.</li>
+      <li>겹치는 거래처는 정보가 더 많이 채워진 쪽만 남겨요.</li>
+      <li><b>백업 파일에서 복구</b>: 내 컴퓨터의 백업 파일을 직접 골라요.</li>
+      <li><b>자동백업 폴더 최신 파일로 복구</b>: 공유 드라이브 자동백업 폴더에서 가장 최근 파일을 자동으로 찾아 써요. 파일을 잘못 고르는 실수를 막아줘요.</li>
+    </ul>` },
+  pit: { title:'시점 복구', html:`
+    <p>공유 드라이브 자동백업(최대 3시간 간격, 14일 보관)에 쌓인 과거 시점 중 하나를 골라 되돌려요. <b>목록 새로고침</b>을 누르면 고를 수 있는 시점이 나와요.</p>
+    <ul>
+      <li><b>빠진 항목만 되살리기</b>: 지금 데이터는 그대로 두고, 그 시점엔 있었는데 지금 없는 항목만 다시 넣어요. 먼저 이걸 써보세요.</li>
+      <li><b>이 시점으로 전체 복구</b>: <span class="warn">전 직원 데이터를 통째로 그 시점으로 되돌려요.</span> 그 시점 이후의 모든 변경(근태·경비 입력, 결재, 삭제 등)이 사라지니 마지막 수단으로만 쓰세요.</li>
+    </ul>
+    <p>14일보다 오래된 시점이 필요하면 Firebase 매일 백업(14주 보관)을 써야 해요. 자세한 건 백업복구 제목 옆 (i)를 봐주세요.</p>` },
+  one: { title:'선택 직원 백업·복구', html:`
+    <p>전 직원이 아니라 <b>한 명만 골라서</b> 그 직원의 근태·경비·개인일정 기록만 백업하거나 복구해요.</p>
+    <ul>
+      <li>회사 공통설정과 다른 직원 데이터는 건드리지 않아요.</li>
+      <li><span class="warn">복구하면 그 직원의 기록이 파일 내용으로 바뀌어요.</span></li>
+    </ul>` }
+};
+document.addEventListener('click', (e)=>{
+  const b = e.target.closest && e.target.closest('[data-backup-info]');
+  if(!b) return;
+  e.preventDefault(); e.stopPropagation();
+  const info = BACKUP_INFO[b.dataset.backupInfo];
+  if(!info) return;
+  document.getElementById('backupInfoModalTitle').textContent = info.title;
+  document.getElementById('backupInfoModalBody').innerHTML = info.html;
+  const ov = document.getElementById('backupInfoModalOverlay');
+  ov.style.display = 'flex';
+  if(typeof window.__bringOverlayToFront === 'function') window.__bringOverlayToFront(ov);
+}, true); // 캡처 단계 - 제목줄(접기/펼치기) 클릭으로 번지지 않게
+document.getElementById('backupInfoModalClose')?.addEventListener('click', ()=>{ document.getElementById('backupInfoModalOverlay').style.display = 'none'; });
+document.getElementById('backupInfoModalOverlay')?.addEventListener('click', (e)=>{ if(e.target === e.currentTarget) e.currentTarget.style.display = 'none'; });
+
 // "전체직원" 탭을 처음 열 때 시점 목록을 자동으로 한 번 불러와둠(매번 새로고침 버튼을 누르지 않아도 되게)
 document.querySelectorAll('.backup-scope-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
@@ -33193,7 +33400,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.09.29 22:45';
+const APP_BUILD = '2026.09.30 10:20';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
