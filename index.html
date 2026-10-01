@@ -1877,14 +1877,23 @@
   .it-seg button.on{ background:var(--indigo); color:#fff; }
   #reviewItFsTabs button{ height:24px; padding:0 14px; font-size:12px; }
   /* [2026.10.01] 검증 팝업 탭 - 급여: 소득별 지급액(총지급액 계산까지) + 급여명세서 기준 세액 / 신고서: 총지급액(계산·신고서·검증) + 신고서 기준 세액 */
-  .rv-pay #reviewItIncomeWrap::before{ content:'급여'; display:block; font-size:12px; font-weight:800; color:var(--indigo-deep); margin:0 0 8px 12px; }
+  .rv-pay #reviewItIncomeWrap::before{ content:'급여'; }
   .rv-pay #reviewItIncomeWrap table tr > :nth-child(16), .rv-pay #reviewItIncomeWrap table tr > :nth-child(17){ display:none; }
   .rv-pay #reviewItIncomeWrap{ margin-bottom:22px; }
   .rv-return #reviewItIncomeWrap{ display:none !important; }
   .rv-pay #reviewItTaxWrap > div:nth-of-type(2), .rv-pay #reviewItTaxWrap > table:nth-of-type(2){ display:none; }
   .rv-return #reviewItTaxWrap > div, .rv-return #reviewItTaxWrap > table:nth-of-type(1){ display:none; }
   /* 신고서 탭 - 총지급액(계산·신고서·검증) 칸을 신고서 세액 표 앞쪽에 붙여 한 표로(오른쪽이 비어 보이지 않게) */
-  #reviewItTaxWrap th.rv-merged-h{ background:var(--indigo-bg); }
+  /* [2026.10.01] 검증 팝업 표 정리(요청) - 머리줄 색은 모두 같게, 합계·계산 칸의 진한 음영은 빼고 굵은 글씨만, 묶음 사이는 세로 구분선 */
+  #reviewItFullscreenOverlay table th{ background:#F1F2F8 !important; }
+  #reviewItFullscreenOverlay table td.review-it-income-total-cell, #reviewItFullscreenOverlay table td.review-it-tax-total-cell,
+  #reviewItFullscreenOverlay table td.review-it-tax-local-total-cell, #reviewItFullscreenOverlay table td.review-it-tax-reported-sum-cell{ background:transparent !important; }
+  #reviewItFullscreenOverlay table .rv-grp-start{ border-left:2px solid #C9CBE0 !important; }
+  #reviewItFullscreenOverlay table thead tr:nth-child(2) th{ font-size:11px !important; color:var(--ink) !important; }
+  /* 신고서 탭 묶음 제목(총지급액·국세·지방세) - 아래 가로 구분선 + 글씨 진하게 */
+  .rv-return #reviewItTaxWrap table thead tr:first-child th:not([rowspan]){ border-bottom:2px solid #C9CBE0 !important; color:var(--ink) !important; font-weight:800 !important; }
+  /* 표 제목(급여·세액) - 가운데 작은 알약으로 */
+  .rv-pay #reviewItIncomeWrap::before, .rv-pay #reviewItTaxWrap > div:nth-of-type(1){ display:table !important; margin:0 auto 10px !important; padding:4px 18px; border-radius:999px; background:var(--indigo-bg); color:var(--indigo-deep) !important; font-size:12.5px !important; font-weight:800; }
   #reviewItFsYearSelect{ height:30px; box-sizing:border-box; }
   /* 대시보드 세무일정 위젯 - 원천세 미신고 알림 줄 */
   .home-dash-it-alert{ display:flex; align-items:center; gap:8px; width:100%; margin:0 0 8px; padding:7px 10px; border-radius:9px; border:1px solid var(--border);
@@ -1915,6 +1924,8 @@
   .it-stage-dots{ display:inline-flex; gap:3px; align-items:center; justify-content:center; }
   .it-stage-dots i{ width:5px; height:5px; border-radius:50%; border:1.2px solid #C9B88A; background:transparent; display:inline-block; box-sizing:border-box; }
   .it-stage-dots i.on{ background:#B4830E; border-color:#B4830E; }
+  .review-it-open-btn.vst-ok{ background:#E8F8F1 !important; border-color:#9BE3C4 !important; color:#0E9F6E !important; }
+  .review-it-open-btn.vst-bad{ background:#FDECEF !important; border-color:#F7B3C2 !important; color:#D63A5A !important; }
   .it-verify-slot{ display:inline-flex; width:17px; height:17px; align-items:center; justify-content:center; flex:none; }
   .it-verify-dot{ display:inline-flex; width:17px; height:17px; border-radius:50%; align-items:center; justify-content:center; }
   .it-verify-dot.ok{ background:var(--mint); }
@@ -26374,12 +26385,13 @@ function renderIncomeTaxUnified(){
       const timingAttr = timingKey ? ` data-timing="${timingKey}"` : '';
       // [2026.10.01] "검증은 아이콘 하나로 팝업을 열고, 지금 챙길 귀속월에 오류가 없으면 옆에 표시"(요청) - 팝업 안에서 급여/납부세액 탭으로 오감
       const vst = (String(year) === String(focus.year)) ? itAllVerifyStatus(c.id, timingKey, Number(year), focus.month) : '';
-      // [2026.10.01] "오류 없음 글자 대신 O/X 표시, 돋보기 자리는 고정"(요청) - 검토표와 같은 초록 ✓ / 빨강 ✕ 동그라미, 표시가 없어도 같은 폭의 빈자리를 둠
-      const vstHtml = `<span class="it-verify-slot">${vst === 'ok' ? `<span class="it-verify-dot ok" title="${focus.month}월 귀속 급여·세액 검증 금액이 모두 맞아요"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>`
-        : vst === 'bad' ? `<span class="it-verify-dot bad" title="${focus.month}월 귀속 검증 금액이 맞지 않는 곳이 있어요"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round"><line x1="16" y1="8" x2="8" y2="16"></line><line x1="8" y1="8" x2="16" y2="16"></line></svg></span>` : ''}</span>`;
+      // [2026.10.01 ③안] "검증 표시는 돋보기 버튼 색으로"(요청) - 맞으면 연한 초록, 틀리면 연한 빨강 버튼(자리 넓어지지 않게 아이콘 하나로)
+      const vstCls = vst === 'ok' ? ' vst-ok' : vst === 'bad' ? ' vst-bad' : '';
+      const vstTip = vst === 'ok' ? ` · ${focus.month}월 귀속 검증 금액이 모두 맞아요` : vst === 'bad' ? ` · ${focus.month}월 귀속 검증 금액이 맞지 않는 곳이 있어요` : '';
+      const vstHtml = '';
       const verifyCell = `<td class="cvb" style="white-space:nowrap;">
           <span style="display:inline-flex; align-items:center; gap:6px; vertical-align:middle;">
-            <button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}"${timingAttr} data-section="income" title="급여·납부세액 검증 열기" aria-label="검증 열기" style="width:24px; height:24px; padding:0; display:inline-flex; align-items:center; justify-content:center; background:var(--surface); color:var(--indigo-deep); border:1.5px solid var(--indigo-bg); border-radius:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
+            <button type="button" class="del-btn review-it-open-btn${vstCls}" data-client-id="${c.id}"${timingAttr} data-section="income" title="급여·신고서 검증 열기${vstTip}" aria-label="검증 열기" style="width:24px; height:24px; padding:0; display:inline-flex; align-items:center; justify-content:center; background:var(--surface); color:var(--indigo-deep); border:1.5px solid var(--indigo-bg); border-radius:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
             ${vstHtml}
           </span>
         </td>`;
@@ -27208,7 +27220,7 @@ function renderReviewItIncomeTable(clientId, year){
     </tr>`;
   }).join('');
   const headerCells = REVIEW_INCOME_FIELDS.map(f=>`<th class="cvb" style="white-space:nowrap;">${escHtml(f.label)}</th>`).join('');
-  wrap.innerHTML = `<table><thead><tr><th class="cvb">귀속월</th>${headerCells}<th class="cvb">총지급액<br>(계산)</th><th class="cvb">총지급액<br>(신고서)</th><th class="cvb">검증</th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.innerHTML = `<table><thead><tr><th class="cvb">귀속월</th>${headerCells}<th class="cvb">총지급액<br>(급여명세서)</th><th class="cvb">총지급액<br>(신고서)</th><th class="cvb">검증</th></tr></thead><tbody>${rows}</tbody></table>`;
   wrap.querySelectorAll('.review-it-income-input').forEach(inp=>{
     inp.addEventListener('input', ()=>{
       formatMoneyInputLive(inp);
@@ -27483,9 +27495,15 @@ function reviewItMergeTotalsIntoReturnTable(){
   const incHead = inc.querySelector('thead tr');
   const retHead = ret.querySelector('thead tr');
   if(!incHead || !retHead) return;
-  const hs = [...incHead.children].slice(-3);
-  const anchorTh = retHead.children[0];
-  hs.reverse().forEach(th=>{ th.setAttribute('rowspan', String(ret.querySelectorAll('thead tr').length)); th.classList.add('rv-merged-h'); anchorTh.after(th); });
+  // [2026.10.01] 신고서 표를 세 묶음(총지급액 · 국세 · 지방세)으로 - 맨 위 묶음 제목 + 묶음 사이 세로 구분선
+  const retHead2 = ret.querySelectorAll('thead tr')[1];
+  const groupTh = document.createElement('th'); groupTh.className = 'cvb rv-grp-start'; groupTh.colSpan = 3; groupTh.textContent = '총지급액';
+  retHead.children[0].after(groupTh);
+  if(retHead.children[2]) retHead.children[2].classList.add('rv-grp-start'); // 국세
+  if(retHead2){
+    ['급여명세서','신고서','검증'].reverse().forEach((t,i)=>{ const th = document.createElement('th'); th.className = 'cvb' + (i===2 ? ' rv-grp-start' : ''); th.textContent = t; retHead2.prepend(th); });
+    if(retHead2.children[3]) retHead2.children[3].classList.add('rv-grp-start');
+  }
   const retRows = [...ret.querySelectorAll('tbody tr')];
   [...inc.querySelectorAll('tbody tr')].forEach((tr, i)=>{
     const target = retRows[i]; if(!target) return;
@@ -27494,6 +27512,8 @@ function reviewItMergeTotalsIntoReturnTable(){
     tds.forEach(td=>{ if(m) td.dataset.month = m; });
     let after = target.children[0];
     tds.forEach(td=>{ after.after(td); after = td; });
+    tds[0].classList.add('rv-grp-start');
+    if(after.nextElementSibling) after.nextElementSibling.classList.add('rv-grp-start'); // 국세 첫 칸
   });
 }
 // 급여검증/납부세액검증 전체화면 팝업을 염 - clientId・section(income|tax)을 받아 그 표만 딱 채워서 보여줌
@@ -27617,7 +27637,7 @@ function reviewItXlsDownload(){
   const ws1 = {};
   put(ws1, 0, 0, `원천세 검토표 - 급여검증 · ${cname} · ${year}년`);
   const F = REVIEW_INCOME_FIELDS;
-  const hdr1 = ['귀속월', ...F.map(f=>f.label), '총지급액(계산)', '총지급액(신고서)', '검증'];
+  const hdr1 = ['귀속월', ...F.map(f=>f.label), '총지급액(급여명세서)', '총지급액(신고서)', '검증'];
   hdr1.forEach((h,i)=> put(ws1, 2, i, h));
   const colTotal = F.length + 1, colRep = F.length + 2, colChk = F.length + 3;
   const exclCols = F.map((f,i)=> f.excludeFromTotal ? reviewItXlsCol(i+1) : null).filter(Boolean);
@@ -36157,7 +36177,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.01 15:00';
+const APP_BUILD = '2026.10.01 15:14';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
