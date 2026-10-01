@@ -1896,6 +1896,12 @@
   .it-all-table th.it-all-sub{ font-size:10px; font-weight:700; padding:4px 2px; color:var(--ink) !important; }
   /* 월 머리글과 그 아래 국세/지방세 머리글 사이 구분선 */
   .it-all-table thead tr:nth-child(2) th{ border-bottom:1.5px solid rgba(29,30,51,0.22) !important; }
+  .it-stage-dots{ display:inline-flex; gap:3px; align-items:center; justify-content:center; }
+  .it-stage-dots i{ width:5px; height:5px; border-radius:50%; border:1.2px solid #C9B88A; background:transparent; display:inline-block; box-sizing:border-box; }
+  .it-stage-dots i.on{ background:#B4830E; border-color:#B4830E; }
+  .it-verify-st{ font-size:10.5px; font-weight:800; white-space:nowrap; }
+  .it-verify-st.ok{ color:var(--mint); }
+  .it-verify-st.bad{ color:var(--coral); }
   .it-all-table td .it-all-month-cell-btn{ min-width:32px; height:24px; line-height:1; box-sizing:border-box; } /* [2026.10.01] 글자 없는 칸(신고대상·미신고)이 납작하게 보이던 것 - 모든 칸 높이를 같게 */
   /* [2026.10.01] "국세·지방세 칸 간격이 월마다 제각각"(요청) - 24칸(12개월×국세/지방세) 폭을 모두 같게 고정 */
   .it-all-table th.it-all-sub{ width:40px; min-width:40px; max-width:40px; box-sizing:border-box; }
@@ -2089,13 +2095,15 @@
     border-radius:8px; padding:1px 5px; margin-right:5px; vertical-align:middle; line-height:1.3;
   }
   .notice-unread-dot.on-coral{color:var(--coral); background:#fff; box-shadow:0 0 0 1.5px #fff;}
+  /* [2026.10.01] "즐겨찾기(중요) 아이콘도 옆 이력·수정·삭제 아이콘과 같은 모양으로"(요청) - 28px 테두리 네모 아이콘 버튼 */
   .notice-star-toggle{
-    display:inline-flex; align-items:center; justify-content:center; gap:0; background:var(--bg); border-radius:8px;
-    padding:4px 9px; font-size:12px; cursor:pointer; user-select:none; vertical-align:middle;
+    display:inline-flex; align-items:center; justify-content:center; gap:0; width:28px; height:28px; box-sizing:border-box;
+    background:none; border:1px solid var(--border); border-radius:9px; padding:0; color:#6B7280; cursor:pointer; user-select:none; vertical-align:middle;
   }
+  .notice-star-toggle:hover{ background:#FDF1D8; }
   .notice-star-toggle input{width:0; height:0; opacity:0; position:absolute; pointer-events:none;}
   .notice-star-toggle:has(input:disabled){cursor:default; opacity:0.55;}
-  .notice-star-toggle:has(input:checked){background:#FDF1D8;}
+  .notice-star-toggle:has(input:checked){background:#FDF1D8; border-color:#F5D48A;}
   .policy-locked{
     background:var(--surface); border-radius:20px; padding:48px 24px; text-align:center;
     box-shadow:0 1px 2px rgba(29,30,51,0.04), 0 10px 24px -18px rgba(29,30,51,0.14);
@@ -5966,7 +5974,12 @@
             <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:14px 20px; border-bottom:1.5px solid var(--border); flex-shrink:0;">
               <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                 <span id="reviewItFsClientName" style="font-size:16.5px; font-weight:900; color:var(--navy);"></span>
-                <span id="reviewItFsSectionBadge" style="font-size:11px; font-weight:700; color:var(--indigo); background:var(--indigo-bg); border-radius:20px; padding:3px 10px;"></span>
+                <span id="reviewItFsSectionBadge" style="display:none;"></span>
+                <!-- [2026.10.01] "급여·납부세액검증을 한 팝업에서 왔다갔다"(요청) - 탭칩으로 전환 -->
+                <div id="reviewItFsTabs" style="display:inline-flex; gap:4px;">
+                  <button type="button" class="policy-cat-btn review-it-fs-tab" data-section="income">급여검증</button>
+                  <button type="button" class="policy-cat-btn review-it-fs-tab" data-section="tax">납부세액검증</button>
+                </div>
                 <select id="reviewItFsYearSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:5px 7px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12px; font-weight:700;"></select>
                 <div id="reviewItFsMetaWrap" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:11.5px; color:var(--ink-soft);"></div>
                 <!-- 당월·익월 지급을 둘 다 하는 거래처에서, 이 검증표가 어느 지급시기 것인지와 예전 합산값 안내를 보여줌 -->
@@ -26065,6 +26078,9 @@ function renderItAllPeriodControls(){
 }
 // 신고대상으로 체크된 지급시기(당월/익월) 하나를 신고일자·지방세일자·상태뱃지·메모까지 한 덩어리로 보여줌 -
 // itAllDateEditModal(신고일자 입력 팝업) 안에서 씀
+// [2026.10.01] 원천세 진행 단계(요청) - 급여명세서 전달 → 급여마감 → 신고서 마감 → 신고. 앞의 세 단계도 날짜로 기록하고,
+// 표에서는 칸 안의 작은 점 3개(채워진 점 = 끝난 단계)로만 보여주고 날짜는 마우스를 올리면 보임. 신고는 기존처럼 신고일자로 표시
+const IT_ALL_STAGES = [['payslip','급여명세서 전달'], ['payroll','급여마감'], ['returnClose','신고서 마감']];
 function itAllTimingBlockHtml(c, period, timingKey){
   const entry = incomeTaxFilingEntry(period, c.id);
   const t = entry[timingKey];
@@ -26074,13 +26090,19 @@ function itAllTimingBlockHtml(c, period, timingKey){
       <span style="font-size:12px; font-weight:800; color:var(--ink); white-space:nowrap;">${timingLabel}</span>
       <span class="it-all-status-badge">${incomeTaxStatusBadgeHtml(t)}</span>
     </div>
+    ${IT_ALL_STAGES.map(([f,l])=>`<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:74px;">${l}</span>
+      <input type="date" class="it-all-date-input" data-field="${f}" value="${t[f]||''}" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink);">
+      <button type="button" class="del-btn it-all-today-btn" data-field="${f}" style="flex-shrink:0; padding:5px 9px; font-size:11px;">오늘</button>
+    </div>`).join('')}
+    <div style="border-top:1px dashed var(--border); margin:2px 0;"></div>
     <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-      <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:34px;">원천세</span>
+      <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:74px;">원천세 신고</span>
       <input type="date" class="it-all-date-input" data-field="national" value="${t.national||''}" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink); flex:1 1 auto; min-width:0;">
       <button type="button" class="del-btn it-all-today-btn" data-field="national" style="flex-shrink:0; padding:5px 9px; font-size:11px;">오늘</button>
     </div>
     <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-      <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:34px;">지방세</span>
+      <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:74px;">지방세 신고</span>
       <input type="date" class="it-all-date-input" data-field="local" value="${t.local||''}" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink); flex:1 1 auto; min-width:0;">
       <button type="button" class="del-btn it-all-today-btn" data-field="local" style="flex-shrink:0; padding:5px 9px; font-size:11px;">오늘</button>
     </div>
@@ -26166,6 +26188,24 @@ function itFocusFiling(){
   return { year:fy, month:fm, period, due, dday, total, done, pending: total - done, pendingIds };
 }
 
+// [2026.10.01] 원천세 표 "검증" 옆 상태 - 그 거래처(지급시기 줄)의 귀속월 검토표 금액이 신고서와 맞는지.
+// 검토표 데이터를 읽기만 함(빈 달을 새로 만들지 않음). 'ok' = 입력된 검증 항목이 모두 일치(수기검증 포함), 'bad' = 하나라도 불일치, '' = 비교할 값 없음
+function itAllVerifyStatus(clientId, timingKey, year, month){
+  const key = timingKey === 'nextMonth' ? clientId + '@nextMonth' : clientId;
+  const yearData = ((sharedReviewFigures||{})[key]||{})[year] || {};
+  const md = (m)=>{ const d = yearData[String(m)] || {}; return { income:d.income||{}, incomeReported:d.incomeReported, tax:d.tax||{}, taxReported: (typeof d.taxReported==='number' ? {근로:d.taxReported} : (d.taxReported||{})), taxReportedLocal:d.taxReportedLocal, manualCheck:d.manualCheck||{} }; };
+  const meta = (sharedReviewMeta||{})[clientId] || { payCycle:'매월' };
+  const payCycle = reviewItPayCycleForMonth(meta, month);
+  if(!reviewItIsPeriodEnd(month, payCycle)) return '';
+  const months = reviewItPeriodMonths(month, payCycle);
+  const cur = md(month);
+  const checks = [];
+  if(cur.incomeReported != null && cur.incomeReported !== '') checks.push(['income', Number(cur.incomeReported), months.reduce((s,m)=> s + reviewItIncomeTotal(md(m)), 0)]);
+  if(reviewItTaxReportedHasAny(cur)) checks.push(['tax', reviewItTaxReportedSum(cur), months.reduce((s,m)=> s + reviewItTaxTotal(md(m)), 0)]);
+  if(cur.taxReportedLocal != null && cur.taxReportedLocal !== '') checks.push(['taxLocal', Number(cur.taxReportedLocal), months.reduce((s,m)=> s + reviewItTaxLocalTotal(md(m)), 0)]);
+  if(!checks.length) return '';
+  return checks.every(([f, rep, tot])=> rep === tot || cur.manualCheck[f]) ? 'ok' : 'bad';
+}
 function renderIncomeTaxUnified(){
   renderItAllPeriodControls();
   if(!itAllYear) itAllYear = String(Number(todayStr().slice(0,4)));
@@ -26260,9 +26300,24 @@ function renderIncomeTaxUnified(){
             tip = `${yy}년 ${Number(mm)}월 ${Number(dd)}일 신고 · ${periodLabel}`;
           } else if(cs.state === 'notarget') tip = `신고 대상 아님 · ${periodLabel}`;
           else if(cs.state === 'halfyear') tip = `반기 신고 · ${m <= 6 ? '1~6월분은 6월' : '7~12월분은 12월'} 칸에서 함께 신고 · ${periodLabel}`;
+          // 진행 단계(명세서 전달·급여마감·신고서 마감) - 신고대상·신고완료 칸만. 점으로 표시하고 날짜는 말풍선에
+          let stageDots = '';
+          if(cs.state === 'target' || cs.state === 'done'){
+            const tgt = cs.target || filingTargetEntry(c.id, period);
+            const lanesT = timingKey ? [timingKey] : [tgt.sameMonthPay ? 'sameMonth' : null, tgt.nextMonthPay ? 'nextMonth' : null].filter(Boolean);
+            const ent = incomeTaxFilingEntry(period, c.id);
+            const stageInfo = IT_ALL_STAGES.map(([f,l])=>{
+              const ds = lanesT.map(k=> (ent[k]||{})[f]).filter(Boolean).sort();
+              const doneAll = lanesT.length && lanesT.every(k=> (ent[k]||{})[f]);
+              return { l, done: !!doneAll, date: ds[ds.length-1] || '' };
+            });
+            const fmtD = d=>{ const [yy,mm,dd] = d.split('-'); return `${yy}년 ${Number(mm)}월 ${Number(dd)}일`; };
+            tip += '\n' + stageInfo.map(x=> `${x.l}: ${x.date ? fmtD(x.date) : '아직'}`).join('\n');
+            if(cs.state === 'target' && stageInfo.some(x=>x.done)) stageDots = `<span class="it-stage-dots">${stageInfo.map(x=>`<i class="${x.done?'on':''}"></i>`).join('')}</span>`;
+          }
           const cellBorder = st.plain ? 'none' : `1.5px solid ${st.color}`;
           const colCls = taxKey === 'national' ? 'cvb it-all-mcol' : 'cvb';
-          return `<td class="${colCls}"><button type="button" class="it-all-month-cell-btn" ${clickAttr} title="${escHtml(tip)}" style="width:100%; border:${cellBorder}; border-radius:6px; padding:4px 1px; background:${st.bg}; color:${st.text}; font-size:10.5px; font-weight:700; cursor:${cs.state==='halfyear' ? 'default' : (st.disabled?'not-allowed':'pointer')}; opacity:${st.disabled?'0.35':'1'};">${escHtml(cellLabel)}</button></td>`;
+          return `<td class="${colCls}"><button type="button" class="it-all-month-cell-btn" ${clickAttr} title="${escHtml(tip)}" style="width:100%; border:${cellBorder}; border-radius:6px; padding:4px 1px; background:${st.bg}; color:${st.text}; font-size:10.5px; font-weight:700; cursor:${cs.state==='halfyear' ? 'default' : (st.disabled?'not-allowed':'pointer')}; opacity:${st.disabled?'0.35':'1'};">${stageDots || escHtml(cellLabel)}</button></td>`;
         }).join('');
       }).join('');
       const span = lanes.length > 1 ? ` rowspan="${lanes.length}"` : '';
@@ -26271,16 +26326,20 @@ function renderIncomeTaxUnified(){
       // "매월/당월·매월/익월이 같이 있는 거래처는 검증도 각각 필요" 요청 - 지급시기 줄마다 따로 검증 버튼을 둠
       // (data-timing으로 어느 지급시기의 검증표를 열지 넘김, 한 줄짜리 거래처는 예전과 같음)
       const timingAttr = timingKey ? ` data-timing="${timingKey}"` : '';
-      const verifyCell = `<td class="cvb">
-          <span style="display:inline-flex; align-items:center; gap:5px; vertical-align:middle;">
-            <button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}"${timingAttr} data-section="income" title="급여검증 전체화면으로 열기" style="height:22px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; background:var(--indigo-bg); color:var(--indigo-deep); border:1.5px solid var(--indigo-bg); border-radius:6px; font-size:10.5px; font-weight:800;">급여</button>
-            <button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}"${timingAttr} data-section="tax" title="납부세액검증 전체화면으로 열기" style="height:22px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; background:var(--mint-bg); color:var(--mint); border:1.5px solid var(--mint-bg); border-radius:6px; font-size:10.5px; font-weight:800;">세액</button>
+      // [2026.10.01] "검증은 아이콘 하나로 팝업을 열고, 지금 챙길 귀속월에 오류가 없으면 옆에 표시"(요청) - 팝업 안에서 급여/납부세액 탭으로 오감
+      const vst = (String(year) === String(focus.year)) ? itAllVerifyStatus(c.id, timingKey, Number(year), focus.month) : '';
+      const vstHtml = vst === 'ok' ? `<span class="it-verify-st ok" title="${focus.month}월 귀속 급여·세액 검증 금액이 모두 맞아요">오류 없음</span>`
+        : vst === 'bad' ? `<span class="it-verify-st bad" title="${focus.month}월 귀속 검증 금액이 맞지 않는 곳이 있어요">확인 필요</span>` : '';
+      const verifyCell = `<td class="cvb" style="white-space:nowrap;">
+          <span style="display:inline-flex; align-items:center; gap:6px; vertical-align:middle;">
+            <button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}"${timingAttr} data-section="income" title="급여·납부세액 검증 열기" aria-label="검증 열기" style="width:24px; height:24px; padding:0; display:inline-flex; align-items:center; justify-content:center; background:var(--surface); color:var(--indigo-deep); border:1.5px solid var(--indigo-bg); border-radius:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
+            ${vstHtml}
           </span>
         </td>`;
       rowsHtml.push(`<tr>${headCells}${cycleCell}${monthCells}${verifyCell}</tr>`);
     });
   });
-  wrap.innerHTML = summaryHtml + `<div class="table-scroll"><table class="it-all-table"><thead><tr><th class="cvb" rowspan="3">순번</th><th class="cvb" rowspan="3">상호명</th><th class="cvb" rowspan="3">신고</th><th class="cvb" colspan="24">귀속월</th><th class="cvb" rowspan="3" style="width:70px;">검증</th></tr><tr>${monthHeaderCells}</tr><tr>${taxSubHeaderCells}</tr></thead><tbody>${rowsHtml.join('')}</tbody></table></div>`;
+  wrap.innerHTML = summaryHtml + `<div class="table-scroll"><table class="it-all-table"><thead><tr><th class="cvb" rowspan="3">순번</th><th class="cvb" rowspan="3">상호명</th><th class="cvb" rowspan="3">신고</th><th class="cvb" colspan="24">귀속월</th><th class="cvb" rowspan="3" style="min-width:70px;">검증</th></tr><tr>${monthHeaderCells}</tr><tr>${taxSubHeaderCells}</tr></thead><tbody>${rowsHtml.join('')}</tbody></table></div>`;
   bindSummary();
   wrap.querySelectorAll('.review-it-open-btn').forEach(btn=>{
     btn.addEventListener('click', ()=> openReviewItFullscreen(btn.dataset.clientId, btn.dataset.section, btn.dataset.timing || null));
@@ -26575,7 +26634,7 @@ function submitDateTriggerHtml(clientId, itemKey, dateVal, show){
   const dateInputId = `submit-date-${clientId}-${itemKey}`;
   return `<span class="submit-date-wrap" data-client-id="${clientId}" data-item-key="${itemKey}" style="display:${show?'inline-flex':'none'}; align-items:center; position:relative;">
     <button type="button" class="submit-date-trigger" data-date-input-id="${dateInputId}" title="${dateVal ? '제출일: '+dateVal : '제출일을 입력하세요'}" style="display:inline-flex; align-items:center; border:none; background:none; cursor:pointer; padding:2px; border-radius:5px; font-family:inherit; color:${dateVal?'var(--indigo-deep)':'var(--ink-soft)'};">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+      ${dateVal ? `<span style="font-size:11px; font-weight:800; color:var(--mint);">${Number(dateVal.slice(5,7))}/${Number(dateVal.slice(8,10))}</span>` : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`}
     </button>
     <input type="date" id="${dateInputId}" class="submit-date-input" data-client-id="${clientId}" data-item-key="${itemKey}" value="${dateVal}" style="position:absolute; width:1px; height:1px; opacity:0; left:0; bottom:0; border:none; padding:0; margin:0;">
   </span>`;
@@ -26627,6 +26686,28 @@ function isSubmitStatusPayrollTarget(clientId){
     return t && t.applicable && (t.sameMonthPay || t.nextMonthPay);
   });
 }
+// 제출현황 칸 ↔ 검토표(급여검증) 소득 항목 연결 - 이 귀속기간(월별: 그 달 / 반기: 6개월 / 연간: 12개월)에 금액이 하나라도 있으면 제출대상.
+// 연결 안 되는 칸은 null(직접 체크)
+const SUBMIT_AUTO_MAP = {
+  사업간이:['사업'], 기타간이:['기타간이대상'], 일용지급:['일용'], 일용근확:['일용'],
+  근로간이:['근로과세','근로제출비과세','근로미제출비과세','중도과세','중도제출비과세','중도미제출비과세'],
+  근로연간:['근로과세','근로제출비과세','근로미제출비과세','중도과세','중도제출비과세','중도미제출비과세','연말'],
+  사업연간:['사업'], 기타연간:['기타간이미대상'], 퇴직연간:['퇴직'], 이자배당연간:['이자']
+};
+function submitAutoApplicable(clientId, itemKey, period){
+  const keys = SUBMIT_AUTO_MAP[itemKey];
+  if(!keys) return null;
+  const p = String(period);
+  const year = p.slice(0,4);
+  let months;
+  if(/^\d{4}$/.test(p)) months = [1,2,3,4,5,6,7,8,9,10,11,12];
+  else if(/^\d{4}-\d{2}$/.test(p)) months = [Number(p.slice(5,7))];
+  else months = /하|2|H2/i.test(p.slice(5)) ? [7,8,9,10,11,12] : [1,2,3,4,5,6];
+  return [clientId, clientId + '@nextMonth'].some(k=>{
+    const yd = ((sharedReviewFigures||{})[k]||{})[year] || {};
+    return months.some(m=> keys.some(f=> Number(((yd[String(m)]||{}).income||{})[f]) ));
+  });
+}
 function renderSubmitStatusTable(){
   saveFilingSubviewState();
   renderSubmitPeriodControls();
@@ -26651,14 +26732,21 @@ function renderSubmitStatusTable(){
     // 요청으로 해당여부 체크박스 하나 + 제출일(비어있으면 아직 미제출) 하나로 단순화함. 날짜는 여전히
     // submitDateTriggerHtml(평소엔 숨어있다가 마우스를 올리면만 나타나는 작은 달력 아이콘)을 그대로 재사용해서
     // 표가 들쭉날쭉해지지 않게 하고, 옆에 "오늘" 버튼을 새로 추가해서 한 번에 오늘 날짜를 넣을 수 있게 함
+    // [2026.10.01] "신고현황처럼 단순하게"(요청) - 검토표(급여검증)에 그 귀속기간 금액이 입력된 소득 종류는 자동으로 제출대상,
+    // 없으면 미대상(연한 회색). 제출대상인데 아직 미제출은 아주 연한 노랑, 제출하면 음영 없이 제출일만.
+    // 검토표 항목과 바로 이어지지 않는 칸(특고·학자금상환·기타)은 지금처럼 직접 체크
     const subitemCells = subitems.map(it=>{
-      const applicable = submitItemApplicable(entry.items[it.key]);
+      const auto = submitAutoApplicable(c.id, it.key, period);
+      const applicable = auto === null ? submitItemApplicable(entry.items[it.key]) : auto;
       const dateVal = entry.itemDates[it.key] || '';
       const checkboxHtml = applicable ? `<input type="checkbox" class="submit-date-check" data-target="submit-date-${c.id}-${it.key}" style="width:auto; margin:0; flex:none;" title="일괄적용 대상으로 선택">` : '';
-      const todayBtnHtml = applicable ? `<button type="button" class="del-btn submit-status-today-btn" data-client-id="${c.id}" data-item-key="${it.key}" style="font-size:9.5px; padding:1px 6px; flex-shrink:0;">오늘</button>` : `<span style="font-size:10.5px; color:var(--ink-soft);">해당없음</span>`;
-      return `<td class="cvb submit-status-cell" style="white-space:nowrap;">
-        <div style="display:flex; align-items:center; justify-content:center; gap:4px;">
-          <input type="checkbox" class="submit-status-applicable-check" data-client-id="${c.id}" data-item-key="${it.key}" ${applicable?'checked':''} title="해당 여부(체크하면 제출 대상)" style="width:auto; margin:0;">
+      const todayBtnHtml = (applicable && !dateVal) ? `<button type="button" class="del-btn submit-status-today-btn" data-client-id="${c.id}" data-item-key="${it.key}" style="font-size:9.5px; padding:1px 6px; flex-shrink:0;" title="오늘 날짜로 제출일 입력">오늘</button>` : '';
+      const manualCb = auto === null ? `<input type="checkbox" class="submit-status-applicable-check" data-client-id="${c.id}" data-item-key="${it.key}" ${applicable?'checked':''} title="해당 여부(체크하면 제출 대상)" style="width:auto; margin:0;">` : '';
+      const bg = !applicable ? '#EDEFF4' : (dateVal ? 'transparent' : '#FFF8DC');
+      const tip = auto === null ? '' : (applicable ? '검토표에 이 귀속기간 금액이 있어서 제출대상이에요' : '검토표에 이 귀속기간 금액이 없어서 미대상이에요');
+      return `<td class="cvb submit-status-cell" style="white-space:nowrap; background:${bg};"${tip ? ` title="${tip}"` : ''}>
+        <div style="display:flex; align-items:center; justify-content:center; gap:4px; min-height:22px;">
+          ${manualCb}
           ${checkboxHtml}
           ${submitDateTriggerHtml(c.id, it.key, dateVal, applicable)}
           ${todayBtnHtml}
@@ -26679,7 +26767,7 @@ function renderSubmitStatusTable(){
     <button type="button" id="submitStatusSaveBtn" title="저장" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:none; background:var(--indigo); color:#fff; box-shadow:0 4px 10px -3px rgba(29,30,51,0.35); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
     </button>`;
-  wrap.innerHTML = bulkDateApplyToolbarHtml('submitDate', '날짜일괄적용', { compact:true, extraHtml: submitSaveBtnHtml }) + `<div class="table-scroll"><table><thead><tr><th class="cvb">#</th><th class="cvb">상호명</th>${subitemHeaderCells}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  wrap.innerHTML = bulkDateApplyToolbarHtml('submitDate', '날짜일괄적용', { compact:true, extraHtml: submitSaveBtnHtml }) + `<div class="table-scroll"><table><thead><tr><th class="cvb">순번</th><th class="cvb">상호명</th>${subitemHeaderCells}</tr></thead><tbody>${rows}</tbody></table></div>`;
   bindBulkDateApplyToolbar(wrap, 'submitDate', 'submit-date-check');
   bindSubmitStatusSaveBtn(wrap);
   wrap.querySelectorAll('.submit-status-applicable-check').forEach(cb=>{
@@ -27347,18 +27435,23 @@ function openReviewItFullscreen(clientId, section, timing){
   const client = bookkeepingClientList().find(c=>c.id===clientId);
   const nameEl = document.getElementById('reviewItFsClientName');
   if(nameEl) nameEl.textContent = (client ? client.name : '') + (reviewItFsTiming==='sameMonth' ? ' · 당월지급' : reviewItFsTiming==='nextMonth' ? ' · 익월지급' : '');
-  const badgeEl = document.getElementById('reviewItFsSectionBadge');
-  if(badgeEl) badgeEl.textContent = viewingReviewItSection === 'income' ? '급여검증' : '납부세액검증';
   populateReviewItYearSelectEl('reviewItFsYearSelect', clientId);
   renderReviewItFsMeta(clientId);
+  showReviewItFsSection(viewingReviewItSection);
+  setReviewItDirty(false);
+  document.getElementById('reviewItFullscreenOverlay').style.display = 'flex';
+}
+// 팝업 안 탭칩(급여검증/납부세액검증) - 같은 거래처·연도 그대로 표만 바꿈(입력 중인 값은 저장 전까지 그대로 유지)
+function showReviewItFsSection(section){
+  viewingReviewItSection = section === 'tax' ? 'tax' : 'income';
+  document.querySelectorAll('#reviewItFsTabs .review-it-fs-tab').forEach(b=> b.classList.toggle('active', b.dataset.section === viewingReviewItSection));
   ['reviewItIncomeWrap','reviewItTaxWrap'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.style.display = (id === (viewingReviewItSection==='income' ? 'reviewItIncomeWrap' : 'reviewItTaxWrap')) ? '' : 'none';
   });
   renderReviewItFsSection();
-  setReviewItDirty(false);
-  document.getElementById('reviewItFullscreenOverlay').style.display = 'flex';
 }
+document.querySelectorAll('#reviewItFsTabs .review-it-fs-tab').forEach(b=> b.addEventListener('click', ()=> showReviewItFsSection(b.dataset.section)));
 function closeReviewItFullscreen(){
   // 저장 안 한 입력을 남겨둔 채 닫으면(다른 탭으로 이동할 때와 똑같이) 마지막 저장 상태로 조용히 되돌림
   if(typeof discardUnsavedReviewItChangesIfAny === 'function') discardUnsavedReviewItChangesIfAny();
@@ -32014,7 +32107,7 @@ XLS_SPECS['submitStatus'] = {
     const pd = () => { sharedFilingStatus['원천세'] = sharedFilingStatus['원천세'] || {}; return sharedFilingStatus['원천세'][period] = sharedFilingStatus['원천세'][period] || {}; };
     return [{ grid:true, name:`제출현황 ${period}`, cols: subitems.map(it=>({ k:it.key, label:`${it.label}(해당 O / 제출일)` })),
       rows: () => list.map(cl=>{ const e = pd()[cl.id] || {}; const items = e.items||{}, dates = e.itemDates||{};
-        return { id:cl.id, name:cl.name, bizNo:cl.bizNo, cells: Object.fromEntries(subitems.map(it=>[it.key, submitItemApplicable(items[it.key]) ? (dates[it.key] || 'O') : ''])) }; }),
+        return { id:cl.id, name:cl.name, bizNo:cl.bizNo, cells: Object.fromEntries(subitems.map(it=>{ const au = submitAutoApplicable(cl.id, it.key, period); const ap = au === null ? submitItemApplicable(items[it.key]) : au; return [it.key, ap ? (dates[it.key] || 'O') : '']; })) }; }),
       set: (id, k, v) => {
         const e = pd()[id] = pd()[id] || { memo:'' }; e.items = e.items || {}; e.itemDates = e.itemDates || {};
         const d = gwExpenseDateStr(v);
@@ -32030,7 +32123,8 @@ XLS_SPECS['itAll'] = {
   sheets: () => {
     const year = itAllYear || todayStr().slice(0,4);
     const cols = [];
-    for(let m=1;m<=12;m++){ cols.push({k:`${m}-national`,label:`${m}월 국세`,t:'date'}); cols.push({k:`${m}-local`,label:`${m}월 지방세`,t:'date'}); }
+    // [2026.10.01] 진행 단계(급여명세서 전달·급여마감·신고서 마감) 날짜도 같이 받고 올릴 수 있게(요청)
+    for(let m=1;m<=12;m++){ IT_ALL_STAGES.forEach(([f,l])=> cols.push({k:`${m}-${f}`,label:`${m}월 ${l}`,t:'date'})); cols.push({k:`${m}-national`,label:`${m}월 국세`,t:'date'}); cols.push({k:`${m}-local`,label:`${m}월 지방세`,t:'date'}); }
     // 지급시기별 줄: 당월/익월을 둘 다 등록한 달이 있는 거래처만 두 줄, 나머지는 한 줄(등록된 쪽, 없으면 당월)
     const lanes = [];
     bookkeepingClientList().forEach(c=>{
@@ -32047,6 +32141,7 @@ XLS_SPECS['itAll'] = {
           const per = `${year}-${String(m).padStart(2,'0')}`;
           const e = (sharedIncomeTaxFilingStatus[per] || {})[c.id];
           const t = e && e[timing] || {};
+          IT_ALL_STAGES.forEach(([f])=>{ cells[`${m}-${f}`] = t[f] || ''; });
           cells[`${m}-national`] = t.national || ''; cells[`${m}-local`] = t.local || '';
         }
         return { id:`${c.id}:${timing}`, name: lanes.filter(l=>l.c.id===c.id).length > 1 ? `${c.name} (${label})` : c.name, bizNo: c.bizNo, cells };
@@ -35855,7 +35950,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.01 14:16';
+const APP_BUILD = '2026.10.01 14:34';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
