@@ -1870,6 +1870,11 @@
   .it-sum-period{ font-weight:700; color:var(--ink-label); }
   .it-sum-filter{ border:1.5px solid var(--border); background:var(--surface); color:var(--ink-label); border-radius:999px; padding:5px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
   .it-sum-filter.on{ background:var(--indigo); border-color:var(--indigo); color:#fff; }
+  .it-seg{ display:inline-flex; background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:2px; gap:0; }
+  .it-seg button{ border:none; background:transparent; color:var(--ink-soft); font-family:inherit; font-size:11.5px; font-weight:700; height:22px; padding:0 10px; border-radius:999px; cursor:pointer; }
+  .it-seg button.on{ background:var(--indigo); color:#fff; }
+  #reviewItFsTabs button{ height:24px; padding:0 14px; font-size:12px; }
+  #reviewItFsYearSelect{ height:30px; box-sizing:border-box; }
   /* 대시보드 세무일정 위젯 - 원천세 미신고 알림 줄 */
   .home-dash-it-alert{ display:flex; align-items:center; gap:8px; width:100%; margin:0 0 8px; padding:7px 10px; border-radius:9px; border:1px solid var(--border);
     background:var(--surface); font-size:12px; font-weight:700; color:var(--ink-label); cursor:pointer; font-family:inherit; text-align:left; }
@@ -1899,9 +1904,10 @@
   .it-stage-dots{ display:inline-flex; gap:3px; align-items:center; justify-content:center; }
   .it-stage-dots i{ width:5px; height:5px; border-radius:50%; border:1.2px solid #C9B88A; background:transparent; display:inline-block; box-sizing:border-box; }
   .it-stage-dots i.on{ background:#B4830E; border-color:#B4830E; }
-  .it-verify-st{ font-size:10.5px; font-weight:800; white-space:nowrap; }
-  .it-verify-st.ok{ color:var(--mint); }
-  .it-verify-st.bad{ color:var(--coral); }
+  .it-verify-slot{ display:inline-flex; width:17px; height:17px; align-items:center; justify-content:center; flex:none; }
+  .it-verify-dot{ display:inline-flex; width:17px; height:17px; border-radius:50%; align-items:center; justify-content:center; }
+  .it-verify-dot.ok{ background:var(--mint); }
+  .it-verify-dot.bad{ background:var(--coral); }
   .it-all-table td .it-all-month-cell-btn{ min-width:32px; height:24px; line-height:1; box-sizing:border-box; } /* [2026.10.01] 글자 없는 칸(신고대상·미신고)이 납작하게 보이던 것 - 모든 칸 높이를 같게 */
   /* [2026.10.01] "국세·지방세 칸 간격이 월마다 제각각"(요청) - 24칸(12개월×국세/지방세) 폭을 모두 같게 고정 */
   .it-all-table th.it-all-sub{ width:40px; min-width:40px; max-width:40px; box-sizing:border-box; }
@@ -5969,35 +5975,41 @@
         <!-- 급여검증/납부세액검증 팝업 - 12개월치를 스크롤 없이 한 화면에서 보려면 가로 폭은 넉넉해야 해서
              뷰포트 가로폭은 거의 그대로 쓰되, 예전처럼 세로까지 꽉 채운 전체화면은 답답하다는 의견으로
              세로 높이를 줄이고 화면 가운데로 오도록 바꿈(위아래로 여백이 생겨서 팝업이라는 느낌이 들게) -->
-        <div id="reviewItFullscreenOverlay" style="display:none; position:fixed; inset:0; z-index:900; background:rgba(15,16,30,0.6); padding:14px; align-items:center; justify-content:center;">
+        <div id="reviewItFullscreenOverlay" style="display:none; position:fixed; inset:0; overscroll-behavior:contain; z-index:900; background:rgba(15,16,30,0.6); padding:14px; align-items:center; justify-content:center;">
           <div style="background:var(--bg); border-radius:16px; width:100%; max-width:calc(100vw - 28px); height:88vh; margin:0 auto; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px -12px rgba(0,0,0,0.4);">
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:14px 20px; border-bottom:1.5px solid var(--border); flex-shrink:0;">
-              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                <span id="reviewItFsClientName" style="font-size:16.5px; font-weight:900; color:var(--navy);"></span>
-                <span id="reviewItFsSectionBadge" style="display:none;"></span>
-                <!-- [2026.10.01] "급여·납부세액검증을 한 팝업에서 왔다갔다"(요청) - 탭칩으로 전환 -->
-                <div id="reviewItFsTabs" style="display:inline-flex; gap:4px;">
-                  <button type="button" class="policy-cat-btn review-it-fs-tab" data-section="income">급여검증</button>
-                  <button type="button" class="policy-cat-btn review-it-fs-tab" data-section="tax">납부세액검증</button>
+            <!-- [2026.10.01] "위쪽 정보가 너무 많고 버튼 배치가 어색"(요청) - 1줄: 거래처 · 급여/세액 탭 · 연도 | 엑셀·되돌리기·저장 | 닫기,
+                 2줄(작게): 신고구분·지급시기 안내. "자동 저장 안 됨" 안내는 저장 버튼 말풍선으로 옮김 -->
+            <div style="display:flex; flex-direction:column; gap:6px; padding:12px 20px 10px; border-bottom:1.5px solid var(--border); flex-shrink:0;">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                  <span id="reviewItFsClientName" style="font-size:16.5px; font-weight:900; color:var(--navy);"></span>
+                  <span id="reviewItFsSectionBadge" style="display:none;"></span>
+                  <span id="reviewItFsTabs" class="it-seg" role="group" aria-label="검증 종류">
+                    <button type="button" class="review-it-fs-tab" data-section="income">급여</button><button type="button" class="review-it-fs-tab" data-section="tax">세액</button>
+                  </span>
+                  <select id="reviewItFsYearSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:5px 7px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12px; font-weight:700;"></select>
                 </div>
-                <select id="reviewItFsYearSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:5px 7px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12px; font-weight:700;"></select>
-                <div id="reviewItFsMetaWrap" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:11.5px; color:var(--ink-soft);"></div>
-                <!-- 당월·익월 지급을 둘 다 하는 거래처에서, 이 검증표가 어느 지급시기 것인지와 예전 합산값 안내를 보여줌 -->
-                <span id="reviewItFsTimingNote" class="review-timing-note" style="display:none;"></span>
-              </div>
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span class="hint" style="font-size:11px; margin:0;">숫자를 입력해도 자동 저장되지 않아요 - 저장 버튼을 눌러야 저장돼요.</span>
-                <span class="save-msg" id="reviewItSaveMsg" style="margin-top:0; display:inline-block;"></span>
-                <button type="button" id="reviewItRevertBtn" title="되돌리기 (아직 저장하지 않은 입력 내용을 모두 취소하고 마지막 저장 상태로 되돌려요)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:1.5px solid var(--border); background:var(--surface); color:var(--ink-soft); box-shadow:0 2px 6px -2px rgba(29,30,51,0.2); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span class="save-msg" id="reviewItSaveMsg" style="margin-top:0; display:inline-block;"></span>
+                  <button type="button" id="reviewItXlsDownBtn" class="del-btn xls-io-btn" title="엑셀 받기 (합계·검증 수식 포함)" aria-label="엑셀 받기" style="width:30px; height:30px; padding:0; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>
+                  <button type="button" id="reviewItXlsUpBtn" class="del-btn xls-io-btn" title="엑셀 올리기 (받은 양식에 숫자를 채워서)" aria-label="엑셀 올리기" style="width:30px; height:30px; padding:0; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></button>
+                  <input type="file" id="reviewItXlsFile" accept=".xlsx,.xls" style="display:none;">
+                  <button type="button" id="reviewItRevertBtn" title="되돌리기 (아직 저장하지 않은 입력 내용을 모두 취소하고 마지막 저장 상태로 되돌려요)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:1.5px solid var(--border); background:var(--surface); color:var(--ink-soft); box-shadow:0 2px 6px -2px rgba(29,30,51,0.2); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
                 </button>
-                <button type="button" id="reviewItSaveBtn" title="저장 (바뀐 내용이 있으면 버튼이 빨갛게 표시돼요)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:none; background:var(--indigo); color:#fff; box-shadow:0 4px 10px -3px rgba(29,30,51,0.35); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
+                  <button type="button" id="reviewItSaveBtn" title="저장 - 숫자를 입력해도 자동 저장되지 않아요 (바뀐 내용이 있으면 버튼이 빨갛게 표시돼요)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:none; background:var(--indigo); color:#fff; box-shadow:0 4px 10px -3px rgba(29,30,51,0.35); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                 </button>
-                <button type="button" id="reviewItFsCloseBtn" title="닫기" aria-label="닫기" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:1.5px solid var(--border); background:var(--bg); color:var(--ink-soft); display:inline-flex; align-items:center; justify-content:center; padding:0; cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                  <span style="width:1px; height:20px; background:var(--border); margin:0 6px 0 8px;"></span>
+                  <button type="button" id="reviewItFsCloseBtn" title="닫기" aria-label="닫기" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:1.5px solid var(--border); background:var(--bg); color:var(--ink-soft); display:inline-flex; align-items:center; justify-content:center; padding:0; cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <div id="reviewItFsMetaWrap" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:11.5px; color:var(--ink-soft);"></div>
+                <span id="reviewItFsTimingNote" class="review-timing-note" style="display:none;"></span>
               </div>
             </div>
-            <div style="flex:1; overflow:auto; padding:14px 20px;">
+            <div style="flex:1; overflow:auto; overscroll-behavior:contain; padding:14px 20px;">
               <div id="reviewItIncomeWrap" class="table-scroll" style="display:none; max-height:none; overflow:visible;"></div>
               <div id="reviewItTaxWrap" class="table-scroll" style="display:none; max-height:none; overflow:visible;"></div>
             </div>
@@ -10679,8 +10691,6 @@ function renderNoticeList(){
           <label class="notice-star-toggle" title="중요표시(즐겨찾기)">
             <input type="checkbox" class="notice-important-check" data-id="${n.id}" ${n.important?'checked':''} ${canSetImportant?'':'disabled'}><svg width="12" height="12" viewBox="0 0 24 24" fill="${n.important?'#F5A524':'none'}" stroke="${n.important?'#F5A524':'currentColor'}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
           </label>
-          <button type="button" class="del-btn approval-icon-btn notice-history-btn" data-id="${n.id}" title="수정이력${histCnt?` (${histCnt}건)`:''}" aria-label="수정이력" style="width:28px; height:28px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:9px; --icon-bg:var(--bg2, #E5E7EB); --icon-fg:var(--ink-soft);">${clockSvg}</button>
-          ${canManageNotice(n) ? approvalActionIconBtn('notice-edit-btn', n.id, 'edit', '수정', 'var(--indigo-bg)', 'var(--indigo-deep)', true) + approvalActionIconBtn('notice-del-btn', n.id, 'trash', '삭제', 'var(--coral-bg)', 'var(--coral)', true) : ''}
         </div>
       </td>
     </tr>`;
@@ -10692,11 +10702,16 @@ function renderNoticeList(){
       <div style="padding:14px 18px; background:var(--bg); border-radius:10px; margin:0 4px;">
         <div style="text-align:center; margin-bottom:8px; font-size:11.5px; color:var(--ink-soft);">${escHtml(n.savedAt||'')} · ${escHtml(n.authorName||'-')} · ${n.scope||'개인'} 공지${n.important ? ' · <svg width="11" height="11" viewBox="0 0 24 24" fill="#F5A524" stroke="#F5A524" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>중요' : ''}</div>
         <div style="white-space:pre-wrap; line-height:1.7; padding:14px; background:var(--surface); border-radius:10px; user-select:text; ${styleStr}">${contentHtml}</div>
+        <!-- [2026.10.01] "목록 줄에 아이콘이 너무 많다"(요청) - 이력·수정·삭제는 공지를 펼쳤을 때 내용 아래에서 -->
+        <div style="display:flex; justify-content:flex-end; align-items:center; gap:6px; margin-top:8px;">
+          <button type="button" class="del-btn approval-icon-btn notice-history-btn" data-id="${n.id}" title="수정이력${histCnt?` (${histCnt}건)`:''}" aria-label="수정이력" style="width:28px; height:28px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:9px; --icon-bg:var(--bg2, #E5E7EB); --icon-fg:var(--ink-soft);">${clockSvg}</button>
+          ${canManageNotice(n) ? approvalActionIconBtn('notice-edit-btn', n.id, 'edit', '수정', 'var(--indigo-bg)', 'var(--indigo-deep)', true) + approvalActionIconBtn('notice-del-btn', n.id, 'trash', '삭제', 'var(--coral-bg)', 'var(--coral)', true) : ''}
+        </div>
       </div>
     </td></tr>`;
     return mainRow + detailRow;
   });
-  renderPaginatedRows(wrap, '<tr><th style="text-align:center; width:56px;">순번</th><th style="text-align:center; width:70px;">구분</th><th style="text-align:center; border-left:1px solid var(--border); border-right:1px solid var(--border);">제목</th><th style="text-align:center; width:80px;">작성자</th><th style="text-align:center; width:110px;">작성일시</th><th style="text-align:center; width:150px;"></th></tr>', rows, 5);
+  renderPaginatedRows(wrap, '<tr><th style="text-align:center; width:56px;">순번</th><th style="text-align:center; width:70px;">구분</th><th style="text-align:center; border-left:1px solid var(--border); border-right:1px solid var(--border);">제목</th><th style="text-align:center; width:80px;">작성자</th><th style="text-align:center; width:110px;">작성일시</th><th style="text-align:center; width:56px;"></th></tr>', rows, 5);
   wrap.querySelectorAll('table').forEach(t=>{ t.style.tableLayout = 'fixed'; t.style.width = '100%'; });
   // 줄 아무 곳이나 누르면 공지가 펼쳐짐(관리 아이콘·중요 별을 누른 건 제외)
   wrap.querySelectorAll('.notice-row-clickable').forEach(tr=>{
@@ -26232,12 +26247,15 @@ function renderIncomeTaxUnified(){
   const summaryHtml = `<div class="it-all-summary">
     <span class="it-sum-period">${focus.month}월 귀속 · ${focus.due.getMonth()+1}/${focus.due.getDate()} 마감 <b class="${focus.dday<=3 ? 'urgent' : ''}">${ddayTxt}</b></span>
     <span class="it-sum-num">대상 <b>${focus.total}</b></span><span class="it-sum-num">완료 <b class="ok">${focus.done}</b></span><span class="it-sum-num">남음 <b class="${focus.pending ? 'warn' : ''}">${focus.pending}</b></span>
-    <button type="button" class="it-sum-filter${itAllOnlyPending ? ' on' : ''}" id="itAllPendingToggle">${itAllOnlyPending ? '✓ 미신고만 보는 중' : '미신고만 보기'}</button>
-    <button type="button" class="it-sum-filter${itAllOnlyTarget ? ' on' : ''}" id="itAllTargetToggle">${itAllOnlyTarget ? '✓ 신고대상만 보는 중' : '신고대상만 보기'}</button>
+    <span class="it-seg" role="group" aria-label="보기 범위">
+      <button type="button" class="${!itAllOnlyPending && !itAllOnlyTarget ? 'on' : ''}" data-seg="all">전체</button><button type="button" class="${itAllOnlyTarget && !itAllOnlyPending ? 'on' : ''}" data-seg="target" title="한 달이라도 신고대상인 거래처만">대상</button><button type="button" class="${itAllOnlyPending ? 'on' : ''}" data-seg="pending" title="${focus.month}월 귀속 미신고 거래처만">미신고</button>
+    </span>
   </div>`;
   const bindSummary = ()=>{
-    document.getElementById('itAllPendingToggle')?.addEventListener('click', ()=>{ itAllOnlyPending = !itAllOnlyPending; renderIncomeTaxUnified(); });
-    document.getElementById('itAllTargetToggle')?.addEventListener('click', ()=>{ itAllOnlyTarget = !itAllOnlyTarget; renderIncomeTaxUnified(); });
+    // [2026.10.01] "미신고만·신고대상만 칩이 자리를 많이 차지하고 높이도 달라 어색"(요청) - 작은 3칸 선택(전체/대상/미신고) 하나로
+    document.querySelectorAll('#itAllTableWrap .it-seg button').forEach(btn=> btn.addEventListener('click', ()=>{
+      const k = btn.dataset.seg; itAllOnlyPending = k === 'pending'; itAllOnlyTarget = k === 'target'; renderIncomeTaxUnified();
+    }));
   };
   if(!list.length){ wrap.innerHTML = summaryHtml + `<div class="empty-state">${itAllOnlyPending ? `${focus.month}월 귀속 미신고 거래처가 없어요.` : q ? '검색 결과가 없습니다.' : '거래처 없음'}</div>`; bindSummary(); return; }
   // "세목(국세/지방세)을 위아래 두 줄로 나누지 말고, 1월 아래 국세/지방세 칸으로 나눠서 거래처가 한 줄로만
@@ -26328,8 +26346,9 @@ function renderIncomeTaxUnified(){
       const timingAttr = timingKey ? ` data-timing="${timingKey}"` : '';
       // [2026.10.01] "검증은 아이콘 하나로 팝업을 열고, 지금 챙길 귀속월에 오류가 없으면 옆에 표시"(요청) - 팝업 안에서 급여/납부세액 탭으로 오감
       const vst = (String(year) === String(focus.year)) ? itAllVerifyStatus(c.id, timingKey, Number(year), focus.month) : '';
-      const vstHtml = vst === 'ok' ? `<span class="it-verify-st ok" title="${focus.month}월 귀속 급여·세액 검증 금액이 모두 맞아요">오류 없음</span>`
-        : vst === 'bad' ? `<span class="it-verify-st bad" title="${focus.month}월 귀속 검증 금액이 맞지 않는 곳이 있어요">확인 필요</span>` : '';
+      // [2026.10.01] "오류 없음 글자 대신 O/X 표시, 돋보기 자리는 고정"(요청) - 검토표와 같은 초록 ✓ / 빨강 ✕ 동그라미, 표시가 없어도 같은 폭의 빈자리를 둠
+      const vstHtml = `<span class="it-verify-slot">${vst === 'ok' ? `<span class="it-verify-dot ok" title="${focus.month}월 귀속 급여·세액 검증 금액이 모두 맞아요"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>`
+        : vst === 'bad' ? `<span class="it-verify-dot bad" title="${focus.month}월 귀속 검증 금액이 맞지 않는 곳이 있어요"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round"><line x1="16" y1="8" x2="8" y2="16"></line><line x1="8" y1="8" x2="16" y2="16"></line></svg></span>` : ''}</span>`;
       const verifyCell = `<td class="cvb" style="white-space:nowrap;">
           <span style="display:inline-flex; align-items:center; gap:6px; vertical-align:middle;">
             <button type="button" class="del-btn review-it-open-btn" data-client-id="${c.id}"${timingAttr} data-section="income" title="급여·납부세액 검증 열기" aria-label="검증 열기" style="width:24px; height:24px; padding:0; display:inline-flex; align-items:center; justify-content:center; background:var(--surface); color:var(--indigo-deep); border:1.5px solid var(--indigo-bg); border-radius:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>
@@ -26732,26 +26751,21 @@ function renderSubmitStatusTable(){
     // 요청으로 해당여부 체크박스 하나 + 제출일(비어있으면 아직 미제출) 하나로 단순화함. 날짜는 여전히
     // submitDateTriggerHtml(평소엔 숨어있다가 마우스를 올리면만 나타나는 작은 달력 아이콘)을 그대로 재사용해서
     // 표가 들쭉날쭉해지지 않게 하고, 옆에 "오늘" 버튼을 새로 추가해서 한 번에 오늘 날짜를 넣을 수 있게 함
-    // [2026.10.01] "신고현황처럼 단순하게"(요청) - 검토표(급여검증)에 그 귀속기간 금액이 입력된 소득 종류는 자동으로 제출대상,
-    // 없으면 미대상(연한 회색). 제출대상인데 아직 미제출은 아주 연한 노랑, 제출하면 음영 없이 제출일만.
-    // 검토표 항목과 바로 이어지지 않는 칸(특고·학자금상환·기타)은 지금처럼 직접 체크
+    // [2026.10.01] "신고현황처럼 단순하게 - 네모박스(체크) 없이"(요청) - 칸 하나가 버튼. 검토표(급여검증)에 그 귀속기간 금액이 있는
+    // 소득 종류는 자동으로 제출대상, 없으면 미대상(연한 회색). 대상인데 미제출은 아주 연한 노랑, 제출하면 음영 없이 제출일만.
+    // 칸을 누르면 작은 창에서 제출일(오늘 버튼)·지우기, 미대상 칸은 "제출대상으로 지정"(특고·학자금상환·기타처럼 검토표와 안 이어지는 칸도 같은 방식)
     const subitemCells = subitems.map(it=>{
       const auto = submitAutoApplicable(c.id, it.key, period);
-      const applicable = auto === null ? submitItemApplicable(entry.items[it.key]) : auto;
+      const manual = submitItemApplicable(entry.items[it.key]);
+      const applicable = !!auto || manual;
       const dateVal = entry.itemDates[it.key] || '';
-      const checkboxHtml = applicable ? `<input type="checkbox" class="submit-date-check" data-target="submit-date-${c.id}-${it.key}" style="width:auto; margin:0; flex:none;" title="일괄적용 대상으로 선택">` : '';
-      const todayBtnHtml = (applicable && !dateVal) ? `<button type="button" class="del-btn submit-status-today-btn" data-client-id="${c.id}" data-item-key="${it.key}" style="font-size:9.5px; padding:1px 6px; flex-shrink:0;" title="오늘 날짜로 제출일 입력">오늘</button>` : '';
-      const manualCb = auto === null ? `<input type="checkbox" class="submit-status-applicable-check" data-client-id="${c.id}" data-item-key="${it.key}" ${applicable?'checked':''} title="해당 여부(체크하면 제출 대상)" style="width:auto; margin:0;">` : '';
-      const bg = !applicable ? '#EDEFF4' : (dateVal ? 'transparent' : '#FFF8DC');
-      const tip = auto === null ? '' : (applicable ? '검토표에 이 귀속기간 금액이 있어서 제출대상이에요' : '검토표에 이 귀속기간 금액이 없어서 미대상이에요');
-      return `<td class="cvb submit-status-cell" style="white-space:nowrap; background:${bg};"${tip ? ` title="${tip}"` : ''}>
-        <div style="display:flex; align-items:center; justify-content:center; gap:4px; min-height:22px;">
-          ${manualCb}
-          ${checkboxHtml}
-          ${submitDateTriggerHtml(c.id, it.key, dateVal, applicable)}
-          ${todayBtnHtml}
-        </div>
-      </td>`;
+      const st = !applicable ? 'off' : (dateVal ? 'done' : 'todo');
+      const bg = st === 'off' ? '#EDEFF4' : st === 'todo' ? '#FFF8DC' : 'transparent';
+      const label = st === 'done' ? `${Number(dateVal.slice(5,7))}/${Number(dateVal.slice(8,10))}` : '';
+      const tip = st === 'done' ? `제출일 ${dateVal.slice(0,4)}년 ${Number(dateVal.slice(5,7))}월 ${Number(dateVal.slice(8,10))}일`
+        : st === 'todo' ? (auto ? '검토표에 이 귀속기간 금액이 있어 제출대상이에요 · 눌러서 제출일 입력' : '제출대상 · 눌러서 제출일 입력')
+        : (auto === false ? '검토표에 이 귀속기간 금액이 없어 미대상이에요 · 눌러서 제출대상으로 지정할 수 있어요' : '미대상 · 눌러서 제출대상으로 지정');
+      return `<td class="cvb submit-status-cell"><button type="button" class="it-all-month-cell-btn submit-cell-btn" data-client-id="${c.id}" data-item-key="${it.key}" data-st="${st}" data-auto="${auto?1:0}" title="${escHtml(tip)}" style="width:100%; min-width:46px; height:24px; box-sizing:border-box; border:none; border-radius:6px; background:${bg}; color:var(--mint); font-size:10.5px; font-weight:700; cursor:pointer;">${label}</button></td>`;
     }).join('');
     return `<tr>
       <td class="num cvb">${idx+1}</td>
@@ -26759,47 +26773,68 @@ function renderSubmitStatusTable(){
       ${subitemCells}
     </tr>`;
   }).join('');
-  // 저장 버튼(+ 저장 메시지)을 날짜 일괄적용 버튼 바로 옆에 두고, "이 저장은 아이콘으로 해야지, 신고제출메뉴
-  // 모두"라는 요청으로 검토표(reviewItSaveBtn 등)와 완전히 같은 원형 인디고 저장 아이콘 버튼으로 통일함.
-  // 표를 다시 그릴 때마다 이 버튼도 새로 만들어지므로 클릭 리스너는 bindSubmitStatusSaveBtn()으로 분리해
-  // 매번 다시 붙여줌(아래 bindSubmitDateTriggers 옆) - is-dirty(저장 안 한 내용 있을 때 빨갛게) 토글도 그대로 유지
   const submitSaveBtnHtml = `<span class="save-msg" id="submitStatusSaveMsg" style="margin-top:0; display:inline-block;"></span>
-    <button type="button" id="submitStatusSaveBtn" title="저장" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:none; background:var(--indigo); color:#fff; box-shadow:0 4px 10px -3px rgba(29,30,51,0.35); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
+    <button type="button" id="submitStatusSaveBtn" title="저장" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:none; background:var(--indigo); color:#fff; box-shadow:0 4px 10px -3px rgba(29,30,51,0.35); display:inline-flex; align-items:center; justify-content:center; cursor:pointer;">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
     </button>`;
-  wrap.innerHTML = bulkDateApplyToolbarHtml('submitDate', '날짜일괄적용', { compact:true, extraHtml: submitSaveBtnHtml }) + `<div class="table-scroll"><table><thead><tr><th class="cvb">순번</th><th class="cvb">상호명</th>${subitemHeaderCells}</tr></thead><tbody>${rows}</tbody></table></div>`;
-  bindBulkDateApplyToolbar(wrap, 'submitDate', 'submit-date-check');
+  // 날짜 일괄적용 - 체크박스로 고르는 대신, 고른 날짜를 "아직 제출 안 한 대상 칸(노란 칸)" 전체에 한 번에 넣음
+  const toolbarHtml = `<div style="display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-bottom:8px; flex-wrap:wrap;">
+    <input type="date" id="submitBulkDate" value="${todayStr()}" style="height:30px; box-sizing:border-box; border:1.5px solid var(--border); border-radius:8px; padding:0 8px; font-size:12px; font-family:'Pretendard',sans-serif; background:var(--surface);">
+    <button type="button" class="del-btn" id="submitBulkApplyBtn" title="아직 제출 안 한 노란 칸 모두에 이 날짜를 넣어요" style="height:30px; box-sizing:border-box;">미제출 칸 모두 적용</button>
+    ${submitSaveBtnHtml}
+  </div>`;
+  wrap.innerHTML = toolbarHtml + `<div class="table-scroll"><table class="submit-status-table"><thead><tr><th class="cvb">순번</th><th class="cvb">상호명</th>${subitemHeaderCells}</tr></thead><tbody>${rows}</tbody></table></div>`;
   bindSubmitStatusSaveBtn(wrap);
-  wrap.querySelectorAll('.submit-status-applicable-check').forEach(cb=>{
-    cb.addEventListener('change', ()=>{
-      const cid = cb.dataset.clientId, key = cb.dataset.itemKey;
-      periodData[cid] = periodData[cid] || { memo:'' };
-      periodData[cid].items = periodData[cid].items || {};
-      periodData[cid].items[key] = cb.checked;
-      setSubmitStatusDirty(true);
-      // 날짜칸·오늘 버튼까지 새로 나타나거나 사라져야 해서, 그 부분만 토글하는 대신 표를 다시 그림
-      // (같은 periodData 객체를 그대로 다시 읽으니 방금 바꾼 값은 그대로 유지됨)
-      renderSubmitStatusTable();
-    });
+  const setVal = (cid, key, fn)=>{ periodData[cid] = periodData[cid] || { memo:'' }; periodData[cid].items = periodData[cid].items || {}; periodData[cid].itemDates = periodData[cid].itemDates || {}; fn(periodData[cid]); setSubmitStatusDirty(true); renderSubmitStatusTable(); setSubmitStatusDirty(true); };
+  wrap.querySelector('#submitBulkApplyBtn')?.addEventListener('click', ()=>{
+    const d = wrap.querySelector('#submitBulkDate')?.value;
+    if(!d) return;
+    const todo = [...wrap.querySelectorAll('.submit-cell-btn[data-st="todo"]')];
+    if(!todo.length){ showCenterToast('아직 제출 안 한 칸이 없어요'); return; }
+    todo.forEach(b=>{ const cid = b.dataset.clientId; periodData[cid] = periodData[cid] || { memo:'' }; periodData[cid].itemDates = periodData[cid].itemDates || {}; periodData[cid].itemDates[b.dataset.itemKey] = d; });
+    renderSubmitStatusTable(); setSubmitStatusDirty(true);
+    showCenterToast(`${todo.length}칸에 날짜를 넣었어요 · 저장을 눌러주세요`);
   });
-  wrap.querySelectorAll('.submit-status-today-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const inp = document.getElementById(`submit-date-${btn.dataset.clientId}-${btn.dataset.itemKey}`);
-      if(!inp) return;
-      inp.value = todayStr();
-      inp.dispatchEvent(new Event('input', { bubbles:true }));
-    });
+  wrap.querySelectorAll('.submit-cell-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> openSubmitCellMenu(btn, (fn)=> setVal(btn.dataset.clientId, btn.dataset.itemKey, fn)));
   });
-  wrap.querySelectorAll('.submit-date-input').forEach(inp=>{
-    inp.addEventListener('input', ()=>{
-      const cid = inp.dataset.clientId, key = inp.dataset.itemKey;
-      periodData[cid] = periodData[cid] || { memo:'' };
-      periodData[cid].itemDates = periodData[cid].itemDates || {};
-      periodData[cid].itemDates[key] = inp.value || '';
-      setSubmitStatusDirty(true);
-    });
-  });
-  bindSubmitDateTriggers(wrap);
+}
+// 제출현황 칸을 눌렀을 때 뜨는 작은 창 - 대상 칸: 제출일 입력(오늘)·지우기·(직접 지정한 칸이면) 대상 해제 / 미대상 칸: 제출대상으로 지정
+function openSubmitCellMenu(anchor, apply){
+  const ex = document.querySelector('.cal-owner-dropdown');
+  if(ex){ const same = ex._anchor === anchor; ex._close(); if(same) return; }
+  const st = anchor.dataset.st, key = anchor.dataset.itemKey, auto = anchor.dataset.auto === '1';
+  const dd = document.createElement('div');
+  dd.className = 'cal-owner-dropdown';
+  dd._anchor = anchor;
+  dd.style.padding = '8px';
+  if(st === 'off'){
+    dd.innerHTML = `<button type="button" class="cal-owner-dd-item" data-act="on">제출대상으로 지정</button>`;
+  } else {
+    const cur = (anchor.title.match(/(\d{4})년 (\d+)월 (\d+)일/) || []);
+    const curVal = cur.length ? `${cur[1]}-${String(cur[2]).padStart(2,'0')}-${String(cur[3]).padStart(2,'0')}` : '';
+    dd.innerHTML = `<div style="display:flex; align-items:center; gap:6px; padding:2px 2px 6px;">
+        <input type="date" class="submit-cell-date" value="${curVal}" style="border:1.5px solid var(--border); border-radius:8px; padding:4px 6px; font-size:12px; font-family:'Pretendard',sans-serif;">
+        <button type="button" class="del-btn" data-act="today" style="height:26px; padding:0 8px;">오늘</button>
+      </div>
+      ${curVal ? `<button type="button" class="cal-owner-dd-item" data-act="clear">제출일 지우기</button>` : ''}
+      ${!auto ? `<button type="button" class="cal-owner-dd-item" data-act="off">제출대상 해제</button>` : ''}`;
+  }
+  document.body.appendChild(dd);
+  const r = anchor.getBoundingClientRect();
+  dd.style.left = Math.max(8, Math.min(window.innerWidth - dd.offsetWidth - 8, r.left)) + 'px';
+  dd.style.top = (r.bottom + 6) + 'px';
+  const onDoc = (e)=>{ if(!dd.contains(e.target) && !anchor.contains(e.target)) close(); };
+  const onKey = (e)=>{ if(e.key === 'Escape') close(); };
+  function close(){ dd.remove(); document.removeEventListener('pointerdown', onDoc, true); document.removeEventListener('keydown', onKey); }
+  dd._close = close;
+  setTimeout(()=>{ document.addEventListener('pointerdown', onDoc, true); document.addEventListener('keydown', onKey); }, 0);
+  const setDate = (d)=>{ close(); apply(e=>{ e.items[key] = true; e.itemDates[key] = d; }); };
+  dd.querySelector('.submit-cell-date')?.addEventListener('change', (e)=>{ if(e.target.value) setDate(e.target.value); });
+  dd.querySelector('[data-act="today"]')?.addEventListener('click', ()=> setDate(todayStr()));
+  dd.querySelector('[data-act="clear"]')?.addEventListener('click', ()=>{ close(); apply(e=>{ delete e.itemDates[key]; }); });
+  dd.querySelector('[data-act="off"]')?.addEventListener('click', ()=>{ close(); apply(e=>{ delete e.items[key]; delete e.itemDates[key]; }); });
+  dd.querySelector('[data-act="on"]')?.addEventListener('click', ()=>{ close(); apply(e=>{ e.items[key] = true; }); });
 }
 // 예전엔 세부항목이 해당없음/검토중/제출완료 3단계 select였는데("미확인"이라 부르던 시절도 있었음), "제출
 // 여부만 체크하고 날짜만 입력하면 되지 굳이 단계를 나눌 필요가 있나"는 요청으로 해당여부(체크박스)+제출일
@@ -27440,11 +27475,12 @@ function openReviewItFullscreen(clientId, section, timing){
   showReviewItFsSection(viewingReviewItSection);
   setReviewItDirty(false);
   document.getElementById('reviewItFullscreenOverlay').style.display = 'flex';
+  document.documentElement.style.overflow = 'hidden'; // 팝업 안에서 스크롤할 때 뒤 화면이 같이 움직이지 않게(요청)
 }
 // 팝업 안 탭칩(급여검증/납부세액검증) - 같은 거래처·연도 그대로 표만 바꿈(입력 중인 값은 저장 전까지 그대로 유지)
 function showReviewItFsSection(section){
   viewingReviewItSection = section === 'tax' ? 'tax' : 'income';
-  document.querySelectorAll('#reviewItFsTabs .review-it-fs-tab').forEach(b=> b.classList.toggle('active', b.dataset.section === viewingReviewItSection));
+  document.querySelectorAll('#reviewItFsTabs .review-it-fs-tab').forEach(b=> b.classList.toggle('on', b.dataset.section === viewingReviewItSection));
   ['reviewItIncomeWrap','reviewItTaxWrap'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.style.display = (id === (viewingReviewItSection==='income' ? 'reviewItIncomeWrap' : 'reviewItTaxWrap')) ? '' : 'none';
@@ -27456,6 +27492,7 @@ function closeReviewItFullscreen(){
   // 저장 안 한 입력을 남겨둔 채 닫으면(다른 탭으로 이동할 때와 똑같이) 마지막 저장 상태로 조용히 되돌림
   if(typeof discardUnsavedReviewItChangesIfAny === 'function') discardUnsavedReviewItChangesIfAny();
   document.getElementById('reviewItFullscreenOverlay').style.display = 'none';
+  document.documentElement.style.overflow = '';
   reviewItFsClientId = null;
   reviewItFsTiming = null;
 }
@@ -27478,6 +27515,9 @@ document.getElementById('reviewItFsYearSelect')?.addEventListener('change', ()=>
   renderReviewItFsMeta(reviewItFsClientId);
   renderReviewItFsSection();
 });
+document.getElementById('reviewItXlsDownBtn')?.addEventListener('click', ()=>{ try{ reviewItXlsDownload(); }catch(e){ console.error(e); showCenterToast('엑셀을 만들지 못했어요'); } });
+document.getElementById('reviewItXlsUpBtn')?.addEventListener('click', ()=> document.getElementById('reviewItXlsFile')?.click());
+document.getElementById('reviewItXlsFile')?.addEventListener('change', async (e)=>{ const f = e.target.files && e.target.files[0]; e.target.value = ''; if(f) await reviewItXlsUpload(f); });
 document.getElementById('reviewItSaveBtn')?.addEventListener('click', async ()=>{
   await saveSharedReviewFigures();
   await saveSharedReviewMeta();
@@ -27512,6 +27552,125 @@ function discardUnsavedReviewItChangesIfAny(){
   setReviewItDirty(false);
 }
 
+// ── [2026.10.01] 검증 팝업 엑셀 받기·올리기(요청) - 원본 엑셀 양식처럼 합계·검증 칸에 수식이 걸린 파일로 받고,
+// 숫자를 고친 뒤 그대로 올리면 입력칸에 채워짐(수식 칸은 읽지 않음). 올린 뒤 저장을 눌러야 실제로 반영됨
+function reviewItXlsCol(i){ return XLSX.utils.encode_col(i); }
+function reviewItXlsDownload(){
+  const clientId = reviewItFsClientId;
+  if(!clientId || typeof XLSX === 'undefined'){ showCenterToast('엑셀 기능을 불러오지 못했어요'); return; }
+  const year = Number(document.getElementById('reviewItFsYearSelect')?.value) || Number(todayStr().slice(0,4));
+  const meta = reviewItMeta(clientId);
+  const client = bookkeepingClientList().find(c=>c.id===clientId);
+  const cname = (client ? client.name : '') + (reviewItFsTiming==='sameMonth' ? '(당월지급)' : reviewItFsTiming==='nextMonth' ? '(익월지급)' : '');
+  const num = v => (v == null || v === '' || isNaN(Number(v))) ? null : Number(v);
+  const put = (ws, r, c, v) => { if(v == null) return; const ref = XLSX.utils.encode_cell({r, c}); ws[ref] = typeof v === 'object' ? v : (typeof v === 'number' ? { t:'n', v, z:'#,##0' } : { t:'s', v:String(v) }); };
+  const fml = (f) => ({ t:'n', f, z:'#,##0' });
+  // ① 급여검증 - 행 4~15 = 1~12월. B~N = 13개 소득 항목, O = 총지급액(계산) =SUM(B:N)-(미제출비과세), P = 총지급액(신고서), Q = 검증
+  const ws1 = {};
+  put(ws1, 0, 0, `원천세 검토표 - 급여검증 · ${cname} · ${year}년`);
+  const F = REVIEW_INCOME_FIELDS;
+  const hdr1 = ['귀속월', ...F.map(f=>f.label), '총지급액(계산)', '총지급액(신고서)', '검증'];
+  hdr1.forEach((h,i)=> put(ws1, 2, i, h));
+  const colTotal = F.length + 1, colRep = F.length + 2, colChk = F.length + 3;
+  const exclCols = F.map((f,i)=> f.excludeFromTotal ? reviewItXlsCol(i+1) : null).filter(Boolean);
+  for(let m=1;m<=12;m++){
+    const r = 2 + m; const row = r + 1;
+    const d = reviewItMonthData(clientId, year, m);
+    put(ws1, r, 0, `${m}월`);
+    F.forEach((f,i)=> put(ws1, r, i+1, num(d.income[f.key])));
+    const first = reviewItXlsCol(1), last = reviewItXlsCol(F.length);
+    put(ws1, r, colTotal, fml(`SUM(${first}${row}:${last}${row})` + (exclCols.length ? `-(${exclCols.map(c=>c+row).join('+')})` : '')));
+    const pc = reviewItPayCycleForMonth(meta, m);
+    if(reviewItIsPeriodEnd(m, pc)){
+      put(ws1, r, colRep, num(d.incomeReported));
+      const ms = reviewItPeriodMonths(m, pc);
+      const tc = reviewItXlsCol(colTotal), rc = reviewItXlsCol(colRep);
+      put(ws1, r, colChk, { t:'s', f:`IF(${rc}${row}="","",IF(SUM(${tc}${ms[0]+3}:${tc}${ms[ms.length-1]+3})=${rc}${row},"일치","불일치"))` });
+    }
+  }
+  ws1['!ref'] = XLSX.utils.encode_range({ s:{r:0,c:0}, e:{r:14,c:colChk} });
+  ws1['!cols'] = hdr1.map((h,i)=> ({ wch: i===0 ? 7 : 14 }));
+  // ② 납부세액검증 - 급여명세서 기준(10개 유형 × 소득세·지방세) + 합계 / 신고서 기준(6개 유형) + 국세 합계·검증 + 지방세(신고서)·검증
+  const ws2 = {};
+  put(ws2, 0, 0, `원천세 검토표 - 납부세액검증 · ${cname} · ${year}년`);
+  const G = REVIEW_TAX_GROUPS, R = REVIEW_TAXRETURN_FIELDS;
+  let c = 0;
+  put(ws2, 2, c, '귀속월'); c++;
+  const gStart = c;
+  G.forEach(g=>{ put(ws2, 2, c, g.label); put(ws2, 3, c, '소득세'); put(ws2, 3, c+1, '지방세'); c += 2; });
+  const cTaxSum = c++, cLocSum = c++;
+  put(ws2, 2, cTaxSum, '소득세합계(계산)'); put(ws2, 2, cLocSum, '지방세합계(계산)');
+  const rStart = c;
+  R.forEach(f=>{ put(ws2, 2, c, `신고서 ${f.label}`); c++; });
+  const cRepSum = c++, cRepChk = c++, cLocRep = c++, cLocChk = c++;
+  put(ws2, 2, cRepSum, '신고서 국세합계'); put(ws2, 2, cRepChk, '국세 검증'); put(ws2, 2, cLocRep, '신고서 지방세'); put(ws2, 2, cLocChk, '지방세 검증');
+  for(let m=1;m<=12;m++){
+    const r = 3 + m; const row = r + 1;
+    const d = reviewItMonthData(clientId, year, m);
+    put(ws2, r, 0, `${m}월`);
+    G.forEach((g,i)=>{ const t = d.tax[g.key] || {}; put(ws2, r, gStart + i*2, num(t.tax)); put(ws2, r, gStart + i*2 + 1, num(t.local)); });
+    const taxRefs = G.map((g,i)=> reviewItXlsCol(gStart + i*2) + row), locRefs = G.map((g,i)=> reviewItXlsCol(gStart + i*2 + 1) + row);
+    put(ws2, r, cTaxSum, fml(taxRefs.join('+')));
+    put(ws2, r, cLocSum, fml(locRefs.join('+')));
+    const pc = reviewItPayCycleForMonth(meta, m);
+    if(reviewItIsPeriodEnd(m, pc)){
+      const tr = d.taxReported || {};
+      R.forEach((f,i)=> put(ws2, r, rStart + i, num(tr[f.key])));
+      put(ws2, r, cRepSum, fml(`SUM(${reviewItXlsCol(rStart)}${row}:${reviewItXlsCol(rStart + R.length - 1)}${row})`));
+      const ms = reviewItPeriodMonths(m, pc);
+      const ts = reviewItXlsCol(cTaxSum), ls = reviewItXlsCol(cLocSum), rs = reviewItXlsCol(cRepSum), lr = reviewItXlsCol(cLocRep);
+      const a = ms[0]+4, b = ms[ms.length-1]+4;
+      put(ws2, r, cRepChk, { t:'s', f:`IF(COUNT(${reviewItXlsCol(rStart)}${row}:${reviewItXlsCol(rStart + R.length - 1)}${row})=0,"",IF(SUM(${ts}${a}:${ts}${b})=${rs}${row},"일치","불일치"))` });
+      put(ws2, r, cLocRep, num(d.taxReportedLocal));
+      put(ws2, r, cLocChk, { t:'s', f:`IF(${lr}${row}="","",IF(SUM(${ls}${a}:${ls}${b})=${lr}${row},"일치","불일치"))` });
+    }
+  }
+  ws2['!ref'] = XLSX.utils.encode_range({ s:{r:0,c:0}, e:{r:15,c:cLocChk} });
+  ws2['!merges'] = G.map((g,i)=> ({ s:{r:2,c:gStart+i*2}, e:{r:2,c:gStart+i*2+1} }));
+  ws2['!cols'] = Array.from({length:cLocChk+1}, (_,i)=> ({ wch: i===0 ? 7 : 12 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws1, '급여검증');
+  XLSX.utils.book_append_sheet(wb, ws2, '납부세액검증');
+  const safe = String(cname).replace(/[\\/:*?"<>|]/g, '');
+  XLSX.writeFile(wb, `taxj-원천세검증-${safe}-${year}-${todayStr()}.xlsx`);
+}
+async function reviewItXlsUpload(file){
+  const clientId = reviewItFsClientId;
+  if(!clientId || !file || typeof XLSX === 'undefined') return;
+  const year = Number(document.getElementById('reviewItFsYearSelect')?.value) || Number(todayStr().slice(0,4));
+  let wb;
+  try{ wb = XLSX.read(await file.arrayBuffer(), { type:'array' }); }catch(e){ await appAlert('엑셀 파일을 읽지 못했어요.'); return; }
+  const ws1 = wb.Sheets['급여검증'], ws2 = wb.Sheets['납부세액검증'];
+  if(!ws1 && !ws2){ await appAlert('이 화면에서 받은 엑셀 양식(급여검증·납부세액검증 시트)이 아니에요.'); return; }
+  if(!(await appConfirm(`엑셀의 숫자로 ${year}년 검증표 입력칸을 바꿀까요?\n(엑셀에서 비어 있는 칸은 비워져요 · 합계·검증 칸은 읽지 않아요)\n\n올린 뒤 저장을 눌러야 실제로 반영돼요.`, { okText:'올리기' }))) return;
+  const val = (ws, r, c) => { const cell = ws[XLSX.utils.encode_cell({r, c})]; if(!cell || cell.v == null || cell.v === '') return undefined; const n = Number(String(cell.v).replace(/,/g,'')); return isNaN(n) ? undefined : n; };
+  const meta = reviewItMeta(clientId);
+  const F = REVIEW_INCOME_FIELDS, G = REVIEW_TAX_GROUPS, R = REVIEW_TAXRETURN_FIELDS;
+  for(let m=1;m<=12;m++){
+    const d = reviewItMonthData(clientId, year, m);
+    const pe = reviewItIsPeriodEnd(m, reviewItPayCycleForMonth(meta, m));
+    if(ws1){
+      const r = 2 + m;
+      F.forEach((f,i)=>{ d.income[f.key] = val(ws1, r, i+1); });
+      if(pe){ const v = val(ws1, r, F.length + 2); d.incomeReported = v === undefined ? null : v; }
+    }
+    if(ws2){
+      const r = 3 + m;
+      G.forEach((g,i)=>{ d.tax[g.key] = { ...(d.tax[g.key]||{}), tax: val(ws2, r, 1 + i*2), local: val(ws2, r, 2 + i*2) }; });
+      if(pe){
+        const rStart = 1 + G.length*2 + 2;
+        d.taxReported = d.taxReported || {};
+        R.forEach((f,i)=>{ d.taxReported[f.key] = val(ws2, r, rStart + i); });
+        const lv = val(ws2, r, rStart + R.length + 2);
+        d.taxReportedLocal = lv === undefined ? null : lv;
+      }
+    }
+  }
+  setReviewItDirty(true);
+  renderReviewItFsSection();
+  setReviewItDirty(true);
+  showCenterToast('엑셀 값을 채웠어요 · 확인 후 저장을 눌러주세요');
+}
 // ── 검토표(원천세) 엑셀 데이터 일괄 불러오기: REVIEW_SEED_2026(회사명 기준)을 지금 등록된 거래처(ID 기준)에 이름으로 매칭해서 채워 넣음 ──
 function reviewSeedNormalizeName(s){
   return String(s||'').replace(/주식회사|㈜|\(주\)|주\)|협동조합|기술사사무소|스튜디오|실업/g, '').replace(/\s+/g, '').trim();
@@ -35950,7 +36109,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.01 14:34';
+const APP_BUILD = '2026.10.01 14:43';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
