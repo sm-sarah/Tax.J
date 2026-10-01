@@ -10851,6 +10851,9 @@ function renderEmployeeStatusStats(profileId){
 
 // 이름 옆 [입력/수정]/[현황]/[수정이력] 버튼에서 호출 - 같은 모달을 재사용하고 내용만 바꿔치기함
 let employeeFormFreshFill = false; // loadAll이 직원정보 수정 폼을 새로 채워도 되는 때(팝업을 막 열었을 때)만 true
+// [2026.10.01] "다른 직원 생년월일·입사일이 내 것으로 바뀌었다"(요청) - 폼이 지금 누구 값으로 채워져 있는지 기억해 둠.
+// 다른 직원으로 바뀌었는데 폼이 이전 사람 값 그대로면 무조건 다시 채우고, 저장할 때도 한 번 더 확인함
+let employeeFormFilledFor = null;
 async function openEmployeeModal(mode, profileId){
   employeeModalCurrentId = profileId;
   const p = getProfiles().find(x=>x.id===profileId);
@@ -10881,6 +10884,7 @@ async function openEmployeeModal(mode, profileId){
     // 입력/수정, 수정이력은 그 직원 프로필로 전환해서 기존 폼·이력 로직을 그대로 재사용
     setActiveProfileId(profileId);
     employeeFormFreshFill = true;
+    employeeFormFilledFor = null;
     { const pw = document.getElementById('s-avatar-picker-wrap'); if(pw) pw.style.display = 'none'; const iw = document.getElementById('s-initial-text-wrap'); if(iw) iw.style.display = 'none'; }
     await loadAll();
     // 직원등록 칩에서 이름만 먼저 등록해두고 아직 "입력/수정" 폼은 한 번도 저장한 적 없는 경우,
@@ -12017,8 +12021,9 @@ async function loadAll(){
   // [2026.09.30] "직원정보 수정에서 재직상태 드롭박스가 바로 사라진다"(요청) - 수정 팝업이 열려 있는 동안 동기화로 loadAll이
   // 다시 돌면 폼 칸을 저장된 값으로 도로 채우면서(색상표도 새로 그림) 열려 있던 드롭박스가 닫히고, 입력 중이던 값도 되돌아갔음.
   // 팝업을 처음 열 때(employeeFormFreshFill)만 채우고, 열려 있는 동안엔 입력 중인 폼을 건드리지 않음
-  const keepEmpForm = !employeeFormFreshFill && document.getElementById('employeeModalOverlay')?.style.display === 'flex' && document.getElementById('employeeModalEdit')?.style.display !== 'none';
+  const keepEmpForm = !employeeFormFreshFill && employeeFormFilledFor === activeProfileId && document.getElementById('employeeModalOverlay')?.style.display === 'flex' && document.getElementById('employeeModalEdit')?.style.display !== 'none';
   employeeFormFreshFill = false;
+  if(!keepEmpForm) employeeFormFilledFor = activeProfileId;
   if(!keepEmpForm){
   document.getElementById('s-name').value = settings.employeeName || '';
   // 직책은 settings 스냅샷이 아니라 profiles 배열 쪽에 저장되는 값이라 여기서 별도로 채워야 함
@@ -12044,12 +12049,17 @@ async function loadAll(){
     document.getElementById('s-birth-y').value = by;
     document.getElementById('s-birth-m').value = Number(bm);
     document.getElementById('s-birth-d').value = Number(bd);
+  } else {
+    // 생년월일이 비어 있는 직원이면 칸도 비움(예전엔 그대로 둬서 앞서 본 직원 값이 남아 있다가 저장되며 옮겨갔음)
+    ['s-birth-y','s-birth-m','s-birth-d'].forEach(id=>{ const el = document.getElementById(id); if(el) el.value = ''; });
   }
   if(settings.hireDate){
     const [hy,hm,hd] = settings.hireDate.split('-');
     document.getElementById('s-hire-y').value = hy;
     document.getElementById('s-hire-m').value = Number(hm);
     document.getElementById('s-hire-d').value = Number(hd);
+  } else {
+    ['s-hire-y','s-hire-m','s-hire-d'].forEach(id=>{ const el = document.getElementById(id); if(el) el.value = ''; });
   }
   {
     const status = settings.employmentStatus || '근무중';
@@ -23262,6 +23272,11 @@ function autoFillFixedHolidaysIfNeeded(){
 
 document.getElementById('settingsForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
+  // [2026.10.01] 폼에 채워진 직원과 지금 저장될 직원이 다르면(동기화 중 전환 등) 저장하지 않음 - 다른 직원 값이 덮어써지는 것 방지
+  if(employeeModalCurrentId && (employeeFormFilledFor !== activeProfileId || activeProfileId !== employeeModalCurrentId)){
+    await appAlert('직원 정보를 다시 불러와야 해요.\n팝업을 닫고 다시 열어서 확인한 뒤 저장해 주세요.');
+    return;
+  }
   settings.employeeName = document.getElementById('s-name').value.trim();
   // 직책은 settings가 아니라 profiles 배열(직원현황 로스터가 읽는 곳)에 저장해야 목록에도 바로 반영됨
   {
@@ -35617,7 +35632,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.01 10:55';
+const APP_BUILD = '2026.10.01 11:00';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
