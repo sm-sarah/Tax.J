@@ -42,6 +42,7 @@
      - 답변은 항상 한국어로만.
      - 메뉴 설명은 화면에 펼치지 않고 제목 옆 (i) 아이콘 팝업으로. 긴 설명은 [항목 | 설명] 표나 목록으로 짧게(책처럼 긴 문단 금지).
      - 긴 버튼 글자는 아이콘만 + 마우스를 올리면 이름(title) 표시.
+     - 기능 동작·기준이 바뀌면 그 화면 (i) 설명도 같은 수정에서 함께 고친다(요청).
      - 권한(관리자/직원 화면 차이)이 바뀌거나 새 메뉴가 생기면: 설정 › 권한 관리 (i)의 "관리자와 직원 화면 차이" 표와 기준 날짜를 같이 고치고,
        답변에도 바뀐 줄만 알려준다.
      - 관리 사이트 링크(GitHub·Firebase·Google Cloud·Drive 등)가 새로 생기거나 바뀌면, 답변 끝에 추가·변경된 줄만
@@ -771,9 +772,9 @@
   .gmail-pv-row{ display:flex; flex-direction:column; gap:2px; width:100%; text-align:left; border:none; border-bottom:1px dashed var(--border); background:var(--surface); padding:9px 14px; cursor:pointer; font-family:inherit; }
   .gmail-pv-row:hover{ background:var(--indigo-bg); }
   .gmail-pv-top{ display:flex; justify-content:space-between; gap:8px; font-size:12.5px; color:var(--ink); }
-  .gmail-pv-top b{ font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .gmail-pv-top b{ font-weight:800; color:var(--indigo-deep); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } /* 보낸 사람(보라) · 제목(검정 보통) 구분 - 요청 */
   .gmail-pv-top span{ flex:none; font-size:11px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; }
-  .gmail-pv-subj{ font-size:12.5px; font-weight:700; color:var(--navy); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .gmail-pv-subj{ font-size:12.5px; font-weight:500; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .gmail-pv-snip{ font-size:11.5px; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .gmail-pv-empty{ padding:22px 14px; text-align:center; font-size:12.5px; color:var(--ink-soft); }
   .gmail-pv-foot{ display:flex; justify-content:flex-end; padding:8px 12px; border-top:1px solid var(--border); background:var(--bg); }
@@ -19151,7 +19152,10 @@ function renderDashboardPresence(){
       // [2026.09.30] 회계사님은 직원이 아니라 "사무실에 계신지"만 보면 됨(요청) - 출퇴근·재택·휴가 대신, 사무실 PC(기기 이름에
       // "사무실"·"회사")에서 앱이 켜져 있으면 "계세요", 아니면 "안 계세요"만 따로 한 줄로 보여주고, 아래 집계·목록에서는 뺌
       if(String(p.position||'').trim() === '회계사'){
-        acctRows.push({ p, name, online, entry, fullLeave, inOffice: online && /사무실|회사|청인/.test(devRaw), dev: online ? (/^(집|개인)\s*PC$/i.test(devRaw.trim()) ? '자택 PC' : devRaw) : '' });
+        const officePc = online && /사무실|회사|청인/.test(devRaw);
+        const idle = officePc && pres.sysIdle === true; // PC 전체 30분 무입력(크롬 사용 여부 확인을 허용한 사무실 PC만)
+        const idleSince = idle ? Number(pres.idleSince) || 0 : 0;
+        acctRows.push({ p, name, online, entry, fullLeave, idle, idleSince, inOffice: officePc, dev: online ? (/^(집|개인)\s*PC$/i.test(devRaw.trim()) ? '자택 PC' : devRaw) : '' });
         return;
       }
       const leaveRec = (att.leaveUsage || []).find(u=>u.date===today);
@@ -19193,15 +19197,19 @@ function renderDashboardPresence(){
     // [2026.10.01] "사무실에 안 계신데 근무중으로 나온다 · 퇴근한 사람은 그냥 퇴근으로"(요청) - 근무 상태는 출퇴근 도장 기준으로만 정하고
     // (퇴근 도장 → 퇴근, 출근 도장 → 사무실 근무중/재택), 도장이 없으면 사무실 PC 접속일 때만 사무실 근무중, 아니면 부재중.
     // 집·노트북에서 접속한 건 근무 상태로 치지 않고 "접속중" 칩으로만 보여줌
+    // [2026.10.01] "도장이 있어도 무조건 사무실 근무는 아니다 - 회사 PC 접속이 기준"(요청) - 사무실 근무중은 출근 도장과 상관없이
+    // 사무실 PC에서 앱이 켜져 있을 때. 그 PC를 30분 넘게 안 쓰면(허용한 PC만 확인 가능) "자리 비움".
+    // 퇴근 도장 → 퇴근, 종일 휴가 → 휴가, 재택으로 출근 도장 → 재택 근무중, 그 외 → 부재중
     const e = r.entry || null;
-    const st = (e && e.checkOut) ? 'done' : (e && e.checkIn) ? (/재택/.test(String(e.status||'')) && !/→사무실$/.test(String(e.status||'')) ? 'home' : 'office') : r.fullLeave ? 'leave' : r.inOffice ? 'office' : 'away';
-    const lbl = { done:'퇴근', home:'재택 근무중', office:'사무실 근무중', leave:'휴가', away:'부재중' }[st];
-    const col = { done:'var(--ink-soft)', home:'var(--mint)', office:'var(--indigo)', leave:'var(--coral)', away:'var(--ink-soft)' }[st];
+    const remoteStamp = e && e.checkIn && !e.checkOut && /재택/.test(String(e.status||'')) && !/→사무실$/.test(String(e.status||''));
+    const st = r.fullLeave ? 'leave' : (e && e.checkOut) ? 'done' : (r.inOffice && !r.idle) ? 'office' : r.inOffice ? 'idle' : remoteStamp ? 'home' : 'away';
+    const lbl = { done:'퇴근', home:'재택 근무중', office:'사무실 근무중', idle:'자리 비움', leave:'휴가', away:'부재중' }[st];
+    const col = { done:'var(--ink-soft)', home:'var(--mint)', office:'var(--indigo)', idle:'var(--amber)', leave:'var(--coral)', away:'var(--ink-soft)' }[st];
     const dotc = (st === 'done' || st === 'away') ? 'var(--border)' : col;
     return `<div class="home-dash-pres-row pres-b pres-acct-row" title="${escHtml(r.name)} 회계사 · ${lbl}${r.dev ? ' · 접속 기기: '+escHtml(r.dev) : ''}">
       <span class="home-dash-pres-av">${av}</span>
       <div style="flex:1; min-width:0;"><div style="display:flex; align-items:center; gap:6px; min-width:0;"><span class="home-dash-pres-name">${escHtml(r.name)}</span>${r.online ? `<span class="pres-online-chip" title="${escHtml(r.dev ? '지금 접속 중 · '+r.dev : '지금 접속 중')}"><i></i>접속중</span>` : ''}</div>${r.online && r.dev ? `<span class="home-dash-pres-dev">${dashPresenceDevIcon(r.dev)} ${escHtml(r.dev)}</span>` : ''}</div>
-      <span class="home-dash-pres-st" style="color:${col};"><i class="pres-dot" style="background:${dotc};"></i>${lbl}</span>
+      <span class="pres-st-col"><span class="home-dash-pres-st" style="color:${col};"><i class="pres-dot" style="background:${dotc};"></i>${lbl}</span>${(st === 'idle' && r.idleSince) ? `<span class="pres-st-time" title="마지막으로 이 PC를 쓴 시각">${String(new Date(r.idleSince).getHours()).padStart(2,'0')}:${String(new Date(r.idleSince).getMinutes()).padStart(2,'0')}부터</span>` : (st === 'done' && r.entry && r.entry.checkOut) ? `<span class="pres-st-time">${escHtml(String(r.entry.checkOut).slice(0,5))}</span>` : ''}</span>
     </div>`;
   }).join('')}` : '';
   const staffHtml = rows.length ? `${acctRows.length ? '<div class="pres-sec-label" style="margin-top:10px;">직원</div>' : ''}${rowHtml}` : '';
@@ -19434,7 +19442,7 @@ function clockBubbleMessage(entry, state, pct){
     else pool = ['좋은 아침이에요!<br>오늘도 같이 힘내요!', '출근 도장 찍으러<br>가볼까요?', '커피 한 잔 하고<br>시작해요!'];
   } else if(state === 'working'){
     if(left != null && left <= 0) pool = [`퇴근 시간이 ${em('지났어요')}!<br>얼른 도장 찍고 가요`, '오늘 조금 늦었네요…<br>마무리하고 쉬어요'];
-    else if(left != null && left <= 30) pool = [`퇴근까지 딱 ${em(fmtLeft(left))}!<br>조금만 더 버텨요`, `집까지 거의 다 왔어요!<br>${em(fmtLeft(left))} 남았어요`];
+    else if(left != null && left <= 30) pool = [`퇴근까지 딱 ${em(fmtLeft(left))}!<br>조금만 더 버텨요`, `퇴근이 코앞이에요!<br>${em(fmtLeft(left))} 남았어요` /* [2026.10.01] "집까지 다 왔다"는 퇴근 전엔 어색하다(요청) */];
     else if(hh < 12) pool = ['오늘도 출근 성공!<br>오전도 화이팅!', '점심 뭐 먹을지<br>벌써 고민돼요 ㅎㅎ', '물 한 잔 마시고<br>시작해요!'];
     else if(hh < 14) pool = ['점심 맛있게 드셨어요?<br>졸리면 스트레칭!', '식곤증 조심!<br>잠깐 기지개 쭉~'];
     else if(hh < 16) pool = ['오후도 반 넘게 왔어요!<br>힘내요', '간식 시간이에요<br>잠깐 쉬어가요'];
@@ -33447,14 +33455,16 @@ const HINT_INFO = {};
 // [2026.10.01 A안] "양쪽 맞춤은 간격이 벌어져 어색"(요청) - 양쪽 맞춤을 빼고, 설명 칸 안의 문장마다 줄을 바꿔 왼쪽 정렬로 보여줌
 HINT_INFO.dashPresence = { title:'실시간 근무현황', html: infoTidyHtml(
   '<b>직원</b>: 오늘 출근 기록 기준이에요<br>'+
-  '<b>회계사</b>: 출근 기록 대신 Tax.J 접속으로 봐요<br>'+
+  '<b>회계사</b>: 사무실 PC 접속 기준이에요<br>'+
+  '<b>자리 비움</b>: 사무실 PC를 30분 넘게 안 쓰면 떠요<br>'+
   '<b>● 접속중</b>: PC·노트북에서 Tax.J가 켜져 있으면 떠요(직원·회계사 같음)<br>'+
   '<b>사무실 PC 판단</b>: 기기 이름에 사무실·회사·청인이 들어가면 사무실 PC로 봐요<br>'+
   '<b>휴대폰</b>: 근무현황에 잡히지 않아요<br>'+
   '<b>절전·화면 꺼짐·창 닫음</b>: 접속 신호가 끊기고 약 1분 30초 뒤 접속중이 사라져요<br>'+
   '<b>PC 두 대에 동시 접속</b>: 한 사람당 한 줄만 보여서, 가장 최근에 신호를 보낸 기기 이름이 보여요(30초 간격으로 바뀔 수 있어요)')
   .replace('오늘 출근 기록 기준이에요</td>', '오늘 출근 기록 기준이에요<br>오른쪽에 사무실/재택/미출근/휴가와 출근·퇴근 시각이 보여요<br>맨 아래 숫자도 직원만 세요</td>')
-  .replace('Tax.J 접속으로 봐요</td>', 'Tax.J 접속으로 봐요<br>사무실 PC로 접속 중이면 "사무실 근무중", 다른 PC·노트북이면 "근무중", 접속이 없으면 "사무실 부재중"</td>')
+  .replace('사무실 PC 접속 기준이에요</td>', '사무실 PC 접속 기준이에요<br>휴가 → 휴가 · 퇴근 도장 → 퇴근 · 사무실 PC 접속 → 사무실 근무중<br>재택으로 출근 도장 → 재택 근무중 · 그 외 → 부재중<br>집·노트북 접속은 근무로 치지 않고 "접속중"만 붙어요</td>')
+  .replace('30분 넘게 안 쓰면 떠요</td>', '30분 넘게 안 쓰면 떠요<br>아래 작은 시각(예: 15:20부터)은 마지막으로 그 PC를 쓴 시각이에요<br>사무실 PC에서 처음 한 번 "사용 여부 확인"을 허용한 경우만(무엇을 했는지는 몰라요)<br>Tax.J를 켜둔 채 다른 프로그램(엑셀·위하고 등)을 써도 사용 중으로 봐요</td>')
   .replace('(직원·회계사 같음)</td>', '(직원·회계사 같음)<br>이름 아래는 접속한 기기 이름(설정 › 알림 및 기기에 등록한 이름)</td>')
   .replace('사무실 PC로 봐요</td>', '사무실 PC로 봐요<br>사무실 PC는 한 사람당 1대만 둘 수 있어요</td>')
   .replace('잡히지 않아요</td>', '잡히지 않아요<br>휴대폰으로만 켜 두면 접속이 없는 것으로 보여요</td>')
@@ -35806,6 +35816,47 @@ let presenceAll = {}; // [2026.09.30] 실시간 근무현황용 - 나를 포함�
 const PRESENCE_ONLINE_MS = 90000; // 이 시간 안에 신호가 있으면 "지금 앱 켜져 있음"(초록 점)
 let presenceMine = null; // {key, label}
 let presenceLastWrite = 0;
+// [2026.10.01] "PC를 켜두기만 하고 자리에 없으면?"(요청) - 이 화면에서 마지막으로 마우스·키보드·터치를 쓴 시각을 접속 신호에 같이 남김.
+// 사무실 PC가 켜져 있어도 한동안(PRESENCE_IDLE_MS) 아무 조작이 없으면 근무현황에 "자리 비움"으로 보여줌
+var presenceLastActivity = Date.now();
+var PRESENCE_IDLE_MS = 30 * 60 * 1000; // 30분(요청)
+['pointerdown','keydown','wheel','touchstart','mousemove'].forEach(ev=> window.addEventListener(ev, ()=>{ presenceLastActivity = Date.now(); }, { passive:true, capture:true }));
+// 앱 안에서의 조작만으로는 엑셀·위하고 같은 다른 프로그램을 쓰는 중인지 알 수 없어서, 크롬의 "기기 사용 여부 확인"(IdleDetector -
+// PC 전체에서 30분간 키보드·마우스 입력이 없었는지만 알려줌, 무엇을 했는지는 모름)을 씀. 사무실 PC에서 한 번 허용하면 그 뒤로 자동.
+// 허용 안 했거나 지원 안 하는 브라우저면 "자리 비움"은 띄우지 않음(앱 안 조작만으로 판단하면 다른 프로그램 쓰는 사람이 자리 비움으로 잘못 보임)
+var presenceSysIdle = null; // null: 모름 / true: 30분 넘게 PC 조작 없음 / false: 사용 중
+var presenceSysIdleSince = 0; // 자리 비움이 시작된 시각 = 마지막으로 PC를 쓴 시각(자리 비움으로 바뀐 순간 - 30분)
+async function presenceStartIdleDetector(){
+  try{
+    if(!('IdleDetector' in window) || presenceStartIdleDetector.on) return;
+    const st = await navigator.permissions.query({ name:'idle-detection' });
+    if(st.state !== 'granted') return;
+    const det = new IdleDetector();
+    det.addEventListener('change', ()=>{ presenceSysIdle = det.userState === 'idle'; presenceSysIdleSince = presenceSysIdle ? Date.now() - PRESENCE_IDLE_MS : 0; try{ presenceTick(true); }catch(e){} });
+    await det.start({ threshold: PRESENCE_IDLE_MS });
+    presenceStartIdleDetector.on = true;
+    presenceSysIdle = det.userState === 'idle';
+    if(presenceSysIdle && !presenceSysIdleSince) presenceSysIdleSince = Date.now() - PRESENCE_IDLE_MS; // 이미 자리 비움 상태로 시작하면 정확한 시각을 몰라 최소 30분 전으로
+  }catch(e){}
+}
+setTimeout(presenceStartIdleDetector, 4000);
+// 사무실 PC(기기 이름에 사무실·회사)에서 처음 한 번만, 화면을 누를 때 허용 여부를 물어봄(크롬 허용 창은 사용자가 누른 순간에만 뜰 수 있음)
+window.addEventListener('pointerdown', async function askIdle(){
+  try{
+    if(!('IdleDetector' in window)) { window.removeEventListener('pointerdown', askIdle, true); return; }
+    if(localStorage.getItem('taxj_idle_asked')) { window.removeEventListener('pointerdown', askIdle, true); return; }
+    const dev = localStorage.getItem('worklog_my_device_name') || '';
+    if(!/사무실|회사/.test(dev)) return;
+    const st = await navigator.permissions.query({ name:'idle-detection' });
+    localStorage.setItem('taxj_idle_asked', '1');
+    window.removeEventListener('pointerdown', askIdle, true);
+    if(st.state === 'granted'){ presenceStartIdleDetector(); return; }
+    if(st.state !== 'prompt') return;
+    const ok = await appConfirm('이 사무실 PC를 30분 넘게 안 쓰면\n근무현황에 "자리 비움"으로 표시할까요?\n\n다음 창에서 허용을 눌러주세요.\n무엇을 했는지는 알 수 없고, 사용 여부만 확인해요.', { okText:'허용하기', cancelText:'괜찮아요' });
+    if(!ok) return;
+    if((await IdleDetector.requestPermission()) === 'granted') presenceStartIdleDetector();
+  }catch(e){}
+}, true);
 function presenceDocId(email){ return PRESENCE_PREFIX + String(email||'').toLowerCase().replace(/[^a-z0-9]/g, '_'); }
 // 지금 이 기기가 "수정하고 있는" 곳 - 없으면 null(조회 화면)
 function presenceCurrentArea(){
@@ -35898,7 +35949,7 @@ async function presenceTick(force){
     try{ device = localStorage.getItem('worklog_my_device_name') || ''; }catch(e){}
     let tok = ''; try{ tok = localStorage.getItem('worklog_my_push_token') || ''; }catch(e){}
     // tok: 이 기기의 알림 등록 토큰 - 보는 쪽에서 알림 기기 목록(sharedPushTokens)의 "지금 이름"을 찾아 쓰게 함(이름변경 즉시 반영)
-    await ref.set({ email: currentUserEmail.toLowerCase(), name: currentStaffDisplayName(), key: area ? area.key : '', label: area ? area.label : '', at: now, device, tok, mob: isMob });
+    await ref.set({ email: currentUserEmail.toLowerCase(), name: currentStaffDisplayName(), key: area ? area.key : '', label: area ? area.label : '', at: now, device, tok, mob: isMob, act: presenceLastActivity, sysIdle: presenceSysIdle, idleSince: presenceSysIdleSince || 0 });
   }catch(e){ /* 표시 기능이라 실패해도 조용히 넘어감 */ }
 }
 setInterval(()=> presenceTick(false), 3000);
@@ -36443,7 +36494,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.01 16:55';
+const APP_BUILD = '2026.10.01 17:45';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
