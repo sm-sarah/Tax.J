@@ -17942,7 +17942,8 @@ async function activateTab(tabName, pushHistory){
   document.getElementById(needsLogin ? 'tab-loginlock' : (tabName === 'expensesettle' ? 'tab-attendance' : 'tab-'+tabName)).classList.add('active');
   // 새로고침해도 지금 보던 화면으로 돌아올 수 있게 마지막 탭을 기억해둠
   try{ localStorage.setItem('worklog_last_tab', tabName); }catch(e){}
-  if(!needsLogin && typeof window.syncRailPanelToTab === 'function'){ try{ window.syncRailPanelToTab(tabName); }catch(e){} }
+  // 대시보드 바로가기처럼 탭을 연 뒤 이어서 결재함·세목 칩을 눌러 주는 경우가 있어서, 그 클릭이 끝난 뒤 한 번 더 맞춤
+  if(!needsLogin && typeof window.syncRailPanelToTab === 'function'){ setTimeout(()=>{ try{ window.syncRailPanelToTab(tabName); }catch(e){} }, 120); }
   if(tabName === 'settings' && typeof renderStorageUsage === 'function'){ try{ renderStorageUsage(); }catch(e){} }
   // 뒤로가기를 누르면 이 앱 안의 이전 화면으로 돌아오도록 브라우저 방문기록에 남겨둠
   if(pushHistory){
@@ -20754,35 +20755,65 @@ relocateSidebarNodes();
   // [2026.10.01] "대시보드에서 근태현황 바로가기로 들어오면 왼쪽 하위메뉴가 안 뜬다"(요청) - 레일 아이콘을 누르지 않고
   // 다른 경로(대시보드 카드·검색 등)로 화면에 들어와도, 그 화면이 들어 있는 대메뉴의 하위메뉴를 왼쪽에 펼치고 지금 화면을 표시함.
   // 이미 열린 하위메뉴에 그 화면이 있거나 즐겨찾기 목록이 열려 있으면 그대로 둠(첫 항목으로 이동하는 동작은 하지 않음)
+  // [2026.10.01] "대시보드 바로가기로 들어가면 그 화면 하위메뉴가 안 나온다"(요청) - 결재·신고·공지·사내정보·내규처럼
+  // data-goto가 아닌 방식(결재함·세목·카테고리 칩)으로 가는 메뉴도, 지금 화면 상태(눌려 있는 칩)를 보고 맞는 하위메뉴를 찾음
+  function railActiveVal(sel, attr){ const b = document.querySelector(sel); return b ? (b.dataset[attr] || '') : ''; }
+  function railItemMatches(el, tabName){
+    const ds = el.dataset || {};
+    if(ds.goto) return ds.goto === tabName;
+    if(el.id === 'homeSideNoticeTile') return tabName === 'notice';
+    if(ds.companyinfoCatGoto) return tabName === 'companyinfo' && railActiveVal('.ci-cat-btn.active', 'cat') === ds.companyinfoCatGoto;
+    if(ds.policyCatGoto) return tabName === 'policy' && railActiveVal('.policy-cat-title-btn.active', 'cat') === ds.policyCatGoto;
+    if(ds.approvalCatGoto){
+      if(tabName !== 'approval') return false;
+      if(railActiveVal('.approval-cat-btn.active', 'approvalCat') !== ds.approvalCatGoto) return false;
+      if(ds.filingTypeGoto && railActiveVal('#filingTypeToggle .filing-type-btn.active', 'filingType') !== ds.filingTypeGoto) return false;
+      if(ds.approvalDocGoto && railActiveVal('#approvalDocToggle .approval-doc-btn.active', 'approvalDoc') !== ds.approvalDocGoto) return false;
+      if(ds.submitTypeGoto && railActiveVal('#submitTypeToggle .submit-type-btn.active', 'submitType') !== ds.submitTypeGoto) return false;
+      return true;
+    }
+    if(ds.settingsAnchorGoto) return tabName === 'settings' && railActiveVal(`.settings-group[data-settings-cat="${ds.settingsAnchorGoto}"] .settings-subsection-btn.active`, 'subsectionId') === ds.settingsTargetId;
+    return false;
+  }
+  function railFindItemForView(tabName){
+    const all = [...document.querySelectorAll('.home-section-row .home-submenu-item, .home-section-row .home-tile[data-goto], #railExpandPanel .home-submenu-item, #railExpandPanel .home-tile[data-goto]')]
+      .filter(el=> !el.closest('#homeFavoritesChips'));
+    let hit = all.find(el=> railItemMatches(el, tabName));
+    // 원천세·부가세 신고현황은 하위메뉴에 따로 없어서 각 세목 전체 화면(원천세/부가세) 메뉴로 표시
+    if(!hit && tabName === 'approval' && railActiveVal('.approval-cat-btn.active', 'approvalCat') === 'status'){
+      const ft = railActiveVal('#filingTypeToggle .filing-type-btn.active', 'filingType');
+      const cat = ft === '원천세' ? 'itall' : ft === '부가세' ? 'vatall' : '';
+      if(cat) hit = all.find(el=> el.dataset.approvalCatGoto === cat && !el.dataset.filingTypeGoto);
+    }
+    return hit || null;
+  }
+  function railRowOfItem(item){
+    const tiles = item.closest('.home-tiles');
+    if(!tiles) return null;
+    return (railHomeMap.get(tiles) || {}).parent || item.closest('.home-section-row');
+  }
   function syncRailPanelToTab(tabName){
     if(!tabName || tabName === 'home' || !sidebar.classList.contains('rail-mode')) return;
     const expandPanel = document.getElementById('railExpandPanel');
     if(!expandPanel) return;
-    const sel = `.home-submenu-item[data-goto="${CSS.escape(tabName)}"], .home-tile[data-goto="${CSS.escape(tabName)}"]`;
     const openRow = document.querySelector('.home-section-row.rail-open');
     if(openRow && openRow.id === 'homeFavoritesSection') return;
-    const openTiles = expandPanel.querySelector(':scope > .home-tiles');
-    if(openTiles){
-      const hit = railSubItemsOf(openTiles).find(el=> el.matches(sel));
-      if(hit){ markRailSubActive(openTiles, hit); return; }
-      if(openTiles.querySelector(sel)) return; // 펼친 2단 메뉴 안에 있는 화면이면 그대로 둠
-    }
-    const item = [...document.querySelectorAll(sel)].find(el=> !el.closest('#homeFavoritesChips') && !el.closest('#railExpandPanel'));
+    const item = railFindItemForView(tabName);
     if(!item) return;
-    const row = item.closest('.home-section-row');
-    if(!row || row.id === 'homeFavoritesSection') return;
-    const tiles = row.querySelector(':scope > .home-tiles') || item.closest('.home-tiles');
-    if(!tiles) return;
-    closeAllPopovers();
-    row.classList.add('rail-open');
-    if(!railHomeMap.has(tiles)) railHomeMap.set(tiles, { parent: row });
-    try{ localStorage.setItem('worklog_last_rail_row', row.id || ''); }catch(e){}
-    expandPanel.appendChild(tiles);
-    tiles.classList.add('rail-popover-open', 'rail-panel-inline');
-    colorRailBranches(tiles);
-    placeRailPanelBelowFavorites(tiles, row);
-    const direct = railSubItemsOf(tiles).find(el=> el.matches(sel));
-    if(direct) markRailSubActive(tiles, direct);
+    const tiles = item.closest('.home-tiles');
+    const row = railRowOfItem(item);
+    if(!tiles || !row || row.id === 'homeFavoritesSection') return;
+    if(!row.classList.contains('rail-open') || tiles.parentElement !== expandPanel){
+      closeAllPopovers();
+      row.classList.add('rail-open');
+      if(!railHomeMap.has(tiles)) railHomeMap.set(tiles, { parent: row });
+      try{ localStorage.setItem('worklog_last_rail_row', row.id || ''); }catch(e){}
+      expandPanel.appendChild(tiles);
+      tiles.classList.add('rail-popover-open', 'rail-panel-inline');
+      colorRailBranches(tiles);
+      placeRailPanelBelowFavorites(tiles, row);
+    }
+    if(railSubItemsOf(tiles).includes(item)) markRailSubActive(tiles, item);
   }
   window.syncRailPanelToTab = syncRailPanelToTab;
 
@@ -35788,7 +35819,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.01 13:25';
+const APP_BUILD = '2026.10.01 13:27';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
