@@ -7838,7 +7838,7 @@ function loadSharedData(){
     profilesForAvatarCleanup.forEach(p=>{
       if(p.avatar && !STAFF_AVATAR_OPTIONS.includes(p.avatar)){ p.avatar = STAFF_AVATAR_DEFAULT; avatarsCleaned = true; }
     });
-    if(avatarsCleaned) saveProfiles(profilesForAvatarCleanup);
+    if(avatarsCleaned) saveProfiles(profilesForAvatarCleanup, { keepStamp:true });
   }catch(e){ console.error('예전 아바타 이모지 정리 실패', e); }
   try{ sharedWorkHourExceptions = JSON.parse(localStorage.getItem('worklog_shared_workhours') || '[]'); }catch(e){ sharedWorkHourExceptions = []; }
   try{ sharedNoticeHistory = JSON.parse(localStorage.getItem('worklog_shared_notice_history') || '[]'); }catch(e){ sharedNoticeHistory = []; }
@@ -9894,7 +9894,11 @@ function getProfiles(){ try{ const p = localStorage.getItem('worklog_profiles');
 // 다른 save* 함수들과 동일하게 gdriveScheduleSync()를 불러서 이 문제를 없앰
 // 직원 한 명 한 명이 "마지막으로 언제 바뀌었는지" 알아야 나중에 여러 기기의 내용을 병합할 수 있어서,
 // 저장 직전의 값과 비교해서 실제로 바뀐 사람에게만 updatedAt(지금 시각)을 새로 찍어둠.
-function saveProfiles(list){
+// [2026.10.01] "집 PC를 켜니 프로필이 예전 걸로 돌아왔다"(요청) - 앱을 켤 때 저절로 도는 정리 작업(예전 아바타 정리·이름 맞추기)이
+// 오래 안 켠 기기의 옛 직원 정보에 '방금 바뀜(updatedAt=지금)' 도장을 찍어서, 병합할 때 그 옛 정보가 다른 기기에서
+// 고친 최신 정보(사진·이니셜 등)를 이겨버렸음. 이런 자동 정리는 opts.keepStamp로 도장을 새로 찍지 않게 함(사람이 직접 고친 것만 도장)
+function saveProfiles(list, opts){
+  const keepStamp = !!(opts && opts.keepStamp);
   try{
     const prevRaw = localStorage.getItem('worklog_profiles');
     const prevMap = new Map((prevRaw ? JSON.parse(prevRaw) : []).map(p=>[p.id,p]));
@@ -9903,7 +9907,7 @@ function saveProfiles(list){
       const before = prevMap.get(p.id);
       const beforeCmp = before ? JSON.stringify({...before, updatedAt:undefined}) : null;
       const afterCmp = JSON.stringify({...p, updatedAt:undefined});
-      if(beforeCmp !== afterCmp) p.updatedAt = now;
+      if(beforeCmp !== afterCmp && !keepStamp) p.updatedAt = now;
       else if(before && before.updatedAt) p.updatedAt = before.updatedAt;
     });
     localStorage.setItem('worklog_profiles', JSON.stringify(list));
@@ -12135,7 +12139,7 @@ function syncProfileName(){
   // 건드리지 않음 - 그렇지 않으면 직원선택 팝업/목록에서 이미 등록해둔 이름이 빈 값으로 지워져 버림
   if(idx > -1 && settings.employeeName && profiles[idx].name !== settings.employeeName){
     profiles[idx].name = settings.employeeName;
-    saveProfiles(profiles);
+    saveProfiles(profiles, { keepStamp:true });
     renderProfileSwitcher();
   }
 }
@@ -36696,7 +36700,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.01 19:40';
+const APP_BUILD = '2026.10.01 20:20';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
