@@ -2103,7 +2103,10 @@
   .cl-pi-ktype button.on{ background:var(--indigo); color:#fff; }
   .cl-pi-kadd-row{ display:block !important; border-bottom:none !important; text-align:right; }
   .cl-pi-kadd-row.cl-pi-krow{ display:grid !important; }
-  .ci-keys.cl-pi-keys .ci-krow{ grid-template-columns:116px minmax(0,1fr); }
+  /* [2026.10.01] "항목명이 내용과 구분되게"(요청) - 항목명 칸을 연보라 띠(표 머리칸처럼) + 남색 굵은 글자로, 폭도 넓혀 잘리지 않게 */
+  .ci-keys.cl-pi-keys .ci-krow:not(.editing):not(.cl-pi-kadd-row){ grid-template-columns:132px minmax(0,1fr); padding:0 !important; gap:0 12px; align-items:stretch !important; }
+  .ci-keys.cl-pi-keys .ci-krow:not(.editing) .ci-klabel{ background:rgba(91,95,239,0.07); border-right:1px solid rgba(91,95,239,0.14); padding:9px 10px 9px 18px; color:var(--indigo-deep); font-weight:800; font-size:12px; }
+  .ci-keys.cl-pi-keys .ci-krow:not(.editing) .ci-kline1{ padding:8px 12px 8px 0; }
   .cl-pi-keys .cl-pi-kname{ min-width:0; overflow:hidden; text-overflow:ellipsis; }
   .cl-pi-keys .ci-klabel{ display:flex; align-items:center; gap:3px; overflow:visible; }
   .cl-pi-kstar{ cursor:pointer; font-size:13px; font-weight:900; line-height:1; color:var(--coral); flex:none; }
@@ -2137,7 +2140,13 @@
   .cl-pi-card-foot .submit-btn{ width:auto; margin:0; padding:6px 16px; font-size:12.5px; }
   .cl-pi-card-foot .del-btn{ padding:6px 14px; font-size:12.5px; }
   .cl-pi-krow.editing .ci-kline1{ white-space:normal; }
-  .cl-pi-kgrp{ font-size:10.5px; font-weight:800; color:var(--indigo-deep); letter-spacing:.04em; padding:10px 14px 2px; }
+  /* [2026.10.01] "기본과 판매·배달 플랫폼 색이 같다"(요청) - 묶음 제목을 색 칩으로, 판매·배달 줄의 항목명 칸은 주황 톤으로 구분 */
+  .cl-pi-kgrp{ padding:12px 14px 6px; }
+  /* → "칩 배경은 필요 없고, 묶음 제목 글자색이 항목명(남색)과 비슷한 게 문제"(요청) - 묶음 제목은 배경 없이 진한 검정 글자 + 묶음 색 점 */
+  .cl-pi-kgrp > span{ display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:800; letter-spacing:.02em; color:var(--ink); }
+  .cl-pi-kgrp > span::before{ content:''; width:6px; height:6px; border-radius:50%; background:var(--indigo); }
+  .cl-pi-kgrp.cl-pi-kgrp-plat > span::before{ background:#F59E0B; }
+  .ci-keys.cl-pi-keys .ci-krow[data-grp="platform"]:not(.editing) .ci-klabel{ background:rgba(245,158,11,0.09); border-right-color:rgba(245,158,11,0.22); color:#B45309; }
   .cl-pi-kgrp + .ci-krow{ border-top:none; }
   a.cl-pi-klink{ color:inherit; text-decoration:none; display:inline-flex; align-items:center; gap:3px; }
   a.cl-pi-klink svg{ color:var(--indigo); opacity:.75; flex:none; }
@@ -5806,7 +5815,8 @@
   <!-- 거래처관리: 등록/수정 -->
 
   <section id="tab-clients-edit" class="tab-panel">
-    <h2 id="clientFormTitle" class="section-title" style="justify-content:center; font-size:24px;">신규 거래처 등록</h2>
+    <!-- [2026.10.01] "수정하다 스크롤을 내리면 어느 거래처인지 모른다"(요청) - 거래처명 제목을 위 아이콘 줄 바로 아래에 고정 -->
+    <h2 id="clientFormTitle" class="section-title" style="justify-content:center; font-size:24px; position:sticky; top:var(--top-bar-h, 96px); z-index:20; background:var(--frame-bg); padding:8px 0; margin-top:0;">신규 거래처 등록</h2>
     <div class="flat-panel" style="max-width:680px; margin-left:auto; margin-right:auto;">
       <!-- novalidate: 이 폼의 날짜칸들(계약일·수임시작일·해지일)은 min="2015-01-01"처럼 범위 제한이 걸려있고,
            공유드라이브 링크칸은 type="url"이라 "http(s)://"로 시작하지 않으면 형식 오류로 처리되는데, 브라우저가
@@ -14920,7 +14930,7 @@ async function renderClientDetailPersonalInfoSection(c, wrapId){
     return h;
   };
   const basic = etc.filter(a=>grpOf(a)!=='platform'), plat = etc.filter(a=>grpOf(a)==='platform');
-  const rowsHtml = (plat.length ? `<div class="cl-pi-kgrp">기본</div>` : '') + basic.map(rowHtml).join('') + (plat.length ? `<div class="cl-pi-kgrp">판매·배달 플랫폼</div>${plat.map(rowHtml).join('')}` : '');
+  const rowsHtml = (plat.length ? `<div class="cl-pi-kgrp"><span>기본</span></div>` : '') + basic.map(rowHtml).join('') + (plat.length ? `<div class="cl-pi-kgrp cl-pi-kgrp-plat"><span>판매·배달 플랫폼</span></div>${plat.map(rowHtml).join('')}` : '');
   if(!etc.length && !canEdit){ wrap.innerHTML = `<div style="text-align:center; padding:6px 0; font-size:12.5px; color:var(--ink-soft);">등록된 정보가 없어요</div>`; return; }
   const addRow = canEdit ? `<div class="ci-krow cl-pi-kadd-row"><button type="button" class="cl-pi-kadd">+ 항목 추가</button></div>` : '';
   wrap.innerHTML = `<div class="ci-keys cl-pi-keys"><div class="ci-keys-body">${rowsHtml}${addRow}</div></div>`;
@@ -36988,7 +36998,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.01 23:45';
+const APP_BUILD = '2026.10.02 00:10';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
