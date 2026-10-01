@@ -7951,6 +7951,19 @@ async function pushDiagnoseThisDevice(){
     }
     const waiting = regs.some(r=> r.waiting);
     const verOk = ver === TAXJ_SW_EXPECTED;
+    // [2026.10.01] "새 알림 파일을 올렸는데 회사 PC는 계속 예전 버전" - 설치된 앱(PWA)은 창을 닫아도 예전 알림 파일을 계속 붙잡고 있는 경우가 있어,
+    // 버전이 다르면 하루 한 번 예전 연결을 지우고 새 파일로 다시 연결함(알림 등록은 registerPushToken이 이어서 다시 함)
+    if(ver && !verOk && regs.length >= 1){
+      const k = 'taxj_sw_refresh_' + TAXJ_SW_EXPECTED + '_' + todayStr();
+      let done = false; try{ done = localStorage.getItem(k) === '1'; localStorage.setItem(k, '1'); }catch(e){}
+      if(!done){
+        try{ for(const r of regs) await r.unregister(); }catch(e){}
+        try{ await registerPushToken(); }catch(e){}
+        setTimeout(()=>{ try{ pushDiagnoseThisDevice(); }catch(e){} }, 4000);
+        el.textContent = '이 기기 알림 파일을 새 버전으로 바꾸는 중이에요…';
+        return;
+      }
+    }
     let msg = `이 기기 알림 파일: ${ver ? (verOk ? '최신 버전' : '버전 '+ver) : '예전 버전'} · 알림 연결 ${regs.length}개`;
     if(regs.length > 1) msg += ' ⚠️ 연결이 2개 이상이면 같은 알림이 두 번 와요 - 이 기기 줄의 재등록(돌아가는 화살표)을 눌러주세요.';
     else if(!verOk || waiting) msg += ' ⚠️ 예전 버전이면 알림이 두 번 와요 - 앱(탭)을 완전히 닫았다가 다시 열어주세요.';
@@ -8132,7 +8145,7 @@ async function registerThisDeviceForPush(isRetry){
     try{ const mt = localStorage.getItem('worklog_my_push_token'); const me = (sharedPushTokens||[]).find(t=>t.token===mt); if(me && me.deviceName) myDeviceName = me.deviceName; }catch(e){}
   }
   const askedName = !(isRetry && myDeviceName); // 이름을 실제로 물어본 경우만 그 이름으로 목록을 바꿈
-  const typedName = !askedName ? myDeviceName : await appPromptText('어떤 기기인가요?\n(알림 기기 목록과 대시보드 실시간 근무현황에 이 이름이 보여요)', { inputValue: myDeviceName || '사무실 PC', choices: DEVICE_NAME_CHOICES, okText:'이 이름으로 등록' });
+  const typedName = !askedName ? myDeviceName : await appPromptText('어떤 기기인가요?\n(알림 기기 목록과 대시보드 실시간 근무현황에 이 이름이 보여요)', { inputValue: myDeviceName || '', choices: DEVICE_NAME_CHOICES, okText:'이 이름으로 등록' });
   if(typedName !== null){
     myDeviceName = typedName.trim() || guessDeviceLabel();
     try{ localStorage.setItem('worklog_my_device_name', myDeviceName); }catch(e){}
@@ -18818,7 +18831,7 @@ function renderDashboardPresence(){
       // [2026.09.30] 회계사님은 직원이 아니라 "사무실에 계신지"만 보면 됨(요청) - 출퇴근·재택·휴가 대신, 사무실 PC(기기 이름에
       // "사무실"·"회사")에서 앱이 켜져 있으면 "계세요", 아니면 "안 계세요"만 따로 한 줄로 보여주고, 아래 집계·목록에서는 뺌
       if(String(p.position||'').trim() === '회계사'){
-        acctRows.push({ p, name, inOffice: online && /사무실|회사|청인/.test(devRaw) });
+        acctRows.push({ p, name, inOffice: online && /사무실|회사|청인/.test(devRaw), dev: online ? devRaw : '' });
         return;
       }
       const leaveRec = (att.leaveUsage || []).find(u=>u.date===today);
@@ -18856,7 +18869,7 @@ function renderDashboardPresence(){
   const acctHtml = acctRows.length ? `<div class="pres-sec-label">회계사</div>${acctRows.map(r=>{
     const av = r.p.photo ? `<img src="${escHtml(r.p.photo)}" alt="">` : staffInitialCircleHtml(r.name, staffInitialColorOf(r.p, r.name), 32, '', r.p.initialText || '');
     const lbl = r.inOffice ? '사무실 근무중' : '사무실 부재중';
-    return `<div class="home-dash-pres-row pres-b pres-acct-row" title="${escHtml(r.name)} 회계사 · ${lbl}">
+    return `<div class="home-dash-pres-row pres-b pres-acct-row" title="${escHtml(r.name)} 회계사 · ${lbl}${r.dev ? ' · 접속 기기: '+escHtml(r.dev) : ''}">
       <span class="home-dash-pres-av">${av}</span>
       <div style="flex:1; min-width:0;"><div class="home-dash-pres-name">${escHtml(r.name)}</div></div>
       <span class="home-dash-pres-st" style="color:${r.inOffice ? 'var(--indigo)' : 'var(--ink-soft)'};"><i class="pres-dot" style="background:${r.inOffice ? 'var(--indigo)' : 'var(--border)'};"></i>${lbl}</span>
@@ -35495,7 +35508,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.01 10:30';
+const APP_BUILD = '2026.10.01 10:45';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
