@@ -791,6 +791,8 @@
   #dashPresenceCard{ position:relative; overflow:hidden; border-radius:26px; box-shadow:0 1px 2px rgba(29,30,51,0.05), 0 18px 40px -24px rgba(29,30,51,0.35); }
   #dashPresenceCard > *{ position:relative; z-index:1; }
   #dashPresenceCard::before{ content:''; position:absolute; top:0; left:0; right:0; height:6px; background:linear-gradient(90deg, #C9B5FF, #F7A9C4); z-index:2; pointer-events:none; }
+  /* [2026.10.01 D안] 아래쪽은 연보라·분홍으로 은은하게 물들게(요청) */
+  #dashPresenceCard::after{ content:''; position:absolute; left:0; right:0; bottom:0; height:90px; background:linear-gradient(180deg, rgba(255,255,255,0), #F6EFFF 60%, #FCE9F1); z-index:0; pointer-events:none; }
   .pres-body-c .pres-list{ flex:1 1 auto; min-height:0; overflow-y:auto; }
   .pres-foot{ flex:none; display:flex; justify-content:center; align-items:center; gap:6px; margin-top:8px; padding-top:9px; border-top:1px solid var(--border); font-size:11.5px; font-weight:700; white-space:nowrap; }
   .pres-foot b{ font-weight:900; }
@@ -19143,6 +19145,16 @@ function vatFocusFiling(){
   return { year:f.year, quarter:f.quarter, label:VAT_PERIOD_LABEL[f.quarter], due:f.due, dday, total, done };
 }
 function dashGotoFilingStatus(taxType, vat){
+  // [2026.10.01] "대시보드에서 원천세로 가면 예전 신고현황 화면이 아니라 원천세 신고현황(통합)으로, 그 귀속월 신고대상만"(요청)
+  if(taxType === '원천세'){
+    activateTab('approval', true);
+    const f = itFocusFiling();
+    itAllYear = String(f.year);
+    itAllOnlyMonth = true; itAllOnlyPending = false; itAllOnlyTarget = false;
+    document.querySelector('.approval-cat-btn[data-approval-cat="itall"]')?.click();
+    renderIncomeTaxUnified();
+    return;
+  }
   activateTab('approval', true);
   document.querySelector('.approval-cat-btn[data-approval-cat="status"]')?.click();
   if(vat && FILING_KINDS && FILING_KINDS.status){
@@ -20250,11 +20262,11 @@ function renderDashboardTaxSchedulePreview(){
       body.insertAdjacentHTML('afterbegin', alertHtml);
       document.getElementById('dashItPendingBtn')?.addEventListener('click', (e)=>{
         e.stopPropagation();
-        itAllOnlyPending = true;
-        itAllYear = String(f.year);
+        // 미신고 알림은 원천세 신고현황(통합)에서 그 귀속월 미신고만
         activateTab('approval', true);
-        document.querySelector('.approval-cat-btn[data-approval-cat="status"]')?.click();
-        document.querySelector('#filingTypeToggle .filing-type-btn[data-filing-type="원천세"]')?.click();
+        itAllOnlyPending = true; itAllOnlyMonth = false; itAllOnlyTarget = false;
+        itAllYear = String(f.year);
+        document.querySelector('.approval-cat-btn[data-approval-cat="itall"]')?.click();
         renderIncomeTaxUnified();
       });
     }
@@ -20267,6 +20279,7 @@ function bindDashboardTaxScheduleShortcuts(){
     if(btn.dataset.bound) return; btn.dataset.bound = '1';
     btn.addEventListener('click', (e)=>{
       e.stopPropagation();
+      if(btn.dataset.filingType === '원천세'){ dashGotoFilingStatus('원천세'); return; }
       activateTab('approval', true);
       document.querySelector('.approval-cat-btn[data-approval-cat="status"]')?.click();
       document.querySelector(`#filingTypeToggle .filing-type-btn[data-filing-type="${btn.dataset.filingType}"]`)?.click();
@@ -26187,6 +26200,7 @@ const IT_ALL_TAX_KEYS = [['national','국세'], ['local','지방세']];
 // 세무일정 쪽 계산과 다를 수 있어 D-day는 참고용
 let itAllOnlyPending = false;
 let itAllOnlyTarget = false;
+let itAllOnlyMonth = false; // [2026.10.01] 지금 챙길 귀속월에 신고대상인 거래처만(대시보드에서 들어올 때 기본)
 function itFocusFiling(){
   const today = parseDate(todayStr());
   let y = today.getFullYear(), m = today.getMonth() + 1;
@@ -26242,6 +26256,11 @@ function renderIncomeTaxUnified(){
   // 표 위 요약줄 - "지금 챙길 신고"(itFocusFiling) 기준 대상/완료/남음과 "미신고만 보기" 필터
   const focus = itFocusFiling();
   if(itAllOnlyPending) list = list.filter(c=> focus.pendingIds.has(c.id));
+  if(itAllOnlyMonth) list = list.filter(c=>{
+    const per = `${focus.year}-${String(focus.month).padStart(2,'0')}`;
+    if(String(year) !== String(focus.year)) return true;
+    return ['national','local'].some(tk=> ['target','done'].includes(itAllMonthCellState(c.id, per, null, tk).state));
+  });
   // "신고대상만 보기" - 이 해에 한 달이라도 신고대상인(칸이 잠기지 않고 미대상도 아닌) 거래처만 남김. 미등록·미대상 거래처는 숨김
   if(itAllOnlyTarget) list = list.filter(c=>{
     if(!filingCycleRecordsOf(c.id).length) return false;
@@ -26257,13 +26276,13 @@ function renderIncomeTaxUnified(){
     <span class="it-sum-period">${focus.month}월 귀속 · ${focus.due.getMonth()+1}/${focus.due.getDate()} 마감 <b class="${focus.dday<=3 ? 'urgent' : ''}">${ddayTxt}</b></span>
     <span class="it-sum-num">대상 <b>${focus.total}</b></span><span class="it-sum-num">완료 <b class="ok">${focus.done}</b></span><span class="it-sum-num">남음 <b class="${focus.pending ? 'warn' : ''}">${focus.pending}</b></span>
     <span class="it-seg" role="group" aria-label="보기 범위">
-      <button type="button" class="${!itAllOnlyPending && !itAllOnlyTarget ? 'on' : ''}" data-seg="all">전체</button><button type="button" class="${itAllOnlyTarget && !itAllOnlyPending ? 'on' : ''}" data-seg="target" title="한 달이라도 신고대상인 거래처만">대상</button><button type="button" class="${itAllOnlyPending ? 'on' : ''}" data-seg="pending" title="${focus.month}월 귀속 미신고 거래처만">미신고</button>
+      <button type="button" class="${!itAllOnlyPending && !itAllOnlyTarget && !itAllOnlyMonth ? 'on' : ''}" data-seg="all">전체</button><button type="button" class="${itAllOnlyTarget ? 'on' : ''}" data-seg="target" title="한 달이라도 신고대상인 거래처만">대상</button><button type="button" class="${itAllOnlyMonth ? 'on' : ''}" data-seg="month" title="${focus.month}월 귀속 신고대상 거래처만">${focus.month}월 대상</button><button type="button" class="${itAllOnlyPending ? 'on' : ''}" data-seg="pending" title="${focus.month}월 귀속 미신고 거래처만">미신고</button>
     </span>
   </div>`;
   const bindSummary = ()=>{
     // [2026.10.01] "미신고만·신고대상만 칩이 자리를 많이 차지하고 높이도 달라 어색"(요청) - 작은 3칸 선택(전체/대상/미신고) 하나로
     document.querySelectorAll('#itAllTableWrap .it-seg button').forEach(btn=> btn.addEventListener('click', ()=>{
-      const k = btn.dataset.seg; itAllOnlyPending = k === 'pending'; itAllOnlyTarget = k === 'target'; renderIncomeTaxUnified();
+      const k = btn.dataset.seg; itAllOnlyPending = k === 'pending'; itAllOnlyTarget = k === 'target'; itAllOnlyMonth = k === 'month'; renderIncomeTaxUnified();
     }));
   };
   if(!list.length){ wrap.innerHTML = summaryHtml + `<div class="empty-state">${itAllOnlyPending ? `${focus.month}월 귀속 미신고 거래처가 없어요.` : q ? '검색 결과가 없습니다.' : '거래처 없음'}</div>`; bindSummary(); return; }
@@ -36138,7 +36157,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.01 14:51';
+const APP_BUILD = '2026.10.01 15:00';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
