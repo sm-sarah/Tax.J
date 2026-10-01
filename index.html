@@ -1901,7 +1901,8 @@
   /* 신고서 탭 묶음 제목(총지급액·국세·지방세) - 아래 가로 구분선 + 글씨 진하게 */
   .rv-return #reviewItTaxWrap table thead tr:first-child th:not([rowspan]){ border-bottom:2px solid #C9CBE0 !important; color:var(--ink) !important; font-weight:800 !important; }
   /* 표 제목(급여·세액) - 가운데 작은 알약으로 */
-  .rv-pay #reviewItIncomeWrap::before, .rv-pay #reviewItTaxWrap > div:nth-of-type(1){ display:table !important; margin:0 auto 10px !important; padding:4px 18px; border-radius:999px; background:var(--indigo-bg); color:var(--indigo-deep) !important; font-size:12.5px !important; font-weight:800; }
+  /* [2026.10.01] 칩 위에 여백이 없어 위 경계에 붙어 보인다(요청) - 위쪽에도 여백 */
+  .rv-pay #reviewItIncomeWrap::before, .rv-pay #reviewItTaxWrap > div:nth-of-type(1){ display:table !important; margin:14px auto 10px !important; padding:4px 18px; border-radius:999px; background:var(--indigo-bg); color:var(--indigo-deep) !important; font-size:12.5px !important; font-weight:800; }
   #reviewItFsYearSelect{ height:30px; box-sizing:border-box; }
   /* 대시보드 세무일정 위젯 - 원천세 미신고 알림 줄 */
   .home-dash-it-alert{ display:flex; align-items:center; gap:8px; width:100%; margin:0 0 8px; padding:7px 10px; border-radius:9px; border:1px solid var(--border);
@@ -36415,7 +36416,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.01 16:05';
+const APP_BUILD = '2026.10.01 16:35';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -36448,9 +36449,13 @@ function gdriveConnect(silent){
     return;
   }
   if(silent) gdriveSetStatus('자동 재연결 시도 중...');
+  // [2026.10.01] 안 읽은 메일 수 표시를 켠 계정이면 로그인할 때 메일 개수 권한(gmail.labels - 메일 내용은 못 봄)도 함께 받음
+  let loginScope = GDRIVE_SCOPE;
+  try{ if(localStorage.getItem('taxj_gmail_unread_pref') === 'on') loginScope += ' https://www.googleapis.com/auth/gmail.labels'; }catch(e){}
   gdriveTokenClient = google.accounts.oauth2.initTokenClient({
     client_id: clientId,
-    scope: GDRIVE_SCOPE,
+    scope: loginScope,
+    include_granted_scopes: true,
     callback: async (resp)=>{
       if(resp.error){
         gdriveSetStatus(silent ? '연결 안 됨 (자동 재연결 실패 — 아래 버튼으로 직접 연결해주세요)' : ('연결 실패: ' + resp.error));
@@ -39961,7 +39966,7 @@ function gmailCountPref(){
   try{
     const me = (currentUserEmail||'').toLowerCase();
     const v = me && sharedNotificationPrefs && sharedNotificationPrefs[me] ? sharedNotificationPrefs[me].gmailCount : '';
-    if(v === 'on' || v === 'off') return v;
+    if(v === 'on' || v === 'off'){ try{ if(localStorage.getItem(GMAIL_COUNT_PREF_KEY) !== v) localStorage.setItem(GMAIL_COUNT_PREF_KEY, v); }catch(e){} return v; } // 다음 로그인 때 메일 권한도 같이 받도록 이 기기에도 기억
   }catch(e){}
   try{ return localStorage.getItem(GMAIL_COUNT_PREF_KEY) || ''; }catch(e){ return ''; }
 }
@@ -40017,8 +40022,13 @@ function gmailSaveCountToken(){
 (function gmailLoadCountToken(){
   try{ const o = JSON.parse(localStorage.getItem('taxj_gmail_count_token') || 'null'); if(o && o.t && o.exp > Date.now()){ gmailCountToken = o.t; gmailCountTokenExp = o.exp; } }catch(e){}
 })();
+// [2026.10.01] "메일 아이콘 ! 오류가 계속 뜬다"(요청) - 원인: 메일 개수용 권한(토큰)은 구글 정책상 1시간마다 만료되고, 사용자가 누르지
+// 않은 상태에서는 팝업 없이 새로 받을 방법이 없음 → 1시간 지나면 항상 "!"가 뜸(오류가 아니라 만료). 이제 "!"는 띄우지 않고 숫자만 감춘 뒤,
+// 메일 아이콘을 누를 때(그때는 허용 창을 띄울 수 있음) 다시 받음. 또 로그인 권한에 메일 개수 권한을 함께 받아서(GDRIVE_SCOPE 참고)
+// 새로고침·재로그인 때마다 숫자가 자동으로 다시 살아남
 function gmailSetNeedsAuth(on){
   const el = document.getElementById('mailUnreadBadge'); if(!el) return;
+  if(on){ el.style.display = 'none'; const btn = document.getElementById('mailNotifyBtn'); if(btn) btn.title = 'Gmail 열기 · 누르면 안 읽은 메일 수를 다시 확인해요' + (gmailLastErr ? ` (사유: ${gmailLastErr.status}${gmailLastErr.msg ? ' · ' + String(gmailLastErr.msg).slice(0,80) : ''})` : ''); return; }
   if(on){ el.textContent = '!'; el.style.display = 'inline-flex'; const btn = document.getElementById('mailNotifyBtn'); if(btn) btn.title = 'Gmail 열기 · 안 읽은 메일 수를 다시 받으려면 한 번 눌러주세요' + (gmailLastErr ? ` (사유: ${gmailLastErr.status}${gmailLastErr.msg ? ' · ' + String(gmailLastErr.msg).slice(0,80) : ''})` : ''); }
 }
 async function gmailFetchUnread(token){
