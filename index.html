@@ -2027,9 +2027,10 @@
   /* 스크롤 시 떠서 따라오는 머리글 - 아래 내용이 비치지 않게 바탕을 채우고 맨 위로 */
   #itAllTableWrap table thead th{ z-index:6; }
   #itAllTableWrap table thead.it-head-floating tr:last-child th{ box-shadow:0 2px 4px -2px rgba(29,30,51,0.18); }
+  .it-memo-star{ position:absolute; top:1px; right:3px; font-size:11px; font-weight:900; color:var(--coral); line-height:1; pointer-events:none; }
   .it-stage-tri{ display:inline-flex; align-items:center; justify-content:center; gap:0; font-size:10.5px; line-height:1; letter-spacing:-0.5px; font-family:'Pretendard',sans-serif; }
-  .it-stage-tri b{ color:#5B5FEF; font-weight:400; }
-  .it-stage-tri i{ color:rgba(91,95,239,0.4); font-style:normal; }
+  .it-stage-tri svg{ width:9px; height:9px; display:block; fill:none; stroke:rgba(91,95,239,0.45); stroke-width:1.3; stroke-linejoin:round; }
+  .it-stage-tri svg.on{ fill:#5B5FEF; stroke:#5B5FEF; }
   /* [2026.10.01] 지금 신고할 귀속월(②안) - 그 달 두 칸을 남색 테두리로 감싸고 월 옆에 "신고" 표시 */
   .it-all-table th.it-focus.it-all-mcol[colspan]{ box-shadow:inset 2px 2px 0 #5B5FEF, inset -2px 0 0 #5B5FEF; color:#3730A3 !important; }
   .it-all-table .it-focus.it-focus-l:not([colspan]){ box-shadow:inset 2px 0 0 #5B5FEF; }
@@ -6359,6 +6360,8 @@
           <select id="itAllYear" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select>
           <input type="text" id="itAllSearch" placeholder="거래처 검색" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 10px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px;">
           <button type="button" class="del-btn xls-io-btn" data-xls="itAll" data-xls-act="down" title="엑셀 받기" aria-label="엑셀 받기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2" y="2" width="12" height="12" rx="2"></rect><line x1="2" y1="6.5" x2="14" y2="6.5"></line><line x1="6.5" y1="2" x2="6.5" y2="14"></line><path d="M19 8v14"></path><path d="M15 18l4 4 4-4"></path></svg></button><button type="button" class="del-btn xls-io-btn" data-xls="itAll" data-xls-act="up" title="엑셀 올리기 (추가 또는 교체)" aria-label="엑셀 올리기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2" y="2" width="12" height="12" rx="2"></rect><line x1="2" y1="6.5" x2="14" y2="6.5"></line><line x1="6.5" y1="2" x2="6.5" y2="14"></line><path d="M19 22V8"></path><path d="M15 12l4-4 4 4"></path></svg></button>
+          <!-- [2026.10.02 임시] "예전 엑셀 진행표(월별 시트) 가져오기" - 초기 세팅용, 다 가져온 뒤 삭제 예정(요청) -->
+          <button type="button" class="del-btn xls-io-btn" id="itLegacyImportBtn" title="예전 진행표 엑셀 가져오기 (임시 · 초기 세팅용)" aria-label="예전 진행표 가져오기" style="color:var(--coral);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button><input type="file" id="itLegacyImportFile" accept=".xlsx,.xls" style="display:none;">
         </div>
         <div id="itAllTableWrap"></div>
       </div>
@@ -26728,7 +26731,7 @@ function itAllTimingBlockHtml(c, period, timingKey){
       <input type="date" class="it-all-date-input" data-field="local" value="${t.local||''}" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink); flex:1 1 auto; min-width:0;">
       <button type="button" class="del-btn it-all-today-btn" data-field="local" style="flex-shrink:0; padding:5px 9px; font-size:11px;">오늘</button>
     </div>
-    <input type="text" class="it-all-memo-input" value="${escHtml(t.memo||'')}" placeholder="메모" style="width:100%; border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink); box-sizing:border-box;">
+    <input type="text" class="it-all-memo-input" value="${escHtml(t.memo||'')}" placeholder="이달 특이사항 (표에는 * 로 표시)" style="width:100%; border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink); box-sizing:border-box;">
   </div>`;
 }
 // period 한 칸의 표시 상태를 계산 - 신고대상 미등록/미대상/(대상인데) 미신고/신고완료 네 단계
@@ -26950,11 +26953,15 @@ function renderIncomeTaxUnified(){
             const fmtD = d=>{ const [yy,mm,dd] = d.split('-'); return `${yy}년 ${Number(mm)}월 ${Number(dd)}일`; };
             tip += '\n' + stageInfo.map(x=> `${x.l}: ${x.date ? fmtD(x.date) : '아직'}`).join('\n');
             // [2026.10.01] "진행 상태가 안 보인다 → ▶▷▷ 모양으로"(요청) - 마친 단계는 ▶, 남은 단계는 ▷. 진행 중인 칸은 배경 없이 ▶▷만("보라 칩으로 둘러쌀 필요 없다" 요청)
-            if(cs.state === 'target' && stageInfo.some(x=>x.done)) stageDots = `<span class="it-stage-tri">${stageInfo.map(x=> x.done ? '<b>▶</b>' : '<i>▷</i>').join('')}</span>`;
+            if(cs.state === 'target' && stageInfo.some(x=>x.done)) stageDots = `<span class="it-stage-tri">${stageInfo.map(x=> x.done ? '<svg viewBox="0 0 10 10" class="on"><polygon points="2,1 9,5 2,9"></polygon></svg>' : '<svg viewBox="0 0 10 10"><polygon points="2,1 9,5 2,9"></polygon></svg>').join('')}</span>`; // ▶ 글자는 윈도우에서 파란 이모지 상자로 보여서(요청) 선 그림으로
           }
           const cellBorder = st.plain ? 'none' : `1.5px solid ${st.color}`;
           const colCls = (taxKey === 'national' ? 'cvb it-all-mcol it-focus-l' : 'cvb it-focus-r') + fc(m);
-          return `<td class="${colCls}"><button type="button" class="it-all-month-cell-btn" ${clickAttr} title="${escHtml(tip)}" style="width:100%; border:${cellBorder}; border-radius:6px; padding:4px 1px; background:${stageDots ? 'transparent' : st.bg}; color:${st.text}; font-size:10.5px; font-weight:700; cursor:${cs.state==='halfyear' ? 'default' : (st.disabled?'not-allowed':'pointer')}; opacity:${st.disabled?'0.35':'1'};">${stageDots || escHtml(cellLabel)}</button></td>`;
+          // [2026.10.02] 월별 특이사항(메모)이 있으면 칸 오른쪽 위에 * 표시 + 말풍선에 내용
+          /* * 표시는 국세 칸에만(요청) */ const memoTxt = (taxKey === 'national' && (cs.state === 'target' || cs.state === 'done')) ? (()=>{ const ent2 = incomeTaxFilingEntry(period, c.id); const ks = timingKey ? [timingKey] : ['sameMonth','nextMonth']; return ks.map(k=> (ent2[k]||{}).memo).filter(Boolean).join(' / '); })() : '';
+          if(memoTxt) tip += '\n특이사항: ' + memoTxt;
+          const memoStar = memoTxt ? '<sup class="it-memo-star">*</sup>' : '';
+          return `<td class="${colCls}" style="position:relative;">${memoStar}<button type="button" class="it-all-month-cell-btn" ${clickAttr} title="${escHtml(tip)}" style="width:100%; border:${cellBorder}; border-radius:6px; padding:4px 1px; background:${stageDots ? 'transparent' : st.bg}; color:${st.text}; font-size:10.5px; font-weight:700; cursor:${cs.state==='halfyear' ? 'default' : (st.disabled?'not-allowed':'pointer')}; opacity:${st.disabled?'0.35':'1'};">${stageDots || escHtml(cellLabel)}</button></td>`;
         }).join('');
       }).join('');
       const span = lanes.length > 1 ? ` rowspan="${lanes.length}"` : '';
@@ -33000,6 +33007,158 @@ XLS_SPECS['itAll'] = {
       commit: async () => { await saveSharedIncomeTaxFilingStatus(); renderIncomeTaxUnified(); } }];
   }
 };
+// ══ [2026.10.02 임시] 예전 엑셀 진행표 가져오기 - 초기 세팅 전용(가져오기가 끝나면 이 블록과 버튼을 지움) ══
+// 월별 시트(이름이 숫자 1~12 = 신고월)의 "상호" 머리줄을 찾아 열 이름으로 매칭. 시트 순서로 연도를 정함(마지막 시트 = 올해, 월이 거꾸로 가면 한 해 앞)
+// 가져오는 것: 신고대상·지급시기(당월/익월)·신고구분 이력 · 진행 단계 날짜(급여명세서 전달/급여마감/신고서 마감) · 국세·지방세 신고일 ·
+// 당월 주요사항(월별 특이사항=칸 메모) · 지급명세서 제출(사업·기타 간이, 일용 지급·근확, 특고) · 총괄(급여종류·지급일·소통·전달방법·비고). 앱에 있던 값은 덮어씀
+function itLegacyNormName(n){ return String(n||'').replace(/주식회사|\(주\)|㈜|^주\)|\s|[()]/g,'').toLowerCase(); }
+function itLegacyHdr(v){ return String(v==null?'':v).replace(/[\s\n→]/g,''); }
+async function itLegacyImport(file){
+  if(!isCurrentUserAdmin){ appAlert('관리자만 가져올 수 있어요.'); return; }
+  let wb; try{ wb = XLSX.read(await file.arrayBuffer(), { type:'array', cellDates:true }); }catch(e){ appAlert('엑셀 파일을 읽지 못했어요.'); return; }
+  const monthSheets = wb.SheetNames.filter(n=> /^\d{1,2}$/.test(n.trim()) && Number(n) >= 1 && Number(n) <= 12);
+  if(!monthSheets.length){ appAlert('월별 시트(이름이 1~12인 시트)를 찾지 못했어요.'); return; }
+  // 시트별 신고 연도 - 이번 달까지의 최근 12개월로 봄(이번 달보다 큰 월 = 작년). 시트 순서가 섞여 있어도(8 다음 7) 상관없음
+  const now = new Date(); const years = {};
+  monthSheets.forEach(n=>{ years[n] = Number(n) <= now.getMonth()+1 ? now.getFullYear() : now.getFullYear() - 1; });
+  monthSheets.sort((a,b)=> (years[a]*100+Number(a)) - (years[b]*100+Number(b))); // 오래된 달부터 읽어서 총괄은 가장 최근 값이 남게
+  const clientsAll = bookkeepingClientList();
+  const byName = new Map(clientsAll.map(c=>[itLegacyNormName(c.name), c]));
+  const findClient = n=>{ const k = itLegacyNormName(n); if(!k) return null; if(byName.has(k)) return byName.get(k); for(const [kk,c] of byName){ if(kk.startsWith(k) || k.startsWith(kk)) return c; } return null; };
+  const pad = n=> String(n).padStart(2,'0');
+  const fmtDate = d=> `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const parseDate = (v, fy, fm)=>{
+    if(v instanceof Date && !isNaN(v)) return fmtDate(v);
+    const t = String(v==null?'':v).trim(); if(!t) return null;
+    let m = t.match(/(20\d{2})[.\-\/]\s*(\d{1,2})[.\-\/]\s*(\d{1,2})/); if(m) return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+    m = t.match(/^(\d{2})[.](\d{1,2})[.](\d{1,2})/); if(m) return `20${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+    m = t.match(/^(\d{1,2})[.\/](\d{1,2})(?!\d)/); if(m){ const mm = Number(m[1]), dd = Number(m[2]); if(mm<1||mm>12||dd<1||dd>31) return null;
+      const base = new Date(fy, fm-1, 15); let best = null;
+      [fy-1, fy, fy+1].forEach(yy=>{ const d = new Date(yy, mm-1, dd); if(!best || Math.abs(d-base) < Math.abs(best-base)) best = d; });
+      return fmtDate(best); }
+    return null;
+  };
+  const yes = v=> /^(o|ㅇ|⭕|true|해당|y)$/i.test(String(v==null?'':v).trim());
+  const report = { rows:0, matched:new Set(), unmatched:new Set(), periods:new Set() };
+  const targetsTouched = new Set(); const cycleObs = {}; const ovr = {};
+  const VIA = v=>{ const t = String(v||'').replace(/\s/g,''); if(!t || t==='-') return ''; if(/채널이,?카|채널톡&?이메일|채널이메일,?카/.test(t)) return '채널톡&이메일'; if(/채널.*카/.test(t)) return '채널카톡'; if(/채널.*(이메일|메일)/.test(t)) return '채널이메일'; if(/갠톡|개인카톡|단톡|카톡/.test(t)) return '개인카톡'; if(/이메일|메일/.test(t)) return '개인이메일'; return '?' + String(v).trim(); };
+  const ops = []; // 실제 저장은 확인 뒤에
+  const ingestRow = (sheet, fy, fm, H, r)=>{
+    const g = k=> H[k] != null ? r[H[k]] : undefined;
+    const name = String(g('상호')||'').trim(); if(!name) return;
+    report.rows++;
+    const c = findClient(name); if(!c){ report.unmatched.add(name); return; }
+    report.matched.add(c.name);
+    const salaryCol = H['급여'] != null ? '급여' : (H[String(fm===1?12:fm-1)] != null ? String(fm===1?12:fm-1) : null);
+    const applicable = salaryCol ? yes(g(salaryCol)) : true;
+    // 귀속월·지급시기
+    let am = fm === 1 ? 12 : fm - 1, timing = 'sameMonth';
+    const gs = String(g('귀속') ?? g('귀속월') ?? '').match(/(\d{1,2})\s*월(?!.*\d+\s*월)/) || String(g('귀속') ?? g('귀속월') ?? '').match(/(\d{1,2})/);
+    const ps = String(g('지급') ?? g('지급월') ?? '').match(/(\d{1,2})/);
+    if(gs) am = Number(gs[1]);
+    if(gs && ps) timing = Number(ps[1]) !== am ? 'nextMonth' : 'sameMonth';
+    else if(H['귀/지'] != null && /다름/.test(String(g('귀/지')||''))){ timing = 'nextMonth'; am = am === 1 ? 12 : am - 1; } // 익월지급이면 이 신고월은 한 달 더 앞 귀속
+    const ay = am > fm ? fy - 1 : fy;
+    const period = `${ay}-${pad(am)}`;
+    report.periods.add(period);
+    const cyc = String(g('_cycle')||'').trim();
+    ops.push(()=>{
+      const tk = c.id + '|' + period;
+      const t = filingTargetEntry(c.id, period);
+      if(!targetsTouched.has(tk)){ targetsTouched.add(tk); t.sameMonthPay = false; t.nextMonthPay = false; t.applicable = false; }
+      t.marked = true;
+      if(applicable){ t.applicable = true; t[timing === 'nextMonth' ? 'nextMonthPay' : 'sameMonthPay'] = true; }
+      if(/반기|매월/.test(cyc)) t.cycle = /반기/.test(cyc) ? '반기' : '매월';
+      const e = incomeTaxFilingEntry(period, c.id)[timing];
+      if(applicable){
+        e.payslip = parseDate(g('_payslip'), fy, fm); e.payroll = parseDate(g('급여마감'), fy, fm); e.returnClose = parseDate(g('원이행마감'), fy, fm);
+        e.national = parseDate(g('_national'), fy, fm);
+        e.local = H['지방세마감'] != null ? parseDate(g('지방세마감'), fy, fm) : e.national; // "지방세마감" 열 = 지방세 신고일(요청), 그 열이 없는 달은 국세 신고일과 같게
+      }
+      e.memo = String(g('당월주요사항')||'').trim();
+      // 지급명세서 제출(제출현황) - 귀속월 기준
+      const subMap = { '사업간이':'사업간이', '기타간이':'기타간이', '일용지급':'일용지급', '일용근확':'일용근확', '특고보수':'특고' };
+      Object.entries(subMap).forEach(([col,key])=>{
+        if(H[col] == null) return; const v = g(col); const sv = String(v==null?'':v).trim(); if(!sv || sv==='-' ) return;
+        sharedFilingStatus['원천세'] = sharedFilingStatus['원천세'] || {}; const pd = sharedFilingStatus['원천세'][period] = sharedFilingStatus['원천세'][period] || {};
+        const se = pd[c.id] = pd[c.id] || { memo:'' }; se.items = se.items || {}; se.itemDates = se.itemDates || {};
+        const d = parseDate(v, fy, fm); se.items[key] = true; if(d) se.itemDates[key] = d; else delete se.itemDates[key];
+      });
+    });
+    if(applicable && /반기|매월/.test(cyc)){ (cycleObs[c.id] = cycleObs[c.id] || []).push({ period, cycle: /반기/.test(cyc) ? '반기' : '매월' }); }
+    // 총괄 - 시트 순서대로 덮어써서 가장 최근 값이 남음
+    const o = ovr[c.id] = ovr[c.id] || {};
+    const kinds = String(g('당월발생급여') ?? g('발생급여종류') ?? '').split(/[,/·]+/).map(x=>x.trim()).filter(x=> ITO_PAY_KINDS.includes(x));
+    if(kinds.length){ if(o._kindsSheet !== sheet){ o._kindsSheet = sheet; o.payKinds = []; } kinds.forEach(k=>{ if(!o.payKinds.includes(k)) o.payKinds.push(k); }); } // 같은 달 여러 줄(당월·익월)은 합침
+    const rp = String(g('프로그램지급일')||'').trim(); if(rp && rp!=='-') o.reportPayDay = rp;
+    const ap = String(g('실급여일')||'').trim(); if(ap && ap!=='-') o.actualPayDay = ap;
+    const cm = String(g('소통')||'').trim(); if(cm && cm!=='-') o.payComm = /메일/.test(cm) ? '이메일' : /톡/.test(cm) ? '카톡' : o.payComm;
+    const v1 = VIA(g('_payslipVia')); if(v1) o.payslipVia = v1;
+    const v2 = VIA(g('_billVia')); if(v2) o.billVia = v2;
+    const nt = String(g('비고')||'').trim(); if(nt) o.note = nt;
+  };
+  // "급" 시트(거래처별 기본 정보)가 있으면 총괄의 바탕값으로 먼저 넣고, 월별 시트 값이 있으면 그걸로 덮어씀
+  if(wb.Sheets['급']){
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets['급'], { header:1, raw:true, defval:null });
+    const hi = rows.findIndex(r=> (r||[]).map(itLegacyHdr).includes('상호'));
+    if(hi >= 0){ const hs = rows[hi].map(itLegacyHdr); const ix = k=> hs.indexOf(k);
+      rows.slice(hi+1).forEach(r=>{ const c = findClient(r && r[ix('상호')]); if(!c) return; const o = ovr[c.id] = ovr[c.id] || {};
+        const kinds = String(r[ix('발생급여종류')]||'').split(/[,/·]+/).map(x=>x.trim()).filter(x=> ITO_PAY_KINDS.includes(x)); if(kinds.length) o.payKinds = kinds;
+        const rp = String(r[ix('프로그램지급일')]||'').trim(); if(rp && rp!=='-') o.reportPayDay = rp;
+        const ap = String(r[ix('실급여일')]||'').trim(); if(ap && ap!=='-') o.actualPayDay = ap;
+        const nt = String(r[ix('비고')]||'').trim(); if(nt) o.note = nt; });
+    }
+  }
+  monthSheets.forEach(sn=>{
+    const ws = wb.Sheets[sn]; const rows = XLSX.utils.sheet_to_json(ws, { header:1, raw:true, defval:null, blankrows:true });
+    const fm = Number(sn), fy = years[sn];
+    // 진행표 머리줄 = "상호"가 있고 "급여마감"이 있는 마지막 줄(위쪽의 연간 제출현황 표는 건너뜀)
+    let hi = -1; rows.forEach((r,i)=>{ const hs = (r||[]).map(itLegacyHdr); if(hs.includes('상호') && hs.includes('급여마감')) hi = i; });
+    if(hi < 0) return;
+    const hs = rows[hi].map(itLegacyHdr); const H = {};
+    hs.forEach((h,i)=>{ if(h && H[h] == null) H[h] = i; });
+    const iClose = hs.indexOf('원이행마감'), iSend = Math.max(hs.indexOf('급여발송'), hs.indexOf('급여명세서')), iBill = hs.findIndex(h=> /^납부서/.test(h));
+    H._payslip = iSend >= 0 ? iSend : null;
+    H._payslipVia = iSend >= 0 && /전달방법/.test(hs[iSend+1]||'') ? iSend+1 : null;
+    H._billVia = iBill >= 0 && /전달방법/.test(hs[iBill+1]||'') ? iBill+1 : null;
+    H._national = iClose >= 0 ? hs.findIndex((h,i)=> i > iClose && h === '신고') : hs.lastIndexOf('신고');
+    if(H._national < 0) H._national = null;
+    const iCyc = hs.findIndex((h,i)=> (h === '신고' || h === '월/반') && (H._national == null || i < H._national));
+    H._cycle = iCyc >= 0 ? iCyc : null;
+    for(let i = hi + 1; i < rows.length; i++){
+      const r = rows[i] || []; const nm = String(r[H['상호']] ?? '').trim();
+      if(!nm){ const next = rows.slice(i+1, i+4).some(rr=> rr && String(rr[H['상호']] ?? '').trim()); if(!next) break; continue; }
+      if(nm === '상호') break;
+      ingestRow(sn, fy, fm, H, r);
+    }
+  });
+  const html = `<div style="text-align:left; font-size:12.5px; line-height:1.7;">
+    <b>월별 시트</b> ${monthSheets.map(n=>`${years[n]}.${n}`).join(', ')} (신고월)<br>
+    <b>읽은 줄</b> ${report.rows}줄 · <b>매칭된 거래처</b> ${report.matched.size}곳 · <b>귀속월</b> ${[...report.periods].sort().join(', ')}<br>
+    <span style="color:var(--ink-soft);">신고대상·지급시기·신고구분 이력·진행 단계·신고일·월별 특이사항·지급명세서 제출·총괄을 이 값으로 <b>덮어써요</b>.</span></div>`;
+  if(!(await appConfirm('', { html, maxWidth:'460px', okText:'가져오기', cancelText:'취소' }))) return;
+  ops.forEach(f=>{ try{ f(); }catch(e){ console.error(e); } });
+  // 신고구분 이력 - 거래처마다 달이 바뀔 때만 한 줄씩(덮어씀)
+  Object.entries(cycleObs).forEach(([cid, list])=>{
+    list.sort((a,b)=> a.period.localeCompare(b.period));
+    const recs = []; list.forEach(x=>{ if(!recs.length || recs[recs.length-1].cycle !== x.cycle) recs.push({ id: genId(), applicable:true, cycle:x.cycle, effectiveFrom:x.period, memo:'엑셀 가져오기', createdAt: todayStr() }); });
+    sharedFilingCycles[cid] = recs;
+  });
+  Object.entries(ovr).forEach(([cid,o])=>{
+    const e = itoEnsure(cid);
+    const extra = [];
+    if(o.payslipVia && o.payslipVia.startsWith('?')){ extra.push('급여명세서 전달: ' + o.payslipVia.slice(1)); delete o.payslipVia; }
+    if(o.billVia && o.billVia.startsWith('?')){ extra.push('납부서 전달: ' + o.billVia.slice(1)); delete o.billVia; }
+    ['payKinds','reportPayDay','actualPayDay','payComm','payslipVia','billVia'].forEach(k=>{ if(o[k] != null) e[k] = k === 'payKinds' ? ITO_PAY_KINDS.filter(x=> o[k].includes(x)) : o[k]; });
+    const note = [o.note, ...extra].filter(Boolean).join(' / '); if(note) e.note = note;
+    e.updatedAt = new Date().toISOString();
+  });
+  await saveSharedFilingTargets(); await saveSharedFilingCycles(); await saveSharedIncomeTaxFilingStatus(); await saveSharedFilingStatus(); await saveSharedItOverview();
+  renderIncomeTaxUnified();
+  appAlert(`가져왔어요.\n거래처 ${report.matched.size}곳 · ${report.periods.size}개월`);
+}
+document.getElementById('itLegacyImportBtn')?.addEventListener('click', ()=> document.getElementById('itLegacyImportFile')?.click());
+document.getElementById('itLegacyImportFile')?.addEventListener('change', async (e)=>{ const f = e.target.files && e.target.files[0]; e.target.value = ''; if(f) await itLegacyImport(f); });
 XLS_SPECS['itOverview'] = {
   title:'원천세 총괄', tag: () => '원천세총괄',
   sheets: () => [{ grid:true, acceptPlain:true, name:'원천세 총괄',
@@ -37036,7 +37195,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 01:30';
+const APP_BUILD = '2026.10.02 02:10';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
