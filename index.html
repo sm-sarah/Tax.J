@@ -2081,6 +2081,15 @@
   .ci-krow:hover .ci-kcopy{ opacity:1; }
   .ci-kcopy:hover{ color:var(--indigo); background:var(--indigo-bg); }
   .ci-kcopy svg{ width:12px; height:12px; }
+  /* [2026.10.01] 거래처 ID/PW 팝업 - 사내정보 계정 줄과 같은 모양 + 그 자리에서 수정 */
+  .ci-keys.cl-pi-keys{ background:transparent !important; border:none !important; box-shadow:none !important; border-radius:0 !important; margin:0 !important; }
+  .cl-pi-keys .ci-krow:last-child{ border-bottom:none !important; }
+  .cl-pi-keys .cl-pi-kedit{ margin-left:auto; }
+  .cl-pi-keys .ci-knote + .cl-pi-kedit{ margin-left:4px; }
+  .cl-pi-kform{ display:flex; align-items:center; gap:6px; width:100%; min-width:0; }
+  .cl-pi-kform .k{ font-size:10.5px; font-weight:800; color:var(--ink-soft); flex:none; }
+  .cl-pi-kform input{ flex:1 1 0; min-width:0; border:none; border-bottom:1.5px solid var(--indigo); background:transparent; padding:3px 2px; font-family:'Pretendard',sans-serif; font-size:13px; font-weight:600; color:var(--ink); border-radius:0; }
+  .cl-pi-kform input:focus{ outline:none; }
   /* 사내정보 > 회사 - 자리배치도·조직도 칩 버튼 */
   .ci-view-chips{ display:flex; justify-content:center; gap:10px; flex-wrap:wrap; }
   .ci-view-chips-top{ justify-content:flex-end; gap:6px; margin:0 auto 10px; max-width:820px; }
@@ -2118,6 +2127,9 @@
   .hr-card-line{ display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--ink-soft); }
   .hr-card-line svg{ flex:none; opacity:.8; }
   .hr-card-contact-box{ min-height:calc(12px * 1.6 * 3 + 4px); }
+  /* [2026.10.01] 팀원별 정보 "계정정보" 제목 - 다른 스타일(열쇠 아이콘 + 남색 글자), 아래 계정 줄과 같은 들여쓰기로 오른쪽으로(요청) */
+  .ci-member-card .ci-member-acc-label{ display:flex; align-items:center; gap:5px; color:var(--indigo-deep); font-size:11.5px; padding-left:14px; }
+  .ci-member-card .ci-member-acc-label svg{ flex:none; color:var(--indigo); }
   .hr-card-duties-label{ font-size:11px; font-weight:800; color:var(--ink-soft); letter-spacing:.02em; margin:12px 0 0; padding-top:10px; border-top:1px dashed var(--border); }
   .hr-card-duties-label + .hr-card-duties{ margin-top:4px; padding-top:0; border-top:none; }
   /* "업무분장 줄바꿈이 자연스럽게"(요청) - 단어 중간에서 안 끊기고, 끝줄에 한 단어만 떨어지지 않게 */
@@ -14804,23 +14816,58 @@ async function renderClientDetailPersonalInfoSection(c, wrapId){
     wrap.innerHTML = `<div style="text-align:center; padding:6px 0; font-size:12.5px; color:var(--ink-soft);">등록된 개인정보가 없어요</div>`;
     return;
   }
-  // ID/PW가 구분이 잘 안 된다는 의견으로, 각각 작은 색상 배지 라벨을 붙여서 한눈에 구분되게 함
-  const idPwBadge = (tag, val) => `<span style="display:inline-flex; align-items:center; gap:4px; margin-left:10px;"><span style="font-size:9.5px; font-weight:800; color:${tag==='ID'?'var(--indigo-deep)':'var(--coral)'}; background:${tag==='ID'?'var(--indigo-bg)':'var(--coral-bg)'}; padding:1px 6px; border-radius:8px;">${tag}</span><span style="user-select:text;">${escHtml(val||'-')}</span></span>`;
-  wrap.innerHTML = etc.map(a=>{
+  // [2026.10.01] "팀원별 정보의 계정정보와 느낌이 비슷하게 + 그 자리에서 바로 수정"(요청) - 사내정보 계정 줄(ci-krow)과 같은 모양:
+  // 왼쪽 항목명, 오른쪽 ID·PW 값과 복사 버튼. 관리자는 줄 끝 연필을 누르면 그 줄이 입력칸으로 바뀌고 ✓(또는 Enter)로 바로 저장됨
+  const canEdit = !!isCurrentUserAdmin;
+  const IC_EDIT = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"></path></svg>';
+  const rowsHtml = etc.map(a=>{
     const isInfo = a.type === 'info';
-    const valHtml = isInfo
-      ? `<span style="user-select:text;">${escHtml(a.idVal||'-')}</span>`
-      : `${idPwBadge('ID', a.idVal)}${idPwBadge('PW', a.pwVal)}`;
-    const noteHtml = a.note ? `<div style="font-size:11px; color:var(--ink-soft); text-align:right; margin-top:-2px;">${linkifyText(a.note)}</div>` : '';
-    return `
-    <div style="padding:5px 0; font-size:12.5px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
-        <span style="color:var(--ink-soft); font-weight:700; flex-shrink:0;">${escHtml(a.label||'기타')}</span>
-        <span style="text-align:right;">${valHtml}</span>
-      </div>
-      ${noteHtml}
-    </div>`;
+    const it = { id:a.id, type: isInfo ? 'info' : 'account', label: a.label||'기타', idVal: a.idVal||'', pwVal: a.pwVal||'', content: isInfo ? (a.idVal||a.pwVal||'') : '', note: a.note||'' };
+    let h = ciKRowHtml(it);
+    h = h.replace('<div class="ci-krow"', `<div class="ci-krow cl-pi-krow" data-pi-id="${escHtml(a.id||'')}"`);
+    if(canEdit) h = h.replace(/<\/div>\s*<\/div>\s*$/, `<button type="button" class="ci-kcopy cl-pi-kedit" title="이 자리에서 수정" aria-label="수정">${IC_EDIT}</button></div>\n  </div>`);
+    return h;
   }).join('');
+  wrap.innerHTML = `<div class="ci-keys cl-pi-keys"><div class="ci-keys-body">${rowsHtml}</div></div>`;
+  bindCiKeychain(wrap);
+  if(!canEdit) return;
+  wrap.querySelectorAll('.cl-pi-kedit').forEach(btn=> btn.addEventListener('click', ()=>{
+    const row = btn.closest('.cl-pi-krow'); if(!row) return;
+    const a = etc.find(x=>x.id===row.dataset.piId); if(!a) return;
+    const isInfo = a.type === 'info';
+    const line = row.querySelector('.ci-kline1');
+    const inp = (cls, val, ph)=> `<input type="text" class="${cls}" value="${escHtml(val||'')}" placeholder="${ph}">`;
+    line.innerHTML = `<span class="cl-pi-kform">${isInfo ? inp('cl-pi-kv', a.idVal, '내용') : `<span class="k">ID</span>${inp('cl-pi-kid', a.idVal, 'ID')}<span class="k">PW</span>${inp('cl-pi-kpw', a.pwVal, '비밀번호')}`}
+      ${clPiIconBtn('cl-pi-ksave', 'save', '저장 (Enter)', a.id)}${clPiIconBtn('cl-pi-kcancel', 'cancel', '취소 (Esc)', a.id)}</span>`;
+    const first = line.querySelector('input'); if(first){ first.focus(); first.select(); }
+    const cancel = ()=> renderClientDetailPersonalInfoSection(c, wrapId);
+    const save = async ()=>{
+      const idVal = isInfo ? line.querySelector('.cl-pi-kv').value.trim() : line.querySelector('.cl-pi-kid').value.trim();
+      const pwVal = isInfo ? '' : line.querySelector('.cl-pi-kpw').value.trim();
+      const changes = diffClPersonalInfoFields(a, a.label, a.type, idVal, pwVal, a.note||'');
+      if(!changes.length){ cancel(); return; }
+      try{
+        const rec = findPersonalInfoForClient(c);
+        if(!rec || !rec.sensitiveEnc || !adminCryptoKey){ appAlert('저장하지 못했어요. 잠금을 다시 풀고 해주세요.'); return; }
+        const sObj = await decryptJSON(rec.sensitiveEnc, adminCryptoKey);
+        const list = sObj.etcAccounts || [];
+        const target = list.find(x=>x.id===a.id) || list.find(x=>x.label===a.label);
+        if(!target){ appAlert('항목을 찾지 못해 저장하지 못했어요.'); return; }
+        target.idVal = idVal; target.pwVal = pwVal;
+        if(!Array.isArray(target.history)) target.history = [];
+        target.history.unshift({ date: new Date().toLocaleString('ko-KR'), changes });
+        sObj.etcAccounts = list;
+        rec.sensitiveEnc = await encryptJSON(sObj, adminCryptoKey);
+        rec.history = [...(rec.history||[]), { id: genId(), date: todayStr(), note: `${a.label} 수정됨` }];
+        await savePersonalInfo();
+        showCenterToast('저장됐어요');
+        renderClientDetailPersonalInfoSection(c, wrapId);
+      }catch(err){ console.error('개인정보 바로 수정 실패', err); appAlert('저장 중 문제가 있었어요. 다시 시도해주세요.'); }
+    };
+    line.querySelector('.cl-pi-ksave').addEventListener('click', save);
+    line.querySelector('.cl-pi-kcancel').addEventListener('click', cancel);
+    line.querySelectorAll('input').forEach(el=> el.addEventListener('keydown', ev=>{ if(ev.key==='Enter'){ ev.preventDefault(); save(); } else if(ev.key==='Escape'){ ev.preventDefault(); cancel(); } }));
+  }));
 }
 // [2026.10.01] 거래처 표의 ID/PW 아이콘 - "메모·상세정보 팝업과 같은 모양으로, 화면 가운데에"(요청). 예전엔 위쪽에 붙는 작은 창이 먼저 뜨고
 // 그 안의 자물쇠를 또 눌러야 비밀번호 창이 떠서 두 번 거쳐야 했음 - 이제 아이콘을 누르면 잠겨있을 때만 바로 비밀번호 창이 뜨고,
@@ -14836,7 +14883,7 @@ async function openClientPersonalInfoModal(c){
     ${clientDetailIconRowHtml(c)}
     <div style="background:var(--bg); border-radius:10px; overflow:hidden;">
       <div style="background:var(--navy); padding:8px 12px; text-align:center; font-size:11.5px; font-weight:800; color:#fff; letter-spacing:0.06em;">ID/PW</div>
-      <div id="clientPiModalWrap" style="padding:6px 12px;"></div>
+      <div id="clientPiModalWrap" style="padding:4px 0;"></div>
     </div>`;
   document.getElementById('memoModalOverlay').style.display = 'flex';
   wireClientDetailHeadIcons(c, 'personal');
@@ -15679,6 +15726,7 @@ async function gdriveUploadApprovalAttachment(file, docType, draftMeta){
 // 신규 등록: 처음 입력하는 데이터라 바로 입력칸이 열려있음(잠금 없음)
 // 기존 거래처 수정: 이미 등록된 민감정보라 🔑로 비밀번호를 한 번 더 입력해야 입력칸이 열림 (기타 ID/PW 조회팝업과 동일한 비밀번호 체계 사용)
 let clPersonalInfoEntries = [];
+var clPiInlineSilent = false;
 let clPersonalInfoUnlocked = false;
 function setClPersonalInfoUnlocked(unlocked){
   clPersonalInfoUnlocked = unlocked;
@@ -15913,7 +15961,7 @@ function renderClPersonalInfoRows(){
     entry.type = type; entry.idVal = idVal; entry.pwVal = pwVal; entry.note = note;
     clPersonalInfoEditingId = null;
     renderClPersonalInfoRows();
-    showCenterToast('저장됐어요. 거래처 등록/수정 버튼을 눌러야 최종 저장돼요.');
+    if(!clPiInlineSilent) showCenterToast('저장됐어요. 거래처 등록/수정 버튼을 눌러야 최종 저장돼요.');
   }));
 }
 // "+ 등록" 팝업(clPiFormModalOverlay)은 새 항목 추가 전용 - 사내정보(설정 > 팀정보) "항목 추가" 팝업과
@@ -16685,7 +16733,7 @@ async function renderCompanyInfoTeam(wrapId, generalWrapId, showControls){
       ].filter(Boolean).join('');
       return `<div class="hr-card ci-member-card">
         <div class="hr-card-profile"><div class="hr-card-name">${escHtml(p.person)}${p.title ? `<span class="hr-card-title">${escHtml(p.title)}</span>` : ''}</div><div class="hr-card-contact ci-member-contact">${lines}</div></div>
-        <div class="hr-card-duties-label">계정정보</div>
+        <div class="hr-card-duties-label ci-member-acc-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"></circle><path d="M21 2l-9.6 9.6"></path><path d="M15.5 7.5l3 3L22 7l-3-3"></path></svg>계정정보</div>
         ${buildCiKeychainHtml(p.items||[], { scope:`팀원 ${p.person}` })}
       </div>`;
     }).join('')}</div>`;
@@ -22899,6 +22947,8 @@ document.getElementById('clientForm').addEventListener('submit', async (e)=>{
   }
 });
 async function handleClientFormSubmit(){
+  // [2026.10.01] "개인정보 ID/PW를 고치고 ✓를 꼭 눌러야 반영돼서 불편"(요청) - 수정 중인 줄이 있으면 수정완료를 누를 때 그대로 반영
+  if(clPersonalInfoEditingId){ const sv = document.querySelector('#clPersonalInfoRows .cl-pi-inline-save'); if(sv){ clPiInlineSilent = true; try{ sv.click(); }finally{ clPiInlineSilent = false; } if(clPersonalInfoEditingId) return; } }
   const name = document.getElementById('cl-name').value.trim();
   // novalidate로 브라우저 자체검증을 껐기 때문에, 상호명 필수 체크는 여기서 직접 안내하며 처리함
   if(!name){
@@ -23009,16 +23059,10 @@ async function handleClientFormSubmit(){
     // 누르면 팝업 대신 기장거래처 화면이 보이면 좋겠다"는 요청으로 팝업 재오픈은 없애고 그 거래처가 있는
     // 목록 화면으로만 이동함. 거래처등록 탭에서 새로 만들거나 직접 들어와 수정한 경우엔 예전처럼 폼에
     // 남아서 이어서 다른 항목을 고를 수 있게 둠
-    const reopen = (c && clientPostSaveReopen && clientPostSaveReopen.clientId === c.id) ? clientPostSaveReopen : null;
+    // [2026.10.01] "수정완료하면 기장거래처 화면으로 돌아가지 말고, 수정화면에 그대로 있으면서 상세정보 팝업이 뜨게"(요청)
     clientPostSaveReopen = null;
-    if(c && reopen){
-      const targetTab = c.status === '해지' ? 'clients-terminated'
-        : ['기장대행','신고대리'].includes(c.taxType) ? 'clients-regular' : 'clients-other';
-      document.querySelector(`.tab-btn[data-tab="${targetTab}"]`)?.click();
-    } else {
-      // 수정 저장 후에는 폼을 비우지 않고, 방금 수정한 내용을 보여준 채로 잠가둠 (신규등록/수정 버튼으로 다음 동작 선택)
-      lockClientFormAfterEdit();
-    }
+    lockClientFormAfterEdit();
+    if(c) openClientDetailModal(c);
     return;
   }
   const newClient = {
@@ -36716,7 +36760,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.01 21:00';
+const APP_BUILD = '2026.10.01 21:20';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
