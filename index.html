@@ -1921,6 +1921,9 @@
   .it-all-table th.it-all-sub{ font-size:10px; font-weight:700; padding:4px 2px; color:var(--ink) !important; }
   /* 월 머리글과 그 아래 국세/지방세 머리글 사이 구분선 */
   .it-all-table thead tr:nth-child(2) th{ border-bottom:1.5px solid rgba(29,30,51,0.22) !important; }
+  /* 스크롤 시 떠서 따라오는 머리글 - 아래 내용이 비치지 않게 바탕을 채우고 맨 위로 */
+  #itAllTableWrap .it-all-table thead th{ z-index:6; }
+  #itAllTableWrap .it-all-table thead.it-head-floating tr:last-child th{ box-shadow:0 2px 4px -2px rgba(29,30,51,0.18); }
   .it-stage-dots{ display:inline-flex; gap:3px; align-items:center; justify-content:center; }
   .it-stage-dots i{ width:5px; height:5px; border-radius:50%; border:1.2px solid #C9B88A; background:transparent; display:inline-block; box-sizing:border-box; }
   .it-stage-dots i.on{ background:#B4830E; border-color:#B4830E; }
@@ -26413,7 +26416,25 @@ function renderIncomeTaxUnified(){
       else openItAllDateEditModal(clientId, period);
     });
   });
+  syncItAllStickyHead();
 }
+// [2026.10.01] "스크롤 내려도 첫 행(머리글) 고정"(요청) - 이 표는 가로 넘침 때문에 박스에 overflow-x:auto가 있어서
+// CSS sticky가 페이지 기준으로 안 붙음. 그래서 페이지를 내리면 머리글 칸을 위 아이콘 줄 바로 아래 위치로 옮겨 그려줌(표 끝을 넘지는 않음)
+function syncItAllStickyHead(){
+  const tbl = document.querySelector('#itAllTableWrap table.it-all-table');
+  const thead = tbl && tbl.tHead;
+  if(!thead) return;
+  const ths = thead.querySelectorAll('th');
+  if(!tbl.offsetParent){ ths.forEach(th=> th.style.transform = ''); return; }
+  const topH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--top-bar-h')) || 0;
+  const r = tbl.getBoundingClientRect();
+  const dy = Math.max(0, Math.min(topH - r.top, r.height - thead.offsetHeight - 40));
+  const v = dy > 0 ? `translateY(${Math.round(dy)}px)` : '';
+  ths.forEach(th=>{ if(th.style.transform !== v) th.style.transform = v; });
+  thead.classList.toggle('it-head-floating', dy > 0);
+}
+window.addEventListener('scroll', ()=> syncItAllStickyHead(), { passive:true, capture:true });
+window.addEventListener('resize', ()=> syncItAllStickyHead(), { passive:true });
 document.getElementById('itAllYear')?.addEventListener('change', (e)=>{ itAllYear = e.target.value; renderIncomeTaxUnified(); saveFilingSubviewState(); });
 document.getElementById('itAllSearch')?.addEventListener('input', ()=> renderIncomeTaxUnified());
 // 신고일자 입력 팝업 - 이미 신고대상으로 등록된 달(칸)을 눌렀을 때 뜨며, 지급시기별 원천세·지방세 신고일자·
@@ -33040,6 +33061,32 @@ async function restoreFullBackupData(data, msgEl){
       await saveSharedReviewStatus();
       await saveSharedFilingHelp();
       await saveSharedApprovals();
+      // [2026.10.01] 전체 백업 파일에는 들어있는데 복구할 때 빠지던 항목들(검토표·신고대상·신고구분·원천세/부가세 신고현황·손익보고서·
+      // 세무일정·내규 이력·조직도·자리배치도·인사팀 정보·휴지통 등)도 함께 되살림. 예전 백업 파일처럼 그 항목이 아예 없으면 지금 값을 그대로 둠
+      if(data.shared.notificationLog !== undefined){ sharedNotificationLog = data.shared.notificationLog; try{ await saveSharedNotificationLog(); }catch(e){ console.error('복구 저장 실패: notificationLog', e); } }
+      if(data.shared.notificationReadState !== undefined){ sharedNotificationReadState = data.shared.notificationReadState; try{ await saveSharedNotificationReadState(); }catch(e){ console.error('복구 저장 실패: notificationReadState', e); } }
+      if(data.shared.specialPeriodHistory !== undefined){ sharedSpecialPeriodHistory = data.shared.specialPeriodHistory; try{ await saveSharedSpecialPeriodHistory(); }catch(e){ console.error('복구 저장 실패: specialPeriodHistory', e); } }
+      if(data.shared.reviewFigures !== undefined){ sharedReviewFigures = data.shared.reviewFigures; try{ await saveSharedReviewFigures(); }catch(e){ console.error('복구 저장 실패: reviewFigures', e); } }
+      if(data.shared.reviewMeta !== undefined){ sharedReviewMeta = data.shared.reviewMeta; try{ await saveSharedReviewMeta(); }catch(e){ console.error('복구 저장 실패: reviewMeta', e); } }
+      if(data.shared.profitLossReports !== undefined){ sharedProfitLossReports = data.shared.profitLossReports; try{ await saveSharedProfitLossReports(); }catch(e){ console.error('복구 저장 실패: profitLossReports', e); } }
+      if(data.shared.filingTargets !== undefined){ sharedFilingTargets = data.shared.filingTargets; try{ await saveSharedFilingTargets(); }catch(e){ console.error('복구 저장 실패: filingTargets', e); } }
+      if(data.shared.filingCycles !== undefined){ sharedFilingCycles = data.shared.filingCycles; try{ await saveSharedFilingCycles(); }catch(e){ console.error('복구 저장 실패: filingCycles', e); } }
+      if(data.shared.autoPhrases !== undefined){ sharedAutoPhrases = data.shared.autoPhrases; try{ await saveSharedAutoPhrases(); }catch(e){ console.error('복구 저장 실패: autoPhrases', e); } }
+      if(data.shared.itFilingStatus !== undefined){ sharedIncomeTaxFilingStatus = data.shared.itFilingStatus; try{ await saveSharedIncomeTaxFilingStatus(); }catch(e){ console.error('복구 저장 실패: itFilingStatus', e); } }
+      if(data.shared.vatFilingTargets !== undefined){ sharedVatFilingTargets = data.shared.vatFilingTargets; try{ await saveSharedVatFilingTargets(); }catch(e){ console.error('복구 저장 실패: vatFilingTargets', e); } }
+      if(data.shared.vatReviewFigures !== undefined){ sharedVatReviewFigures = data.shared.vatReviewFigures; try{ await saveSharedVatReviewFigures(); }catch(e){ console.error('복구 저장 실패: vatReviewFigures', e); } }
+      if(data.shared.trash !== undefined){ sharedTrash = data.shared.trash; try{ await saveSharedTrash(); }catch(e){ console.error('복구 저장 실패: trash', e); } }
+      if(data.shared.lunchLimitHistory !== undefined){ sharedLunchLimitHistory = data.shared.lunchLimitHistory; try{ await saveSharedLunchLimitHistory(); }catch(e){ console.error('복구 저장 실패: lunchLimitHistory', e); } }
+      if(data.shared.taxScheduleOverrides !== undefined){ sharedTaxScheduleOverrides = data.shared.taxScheduleOverrides; try{ await saveSharedTaxScheduleOverrides(); }catch(e){ console.error('복구 저장 실패: taxScheduleOverrides', e); } }
+      if(data.shared.taxScheduleOverrideHistory !== undefined){ sharedTaxScheduleOverrideHistory = data.shared.taxScheduleOverrideHistory; try{ await saveSharedTaxScheduleOverrideHistory(); }catch(e){ console.error('복구 저장 실패: taxScheduleOverrideHistory', e); } }
+      if(data.shared.taxScheduleCustomItems !== undefined){ sharedTaxScheduleCustomItems = data.shared.taxScheduleCustomItems; try{ await saveSharedTaxScheduleCustomItems(); }catch(e){ console.error('복구 저장 실패: taxScheduleCustomItems', e); } }
+      if(data.shared.teamPolicyHistory !== undefined){ sharedTeamPolicyHistory = data.shared.teamPolicyHistory; try{ await saveSharedTeamPolicyHistory(); }catch(e){ console.error('복구 저장 실패: teamPolicyHistory', e); } }
+      if(data.shared.opsPolicyHistory !== undefined){ sharedOpsPolicyHistory = data.shared.opsPolicyHistory; try{ await saveSharedOpsPolicyHistory(); }catch(e){ console.error('복구 저장 실패: opsPolicyHistory', e); } }
+      if(data.shared.quickGuideHistory !== undefined){ sharedQuickGuideHistory = data.shared.quickGuideHistory; try{ await saveSharedQuickGuideHistory(); }catch(e){ console.error('복구 저장 실패: quickGuideHistory', e); } }
+      if(data.shared.notificationPrefs !== undefined){ sharedNotificationPrefs = data.shared.notificationPrefs; try{ await saveSharedNotificationPrefs(); }catch(e){ console.error('복구 저장 실패: notificationPrefs', e); } }
+      if(data.shared.seatChart !== undefined){ sharedSeatChart = data.shared.seatChart; try{ await saveSharedSeatChart(); }catch(e){ console.error('복구 저장 실패: seatChart', e); } }
+      if(data.shared.orgChart !== undefined){ sharedOrgChart = data.shared.orgChart; try{ await saveSharedOrgChart(); }catch(e){ console.error('복구 저장 실패: orgChart', e); } }
+      if(data.shared.hrTeamInfo !== undefined){ sharedHrTeamInfo = data.shared.hrTeamInfo; try{ await saveSharedHrTeamInfo(); }catch(e){ console.error('복구 저장 실패: hrTeamInfo', e); } }
     }
     if(!data.profiles.find(p=>p.id===activeProfileId)){
       setActiveProfileId(data.profiles[0] ? data.profiles[0].id : null);
@@ -36177,7 +36224,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.01 15:14';
+const APP_BUILD = '2026.10.01 15:20';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
