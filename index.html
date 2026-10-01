@@ -799,7 +799,7 @@
   #dashPresenceCard > .home-dash-card-title .backup-info-btn, #dashPresenceCard .home-dash-presence-at{ color:#5A4E86 !important; white-space:nowrap; }
   #dashPresenceCard > .home-dash-card-body{ margin-top:46px; } /* 물결 높이·곡선을 출퇴근 카드와 똑같이(96px, 30px) 맞춘 만큼 목록 시작도 물결 아래로 */
   #dashPresenceCard .home-dash-pres-row.pres-b{ padding:11px 6px; }
-  #dashPresenceCard .staff-initial{ width:38px !important; height:38px !important; box-shadow:0 0 0 2.5px #fff, 0 0 0 4px #F3D7E4; }
+  #dashPresenceCard .staff-initial{ width:38px !important; height:38px !important; box-shadow:0 0 0 2.5px #fff, 0 0 0 4px #F3D7E4; font-weight:600 !important; letter-spacing:.03em !important; } /* 이니셜(흰 글씨)이 너무 굵다(요청) - 900→600 */
   #dashPresenceCard .home-dash-pres-name{ font-size:14px; }
   .pres-body-c .pres-list{ flex:1 1 auto; min-height:0; overflow-y:auto; }
   .pres-foot{ flex:none; display:flex; justify-content:center; align-items:center; gap:6px; margin-top:8px; padding-top:9px; border-top:1px solid var(--border); font-size:11.5px; font-weight:700; white-space:nowrap; }
@@ -36415,7 +36415,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.01 16:03';
+const APP_BUILD = '2026.10.01 16:05';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -39982,7 +39982,9 @@ function gmailSetBadge(n){
   const btn = document.getElementById('mailNotifyBtn');
   if(btn) btn.title = n > 0 ? `Gmail 열기 · 받은편지함 안 읽은 메일 ${n}건` : 'Gmail 열기 (연결된 Google 계정)';
 }
-function gmailRequestCountToken(interactive){
+// [2026.10.01] "Gmail API는 켜져 있는데 계속 !"(요청) - 구글 허용 창에서 권한 체크칸이 빠진 채 허용됐거나 예전 권한이 꼬이면, 창이 바로 닫히면서도
+// 메일 권한이 없는 토큰이 와서 계속 실패함. 받은 토큰에 메일 개수 권한이 실제로 들어있는지 확인하고, 없으면 허용 창을 다시(동의 화면부터) 띄움
+function gmailRequestCountToken(interactive, forceConsent){
   return new Promise(resolve=>{
     try{
       const clientId = (localStorage.getItem('worklog_gdrive_client_id')||'').trim();
@@ -39991,12 +39993,17 @@ function gmailRequestCountToken(interactive){
       gmailCountClient = google.accounts.oauth2.initTokenClient({
         client_id: clientId, scope: GMAIL_COUNT_SCOPE, login_hint: email || undefined,
         callback: (resp)=>{
-          if(resp && resp.access_token){ gmailCountToken = resp.access_token; gmailCountTokenExp = Date.now() + ((Number(resp.expires_in)||3600) - 120)*1000; gmailSaveCountToken(); resolve(true); }
-          else resolve(false);
+          if(resp && resp.access_token){
+            let granted = true;
+            try{ if(google.accounts.oauth2.hasGrantedAllScopes) granted = google.accounts.oauth2.hasGrantedAllScopes(resp, GMAIL_COUNT_SCOPE); }catch(e){}
+            if(!granted){ gmailLastErr = { status:'scope', msg:'메일 개수 권한이 허용되지 않음' }; return resolve(false); }
+            gmailCountToken = resp.access_token; gmailCountTokenExp = Date.now() + ((Number(resp.expires_in)||3600) - 120)*1000; gmailSaveCountToken(); resolve(true);
+          }
+          else { gmailLastErr = { status:(resp && resp.error) || 'token', msg:(resp && resp.error_description) || '' }; resolve(false); }
         },
-        error_callback: ()=> resolve(false),
+        error_callback: (err)=>{ gmailLastErr = { status:(err && err.type) || 'popup', msg:'' }; resolve(false); },
       });
-      gmailCountClient.requestAccessToken(interactive ? {} : { prompt: '' });
+      gmailCountClient.requestAccessToken(forceConsent ? { prompt: 'consent' } : interactive ? {} : { prompt: '' });
     }catch(e){ resolve(false); }
   });
 }
@@ -40012,7 +40019,7 @@ function gmailSaveCountToken(){
 })();
 function gmailSetNeedsAuth(on){
   const el = document.getElementById('mailUnreadBadge'); if(!el) return;
-  if(on){ el.textContent = '!'; el.style.display = 'inline-flex'; const btn = document.getElementById('mailNotifyBtn'); if(btn) btn.title = 'Gmail 열기 · 안 읽은 메일 수를 다시 받으려면 한 번 눌러주세요'; }
+  if(on){ el.textContent = '!'; el.style.display = 'inline-flex'; const btn = document.getElementById('mailNotifyBtn'); if(btn) btn.title = 'Gmail 열기 · 안 읽은 메일 수를 다시 받으려면 한 번 눌러주세요' + (gmailLastErr ? ` (사유: ${gmailLastErr.status}${gmailLastErr.msg ? ' · ' + String(gmailLastErr.msg).slice(0,80) : ''})` : ''); }
 }
 async function gmailFetchUnread(token){
   const r = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/labels/INBOX', { headers:{ Authorization:'Bearer ' + token } });
@@ -40070,7 +40077,12 @@ document.getElementById('mailNotifyBtn').addEventListener('click', async ()=>{
     // 다른 기기에서 켠 경우 - 이 기기에 아직 권한(토큰)이 없으면 조용히 받아보고, 안 되면 이번 한 번만 허용 창을 띄움
     if(!(gmailCountToken && Date.now() < gmailCountTokenExp) && !(await gmailRequestCountToken(false))){ await gmailRequestCountToken(true); }
     await gmailRefreshUnread();
-    // 숫자를 못 받은 이유(gmailLastErr)는 직원에게 알림창으로 띄우지 않고 콘솔에만 남김 - Gmail API 켜기는 관리자가 한 번만 하면 되는 일이라(요청)
+    // 그래도 못 받았으면(권한이 빠진 토큰 등) 허용 창을 동의 화면부터 한 번 더 띄우고 다시 확인
+    if(gmailLastErr){
+      gmailCountToken = ''; gmailCountTokenExp = 0; gmailSaveCountToken();
+      if(await gmailRequestCountToken(true, true)) await gmailRefreshUnread();
+    }
+    // 숫자를 못 받은 이유(gmailLastErr)는 직원에게 알림창으로 띄우지 않고 콘솔·아이콘 설명(마우스 올림)에만 남김(요청)
     gmailStartUnreadPolling();
     setTimeout(gmailRefreshUnread, 60*1000); // 메일을 읽고 돌아오면 숫자가 줄어들게 조금 뒤 다시 확인
   }
