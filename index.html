@@ -2027,6 +2027,8 @@
   /* 스크롤 시 떠서 따라오는 머리글 - 아래 내용이 비치지 않게 바탕을 채우고 맨 위로 */
   #itAllTableWrap table thead th{ z-index:6; }
   #itAllTableWrap table thead.it-head-floating tr:last-child th{ box-shadow:0 2px 4px -2px rgba(29,30,51,0.18); }
+  .it-note-ic{ display:inline-flex; vertical-align:-1px; margin-left:4px; color:var(--indigo-deep); opacity:.75; cursor:help; }
+  .it-note-ic:hover{ opacity:1; }
   .it-memo-star{ position:absolute; top:1px; right:3px; font-size:11px; font-weight:900; color:var(--coral); line-height:1; pointer-events:none; }
   .it-stage-tri{ display:inline-flex; align-items:center; justify-content:center; gap:0; font-size:10.5px; line-height:1; letter-spacing:-0.5px; font-family:'Pretendard',sans-serif; }
   .it-stage-tri svg{ width:9px; height:9px; display:block; fill:none; stroke:rgba(91,95,239,0.45); stroke-width:1.3; stroke-linejoin:round; }
@@ -6217,6 +6219,8 @@
                 <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
                   <span id="reviewItFsClientName" style="font-size:16.5px; font-weight:900; color:var(--navy);"></span>
                   <span id="reviewItFsSectionBadge" style="display:none;"></span>
+                  <!-- [2026.10.02] 거래처 특이사항(총괄 비고) 한 줄 - 있을 때만 -->
+                  <span id="reviewItFsClientNote" style="display:none; max-width:640px; font-size:11.5px; font-weight:600; color:var(--indigo-deep); background:rgba(91,95,239,0.08); border-radius:8px; padding:3px 10px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></span>
                   <div style="display:flex; align-items:center; gap:8px;">
                   <select id="reviewItFsYearSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:5px 7px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12px; font-weight:700;"></select>
                   <span id="reviewItFsTabs" class="it-seg" role="group" aria-label="검증 종류">
@@ -26966,7 +26970,7 @@ function renderIncomeTaxUnified(){
       }).join('');
       const span = lanes.length > 1 ? ` rowspan="${lanes.length}"` : '';
       const headCells = laneIdx > 0 ? '' : `<td class="num cvb"${span} style="color:var(--ink-soft);">${rowNo}</td>
-          <td class="cvb it-all-name"${span} style="color:${entityColor}; font-weight:800; white-space:nowrap;">${escHtml(c.name)}</td>`;
+          <td class="cvb it-all-name"${span} style="color:${entityColor}; font-weight:800; white-space:nowrap;">${escHtml(c.name)}${(()=>{ const nt = (itoEntry(c.id).note||'').trim(); return nt ? `<span class="it-note-ic" title="거래처 특이사항: ${escHtml(nt)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line></svg></span>` : ''; })()}</td>`; // [2026.10.02] 총괄 비고(거래처 특이사항)가 있으면 상호명 옆 남색 메모 아이콘(요청)
       // "매월/당월·매월/익월이 같이 있는 거래처는 검증도 각각 필요" 요청 - 지급시기 줄마다 따로 검증 버튼을 둠
       // (data-timing으로 어느 지급시기의 검증표를 열지 넘김, 한 줄짜리 거래처는 예전과 같음)
       const timingAttr = timingKey ? ` data-timing="${timingKey}"` : '';
@@ -28155,6 +28159,8 @@ function openReviewItFullscreen(clientId, section, timing){
   const client = bookkeepingClientList().find(c=>c.id===clientId);
   const nameEl = document.getElementById('reviewItFsClientName');
   if(nameEl) nameEl.textContent = (client ? client.name : '') + (reviewItFsTiming==='sameMonth' ? ' · 당월지급' : reviewItFsTiming==='nextMonth' ? ' · 익월지급' : '');
+  const noteEl2 = document.getElementById('reviewItFsClientNote');
+  if(noteEl2){ const nt = (itoEntry(clientId).note||'').trim(); noteEl2.textContent = nt ? '특이사항 · ' + nt : ''; noteEl2.title = nt; noteEl2.style.display = nt ? '' : 'none'; }
   populateReviewItYearSelectEl('reviewItFsYearSelect', clientId);
   renderReviewItFsMeta(clientId);
   showReviewItFsSection(viewingReviewItSection);
@@ -37195,7 +37201,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 02:10';
+const APP_BUILD = '2026.10.02 02:20';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
