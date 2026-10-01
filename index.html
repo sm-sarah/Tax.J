@@ -18433,7 +18433,7 @@ function dashboardWidgetHtml(key, shape){
     taxSchedule:{ title:'세무일정', link:'', bodyId:'dashTaxScheduleBody' },
     expense:    { goto:'expensesettle', title:'경비정산', link:'바로가기 →', bodyId:'dashExpenseBody' },
     filing:     { id:'dashFilingCard', title:'신고 진행률', link:'바로가기 →', bodyId:'dashFilingBody' },
-    presence:   { id:'dashPresenceCard', title:'실시간 근무현황', link:'', bodyId:'dashPresenceBody', afterTitle:'<button type="button" class="backup-info-btn" data-hint-info="dashPresence" title="설명 보기" aria-label="설명 보기" style="margin-left:2px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button>' },
+    presence:   { id:'dashPresenceCard', title:'실시간 근무현황', link:'', bodyId:'dashPresenceBody', afterTitle:'', infoBtn:'<button type="button" class="backup-info-btn" data-hint-info="dashPresence" title="설명 보기" aria-label="설명 보기" style="margin-left:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button>' }
   };
   const d = defs[key];
   if(!d) return '';
@@ -18446,7 +18446,7 @@ function dashboardWidgetHtml(key, shape){
   // 있었는데, 제목 줄에 붙이는 게 더 바로 보이고 공간도 아낄 수 있어서 옮김). 데이터에 의존하지 않는 정적
   // 버튼이라 renderDashboardTaxSchedulePreview()를 기다리지 않고 여기서 바로 만들고, 클릭 바인딩만
   // renderHomeDashboardGrid()에서 함께 해줌
-  const linkHtml = key === 'presence' ? `<span class="home-dash-presence-at" id="dashPresenceAt"></span>` : key === 'taxSchedule'
+  const linkHtml = key === 'presence' ? `<span style="display:inline-flex; align-items:center; gap:4px;"><span class="home-dash-presence-at" id="dashPresenceAt"></span>${d.infoBtn||''}</span>` /* [2026.10.01] (i)는 제목 옆 대신 오른쪽 기준 시각 옆으로(요청) */ : key === 'taxSchedule'
     ? `<span class="home-dash-tax-shortcut-row-title">${TAX_FILING_STATUS_SHORTCUTS.map(t=>`<button type="button" class="home-dash-tax-shortcut-btn" data-filing-type="${t}">${escHtml(t)}</button>`).join('')}</span>`
     : `<span class="home-dash-card-link">${d.link}</span>`;
   // accent(위젯 색상)는 위젯 설정 미리보기(DASHBOARD_WIDGET_DEFS)와 항상 같은 값을 쓰도록 여기서 새로
@@ -36415,7 +36415,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.01 15:56';
+const APP_BUILD = '2026.10.01 16:01';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -39954,6 +39954,7 @@ document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState 
 const GMAIL_COUNT_SCOPE = 'https://www.googleapis.com/auth/gmail.labels';
 const GMAIL_COUNT_PREF_KEY = 'taxj_gmail_unread_pref'; // 'on' | 'off' (이 기기에 기억)
 let gmailCountToken = '', gmailCountTokenExp = 0, gmailCountClient = null, gmailCountTimer = null;
+let gmailLastErr = null; // 마지막 조회 실패 이유(상태코드·구글 안내 문구) - 아이콘을 눌렀는데도 숫자를 못 받으면 이유를 알려줌
 // [2026.10.01] "메일 설정을 기기마다 해야 하나"(요청) - 표시 여부를 계정 기준(공용 알림설정 sharedNotificationPrefs[이메일].gmailCount)으로 저장해서
 // 한 기기에서 고르면 다른 기기에서는 다시 묻지 않음. 계정 값이 없으면 예전처럼 이 기기에 저장된 값을 씀
 function gmailCountPref(){
@@ -40015,7 +40016,13 @@ function gmailSetNeedsAuth(on){
 }
 async function gmailFetchUnread(token){
   const r = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/labels/INBOX', { headers:{ Authorization:'Bearer ' + token } });
-  if(!r.ok){ console.warn('Gmail 안 읽은 메일 수 조회 실패', r.status); return { ok:false, status:r.status }; }
+  if(!r.ok){
+    let msg = ''; try{ const j = await r.json(); msg = (j && j.error && j.error.message) || ''; }catch(e){}
+    console.warn('Gmail 안 읽은 메일 수 조회 실패', r.status, msg);
+    gmailLastErr = { status:r.status, msg };
+    return { ok:false, status:r.status };
+  }
+  gmailLastErr = null;
   const j = await r.json();
   return { ok:true, n: Number(j.messagesUnread)||0 };
 }
@@ -40034,10 +40041,8 @@ async function gmailRefreshUnread(){
       const res = await gmailFetchUnread(gdriveAccessToken);
       if(res.ok) return gmailSetBadge(res.n);
     }
-    if(await gmailRequestCountToken(false)){
-      const res = await gmailFetchUnread(gmailCountToken);
-      if(res.ok) return gmailSetBadge(res.n);
-    }
+    // [2026.10.01] "접속할 때마다 로그인 창이 잠깐 떴다 사라진다"(요청) - 자동 확인(2분마다·화면 돌아올 때) 중에 권한을 다시 받으려고
+    // 구글 창을 여는 시도를 빼고, 기억해 둔 권한·로그인 권한으로만 확인함. 둘 다 안 되면 "!"만 띄우고, 창은 메일 아이콘을 눌렀을 때만 열림
     gmailSetNeedsAuth(true);
   }catch(e){ console.warn('Gmail 안 읽은 메일 수 조회 오류', e); }
 }
@@ -40064,7 +40069,17 @@ document.getElementById('mailNotifyBtn').addEventListener('click', async ()=>{
   } else if(gmailCountPref() === 'on'){
     // 다른 기기에서 켠 경우 - 이 기기에 아직 권한(토큰)이 없으면 조용히 받아보고, 안 되면 이번 한 번만 허용 창을 띄움
     if(!(gmailCountToken && Date.now() < gmailCountTokenExp) && !(await gmailRequestCountToken(false))){ await gmailRequestCountToken(true); }
-    gmailRefreshUnread();
+    await gmailRefreshUnread();
+    // [2026.10.01] "허용 창 없이 바로 닫히는데 계속 !가 떠요"(요청) - 권한은 이미 받은 상태라 창이 바로 닫히는 건 정상. 그런데도 숫자를 못 받으면
+    // 구글이 돌려준 이유를 그대로 알려줌(대부분 Google Cloud 프로젝트에서 Gmail API가 꺼져 있는 경우)
+    if(gmailLastErr){
+      const m = gmailLastErr.msg || '';
+      const link = (m.match(/https:\/\/console\.developers\.google\.com\S+/) || m.match(/https:\/\/console\.cloud\.google\.com\S+/) || [''])[0].replace(/[.)]+$/,'');
+      const off = gmailLastErr.status === 403 && /has not been used|is disabled|accessNotConfigured|SERVICE_DISABLED/i.test(m);
+      appAlert(off
+        ? `안 읽은 메일 수를 못 가져왔어요.\n\n원인: Google Cloud 프로젝트에서 Gmail API가 꺼져 있어요.\n관리자가 Google Cloud 콘솔 › API 및 서비스 › 라이브러리에서 "Gmail API"를 찾아 "사용"을 누르면 해결돼요.${link ? '\n\n바로가기: ' + link : ''}`
+        : `안 읽은 메일 수를 못 가져왔어요.\n\n구글 응답: ${gmailLastErr.status}${m ? ' · ' + m : ''}`);
+    }
     gmailStartUnreadPolling();
     setTimeout(gmailRefreshUnread, 60*1000); // 메일을 읽고 돌아오면 숫자가 줄어들게 조금 뒤 다시 확인
   }
