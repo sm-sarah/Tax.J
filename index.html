@@ -1874,6 +1874,15 @@
   .it-seg button{ border:none; background:transparent; color:var(--ink-soft); font-family:inherit; font-size:11.5px; font-weight:700; height:22px; padding:0 10px; border-radius:999px; cursor:pointer; }
   .it-seg button.on{ background:var(--indigo); color:#fff; }
   #reviewItFsTabs button{ height:24px; padding:0 14px; font-size:12px; }
+  /* [2026.10.01] 검증 팝업 탭 - 급여: 소득별 지급액(총지급액 계산까지) + 급여명세서 기준 세액 / 신고서: 총지급액(계산·신고서·검증) + 신고서 기준 세액 */
+  .rv-pay #reviewItIncomeWrap::before{ content:'급여'; display:block; font-size:12px; font-weight:800; color:var(--indigo-deep); margin:0 0 8px 12px; }
+  .rv-pay #reviewItIncomeWrap table tr > :nth-child(16), .rv-pay #reviewItIncomeWrap table tr > :nth-child(17){ display:none; }
+  .rv-pay #reviewItIncomeWrap{ margin-bottom:22px; }
+  .rv-return #reviewItIncomeWrap{ display:none !important; }
+  .rv-pay #reviewItTaxWrap > div:nth-of-type(2), .rv-pay #reviewItTaxWrap > table:nth-of-type(2){ display:none; }
+  .rv-return #reviewItTaxWrap > div, .rv-return #reviewItTaxWrap > table:nth-of-type(1){ display:none; }
+  /* 신고서 탭 - 총지급액(계산·신고서·검증) 칸을 신고서 세액 표 앞쪽에 붙여 한 표로(오른쪽이 비어 보이지 않게) */
+  #reviewItTaxWrap th.rv-merged-h{ background:var(--indigo-bg); }
   #reviewItFsYearSelect{ height:30px; box-sizing:border-box; }
   /* 대시보드 세무일정 위젯 - 원천세 미신고 알림 줄 */
   .home-dash-it-alert{ display:flex; align-items:center; gap:8px; width:100%; margin:0 0 8px; padding:7px 10px; border-radius:9px; border:1px solid var(--border);
@@ -5985,7 +5994,7 @@
                   <span id="reviewItFsClientName" style="font-size:16.5px; font-weight:900; color:var(--navy);"></span>
                   <span id="reviewItFsSectionBadge" style="display:none;"></span>
                   <span id="reviewItFsTabs" class="it-seg" role="group" aria-label="검증 종류">
-                    <button type="button" class="review-it-fs-tab" data-section="income">급여</button><button type="button" class="review-it-fs-tab" data-section="tax">세액</button>
+                    <button type="button" class="review-it-fs-tab" data-section="income" title="급여명세서를 보고 입력 - 소득별 지급액 · 소득세/지방세">급여</button><button type="button" class="review-it-fs-tab" data-section="tax" title="신고서를 보고 입력 - 총지급액 · 소득세 · 지방세와 검증">신고서</button>
                   </span>
                   <select id="reviewItFsYearSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:5px 7px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12px; font-weight:700;"></select>
                 </div>
@@ -6004,7 +6013,7 @@
                   <button type="button" id="reviewItFsCloseBtn" title="닫기" aria-label="닫기" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:1.5px solid var(--border); background:var(--bg); color:var(--ink-soft); display:inline-flex; align-items:center; justify-content:center; padding:0; cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
                 </div>
               </div>
-              <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; flex-direction:row-reverse;">
                 <div id="reviewItFsMetaWrap" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:11.5px; color:var(--ink-soft);"></div>
                 <span id="reviewItFsTimingNote" class="review-timing-note" style="display:none;"></span>
               </div>
@@ -27103,9 +27112,9 @@ function refreshReviewItIncomeRow(clientId, year, month){
   if(!row) return;
   const meta = reviewItMeta(clientId);
   const data = reviewItMonthData(clientId, year, month);
-  const totalCell = row.querySelector('.review-it-income-total-cell');
+  const totalCell = row.querySelector('.review-it-income-total-cell') || document.querySelector(`#reviewItTaxWrap .review-it-income-total-cell[data-month="${month}"]`);
   if(totalCell) totalCell.textContent = reviewItIncomeTotal(data).toLocaleString();
-  const checkCell = row.querySelector('.review-it-income-check-cell');
+  const checkCell = row.querySelector('.review-it-income-check-cell') || document.querySelector(`#reviewItTaxWrap .review-it-income-check-cell[data-month="${month}"]`);
   if(checkCell) checkCell.innerHTML = reviewItIncomeCheckMark(clientId, year, month, meta);
 }
 function refreshReviewItTaxRow(clientId, year, month){
@@ -27269,7 +27278,7 @@ function renderReviewItTaxTable(clientId, year){
   // 귀속월 칸이 더 넓어지는 등) 위아래로 폭이 안 맞았음 - 두 표 모두 같은 고정폭을 줘서 맞춤
   const monthColStyle = `width:56px;`;
   wrap.innerHTML = `
-    <div style="font-size:12px; font-weight:800; color:var(--indigo-deep); margin:0 0 8px 12px;">급여명세서 기준</div>
+    <div style="font-size:12px; font-weight:800; color:var(--indigo-deep); margin:0 0 8px 12px;">세액</div>
     <table style="margin-bottom:26px;"><thead>
       <tr>
         <th class="cvb" rowspan="2" style="${monthColStyle}">귀속월</th>
@@ -27278,7 +27287,7 @@ function renderReviewItTaxTable(clientId, year){
       </tr>
       <tr>${subHeaderCells}</tr>
     </thead><tbody>${monthlyCells}</tbody></table>
-    <div style="font-size:12px; font-weight:800; color:var(--indigo-deep); margin:0 0 8px 12px;">신고서 기준</div>
+    <div style="font-size:12px; font-weight:800; color:var(--indigo-deep); margin:0 0 8px 12px;">신고서</div>
     <table><thead>
       <tr>
         <th class="cvb" rowspan="2" style="${monthColStyle}">귀속월</th>
@@ -27405,12 +27414,13 @@ function renderReviewItFsMeta(clientId){
   if(!clientId){ box.innerHTML = ''; return; }
   const meta = reviewItMeta(clientId);
   box.innerHTML = `
+    <!-- [2026.10.01] "매월·반기 칩은 비중 작게"(요청) - 큰 칩 대신 작은 선택칸 -->
     <span style="display:inline-flex; align-items:center; gap:5px;">
       <span style="font-weight:700;">신고구분</span>
-      <span class="policy-category-toggle" id="reviewItFsCycleToggle" style="margin-bottom:0;">
-        <button type="button" class="review-it-cycle-btn ${meta.payCycle==='매월' ? 'active' : ''}" data-cycle="매월">매월</button>
-        <button type="button" class="review-it-cycle-btn ${meta.payCycle==='반기' ? 'active' : ''}" data-cycle="반기">반기</button>
-      </span>
+      <select id="reviewItFsCycleSelect" style="border:1.5px solid var(--border); border-radius:8px; padding:3px 5px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:11px;">
+        <option value="매월" ${meta.payCycle!=='반기' ? 'selected' : ''}>매월</option>
+        <option value="반기" ${meta.payCycle==='반기' ? 'selected' : ''}>반기</option>
+      </select>
     </span>
     <span style="display:inline-flex; align-items:center; gap:5px;" title="연중에 신고구분이 바뀐 거래처면 7월부터 적용할 구분을 골라주세요(반기 신고는 7월 기준으로만 바뀌므로 선택지도 그 시점 하나뿐이에요)">
       <span style="font-weight:700;">7월부터</span>
@@ -27420,14 +27430,10 @@ function renderReviewItFsMeta(clientId){
         <option value="반기" ${meta.secondHalfPayCycle==='반기' ? 'selected' : ''}>반기로 전환</option>
       </select>
     </span>`;
-  box.querySelectorAll('.review-it-cycle-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      box.querySelectorAll('.review-it-cycle-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      reviewItMeta(clientId).payCycle = btn.dataset.cycle;
-      setReviewItDirty(true);
-      renderReviewItFsSection();
-    });
+  document.getElementById('reviewItFsCycleSelect')?.addEventListener('change', (e)=>{
+    reviewItMeta(clientId).payCycle = e.target.value;
+    setReviewItDirty(true);
+    renderReviewItFsSection();
   });
   const secondHalfSel = document.getElementById('reviewItFsSecondHalfCycleSelect');
   if(secondHalfSel){
@@ -27444,8 +27450,32 @@ function renderReviewItFsSection(){
   const clientId = reviewItFsClientId;
   if(!clientId) return;
   const year = Number(document.getElementById('reviewItFsYearSelect')?.value) || Number(todayStr().slice(0,4));
-  if(viewingReviewItSection === 'income') renderReviewItIncomeTable(clientId, year);
-  else renderReviewItTaxTable(clientId, year);
+  // [2026.10.01] "급여 / 신고서로 나눠서 보는 자료별로 입력"(요청) - 두 표를 모두 그려 두고, 탭에 따라 보여줄 열·표만 고름(CSS rv-pay / rv-return)
+  renderReviewItIncomeTable(clientId, year);
+  renderReviewItTaxTable(clientId, year);
+  if(viewingReviewItSection === 'tax') reviewItMergeTotalsIntoReturnTable();
+}
+// 급여 표의 마지막 3칸(총지급액 계산·신고서·검증)을 신고서 세액 표의 귀속월 바로 뒤로 옮겨 붙임 - 칸(td)을 그대로 옮겨서
+// 입력칸의 이벤트·자동 계산은 그대로 동작함(refreshReviewItIncomeRow는 data-month로 어디에 있든 찾음)
+function reviewItMergeTotalsIntoReturnTable(){
+  const inc = document.querySelector('#reviewItIncomeWrap table');
+  const ret = document.querySelectorAll('#reviewItTaxWrap > table')[1];
+  if(!inc || !ret) return;
+  const incHead = inc.querySelector('thead tr');
+  const retHead = ret.querySelector('thead tr');
+  if(!incHead || !retHead) return;
+  const hs = [...incHead.children].slice(-3);
+  const anchorTh = retHead.children[0];
+  hs.reverse().forEach(th=>{ th.setAttribute('rowspan', String(ret.querySelectorAll('thead tr').length)); th.classList.add('rv-merged-h'); anchorTh.after(th); });
+  const retRows = [...ret.querySelectorAll('tbody tr')];
+  [...inc.querySelectorAll('tbody tr')].forEach((tr, i)=>{
+    const target = retRows[i]; if(!target) return;
+    const m = tr.dataset.month;
+    const tds = [...tr.children].slice(-3);
+    tds.forEach(td=>{ if(m) td.dataset.month = m; });
+    let after = target.children[0];
+    tds.forEach(td=>{ after.after(td); after = td; });
+  });
 }
 // 급여검증/납부세액검증 전체화면 팝업을 염 - clientId・section(income|tax)을 받아 그 표만 딱 채워서 보여줌
 function openReviewItFullscreen(clientId, section, timing){
@@ -27481,10 +27511,9 @@ function openReviewItFullscreen(clientId, section, timing){
 function showReviewItFsSection(section){
   viewingReviewItSection = section === 'tax' ? 'tax' : 'income';
   document.querySelectorAll('#reviewItFsTabs .review-it-fs-tab').forEach(b=> b.classList.toggle('on', b.dataset.section === viewingReviewItSection));
-  ['reviewItIncomeWrap','reviewItTaxWrap'].forEach(id=>{
-    const el = document.getElementById(id);
-    if(el) el.style.display = (id === (viewingReviewItSection==='income' ? 'reviewItIncomeWrap' : 'reviewItTaxWrap')) ? '' : 'none';
-  });
+  const ov = document.getElementById('reviewItFullscreenOverlay');
+  if(ov){ ov.classList.toggle('rv-pay', viewingReviewItSection === 'income'); ov.classList.toggle('rv-return', viewingReviewItSection === 'tax'); }
+  ['reviewItIncomeWrap','reviewItTaxWrap'].forEach(id=>{ const el = document.getElementById(id); if(el) el.style.display = ''; });
   renderReviewItFsSection();
 }
 document.querySelectorAll('#reviewItFsTabs .review-it-fs-tab').forEach(b=> b.addEventListener('click', ()=> showReviewItFsSection(b.dataset.section)));
@@ -36109,7 +36138,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.01 14:43';
+const APP_BUILD = '2026.10.01 14:51';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
