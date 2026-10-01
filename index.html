@@ -8021,7 +8021,16 @@ function storageUsageStats(){
     if(/^worklog_shared_(review|filing|itfiling|vat|plreports)/.test(k)) return '신고·검토표';
     if(/^worklog_shared_notification/.test(k)) return '알림 기록';
     if(/^worklog_shared_notice/.test(k)) return '공지사항';
-    return '기타';
+    // [2026.10.01] "기타가 커서 뭔지 보고 싶다"(요청) - 기타를 더 잘게 나눔
+    if(k === 'worklog_shared_trash') return '휴지통(공용)';
+    if(k === 'worklog_shared_pushtokens' || k === 'worklog_shared_notificationprefs') return '알림 기기·알림 설정';
+    if(k === 'worklog_shared_field_updatedat') return '동기화 수정시각 기록';
+    if(/^worklog_shared_(companyinfo|companyname|orgchart|seatchart|teaminfo|hrteaminfo|admins|admin_names|manage)/.test(k)) return '회사정보·조직도·자리배치도·권한';
+    if(/^worklog_shared_(teampolicyhistory|opspolicyhistory|quickguidehistory|autophrases)/.test(k)) return '내규·지침·자주 쓰는 문구';
+    if(/^worklog_shared_(specialperiod|workhours|exclusions|lunchlimit|taxschedule)/.test(k)) return '근무기준·특별기간·세무일정 설정';
+    if(/^worklog_(sent_push_dupkeys|notified_|recent_)/.test(k) || /^taxj_/.test(k)) return '이 기기 전용 기록(알림 중복방지 등)';
+    if(/^worklog_/.test(k)) return '기타: ' + k.replace(/^worklog_(shared_)?/, '');
+    return '기타: 앱 밖 기록(' + k.slice(0, 24) + ')';
   };
   try{
     for(let i=0;i<localStorage.length;i++){
@@ -8041,6 +8050,7 @@ function renderStorageUsage(){
   const bar = document.getElementById('storageUsageBar');
   if(bar){ bar.style.width = Math.max(1, st.pct) + '%'; bar.style.background = st.pct >= 80 ? 'var(--coral)' : st.pct >= 60 ? 'var(--amber)' : 'var(--mint)'; }
   const d = document.getElementById('storageUsageDetail');
+  { const small = Object.entries(st.groups).filter(([g,n])=> /^기타: /.test(g) && n < 2048); if(small.length > 1){ let sum = 0; small.forEach(([g,n])=>{ sum += n; delete st.groups[g]; }); st.groups['기타(작은 항목 '+small.length+'개)'] = sum; } }
   if(d) d.innerHTML = Object.entries(st.groups).sort((a,b)=>b[1]-a[1]).map(([g,n])=>`<div style="display:flex; justify-content:space-between;"><span>${escHtml(g)}</span><span style="font-family:'IBM Plex Mono',monospace;">${storageFmt(n)}</span></div>`).join('')
     + `<div style="margin-top:4px;">기기마다 따로 계산돼요 · 동기화 기준본은 데이터와 거의 같은 크기의 사본이라 실제 사용량은 데이터의 약 2배예요</div>`;
 }
@@ -8052,6 +8062,14 @@ document.getElementById('storageUsageDetailBtn')?.addEventListener('click', ()=>
   document.getElementById('storageUsageDetailBtn').textContent = open ? '접기' : '자세히';
 });
 document.addEventListener('click', (e)=>{ if(e.target.closest && e.target.closest('[data-settings-target-id="ssTitle-backup"], [data-settings-anchor-goto="data"]')) setTimeout(()=>{ try{ renderStorageUsage(); }catch(_){} }, 50); }, true);
+// 날짜가 붙은 하루짜리 표시(taxj_storage_warn_날짜, taxj_sw_refresh_버전_날짜)는 지난 날 것을 지움 - 매일 하나씩 계속 쌓이지 않게
+function cleanupOldDailyKeys(){
+  try{
+    const today = todayStr(); const del = [];
+    for(let i=0;i<localStorage.length;i++){ const k = localStorage.key(i)||''; if(/^taxj_(storage_warn|sw_refresh)_/.test(k) && !k.endsWith(today)) del.push(k); }
+    del.forEach(k=>localStorage.removeItem(k));
+  }catch(e){}
+}
 async function maybeWarnStorageUsage(){
   try{
     const st = storageUsageStats();
@@ -34151,7 +34169,7 @@ async function maybePromptNewDeviceRegister(){
 }
 async function afterGdriveConnected(){
   setTimeout(()=>{ try{ maybePromptNewDeviceRegister(); }catch(e){} }, 8000); // 로그인·기기 목록을 받아온 뒤 새 기기면 등록 안내
-  setTimeout(()=>{ try{ renderStorageUsage(); maybeWarnStorageUsage(); }catch(e){} }, 15000); // 저장공간 80% 넘으면 하루 한 번 알림
+  setTimeout(()=>{ try{ cleanupOldDailyKeys(); renderStorageUsage(); maybeWarnStorageUsage(); }catch(e){} }, 15000); // 저장공간 80% 넘으면 하루 한 번 알림
   hideAppLoginGate();
   const syncBtn = document.getElementById('gdriveSyncBtn');
   if(syncBtn) syncBtn.disabled = false;
@@ -35752,7 +35770,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.01 12:09';
+const APP_BUILD = '2026.10.01 13:03';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
