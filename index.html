@@ -790,13 +790,16 @@
      띠는 카드 안쪽에 깔아서 둥근 모서리를 따라 자연스럽게 잘림. 안의 배치는 그대로 */
   #dashPresenceCard{ position:relative; overflow:hidden; border-radius:26px; box-shadow:0 1px 2px rgba(29,30,51,0.05), 0 18px 40px -24px rgba(29,30,51,0.35); }
   #dashPresenceCard > *{ position:relative; z-index:1; }
-  /* [2026.10.01 2안 · 채팅창] "메신저처럼"(요청) - 위 파스텔 띠·아래 물들임 대신 채팅창 모양: 맨 위 창 점 3개, 제목은 둥근 대화방 제목줄,
-     아래 요약은 메시지 입력창처럼 둥근 칸. 안의 배치는 그대로 */
-  #dashPresenceCard{ padding-top:30px; }
-  #dashPresenceCard::before{ content:''; position:absolute; top:12px; left:18px; width:9px; height:9px; border-radius:50%; background:#F7A9C4; box-shadow:15px 0 0 #FFD98A, 30px 0 0 #9BE3C4; z-index:2; pointer-events:none; }
-  #dashPresenceCard > .home-dash-card-title{ background:linear-gradient(90deg, #F1ECFF, #FDEBF2); border-bottom:none; border-radius:16px; padding:7px 10px; margin:0 -4px 2px; flex-wrap:nowrap; }
-  #dashPresenceCard > .home-dash-card-title .home-dash-presence-at{ white-space:nowrap; }
-  #dashPresenceCard .pres-foot{ border-top:none; border-radius:999px; background:#F6F4FC; border:1px solid #ECE8F8; padding:8px 14px; margin-top:8px; }
+  /* [2026.10.01 나안] "출퇴근 카드와 짝으로"(요청) - 채팅창 모양(둥근 제목칸·입력창 요약) 대신 위쪽에 출퇴근 카드와 같은 파스텔 물결 머리(색 방향만 반대),
+     제목은 흰 글자. 직원 줄은 조금 크게 해서 빈 공간을 줄임. 아래 요약은 다른 카드처럼 위 구분선 한 줄 */
+  #dashPresenceCard::before{ content:''; position:absolute; top:0; left:0; right:0; height:70px; background:linear-gradient(135deg,#C7B6FF,#FFB3C8); border-radius:0 0 50% 50% / 0 0 26px 26px; z-index:0; pointer-events:none; }
+  #dashPresenceCard > .home-dash-card-title{ border-bottom:none; color:#fff; padding:2px 2px 0; flex-wrap:nowrap; }
+  #dashPresenceCard > .home-dash-card-title .home-dash-card-title-badge{ background:rgba(255,255,255,.9); border-color:transparent; }
+  #dashPresenceCard > .home-dash-card-title .backup-info-btn, #dashPresenceCard .home-dash-presence-at{ color:#fff !important; white-space:nowrap; }
+  #dashPresenceCard > .home-dash-card-body{ margin-top:22px; }
+  #dashPresenceCard .home-dash-pres-row.pres-b{ padding:11px 6px; }
+  #dashPresenceCard .staff-initial{ width:38px !important; height:38px !important; box-shadow:0 0 0 2.5px #fff, 0 0 0 4px #F3D7E4; }
+  #dashPresenceCard .home-dash-pres-name{ font-size:14px; }
   .pres-body-c .pres-list{ flex:1 1 auto; min-height:0; overflow-y:auto; }
   .pres-foot{ flex:none; display:flex; justify-content:center; align-items:center; gap:6px; margin-top:8px; padding-top:9px; border-top:1px solid var(--border); font-size:11.5px; font-weight:700; white-space:nowrap; }
   .pres-foot b{ font-weight:900; }
@@ -14709,6 +14712,26 @@ async function renderClientDetailPersonalInfoSection(c, wrapId){
     </div>`;
   }).join('');
 }
+// [2026.10.01] 거래처 표의 ID/PW 아이콘 - "메모·상세정보 팝업과 같은 모양으로, 화면 가운데에"(요청). 예전엔 위쪽에 붙는 작은 창이 먼저 뜨고
+// 그 안의 자물쇠를 또 눌러야 비밀번호 창이 떠서 두 번 거쳐야 했음 - 이제 아이콘을 누르면 잠겨있을 때만 바로 비밀번호 창이 뜨고,
+// 맞으면 메모 팝업과 같은 공용 팝업(memoModalOverlay)에 남색 제목 띠 "ID/PW" 카드로 보여줌(이미 풀려있으면 비밀번호 없이 바로 열림)
+async function openClientPersonalInfoModal(c){
+  if(!gdriveAccessToken){ appAlert('로그인한 상태여야 볼 수 있어요.'); return; }
+  await unlockSensitiveView();
+  const unlocked = adminSensitiveUnlocked && adminCryptoKey && adminSensitiveUnlockUntil && Date.now() < adminSensitiveUnlockUntil;
+  if(!unlocked) return;
+  document.getElementById('memoModalTitleExtra').innerHTML = '';
+  document.getElementById('memoModalTitle').textContent = c.name || '거래처';
+  document.getElementById('memoModalBody').innerHTML = `
+    ${clientDetailIconRowHtml(c)}
+    <div style="background:var(--bg); border-radius:10px; overflow:hidden;">
+      <div style="background:var(--navy); padding:8px 12px; text-align:center; font-size:11.5px; font-weight:800; color:#fff; letter-spacing:0.06em;">ID/PW</div>
+      <div id="clientPiModalWrap" style="padding:6px 12px;"></div>
+    </div>`;
+  document.getElementById('memoModalOverlay').style.display = 'flex';
+  wireClientDetailHeadIcons(c, 'personal');
+  await renderClientDetailPersonalInfoSection(c, 'clientPiModalWrap');
+}
 function closeMemoModal(){
   document.getElementById('memoModalOverlay').style.display = 'none';
   document.getElementById('memoModalOverlay').dataset.noBackdropClose = '';
@@ -14986,10 +15009,7 @@ async function renderClientFilteredTable(wrapId, badgeId, searchInputId, filterF
       e.stopPropagation();
       const c = clients.list.find(x=>x.id===btn.dataset.id);
       if(!c) return;
-      const wid = 'clientPiPop_' + c.id;
-      document.getElementById(wid)?.closest('.floating-popup')?.querySelector('.floating-popup-close')?.click();
-      openDraggablePopup({ title: `${c.name || ''} · ID/PW`, html: `<div id="${wid}" style="padding:2px 4px;"></div>`, width: 420 });
-      renderClientDetailPersonalInfoSection(c, wid);
+      openClientPersonalInfoModal(c);
     });
   });
   wrap.querySelectorAll('.client-subtype-marker').forEach(marker=>{
@@ -31412,11 +31432,17 @@ function openDraggablePopup(opts){
   `;
   el.querySelector('.floating-popup-body').innerHTML = html;
   document.body.appendChild(el);
+  // [2026.10.01] "모든 팝업은 화면 가운데로"(요청) - 예전엔 화면 위쪽(70px)에 붙어서 열렸음. 내용 높이를 재서 세로도 가운데에 둠
+  // (내용이 늦게 채워지는 팝업도 있어서 다음 화면 그리기 때 한 번 더 맞춤. 화면보다 길면 위에서 16px)
+  let userMoved = false;
+  const centerY = ()=>{ if(userMoved || !el.isConnected) return; const h = el.offsetHeight; el.style.top = Math.max(16, Math.round((window.innerHeight - h) / 2) + cascade) + 'px'; };
+  centerY(); requestAnimationFrame(centerY);
   el.addEventListener('mousedown', ()=>{ el.style.zIndex = String(++floatPopupZ); });
   // 팝업을 닫을 때 아래 window mousemove/mouseup 리스너도 같이 정리함 - 안 그러면 팝업을 여러 번 열고
   // 닫을수록 리스너가 계속 쌓여서(누수) 마우스를 움직일 때마다 처리할 게 점점 늘어나 화면이 무거워짐
   const onMove = (e)=>{
     if(!dragging) return;
+    userMoved = true;
     el.style.left = (origX + (e.clientX - startX)) + 'px';
     el.style.top = (origY + (e.clientY - startY)) + 'px';
   };
@@ -36228,7 +36254,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.01 15:23';
+const APP_BUILD = '2026.10.01 15:38';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
