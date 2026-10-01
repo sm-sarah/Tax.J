@@ -5490,9 +5490,7 @@
     <!-- 제목·설명과 법인/팀 토글은 왼쪽 사이드바(Company > 사내정보 > 법인/팀)에 이미 목록으로 나와있어서
          화면에서는 숨김 - 토글 버튼 자체는 남겨둬서 사이드바 클릭이 원격으로 눌러 쓸 수 있게 함 -->
     <h2 class="section-title" style="justify-content:center; font-size:24px; display:none;">사내정보</h2>
-    <p class="hint" data-info="사내정보" data-info-inline style="font-size:12px; color:var(--ink-soft); text-align:center; margin-top:-6px; max-width:560px; margin-left:auto; margin-right:auto; display:none;">
-      회사 계정·장비 정보, 팀원별 업무 계정, 개인 메모를 모아두는 공간이에요.
-    </p>
+    <!-- [2026.10.01] "사내정보 회사정보 설명은 삭제해도 될 것 같다"(요청) - 화면 위 (i) 설명 없앰 -->
 
     <div class="policy-category-toggle" id="ciCategoryToggle" style="justify-content:center; display:none;">
       <button type="button" class="ci-cat-btn active" data-cat="corp"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="4" y="3" width="16" height="18" rx="1"></rect><path d="M9 21v-4h6v4"></path><path d="M9 7h.01M9 11h.01M15 7h.01M15 11h.01"></path></svg> 법인</button>
@@ -7203,7 +7201,7 @@
           <p class="info-lead">관리자로 등록된 이메일만 설정·데이터 메뉴와 공용 설정(공휴일, 근무시간, 지침 등)을 등록·수정·삭제할 수 있어요.<br>
           일반 직원은 로그인하면 본인 프로필로 자동 고정되고, 본인 근태·경비만 입력할 수 있어요.<br>
           관리자 이름을 등록해두면, 직원 프로필이 없는 관리자가 공지를 써도 작성자 이름이 정상적으로 표시돼요.</p>
-          <div class="info-cap"><b>관리자와 직원 화면 차이</b> <span style="color:var(--ink-soft); font-size:11px;">(2026.10.01 13:20 기준)</span></div>
+          <div class="info-cap"><b>관리자와 직원 화면 차이</b> <span style="color:var(--ink-soft); font-size:11px;">(2026.10.01 13:26 기준)</span></div>
           <table class="info-grid">
             <tr><th>메뉴</th><th>관리자</th><th>직원</th></tr>
             <tr><td>설정 · 데이터</td><td>보기·등록·수정·삭제</td><td>잠금 화면</td></tr>
@@ -7211,7 +7209,7 @@
             <tr><td>사내정보<br>(공용정보·팀원별정보)</td><td>보기 + 등록·수정</td><td>보기 (암호화 값은 관리비밀번호 입력)</td></tr>
             <tr><td>거래처 개인정보</td><td>관리비밀번호로 열람·수정</td><td>관리비밀번호로 열람</td></tr>
             <tr><td>근태현황·경비정산·출퇴근·캘린더</td><td>다른 직원으로 바꿔 보기</td><td>본인으로 고정</td></tr>
-            <tr><td>대시보드 출퇴근</td><td>직원 선택 가능</td><td>본인만</td></tr>
+            <tr><td>대시보드 직원 선택</td><td>고른 직원의 출퇴근·위젯 배치로 보기</td><td>본인만</td></tr>
             <tr><td>대시보드 위젯 설정</td><td>내 것 + 직원별·전 직원 대신 설정</td><td>본인 것만</td></tr>
             <tr><td>공지사항</td><td>전체·개인 공지, 중요 표시, 모든 공지 수정·삭제</td><td>개인 공지만 작성, 본인 공지만 수정·삭제</td></tr>
             <tr><td>결재</td><td>모든 문서 삭제·의견</td><td>본인 기안만 삭제, 관련 문서만 의견</td></tr>
@@ -18131,7 +18129,9 @@ const DASHBOARD_SHAPES = { normal:{label:'기본'}, wide:{label:'가로형'}, ta
 // 로그인한 본인 취향이라 항상 내 프로필(getMyOwnProfileId) 설정에서 읽고 씀
 function dashOwnSettingsRef(targetPid){
   let mine = '';
-  try{ mine = targetPid || getMyOwnProfileId(); }catch(e){}
+  // [2026.10.01] "대시보드에서 직원을 바꾸면 그 사람 대시보드가 나와야"(요청) - 따로 정하지 않으면 지금 대시보드에서 보고 있는 직원(활성 프로필) 기준.
+  // 직원은 로그인하면 본인으로 고정돼 있어서 결과는 예전과 같고, 관리자가 출퇴근 카드에서 직원을 고르면 그 직원의 위젯 배치로 보임
+  try{ mine = targetPid || activeProfileId || getMyOwnProfileId(); }catch(e){}
   if(!mine || mine === activeProfileId) return { obj: settings, own: true, id: activeProfileId };
   return { obj: readProfileRaw(mine, 'settings') || {}, own: false, id: mine };
 }
@@ -18438,7 +18438,7 @@ function renderDashboardConfigList(){
   const targetRowHtml = admin ? `<div class="dashboard-config-cols-row"><span class="dashboard-config-row-label">설정 대상</span>
     <select id="dashboardConfigTargetSel" class="dashboard-config-target-sel" title="관리자만 보여요 - 직원 대시보드를 대신 설정할 수 있어요">
       <option value="${escHtml(myPid)}" ${tgt===myPid?'selected':''}>내 대시보드</option>
-      ${staffOpts.filter(pp=>pp.id!==myPid).map(pp=>`<option value="${pp.id}" ${tgt===pp.id?'selected':''}>${escHtml(pp.name)}</option>`).join('')}
+      ${staffOpts.filter(pp=>pp.id!==myPid).concat(tgt && tgt!==myPid && tgt!=='__all__' && !staffOpts.some(pp=>pp.id===tgt) ? getProfiles().filter(pp=>pp.id===tgt) : []).map(pp=>`<option value="${pp.id}" ${tgt===pp.id?'selected':''}>${escHtml(pp.name||'(이름 없음)')}</option>`).join('')}
       <option value="__all__" ${tgt==='__all__'?'selected':''}>전 직원에게 적용</option>
     </select></div>` : '';
   const lockSvg = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; margin-right:4px;"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>`;
@@ -18567,7 +18567,7 @@ function renderDashboardConfigList(){
 }
 function openDashboardConfigModal(){
   const cfg = getDashboardConfig();
-  dashboardConfigDraft = { layout: cfg.layout.map(x=>({...x})) };
+  dashboardConfigDraft = { layout: cfg.layout.map(x=>({...x})), target: activeProfileId || '' }; // 설정 대상도 지금 대시보드에서 보고 있는 직원으로
   // [2026.10.01] "위젯 설정 배치와 실제 대시보드가 다르다"(요청) - 설정을 열 때 대시보드도 저장된 배치로 한 번 다시 그려서 둘이 항상 같게 맞춤
   try{ const g = document.getElementById('homeDashboardGrid'); if(g) g.dataset.sig = ''; renderHomeDashboard(); }catch(e){ console.error(e); }
   renderDashboardConfigList();
@@ -35788,7 +35788,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.01 13:20';
+const APP_BUILD = '2026.10.01 13:25';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
