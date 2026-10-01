@@ -762,6 +762,22 @@
   .home-dashboard-pinned-cal .home-dash-table.home-dash-table-fixed .home-dash-table-col-person{ width:76px; }
   .home-dashboard-pinned-cal .home-dash-card{ height:470px; }
   /* [2026.09.30] 실시간 근무현황(한 줄 목록 시안) */
+  /* [2026.10.01] 메일 아이콘 미리보기 창 - 안 읽은 메일(보낸 사람·제목·시각) */
+  .gmail-preview-pop{ width:360px; max-width:calc(100vw - 20px); background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:0 18px 40px -14px rgba(29,30,51,0.4); overflow:hidden; font-family:inherit; }
+  .gmail-pv-head{ display:flex; align-items:center; justify-content:space-between; padding:11px 14px; border-bottom:1px solid var(--border); font-size:13px; font-weight:800; color:var(--ink); }
+  .gmail-pv-head b{ color:var(--coral); margin-left:2px; }
+  .gmail-pv-close{ border:none; background:none; color:var(--ink-soft); font-size:13px; cursor:pointer; padding:2px 4px; }
+  .gmail-pv-list{ max-height:min(420px, 60vh); overflow-y:auto; }
+  .gmail-pv-row{ display:flex; flex-direction:column; gap:2px; width:100%; text-align:left; border:none; border-bottom:1px dashed var(--border); background:var(--surface); padding:9px 14px; cursor:pointer; font-family:inherit; }
+  .gmail-pv-row:hover{ background:var(--indigo-bg); }
+  .gmail-pv-top{ display:flex; justify-content:space-between; gap:8px; font-size:12.5px; color:var(--ink); }
+  .gmail-pv-top b{ font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .gmail-pv-top span{ flex:none; font-size:11px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; }
+  .gmail-pv-subj{ font-size:12.5px; font-weight:700; color:var(--navy); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .gmail-pv-snip{ font-size:11.5px; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .gmail-pv-empty{ padding:22px 14px; text-align:center; font-size:12.5px; color:var(--ink-soft); }
+  .gmail-pv-foot{ display:flex; justify-content:flex-end; padding:8px 12px; border-top:1px solid var(--border); background:var(--bg); }
+  .gmail-pv-open{ border:none; background:none; color:var(--indigo-deep); font-weight:800; font-size:12px; cursor:pointer; font-family:inherit; }
   .home-dash-presence-at{ font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; }
   .home-dash-pres-sum{ display:flex; gap:5px; margin-bottom:9px; }
   .home-dash-pres-sum span{ flex:1; text-align:center; padding:4px 0; border-radius:999px; font-size:11px; font-weight:800; white-space:nowrap; }
@@ -19135,7 +19151,7 @@ function renderDashboardPresence(){
       // [2026.09.30] 회계사님은 직원이 아니라 "사무실에 계신지"만 보면 됨(요청) - 출퇴근·재택·휴가 대신, 사무실 PC(기기 이름에
       // "사무실"·"회사")에서 앱이 켜져 있으면 "계세요", 아니면 "안 계세요"만 따로 한 줄로 보여주고, 아래 집계·목록에서는 뺌
       if(String(p.position||'').trim() === '회계사'){
-        acctRows.push({ p, name, online, inOffice: online && /사무실|회사|청인/.test(devRaw), dev: online ? (/^(집|개인)\s*PC$/i.test(devRaw.trim()) ? '자택 PC' : devRaw) : '' });
+        acctRows.push({ p, name, online, entry, fullLeave, inOffice: online && /사무실|회사|청인/.test(devRaw), dev: online ? (/^(집|개인)\s*PC$/i.test(devRaw.trim()) ? '자택 PC' : devRaw) : '' });
         return;
       }
       const leaveRec = (att.leaveUsage || []).find(u=>u.date===today);
@@ -19174,9 +19190,14 @@ function renderDashboardPresence(){
     const av = r.p.photo ? `<img src="${escHtml(r.p.photo)}" alt="">` : staffInitialCircleHtml(r.name, staffInitialColorOf(r.p, r.name), 32, '', r.p.initialText || '');
     // [2026.10.01] 회계사님도 PC·노트북으로 접속 중이면 "접속중" 칩 + 이름 아래 기기 이름(직원과 같은 모양).
     // 사무실 PC면 "사무실 근무중", 다른 PC·노트북(외부)이면 "근무중", 접속 안 했으면 "사무실 부재중"(휴대폰 접속은 위에서 이미 제외)
-    const lbl = r.inOffice ? '사무실 근무중' : r.online ? '근무중' : '사무실 부재중';
-    const col = r.inOffice ? 'var(--indigo)' : r.online ? 'var(--mint)' : 'var(--ink-soft)';
-    const dotc = r.inOffice ? 'var(--indigo)' : r.online ? 'var(--mint)' : 'var(--border)';
+    // [2026.10.01] "사무실에 안 계신데 근무중으로 나온다 · 퇴근한 사람은 그냥 퇴근으로"(요청) - 근무 상태는 출퇴근 도장 기준으로만 정하고
+    // (퇴근 도장 → 퇴근, 출근 도장 → 사무실 근무중/재택), 도장이 없으면 사무실 PC 접속일 때만 사무실 근무중, 아니면 부재중.
+    // 집·노트북에서 접속한 건 근무 상태로 치지 않고 "접속중" 칩으로만 보여줌
+    const e = r.entry || null;
+    const st = (e && e.checkOut) ? 'done' : (e && e.checkIn) ? (/재택/.test(String(e.status||'')) && !/→사무실$/.test(String(e.status||'')) ? 'home' : 'office') : r.fullLeave ? 'leave' : r.inOffice ? 'office' : 'away';
+    const lbl = { done:'퇴근', home:'재택 근무중', office:'사무실 근무중', leave:'휴가', away:'부재중' }[st];
+    const col = { done:'var(--ink-soft)', home:'var(--mint)', office:'var(--indigo)', leave:'var(--coral)', away:'var(--ink-soft)' }[st];
+    const dotc = (st === 'done' || st === 'away') ? 'var(--border)' : col;
     return `<div class="home-dash-pres-row pres-b pres-acct-row" title="${escHtml(r.name)} 회계사 · ${lbl}${r.dev ? ' · 접속 기기: '+escHtml(r.dev) : ''}">
       <span class="home-dash-pres-av">${av}</span>
       <div style="flex:1; min-width:0;"><div style="display:flex; align-items:center; gap:6px; min-width:0;"><span class="home-dash-pres-name">${escHtml(r.name)}</span>${r.online ? `<span class="pres-online-chip" title="${escHtml(r.dev ? '지금 접속 중 · '+r.dev : '지금 접속 중')}"><i></i>접속중</span>` : ''}</div>${r.online && r.dev ? `<span class="home-dash-pres-dev">${dashPresenceDevIcon(r.dev)} ${escHtml(r.dev)}</span>` : ''}</div>
@@ -19672,6 +19693,12 @@ function renderDashboardClockCard(){
     } finally { gdriveSuspendPull = false; }
     renderDashboardClockCard();
   });
+  // [2026.10.01] "퇴근 버튼을 눌렀는데 인식이 안 돼서 다시 했더니 됐다" - 위쪽 출근/퇴근 시각 칸(분홍·하늘색 상자)이 버튼처럼 생겨서
+  // 그걸 먼저 누르면 아무 일도 안 일어났음. 지금 찍을 수 있는 쪽 칸을 누르면 아래 출근/퇴근 버튼을 누른 것과 똑같이 동작하게 함
+  const chipIn = body.querySelector('.bc-chip.bc-in'), chipOut = body.querySelector('.bc-chip.bc-out');
+  const inBtn = document.getElementById('dashClockInBtn'), outBtn = document.getElementById('dashClockOutBtn');
+  if(chipIn && inBtn){ chipIn.style.cursor = 'pointer'; chipIn.title = '눌러서 출근 찍기'; chipIn.addEventListener('click', ()=> inBtn.click()); }
+  if(chipOut && outBtn){ chipOut.style.cursor = 'pointer'; chipOut.title = '눌러서 퇴근 찍기'; chipOut.addEventListener('click', ()=> outBtn.click()); }
   updateDashClockLiveTime(); // 카드를 새로 그린 직후, 1초 주기 갱신이 오기 전까지 "--:--:--"로 비어보이지 않게 바로 한 번 채움
 }
 // 출퇴근 카드 제목 아래의 초 단위 실시간 시계 - 1초마다 현재 시각으로 갱신함(카드가 화면에 없을 땐
@@ -36416,7 +36443,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.01 16:35';
+const APP_BUILD = '2026.10.01 16:55';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -36449,9 +36476,9 @@ function gdriveConnect(silent){
     return;
   }
   if(silent) gdriveSetStatus('자동 재연결 시도 중...');
-  // [2026.10.01] 안 읽은 메일 수 표시를 켠 계정이면 로그인할 때 메일 개수 권한(gmail.labels - 메일 내용은 못 봄)도 함께 받음
+  // [2026.10.01] 안 읽은 메일 수 표시를 켠 계정이면 로그인할 때 메일 머리글 권한(gmail.metadata - 보낸 사람·제목만, 본문은 못 봄)도 함께 받음
   let loginScope = GDRIVE_SCOPE;
-  try{ if(localStorage.getItem('taxj_gmail_unread_pref') === 'on') loginScope += ' https://www.googleapis.com/auth/gmail.labels'; }catch(e){}
+  try{ if(localStorage.getItem('taxj_gmail_unread_pref') === 'on') loginScope += ' https://www.googleapis.com/auth/gmail.metadata'; }catch(e){}
   gdriveTokenClient = google.accounts.oauth2.initTokenClient({
     client_id: clientId,
     scope: loginScope,
@@ -39956,7 +39983,9 @@ document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState 
 // + 안 읽은 메일 수 표시(요청): 처음 한 번 "표시할까요?"를 묻고, 허용하면 Gmail 라벨 권한(gmail.labels - 메일 내용은 못 봄,
 // 받은편지함의 안 읽은 개수만 읽음)을 따로 받아서 2분마다 아이콘에 숫자로 보여줌. 로그인(Drive) 권한과는 별개라 기존 로그인엔 영향 없음.
 // 이 기능을 쓰려면 Google Cloud 프로젝트에서 Gmail API를 "사용"으로 켜둬야 함
-const GMAIL_COUNT_SCOPE = 'https://www.googleapis.com/auth/gmail.labels';
+// [2026.10.01] "메일을 누르면 보낸 사람·제목 정도는 먼저 떠야" - 개수만 보던 gmail.labels 대신, 보낸 사람·제목·날짜(머리글)까지만
+// 읽는 gmail.metadata 권한으로 바꿈(본문·첨부는 못 읽음). 예전 권한으로 허용한 사람은 메일 아이콘을 누를 때 한 번 다시 허용하면 됨
+const GMAIL_COUNT_SCOPE = 'https://www.googleapis.com/auth/gmail.metadata';
 const GMAIL_COUNT_PREF_KEY = 'taxj_gmail_unread_pref'; // 'on' | 'off' (이 기기에 기억)
 let gmailCountToken = '', gmailCountTokenExp = 0, gmailCountClient = null, gmailCountTimer = null;
 let gmailLastErr = null; // 마지막 조회 실패 이유(상태코드·구글 안내 문구) - 아이콘을 눌렀는데도 숫자를 못 받으면 이유를 알려줌
@@ -40071,32 +40100,106 @@ function gmailStartUnreadPolling(){
 }
 document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'visible' && gmailCountPref() === 'on') gmailRefreshUnread(); });
 setTimeout(gmailStartUnreadPolling, 6000); setTimeout(gmailStartUnreadPolling, 20000); // 로그인·계정 설정을 받아온 뒤 한 번 더
+// ── [2026.10.01] 메일 아이콘 → 안 읽은 메일 미리보기(보낸 사람·제목·시각) 창. 줄을 누르면 그 메일이 Gmail에서 바로 열림 ──
+function gmailOpenUrl(threadId){
+  let email = ''; try{ email = (currentUserEmail||'').trim(); }catch(e){}
+  const base = email ? `https://mail.google.com/mail/?authuser=${encodeURIComponent(email)}` : 'https://mail.google.com/mail/';
+  return threadId ? `${base}#inbox/${threadId}` : base;
+}
+function gmailCurrentToken(){
+  if(gmailCountToken && Date.now() < gmailCountTokenExp) return gmailCountToken;
+  return (typeof gdriveAccessToken === 'string' && gdriveAccessToken) ? gdriveAccessToken : '';
+}
+async function gmailListUnread(token, max){
+  const r = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=INBOX&labelIds=UNREAD&maxResults=${max||8}`, { headers:{ Authorization:'Bearer ' + token } });
+  if(!r.ok){ let msg=''; try{ const j = await r.json(); msg = (j && j.error && j.error.message) || ''; }catch(e){} gmailLastErr = { status:r.status, msg }; return { ok:false, status:r.status }; }
+  const j = await r.json();
+  const ids = (j.messages || []).map(m=>m.id);
+  const metas = await Promise.all(ids.map(async id=>{
+    try{
+      const rr = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`, { headers:{ Authorization:'Bearer ' + token } });
+      if(!rr.ok) return null;
+      const m = await rr.json();
+      const h = {}; ((m.payload && m.payload.headers) || []).forEach(x=>{ h[String(x.name).toLowerCase()] = x.value; });
+      const from = String(h.from || '');
+      const name = (from.match(/^\s*"?([^"<]+?)"?\s*</) || [])[1] || from.replace(/<.*>/, '').trim() || from;
+      return { id, threadId: m.threadId, from: name.trim(), fromFull: from, subject: h.subject || '(제목 없음)', snippet: m.snippet || '', at: Number(m.internalDate) || 0 };
+    }catch(e){ return null; }
+  }));
+  return { ok:true, total: Number(j.resultSizeEstimate) || ids.length, list: metas.filter(Boolean) };
+}
+function gmailWhen(ms){
+  if(!ms) return '';
+  const d = new Date(ms), now = new Date();
+  const z = n=>String(n).padStart(2,'0');
+  if(d.toDateString() === now.toDateString()) return `${z(d.getHours())}:${z(d.getMinutes())}`;
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+function gmailClosePreview(){ document.getElementById('gmailPreviewPop')?.remove(); }
+function gmailShowPreview(state){
+  gmailClosePreview();
+  const btn = document.getElementById('mailNotifyBtn');
+  const r = btn ? btn.getBoundingClientRect() : { left:20, bottom:60 };
+  const pop = document.createElement('div');
+  pop.id = 'gmailPreviewPop';
+  pop.className = 'gmail-preview-pop';
+  const left = Math.max(10, Math.min(window.innerWidth - 370, r.left - 20));
+  pop.style.cssText = `position:fixed; top:${Math.round(r.bottom + 10)}px; left:${Math.round(left)}px; z-index:10040;`;
+  let body = '';
+  if(state.loading) body = `<div class="gmail-pv-empty">불러오는 중…</div>`;
+  else if(state.error) body = `<div class="gmail-pv-empty">${escHtml(state.error)}</div>`;
+  else if(!state.list.length) body = `<div class="gmail-pv-empty">안 읽은 메일이 없어요</div>`;
+  else body = state.list.map(m=>`<button type="button" class="gmail-pv-row" data-thread="${escHtml(m.threadId||'')}" title="${escHtml(m.fromFull)}">
+      <span class="gmail-pv-top"><b>${escHtml(m.from)}</b><span>${escHtml(gmailWhen(m.at))}</span></span>
+      <span class="gmail-pv-subj">${escHtml(m.subject)}</span>
+      ${m.snippet ? `<span class="gmail-pv-snip">${escHtml(m.snippet)}</span>` : ''}
+    </button>`).join('');
+  const total = state.total || (state.list ? state.list.length : 0);
+  pop.innerHTML = `<div class="gmail-pv-head"><span>안 읽은 메일${total ? ` <b>${total > 99 ? '99+' : total}</b>` : ''}</span><button type="button" class="gmail-pv-close" title="닫기" aria-label="닫기">✕</button></div>
+    <div class="gmail-pv-list">${body}</div>
+    <div class="gmail-pv-foot"><button type="button" class="gmail-pv-open">Gmail 열기 →</button></div>`;
+  document.body.appendChild(pop);
+  pop.querySelector('.gmail-pv-close').addEventListener('click', gmailClosePreview);
+  pop.querySelector('.gmail-pv-open').addEventListener('click', ()=>{ window.open(gmailOpenUrl(''), '_blank', 'noopener'); gmailClosePreview(); });
+  pop.querySelectorAll('.gmail-pv-row').forEach(b=> b.addEventListener('click', ()=>{
+    window.open(gmailOpenUrl(b.dataset.thread), '_blank', 'noopener');
+    gmailClosePreview();
+    setTimeout(gmailRefreshUnread, 60*1000); // 읽고 돌아오면 숫자가 줄어들게
+  }));
+  setTimeout(()=> document.addEventListener('pointerdown', function off(ev){
+    const p = document.getElementById('gmailPreviewPop');
+    if(!p){ document.removeEventListener('pointerdown', off); return; }
+    if(!p.contains(ev.target) && !ev.target.closest('#mailNotifyBtn')){ gmailClosePreview(); document.removeEventListener('pointerdown', off); }
+  }), 0);
+}
 document.getElementById('mailNotifyBtn').addEventListener('click', async ()=>{
   let email = ''; try{ email = (currentUserEmail||'').trim(); }catch(e){}
-  const url = email ? `https://mail.google.com/mail/?authuser=${encodeURIComponent(email)}` : 'https://mail.google.com/mail/';
-  window.open(url, '_blank', 'noopener');
-  // 처음 한 번만: 안 읽은 메일 수 표시를 켤지 물어봄(아니요를 고르면 다시 묻지 않음)
+  if(document.getElementById('gmailPreviewPop')){ gmailClosePreview(); return; } // 다시 누르면 닫힘
+  // 처음 한 번만: 안 읽은 메일 표시를 켤지 물어봄(아니요를 고르면 다시 묻지 않고, 누르면 Gmail만 열림)
   if(email && !gmailCountPref()){
-    const ok = await appConfirm('메일 아이콘에 안 읽은 메일 수를\n표시할까요?\n\nGoogle 권한 허용 창이 한 번 떠요.\n메일 내용은 읽지 않고 개수만 확인해요.', { okText:'표시하기', cancelText:'괜찮아요' });
+    const ok = await appConfirm('메일 아이콘에 안 읽은 메일을\n표시할까요?\n\nGoogle 권한 허용 창이 한 번 떠요.\n보낸 사람·제목만 보고, 메일 내용은 읽지 않아요.', { okText:'표시하기', cancelText:'괜찮아요' });
     await gmailSetCountPref(ok ? 'on' : 'off');
-    if(ok){
-      if(await gmailRequestCountToken(true)){ gmailStartUnreadPolling(); }
-      else { await gmailSetCountPref(''); appAlert('권한을 받지 못했어요.\n다음에 메일 아이콘을 누르면 다시 물어볼게요.'); }
-    }
-  } else if(gmailCountPref() === 'on'){
-    // 다른 기기에서 켠 경우 - 이 기기에 아직 권한(토큰)이 없으면 조용히 받아보고, 안 되면 이번 한 번만 허용 창을 띄움
-    if(!(gmailCountToken && Date.now() < gmailCountTokenExp) && !(await gmailRequestCountToken(false))){ await gmailRequestCountToken(true); }
-    await gmailRefreshUnread();
-    // 그래도 못 받았으면(권한이 빠진 토큰 등) 허용 창을 동의 화면부터 한 번 더 띄우고 다시 확인
-    if(gmailLastErr){
-      gmailCountToken = ''; gmailCountTokenExp = 0; gmailSaveCountToken();
-      if(await gmailRequestCountToken(true, true)) await gmailRefreshUnread();
-    }
-    // 숫자를 못 받은 이유(gmailLastErr)는 직원에게 알림창으로 띄우지 않고 콘솔·아이콘 설명(마우스 올림)에만 남김(요청)
+    if(!ok){ window.open(gmailOpenUrl(''), '_blank', 'noopener'); return; }
+    if(!(await gmailRequestCountToken(true))){ await gmailSetCountPref(''); appAlert('권한을 받지 못했어요.\n다음에 메일 아이콘을 누르면 다시 물어볼게요.'); return; }
     gmailStartUnreadPolling();
-    setTimeout(gmailRefreshUnread, 60*1000); // 메일을 읽고 돌아오면 숫자가 줄어들게 조금 뒤 다시 확인
   }
+  if(gmailCountPref() !== 'on' || !email){ window.open(gmailOpenUrl(''), '_blank', 'noopener'); return; }
+  gmailShowPreview({ loading:true, list:[] });
+  let token = gmailCurrentToken();
+  let res = token ? await gmailListUnread(token, 8) : { ok:false, status:401 };
+  if(!res.ok){
+    // 권한이 없거나 만료됐거나, 예전(개수만 보던) 권한이면 이번에 한 번 허용 창을 띄워 새로 받음
+    gmailCountToken = ''; gmailCountTokenExp = 0; gmailSaveCountToken();
+    const got = (await gmailRequestCountToken(false)) || (await gmailRequestCountToken(true, true));
+    if(got){ token = gmailCountToken; res = await gmailListUnread(token, 8); }
+  }
+  if(!document.getElementById('gmailPreviewPop')) return; // 그 사이에 닫았으면 그대로
+  if(!res.ok){ gmailShowPreview({ error:'메일을 불러오지 못했어요. Gmail 열기로 확인해 주세요.', list:[] }); return; }
+  gmailShowPreview({ list: res.list, total: res.total });
+  gmailSetBadge(res.total || res.list.length);
+  gmailStartUnreadPolling();
 });
+
 
 // 설정류 탭처럼 소제목이 여러 개라 스크롤을 많이 해야 하는 화면 상단에,
 // "이 안에 뭐가 있는지" 한눈에 보고 바로 클릭해서 이동할 수 있는 미니 목차를 자동으로 만들어줌.
