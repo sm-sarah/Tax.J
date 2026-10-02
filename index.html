@@ -3978,7 +3978,8 @@
           </div>
           <div class="field field-tile" id="remoteTypeField" style="display:none; flex:1 1 170px; background:rgba(91,95,239,0.05);"><label>재택 종류</label>
             <select id="r-type">
-              <option value="regular">정기재택</option>
+              <option value="regular-auto">정기재택 (자동 · 월 2회까지 식대포함)</option>
+              <option value="regular">정기재택 (식대포함)</option>
               <option value="regular-nolunch">정기재택 (식대제외)</option>
               <option value="bonus">특별재택 (월 한도 미포함)</option>
             </select>
@@ -22556,8 +22557,17 @@ const remoteTypeField = document.getElementById('remoteTypeField');
 const rTypeSelect = document.getElementById('r-type');
 const rHalfSelect = document.getElementById('r-half');
 const remoteHalfField = document.getElementById('remoteHalfField');
+// [2026.10.02] "정기재택은 월 2회까지 식대포함, 나머지는 식대제외인데 매번 고르기 귀찮다"(요청) - 새로 등록할 땐 기본이 "자동":
+// 재택일이 속한 달에 식대포함 정기재택(종일)이 이미 2회 있으면 식대제외로, 아니면 식대포함으로 저장. 직접 고르는 것도 그대로 가능
+const REMOTE_LUNCH_INCLUDED_PER_MONTH = 2;
+function remoteAutoNoLunch(dateStr, entries){
+  const ym = String(dateStr||'').slice(0,7);
+  const n = (entries||[]).filter(r=> r && String(r.date||'').startsWith(ym) && !r.bonus && !r.half && !r.noLunch).length;
+  return n >= REMOTE_LUNCH_INCLUDED_PER_MONTH;
+}
 const REMOTE_TYPE_OPTIONS_FULL = [
-  { value:'regular', text:'정기재택' },
+  { value:'regular-auto', text:'정기재택 (자동 · 월 2회까지 식대포함)' },
+  { value:'regular', text:'정기재택 (식대포함)' },
   { value:'regular-nolunch', text:'정기재택 (식대제외)' },
   { value:'bonus', text:'특별재택 (월 한도 미포함)' }
 ];
@@ -22726,7 +22736,7 @@ function resetUsageFormEditState(){
   document.getElementById('u-memo').value = '';
   document.getElementById('u-end-date').value = '';
   document.getElementById('u-single-day').checked = true;
-  rHalfSelect.value = ''; syncRemoteTypeOptions('regular');
+  rHalfSelect.value = ''; syncRemoteTypeOptions('regular-auto');
   document.getElementById('u-advance').checked = false;
   updateAdvanceFieldVisibility();
   updateEndDateVisibility();
@@ -22849,13 +22859,14 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
     const rType = rTypeSelect.value;
     const half = rHalfSelect.value || undefined; // 'am' | 'pm' | undefined(종일)
     const bonus = !half && rType === 'bonus';
+    const autoLunch = !half && rType === 'regular-auto';
     const noLunch = half ? rType === 'half-nolunch' : rType === 'regular-nolunch';
     const useAdvance = !bonus && !half && document.getElementById('u-advance').checked;
 
     if(editingRemoteId){
       const en = attendance.remoteEntries.find(x=>x.id===editingRemoteId);
       if(en){
-        en.date=date; en.memo=memo; en.bonus=bonus; en.noLunch = noLunch || undefined; en.half = half;
+        en.date=date; en.memo=memo; en.bonus=bonus; en.noLunch = (autoLunch ? remoteAutoNoLunch(date, attendance.remoteEntries.filter(x=>x.id!==en.id)) : noLunch) || undefined; en.half = half;
         if(date === todayStr()){
           const todayEntry = todayClockEntry(false);
           if(todayEntry && !todayEntry.checkIn) todayEntry.status = remoteClockStatusFor(date);
@@ -22889,7 +22900,7 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
     remoteDates = remoteDates.filter(d=>!alreadyRemote.has(d));
     if(!remoteDates.length){ appAlert('선택한 날짜에는 이미 재택이 모두 등록돼 있어요.'); return; }
     remoteDates.forEach(ds=>{
-      const entry = { id:genId(), date: ds, memo, bonus, noLunch: noLunch || undefined };
+      const entry = { id:genId(), date: ds, memo, bonus, noLunch: (autoLunch ? remoteAutoNoLunch(ds, attendance.remoteEntries) : noLunch) || undefined };
       if(half) entry.half = half;
       // 당겨쓰기는 실제 사용일과 무관하게 "아직 여유가 남은 가장 가까운 미래 달"의 재택 한도에서 차감되도록
       // creditMonth를 미리 배정함(한도가 없으니 계속 다음 달로 넘어가며 찾음) - 여러 날을 한 번에 넣을 때도
@@ -22910,7 +22921,7 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
     document.getElementById('u-end-date').value = '';
     setTimeout(()=>document.getElementById('usageSaveMsg').textContent='',1800);
     document.getElementById('u-memo').value='';
-    rHalfSelect.value = ''; syncRemoteTypeOptions('regular');
+    rHalfSelect.value = ''; syncRemoteTypeOptions('regular-auto');
     document.getElementById('u-advance').checked = false;
     closeCalRegisterModal();
     renderAll();
@@ -26946,6 +26957,7 @@ function renderIncomeTaxUnified(){
     unset:   { label:'',   color:'var(--border)',    bg:'transparent', text:'var(--ink-soft)', disabled:false, plain:false },
     notarget:{ label:'',   color:'transparent',      bg:'#EDEFF4',     text:'var(--ink-soft)', disabled:false, plain:true },
     halfyear:{ label:'',   color:'transparent',      bg:'transparent', text:'var(--ink-soft)', disabled:true,  plain:true },
+    none:    { label:'',   color:'transparent',      bg:'transparent', text:'var(--ink-soft)', disabled:true,  plain:true }, // [2026.10.02] 처음부터 미대상인 거래처 - 칸 없이 빈칸
     target:  { label:'',   color:'transparent',      bg:'#FFF8DC',     text:'var(--ink-soft)', disabled:false, plain:true },
     done:    { label:'',   color:'transparent',      bg:'transparent', text:'var(--mint)',      disabled:false, plain:true }
   };
@@ -26961,6 +26973,8 @@ function renderIncomeTaxUnified(){
     const cycleCellColor = !latestCycleRec ? 'var(--border)' : (isBiannual ? 'var(--amber)' : 'var(--indigo)');
     const cycleCellBg = !latestCycleRec ? 'transparent' : (isBiannual ? 'var(--amber-bg)' : 'var(--indigo-bg)');
     const cycleCellText = !latestCycleRec ? 'var(--ink-soft)' : (isBiannual ? 'var(--amber)' : 'var(--indigo-deep)');
+    // [2026.10.02] "최초등록이 미대상이면 활성화되는 칸이 없어야"(요청) - 이력이 모두 미대상인 거래처는 신고일이 있는 칸 말고는 전부 빈칸(누를 수 없음)
+    const neverApplicable = cycleRecs.length > 0 && cycleRecs.every(r=> !filingCycleRecApplicable(r));
     const dual = clientHasDualTiming(c.id, year);
     const lanes = dual ? [['sameMonth','당월'], ['nextMonth','익월']] : [[null, null]];
     rowNo++;
@@ -26978,7 +26992,8 @@ function renderIncomeTaxUnified(){
         return IT_ALL_TAX_KEYS.map(([taxKey, taxLabel])=>{
           const cs = itAllMonthCellState(c.id, period, timingKey, taxKey);
           // [2026.10.02] "신고 열이 미대상인 거래처에 회색 음영이 나오는 게 이상하다"(요청) - 거래처 자체가 미대상이면 '그 달 미대상' 회색은 빈칸으로
-          if(cs.state === 'notarget' && latestCycleRec && !latestApplicable) cs.state = 'locked';
+          if(cs.state === 'notarget' && latestCycleRec && !latestApplicable) cs.state = neverApplicable ? 'none' : 'locked';
+          if(neverApplicable && cs.state !== 'done') cs.state = 'none';
           const st = CELL_STYLE[cs.state];
           const clickAttr = st.disabled ? 'disabled' : `data-client-id="${c.id}" data-period="${period}" data-cellstate="${cs.state}"`;
           let cellLabel = st.label;
@@ -27014,7 +27029,7 @@ function renderIncomeTaxUnified(){
           /* * 표시는 국세 칸에만(요청) */ const memoTxt = (taxKey === 'national' && (cs.state === 'target' || cs.state === 'done')) ? (()=>{ const ent2 = incomeTaxFilingEntry(period, c.id); const ks = timingKey ? [timingKey] : ['sameMonth','nextMonth']; return ks.map(k=> (ent2[k]||{}).memo).filter(Boolean).join(' / '); })() : '';
           if(memoTxt) tip += '\n특이사항: ' + memoTxt;
           const memoStar = memoTxt ? `<sup class="it-memo-star" role="button" data-name="${escHtml(c.name)}" data-label="${escHtml(`${year}년 ${m}월 귀속${timingSuffix ? ` (${timingSuffix}지급)` : ''}`)}" data-memo="${escHtml(memoTxt).replace(/"/g,'&quot;')}" title="특이사항: ${escHtml(memoTxt).replace(/"/g,'&quot;')}">*</sup>` : ''; // [2026.10.02] "* 를 눌러도 아무것도 안 뜬다"(요청) - 누르면 그 달 특이사항 팝업
-          return `<td class="${colCls}" style="position:relative;">${memoStar}<button type="button" class="it-all-month-cell-btn" ${clickAttr} title="${escHtml(tip)}" style="width:100%; border:${cellBorder}; border-radius:6px; padding:4px 1px; background:${stageDots ? 'transparent' : st.bg}; color:${st.text}; font-size:10.5px; font-weight:700; cursor:${cs.state==='halfyear' ? 'default' : (st.disabled?'not-allowed':'pointer')}; opacity:${st.disabled?'0.35':'1'};">${stageDots || escHtml(cellLabel)}</button></td>`;
+          return `<td class="${colCls}" style="position:relative;">${memoStar}<button type="button" class="it-all-month-cell-btn" ${clickAttr} title="${escHtml(tip)}" style="width:100%; border:${cellBorder}; border-radius:6px; padding:4px 1px; background:${stageDots ? 'transparent' : st.bg}; color:${st.text}; font-size:10.5px; font-weight:700; cursor:${(cs.state==='halfyear' || cs.state==='none') ? 'default' : (st.disabled?'not-allowed':'pointer')}; opacity:${st.disabled && cs.state!=='none'?'0.35':'1'};">${stageDots || escHtml(cellLabel)}</button></td>`;
         }).join('');
       }).join('');
       const span = lanes.length > 1 ? ` rowspan="${lanes.length}"` : '';
@@ -37278,7 +37293,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 09:55';
+const APP_BUILD = '2026.10.02 10:20';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -40894,11 +40909,24 @@ function gmailRequestCountToken(interactive, forceConsent){
 // 사라지고, 그 뒤엔 사용자가 누르지 않은 상태에서 조용히 다시 받아오는 시도(팝업)를 브라우저가 막아버려 숫자가 다시 안 뜸. 이제
 // ① 받은 권한을 유효시간 동안 이 브라우저에 기억해두고 ② 없으면 로그인(드라이브) 권한으로도 한 번 더 시도하고(구글은 예전에 허용한 권한을
 // 새 로그인 권한에 함께 넣어줌) ③ 그래도 안 되면 메일 아이콘에 작은 "!" 표시 + 안내 문구를 띄워서, 아이콘을 한 번 누르면 다시 받게 함
+// [2026.10.02] 메일 권한·숫자·목록은 계정(이메일)마다 따로 - 같은 PC에서 다른 사람이 로그인하면 앞 사람 것은 버림
+let gmailCountTokenOwner = '', gmailListCache = null;
+function gmailMe(){ try{ return String(currentUserEmail||'').trim().toLowerCase(); }catch(e){ return ''; } }
+function gmailCheckOwner(){
+  const me = gmailMe(); if(!me) return;
+  if(gmailCountTokenOwner && gmailCountTokenOwner !== me){
+    gmailCountToken = ''; gmailCountTokenExp = 0; gmailListCache = null;
+    try{ localStorage.removeItem('taxj_gmail_count_token'); localStorage.removeItem('taxj_gmail_last_count'); }catch(e){}
+    const el = document.getElementById('mailUnreadBadge'); if(el) el.style.display = 'none';
+  }
+  gmailCountTokenOwner = me;
+}
 function gmailSaveCountToken(){
-  try{ localStorage.setItem('taxj_gmail_count_token', JSON.stringify({ t: gmailCountToken, exp: gmailCountTokenExp })); }catch(e){}
+  if(gmailCountToken) gmailCountTokenOwner = gmailMe() || gmailCountTokenOwner;
+  try{ localStorage.setItem('taxj_gmail_count_token', JSON.stringify({ t: gmailCountToken, exp: gmailCountTokenExp, e: gmailCountTokenOwner })); }catch(e){}
 }
 (function gmailLoadCountToken(){
-  try{ const o = JSON.parse(localStorage.getItem('taxj_gmail_count_token') || 'null'); if(o && o.t && o.exp > Date.now()){ gmailCountToken = o.t; gmailCountTokenExp = o.exp; } }catch(e){}
+  try{ const o = JSON.parse(localStorage.getItem('taxj_gmail_count_token') || 'null'); if(o){ gmailCountTokenOwner = String(o.e||'').toLowerCase(); if(o.t && o.exp > Date.now()){ gmailCountToken = o.t; gmailCountTokenExp = o.exp; } } }catch(e){}
 })();
 // [2026.10.01] "메일 아이콘 ! 오류가 계속 뜬다"(요청) - 원인: 메일 개수용 권한(토큰)은 구글 정책상 1시간마다 만료되고, 사용자가 누르지
 // 않은 상태에서는 팝업 없이 새로 받을 방법이 없음 → 1시간 지나면 항상 "!"가 뜸(오류가 아니라 만료). 이제 "!"는 띄우지 않고 숫자만 감춘 뒤,
@@ -40921,20 +40949,31 @@ async function gmailFetchUnread(token){
   const j = await r.json();
   return { ok:true, n: Number(j.messagesUnread)||0 };
 }
+// [2026.10.02] "메일 누르면 불러오는 중이 너무 길다"(요청) - 2분마다 숫자를 확인할 때 목록(보낸 사람·제목)도 미리 받아 두고,
+// 아이콘을 누르면 받아 둔 목록을 바로 보여준 뒤 뒤에서 새로 받아 바꿔 끼움. 목록은 화면 메모리에만 둠(저장 안 함)
+async function gmailPrefetchList(token, n){
+  try{
+    if(!n){ gmailListCache = { list:[], total:0, at:Date.now() }; return; }
+    if(gmailListCache && gmailListCache.total === n && Date.now() - gmailListCache.at < 2*60*1000) return;
+    const res = await gmailListUnread(token, 8);
+    if(res.ok) gmailListCache = { list: res.list, total: res.total, at: Date.now() };
+  }catch(e){}
+}
 async function gmailRefreshUnread(){
   if(gmailCountPref() !== 'on') return gmailSetBadge(0);
   if(document.visibilityState === 'hidden') return;
   let email = ''; try{ email = currentUserEmail || ''; }catch(e){}
   if(!email) return; // 로그인 전엔 건너뜀
+  gmailCheckOwner();
   try{
     if(gmailCountToken && Date.now() < gmailCountTokenExp){
       const res = await gmailFetchUnread(gmailCountToken);
-      if(res.ok) return gmailSetBadge(res.n);
+      if(res.ok){ gmailSetBadge(res.n); gmailPrefetchList(gmailCountToken, res.n); return; }
       if(res.status === 401 || res.status === 403){ gmailCountToken = ''; gmailCountTokenExp = 0; gmailSaveCountToken(); }
     }
     if(typeof gdriveAccessToken === 'string' && gdriveAccessToken){
       const res = await gmailFetchUnread(gdriveAccessToken);
-      if(res.ok) return gmailSetBadge(res.n);
+      if(res.ok){ gmailSetBadge(res.n); gmailPrefetchList(gdriveAccessToken, res.n); return; }
     }
     // [2026.10.01] "접속할 때마다 로그인 창이 잠깐 떴다 사라진다"(요청) - 자동 확인(2분마다·화면 돌아올 때) 중에 권한을 다시 받으려고
     // 구글 창을 여는 시도를 빼고, 기억해 둔 권한·로그인 권한으로만 확인함. 둘 다 안 되면 "!"만 띄우고, 창은 메일 아이콘을 눌렀을 때만 열림
@@ -40967,6 +41006,7 @@ function gmailOpenUrl(threadId){
   return threadId ? `${base}#inbox/${threadId}` : base;
 }
 function gmailCurrentToken(){
+  gmailCheckOwner();
   if(gmailCountToken && Date.now() < gmailCountTokenExp) return gmailCountToken;
   return (typeof gdriveAccessToken === 'string' && gdriveAccessToken) ? gdriveAccessToken : '';
 }
@@ -41044,7 +41084,7 @@ document.getElementById('mailNotifyBtn').addEventListener('click', async ()=>{
     gmailStartUnreadPolling();
   }
   if(gmailCountPref() !== 'on' || !email){ window.open(gmailOpenUrl(''), '_blank', 'noopener'); return; }
-  gmailShowPreview({ loading:true, list:[] });
+  gmailShowPreview(gmailListCache ? { list: gmailListCache.list, total: gmailListCache.total } : { loading:true, list:[] });
   let token = gmailCurrentToken();
   let res = token ? await gmailListUnread(token, 8) : { ok:false, status:401 };
   if(!res.ok){
@@ -41054,8 +41094,10 @@ document.getElementById('mailNotifyBtn').addEventListener('click', async ()=>{
     if(got){ token = gmailCountToken; res = await gmailListUnread(token, 8); }
   }
   if(!document.getElementById('gmailPreviewPop')) return; // 그 사이에 닫았으면 그대로
-  if(!res.ok){ gmailShowPreview({ error:'메일을 불러오지 못했어요. Gmail 열기로 확인해 주세요.', list:[] }); return; }
-  gmailShowPreview({ list: res.list, total: res.total });
+  if(!res.ok){ if(!gmailListCache) gmailShowPreview({ error:'메일을 불러오지 못했어요. Gmail 열기로 확인해 주세요.', list:[] }); return; }
+  const changed = !gmailListCache || JSON.stringify(gmailListCache.list.map(m=>m.id)) !== JSON.stringify(res.list.map(m=>m.id)) || gmailListCache.total !== res.total;
+  gmailListCache = { list: res.list, total: res.total, at: Date.now() };
+  if(changed) gmailShowPreview({ list: res.list, total: res.total });
   gmailSetBadge(res.total || res.list.length);
   gmailStartUnreadPolling();
 });
