@@ -67,7 +67,9 @@
    다시 그릴 때까지 본문을 잠깐 가리고 "불러오는 중"만 보여줌(위 아이콘 줄·메뉴는 그대로). 최대 5초 지나면 그냥 보여줌 */
 try{
   var _t = localStorage.getItem('worklog_gdrive_token'), _e = Number(localStorage.getItem('worklog_gdrive_token_expiry') || 0);
-  if(_t && _e > Date.now()){
+  // 로그인 토큰은 1시간마다 만료되지만 다시 열면 조용히 새로 받아오므로, 만료된 지 12시간 안이면 똑같이 가려 둠
+  // (예전엔 "아직 안 만료된 토큰"일 때만 가려서, 한 시간 넘게 지나 새로고침하면 예전 정보가 그대로 잠깐 보였음)
+  if(_t && _e > Date.now() - 12*60*60*1000){
     document.documentElement.classList.add('taxj-syncing');
     setTimeout(function(){ document.documentElement.classList.remove('taxj-syncing'); }, 5000);
   }
@@ -807,14 +809,16 @@ try{
   .home-dash-pres-av img{ width:32px; height:32px; border-radius:50%; object-fit:cover; }
   .home-dash-pres-av i{ position:absolute; right:-1px; bottom:-1px; width:11px; height:11px; border-radius:50%; background:#10B981; border:2px solid var(--surface); }
   .home-dash-pres-name{ font-weight:800; font-size:13px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .home-dash-pres-dev{ display:inline-flex; align-items:center; gap:3px; font-size:10.5px; color:var(--ink-soft); white-space:nowrap; }
+  .home-dash-pres-dev{ display:inline-flex; align-items:center; gap:3px; font-size:10.5px; color:var(--ink-soft); white-space:nowrap; max-width:100%; overflow:hidden; }
+  /* [2026.10.02] 카드가 좁아지면 이름 아래 설명(다음 휴가 등)이 오른쪽 숫자 칸 위로 넘쳐 겹치던 것(요청) - 칸 안에서 …로 줄임(전체는 줄에 마우스) */
+  .home-dash-pres-dev .pd-txt{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .home-dash-pres-st{ font-size:12px; font-weight:800; white-space:nowrap; } /* 위 요약이 칩이라 줄마다는 색 글자만(칩 겹침 방지) */
   /* [B안 · 점+글자] 카드처럼 감싼 줄·왼쪽 색 막대 대신, 점선으로만 나누고 오른쪽에 작은 색 점 + 근무지 글자 */
   .home-dash-pres-row.pres-b{ background:transparent; border:none; border-bottom:1px dashed var(--border); border-radius:0; box-shadow:none; margin:0; padding:8px 4px; }
   .home-dash-pres-row.pres-b:last-child{ border-bottom:none; }
   /* [2026.09.30] 회계사님 줄 - 맨 위에 따로, 아래 직원 집계와는 실선으로 구분 */
   /* [2026.09.30] 접속 표시 - 사진 옆 작은 초록 점 대신 이름 옆 "● 접속중" 칩(요청 · ②안), 마우스를 올리면 접속 기기 */
-  .pres-acct-row .home-dash-pres-name, .home-dash-pres-row.pres-b .home-dash-pres-name{ flex:none; overflow:visible; } /* 이름이 "조…"처럼 잘리지 않게 */
+  .pres-acct-row .home-dash-pres-name, .home-dash-pres-row.pres-b .home-dash-pres-name{ flex:0 1 auto; min-width:3.2em; overflow:hidden; text-overflow:ellipsis; } /* 이름이 "조…"처럼 잘리지 않게(세 글자는 항상 보임) + 아주 긴 이름은 오른쪽 상태 글자와 겹치지 않게 …로(요청) */
   .pres-online-chip{ flex:none; display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:800; color:#0E9F6E; background:var(--mint-bg); border-radius:999px; padding:1px 7px; white-space:nowrap; }
   .pres-online-chip i{ width:6px; height:6px; border-radius:50%; background:#10B981; display:inline-block; }
   .pres-st-col{ flex:none; display:inline-flex; flex-direction:column; align-items:flex-end; gap:1px; }
@@ -870,7 +874,8 @@ try{
      제목은 흰 글자. 직원 줄은 조금 크게 해서 빈 공간을 줄임. 아래 요약은 다른 카드처럼 위 구분선 한 줄 */
   #dashPresenceCard::before{ content:''; position:absolute; top:0; left:0; right:0; height:96px; background:linear-gradient(135deg,#C7B6FF,#FFB3C8); border-radius:0 0 50% 50% / 0 0 30px 30px; z-index:0; pointer-events:none; }
   /* [2026.10.01] "파스텔 위 흰 글씨가 잘 안 보인다"(요청) - 물결 위 글자는 흰색 대신 진한 보라 잉크색(이름표 글자와 같은 #3E3360)으로 */
-  #dashPresenceCard > .home-dash-card-title{ border-bottom:none; color:#3E3360; padding:2px 2px 0; flex-wrap:nowrap; }
+  #dashPresenceCard > .home-dash-card-title{ border-bottom:none; color:#3E3360; padding:2px 2px 0; flex-wrap:wrap; } /* 카드가 좁으면 기준 시각이 카드 밖으로 나가지 않고 다음 줄로(요청) */
+  #dashPresenceCard > .home-dash-card-title > :last-child{ margin-left:auto; }
   #dashPresenceCard > .home-dash-card-title .home-dash-card-title-badge{ background:rgba(255,255,255,.9); border-color:transparent; }
   #dashPresenceCard > .home-dash-card-title .backup-info-btn, #dashPresenceCard .home-dash-presence-at{ color:#5A4E86 !important; white-space:nowrap; }
   #dashPresenceCard > .home-dash-card-body{ margin-top:46px; } /* 물결 높이·곡선을 출퇴근 카드와 똑같이(96px, 30px) 맞춘 만큼 목록 시작도 물결 아래로 */
@@ -1167,6 +1172,10 @@ try{
     display:flex; align-items:center; gap:8px; background:#EFF5FC; border-radius:10px; padding:7px 10px; font-size:11.5px; width:100%; box-sizing:border-box;
   }
   .home-dash-tax-chip-date{ flex:none; font-weight:800; color:#5B84B8; font-family:'IBM Plex Mono',monospace; }
+  /* 안내문 발송 줄 - 신고기한 줄과 구분되게 옅은 분홍(요청) */
+  .home-dash-tax-chip.tax-notice{ background:#FDEFF4; }
+  .home-dash-tax-chip.tax-notice .home-dash-tax-chip-date{ color:#C2507E; }
+  .home-dash-tax-chip.tax-notice .home-dash-tax-chip-dday{ background:#E27FA3; }
   .home-dash-tax-chip-title{ flex:1; min-width:0; color:var(--ink); font-weight:700; overflow-wrap:break-word; white-space:normal; line-height:1.35; }
   .home-dash-tax-chip-dday{
     flex:none; font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:900; color:#fff;
@@ -19573,8 +19582,8 @@ function renderDashboardStaffLeave(){
   body.innerHTML = rows.map(r=>{
     const av = r.p.photo ? `<img src="${escHtml(r.p.photo)}" alt="">` : staffInitialCircleHtml(r.name, staffInitialColorOf(r.p, r.name), 32, '', r.p.initialText || '');
     const typeOf = u=> leaveTeamCalShortType(u.type, u.subtype, u.publicReason, u.date);
-    const sub = r.todayL.length ? `<span class="home-dash-pres-dev" style="color:var(--coral); font-weight:700;">오늘 ${escHtml(r.todayL.map(typeOf).join(', '))}</span>`
-      : r.next ? `<span class="home-dash-pres-dev">다음 휴가 ${md(r.next.date)} ${escHtml(typeOf(r.next))}</span>` : '';
+    const sub = r.todayL.length ? `<span class="home-dash-pres-dev" style="color:var(--coral); font-weight:700;"><span class="pd-txt">오늘 ${escHtml(r.todayL.map(typeOf).join(', '))}</span></span>`
+      : r.next ? `<span class="home-dash-pres-dev"><span class="pd-txt">다음 휴가 ${md(r.next.date)} ${escHtml(typeOf(r.next))}</span></span>` : '';
     return `<div class="home-dash-pres-row pres-b" title="${escHtml(r.name)} · 총 휴가 ${nf(r.total)}일 · 사용 ${nf(r.usedAll)}일 · 잔여 ${nf(r.remain)}일 · ${Number(month.slice(5))}월 사용 ${nf(r.used)}일">
       <span class="home-dash-pres-av">${av}</span>
       <div style="flex:1; min-width:0;"><div style="display:flex; align-items:center; gap:6px; min-width:0;"><span class="home-dash-pres-name">${escHtml(r.name)}</span></div>${sub}</div>
@@ -19779,7 +19788,7 @@ function renderDashboardPresence(){
     const stColor = (r.kind === 'none' || r.kind === 'done') ? 'var(--ink-soft)' : st.color;
     return `<div class="home-dash-pres-row pres-b" title="${escHtml(r.name)} · ${st.label}${devTip ? ' · '+devTip : ''}">
       <span class="home-dash-pres-av">${av}</span>
-      <div style="flex:1; min-width:0;"><div style="display:flex; align-items:center; gap:6px; min-width:0;"><span class="home-dash-pres-name">${escHtml(r.name)}</span>${r.online ? `<span class="pres-online-chip" title="${escHtml(devTip)}"><i></i>접속중</span>` : ''}</div>${r.online && r.device ? `<span class="home-dash-pres-dev">${dashPresenceDevIcon(r.device)} ${escHtml(r.device)}</span>` : ''}</div>
+      <div style="flex:1; min-width:0;"><div style="display:flex; align-items:center; gap:6px; min-width:0;"><span class="home-dash-pres-name">${escHtml(r.name)}</span>${r.online ? `<span class="pres-online-chip" title="${escHtml(devTip)}"><i></i>접속중</span>` : ''}</div>${r.online && r.device ? `<span class="home-dash-pres-dev">${dashPresenceDevIcon(r.device)}<span class="pd-txt">${escHtml(r.device)}</span></span>` : ''}</div>
       <span class="pres-st-col"><span class="home-dash-pres-st" style="color:${stColor};"><i class="pres-dot" style="background:${(r.kind === 'none' || r.kind === 'done') ? 'var(--border)' : st.color};"></i>${st.label}</span>${subTime ? `<span class="pres-st-time">${escHtml(subTime)}</span>` : ''}</span>
     </div>`;
   }).join('');
@@ -19811,7 +19820,7 @@ function renderDashboardPresence(){
     const dotc = (st === 'done' || st === 'away') ? 'var(--border)' : col;
     return `<div class="home-dash-pres-row pres-b pres-acct-row" title="${escHtml(r.name)} 회계사 · ${lbl}${r.dev ? ' · 접속 기기: '+escHtml(r.dev) : ''}${mine ? ' · 상태를 눌러 외근·출장·잠시 자리비움으로 바꿀 수 있어요' : ''}">
       <span class="home-dash-pres-av">${av}</span>
-      <div style="flex:1; min-width:0;"><div style="display:flex; align-items:center; gap:6px; min-width:0;"><span class="home-dash-pres-name">${escHtml(r.name)}</span>${r.online ? `<span class="pres-online-chip" title="${escHtml(r.dev ? '지금 접속 중 · '+r.dev : '지금 접속 중')}"><i></i>접속중</span>` : ''}</div>${r.online && r.dev ? `<span class="home-dash-pres-dev">${dashPresenceDevIcon(r.dev)} ${escHtml(r.dev)}</span>` : ''}</div>
+      <div style="flex:1; min-width:0;"><div style="display:flex; align-items:center; gap:6px; min-width:0;"><span class="home-dash-pres-name">${escHtml(r.name)}</span>${r.online ? `<span class="pres-online-chip" title="${escHtml(r.dev ? '지금 접속 중 · '+r.dev : '지금 접속 중')}"><i></i>접속중</span>` : ''}</div>${r.online && r.dev ? `<span class="home-dash-pres-dev">${dashPresenceDevIcon(r.dev)}<span class="pd-txt">${escHtml(r.dev)}</span></span>` : ''}</div>
       <span class="pres-st-col"><span class="home-dash-pres-st${mine ? ' pres-st-edit' : ''}" style="color:${col};"${mine ? ' role="button" tabindex="0" title="눌러서 내 상태 바꾸기"' : ''}><i class="pres-dot" style="background:${dotc};"></i>${lbl}${mine ? '<svg class="pres-st-caret" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}</span>${(st === 'done' && r.entry && r.entry.checkOut) ? `<span class="pres-st-time">${escHtml(String(r.entry.checkOut).slice(0,5))}</span>` : (st === 'man' && presenceManualSub(pEmail)) ? `<span class="pres-st-time">${escHtml(presenceManualSub(pEmail))}</span>` : ''}</span>
     </div>`;
   }).join('')}` : '';
@@ -19925,7 +19934,10 @@ function todayClockEntry(create){
   if(overnight) return overnight;
   let entry = attendance.clockLog.find(e=>e.date===d);
   if(!entry && create){
-    entry = { id:d, date:d, checkIn:'', checkOut:'', status: todayDefaultClockStatus(), updatedAt: new Date().toISOString() };
+    // [2026.10.02] "사무실 근무였는데 재택으로 잡혀 있다"(요청) - 재택 등록 때문에 자동으로 재택이 된 날은 statusAuto로 표시해 둬서,
+    // 나중에 그날 재택 등록을 지우거나 다른 날로 옮기면 근무지도 다시 사무실로 맞춰지게 함(직접 고른 근무지는 그대로)
+    const autoSt = todayDefaultClockStatus();
+    entry = { id:d, date:d, checkIn:'', checkOut:'', status: autoSt, statusAuto: autoSt !== '사무실' ? true : undefined, updatedAt: new Date().toISOString() };
     attendance.clockLog.push(entry);
   }
   return entry;
@@ -20212,6 +20224,7 @@ function renderDashboardClockCard(){
     btn.addEventListener('click', async ()=>{
       const en = todayClockEntry(true);
       en.status = btn.dataset.status;
+      en.statusAuto = undefined; // 직접 고른 근무지 - 재택 등록이 바뀌어도 자동으로 바꾸지 않음
       en.updatedAt = new Date().toISOString();
       recordRecentClockEntryEdit(activeProfileId, en);
       gdriveSuspendPull = true;
@@ -20928,11 +20941,32 @@ function nextTaxScheduleItems(){
 // 신고현황(원천세/부가세/종소세/법인세)은 여기서 진행 건수를 다시 집계하지 않고, 사이드바와 똑같은 방식으로
 // 결재 탭의 해당 세목 신고현황 화면으로 바로 이동만 시켜줌 - "다 안 보여줘도 바로가기만 있으면 된다"는 요청
 const TAX_FILING_STATUS_SHORTCUTS = ['원천세','부가세','종소세','법인세'];
+// [2026.10.02] "큰 신고(부가세·종소세·법인세)는 기한 달 1~5일에 안내문을 보내야 한다"(요청) - 그 달 1~5일(과 직전 달 25일부터 미리)
+// 세무일정 위젯에 "안내문 발송" 줄을 같이 보여줌. 5일이 지나면 사라짐
+const TAX_NOTICE_RULES = [
+  { id:'vat2-final', month:1, label:'부가세 2기 확정' }, { id:'corp-tax', month:3, label:'법인세' },
+  { id:'vat1-prelim', month:4, label:'부가세 1기 예정' }, { id:'income-tax-final', month:5, label:'종소세' },
+  { id:'vat1-final', month:7, label:'부가세 1기 확정' }, { id:'vat2-prelim', month:10, label:'부가세 2기 예정' },
+];
+function taxNoticeReminders(){
+  const today = todayStr(), ty = Number(today.slice(0,4)), tm = Number(today.slice(5,7)), td = Number(today.slice(8,10));
+  const out = [];
+  TAX_NOTICE_RULES.forEach(r=>{
+    // 이번 달이 기한 달이면 1~5일, 다음 달이 기한 달이면 이번 달 25일부터 미리
+    let y = null;
+    if(r.month === tm && td <= 5) y = ty;
+    else if(td >= 25 && r.month === (tm % 12) + 1) y = tm === 12 ? ty + 1 : ty;
+    if(y === null) return;
+    out.push({ date:`${y}-${String(r.month).padStart(2,'0')}-05`, label:r.label });
+  });
+  return out;
+}
 function renderDashboardTaxSchedulePreview(){
   const body = document.getElementById('dashTaxScheduleBody');
   if(!body) return;
   const items = nextTaxScheduleItems();
-  if(!items.length){
+  const notices = taxNoticeReminders();
+  if(!items.length && !notices.length){
     body.innerHTML = `<div class="hint" style="margin:0; font-size:11.5px;">다가오는 신고기한이 없어요.</div>`;
   } else {
     const today = todayStr();
@@ -20959,7 +20993,12 @@ function renderDashboardTaxSchedulePreview(){
       }
       return `<div class="home-dash-tax-chip"><span class="home-dash-tax-chip-date">${md}</span><span class="home-dash-tax-chip-title">${escHtml(title)}</span>${ddayHtml}</div>`;
     }).join('');
-    body.innerHTML = `<div class="home-dash-tax-chip-row">${rowsHtml}</div>`;
+    const noticeHtml = notices.map(n=>{
+      const dd = ddayOf(n.date);
+      const lab = dd === 0 ? '오늘까지' : dd > 0 ? `D-${dd}` : '';
+      return `<div class="home-dash-tax-chip tax-notice"><span class="home-dash-tax-chip-date">~${n.date.slice(5,7)}/05</span><span class="home-dash-tax-chip-title">${escHtml(n.label)} 신고 안내문 발송</span>${lab ? `<span class="home-dash-tax-chip-dday">${lab}</span>` : ''}</div>`;
+    }).join('');
+    body.innerHTML = `<div class="home-dash-tax-chip-row">${noticeHtml}${rowsHtml}</div>`;
   }
   // 원천세 "지금 챙길 신고" 알림 줄 - 미신고가 남아있으면 맨 위에 띄우고, 누르면 원천세 신고현황을
   // "미신고만 보기"로 바로 열어줌(관리자·일반 모두 같은 데이터를 봄)
@@ -25431,6 +25470,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(overlay) overlay.addEventListener('click', (e)=>{ if(e.target === overlay) _appConfirmClose(_appConfirmInputMode ? null : false); });
   // 입력칸에서 Enter를 누르면 확인 버튼을 누른 것과 동일하게 처리(휴대폰에서 키보드의 "완료"도 보통 Enter로 들어옴)
   if(inputEl) inputEl.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); okBtn?.click(); } });
+  // [2026.10.02] "알림 팝업에서 엔터 치면 확인 누른 것처럼"(요청) - 이 확인창이 떠 있을 때 Enter = 확인, Esc = 취소(취소 버튼이 있는 창만).
+  // 뒤쪽 화면의 버튼·입력칸에는 키가 전달되지 않게 막음. 입력칸이 있는 창은 위 입력칸 처리 그대로
+  document.addEventListener('keydown', (e)=>{
+    if(!overlay || overlay.style.display === 'none' || !_appConfirmResolve) return;
+    if(e.isComposing) return; // 한글 입력 조합 중 Enter는 무시
+    if(e.key === 'Enter'){
+      if(e.target === inputEl) return;
+      e.preventDefault(); e.stopPropagation(); okBtn?.click();
+    } else if(e.key === 'Escape'){
+      e.preventDefault(); e.stopPropagation();
+      if(cancelBtn && cancelBtn.style.display !== 'none') cancelBtn.click(); else okBtn?.click();
+    }
+  }, true);
 });
 
 // ══════════════════════════════════════════════════════════
@@ -32033,7 +32085,7 @@ async function fetchCurrentUserEmail(){
   }
   if(!res || !res.ok){
     if(res && res.status === 401){ gdriveHandleUnauthorized(); return; }
-    loginCheckFailed = true;
+    loginCheckFailed = true; taxjSyncReveal();
     if(typeof applyPermissionUI === 'function') applyPermissionUI();
     return;
   }
@@ -37571,7 +37623,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 13:02';
+const APP_BUILD = '2026.10.02 13:07';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -37592,7 +37644,7 @@ let gdriveSilentReconnectPending = false;
 function gdriveResolveSilentReconnect(){
   if(!gdriveSilentReconnectPending) return;
   gdriveSilentReconnectPending = false;
-  if(!gdriveAccessToken) pendingLastTabRestore = null; // 조용한 재로그인이 안 됐으면(직접 다시 로그인) 예전처럼 홈부터
+  if(!gdriveAccessToken){ pendingLastTabRestore = null; taxjSyncReveal(); } // 다시 로그인이 필요하면 가림막을 바로 걷어 로그인 안내가 보이게 // 조용한 재로그인이 안 됐으면(직접 다시 로그인) 예전처럼 홈부터
   if(typeof applyPermissionUI === 'function') applyPermissionUI();
 }
 function gdriveConnect(silent){
