@@ -4035,6 +4035,7 @@ try{
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-messaging-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-database-compat.js"></script>
 </head>
 <body>
 <!-- 월 선택용 보조 input(showPicker로 브라우저 기본 달력 팝업을 띄우는 용도) - 근태현황·개인캘린더 두 탭에서
@@ -9106,6 +9107,7 @@ const FIREBASE_CONFIG = {
   authDomain: "taxj-a3e01.firebaseapp.com",
   projectId: "taxj-a3e01",
   storageBucket: "taxj-a3e01.firebasestorage.app",
+  databaseURL: "https://taxj-a3e01-default-rtdb.asia-southeast1.firebasedatabase.app",
   messagingSenderId: "669418345168",
   appId: "1:669418345168:web:5cce25e2573fa5e05cc4d5",
   measurementId: "G-MXEHN1QCJE"
@@ -38348,7 +38350,7 @@ function setGdriveSyncingIndicator(active){
 const FS_COLLECTION = 'taxj';
 // ══════════════════════════════════════════════════════════
 // 👥 동시 수정 알림 - "공용 정보를 여러 명이 동시에 수정하고 있으면 서로 알 수 있게" 요청
-// · 지금 이 기기에서 수정 화면(거래처 수정·설정·자리배치도·신고/제출현황·공지·지침 편집)을 보고 있으면, Firestore에
+// · 지금 이 기기에서 수정 화면(거래처 수정·설정·자리배치도·신고/제출현황·공지·지침 편집)을 보고 있으면, Realtime Database에
 //   "_presence__<이메일>" 문서로 {이름, 어디, 시각}을 15초마다 남김(단순 조회 화면은 남기지 않음)
 // · 같은 곳을 다른 사람이 최근 45초 안에 보고 있으면 화면 위에 안내 띠를 띄우고, 저장 버튼을 누를 때 한 번 더 확인함
 // · 막는 기능이 아니라 알려주는 기능 - Firestore 저장소를 쓰는 중(fsActive)일 때만 동작
@@ -38440,6 +38442,39 @@ window.addEventListener('pointerdown', async function askIdle(){
   }catch(e){}
 }, true);
 function presenceDocId(email){ return PRESENCE_PREFIX + String(email||'').toLowerCase().replace(/[^a-z0-9]/g, '_'); }
+// [2026.10.02] 사용량 줄이기 - 접속 신호(근무현황·같이 수정 중 안내·내 상태)를 Firestore에서 Realtime Database로 옮김.
+// Firestore는 문서를 읽을 때마다 건수가 쌓여서, 30초마다 오는 접속 신호를 켜져 있는 모든 기기가 읽으면 사용량이 (인원×인원)으로 늘었음.
+// Realtime Database는 건수가 아니라 전송량으로 계산돼서 이런 잦은 신호에 맞음. 회사 데이터는 그대로 Firestore에 있음
+// · presence/<이메일키>(__alt) : 접속 신호 / presenceSt/<이메일키> : 직접 고른 상태(외근·출장·잠시 자리비움)
+// · 브라우저가 닫히거나 인터넷이 끊기면 서버가 알아서 "접속 안 함"으로 바꿈(onDisconnect)
+var PRESENCE_RTDB_URL = 'https://taxj-a3e01-default-rtdb.asia-southeast1.firebasedatabase.app';
+var presenceRtdb = null, presenceRtdbVal = null, presenceRtdbStVal = null, presenceRtdbOffs = [];
+function presenceRtdbDb(){
+  if(presenceRtdb) return presenceRtdb;
+  try{ if(typeof firebase !== 'undefined' && firebase.database && firebase.apps && firebase.apps.length) presenceRtdb = firebase.app().database(PRESENCE_RTDB_URL); }catch(e){ console.error('접속 신호 저장소 연결 실패', e); presenceRtdb = null; }
+  return presenceRtdb;
+}
+function presenceRtdbKey(email){ return presenceDocId(email).slice(PRESENCE_PREFIX.length); }
+function presenceRtdbRef(email, isAlt){ const db = presenceRtdbDb(); return db ? db.ref('presence/' + presenceRtdbKey(email) + (isAlt ? '__alt' : '')) : null; }
+function presenceRtdbStRef(email){ const db = presenceRtdbDb(); return db ? db.ref('presenceSt/' + presenceRtdbKey(email)) : null; }
+function presenceRtdbClean(v){ return JSON.parse(JSON.stringify(v)); } // Realtime Database는 undefined 값을 못 받음
+// 받은 신호를 예전 Firestore 문서 모양으로 바꿔 기존 처리(presenceIngestSnapshot)에 그대로 넘김
+function presenceRtdbIngest(){
+  const docs = [];
+  Object.keys(presenceRtdbVal || {}).forEach(k=>{ const v = presenceRtdbVal[k]; docs.push({ id: PRESENCE_PREFIX + k, data: ()=> v }); });
+  Object.keys(presenceRtdbStVal || {}).forEach(k=>{ const v = presenceRtdbStVal[k]; docs.push({ id: PRESENCE_ST_PREFIX + k, data: ()=> v }); });
+  presenceIngestSnapshot({ forEach: f=> docs.forEach(f) });
+}
+function presenceRtdbStart(){
+  if(presenceRtdbOffs.length) return;
+  const db = presenceRtdbDb(); if(!db) return;
+  const a = db.ref('presence'), b = db.ref('presenceSt');
+  const onErr = e=> console.error('접속 신호 수신 실패', e);
+  const ha = a.on('value', snap=>{ presenceRtdbVal = snap.val() || {}; if(presenceRtdbStVal !== null) presenceRtdbIngest(); }, onErr);
+  const hb = b.on('value', snap=>{ presenceRtdbStVal = snap.val() || {}; if(presenceRtdbVal !== null) presenceRtdbIngest(); }, onErr);
+  presenceRtdbOffs = [()=> a.off('value', ha), ()=> b.off('value', hb)];
+}
+function presenceRtdbStop(){ presenceRtdbOffs.forEach(f=>{ try{ f(); }catch(e){} }); presenceRtdbOffs = []; presenceRtdbVal = null; presenceRtdbStVal = null; }
 // [2026.10.01] 회계사님이 직접 고르는 상태(외근·출장·잠시 자리비움) - 접속 신호와 따로 저장(접속 신호는 30초마다 덮어써서).
 // 외근·출장은 그날 하루, 잠시 자리비움은 1시간 뒤 저절로 풀림. 본인만 바꿀 수 있음
 var PRESENCE_ST_PREFIX = '_presence__st__';
@@ -38467,7 +38502,7 @@ async function presenceSetManualStatus(st, extra){
   const v = Object.assign({ email: me, st: st || '', date: todayStr(), at: Date.now(), allDay: false, from: '', to: '' }, extra || {});
   presenceStatusAll[me] = v;
   try{ renderDashboardPresence(); }catch(e){}
-  try{ if(fsActive && fsDb) await fsRef(PRESENCE_ST_PREFIX + me.replace(/[^a-z0-9]/g, '_')).set(v); }catch(e){ appAlert('상태를 저장하지 못했어요. 잠시 뒤 다시 해주세요.'); }
+  try{ const sr = fsActive ? presenceRtdbStRef(me) : null; if(sr) await sr.set(presenceRtdbClean(v)); }catch(e){ appAlert('상태를 저장하지 못했어요. 잠시 뒤 다시 해주세요.'); }
 }
 function presenceCloseManualPop(){ const el = document.getElementById('presManPop'); if(el) el.remove(); }
 function presencePlacePop(pop, anchor){
@@ -38638,14 +38673,16 @@ async function presenceTick(force){
     // 아예 다른 칸(presenceDocId + '__alt', alt:true)에 쓰고, 보는 쪽에서 PC가 켜져 있으면 그 칸을 무시함(presenceIngestSnapshot)
     const isAlt = !isPcName(device);
     presenceLastWrite = now;
-    const ref = fsRef(presenceDocId(currentUserEmail) + (isAlt ? '__alt' : ''));
+    const ref = presenceRtdbRef(currentUserEmail, isAlt);
+    if(!ref) return;
     let tok = ''; try{ tok = localStorage.getItem('worklog_my_push_token') || ''; }catch(e){}
     // tok: 이 기기의 알림 등록 토큰 - 보는 쪽에서 알림 기기 목록(sharedPushTokens)의 "지금 이름"을 찾아 쓰게 함(이름변경 즉시 반영)
-    await ref.set({ email: currentUserEmail.toLowerCase(), name: currentStaffDisplayName(), key: area ? area.key : '', label: area ? area.label : '', at: now, device, tok, mob: isMob, ...(isAlt ? { alt: true } : {}), ...(PRESENCE_USE_IDLE ? { sysIdle: presenceIdleTracked() && presenceSysIdle === true } : {}) }); // 조작 시각은 남기지 않고 '1시간 넘게 안 씀' 여부만
+    try{ ref.onDisconnect().update({ key:'', label:'', at:0, lastAt: firebase.database.ServerValue.TIMESTAMP }); }catch(e){} // 창이 닫히거나 인터넷이 끊기면 서버가 "접속 안 함"으로 바꿈
+    await ref.set(presenceRtdbClean({ email: currentUserEmail.toLowerCase(), name: currentStaffDisplayName(), key: area ? area.key : '', label: area ? area.label : '', at: now, device, tok, mob: isMob, ...(isAlt ? { alt: true } : {}), ...(PRESENCE_USE_IDLE ? { sysIdle: presenceIdleTracked() && presenceSysIdle === true } : {}) })); // 조작 시각은 남기지 않고 '1시간 넘게 안 씀' 여부만
   }catch(e){ /* 표시 기능이라 실패해도 조용히 넘어감 */ }
 }
 setInterval(()=> presenceTick(false), 3000);
-window.addEventListener('pagehide', ()=>{ try{ let myDev = ''; try{ myDev = localStorage.getItem('worklog_my_device_name') || ''; }catch(e){} const isAlt = !(/PC|데스크탑|데스크톱|컴퓨터/i.test(myDev||'') && !/노트북|랩탑|laptop|맥북|macbook/i.test(myDev||'')); /* PC면 PC 칸, 노트북 등은 자기 칸(__alt)만 지움 - 서로의 표시는 건드리지 않음 */ if(fsActive && fsDb && currentUserEmail) fsRef(presenceDocId(currentUserEmail) + (isAlt ? '__alt' : '')).set({ email: currentUserEmail.toLowerCase(), name: currentStaffDisplayName(), key:'', label:'', at: 0, lastAt: Date.now(), ...(isAlt ? { alt: true } : {}) }); }catch(e){} }); // 앱을 닫으면 바로 "접속 안 함"으로
+window.addEventListener('pagehide', ()=>{ try{ let myDev = ''; try{ myDev = localStorage.getItem('worklog_my_device_name') || ''; }catch(e){} const isAlt = !(/PC|데스크탑|데스크톱|컴퓨터/i.test(myDev||'') && !/노트북|랩탑|laptop|맥북|macbook/i.test(myDev||'')); /* PC면 PC 칸, 노트북 등은 자기 칸(__alt)만 지움 - 서로의 표시는 건드리지 않음 */ const pr = (fsActive && currentUserEmail) ? presenceRtdbRef(currentUserEmail, isAlt) : null; if(pr) pr.set(presenceRtdbClean({ email: currentUserEmail.toLowerCase(), name: currentStaffDisplayName(), key:'', label:'', at: 0, lastAt: Date.now(), ...(isAlt ? { alt: true } : {}) })); }catch(e){} }); // 앱을 닫으면 바로 "접속 안 함"으로
 // 저장 버튼을 누를 때 같은 곳을 다른 사람이 수정 중이면 한 번 확인받음(확인하면 그대로 저장 진행)
 let presenceBypassOnce = false;
 document.addEventListener('click', async (e)=>{
@@ -38829,7 +38866,6 @@ async function fsActivate(){
     // 보였음. 서버 확인 여부(metadata)가 바뀔 때도 알림을 받도록 켜서, 서버와 연결되는 즉시 저장이 풀리게 함
     fsCollUnsub = fsDb.collection(FS_COLLECTION).onSnapshot({ includeMetadataChanges: true }, snap=>{
       if(snap.metadata && snap.metadata.fromCache) return; // 서버에서 확인된 내용만 반영(오프라인 캐시는 건너뜀)
-      presenceIngestSnapshot(snap);
       // "편집 중" 표시 문서만 바뀐 알림이면 데이터 반영(loadAll 등)은 건너뜀 - 30초마다 오는 표시 갱신 때문에 화면이 다시 그려지지 않게
       const dataChanged = !fsHasServerSnapshot || (typeof snap.docChanges === 'function' ? snap.docChanges().filter(ch=> !ch.doc.id.startsWith(PRESENCE_PREFIX)).length > 0 : true);
       if(!dataChanged) return; // 내용은 그대로이고 상태 표시만 바뀐 알림
@@ -38845,6 +38881,7 @@ async function fsActivate(){
       gdriveSetStatus('실시간 연결이 끊겼어요 · 새로고침해 주세요 (입력한 내용은 이 기기에 안전하게 남아있어요)');
     });
   }
+  presenceRtdbStart(); // 접속 신호는 Realtime Database에서 따로 받음
   clearInterval(fsDriveCheckTimer);
   fsDriveCheckTimer = setInterval(()=>{ fsCheckDriveForOldClients(); }, 5*60*1000);
   await fsWaitFirstSnapshot(20000);
@@ -38853,6 +38890,7 @@ async function fsActivate(){
 function fsDeactivate(){
   fsActive = false;
   if(fsCollUnsub){ try{ fsCollUnsub(); }catch(e){} fsCollUnsub = null; }
+  presenceRtdbStop();
   clearInterval(fsDriveCheckTimer);
   fsHasServerSnapshot = false;
   gdriveSetStatus('저장소가 드라이브로 바뀌었어요 · 동기화 중...');
@@ -39195,7 +39233,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 20:25';
+const APP_BUILD = '2026.10.02 22:10';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
