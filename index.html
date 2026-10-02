@@ -861,6 +861,15 @@
   #dashPresenceCard .home-dash-pres-row.pres-b{ padding:11px 6px; }
   #dashPresenceCard .staff-initial{ width:38px !important; height:38px !important; box-shadow:0 0 0 2.5px #fff, 0 0 0 4px #F3D7E4; font-weight:600 !important; letter-spacing:.03em !important; } /* 이니셜(흰 글씨)이 너무 굵다(요청) - 900→600 */
   #dashPresenceCard .home-dash-pres-name{ font-size:14px; }
+  /* [2026.10.02] 직원 근태현황도 실시간 근무현황과 같은 얼굴 동그라미(38px·흰 테두리 고리)·이름 크기, 오른쪽은 총 휴가·사용·잔여·이달 4칸 */
+  #dashStaffLeaveCard .staff-initial{ width:38px !important; height:38px !important; box-shadow:0 0 0 2.5px #fff, 0 0 0 4px #F3D7E4; }
+  #dashStaffLeaveCard .home-dash-pres-row.pres-b{ padding:11px 6px; }
+  #dashStaffLeaveCard .home-dash-pres-name{ font-size:14px; }
+  .sl-stats{ flex:none; display:flex; gap:4px; }
+  .sl-stat{ display:flex; flex-direction:column; align-items:center; gap:2px; min-width:46px; }
+  .sl-stat span{ font-size:10.5px; font-weight:600; color:var(--ink-soft); white-space:nowrap; }
+  .sl-stat b{ font-size:13px; font-weight:800; color:var(--ink); white-space:nowrap; }
+  .sl-stat.main b{ color:var(--indigo-deep); }
   .pres-body-c .pres-list{ flex:1 1 auto; min-height:0; overflow-y:auto; }
   .pres-foot{ flex:none; display:flex; justify-content:center; align-items:center; gap:6px; margin-top:8px; padding-top:9px; border-top:1px solid var(--border); font-size:11.5px; font-weight:700; white-space:nowrap; }
   .pres-foot b{ font-weight:900; }
@@ -10016,7 +10025,7 @@ function staffInitialCircleHtml(name, color, size, extraStyle, text){
   if(text === undefined){ try{ const pr = getProfiles().find(x=>(x.name||'').trim()===String(name||'').trim()); if(pr && pr.initialText) text = pr.initialText; }catch(e){} }
   const ch = String(text || '').trim().slice(0,2) || String(name||'').trim().slice(0,1) || '?';
   const two = ch.length > 1;
-  return `<span class="staff-initial" style="display:inline-flex; width:${size}px; height:${size}px; border-radius:50%; background:${color}; color:#fff; font-size:${Math.max(8, Math.round(size*(two?0.36:0.45)))}px; letter-spacing:${two?'-0.02em':'0'}; font-weight:900; align-items:center; justify-content:center; flex:none; line-height:1; ${extraStyle||''}">${escHtml(ch)}</span>`;
+  return `<span class="staff-initial" style="display:inline-flex; width:${size}px; height:${size}px; border-radius:50%; background:${color}; color:#fff; font-size:${Math.max(8, Math.round(size*(two?0.36:0.45)))}px; letter-spacing:${two?'.03em':'0'}; font-weight:600; align-items:center; justify-content:center; flex:none; line-height:1; ${extraStyle||''}">${escHtml(ch)}</span>`;
 }
 function staffProfileByEmail(email){
   const lower = String(email||'').toLowerCase();
@@ -19482,9 +19491,9 @@ function renderDashboardStaffLeave(){
       const lu = (att.leaveUsage||[]).filter(u=>u && u.date).sort((a,b)=> a.date.localeCompare(b.date));
       const todayL = lu.filter(u=>u.date===today);
       const next = lu.find(u=>u.date > today);
-      let r = { remainLeave:0, monthUsedDays:0 };
+      let r = { remainLeave:0, monthUsedDays:0, totalGranted:0, totalUsed:0 };
       try{ r = computeForProfile(p.id, month).att; }catch(e){}
-      rows.push({ p, name, remain: r.remainLeave, used: r.monthUsedDays, todayL, next });
+      rows.push({ p, name, remain: r.remainLeave, used: r.monthUsedDays, total: r.totalGranted, usedAll: r.totalUsed, todayL, next });
     });
   }catch(e){ console.error('직원 근태현황 계산 실패', e); }
   if(!rows.length){ body.innerHTML = `<div class="hint" style="margin:0; font-size:11.5px;">등록된 직원이 없어요.</div>`; return; }
@@ -19494,10 +19503,10 @@ function renderDashboardStaffLeave(){
     const typeOf = u=> leaveTeamCalShortType(u.type, u.subtype, u.publicReason, u.date);
     const sub = r.todayL.length ? `<span class="home-dash-pres-dev" style="color:var(--coral); font-weight:700;">오늘 ${escHtml(r.todayL.map(typeOf).join(', '))}</span>`
       : r.next ? `<span class="home-dash-pres-dev">다음 휴가 ${md(r.next.date)} ${escHtml(typeOf(r.next))}</span>` : '';
-    return `<div class="home-dash-pres-row pres-b" title="${escHtml(r.name)} · 잔여 연차 ${nf(r.remain)}일 · ${Number(month.slice(5))}월 사용 ${nf(r.used)}일">
+    return `<div class="home-dash-pres-row pres-b" title="${escHtml(r.name)} · 총 휴가 ${nf(r.total)}일 · 사용 ${nf(r.usedAll)}일 · 잔여 ${nf(r.remain)}일 · ${Number(month.slice(5))}월 사용 ${nf(r.used)}일">
       <span class="home-dash-pres-av">${av}</span>
       <div style="flex:1; min-width:0;"><div style="display:flex; align-items:center; gap:6px; min-width:0;"><span class="home-dash-pres-name">${escHtml(r.name)}</span></div>${sub}</div>
-      <span class="pres-st-col"><span class="home-dash-pres-st" style="color:var(--ink);">잔여 ${nf(r.remain)}일</span><span class="pres-st-time">이달 사용 ${nf(r.used)}일</span></span>
+      <span class="sl-stats"><span class="sl-stat"><span>총 휴가</span><b>${nf(r.total)}</b></span><span class="sl-stat"><span>사용</span><b>${nf(r.usedAll)}</b></span><span class="sl-stat main"><span>잔여</span><b>${nf(r.remain)}</b></span><span class="sl-stat"><span>이달</span><b>${nf(r.used)}</b></span></span>
     </div>`;
   }).join('');
 }
@@ -34194,8 +34203,10 @@ HINT_INFO.dashStaffLeave = { title:'직원 근태현황', html: infoTidyHtml(
   '<b>보는 사람</b>: 관리자만 보여요(직원 화면·위젯 설정엔 안 나와요)<br>'+
   '<b>대상</b>: 재직 중인 직원(회계사·퇴사자 제외)<br>'+
   '<b>이름 아래</b>: 오늘 휴가면 휴가 종류, 아니면 가장 가까운 다음 휴가 날짜<br>'+
-  '<b>잔여</b>: 오늘 기준 남은 연차(근태현황 잔여 연차와 같은 계산)<br>'+
-  '<b>이달 사용</b>: 이번 달 휴가 일수(이달 남은 예정 휴가 포함)<br>'+
+  '<b>총 휴가</b>: 오늘까지 부여된 연차 합계<br>'+
+  '<b>사용</b>: 오늘까지 쓴 연차(반차 0.5·반반차 0.25)<br>'+
+  '<b>잔여</b>: 총 휴가 − 사용(근태현황 잔여 연차와 같은 계산)<br>'+
+  '<b>이달</b>: 이번 달 휴가 일수(이달 남은 예정 휴가 포함)<br>'+
   '<b>넣는 법</b>: 대시보드 ⚙ 위젯 설정 › 넣을 수 있는 위젯에서 끌어다 놓아요<br>'+
   '<b>순서</b>: 오늘 휴가인 직원이 맨 위, 나머지는 이름순') };
 HINT_INFO.dashPresence = { title:'실시간 근무현황', html: infoTidyHtml(
@@ -37387,7 +37398,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 11:10';
+const APP_BUILD = '2026.10.02 11:20';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
