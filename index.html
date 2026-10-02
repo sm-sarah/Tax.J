@@ -2094,7 +2094,11 @@ try{
   .pr-months button{ border:none; font-family:inherit; font-size:11.5px; font-weight:700; padding:4px 8px; border-radius:999px; color:var(--ink-soft); background:#F3F4FA; cursor:pointer; }
   .pr-months button.empty{ color:#B4B6C8; }
   .pr-months button.on{ background:var(--indigo); color:#fff; }
-  .pr-top #prPrintBtn{ margin-left:auto; }
+  .pr-save{ margin-left:auto; display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; color:#9A9CB5; white-space:nowrap; margin-right:2px; }
+  .pr-save i{ width:7px; height:7px; border-radius:50%; background:#C9CBDA; display:inline-block; }
+  .pr-save.saving{ color:#B7791F; } .pr-save.saving i{ background:var(--amber); animation:taxjSyncPulse 1s ease-in-out infinite; }
+  .pr-save.saved{ color:#0E7A52; } .pr-save.saved i{ background:var(--mint); }
+  .pr-save.wait{ color:#C2415D; } .pr-save.wait i{ background:var(--coral); }
   .pr-top #prAddBtn{ width:auto; padding:0 10px !important; font-size:11.5px !important; font-weight:700; white-space:nowrap; }
   .pr-scroll{ overflow-x:auto; }
   .pr-table{ width:100%; border-collapse:collapse; font-size:12px; }
@@ -26578,6 +26582,7 @@ function openPayrollModal(cid){
   const nowY = todayStr().slice(0,4), nowM = Number(todayStr().slice(5,7));
   const last = prRows(cid, nowY).map(r=> Number(r.m)).sort((a,b)=>b-a)[0];
   payrollState = { clientId: cid, year: nowY, month: last || nowM };
+  if(prSaveState.st !== 'saving') prSaveState = { st:'idle', at:'' };
   let ov = document.getElementById('payrollModalOverlay');
   if(!ov){
     document.body.insertAdjacentHTML('beforeend', `<div id="payrollModalOverlay" style="display:none; position:fixed; inset:0; z-index:950; background:rgba(15,16,30,0.6); padding:14px; align-items:center; justify-content:center;">
@@ -26589,8 +26594,25 @@ function openPayrollModal(cid){
   ov.style.display = 'flex';
   renderPayroll();
 }
+// [2026.10.02] 앞 달에 신고금액 0(미신고)으로 둔 일용직은 이달 합산신고 계산에 자동으로 올라옴(요청). 한 번 지운 줄은 다시 만들지 않음
+function prIsUnfiled(r){ return r.kind === '일용' && r.filed !== undefined && r.filed !== null && r.filed !== '' && Number(r.filed) === 0; }
+function prAutoCalcs(cid, year, month){
+  if(!cid || !month) return;
+  const p = prClient(cid);
+  const [py, pm] = prPrevYM(year, month);
+  const allHere = Object.values(p.calcs || {}).filter(c=> c && String(c.y) === String(year) && Number(c.m) === Number(month));
+  let made = false, ord = allHere.length;
+  prRows(cid, py, pm).filter(prIsUnfiled).forEach((r, i)=>{
+    if(allHere.some(c=> c.name === r.name)) return;
+    const id = 'pc' + Date.now().toString(36) + i + Math.random().toString(36).slice(2,5);
+    p.calcs[id] = { id, y:String(year), m:month, name:r.name, fromYm:`${py}-${String(pm).padStart(2,'0')}`, order: ++ord, auto:true, modAt:new Date().toISOString() };
+    made = true;
+  });
+  if(made) saveSharedPayroll();
+}
 function renderPayroll(){
   const { clientId:cid, year, month } = payrollState;
+  prAutoCalcs(cid, year, month);
   const body = document.getElementById('payrollBody'); if(!body) return;
   const cl = (clients.list||[]).find(c=> c.id === cid) || {};
   const nf = v => (v === null || v === undefined || v === '' || isNaN(v)) ? '' : Number(v).toLocaleString();
@@ -26606,6 +26628,7 @@ function renderPayroll(){
   let html = `<div class="pr-head"><div class="pr-cname">${escHtml(cl.name||'')}</div><h3 class="pr-title">급여현황</h3></div>
     <div class="pr-top"><select id="prYear">${ys.map(y=>`<option value="${y}" ${y===String(year)?'selected':''}>${y}년</option>`).join('')}</select>
       <div class="pr-months">${Array.from({length:12},(_,i)=>i+1).map(m=>`<button type="button" data-m="${m}" class="${m===month?'on':''}${counts[m]?'':' empty'}">${m}월</button>`).join('')}<button type="button" data-m="0" class="${!month?'on':''}">전체</button></div>
+      ${prSaveBadgeHtml()}
       <button type="button" class="del-btn xls-io-btn" id="prXlsBtn" title="엑셀 받기 (${year}년)" aria-label="엑셀 받기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2" y="2" width="12" height="12" rx="2"></rect><line x1="2" y1="6.5" x2="14" y2="6.5"></line><line x1="6.5" y1="2" x2="6.5" y2="14"></line><path d="M19 8v14"></path><path d="M15 18l4 4 4-4"></path></svg></button>
       <button type="button" class="del-btn xls-io-btn" id="prPrintBtn" title="출력 (거래처 전달용)" aria-label="출력"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></button>
       ${month ? `<button type="button" class="del-btn xls-io-btn" id="prAddBtn" title="줄 추가" aria-label="줄 추가">+ 추가</button>` : ''}</div>`;
@@ -26666,11 +26689,45 @@ function renderPayroll(){
       html += `</tbody></table></div>`;
     }
     html += `</div>`;
+    // 이달 미신고 대상(신고금액 0으로 둔 일용직) - 다음 달 합산신고 계산에 자동으로 올라감
+    const unf = prRows(cid, year, month).filter(prIsUnfiled);
+    if(unf.length){
+      const [ny, nm] = Number(month) === 12 ? [Number(year)+1, 1] : [Number(year), Number(month)+1];
+      html += `<div class="pr-calc"><div class="pr-calc-h">미신고 대상 <span>이달 신고하지 않은 일용직 · ${ny !== Number(year) ? ny + '년 ' : ''}${nm}월 합산신고 계산에 자동으로 올라가요</span></div>
+        <div class="pr-scroll"><table class="pr-table pr-ctable"><thead><tr><th>이름</th><th>발생금액</th><th>지급금액</th><th>비고</th></tr></thead><tbody>
+        ${unf.map(r=>`<tr><td><b>${escHtml(r.name||'')}</b></td><td class="n">${nf(r.reported)}</td><td class="n">${nf(prPaidOf(cid, r))}</td><td class="pr-memo">${escHtml(r.memo||'')}</td></tr>`).join('')}
+        </tbody></table></div></div>`;
+    }
   }
   body.innerHTML = html;
   bindPayroll();
 }
-function prTouch(rec){ rec.modAt = new Date().toISOString(); saveSharedPayroll(); }
+// [2026.10.02] 자동 저장 표시(요청) - 고치면 "저장 중…", 서버에 올라가면 "저장됨 시:분:초", 연결이 안 돼 못 올렸으면 "저장 대기 중(이 기기엔 저장됨)"
+let prSaveState = { st:'idle', at:'' };
+function prSaveBadgeHtml(){
+  const st = prSaveState.st;
+  const label = st === 'saving' ? '저장 중…' : st === 'saved' ? `저장됨 ${prSaveState.at}` : st === 'wait' ? '저장 대기 중 (이 기기엔 저장됨)' : '자동 저장';
+  return `<span class="pr-save ${st}" id="prSaveBadge" title="숫자·글자를 고치면 바로 자동으로 저장돼요"><i></i>${label}</span>`;
+}
+function prSetSave(st){
+  prSaveState.st = st;
+  if(st === 'saved') prSaveState.at = new Date().toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false });
+  const el = document.getElementById('prSaveBadge');
+  if(el) el.outerHTML = prSaveBadgeHtml();
+}
+function prOnSyncStatus(text){
+  if(prSaveState.st !== 'saving' && prSaveState.st !== 'wait') return;
+  if(/저장됨|동기화함/.test(text) && !/대기|실패/.test(text)) prSetSave('saved');
+  else if(/대기|실패|권한/.test(text)) prSetSave('wait');
+}
+function prTouch(rec){
+  rec.modAt = new Date().toISOString();
+  prSetSave('saving');
+  saveSharedPayroll();
+  // 동기화가 꺼져 있거나(로그인 전 등) 서버 저장 알림이 오지 않으면, 이 기기에 저장된 것으로 표시
+  clearTimeout(prTouch._t);
+  prTouch._t = setTimeout(()=>{ if(prSaveState.st === 'saving'){ let on = false; try{ on = !!(gdriveAccessToken && gdriveFileId); }catch(e){} prSetSave(on ? 'wait' : 'saved'); } }, 12000);
+}
 function bindPayroll(){
   const { clientId:cid } = payrollState;
   const body = document.getElementById('payrollBody');
@@ -26699,7 +26756,7 @@ function bindPayroll(){
       if(r.cashAs) P().rows[id].cashAs = r.cashAs;
       P().rows[id].modAt = new Date().toISOString();
     });
-    saveSharedPayroll(); renderPayroll();
+    prSetSave('saving'); saveSharedPayroll(); renderPayroll();
   });
   const numOf = s => { const v = String(s||'').replace(/[^\d]/g,''); return v === '' ? undefined : Number(v); };
   body.querySelectorAll('.pr-in').forEach(inp=>{
@@ -26768,14 +26825,18 @@ function prPrint(){
     const rows = prRows(cid, year, m);
     if(!rows.length) return;
     let sr = 0, sp = 0;
-    body += `<div class="ym">귀속월: ${year}년 ${m}월</div><table><thead><tr><th style="width:80px">구분</th><th style="width:100px">이름</th><th style="width:105px">발생금액</th><th style="width:105px">신고금액</th><th style="width:105px">지급금액</th><th>비고</th></tr></thead><tbody>`;
+    body += `<div class="sec"><span class="st">급여내역</span><span class="ym">귀속월: ${year}년 ${m}월</span></div><table><thead><tr><th style="width:74px">구분</th><th style="width:90px">이름</th><th style="width:96px">발생금액</th><th style="width:96px">신고금액</th><th style="width:96px">지급금액</th><th style="width:58px">지급률</th><th>비고</th></tr></thead><tbody>`;
     let se = 0;
+    const calcsM = prCalcs(cid, year, m);
     rows.forEach(r=>{ const paid = prPaidOf(cid, r), fl = prFiled(cid, r); se += Number(r.reported)||0; sr += fl; sp += Number(paid)||0;
-      body += `<tr><td>${escHtml(kindLabel(r))}</td><td>${escHtml(r.name||'')}</td><td class="n">${nf(r.reported)}</td><td class="n">${nf(fl)}</td><td class="n">${nf(paid)}</td><td class="memo">${escHtml(r.memo||'')}</td></tr>`; });
-    body += `<tr class="sum"><td colspan="2">합계</td><td class="n">${nf(se)}</td><td class="n">${nf(sr)}</td><td class="n">${nf(sp)}</td><td></td></tr></tbody></table>`;
-    const cs = prCalcs(cid, year, m);
+      const mc = r.kind === '일용' ? calcsM.find(c=> c.name === r.name) : null;
+      const mv = mc ? prCalcVals(cid, mc) : null;
+      const rate = mv && mv.total ? (Math.round(mv.net / mv.total * 1000) / 10) + '%' : (fl && paid !== null && paid !== undefined ? (Math.round(paid / fl * 1000) / 10) + '%' : '');
+      body += `<tr><td>${escHtml(kindLabel(r))}</td><td>${escHtml(r.name||'')}</td><td class="n">${nf(r.reported)}</td><td class="n">${nf(fl)}</td><td class="n paid">${nf(paid)}</td><td class="n">${rate}</td><td class="memo">${escHtml(r.memo||'')}</td></tr>`; });
+    body += `<tr class="sum"><td colspan="2">합계</td><td class="n">${nf(se)}</td><td class="n">${nf(sr)}</td><td class="n paid">${nf(sp)}</td><td></td><td></td></tr></tbody></table>`;
+    const cs = calcsM;
     if(cs.length){
-      body += `<h3>합산신고 계산내역</h3><table class="calc"><thead><tr><th>이름</th><th>미신고 귀속월</th><th>금액</th><th>당월 합산신고</th><th>고용</th><th>소득세</th><th>지방소득세</th><th>차인지급액</th><th>기지급액</th><th>차액 지급액</th></tr></thead><tbody>`;
+      body += `<div class="sec"><span class="st">합산신고 계산내역</span></div><table class="calc"><thead><tr><th>이름</th><th>미신고 귀속월</th><th>금액</th><th>당월 합산신고</th><th>고용</th><th>소득세</th><th>지방소득세</th><th>차인지급액</th><th>기지급액</th><th>차액 지급액</th></tr></thead><tbody>`;
       cs.forEach(c=>{ const v = prCalcVals(cid, c); body += `<tr><td>${escHtml(c.name||'')}</td><td>${escHtml((c.fromYm||'').replace('-','.'))}</td><td class="n">${nf(v.amount)}</td><td class="n">${nf(v.total)}</td><td class="n">${nf(c.emp)}</td><td class="n">${nf(c.it)}</td><td class="n">${nf(c.lit)}</td><td class="n">${nf(v.net)}</td><td class="n">${nf(v.prevPaid)}</td><td class="n"><b>${nf(v.diff)}</b></td></tr>`; });
       body += `</tbody></table>`;
     }
@@ -26788,8 +26849,11 @@ function prPrint(){
     .head{ text-align:center; margin-bottom:14px; }
     .cname{ font-size:18px; font-weight:800; }
     .ttl{ font-size:13px; font-weight:700; color:#75789A; margin-top:3px; }
-    .ym{ text-align:right; font-size:12px; font-weight:700; margin:16px 0 6px; }
-    h3{ font-size:12px; margin:12px 0 6px; color:#4640D6; }
+    .sec{ display:flex; align-items:flex-end; justify-content:space-between; margin:16px 0 6px; padding-left:1em; }
+    .sec .st{ font-size:12.5px; font-weight:800; color:#4640D6; }
+    .ym{ font-size:12px; font-weight:700; }
+    td.paid{ background:#FFF6E0; }
+    tr.sum td.paid{ background:#FCEBC2; }
     table{ width:100%; border-collapse:collapse; page-break-inside:auto; }
     th{ background:#F3F4FA; color:#4B4E6D; font-weight:800; padding:6px 5px; border:1px solid #D9DBE8; font-size:11px; }
     td{ padding:5px; border:1px solid #E3E4EE; text-align:center; }
@@ -36939,6 +37003,7 @@ function updateSyncStatusChip(statusText){
 }
 function gdriveSetStatus(text){
   if(/저장됨|동기화함|동기화 중/.test(text || '') && !/실패|대기/.test(text || '')) syncLastAt = new Date();
+  try{ if(typeof prOnSyncStatus === 'function') prOnSyncStatus(text || ''); }catch(e){}
   setTimeout(()=> updateSyncStatusChip(text), 0);
   const el = document.getElementById('gdriveStatusMsg');
   if(el) el.textContent = text;
@@ -38640,7 +38705,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 15:58';
+const APP_BUILD = '2026.10.02 16:22';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
