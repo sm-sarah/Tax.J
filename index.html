@@ -9266,7 +9266,7 @@ async function registerPushToken(nameFromUser){
 // 경우) - 대상자가 등록해둔 토큰이 있으면 Cloud Function에 발송을 요청함. targetEmail이 '*'(전체공지)이면
 // 나 자신은 빼고 나머지 전원에게 보냄
 // entry.type('notice'/'approval-new'/'approval-decision')을 설정(설정>알림 및 기기) 쪽 카테고리 키로 바꿔줌
-const NOTIFICATION_TYPE_TO_CATEGORY = { 'notice':'notice', 'approval-new':'approvalNew', 'approval-decision':'approvalDecision', 'approval-withdraw':'approvalDecision', 'team-schedule':'teamSchedule', 'leave-direct':'approvalNew' };
+const NOTIFICATION_TYPE_TO_CATEGORY = { 'notice':'notice', 'notice-edit':'notice', 'approval-new':'approvalNew', 'approval-decision':'approvalDecision', 'approval-withdraw':'approvalDecision', 'team-schedule':'teamSchedule', 'leave-direct':'approvalNew' };
 // 같은 알림(예: 결재 요청 하나)을 두 기기(예: 컴퓨터·휴대폰, 또는 켜져 있는 탭 두 개)가 거의 동시에
 // 각자 감지해서 각자 푸시를 보내버리면, 받는 사람 휴대폰에 똑같은 알림이 두세 번씩 뜨는 문제가 있었음
 // (계속 보고됐던 "알림이 여러 번 와요" 증상의 원인) - 실제로 보내기 직전에 무작위로 살짝 기다렸다가(기기마다
@@ -9496,7 +9496,7 @@ function myNotificationLogEntries(){
   // 팀 일정은 등록한 본인 알림함에도 보이게 함(요청) - 걸러내지 않음
   const isMyOwnSchedule = n => false && myName0;
   // 출퇴근 알림은 푸시 발송·중복 방지용으로만 기록하고 알림함엔 보이지 않게
-  const mine = all.filter(n=> n.type !== 'clock-reminder' && !isMyOwnSchedule(n) && !n.deleted && !deletedKeys.has(`${n.type}|${n.relatedId}|${n.targetEmail}`) && !myHidden.has(`${n.type}|${n.relatedId}|${n.targetEmail}`));
+  const mine = all.filter(n=> n.type !== 'clock-reminder' && !(n.type === 'notice-edit' && myEmail && String(n.authorEmail||'').toLowerCase() === myEmail) && !isMyOwnSchedule(n) && !n.deleted && !deletedKeys.has(`${n.type}|${n.relatedId}|${n.targetEmail}`) && !myHidden.has(`${n.type}|${n.relatedId}|${n.targetEmail}`));
   // "휴가 메모만 고쳤는데 알림이 또 왔다" - 여러 기기가 거의 동시에 같은 알림(같은 종류+같은 일정+같은 대상)을
   // 각자 다른 id로 만들면 동기화 병합에서 둘 다 남아서, 이미 읽은 것 말고 새 id 쪽이 '안읽음'으로 또 떴음.
   // 같은 건은 하나로만 보여주고, 그중 이미 읽은 게 있으면 그걸 남겨서 다시 안읽음으로 뜨지 않게 함
@@ -9552,7 +9552,7 @@ function markNotificationsReadForTarget(kind, targetId){
     const hits = myNotificationLogEntries().filter(n=>{
       const t = n.type || '';
       const rid = String(n.relatedId||'');
-      if(kind === 'notice') return t === 'notice' && rid === tid;
+      if(kind === 'notice') return (t === 'notice' && rid === tid) || (t === 'notice-edit' && rid.split('|')[0] === tid);
       if(kind === 'approval') return t.startsWith('approval') && rid.split('|')[0] === tid;
       return false;
     });
@@ -11093,6 +11093,16 @@ function checkNewNoticesForBrowserNotify(){
     if(mine && !recentNotice(n)) return; // 내가 쓴 옛 공지는 새로 알리지 않음
     pushNotificationLogEntry({ type:'notice', icon:'notice', title:`새 공지: ${n.title || '(제목 없음)'}`, body:noticePlainText(n.content, 150), author:n.authorName||'', targetEmail:'*', relatedId:n.id, eventAt:n.savedAt||'', noPush: !mine || !isRecentLocalAction('notice') });
   });
+  // [2026.10.02] "공지사항 수정되면 알림칩에 표현, 푸시는 필요없음"(요청) - 제목·내용이 바뀐 수정만, 수정한 사람 말고 모두의 알림함에 남김(푸시 없음).
+  // 수정마다 따로 남기도록 relatedId = "공지id|수정횟수". 이 기능 전의 수정(누가 고쳤는지 기록 없음)과 하루 지난 수정은 새로 알리지 않음
+  (sharedNoticeHistory||[]).forEach(n=>{
+    const h = (n.editHistory||[])[0];
+    if(!h || !h.byEmail) return;
+    const d = parseKoDateTimeString(h.date||'');
+    if(!d || (Date.now() - d.getTime()) > 24*60*60*1000) return;
+    const what = (h.changes||[]).map(c=>c.label).join('·');
+    pushNotificationLogEntry({ type:'notice-edit', icon:'notice', title:`공지 수정: ${n.title || '(제목 없음)'}`, body:(what ? `${what} 수정 · ` : '') + noticePlainText(n.content, 150), author:h.byName||'', authorEmail:h.byEmail, targetEmail:'*', relatedId:`${n.id}|${(n.editHistory||[]).length}`, eventAt:h.date||'', noPush:true });
+  });
   if(!noticeNotifyEnabled() || !myNotifPref('notice')) return;
   if(typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
   let notified = [];
@@ -11449,7 +11459,7 @@ document.getElementById('noticeModalForm').addEventListener('submit', async (e)=
       if(n.content !== content) changes.push({label:'내용', before:stripHtmlToText(n.content)||'(내용 없음)', after:stripHtmlToText(content)||'(내용 없음)'});
       if(changes.length){
         if(!n.editHistory) n.editHistory = [];
-        n.editHistory.unshift({ date: new Date().toLocaleString('ko-KR'), changes });
+        n.editHistory.unshift({ date: new Date().toLocaleString('ko-KR'), changes, byEmail: (currentUserEmail||'').toLowerCase(), byName: authorName });
       }
       n.title = title; n.content = content; n.scope = scope; n.size = size;
       if(isAdmin) n.important = important;
@@ -12036,12 +12046,12 @@ let notificationListPage = 1;
 // 알림함 목록을 "읽음/안읽음" 두 탭으로 나눠서 보게 해달라는 요청 - 안 읽은 것부터 챙겨보는 게 자연스러워서
 // 처음 열 때는 항상 안읽음 탭으로 시작함(openNotificationListPopup 참고)
 let notificationListReadFilter = 'unread';
-const NOTIFICATION_TYPE_LABEL = { 'approval-new':'결재 요청', 'approval-decision':'결재 결과', 'approval-withdraw':'결재 회수', 'notice':'공지', 'team-schedule':'팀 일정', 'leave-direct':'휴가 등록' };
+const NOTIFICATION_TYPE_LABEL = { 'approval-new':'결재 요청', 'approval-decision':'결재 결과', 'approval-withdraw':'결재 회수', 'notice':'공지', 'notice-edit':'공지 수정', 'team-schedule':'팀 일정', 'leave-direct':'휴가 등록' };
 // 알림 종류가 늘어날수록(결재요청/결재결과/결재회수 …) 알림함 배지 칸이 계속 늘어나느니, "공지/일정/결재"
 // 딱 3개 카테고리 칩으로 묶어서 보여주고, 결재 종류 안에서의 세부 결과(요청/승인/반려/회수)는 그 옆에
 // 별도의 상태 칩으로 따로 보여달라는 요청
 function notificationCategoryKey(n){
-  if(n.type === 'notice') return 'notice';
+  if(n.type === 'notice' || n.type === 'notice-edit') return 'notice';
   if(n.type === 'test') return 'test';
   if(n.type === 'team-schedule' || n.type === 'leave-direct') return 'schedule';
   return 'approval'; // approval-new / approval-decision / approval-withdraw
@@ -12318,8 +12328,8 @@ function openNotificationTarget(n){
   try{
     const type = n.type || '';
     const relId = String(n.relatedId||'');
-    if(type === 'notice'){
-      const notice = (sharedNoticeHistory||[]).find(x=>x.id===relId);
+    if(type === 'notice' || type === 'notice-edit'){
+      const notice = (sharedNoticeHistory||[]).find(x=>x.id===relId.split('|')[0]);
       if(!notice) return false;
       closeMemoModal();
       activateTab('notice', true);
@@ -39233,7 +39243,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 22:10';
+const APP_BUILD = '2026.10.02 22:25';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
