@@ -2027,9 +2027,9 @@
   /* 스크롤 시 떠서 따라오는 머리글 - 아래 내용이 비치지 않게 바탕을 채우고 맨 위로 */
   #itAllTableWrap table thead th{ z-index:6; }
   #itAllTableWrap table thead.it-head-floating tr:last-child th{ box-shadow:0 2px 4px -2px rgba(29,30,51,0.18); }
-  .it-note-ic{ display:inline-flex; vertical-align:-1px; margin-left:4px; color:var(--indigo-deep); opacity:.75; cursor:help; }
+  .it-note-ic{ display:inline-flex; vertical-align:-1px; margin-left:4px; color:var(--indigo-deep); opacity:.75; cursor:pointer; }
   .it-note-ic:hover{ opacity:1; }
-  .it-memo-star{ position:absolute; top:1px; right:3px; font-size:11px; font-weight:900; color:var(--coral); line-height:1; pointer-events:none; }
+  .it-memo-star{ position:absolute; top:1px; right:3px; font-size:11px; font-weight:900; color:var(--coral); line-height:1; cursor:pointer; z-index:1; }
   .it-stage-tri{ display:inline-flex; align-items:center; justify-content:center; gap:0; font-size:10.5px; line-height:1; letter-spacing:-0.5px; font-family:'Pretendard',sans-serif; }
   .it-stage-tri svg{ width:9px; height:9px; display:block; fill:none; stroke:rgba(91,95,239,0.45); stroke-width:1.3; stroke-linejoin:round; }
   .it-stage-tri svg.on{ fill:#5B5FEF; stroke:#5B5FEF; }
@@ -7479,7 +7479,7 @@
           <p class="info-lead">관리자로 등록된 이메일만 설정·데이터 메뉴와 공용 설정(공휴일, 근무시간, 지침 등)을 등록·수정·삭제할 수 있어요.<br>
           일반 직원은 로그인하면 본인 프로필로 자동 고정되고, 본인 근태·경비만 입력할 수 있어요.<br>
           관리자 이름을 등록해두면, 직원 프로필이 없는 관리자가 공지를 써도 작성자 이름이 정상적으로 표시돼요.</p>
-          <div class="info-cap"><b>관리자와 직원 화면 차이</b> <span style="color:var(--ink-soft); font-size:11px;">(2026.10.01 13:26 기준)</span></div>
+          <div class="info-cap"><b>관리자와 직원 화면 차이</b> <span style="color:var(--ink-soft); font-size:11px;">(2026.10.02 09:40 기준)</span></div>
           <table class="info-grid">
             <tr><th>메뉴</th><th>관리자</th><th>직원</th></tr>
             <tr><td>설정 · 데이터</td><td>보기·등록·수정·삭제</td><td>잠금 화면</td></tr>
@@ -7489,6 +7489,7 @@
             <tr><td>근태현황·경비정산·출퇴근·캘린더</td><td>다른 직원으로 바꿔 보기</td><td>본인으로 고정</td></tr>
             <tr><td>대시보드 직원 선택</td><td>고른 직원의 출퇴근·위젯 배치로 보기</td><td>본인만</td></tr>
             <tr><td>대시보드 위젯 설정</td><td>내 것 + 직원별·전 직원 대신 설정</td><td>본인 것만</td></tr>
+            <tr><td>대시보드 직원 근태현황</td><td>전 직원 잔여연차·휴가 목록</td><td>안 보임</td></tr>
             <tr><td>공지사항</td><td>전체·개인 공지, 중요 표시, 모든 공지 수정·삭제</td><td>개인 공지만 작성, 본인 공지만 수정·삭제</td></tr>
             <tr><td>결재</td><td>모든 문서 삭제·의견</td><td>본인 기안만 삭제, 관련 문서만 의견</td></tr>
             <tr><td>알림 삭제</td><td>모든 사람 알림함에서 삭제</td><td>내 알림함에서만 숨김</td></tr>
@@ -18626,7 +18627,11 @@ const DASHBOARD_WIDGET_DEFS = {
   // [2026.09.30 D안] 아래 선택 영역에 경비정산·신고 진행률 추가
   expense:     { label:'경비정산', accent:'var(--guide-teal)' },
   filing:      { label:'신고 진행률', accent:'var(--navy)' },
+  // [2026.10.02] "대시보드에 직원 전체 휴가 근태현황을 목록형으로"(요청) - 잔여연차가 보여서 관리자만
+  staffLeave:  { label:'직원 근태현황', accent:'var(--coral)', adminOnly:true },
 };
+// 관리자 전용 위젯(staffLeave)은 직원 화면에선 대시보드·위젯 설정 어디에도 안 나옴
+function dashWidgetAllowed(k){ const d = DASHBOARD_WIDGET_DEFS[k]; if(!d || !d.adminOnly) return true; try{ return !!isCurrentUserAdmin; }catch(e){ return false; } }
 // 출퇴근/팀캘린더/결재현황/세무일정은 "위젯 설정"에서 켜고 끄거나 순서를 바꿀 수 있는 자유 배치 영역이
 // 아니라, 항상 대시보드 맨 위에 고정되는 "고정 영역"(pinned row)에 따로 그려짐 - 아래 order/enabled는
 // 그 아래 자유 배치 영역(공지사항/근태현황 + 앞으로 늘어날 위젯들)에만 적용됨
@@ -18797,6 +18802,7 @@ function dashCardTitleIcon(key){
     expense:    `<rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line><line x1="6" y1="15" x2="10" y2="15"></line>`,
     presence:   `<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>`,
     filing:     `<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1"></rect><polyline points="9 14 11 16 15 12"></polyline>`,
+    staffLeave: `<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>`,
   };
   return `<span class="home-dash-card-title-badge"><svg ${common}>${paths[key]||''}</svg></span>`;
 }
@@ -18812,6 +18818,7 @@ function dashboardWidgetHtml(key, shape){
     taxSchedule:{ title:'세무일정', link:'', bodyId:'dashTaxScheduleBody' },
     expense:    { goto:'expensesettle', title:'경비정산', link:'바로가기 →', bodyId:'dashExpenseBody' },
     filing:     { id:'dashFilingCard', title:'신고 진행률', link:'바로가기 →', bodyId:'dashFilingBody' },
+    staffLeave: { id:'dashStaffLeaveCard', title:'직원 근태현황', link:'', bodyId:'dashStaffLeaveBody', infoBtn:'<button type="button" class="backup-info-btn" data-hint-info="dashStaffLeave" title="도움말" aria-label="도움말" style="margin-left:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button>' },
     presence:   { id:'dashPresenceCard', title:'실시간 근무현황', link:'', bodyId:'dashPresenceBody', afterTitle:'', infoBtn:'<button type="button" class="backup-info-btn" data-hint-info="dashPresence" title="도움말" aria-label="도움말" style="margin-left:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button>' }
   };
   const d = defs[key];
@@ -18827,6 +18834,7 @@ function dashboardWidgetHtml(key, shape){
   // renderHomeDashboardGrid()에서 함께 해줌
   const linkHtml = key === 'presence' ? `<span style="display:inline-flex; align-items:center; gap:4px;"><span class="home-dash-presence-at" id="dashPresenceAt"></span>${d.infoBtn||''}</span>` /* [2026.10.01] (i)는 제목 옆 대신 오른쪽 기준 시각 옆으로(요청) */ : key === 'taxSchedule'
     ? `<span class="home-dash-tax-shortcut-row-title">${TAX_FILING_STATUS_SHORTCUTS.map(t=>`<button type="button" class="home-dash-tax-shortcut-btn" data-filing-type="${t}">${escHtml(t)}</button>`).join('')}</span>`
+    : key === 'staffLeave' ? (d.infoBtn||'')
     : `<span class="home-dash-card-link">${d.link}</span>`;
   // accent(위젯 색상)는 위젯 설정 미리보기(DASHBOARD_WIDGET_DEFS)와 항상 같은 값을 쓰도록 여기서 새로
   // 정의하지 않고 그대로 가져다 씀 - 색이 두 곳에서 따로 관리되다 어긋나는 일을 방지함
@@ -18868,7 +18876,7 @@ function renderHomeDashboardGrid(){
   // [2026.09.30 D안] 모양 선택 없이 모두 같은 크기(230px) - 폭은 고른 개수(data-count)에 따라 CSS가 자동으로 나눔
   const cfg = getDashboardConfig();
   // [2026.09.30] 위젯 설정의 4칸 격자 배치(layout) 그대로 - 칸 위치(열·줄)와 크기(가로·세로 칸 수)를 그대로 씀
-  const lay = dashLayoutSorted(dashLayoutTrimRows(cfg.layout));
+  const lay = dashLayoutSorted(dashLayoutTrimRows(cfg.layout.filter(x=> dashWidgetAllowed(x.k))));
   const laySig = JSON.stringify(lay);
   if(grid && grid.dataset.sig !== laySig){
     grid.dataset.sig = laySig;
@@ -18974,7 +18982,7 @@ function renderDashboardConfigList(){
       <span class="dcg-resize" data-key="${x.k}" title="끌어서 크기 바꾸기"></span>
     </div>`;
   }).join('');
-  const trayKeys = DASHBOARD_FLEXIBLE_WIDGET_KEYS.filter(k=>!lay.some(x=>x.k===k));
+  const trayKeys = DASHBOARD_FLEXIBLE_WIDGET_KEYS.filter(k=>!lay.some(x=>x.k===k) && dashWidgetAllowed(k));
   const trayHtml = `<div class="dcg-tray-title">넣을 수 있는 위젯</div><div class="dcg-tray">${trayKeys.length ? trayKeys.map(k=>{
     const def = DASHBOARD_WIDGET_DEFS[k];
     return `<button type="button" class="dcg-chip" data-key="${k}" style="--accent:${def.accent};" title="빈칸으로 끌어다 놓거나, 눌러서 첫 빈칸에 넣기">⠿ ${escHtml(def.label)}</button>`;
@@ -19362,6 +19370,44 @@ function dashProgHtml(label, valueText, ratio, color, btnAttr){
     <div class="home-dash-prog-labels"><span>${label}</span><b${/\d/.test(valueText) ? '' : ' class="empty"'}>${valueText}</b></div>
     <div class="home-dash-prog-track"><div class="home-dash-prog-fill" style="width:${pct}%; --prog-color:${color};"></div></div>
   </${tag}>`;
+}
+// [2026.10.02] 대시보드 "직원 근태현황"(관리자 전용) - 직원별 한 줄: 이름 · 오늘 휴가 또는 다음 휴가 예정 · 잔여연차 · 이달 사용.
+// 줄 모양은 실시간 근무현황 목록과 같게(얼굴 동그라미 + 점선 구분). 회계사·퇴사자·관리자 프로필은 뺌
+function renderDashboardStaffLeave(){
+  const body = document.getElementById('dashStaffLeaveBody');
+  if(!body) return;
+  const today = todayStr(), month = today.slice(0,7);
+  const nf = n=> { const v = Math.round((Number(n)||0)*100)/100; return String(v); };
+  const md = d=> `${Number(d.slice(5,7))}/${Number(d.slice(8,10))}`;
+  const rows = [];
+  try{
+    getProfiles().forEach(p=>{
+      const snap = readProfileRaw(p.id, 'settings') || {};
+      if((snap.employmentStatus || p.employmentStatus) === '퇴사') return;
+      const name = (p.name || snap.employeeName || '').trim();
+      if(!name || name === '관리자' || String(p.position||'').trim() === '회계사') return;
+      const att = readProfileRaw(p.id, 'attendance') || {};
+      const lu = (att.leaveUsage||[]).filter(u=>u && u.date).sort((a,b)=> a.date.localeCompare(b.date));
+      const todayL = lu.filter(u=>u.date===today);
+      const next = lu.find(u=>u.date > today);
+      let r = { remainLeave:0, monthUsedDays:0 };
+      try{ r = computeForProfile(p.id, month).att; }catch(e){}
+      rows.push({ p, name, remain: r.remainLeave, used: r.monthUsedDays, todayL, next });
+    });
+  }catch(e){ console.error('직원 근태현황 계산 실패', e); }
+  if(!rows.length){ body.innerHTML = `<div class="hint" style="margin:0; font-size:11.5px;">등록된 직원이 없어요.</div>`; return; }
+  rows.sort((a,b)=> (b.todayL.length - a.todayL.length) || a.name.localeCompare(b.name, 'ko'));
+  body.innerHTML = rows.map(r=>{
+    const av = r.p.photo ? `<img src="${escHtml(r.p.photo)}" alt="">` : staffInitialCircleHtml(r.name, staffInitialColorOf(r.p, r.name), 32, '', r.p.initialText || '');
+    const typeOf = u=> leaveTeamCalShortType(u.type, u.subtype, u.publicReason);
+    const sub = r.todayL.length ? `<span class="home-dash-pres-dev" style="color:var(--coral); font-weight:700;">오늘 ${escHtml(r.todayL.map(typeOf).join(', '))}</span>`
+      : r.next ? `<span class="home-dash-pres-dev">다음 휴가 ${md(r.next.date)} ${escHtml(typeOf(r.next))}</span>` : '';
+    return `<div class="home-dash-pres-row pres-b" title="${escHtml(r.name)} · 잔여 연차 ${nf(r.remain)}일 · ${Number(month.slice(5))}월 사용 ${nf(r.used)}일">
+      <span class="home-dash-pres-av">${av}</span>
+      <div style="flex:1; min-width:0;"><div style="display:flex; align-items:center; gap:6px; min-width:0;"><span class="home-dash-pres-name">${escHtml(r.name)}</span></div>${sub}</div>
+      <span class="pres-st-col"><span class="home-dash-pres-st" style="color:var(--ink);">잔여 ${nf(r.remain)}일</span><span class="pres-st-time">이달 사용 ${nf(r.used)}일</span></span>
+    </div>`;
+  }).join('');
 }
 // 대시보드 "경비정산" 위젯 - 이번 달 점심식대 사용/한도, 미사용분(네이버페이), 지출결의서 상신 마감(매월 10일)
 function renderDashboardExpensePreview(){
@@ -20793,6 +20839,7 @@ function renderHomeDashboard(){
   renderDashboardPresence();
   if(cfg.enabled.has('expense')) renderDashboardExpensePreview();
   if(cfg.enabled.has('filing')) renderDashboardFilingPreview();
+  if(cfg.enabled.has('staffLeave') && dashWidgetAllowed('staffLeave')) renderDashboardStaffLeave();
 }
 
 // ⭐ 즐겨찾기: 홈 화면이 대시보드로 바뀌면서 예전엔 있던 즐겨찾기 목록이 통째로 빠졌었는데(관련 CSS는 그대로
@@ -26930,6 +26977,8 @@ function renderIncomeTaxUnified(){
         const period = `${year}-${String(m).padStart(2,'0')}`;
         return IT_ALL_TAX_KEYS.map(([taxKey, taxLabel])=>{
           const cs = itAllMonthCellState(c.id, period, timingKey, taxKey);
+          // [2026.10.02] "신고 열이 미대상인 거래처에 회색 음영이 나오는 게 이상하다"(요청) - 거래처 자체가 미대상이면 '그 달 미대상' 회색은 빈칸으로
+          if(cs.state === 'notarget' && latestCycleRec && !latestApplicable) cs.state = 'locked';
           const st = CELL_STYLE[cs.state];
           const clickAttr = st.disabled ? 'disabled' : `data-client-id="${c.id}" data-period="${period}" data-cellstate="${cs.state}"`;
           let cellLabel = st.label;
@@ -26964,13 +27013,13 @@ function renderIncomeTaxUnified(){
           // [2026.10.02] 월별 특이사항(메모)이 있으면 칸 오른쪽 위에 * 표시 + 말풍선에 내용
           /* * 표시는 국세 칸에만(요청) */ const memoTxt = (taxKey === 'national' && (cs.state === 'target' || cs.state === 'done')) ? (()=>{ const ent2 = incomeTaxFilingEntry(period, c.id); const ks = timingKey ? [timingKey] : ['sameMonth','nextMonth']; return ks.map(k=> (ent2[k]||{}).memo).filter(Boolean).join(' / '); })() : '';
           if(memoTxt) tip += '\n특이사항: ' + memoTxt;
-          const memoStar = memoTxt ? '<sup class="it-memo-star">*</sup>' : '';
+          const memoStar = memoTxt ? `<sup class="it-memo-star" role="button" data-name="${escHtml(c.name)}" data-label="${escHtml(`${year}년 ${m}월 귀속${timingSuffix ? ` (${timingSuffix}지급)` : ''}`)}" data-memo="${escHtml(memoTxt).replace(/"/g,'&quot;')}" title="특이사항: ${escHtml(memoTxt).replace(/"/g,'&quot;')}">*</sup>` : ''; // [2026.10.02] "* 를 눌러도 아무것도 안 뜬다"(요청) - 누르면 그 달 특이사항 팝업
           return `<td class="${colCls}" style="position:relative;">${memoStar}<button type="button" class="it-all-month-cell-btn" ${clickAttr} title="${escHtml(tip)}" style="width:100%; border:${cellBorder}; border-radius:6px; padding:4px 1px; background:${stageDots ? 'transparent' : st.bg}; color:${st.text}; font-size:10.5px; font-weight:700; cursor:${cs.state==='halfyear' ? 'default' : (st.disabled?'not-allowed':'pointer')}; opacity:${st.disabled?'0.35':'1'};">${stageDots || escHtml(cellLabel)}</button></td>`;
         }).join('');
       }).join('');
       const span = lanes.length > 1 ? ` rowspan="${lanes.length}"` : '';
       const headCells = laneIdx > 0 ? '' : `<td class="num cvb"${span} style="color:var(--ink-soft);">${rowNo}</td>
-          <td class="cvb it-all-name"${span} style="color:${entityColor}; font-weight:800; white-space:nowrap;">${escHtml(c.name)}${(()=>{ const nt = (itoEntry(c.id).note||'').trim(); return nt ? `<span class="it-note-ic" title="거래처 특이사항: ${escHtml(nt)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line></svg></span>` : ''; })()}</td>`; // [2026.10.02] 총괄 비고(거래처 특이사항)가 있으면 상호명 옆 남색 메모 아이콘(요청)
+          <td class="cvb it-all-name"${span} style="color:${entityColor}; font-weight:800; white-space:nowrap;">${escHtml(c.name)}${(()=>{ const nt = (itoEntry(c.id).note||'').trim(); return nt ? `<span class="it-note-ic" role="button" data-name="${escHtml(c.name)}" data-memo="${escHtml(nt).replace(/"/g,'&quot;')}" title="거래처 특이사항: ${escHtml(nt).replace(/"/g,'&quot;')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line></svg></span>` : ''; })()}</td>`; // [2026.10.02] 총괄 비고(거래처 특이사항)가 있으면 상호명 옆 남색 메모 아이콘(요청)
       // "매월/당월·매월/익월이 같이 있는 거래처는 검증도 각각 필요" 요청 - 지급시기 줄마다 따로 검증 버튼을 둠
       // (data-timing으로 어느 지급시기의 검증표를 열지 넘김, 한 줄짜리 거래처는 예전과 같음)
       const timingAttr = timingKey ? ` data-timing="${timingKey}"` : '';
@@ -26996,6 +27045,15 @@ function renderIncomeTaxUnified(){
   });
   wrap.querySelectorAll('.filing-cycle-chip').forEach(btn=>{
     btn.addEventListener('click', ()=> openFilingCycleEditModal(btn.dataset.clientId));
+  });
+  // [2026.10.02] 상호명 옆 메모 아이콘·칸의 * 를 누르면 내용 팝업(요청 - 예전엔 마우스만 올리면 보이고 눌러도 아무 반응이 없었음)
+  wrap.querySelectorAll('.it-note-ic, .it-memo-star').forEach(el=>{
+    el.addEventListener('click', (e)=>{
+      e.stopPropagation(); e.preventDefault();
+      const isNote = el.classList.contains('it-note-ic');
+      const title = `${el.dataset.name||''} · ${isNote ? '거래처 특이사항' : (el.dataset.label||'') + ' 특이사항'}`;
+      openDraggablePopup({ title, width:420, html:`<div style="font-size:13px; line-height:1.7; color:var(--ink); white-space:pre-wrap; word-break:break-all;">${escHtml(el.dataset.memo||'')}</div>` });
+    });
   });
   wrap.querySelectorAll('.it-all-month-cell-btn:not([disabled])').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -27348,10 +27406,18 @@ function submitStatusPeriodMonths(){
   }
   return [`${y}-${String(submitState.month).padStart(2,'0')}`];
 }
+// [2026.10.02] "그 귀속월에 검증 급여를 입력했거나 신고완료된 거래처만"(요청) - 신고대상 지정만으로는 안 나옴.
+// 검토표(급여검증)에 그 달 금액이 하나라도 있거나, 원천세 신고현황에 그 달 국세 신고일이 있으면 명단에 넣음
 function isSubmitStatusPayrollTarget(clientId){
   return submitStatusPeriodMonths().some(period=>{
-    const t = (sharedFilingTargets[clientId]||{})[period];
-    return t && t.applicable && (t.sameMonthPay || t.nextMonthPay);
+    const y = period.slice(0,4), m = String(Number(period.slice(5,7)));
+    const hasPay = [clientId, clientId + '@nextMonth'].some(k=>{
+      const inc = ((((sharedReviewFigures||{})[k]||{})[y]||{})[m]||{}).income || {};
+      return Object.values(inc).some(v=> Number(v));
+    });
+    if(hasPay) return true;
+    const fe = ((sharedIncomeTaxFilingStatus||{})[period]||{})[clientId];
+    return !!(fe && ((fe.sameMonth||{}).national || (fe.nextMonth||{}).national));
   });
 }
 // 제출현황 칸 ↔ 검토표(급여검증) 소득 항목 연결 - 이 귀속기간(월별: 그 달 / 반기: 6개월 / 연간: 12개월)에 금액이 하나라도 있으면 제출대상.
@@ -27385,7 +27451,7 @@ function renderSubmitStatusTable(){
   const list = bookkeepingClientList().filter(c=>isSubmitStatusPayrollTarget(c.id));
   const wrap = document.getElementById('submitStatusTableWrap');
   if(!wrap) return;
-  if(!list.length){ wrap.innerHTML = `<div class="empty-state">이 기간에 원천세 신고대상으로 지정된 거래처가 없어요.<br>먼저 "신고대상" 메뉴에서 대상 거래처를 지정해주세요.</div>`; return; }
+  if(!list.length){ wrap.innerHTML = `<div class="empty-state">이 기간에 검증 급여를 입력했거나 원천세 신고를 마친 거래처가 없어요.</div>`; return; }
   sharedFilingStatus['원천세'] = sharedFilingStatus['원천세'] || {};
   sharedFilingStatus['원천세'][period] = sharedFilingStatus['원천세'][period] || {};
   const periodData = sharedFilingStatus['원천세'][period];
@@ -27409,12 +27475,15 @@ function renderSubmitStatusTable(){
       const applicable = !!auto || manual;
       const dateVal = entry.itemDates[it.key] || '';
       const st = !applicable ? 'off' : (dateVal ? 'done' : 'todo');
+      // [2026.10.02] "급여가 해당되는 칸만 활성화"(요청) - 검토표와 이어지는 칸(사업·기타·일용 등)은 금액이 없으면 눌리지 않음.
+      // 특고·학자금상환·기타처럼 검토표와 안 이어지는 칸만 예전처럼 눌러서 제출대상으로 지정
+      const locked = st === 'off' && auto === false;
       const bg = st === 'off' ? '#EDEFF4' : st === 'todo' ? '#FFF8DC' : 'transparent';
       const label = st === 'done' ? `${Number(dateVal.slice(5,7))}/${Number(dateVal.slice(8,10))}` : '';
       const tip = st === 'done' ? `제출일 ${dateVal.slice(0,4)}년 ${Number(dateVal.slice(5,7))}월 ${Number(dateVal.slice(8,10))}일`
         : st === 'todo' ? (auto ? '검토표에 이 귀속기간 금액이 있어 제출대상이에요 · 눌러서 제출일 입력' : '제출대상 · 눌러서 제출일 입력')
-        : (auto === false ? '검토표에 이 귀속기간 금액이 없어 미대상이에요 · 눌러서 제출대상으로 지정할 수 있어요' : '미대상 · 눌러서 제출대상으로 지정');
-      return `<td class="cvb submit-status-cell"><button type="button" class="it-all-month-cell-btn submit-cell-btn" data-client-id="${c.id}" data-item-key="${it.key}" data-st="${st}" data-auto="${auto?1:0}" title="${escHtml(tip)}" style="width:100%; min-width:46px; height:24px; box-sizing:border-box; border:none; border-radius:6px; background:${bg}; color:var(--mint); font-size:10.5px; font-weight:700; cursor:pointer;">${label}</button></td>`;
+        : (auto === false ? '검토표에 이 귀속기간 금액이 없어 미대상이에요' : '미대상 · 눌러서 제출대상으로 지정');
+      return `<td class="cvb submit-status-cell"><button type="button" class="it-all-month-cell-btn submit-cell-btn" data-client-id="${c.id}" data-item-key="${it.key}" data-st="${st}" data-auto="${auto?1:0}"${locked ? ' disabled' : ''} title="${escHtml(tip)}" style="width:100%; min-width:46px; height:24px; box-sizing:border-box; border:none; border-radius:6px; background:${bg}; color:var(--mint); font-size:10.5px; font-weight:700; cursor:${locked ? 'default' : 'pointer'};">${label}</button></td>`;
     }).join('');
     return `<tr>
       <td class="num cvb">${idx+1}</td>
@@ -27444,7 +27513,7 @@ function renderSubmitStatusTable(){
     renderSubmitStatusTable(); setSubmitStatusDirty(true);
     showCenterToast(`${todo.length}칸에 날짜를 넣었어요 · 저장을 눌러주세요`);
   });
-  wrap.querySelectorAll('.submit-cell-btn').forEach(btn=>{
+  wrap.querySelectorAll('.submit-cell-btn:not([disabled])').forEach(btn=>{
     btn.addEventListener('click', ()=> openSubmitCellMenu(btn, (fn)=> setVal(btn.dataset.clientId, btn.dataset.itemKey, fn)));
   });
 }
@@ -34014,6 +34083,14 @@ const HINT_INFO = {};
 // [2026.10.01] "실시간 근무현황에도 상세설명"(요청) - 대시보드 카드 제목 옆 (i)
 // 항목이 여러 개라 다른 (i) 설명들과 같은 규칙으로 [항목 | 설명] 표로 정리(infoTidyHtml)
 // [2026.10.01 A안] "양쪽 맞춤은 간격이 벌어져 어색"(요청) - 양쪽 맞춤을 빼고, 설명 칸 안의 문장마다 줄을 바꿔 왼쪽 정렬로 보여줌
+HINT_INFO.dashStaffLeave = { title:'직원 근태현황', html: infoTidyHtml(
+  '<b>보는 사람</b>: 관리자만 보여요(직원 화면·위젯 설정엔 안 나와요)<br>'+
+  '<b>대상</b>: 재직 중인 직원(회계사·퇴사자 제외)<br>'+
+  '<b>이름 아래</b>: 오늘 휴가면 휴가 종류, 아니면 가장 가까운 다음 휴가 날짜<br>'+
+  '<b>잔여</b>: 오늘 기준 남은 연차(근태현황 잔여 연차와 같은 계산)<br>'+
+  '<b>이달 사용</b>: 이번 달 휴가 일수(이달 남은 예정 휴가 포함)<br>'+
+  '<b>넣는 법</b>: 대시보드 ⚙ 위젯 설정 › 넣을 수 있는 위젯에서 끌어다 놓아요<br>'+
+  '<b>순서</b>: 오늘 휴가인 직원이 맨 위, 나머지는 이름순') };
 HINT_INFO.dashPresence = { title:'실시간 근무현황', html: infoTidyHtml(
   '<b>직원</b>: 오늘 출근 기록 기준이에요<br>'+
   '<b>회계사</b>: 사무실 PC 접속 기준이에요<br>'+
@@ -37201,7 +37278,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 02:20';
+const APP_BUILD = '2026.10.02 09:55';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
