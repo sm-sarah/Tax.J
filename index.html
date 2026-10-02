@@ -2134,6 +2134,11 @@ try{
   .pr-calc-h .del-btn{ margin-left:auto; height:26px; padding:0 10px; font-size:11.5px; }
   .pr-ctable .pr-in{ min-width:70px; }
   .pr-ctable .pr-ym{ min-width:118px; }
+  .pr-conf{ border-color:#F5D9A8; background:#FFFCF4; }
+  .pr-conf .pr-calc-h .pr-cf-all:first-of-type{ margin-left:auto; }
+  .pr-cf, .pr-cf-all{ height:24px; padding:0 9px; font-size:11px; }
+  .pr-unf{ color:#C2415D !important; background:#FDE9EE !important; }
+  .pr-cf-empty{ color:#B4B6C8; font-weight:600; }
   .pr-calcv{ padding-right:9px !important; font-variant-numeric:tabular-nums; }
   /* [2026.10.02] 일용직 관리대장 */
   .dw-table th, .dw-table td{ padding:4px 2px !important; font-size:11.5px; }
@@ -26550,7 +26555,101 @@ function prAutoPaid(r){
   if(eff === '사업' || eff === '기타'){ const t = prRd(E * (eff === '사업' ? 0.03 : 0.08)); return E - (t + prRd(t * 0.1)); }
   return null;
 }
-function prRows(cid, y, m){ const p = sharedPayroll[cid]; return Object.values((p && p.rows) || {}).filter(r=> r && !r.deleted && String(r.y) === String(y) && (!m || Number(r.m) === Number(m))).sort((a,b)=> (Number(a.m)-Number(b.m)) || ((a.order||0) - (b.order||0))); }
+function prRows(cid, y, m){ const p = sharedPayroll[cid]; return Object.values((p && p.rows) || {}).filter(r=> r && !r.deleted && String(r.y) === String(y) && (!m || Number(r.m) === Number(m))).sort((a,b)=> (Number(a.m)-Number(b.m)) || ((a.order||0) - (b.order||0))).map(r=> prOverlay(cid, r)); }
+// [2026.10.02] 급여현황의 "일용" 줄 ↔ 일용직 표 연동(요청 - 한쪽만 입력하면 되게). 기준은 일용직 표: 같은 거래처·같은 이름의 일용직이 있으면
+// 발생금액 = 그 달 발생, 신고금액 = 신고(금액)·미신고(0)를 일용직 표에서 가져오고, 급여현황에서 고쳐도 일용직 표에 저장함.
+// 지급금액·비고는 급여현황에만 저장. 예전에 급여현황에 따로 적혀 있던 값이 일용직 표와 다르면 자동으로 고치지 않고 "일용직 표와 다른 값" 목록에 띄움(요청)
+function prYm(y, m){ return `${y}-${String(m).padStart(2,'0')}`; }
+function prWorkerFor(cid, name){ const n = String(name||'').trim(); if(!n || typeof dwWorkers !== 'function') return null; return dwWorkers().find(w=> w.clientId === cid && String(w.name||'').trim() === n) || null; }
+function prDwVals(w, ym){
+  const e = (w.months||{})[ym] || {};
+  const num = v => (v === undefined || v === null || v === '') ? undefined : Number(v);
+  const earned = num(e.earned);
+  let filed;
+  if(e.state === 'skip') filed = 0;
+  else if(e.state === 'filed') filed = num(e.reported) ?? earned;
+  return { earned, filed };
+}
+function prOverlay(cid, r){
+  if(!r || r.kind !== '일용') return r;
+  const w = prWorkerFor(cid, r.name); if(!w) return r;
+  const v = prDwVals(w, prYm(r.y, r.m));
+  const o = Object.assign({}, r, { _w: w.id, _conf: [] });
+  [['reported','earned','발생금액'], ['filed','filed','신고금액']].forEach(([f, k, label])=>{
+    const own = (r[f] === undefined || r[f] === null || r[f] === '') ? undefined : Number(r[f]);
+    const dv = v[k];
+    if(own !== undefined && own !== dv) o._conf.push({ f, label, own, dw: dv });
+    const val = dv !== undefined ? dv : own;
+    if(val === undefined) delete o[f]; else o[f] = val;
+  });
+  return o;
+}
+function prNameSimilar(a, b){
+  a = String(a||'').trim(); b = String(b||'').trim();
+  if(!a || !b || a === b || a.length !== b.length) return false;
+  let d = 0; for(let i=0;i<a.length;i++) if(a[i] !== b[i]) d++;
+  return d === 1;
+}
+// 이름이 비슷해서(한 글자 다름) 연결되지 않은 급여현황 일용 줄 ↔ 일용직 표 사람 짝
+function prNameMismatches(cid, year, month){
+  if(typeof dwWorkers !== 'function') return [];
+  const ym = prYm(year, month);
+  const rows = prRows(cid, year, month).filter(r=> r.kind === '일용' && !r._w);
+  const out = [];
+  dwWorkers().filter(w=> w.clientId === cid).forEach(w=>{
+    const e = (w.months||{})[ym] || {};
+    if(!(e.earned !== undefined && e.earned !== '') && !e.state) return;
+    const r = rows.find(r=> prNameSimilar(r.name, w.name));
+    if(r && !out.some(o=> o.prName === r.name)) out.push({ prName: String(r.name).trim(), dwName: String(w.name).trim(), wid: w.id });
+  });
+  return out;
+}
+// 자동 비고(비고를 비워둔 일용 줄) - 미신고: "다음달 귀속분에 합산" / 이달 합산신고: "전월 ○○○원 + 당월 ○○○원 합산신고"(요청)
+function prAutoMemo(cid, r){
+  if(!r || r.kind !== '일용') return '';
+  if(prIsUnfiled(r)) return '다음달 귀속분에 합산';
+  const c = prCalcs(cid, r.y, r.m).find(c=> c.name === r.name);
+  if(c){ const v = prCalcVals(cid, c); return `전월 ${Number(v.amount||0).toLocaleString()}원 + 당월 ${Number(r.reported||0).toLocaleString()}원 합산신고`; }
+  return '';
+}
+// 급여현황에서 고친 일용 줄의 발생·신고를 일용직 표에 저장(신고 0 = 미신고, 비우면 신고 상태 지움)
+function prWriteDw(wid, ym, f, v){
+  const w = sharedDailyWorkers[wid]; if(!w) return;
+  w.months = w.months || {}; const e = w.months[ym] = w.months[ym] || {};
+  if(f === 'reported'){ if(v === undefined) delete e.earned; else e.earned = v; }
+  else if(f === 'filed'){
+    if(v === undefined){ delete e.state; delete e.reported; delete e.reportedPrev; delete e.reportedCur; }
+    else if(v === 0){ e.state = 'skip'; delete e.reported; delete e.reportedPrev; delete e.reportedCur; }
+    else { e.state = 'filed'; e.reported = v; delete e.reportedPrev; delete e.reportedCur; }
+  }
+  if(!Object.keys(e).length) delete w.months[ym];
+  w.modAt = new Date().toISOString();
+  saveSharedDailyWorkers();
+}
+// 일용직 표에 그 달 발생·신고가 있는 사람은 급여현황에 일용 줄이 없으면 자동으로 만들어 둠(한 번 지운 줄은 다시 안 만듦)
+function prAutoDwRows(cid, year, months){
+  if(!cid || typeof dwWorkers !== 'function') return;
+  const p = prClient(cid);
+  const ws = dwWorkers().filter(w=> w.clientId === cid);
+  let made = false;
+  months.forEach(m=>{
+    const ym = prYm(year, m);
+    const here = Object.values(p.rows||{}).filter(r=> r && String(r.y) === String(year) && Number(r.m) === Number(m));
+    let ord = Math.max(1000, here.reduce((a,r)=> Math.max(a, r.order||0), 0)); // 자동으로 만든 일용 줄은 맨 아래
+    ws.forEach((w, i)=>{
+      const e = (w.months||{})[ym] || {};
+      if(!(e.earned !== undefined && e.earned !== '') && !e.state) return;
+      const nm = String(w.name||'').trim();
+      if(here.some(r=> r.kind === '일용' && String(r.name||'').trim() === nm)) return;
+      // 이름이 한 글자만 다른 일용 줄이 이미 있으면(예: 박흥재/박흥래) 새로 만들지 않고 "이름이 달라 연결 안 됨"으로 알려줌
+      if(here.some(r=> !r.deleted && r.kind === '일용' && prNameSimilar(r.name, nm))) return;
+      const id = 'pr' + Date.now().toString(36) + m + i + Math.random().toString(36).slice(2,5);
+      p.rows[id] = { id, y:String(year), m:Number(m), kind:'일용', name:nm, order: ++ord, auto:true, modAt:new Date().toISOString() };
+      made = true;
+    });
+  });
+  if(made) saveSharedPayroll();
+}
 function prCalcs(cid, y, m){ const p = sharedPayroll[cid]; return Object.values((p && p.calcs) || {}).filter(r=> r && !r.deleted && String(r.y) === String(y) && Number(r.m) === Number(m)).sort((a,b)=> (a.order||0) - (b.order||0)); }
 function prPrevYM(y, m){ return Number(m) === 1 ? [String(Number(y)-1), 12] : [String(y), Number(m)-1]; }
 // 앞 달 같은 사람(같은 구분·이름) 줄 - 입력 전 회색 미리보기용
@@ -26612,6 +26711,7 @@ function prAutoCalcs(cid, year, month){
 }
 function renderPayroll(){
   const { clientId:cid, year, month } = payrollState;
+  prAutoDwRows(cid, year, month ? [month] : Array.from({length:12},(_,i)=>i+1));
   prAutoCalcs(cid, year, month);
   const body = document.getElementById('payrollBody'); if(!body) return;
   const cl = (clients.list||[]).find(c=> c.id === cid) || {};
@@ -26650,11 +26750,11 @@ function renderPayroll(){
       const rate = mv && mv.total ? (Math.round(mv.net / mv.total * 1000) / 10) + '%' : (rep && paid !== null ? (Math.round(paid / rep * 1000) / 10) + '%' : '');
       html += `<tr data-id="${r.id}"><td class="pr-k pr-k-${r.kind}">${kindSel(r)}</td>${month?'':`<td>${m}월</td>`}
         <td><input class="pr-in pr-name" data-f="name" data-id="${r.id}" value="${escHtml(r.name||'')}"></td>
-        <td class="n"><input class="pr-in pr-num" data-f="reported" data-id="${r.id}" inputmode="numeric" value="${nf(r.reported)}"></td>
-        <td class="n">${merged ? '<span class="dw-tag pr-mtag">합산</span>' : ''}<input class="pr-in pr-num${merged ? ' pr-hasm' : ''}" data-f="filed" data-id="${r.id}" inputmode="numeric" value="${filedSet ? nf(r.filed) : ''}" placeholder="${!filedSet && rep ? nf(rep) : ''}"></td>
+        <td class="n"><input class="pr-in pr-num" data-f="reported" data-id="${r.id}" inputmode="numeric" value="${nf(r.reported)}"${r._w ? ' title="일용직 표와 연동 - 여기서 고치면 일용직 표에도 저장돼요"' : ''}></td>
+        <td class="n">${merged ? '<span class="dw-tag pr-mtag">합산</span>' : prIsUnfiled(r) ? '<span class="dw-tag pr-mtag pr-unf">미신고</span>' : ''}<input class="pr-in pr-num${merged || prIsUnfiled(r) ? ' pr-hasm' : ''}" data-f="filed" data-id="${r.id}" inputmode="numeric" value="${filedSet ? nf(r.filed) : ''}" placeholder="${!filedSet && rep ? nf(rep) : ''}"></td>
         <td class="n"><input class="pr-in pr-num" data-f="paid" data-id="${r.id}" inputmode="numeric" value="${r.paid !== undefined && r.paid !== null && r.paid !== '' ? nf(r.paid) : ''}" placeholder="${hint !== null ? nf(hint) : ''}"></td>
         <td class="pr-rate">${rate}</td>
-        <td><input class="pr-in pr-memo" data-f="memo" data-id="${r.id}" value="${escHtml(r.memo||'')}"></td>
+        <td><input class="pr-in pr-memo" data-f="memo" data-id="${r.id}" value="${escHtml(r.memo||'')}" placeholder="${escHtml(prAutoMemo(cid, r))}"></td>
         <td><button type="button" class="pr-del" data-id="${r.id}" title="삭제" aria-label="삭제">✕</button></td></tr>`;
     });
     if(rows.length){
@@ -26662,10 +26762,15 @@ function renderPayroll(){
       html += `<tr class="pr-sum"><td colspan="${month?2:3}">${m}월 합계</td><td class="n">${nf(se)}</td><td class="n">${nf(sr)}</td><td class="n">${nf(sp)}</td><td></td><td colspan="2" class="pr-sum-k">${kl}</td></tr>`;
     }
   });
-  if(!any){
-    const [py, pm] = month ? prPrevYM(year, month) : [0,0];
-    const prevN = month ? prRows(cid, py, pm).length : 0;
-    html += `<tr><td colspan="9" class="pr-empty">${month ? `${month}월 자료가 없어요.${prevN ? `<br><button type="button" class="submit-btn" id="prCopyPrev">${pm}월 목록 가져오기 (${prevN}명)</button>` : ''}` : `${year}년 자료가 없어요.`}</td></tr>`;
+  // 이달에 근로·사업 등 줄이 하나도 없으면(일용직 표에서 자동으로 온 일용 줄만 있어도) 전달 목록 가져오기를 보여줌 - 이미 있는 이름은 빼고 가져옴
+  const curRowsM = month ? prRows(cid, year, month) : [];
+  if(month && !curRowsM.some(r=> r.kind !== '일용' || !r._w)){
+    const [py, pm] = prPrevYM(year, month);
+    const have = new Set(curRowsM.map(r=> r.kind + '|' + String(r.name||'').trim()));
+    const prevN = prRows(cid, py, pm).filter(r=> !have.has(r.kind + '|' + String(r.name||'').trim())).length;
+    if(prevN || !any) html += `<tr><td colspan="9" class="pr-empty">${!any ? `${month}월 자료가 없어요.` : ''}${prevN ? `${!any ? '<br>' : ''}<button type="button" class="submit-btn" id="prCopyPrev">${pm}월 목록 가져오기 (${prevN}명)</button>` : ''}</td></tr>`;
+  } else if(!any){
+    html += `<tr><td colspan="9" class="pr-empty">${year}년 자료가 없어요.</td></tr>`;
   }
   html += `</tbody></table></div>`;
   if(month){
@@ -26689,13 +26794,21 @@ function renderPayroll(){
       html += `</tbody></table></div>`;
     }
     html += `</div>`;
+    const mm = prNameMismatches(cid, year, month);
+    if(mm.length){
+      html += `<div class="pr-calc pr-conf"><div class="pr-calc-h">이름이 달라 연결 안 됨 <span>급여현황과 일용직 표의 이름이 한 글자 달라요 · 같은 사람이면 이름을 맞춰주세요</span></div>
+        <div class="pr-scroll"><table class="pr-table pr-ctable"><thead><tr><th>급여현황</th><th>일용직 표</th><th style="width:330px"></th></tr></thead><tbody>
+        ${mm.map(o=>`<tr><td><b>${escHtml(o.prName)}</b></td><td><b>${escHtml(o.dwName)}</b></td><td><button type="button" class="del-btn pr-cf pr-nm" data-to="dw" data-pr="${escHtml(o.prName)}" data-dw="${escHtml(o.dwName)}" data-wid="${o.wid}">급여현황 이름을 '${escHtml(o.dwName)}'(으)로</button> <button type="button" class="del-btn pr-cf pr-nm" data-to="pr" data-pr="${escHtml(o.prName)}" data-dw="${escHtml(o.dwName)}" data-wid="${o.wid}">일용직 표 이름을 '${escHtml(o.prName)}'(으)로</button></td></tr>`).join('')}
+        </tbody></table></div></div>`;
+    }
+    html += prConflictHtml(prRows(cid, year, month), nf);
     // 이달 미신고 대상(신고금액 0으로 둔 일용직) - 다음 달 합산신고 계산에 자동으로 올라감
     const unf = prRows(cid, year, month).filter(prIsUnfiled);
     if(unf.length){
       const [ny, nm] = Number(month) === 12 ? [Number(year)+1, 1] : [Number(year), Number(month)+1];
       html += `<div class="pr-calc"><div class="pr-calc-h">미신고 대상 <span>이달 신고하지 않은 일용직 · ${ny !== Number(year) ? ny + '년 ' : ''}${nm}월 합산신고 계산에 자동으로 올라가요</span></div>
         <div class="pr-scroll"><table class="pr-table pr-ctable"><thead><tr><th>이름</th><th>발생금액</th><th>지급금액</th><th>비고</th></tr></thead><tbody>
-        ${unf.map(r=>`<tr><td><b>${escHtml(r.name||'')}</b></td><td class="n">${nf(r.reported)}</td><td class="n">${nf(prPaidOf(cid, r))}</td><td class="pr-memo">${escHtml(r.memo||'')}</td></tr>`).join('')}
+        ${unf.map(r=>`<tr><td><b>${escHtml(r.name||'')}</b></td><td class="n">${nf(r.reported)}</td><td class="n">${nf(prPaidOf(cid, r))}</td><td class="pr-memo">${escHtml(r.memo || prAutoMemo(cid, r))}</td></tr>`).join('')}
         </tbody></table></div></div>`;
     }
   }
@@ -26719,6 +26832,17 @@ function prOnSyncStatus(text){
   if(prSaveState.st !== 'saving' && prSaveState.st !== 'wait') return;
   if(/저장됨|동기화함/.test(text) && !/대기|실패/.test(text)) prSetSave('saved');
   else if(/대기|실패|권한/.test(text)) prSetSave('wait');
+}
+function prConflictHtml(rows, nf){
+  const list = []; rows.forEach(r=> (r._conf||[]).forEach(c=> list.push({ r, c })));
+  if(!list.length) return '';
+  const fmt = v => v === undefined ? '<span class="pr-cf-empty">비어 있음</span>' : (v === 0 ? '0 (미신고)' : nf(v));
+  return `<div class="pr-calc pr-conf"><div class="pr-calc-h">일용직 표와 다른 값 <span>${list.length}건 · 화면에는 일용직 표 값이 보여요(일용직 표가 비어 있으면 급여현황 값)</span>
+      <button type="button" class="del-btn pr-cf-all" data-act="pr">모두 급여현황 값으로</button><button type="button" class="del-btn pr-cf-all" data-act="dw" style="margin-left:0;">모두 일용직 표 값으로</button></div>
+    <div class="pr-scroll"><table class="pr-table pr-ctable"><thead><tr><th>월</th><th>이름</th><th>항목</th><th>급여현황</th><th>일용직 표</th><th style="width:220px"></th></tr></thead><tbody>
+    ${list.map(({r, c})=>`<tr><td>${r.m}월</td><td><b>${escHtml(r.name||'')}</b></td><td>${c.label}</td><td class="n">${fmt(c.own)}</td><td class="n">${fmt(c.dw)}</td>
+      <td><button type="button" class="del-btn pr-cf" data-id="${r.id}" data-f="${c.f}" data-act="pr">급여현황 값으로</button> <button type="button" class="del-btn pr-cf" data-id="${r.id}" data-f="${c.f}" data-act="dw">일용직 표 값으로</button></td></tr>`).join('')}
+    </tbody></table></div></div>`;
 }
 function prTouch(rec){
   rec.modAt = new Date().toISOString();
@@ -26750,9 +26874,12 @@ function bindPayroll(){
   body.querySelector('#prCopyPrev')?.addEventListener('click', ()=>{
     const { year, month } = payrollState;
     const [py, pm] = prPrevYM(year, month);
-    prRows(cid, py, pm).forEach((r, i)=>{
+    const cur = prRows(cid, year, month);
+    const have = new Set(cur.map(r=> r.kind + '|' + String(r.name||'').trim()));
+    let ord = cur.reduce((a,r)=> Math.max(a, r.order||0), 0);
+    prRows(cid, py, pm).filter(r=> !have.has(r.kind + '|' + String(r.name||'').trim())).forEach((r, i)=>{
       const id = 'pr' + Date.now().toString(36) + i + Math.random().toString(36).slice(2,5);
-      P().rows[id] = { id, y:String(year), m:month, kind:r.kind, name:r.name, order:i+1 };
+      P().rows[id] = { id, y:String(year), m:month, kind:r.kind, name:r.name, order: r.order || ++ord };
       if(r.cashAs) P().rows[id].cashAs = r.cashAs;
       P().rows[id].modAt = new Date().toISOString();
     });
@@ -26771,7 +26898,9 @@ function bindPayroll(){
     inp.addEventListener('change', ()=>{
       const r = rec(); if(!r) return;
       const f = inp.dataset.f;
-      if(inp.classList.contains('pr-num')){ const v = numOf(inp.value); if(v === undefined) delete r[f]; else r[f] = v; }
+      const linked = !isCalc && (f === 'reported' || f === 'filed') ? prOverlay(cid, r) : null;
+      if(linked && linked._w){ const v = numOf(inp.value); prWriteDw(linked._w, prYm(r.y, r.m), f, v); delete r[f]; } // 일용직 표에 저장
+      else if(inp.classList.contains('pr-num')){ const v = numOf(inp.value); if(v === undefined) delete r[f]; else r[f] = v; }
       else { const v = inp.value.trim(); if(v) r[f] = v; else delete r[f]; }
       prTouch(r);
       const keep = document.activeElement && document.activeElement.closest('#payrollBody') ? [document.activeElement.dataset.id, document.activeElement.dataset.f, document.activeElement.classList.contains('pr-cin')] : null;
@@ -26790,6 +26919,30 @@ function bindPayroll(){
     const r = P().rows[b.dataset.id]; if(!r) return;
     if(r.name || r.reported){ if(!(await appConfirm(`${r.name || '이 줄'}을(를) 지울까요?`, { okText:'지우기', cancelText:'취소' }))) return; }
     r.deleted = true; prTouch(r); renderPayroll();
+  }));
+  const resolve = (id, f, act)=>{
+    const r = P().rows[id]; if(!r) return false;
+    const o = prOverlay(cid, r); if(!o._w) return false;
+    if(act === 'pr'){ const own = (r[f] === undefined || r[f] === null || r[f] === '') ? undefined : Number(r[f]); prWriteDw(o._w, prYm(r.y, r.m), f, own); }
+    delete r[f]; r.modAt = new Date().toISOString();
+    return true;
+  };
+  body.querySelectorAll('.pr-nm').forEach(b=> b.addEventListener('click', ()=>{
+    const from = b.dataset.pr, to = b.dataset.dw;
+    if(b.dataset.to === 'dw'){ // 급여현황 쪽 이름(모든 달 줄·합산 계산)을 일용직 표 이름으로
+      Object.values(P().rows||{}).forEach(r=>{ if(r && String(r.name||'').trim() === from){ r.name = to; r.modAt = new Date().toISOString(); } });
+      Object.values(P().calcs||{}).forEach(c=>{ if(c && String(c.name||'').trim() === from){ c.name = to; c.modAt = new Date().toISOString(); } });
+      prSetSave('saving'); saveSharedPayroll();
+    } else { const w = sharedDailyWorkers[b.dataset.wid]; if(w){ w.name = from; w.modAt = new Date().toISOString(); prSetSave('saving'); saveSharedDailyWorkers(); } }
+    renderPayroll();
+  }));
+  body.querySelectorAll('.pr-cf:not(.pr-nm)').forEach(b=> b.addEventListener('click', ()=>{ if(resolve(b.dataset.id, b.dataset.f, b.dataset.act)){ prSetSave('saving'); saveSharedPayroll(); renderPayroll(); } }));
+  body.querySelectorAll('.pr-cf-all').forEach(b=> b.addEventListener('click', async ()=>{
+    const items = [...body.querySelectorAll('.pr-cf:not(.pr-nm)[data-act="pr"]')].map(x=> [x.dataset.id, x.dataset.f]);
+    if(!items.length) return;
+    if(!(await appConfirm(b.dataset.act === 'pr' ? `${items.length}건을 모두 급여현황 값으로 일용직 표에 반영할까요?` : `${items.length}건을 모두 일용직 표 값으로 맞출까요?\n(급여현황에 따로 적혀 있던 값은 지워져요)`, { okText:'맞추기', cancelText:'취소' }))) return;
+    items.forEach(([id, f])=> resolve(id, f, b.dataset.act));
+    prSetSave('saving'); saveSharedPayroll(); renderPayroll();
   }));
   body.querySelector('#prCalcAdd')?.addEventListener('click', ()=>{
     const { year, month } = payrollState;
@@ -26832,12 +26985,19 @@ function prPrint(){
       const mc = r.kind === '일용' ? calcsM.find(c=> c.name === r.name) : null;
       const mv = mc ? prCalcVals(cid, mc) : null;
       const rate = mv && mv.total ? (Math.round(mv.net / mv.total * 1000) / 10) + '%' : (fl && paid !== null && paid !== undefined ? (Math.round(paid / fl * 1000) / 10) + '%' : '');
-      body += `<tr><td>${escHtml(kindLabel(r))}</td><td>${escHtml(r.name||'')}</td><td class="n">${nf(r.reported)}</td><td class="n">${nf(fl)}</td><td class="n paid">${nf(paid)}</td><td class="n">${rate}</td><td class="memo">${escHtml(r.memo||'')}</td></tr>`; });
+      body += `<tr><td>${escHtml(kindLabel(r))}</td><td>${escHtml(r.name||'')}</td><td class="n">${nf(r.reported)}</td><td class="n">${prIsUnfiled(r) ? '<span class="unf">미신고</span>' : (fl ? nf(fl) : (r.filed !== undefined && r.filed !== null && r.filed !== '' ? '0' : ''))}</td><td class="n paid">${nf(paid)}</td><td class="n">${rate}</td><td class="memo">${escHtml(r.memo || prAutoMemo(cid, r))}</td></tr>`; });
     body += `<tr class="sum"><td colspan="2">합계</td><td class="n">${nf(se)}</td><td class="n">${nf(sr)}</td><td class="n paid">${nf(sp)}</td><td></td><td></td></tr></tbody></table>`;
     const cs = calcsM;
     if(cs.length){
       body += `<div class="sec"><span class="st">합산신고 계산내역</span></div><table class="calc"><thead><tr><th>이름</th><th>미신고 귀속월</th><th>금액</th><th>당월 합산신고</th><th>고용</th><th>소득세</th><th>지방소득세</th><th>차인지급액</th><th>기지급액</th><th>차액 지급액</th></tr></thead><tbody>`;
       cs.forEach(c=>{ const v = prCalcVals(cid, c); body += `<tr><td>${escHtml(c.name||'')}</td><td>${escHtml((c.fromYm||'').replace('-','.'))}</td><td class="n">${nf(v.amount)}</td><td class="n">${nf(v.total)}</td><td class="n">${nf(c.emp)}</td><td class="n">${nf(c.it)}</td><td class="n">${nf(c.lit)}</td><td class="n">${nf(v.net)}</td><td class="n">${nf(v.prevPaid)}</td><td class="n"><b>${nf(v.diff)}</b></td></tr>`; });
+      body += `</tbody></table>`;
+    }
+    // 미신고 대상(요청) - 이달 신고하지 않은 일용직
+    const unf = rows.filter(prIsUnfiled);
+    if(unf.length){
+      body += `<div class="sec"><span class="st">미신고 대상</span></div><table class="calc"><thead><tr><th style="width:120px">이름</th><th style="width:130px">발생금액</th><th style="width:130px">지급금액</th><th>비고</th></tr></thead><tbody>`;
+      unf.forEach(r=>{ body += `<tr><td>${escHtml(r.name||'')}</td><td class="n">${nf(r.reported)}</td><td class="n">${nf(prPaidOf(cid, r))}</td><td class="memo">${escHtml(r.memo || prAutoMemo(cid, r))}</td></tr>`; });
       body += `</tbody></table>`;
     }
   });
@@ -26853,6 +27013,7 @@ function prPrint(){
     .sec .st{ font-size:12.5px; font-weight:800; color:#4640D6; }
     .ym{ font-size:12px; font-weight:700; }
     td.paid{ background:#FFF6E0; }
+    .unf{ display:inline-block; font-size:10px; font-weight:800; color:#C2415D; background:#FDE9EE; border-radius:999px; padding:1px 7px; }
     tr.sum td.paid{ background:#FCEBC2; }
     table{ width:100%; border-collapse:collapse; page-break-inside:auto; }
     th{ background:#F3F4FA; color:#4B4E6D; font-weight:800; padding:6px 5px; border:1px solid #D9DBE8; font-size:11px; }
@@ -26872,7 +27033,11 @@ function prXlsDownload(){
   const aoa = [[`${year} 급여현황 · ${cl.name||''}`], [], ['신고구분','월','이름','발생금액','신고금액','지급금액','지급률','비고']];
   prRows(cid, year).forEach(r=>{
     const paid = prPaidOf(cid, r), rep = prFiled(cid, r);
-    aoa.push([r.kind === '현금' ? `현금(${r.cashAs || '사업'})` : `${r.kind}소득`, Number(r.m), r.name || '', Number(r.reported) || null, rep, paid, rep && paid !== null ? Math.round(paid / rep * 10000) / 10000 : null, r.memo || '']);
+    // 지급률은 화면·출력물과 같게 - 합산신고한 일용직은 차인지급액 ÷ 합산신고금액
+    const mc = r.kind === '일용' ? prCalcs(cid, r.y, r.m).find(c=> c.name === r.name) : null;
+    const mv = mc ? prCalcVals(cid, mc) : null;
+    const rate = mv && mv.total ? Math.round(mv.net / mv.total * 10000) / 10000 : (rep && paid !== null ? Math.round(paid / rep * 10000) / 10000 : null);
+    aoa.push([r.kind === '현금' ? `현금(${r.cashAs || '사업'})` : `${r.kind}소득`, Number(r.m), r.name || '', Number(r.reported) || null, rep, paid, rate, r.memo || '']);
   });
   for(let m=1;m<=12;m++){
     const cs = prCalcs(cid, year, m); if(!cs.length) continue;
@@ -38705,7 +38870,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 16:22';
+const APP_BUILD = '2026.10.02 17:00';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
