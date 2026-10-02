@@ -36260,11 +36260,14 @@ async function afterGdriveConnected(){
     document.querySelector(`.tab-btn[data-tab="${targetTab}"]`)?.click();
   }
   try{
-    await gdriveEnsureFile();
+    // [2026.10.02] "최신 자료 불러오는 시간을 줄여달라"(요청) - 예전엔 ① 드라이브 파일 찾기 → ② 계정 확인 → ③ Firebase 로그인 → ④ 최신본 받기를
+    // 하나씩 차례로 기다렸음. 드라이브 파일 찾기(①)는 실시간 저장소(Firebase)를 쓰는 지금은 최신본 받기와 상관이 없어서, ②~④와 동시에 진행함
     // Firebase로 전환된 상태면(관리자가 전환 완료) 드라이브 파일 대신 실시간 저장소를 씀 - 로그인 계정을 먼저
     // 확인해야 Firebase에도 같은 계정으로 들어가므로 이메일부터 확인함. 연결이 안 되면 예전 드라이브 방식 그대로
+    const driveFileP = gdriveEnsureFile().catch(e=>{ console.error('드라이브 파일 확인 실패', e); });
     try{ await fetchCurrentUserEmail(); }catch(e){}
     if(await fsInit() && fsMeta && fsMeta.backend === 'firestore') await fsActivate();
+    await driveFileP;
     await gdrivePull();
     await fetchCurrentUserEmail();
     // "분명히 다 읽었는데 로그인하는 PC마다 알림함(종 아이콘) 배지가 계속 떠있다"는 제보의 원인 - 바로 위
@@ -37411,6 +37414,7 @@ function presenceCurrentArea(){
   }catch(e){}
   return null;
 }
+let presenceSeenServer = false;
 function presenceIngestSnapshot(snap){
   try{
     const me = (currentUserEmail||'').toLowerCase();
@@ -37425,6 +37429,7 @@ function presenceIngestSnapshot(snap){
       next[String(v.email).toLowerCase()] = v;
     });
     presenceOthers = next;
+    presenceSeenServer = true; // 서버에서 접속 신호 목록을 한 번이라도 받음(아래 presenceTick의 PC 우선 판단에 씀)
     const changedAll = JSON.stringify(Object.keys(all).map(k=>[k, Number(all[k].at||0) > Date.now() - PRESENCE_ONLINE_MS, all[k].device||''])) !== JSON.stringify(Object.keys(presenceAll).map(k=>[k, Number(presenceAll[k].at||0) > Date.now() - PRESENCE_ONLINE_MS, presenceAll[k].device||'']));
     presenceAll = all;
     const stChanged = JSON.stringify(stAll) !== JSON.stringify(presenceStatusAll);
@@ -37472,6 +37477,9 @@ async function presenceTick(force){
     // 기기 표시가 왔다 갔다 했음. PC가 아닌 기기(노트북 등)는, 다른 PC가 지금 켜져 있으면(최근 신호) 접속 신호를 덮어쓰지 않고 양보함
     // (수정 화면을 연 경우의 "같이 수정 중" 신호는 그대로 보냄). PC가 꺼지면(신호가 끊기면) 노트북 신호가 다시 표시됨
     const isPcName = n => /PC|데스크탑|데스크톱|컴퓨터/i.test(n||'') && !/노트북|랩탑|laptop|맥북|macbook/i.test(n||'');
+    // 노트북 등은 서버의 접속 신호 목록을 받아보기 전엔(페이지를 연 직후) 아직 PC가 켜져 있는지 몰라서 먼저 덮어쓰지 않고 기다림
+    // (예전엔 노트북을 새로 열면 첫 신호가 PC 표시를 덮어써서 노트북 이름이 잠깐 보였음 - 요청)
+    if(!area && !isPcName(device) && !presenceSeenServer) return;
     if(!area && !isPcName(device)){
       const curMe = presenceAll && presenceAll[currentUserEmail.toLowerCase()];
       if(curMe && curMe.device && curMe.device !== device && isPcName(curMe.device) && !curMe.mob && (now - Number(curMe.at||0)) < PRESENCE_ONLINE_MS) return;
@@ -37613,6 +37621,11 @@ async function fsInit(){
       try{ await fsDb.enablePersistence({ synchronizeTabs: true }); }catch(e){ /* 이미 켜졌거나 지원 안 하는 브라우저 - 없어도 동작함 */ }
     }
     const auth = firebase.auth();
+    // [2026.10.02] 로딩 시간 단축 - Firebase는 지난번 로그인을 브라우저에 기억해 두는데, 페이지를 연 직후엔 그걸 되살리는 중이라 currentUser가 잠깐 비어 있음.
+    // 예전엔 그 순간을 "로그인 안 됨"으로 보고 매번 새로 로그인(왕복 1초 안팎)했음 - 되살아날 때까지(최대 1.5초) 먼저 기다려 봄
+    if(!auth.currentUser){
+      await new Promise(res=>{ let un = null; const t = setTimeout(()=>{ try{ un && un(); }catch(e){} res(); }, 1500); un = auth.onAuthStateChanged(()=>{ clearTimeout(t); try{ un && un(); }catch(e){} res(); }); });
+    }
     const cur = auth.currentUser;
     const wantEmail = (currentUserEmail || '').toLowerCase();
     if(!cur || (wantEmail && (cur.email || '').toLowerCase() !== wantEmail)){
@@ -38029,7 +38042,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 13:30';
+const APP_BUILD = '2026.10.02 13:37';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
