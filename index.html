@@ -14846,7 +14846,7 @@ function appTipHtml(title, rows, text){
   let tipEl = null, cur = null;
   const hide = ()=>{ if(tipEl) tipEl.style.display = 'none'; cur = null; };
   document.addEventListener('mouseover', (e)=>{
-    const t = e.target && e.target.closest ? e.target.closest('[data-tip]') : null;
+    const t = e.target && e.target.closest ? e.target.closest('[data-tip]:not(.chip-star)') : null; // * 표시(chip-star)는 아래 전용 말풍선 하나만 뜨게(요청 - 말풍선이 겹쳐 여러 개 뜸)
     if(t === cur) return;
     if(!t){ hide(); return; }
     cur = t;
@@ -15439,10 +15439,15 @@ document.addEventListener('click', ()=>{
     tip.style.left = `${left}px`;
     tip.style.top = `${top}px`;
   };
-  const hide = ()=>{ tip.style.display = 'none'; };
+  // [2026.10.02] * 에 마우스를 올리면 말풍선이 겹쳐 여러 개 뜨던 것(요청) - 이 말풍선 하나만 남기고, 감싼 칸의 기본 설명(예: "전체정보 보기")은 잠시 숨김
+  let stashed = null;
+  const hide = ()=>{ tip.style.display = 'none'; if(stashed){ stashed.setAttribute('title', stashed.dataset.titleStash || ''); delete stashed.dataset.titleStash; stashed = null; } };
   document.addEventListener('mouseover', (e)=>{
     const star = e.target.closest('.chip-star');
-    if(star) show(star);
+    if(!star) return;
+    const host = star.parentElement && star.parentElement.closest('[title]');
+    if(host && host !== stashed){ hide(); host.dataset.titleStash = host.getAttribute('title'); host.removeAttribute('title'); stashed = host; }
+    show(star);
   });
   document.addEventListener('mouseout', (e)=>{
     if(e.target.closest('.chip-star')) hide();
@@ -20411,7 +20416,8 @@ function renderClockHistoryTable(){
     totalMin += mins;
     const [,m,d] = e.date.split('-');
     const dow = ['일','월','화','수','목','금','토'][new Date(e.date+'T00:00:00').getDay()];
-    const hrs = mins ? (mins/60).toFixed(1).replace(/\.0$/,'') + 'h' : '-';
+    // [2026.10.02] "근무시간은 시·분으로"(요청) - 6.1h 대신 6h 6m
+    const hrs = mins ? `${Math.floor(mins/60)}h${mins%60 ? ` ${mins%60}m` : ''}` : '-';
     const st = String(e.status||'');
     const pc = /재택/.test(st) && !/→사무실$/.test(st) ? 'var(--mint)' : 'var(--indigo)';
     // 수정/삭제 아이콘은 그 줄에 마우스를 올렸을 때만 보임(.clock-history-row-actions)
@@ -37659,7 +37665,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 13:10';
+const APP_BUILD = '2026.10.02 13:13';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
