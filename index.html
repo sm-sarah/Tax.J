@@ -25500,6 +25500,25 @@ document.addEventListener('DOMContentLoaded', ()=>{
     box.appendChild(btn);
   });
 })();
+// [2026.10.02] "모든 팝업은 Esc로 닫히게"(요청) - 지금 맨 앞에 떠 있는 팝업(화면을 덮는 팝업 또는 이력 같은 떠 있는 창) 하나를
+// 그 팝업의 닫기(✕/취소) 버튼을 누른 것과 똑같이 닫음(닫을 때 하는 정리·되돌리기도 그대로). 확인/알림 창은 자체 처리(Esc=취소)
+document.addEventListener('keydown', (e)=>{
+  if(e.key !== 'Escape' || e.isComposing) return;
+  const ac = document.getElementById('appConfirmModalOverlay');
+  if(ac && ac.style.display !== 'none' && getComputedStyle(ac).display !== 'none') return;
+  const z = el => Number(getComputedStyle(el).zIndex) || 0;
+  const cands = [...document.querySelectorAll('[id$="Overlay"], .floating-popup')].filter(el=>{
+    const st = getComputedStyle(el);
+    return st.display !== 'none' && st.visibility !== 'hidden' && st.position === 'fixed' && el.getBoundingClientRect().width > 0;
+  });
+  if(!cands.length) return;
+  const top = cands.sort((a,b)=> z(b) - z(a))[0];
+  const btn = top.classList.contains('floating-popup')
+    ? top.querySelector('.floating-popup-close')
+    : (top.querySelector('.modal-close-tr, .modal-close-btn, [id$="CloseBtn"], [id$="Close"], [id$="Cancel"], [id$="CancelBtn"]'));
+  e.preventDefault();
+  if(btn) btn.click(); else top.style.display = 'none';
+});
 // ══════════════════════════════════════════════════════════
 // 🖋️ 결재 탭: 신고현황 / 신고도움 / 결재(그룹웨어)
 // ══════════════════════════════════════════════════════════
@@ -37640,7 +37659,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 13:09';
+const APP_BUILD = '2026.10.02 13:10';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
