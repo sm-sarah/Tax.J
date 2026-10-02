@@ -920,7 +920,7 @@ try{
   .home-dash-mcal-d.sun{ color:var(--coral); } .home-dash-mcal-d.sat{ color:#4A90D9; }
   .home-dash-mcal-dots{ display:flex; gap:3px; flex-wrap:wrap; }
   .home-dash-mcal-dots i{ width:7px; height:7px; border-radius:50%; }
-  .home-dash-mcal-legend{ margin-top:7px; font-size:11px; color:var(--ink-soft); text-align:center; }
+  .home-dash-mcal-legend{ margin-top:4px; font-size:11px; color:var(--ink-soft); text-align:center; }
   /* 팀캘린더 일정이 많아지면 표가 한없이 길어져서(예전엔 카드 안 스크롤로만 처리) 옆 결재현황·세무일정
      묶음(230px×2+간격10=470px로 고정)보다 카드 자체가 더 커져버리는 문제가 있었음 - grid의 align-items:
      stretch는 이미 정해진 칸 높이를 "채워주는" 것뿐이라, 내용이 그보다 크면 칸 자체가 늘어나버림. 그래서
@@ -2108,7 +2108,7 @@ try{
   .pr-name{ text-align:center; font-weight:700; }
   .pr-memo{ color:var(--ink-soft); text-align:center; }
   td.n .pr-num{ width:calc(100% - 2px); }
-  .pr-mtag{ margin:0 0 0 3px !important; }
+  .pr-mtag{ margin:0 2px 0 0 !important; }
   .pr-num.pr-hasm{ width:calc(100% - 34px); display:inline-block; }
   .pr-k select.pr-kind{ width:52px; text-align:center; text-align-last:center; }
   .pr-k select{ border:none; background:transparent; font-family:inherit; font-size:11px; font-weight:800; border-radius:999px; padding:2px 4px; cursor:pointer; }
@@ -7415,7 +7415,7 @@ try{
           </div>
           <div class="flat-row">
             <div class="flat-row-label">1일 기준 금액 (원)</div>
-            <div class="flat-row-control"><input type="number" id="ll-daily" class="num-input flat-input" min="0" step="1" required style="width:120px;"></div>
+            <div class="flat-row-control"><input type="text" inputmode="numeric" id="ll-daily" class="num-input flat-input" required style="width:120px;"></div>
           </div>
           <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-top:14px;">
             <button type="submit" class="submit-btn settings-reg-btn" style="width:auto;">등록</button>
@@ -19630,7 +19630,7 @@ function renderDashboardCalendarPreview(monthStr){
     }
     const weeks = Math.ceil((firstDow + nDays) / 7);
     body.innerHTML = toggleHtml + headerHtml.replace('팀 일정</span>', '</span>') + `<div class="home-dash-mcal-dow">${['일','월','화','수','목','금','토'].map(x=>`<div>${x}</div>`).join('')}</div><div class="home-dash-mcal" style="${weeks>5?'--mcal-h:42px;':''}">${cells}</div>
-      ${dashMonthlyRoutineHtml(monthStr)}<div class="home-dash-mcal-legend"><span style="color:var(--coral)">●</span> 휴가 · <span style="color:var(--mint)">●</span> 재택 · <span style="color:var(--amber)">●</span> 일정 · <span style="color:#9CA3AF">●</span> 공휴일·전체</div>`; // [2026.10.02] 색 안내는 정산마감 안내 아래로(요청)
+      <div class="home-dash-mcal-legend"><span style="color:var(--coral)">●</span> 휴가 · <span style="color:var(--mint)">●</span> 재택 · <span style="color:var(--amber)">●</span> 일정 · <span style="color:#9CA3AF">●</span> 공휴일·전체</div>${dashMonthlyRoutineHtml(monthStr)}`; // [2026.10.02] 색 안내는 달력 바로 아래에 붙임(요청 - 정산마감 안내 아래에 두었다가 다시 달력 쪽으로)
     if(weeks > 5) body.querySelectorAll('.home-dash-mcal-cell').forEach(c=> c.style.height = '40px');
     bindDashCalNav();
     bindToggle();
@@ -24261,6 +24261,7 @@ function attachThousandsInput(el){
   });
 }
 attachThousandsInput(document.getElementById('cl-fee'));
+attachThousandsInput(document.getElementById('ll-daily')); // 점심식대 한도도 천단위 쉼표(요청)
 
 // 사업자번호(3-2-5)·법인등록번호(6-7)는 숫자만 입력해도 하이픈이 자동으로 채워지게
 function applyDashMask(el, groups){
@@ -25056,7 +25057,7 @@ document.getElementById('lunchLimitForm').addEventListener('submit', async (e)=>
   const ly = document.getElementById('ll-y').value;
   const lm = document.getElementById('ll-m').value;
   const ld = document.getElementById('ll-d').value;
-  const dailyAmount = Number(document.getElementById('ll-daily').value);
+  const dailyAmount = Number(String(document.getElementById('ll-daily').value).replace(/[^0-9]/g,''));
   if(!ly || !lm || !ld || !dailyAmount) return;
   const date = `${ly}-${String(lm).padStart(2,'0')}-${String(ld).padStart(2,'0')}`;
   sharedLunchLimitHistory = sharedLunchLimitHistory || [];
@@ -26402,7 +26403,8 @@ function renderDailyWorkersTable(){
   }).join('');
   wrap.innerHTML = `<div class="table-scroll"><table class="dw-table"><thead><tr><th class="cvb dw-h-nm">이름</th><th class="cvb dw-h-lb"></th>${Array.from({length:12},(_,i)=>`<th class="cvb dw-m${fc(i+1)}">${i+1}월</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
   wrap.querySelectorAll('.dw-earn').forEach(inp=>{
-    inp.addEventListener('focus', ()=>{ inp.value = inp.value.replace(/,/g,''); inp.select(); });
+    inp.addEventListener('focus', ()=>{ inp.select(); });
+    inp.addEventListener('input', ()=> formatMoneyInputLive(inp)); // 입력하는 중에도 천단위 쉼표(요청)
     inp.addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); inp.blur(); } });
     inp.addEventListener('change', async ()=>{
       const w = sharedDailyWorkers[inp.dataset.id]; if(!w) return;
@@ -26462,11 +26464,12 @@ function openDwRepMenu(btn){
     [prevEl, curEl].forEach(el=>{
       el.addEventListener('input', upd);
       el.addEventListener('blur', ()=>{ const v = num(el); el.value = v === null ? '' : v.toLocaleString(); });
-      el.addEventListener('focus', ()=>{ el.value = el.value.replace(/,/g,''); el.select(); });
+      el.addEventListener('focus', ()=>{ el.select(); });
+      el.addEventListener('input', ()=> formatMoneyInputLive(el)); // 입력하는 중에도 천단위 쉼표(요청)
       el.addEventListener('keydown', ev=>{ if(ev.key === 'Enter'){ ev.preventDefault(); apply('filed'); } else if(ev.key === 'Escape'){ ev.stopPropagation(); close(); } });
     });
     upd(); prevEl.focus(); prevEl.select();
-  } else { amtEl.focus(); amtEl.select(); }
+  } else { amtEl.addEventListener('input', ()=> formatMoneyInputLive(amtEl)); amtEl.focus(); amtEl.select(); }
   const close = ()=>{ m.remove(); document.removeEventListener('mousedown', outside, true); };
   const outside = (ev)=>{ if(!m.contains(ev.target)) close(); };
   setTimeout(()=> document.addEventListener('mousedown', outside, true), 0);
@@ -26528,9 +26531,17 @@ function prSeedIfNeeded(){
 }
 const prRd = v => Math.floor(v / 10) * 10;
 // 엑셀 수식 그대로: 신고금액 - (ROUNDDOWN(신고금액×세율,-1) + ROUNDDOWN(ROUNDDOWN(신고금액×세율,-1)×10%,-1))
+// [2026.10.02] 발생금액/신고금액을 나눔(요청 - 일용직은 급여가 발생해도 신고 안 하는 달이 있어서). 저장 필드: reported = 발생금액(예전
+// "신고금액" 칸에 적던 값 그대로), filed = 신고금액(새 칸). 신고금액을 안 적으면 발생금액이 회색으로 그대로 신고금액이 되고(일용직은 그 달
+// 합산신고 계산이 있으면 당월 합산신고금액), 지급금액 자동계산·지급률은 신고금액 기준. 미신고 달은 신고금액에 0을 적으면 됨
+function prFiled(cid, r){
+  if(r.filed !== undefined && r.filed !== null && r.filed !== '') return Number(r.filed) || 0;
+  if(r.kind === '일용' && cid){ const c = prCalcs(cid, r.y, r.m).find(c=> c.name === r.name); if(c) return prCalcVals(cid, c).total; }
+  return Number(r.reported) || 0;
+}
 function prAutoPaid(r){
   const eff = r.kind === '현금' ? (r.cashAs || '사업') : r.kind;
-  const E = Number(r.reported) || 0;
+  const E = prFiled(null, r);
   if(!E) return null;
   if(eff === '사업' || eff === '기타'){ const t = prRd(E * (eff === '사업' ? 0.03 : 0.08)); return E - (t + prRd(t * 0.1)); }
   return null;
@@ -26598,22 +26609,26 @@ function renderPayroll(){
       <button type="button" class="del-btn xls-io-btn" id="prXlsBtn" title="엑셀 받기 (${year}년)" aria-label="엑셀 받기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2" y="2" width="12" height="12" rx="2"></rect><line x1="2" y1="6.5" x2="14" y2="6.5"></line><line x1="6.5" y1="2" x2="6.5" y2="14"></line><path d="M19 8v14"></path><path d="M15 18l4 4 4-4"></path></svg></button>
       <button type="button" class="del-btn xls-io-btn" id="prPrintBtn" title="출력 (거래처 전달용)" aria-label="출력"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></button>
       ${month ? `<button type="button" class="del-btn xls-io-btn" id="prAddBtn" title="줄 추가" aria-label="줄 추가">+ 추가</button>` : ''}</div>`;
-  html += `<div class="pr-scroll"><table class="pr-table"><thead><tr><th style="width:90px">구분</th>${month?'':'<th style="width:40px">월</th>'}<th style="width:96px">이름</th><th style="width:104px">신고금액</th><th style="width:104px">지급금액</th><th style="width:56px">지급률</th><th>비고</th><th style="width:26px"></th></tr></thead><tbody>`;
+  html += `<div class="pr-scroll"><table class="pr-table"><thead><tr><th style="width:90px">구분</th>${month?'':'<th style="width:40px">월</th>'}<th style="width:96px">이름</th><th style="width:104px">발생금액</th><th style="width:104px">신고금액</th><th style="width:104px">지급금액</th><th style="width:56px">지급률</th><th>비고</th><th style="width:26px"></th></tr></thead><tbody>`;
   let any = false;
   months.forEach(m=>{
     const rows = prRows(cid, year, m);
-    let sr = 0, sp = 0; const kc = {};
+    let se = 0, sr = 0, sp = 0; const kc = {};
     rows.forEach(r=>{
       any = true;
       const hint = prPaidHint(cid, r);
       const paid = prPaidOf(cid, r);
-      const rep = Number(r.reported) || 0;
-      sr += rep; sp += Number(paid) || 0; kc[r.kind] = (kc[r.kind]||0) + 1;
-      const rate = rep && paid !== null ? (Math.round(paid / rep * 1000) / 10) + '%' : '';
+      const rep = prFiled(cid, r);
+      const filedSet = r.filed !== undefined && r.filed !== null && r.filed !== '';
+      se += Number(r.reported) || 0; sr += rep; sp += Number(paid) || 0; kc[r.kind] = (kc[r.kind]||0) + 1;
       const merged = r.kind === '일용' && prCalcs(cid, year, m).some(c=> c.name === r.name);
+      // 합산신고 달은 이달 지급액이 "차액"이라, 지급률은 합산신고금액 대비 차인지급액으로 봄
+      const mv = merged ? prCalcVals(cid, prCalcs(cid, year, m).find(c=> c.name === r.name)) : null;
+      const rate = mv && mv.total ? (Math.round(mv.net / mv.total * 1000) / 10) + '%' : (rep && paid !== null ? (Math.round(paid / rep * 1000) / 10) + '%' : '');
       html += `<tr data-id="${r.id}"><td class="pr-k pr-k-${r.kind}">${kindSel(r)}</td>${month?'':`<td>${m}월</td>`}
         <td><input class="pr-in pr-name" data-f="name" data-id="${r.id}" value="${escHtml(r.name||'')}"></td>
-        <td class="n"><input class="pr-in pr-num${merged ? ' pr-hasm' : ''}" data-f="reported" data-id="${r.id}" inputmode="numeric" value="${nf(r.reported)}">${merged ? '<span class="dw-tag pr-mtag">합산</span>' : ''}</td>
+        <td class="n"><input class="pr-in pr-num" data-f="reported" data-id="${r.id}" inputmode="numeric" value="${nf(r.reported)}"></td>
+        <td class="n">${merged ? '<span class="dw-tag pr-mtag">합산</span>' : ''}<input class="pr-in pr-num${merged ? ' pr-hasm' : ''}" data-f="filed" data-id="${r.id}" inputmode="numeric" value="${filedSet ? nf(r.filed) : ''}" placeholder="${!filedSet && rep ? nf(rep) : ''}"></td>
         <td class="n"><input class="pr-in pr-num" data-f="paid" data-id="${r.id}" inputmode="numeric" value="${r.paid !== undefined && r.paid !== null && r.paid !== '' ? nf(r.paid) : ''}" placeholder="${hint !== null ? nf(hint) : ''}"></td>
         <td class="pr-rate">${rate}</td>
         <td><input class="pr-in pr-memo" data-f="memo" data-id="${r.id}" value="${escHtml(r.memo||'')}"></td>
@@ -26621,13 +26636,13 @@ function renderPayroll(){
     });
     if(rows.length){
       const kl = PAYROLL_KINDS.filter(k=>kc[k]).map(k=>`${k} ${kc[k]}`).join(' · ');
-      html += `<tr class="pr-sum"><td colspan="${month?2:3}">${m}월 합계</td><td class="n">${nf(sr)}</td><td class="n">${nf(sp)}</td><td></td><td colspan="2" class="pr-sum-k">${kl}</td></tr>`;
+      html += `<tr class="pr-sum"><td colspan="${month?2:3}">${m}월 합계</td><td class="n">${nf(se)}</td><td class="n">${nf(sr)}</td><td class="n">${nf(sp)}</td><td></td><td colspan="2" class="pr-sum-k">${kl}</td></tr>`;
     }
   });
   if(!any){
     const [py, pm] = month ? prPrevYM(year, month) : [0,0];
     const prevN = month ? prRows(cid, py, pm).length : 0;
-    html += `<tr><td colspan="8" class="pr-empty">${month ? `${month}월 자료가 없어요.${prevN ? `<br><button type="button" class="submit-btn" id="prCopyPrev">${pm}월 목록 가져오기 (${prevN}명)</button>` : ''}` : `${year}년 자료가 없어요.`}</td></tr>`;
+    html += `<tr><td colspan="9" class="pr-empty">${month ? `${month}월 자료가 없어요.${prevN ? `<br><button type="button" class="submit-btn" id="prCopyPrev">${pm}월 목록 가져오기 (${prevN}명)</button>` : ''}` : `${year}년 자료가 없어요.`}</td></tr>`;
   }
   html += `</tbody></table></div>`;
   if(month){
@@ -26691,7 +26706,8 @@ function bindPayroll(){
     const isCalc = inp.classList.contains('pr-cin');
     const rec = () => isCalc ? P().calcs[inp.dataset.id] : P().rows[inp.dataset.id];
     if(inp.classList.contains('pr-num')){
-      inp.addEventListener('focus', ()=>{ inp.value = inp.value.replace(/,/g,''); inp.select(); });
+      inp.addEventListener('focus', ()=>{ inp.select(); });
+      inp.addEventListener('input', ()=> formatMoneyInputLive(inp)); // 입력하는 중에도 천단위 쉼표(요청)
       inp.addEventListener('blur', ()=>{ const v = numOf(inp.value); inp.value = v === undefined ? '' : v.toLocaleString(); });
     }
     inp.addEventListener('keydown', e=>{ if(e.key === 'Enter' && !e.isComposing){ e.preventDefault(); inp.blur(); } });
@@ -26752,10 +26768,11 @@ function prPrint(){
     const rows = prRows(cid, year, m);
     if(!rows.length) return;
     let sr = 0, sp = 0;
-    body += `<h2>${year}년 ${m}월</h2><table><thead><tr><th style="width:80px">구분</th><th style="width:110px">이름</th><th style="width:120px">신고금액</th><th style="width:120px">지급금액</th><th>비고</th></tr></thead><tbody>`;
-    rows.forEach(r=>{ const paid = prPaidOf(cid, r); sr += Number(r.reported)||0; sp += Number(paid)||0;
-      body += `<tr><td>${escHtml(kindLabel(r))}</td><td>${escHtml(r.name||'')}</td><td class="n">${nf(r.reported)}</td><td class="n">${nf(paid)}</td><td class="memo">${escHtml(r.memo||'')}</td></tr>`; });
-    body += `<tr class="sum"><td colspan="2">합계</td><td class="n">${nf(sr)}</td><td class="n">${nf(sp)}</td><td></td></tr></tbody></table>`;
+    body += `<div class="ym">귀속월: ${year}년 ${m}월</div><table><thead><tr><th style="width:80px">구분</th><th style="width:100px">이름</th><th style="width:105px">발생금액</th><th style="width:105px">신고금액</th><th style="width:105px">지급금액</th><th>비고</th></tr></thead><tbody>`;
+    let se = 0;
+    rows.forEach(r=>{ const paid = prPaidOf(cid, r), fl = prFiled(cid, r); se += Number(r.reported)||0; sr += fl; sp += Number(paid)||0;
+      body += `<tr><td>${escHtml(kindLabel(r))}</td><td>${escHtml(r.name||'')}</td><td class="n">${nf(r.reported)}</td><td class="n">${nf(fl)}</td><td class="n">${nf(paid)}</td><td class="memo">${escHtml(r.memo||'')}</td></tr>`; });
+    body += `<tr class="sum"><td colspan="2">합계</td><td class="n">${nf(se)}</td><td class="n">${nf(sr)}</td><td class="n">${nf(sp)}</td><td></td></tr></tbody></table>`;
     const cs = prCalcs(cid, year, m);
     if(cs.length){
       body += `<h3>합산신고 계산내역</h3><table class="calc"><thead><tr><th>이름</th><th>미신고 귀속월</th><th>금액</th><th>당월 합산신고</th><th>고용</th><th>소득세</th><th>지방소득세</th><th>차인지급액</th><th>기지급액</th><th>차액 지급액</th></tr></thead><tbody>`;
@@ -26771,28 +26788,27 @@ function prPrint(){
     .head{ text-align:center; margin-bottom:14px; }
     .cname{ font-size:18px; font-weight:800; }
     .ttl{ font-size:13px; font-weight:700; color:#75789A; margin-top:3px; }
-    h2{ font-size:13px; margin:16px 0 6px; }
+    .ym{ text-align:right; font-size:12px; font-weight:700; margin:16px 0 6px; }
     h3{ font-size:12px; margin:12px 0 6px; color:#4640D6; }
     table{ width:100%; border-collapse:collapse; page-break-inside:auto; }
     th{ background:#F3F4FA; color:#4B4E6D; font-weight:800; padding:6px 5px; border:1px solid #D9DBE8; font-size:11px; }
     td{ padding:5px; border:1px solid #E3E4EE; text-align:center; }
-    td.n{ text-align:right; font-variant-numeric:tabular-nums; }
+    td.n{ text-align:center; font-variant-numeric:tabular-nums; }
     td.memo{ text-align:left; color:#55587A; }
     tr.sum td{ font-weight:800; background:#FAFAFD; }
     table.calc th, table.calc td{ font-size:10.5px; }
-    .foot{ margin-top:18px; text-align:right; font-size:10px; color:#9A9CB5; }
   </style></head><body><div class="head"><div class="cname">${escHtml(cl.name||'')}</div><div class="ttl">급여현황</div></div>${body}
-  <div class="foot">${escHtml(todayStr())} 출력${typeof sharedCompanyName !== 'undefined' && sharedCompanyName ? ' · ' + escHtml(sharedCompanyName) : ''}</div></body></html>`;
+</body></html>`; // 출력일자·회사명은 넣지 않음(요청)
   printHtmlDocument(html);
 }
 function prXlsDownload(){
   if(typeof XLSX === 'undefined'){ showCenterToast('엑셀 기능을 불러오지 못했어요'); return; }
   const { clientId:cid, year } = payrollState;
   const cl = (clients.list||[]).find(c=> c.id === cid) || {};
-  const aoa = [[`${year} 급여현황 · ${cl.name||''}`], [], ['신고구분','월','이름','신고금액','지급금액','지급률','비고']];
+  const aoa = [[`${year} 급여현황 · ${cl.name||''}`], [], ['신고구분','월','이름','발생금액','신고금액','지급금액','지급률','비고']];
   prRows(cid, year).forEach(r=>{
-    const paid = prPaidOf(cid, r), rep = Number(r.reported) || 0;
-    aoa.push([r.kind === '현금' ? `현금(${r.cashAs || '사업'})` : `${r.kind}소득`, Number(r.m), r.name || '', rep || null, paid, rep && paid !== null ? Math.round(paid / rep * 10000) / 10000 : null, r.memo || '']);
+    const paid = prPaidOf(cid, r), rep = prFiled(cid, r);
+    aoa.push([r.kind === '현금' ? `현금(${r.cashAs || '사업'})` : `${r.kind}소득`, Number(r.m), r.name || '', Number(r.reported) || null, rep, paid, rep && paid !== null ? Math.round(paid / rep * 10000) / 10000 : null, r.memo || '']);
   });
   for(let m=1;m<=12;m++){
     const cs = prCalcs(cid, year, m); if(!cs.length) continue;
@@ -26800,8 +26816,8 @@ function prXlsDownload(){
     cs.forEach(c=>{ const v = prCalcVals(cid, c); aoa.push([c.name||'', (c.fromYm||'').replace('-','.'), v.amount, v.total, Number(c.emp)||0, Number(c.it)||0, Number(c.lit)||0, v.net, v.prevPaid, v.diff]); });
   }
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  Object.keys(ws).forEach(k=>{ if(k[0] === '!') return; const c = ws[k]; if(c.t === 'n'){ const col = XLSX.utils.decode_cell(k).c; c.z = (col === 5 && c.v < 2) ? '0.0%' : (col === 1 ? '0' : '#,##0'); } });
-  ws['!cols'] = [{wch:12},{wch:12},{wch:12},{wch:14},{wch:14},{wch:10},{wch:24},{wch:12},{wch:12},{wch:12}];
+  Object.keys(ws).forEach(k=>{ if(k[0] === '!') return; const c = ws[k]; if(c.t === 'n'){ const col = XLSX.utils.decode_cell(k).c; c.z = (col === 6 && c.v < 2) ? '0.0%' : (col === 1 ? '0' : '#,##0'); } });
+  ws['!cols'] = [{wch:12},{wch:12},{wch:12},{wch:14},{wch:14},{wch:14},{wch:10},{wch:24},{wch:12},{wch:12}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, `${year} 급여현황`);
   XLSX.writeFile(wb, `taxj-급여현황-${String(cl.name||'').replace(/[\\/:*?"<>|]/g,'')}-${year}-${todayStr()}.xlsx`);
@@ -29133,6 +29149,23 @@ function formatMoneyInputLive(inp){
   }
   try{ inp.setSelectionRange(pos, pos); }catch(e){}
 }
+// [2026.10.02] "+ 누르면 000 자동 입력"(세무회계 프로그램처럼 - 요청). 금액 입력칸(inputmode="numeric")에서 + 키(숫자패드 포함)를
+// 누르면 + 대신 커서 자리에 000을 넣음. 입력 이벤트도 같이 보내서 천단위 콤마·합계 등이 바로 따라 바뀜
+document.addEventListener('keydown', (e)=>{
+  if(e.key !== '+' || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+  const el = e.target;
+  if(!el || el.tagName !== 'INPUT' || el.readOnly || el.disabled) return;
+  const isMoney = el.getAttribute('inputmode') === 'numeric' || el.id === 'll-daily';
+  if(!isMoney) return;
+  e.preventDefault(); e.stopPropagation(); // 칸마다 따로 붙어 있던 + 처리(수임료 등)와 겹쳐 000이 두 번 들어가지 않게
+  if(el.type === 'number'){ el.value = String(el.value || '') + '000'; }
+  else {
+    const a = el.selectionStart ?? el.value.length, b = el.selectionEnd ?? a;
+    el.value = el.value.slice(0, a) + '000' + el.value.slice(b);
+    try{ el.setSelectionRange(a + 3, a + 3); }catch(err){}
+  }
+  el.dispatchEvent(new Event('input', { bubbles:true }));
+}, true);
 function moneyParse(str){
   if(str == null) return undefined;
   const s = String(str).replace(/[^0-9-]/g,'');
@@ -38607,7 +38640,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 15:30';
+const APP_BUILD = '2026.10.02 15:58';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
