@@ -62,6 +62,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tax.J</title>
+<script>
+/* [2026.10.02] "새로고침·로그인 때 예전 정보가 잠깐 보였다가 바뀐다"(요청) - 로그인 상태로 다시 열 때는 서버 최신본을 받아 화면을
+   다시 그릴 때까지 본문을 잠깐 가리고 "불러오는 중"만 보여줌(위 아이콘 줄·메뉴는 그대로). 최대 5초 지나면 그냥 보여줌 */
+try{
+  var _t = localStorage.getItem('worklog_gdrive_token'), _e = Number(localStorage.getItem('worklog_gdrive_token_expiry') || 0);
+  if(_t && _e > Date.now()){
+    document.documentElement.classList.add('taxj-syncing');
+    setTimeout(function(){ document.documentElement.classList.remove('taxj-syncing'); }, 5000);
+  }
+}catch(e){}
+</script>
 <!-- 휴대폰에서 "홈 화면에 추가"로 저장하면 주소창 없이 앱처럼 열리도록 하는 매니페스트/아이콘.
      별도 파일 없이 전부 이 파일 안에 data URI로 넣어서, index.html 한 파일만 올려도 그대로 동작함 -->
 <meta name="theme-color" content="#5B5FEF">
@@ -2047,6 +2058,11 @@
   .st-merged-table thead tr:first-child th[colspan]{ border-bottom:2px solid #C9CBE0 !important; color:var(--ink); font-weight:800; }
   .st-merged-table .st-fixed-m{ display:inline-block; margin-left:4px; padding:1px 7px; border-radius:999px; background:var(--indigo-bg); color:var(--indigo-deep); font-size:10.5px; font-weight:800; }
   .st-merged-table .filing-status-select{ font-size:11.5px; }
+  /* 최신본을 받기 전에는 본문을 가리고 "불러오는 중" 표시(위 head 스크립트 참고) */
+  html.taxj-syncing .app-main{ position:relative; }
+  html.taxj-syncing .app-main > section.tab-panel{ visibility:hidden; }
+  html.taxj-syncing .app-main::before{ content:'최신 자료를 불러오는 중…'; position:absolute; left:0; right:0; top:120px; text-align:center; font-size:13px; font-weight:700; color:var(--ink-soft); z-index:5; animation:taxjSyncPulse 1.2s ease-in-out infinite; }
+  @keyframes taxjSyncPulse{ 0%,100%{ opacity:.45; } 50%{ opacity:1; } }
   /* 스크롤 시 떠서 따라오는 머리글 - 아래 내용이 비치지 않게 바탕을 채우고 맨 위로 */
   #itAllTableWrap table thead th{ z-index:6; }
   #itAllTableWrap table thead.it-head-floating tr:last-child th{ box-shadow:0 2px 4px -2px rgba(29,30,51,0.18); }
@@ -37198,6 +37214,8 @@ async function fsActivate(){
       const waiters = fsFirstSnapshotWaiters; fsFirstSnapshotWaiters = [];
       waiters.forEach(f=>f());
       if(fsActive) fsApplyRemote();
+      // 처음 받은 서버 최신본으로 화면을 한 번 다시 그린 뒤에 본문을 보여줌(바뀐 게 없어도) - 예전 정보가 잠깐 보이는 것 방지
+      if(document.documentElement.classList.contains('taxj-syncing')) fsScheduleUiRefresh();
     }, err=>{
       console.error('Firebase 실시간 수신 오류', err);
       gdriveSetStatus('실시간 연결이 끊겼어요 · 새로고침해 주세요 (입력한 내용은 이 기기에 안전하게 남아있어요)');
@@ -37225,8 +37243,10 @@ function fsScheduleUiRefresh(){
       }
       await loadAll();
     }catch(e){ console.error('화면 갱신 실패', e); }
+    taxjSyncReveal();
   }, 150);
 }
+function taxjSyncReveal(){ try{ document.documentElement.classList.remove('taxj-syncing'); }catch(e){} }
 // 서버 최신 상태를 이 기기에 반영 - 이 기기에만 있는(아직 못 올린) 변경은 기존 병합 규칙으로 살려두고 곧바로 올림
 function fsApplyRemote(){
   if(gdriveSuspendPull) return;
@@ -37551,7 +37571,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 13:01';
+const APP_BUILD = '2026.10.02 13:02';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
