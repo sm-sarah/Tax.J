@@ -907,6 +907,26 @@ try{
   .pres-body-c .pres-list{ flex:1 1 auto; min-height:0; overflow-y:auto; }
   .pres-foot{ flex:none; display:flex; justify-content:center; align-items:center; gap:6px; margin-top:8px; padding-top:9px; border-top:1px solid var(--border); font-size:11.5px; font-weight:700; white-space:nowrap; }
   .pres-foot b{ font-weight:900; }
+  /* [2026.10.02] 실시간 근무현황 귀여운 포인트 - 상태 스티커(얼굴 오른쪽 아래, 크기·배치 영향 없음) + 목록 아래 강아지 말풍선 */
+  .pres-online-chip i{ animation:presOnlineBreath 2.4s ease-in-out infinite; }
+  @keyframes presOnlineBreath{ 0%,100%{ box-shadow:0 0 0 0 rgba(16,185,129,.45); } 50%{ box-shadow:0 0 0 3px rgba(16,185,129,0); } }
+  .pres-mascot{ position:absolute; left:0; right:0; top:-64px; height:46px; display:flex; align-items:center; gap:8px; padding:0 2px; pointer-events:none; }
+  .pres-mascot-face{ flex:none; width:46px; height:46px; border-radius:50%; background:#fff; border:2.5px solid #E3D9FF; box-shadow:0 5px 12px -6px rgba(140,120,220,.55); display:flex; align-items:center; justify-content:center; box-sizing:border-box; animation:presMascotBob 3.2s ease-in-out infinite; }
+  .pres-mascot-face svg{ width:44px; height:45px; display:block; margin-top:-11px; flex:none; } /* 토끼 귀가 동그라미 위로 살짝 삐져나오게 */
+  @keyframes presMascotBob{ 0%,100%{ transform:translateY(0) rotate(0); } 50%{ transform:translateY(-3px) rotate(-3deg); } }
+  .pres-mascot-bubble{ position:relative; min-width:0; white-space:nowrap; background:#fff; border:2px solid #E3D9FF; border-radius:12px; padding:4px 11px; font-size:12px; font-weight:800; color:#5B4B7A; line-height:1.45; }
+  #dashPresenceBody{ position:relative; }
+  /* 제목은 띠 밖(첫 소제목 줄 오른쪽)으로 - 띠 안 제목 자리는 높이만 남기고 숨김(기준 시각·(i) 위치 그대로) */
+  #dashPresenceCard > .home-dash-card-title{ visibility:hidden; pointer-events:none; }
+  .pres-sec-first{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-right:4px; }
+  .pres-inline-title{ display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:800; color:#8A7FB8; letter-spacing:.01em; white-space:nowrap; }
+  .pres-inline-at{ font-weight:700; color:var(--ink-soft); }
+  .pres-inline-title .backup-info-btn{ color:#8A7FB8 !important; }
+  .pres-mascot.lay-edge{ top:-50px; }
+  .pres-mascot.lay-right{ flex-direction:row-reverse; }
+  .pres-mascot.lay-right .pres-mascot-bubble::before{ left:auto; right:-6px; transform:rotate(225deg); }
+  .pres-mascot-bubble::before{ content:''; position:absolute; left:-6px; top:50%; margin-top:-4px; width:8px; height:8px; background:#fff; border-left:2px solid #E3D9FF; border-bottom:2px solid #E3D9FF; transform:rotate(45deg); }
+  @media (prefers-reduced-motion: reduce){ .pres-mascot-face, .pres-online-chip i{ animation:none; } }
   .pres-foot i{ font-style:normal; color:var(--border); }
   .home-dash-pres-acct{ margin-bottom:8px; padding-bottom:4px; border-bottom:1.5px solid var(--border); }
   .home-dash-pres-acct .home-dash-pres-row.pres-b{ border-bottom:none; }
@@ -19976,6 +19996,58 @@ function dashPresenceDevIcon(name){
   return nb ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/></svg>'
             : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
 }
+// [2026.10.02] "실시간 근무현황도 출퇴근 카드처럼 귀여운 포인트"(요청) - ① (얼굴 상태 스티커는 "상태 글자와 중복이라 피로하다"(요청)로 뺌)
+// ② 제목 아래 물결 빈 자리에 흰 토끼 캐릭터(출퇴근 카드 강아지와 같은 그림체, 다른 캐릭터)가 오늘 분위기를 한 줄 말풍선으로 알려줌. 카드 크기·배치·목록 자리는 그대로
+// [2026.10.02] "출퇴근 카드 캐릭터(강아지)와 겹치면 안 된다" → "강아지와 같은 그림체로"(요청) - 근무현황 카드는 흰 토끼.
+// 강아지(dashMascotSvg)와 같은 방식: 진한 잉크 테두리를 한 겹 깔고 그 위에 흰 몸통, 같은 눈(진한 눈동자+하이라이트 점)·볼터치·입 모양
+// idle(출근 전): 살짝 웃는 입 / working(근무 중): 다문 작은 입 / done(모두 퇴근): 활짝 웃으며 혀
+function presBunnySvg(state){
+  const ink = '#2B2A33', fur = '#FFFFFF';
+  const cx = 60, cy = 84;
+  const shape = (g, fill)=> `<ellipse cx="43" cy="38" rx="${11+g}" ry="${28+g}" transform="rotate(-10 43 38)" fill="${fill}"/>`
+    + `<ellipse cx="77" cy="38" rx="${11+g}" ry="${28+g}" transform="rotate(10 77 38)" fill="${fill}"/>`
+    + `<ellipse cx="${cx}" cy="${cy}" rx="${38+g}" ry="${34+g}" fill="${fill}"/>`;
+  const body = `${shape(2.6, ink)}${shape(0, fur)}`;
+  const inner = `<ellipse cx="43" cy="40" rx="5" ry="19" transform="rotate(-10 43 40)" fill="#FFC9D6"/><ellipse cx="77" cy="40" rx="5" ry="19" transform="rotate(10 77 40)" fill="#FFC9D6"/>`;
+  const cheeks = `<ellipse cx="${cx-22}" cy="${cy+12}" rx="6.5" ry="4.2" fill="#FFC9C9"/><ellipse cx="${cx+22}" cy="${cy+12}" rx="6.5" ry="4.2" fill="#FFC9C9"/>`;
+  const nose = `<ellipse cx="${cx}" cy="${cy+6}" rx="4.2" ry="3.2" fill="${ink}"/>`;
+  let mouth;
+  if(state === 'done'){
+    mouth = `<path d="M${cx-10},${cy+13} Q${cx},${cy+24} ${cx+10},${cy+13}" stroke="${ink}" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M${cx-5.5},${cy+15.5} Q${cx},${cy+23} ${cx+5.5},${cy+15.5} Q${cx+4},${cy+20.5} ${cx},${cy+21} Q${cx-4},${cy+20.5} ${cx-5.5},${cy+15.5} Z" fill="#F0879C"/>`;
+  } else if(state === 'working'){
+    mouth = `<path d="M${cx-4.5},${cy+14} Q${cx},${cy+16.5} ${cx+4.5},${cy+14}" stroke="${ink}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
+  } else {
+    mouth = `<path d="M${cx},${cy+9} V${cy+12} M${cx-7},${cy+12} Q${cx-3.5},${cy+16.5} ${cx},${cy+12} Q${cx+3.5},${cy+16.5} ${cx+7},${cy+12}" stroke="${ink}" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }
+  const eye = (ex,ey)=> `<circle cx="${ex}" cy="${ey}" r="6" fill="${ink}"/><circle cx="${ex-2}" cy="${ey-2}" r="1.8" fill="#fff"/>`;
+  const eyes = `${eye(cx-15, cy-4)}${eye(cx+15, cy-4)}`;
+  return `<svg viewBox="0 0 120 124" aria-hidden="true">${body}${inner}${cheeks}${eyes}${nose}${mouth}</svg>`;
+}
+// 토끼·말풍선 배치 시안 - 'edge': 왼쪽, 물결 띠 경계선에 걸치게 / 'right': 출퇴근 카드와 대칭(말풍선+토끼를 오른쪽)
+var PRES_MASCOT_LAYOUT = 'edge';
+// 토끼 말풍선 - 제목 아래 물결(파스텔) 빈 자리에 작은 강아지 + 한 줄 말풍선. 지금 몇 명이 일하는지·시간대에 따라 한마디(목록 자리는 차지하지 않음)
+function presMascotHtml(rows, acctRows){
+  const working = rows.filter(r=> r.kind === 'office' || r.kind === 'home').length + acctRows.filter(r=> r.inOffice).length;
+  const done = rows.filter(r=> r.kind === 'done').length;
+  const leave = rows.filter(r=> r.kind === 'leave').length;
+  const d = new Date(), h = d.getHours(), hm = h*60 + d.getMinutes();
+  const pick = arr => arr[(d.getDate() + h) % arr.length]; // 30초마다 다시 그려도 말이 바뀌지 않게(1시간 단위로만 바뀜)
+  let state = 'idle', msg;
+  if(working > 0){
+    state = 'working';
+    if(hm >= 11*60+30 && hm < 13*60) msg = pick(['맛있는 점심 드세요!', '점심시간, 잠깐 쉬어가요']);
+    else if(h >= 18) msg = pick([`아직 ${working}명 남았어요, 힘내요!`, '늦게까지 고생 많아요']);
+    else msg = pick([`지금 ${working}명이 함께 일하는 중!`, '오늘도 다 같이 화이팅!']);
+  } else if(done > 0){
+    state = 'done';
+    msg = pick(['모두 퇴근! 오늘도 수고했어요', '다들 퇴근 완료, 내일 만나요']);
+  } else {
+    msg = h < 12 ? pick(['곧 다들 오겠죠? 기다리는 중', '아직 조용한 아침이에요']) : '오늘은 조용하네요';
+  }
+  if(leave > 0 && state === 'working' && !(hm >= 11*60+30 && hm < 13*60) && h < 18) msg = `오늘 휴가 ${leave}명, 푹 쉬고 오세요`;
+  return `<div class="pres-mascot lay-${PRES_MASCOT_LAYOUT}" aria-hidden="true"><div class="pres-mascot-face">${presBunnySvg(state)}</div><div class="pres-mascot-bubble">${msg}</div></div>`;
+}
 function renderDashboardPresence(){
   const body = document.getElementById('dashPresenceBody');
   if(!body) return;
@@ -20062,7 +20134,11 @@ function renderDashboardPresence(){
   acctRows.sort((a,b)=> (b.inOffice - a.inOffice) || a.name.localeCompare(b.name, 'ko'));
   // [2026.09.30 C안] "회계사" / "직원" 작은 소제목으로 나누고, 회계사님은 "사무실 근무중 / 사무실 부재중"만.
   // 직원 집계(사무실·재택·미출근·휴가)는 위쪽 칩 대신 카드 맨 아래 한 줄 글자로(요청)
-  const acctHtml = acctRows.length ? `<div class="pres-sec-label">회계사</div>${acctRows.map(r=>{
+  // [2026.10.02] "출퇴근 카드처럼 물결 띠엔 제목 없이 - 제목은 회계사 소제목 오른쪽 위(띠 밖)에 살짝"(요청)
+  // 기준 시각·(i)도 제목 오른쪽으로(요청) - 띠 안 머리줄은 높이만 남기고 숨김
+  const atNow = new Date();
+  const presTitleTag = `<span class="pres-inline-title">실시간 근무현황<span class="pres-inline-at">${String(atNow.getHours()).padStart(2,'0')}:${String(atNow.getMinutes()).padStart(2,'0')} 기준</span><button type="button" class="backup-info-btn" data-hint-info="dashPresence" title="도움말" aria-label="도움말" style="margin-left:0;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button></span>`;
+  const acctHtml = acctRows.length ? `<div class="pres-sec-label pres-sec-first"><span>회계사</span>${presTitleTag}</div>${acctRows.map(r=>{
     const av = r.p.photo ? `<img src="${escHtml(r.p.photo)}" alt="">` : staffInitialCircleHtml(r.name, staffInitialColorOf(r.p, r.name), 32, '', r.p.initialText || '');
     // [2026.10.01] 회계사님도 PC·노트북으로 접속 중이면 "접속중" 칩 + 이름 아래 기기 이름(직원과 같은 모양).
     // 사무실 PC면 "사무실 근무중", 다른 PC·노트북(외부)이면 "근무중", 접속 안 했으면 "사무실 부재중"(휴대폰 접속은 위에서 이미 제외)
@@ -20091,10 +20167,11 @@ function renderDashboardPresence(){
       <span class="pres-st-col"><span class="home-dash-pres-st${mine ? ' pres-st-edit' : ''}" style="color:${col};"${mine ? ' role="button" tabindex="0" title="눌러서 내 상태 바꾸기"' : ''}><i class="pres-dot" style="background:${dotc};"></i>${lbl}${mine ? '<svg class="pres-st-caret" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}</span>${(st === 'done' && r.entry && r.entry.checkOut) ? `<span class="pres-st-time">${escHtml(String(r.entry.checkOut).slice(0,5))}</span>` : (st === 'man' && presenceManualSub(pEmail)) ? `<span class="pres-st-time">${escHtml(presenceManualSub(pEmail))}</span>` : ''}</span>
     </div>`;
   }).join('')}` : '';
-  const staffHtml = rows.length ? `${acctRows.length ? '<div class="pres-sec-label" style="margin-top:10px;">직원</div>' : ''}${rowHtml}` : '';
+  const staffHtml = rows.length ? `${acctRows.length ? '<div class="pres-sec-label" style="margin-top:10px;">직원</div>' : `<div class="pres-sec-label pres-sec-first"><span></span>${presTitleTag}</div>`}${rowHtml}` : '';
   const footHtml = rows.length ? `<div class="pres-foot">${['office','home','none','leave'].map(k=>`<span style="color:${k==='none'?'var(--ink-soft)':PRES_ST[k].color};">${PRES_ST[k].label} <b>${cnt(k)}</b></span>`).join('<i>·</i>')}</div>` : '';
   body.classList.add('pres-body-c');
   body.innerHTML = (rows.length || acctRows.length) ? `<div class="pres-list">${acctHtml}${staffHtml}</div>${footHtml}` : `<div class="hint" style="margin:0; font-size:11.5px;">등록된 직원이 없어요.</div>`;
+  if(rows.length || acctRows.length) body.insertAdjacentHTML('afterbegin', presMascotHtml(rows, acctRows)); // 물결 위 토끼(목록 자리 차지 안 함)
   const at = document.getElementById('dashPresenceAt');
   if(at){ const d = new Date(); at.textContent = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} 기준`; }
 }
@@ -39243,7 +39320,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 22:25';
+const APP_BUILD = '2026.10.02 23:30';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
