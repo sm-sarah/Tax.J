@@ -10835,7 +10835,7 @@ function checkNewTeamScheduleForBrowserNotify(){
     (att.leaveUsage||[]).filter(u=>u.date >= today0 && u.notify === true).forEach(u=>{
       pushNotificationLogEntry({
         type:'team-schedule', icon:'team-schedule',
-        title:`팀 일정 등록: ${leaveTeamCalShortType(u.type, u.subtype, u.publicReason)}`,
+        title:`팀 일정 등록: ${leaveTeamCalShortType(u.type, u.subtype, u.publicReason, u.date)}`,
         body:`${name} · ${shortDateLabel(u.date)}${u.notifyUntil && u.notifyUntil !== u.date ? '~'+shortDateLabel(u.notifyUntil) : ''}`,
         author:name||'', authorEmail, targetEmail:'*', relatedId:u.id, eventAt:u.date, noPush: authorEmail !== myEmailTS || !isRecentLocalAction('schedule')
       });
@@ -11317,17 +11317,27 @@ document.getElementById('employeeModalOverlay').addEventListener('click', (e)=>{
 // (반차는 점심 섭취 여부만, 반반차는 늦출/이석/조퇴로만 구분)
 // "반반차_늦출"처럼 유형(반반차)이 앞에 안 붙고 세부유형(늦출)만 달랑 나와서 무슨 종류의 휴가인지
 // 한눈에 안 보인다는 요청 - 반차와 똑같이 "유형_세부유형" 형태로 유형을 항상 앞에 붙임
-// 공가는 사유를 적었으면 "공가 (건강검진)"처럼 한 칸 띄워서 표시
+// 공가는 사유를 적었으면 "공가_건강검진"처럼 표시([2026.10.02] 반차_점심O와 같은 모양으로(요청) - 예전엔 "공가 (건강검진)")
 function leaveTypeLabel(type, publicReason){
-  return type === '공가' && publicReason ? `공가 (${publicReason})` : type;
+  return type === '공가' && publicReason ? `공가_${publicReason}` : type;
 }
 // 달력 기간 막대의 "(N일)" - 공가는 일수를 표시하지 않음
 function leaveDaysSuffix(type, n){
   return type === '공가' ? '' : ` (${n}일)`;
 }
-function leaveTeamCalShortType(type, subtype, publicReason){
+// [2026.10.02] 반반차는 팀·개인 캘린더 모두 "반반차_11:00출근(늦출)" / "반반차_16:00퇴근(조퇴)" / "반반차_11:00~14:00(이석)"으로 통일(요청).
+// 조기퇴근 시각은 상·하반기(16:00/15:30)가 달라서 날짜가 있으면 그 날짜 기준, 없으면 오늘 기준
+function quarterLeaveLabel(subtype, dateStr){
+  const d = dateStr || todayStr();
+  if(subtype === '늦은출근') return '반반차_11:00출근(늦출)';
+  if(subtype === '조기퇴근') return `반반차_${isFirstHalfYear(d) ? '16:00' : '15:30'}퇴근(조퇴)`;
+  if(subtype === '점심연장') return '반반차_11:00~14:00(이석)';
+  return '반반차';
+}
+function leaveTeamCalShortType(type, subtype, publicReason, dateStr){
   if(type === '공가') return leaveTypeLabel(type, publicReason);
   if(type === '반차') return subtype === '오후반차_식사O' ? '반차_점심O' : '반차_점심X';
+  if(type === '반반차') return quarterLeaveLabel(subtype, dateStr);
   if(type === '반반차'){
     const m = { '늦은출근':'늦출', '점심연장':'이석', '조기퇴근':'조퇴' };
     return m[subtype] ? `반반차_${m[subtype]}` : '반반차';
@@ -11384,7 +11394,7 @@ function renderAdminCalendar(){
         const t = (u.type==='반차'||u.type==='반반차') ? leaveAbsenceTime(u.date, u.type, u.subtype) : '';
         const titleAttr = t ? ` title="${escHtml(t)}"` : '';
         const advSuffix = u.advance ? advBadgeTag() : '';
-        (byDate[g.startDate]=byDate[g.startDate]||[]).push(`<span class="cal-badge leave"${titleAttr}>${calIconSvg('leave')} ${escHtml(name)}) ${escHtml(leaveTeamCalShortType(u.type, u.subtype, u.publicReason))}${advSuffix}</span>`);
+        (byDate[g.startDate]=byDate[g.startDate]||[]).push(`<span class="cal-badge leave"${titleAttr}>${calIconSvg('leave')} ${escHtml(name)}) ${escHtml(leaveTeamCalShortType(u.type, u.subtype, u.publicReason, u.date))}${advSuffix}</span>`);
       } else {
         // 연속 휴가는 하루짜리 뱃지 두 개(시작일/복귀일)로 뚝 끊어 보여주지 않고, 그 사이 평일들을 이어지는 막대로 표시함
         // (같은 주(그리드 한 줄) 안에서만 시각적으로 이어붙임 - 주가 바뀌면(금→다음주 월) 자연스럽게 막대가 새로 시작됨)
@@ -11750,7 +11760,7 @@ function notificationMainText(n){
     const baseId = String(n.relatedId||'').split('|')[0];
     const doc = (sharedApprovals||[]).find(a=>a.id===baseId);
     if(doc && doc.docType === '휴가' && doc.leaveType){
-      return leaveTeamCalShortType(doc.leaveType, doc.leaveSubtype);
+      return leaveTeamCalShortType(doc.leaveType, doc.leaveSubtype, null, doc.leaveStart);
     }
   }
   const t = stripRedundantTitlePrefix(stripLeadingEmoji(n.title||''));
@@ -13661,7 +13671,7 @@ function renderAllRemoteHistory(){
 
   const buildRows = (list) => list.map(en=>{
     // 태그 구성(정기재택/특별재택 + 당겨씀/식대제외)은 renderAttendance()의 이번달 근태 기록 표와 동일하게 맞춤
-    const advTag = en.advance ? ` <span style="color:var(--indigo-deep); font-weight:800; display:inline-flex; align-items:center; gap:2px;">${advIconTag()}${remoteCreditMonthOf(en)} 한도차감</span>` : '';
+    const advTag = en.advance ? ` <span style="color:var(--indigo-deep); font-weight:800; font-size:inherit;">${advIconTag()} ${remoteCreditMonthOf(en)} 한도차감</span>` : '';
     // 특별재택은 SPECIAL_REMOTE_EXCLUSION_START_MONTH(2026-09)부터만 식대기준일수에서 제외되므로, 그
     // 이전 달 특별재택엔 "식대제외" 뱃지를 붙이지 않음(아래 renderAttendance() 이번달 표와 동일 기준)
     const bonusExcluded = en.bonus && (en.date||'').slice(0,7) >= SPECIAL_REMOTE_EXCLUSION_START_MONTH;
@@ -13813,7 +13823,7 @@ function renderAttendance(){
       }
     }
     else {
-      const advTag = en.advance ? ` <span style="color:var(--indigo-deep); font-weight:800; display:inline-flex; align-items:center; gap:2px;">${advIconTag()}${remoteCreditMonthOf(en)} 한도차감</span>` : '';
+      const advTag = en.advance ? ` <span style="color:var(--indigo-deep); font-weight:800; font-size:inherit;">${advIconTag()} ${remoteCreditMonthOf(en)} 한도차감</span>` : '';
       // 특별재택은 SPECIAL_REMOTE_EXCLUSION_START_MONTH(2026-09)부터만 식대기준일수에서 제외되므로(위
       // calcWorkdays 참고), 그 이전 달 특별재택엔 이 뱃지를 붙이면 안 됨(실제로는 안 빠지는데 빠지는
       // 것처럼 보여서 혼란을 줌) - 정기재택의 noLunch 체크는 원래도 등록 시 사람이 직접 켠 것만 반영되는
@@ -14369,7 +14379,8 @@ function renderCalendar(){
       {
         const u = g.entries[0];
         if(u.type==='연차') label = '연차';
-        else if(u.type==='반차' || u.type==='반반차'){
+        else if(u.type==='반반차'){ label = escHtml(quarterLeaveLabel(u.subtype, dateStr)); } // [2026.10.02] 시각이 이름에 들어가서 시간 줄은 따로 안 붙임
+        else if(u.type==='반차'){
           const sub = subtypeShort[u.subtype] || u.subtype || '';
           timeLabel = leaveAbsenceTime(dateStr, u.type, u.subtype);
           label = `${u.type}${sub ? '·'+sub : ''}`;
@@ -18119,7 +18130,8 @@ function buildCalendarHTML(monthStr){
       else {
         const u = g.entries[0];
         if(u.type==='연차') label = '연차';
-        else if(u.type==='반차' || u.type==='반반차'){
+        else if(u.type==='반반차'){ label = escHtml(quarterLeaveLabel(u.subtype, dateStr)); } // [2026.10.02] 시각이 이름에 들어가서 시간 줄은 따로 안 붙임
+        else if(u.type==='반차'){
           const sub = subtypeShort[u.subtype] || u.subtype || '';
           timeLabel = leaveAbsenceTime(dateStr, u.type, u.subtype);
           label = `${u.type}${sub ? '·'+sub : ''}`;
@@ -19153,7 +19165,7 @@ function computeMonthTeamAgenda(monthStr){
       // "일정" 칸 글자만 봐도 누구 건지, 어떤 유형+세부유형인지 한 번에 보이게 "이름) 유형_세부유형"
       // 형태로 표기해달라는 요청 - 큰 팀캘린더 탭 배지와 같은 형식(leaveTeamCalShortType)을 그대로 씀
       (att.leaveUsage||[]).filter(u=>u.date===ds).forEach(u=>{
-        items.push({ date:ds, dateLabel, person:name, icon:calIconSvg('leave'), text:`${name}) ${leaveTeamCalShortType(u.type, u.subtype, u.publicReason)}` });
+        items.push({ date:ds, dateLabel, person:name, icon:calIconSvg('leave'), text:`${name}) ${leaveTeamCalShortType(u.type, u.subtype, u.publicReason, u.date)}` });
       });
       (att.remoteEntries||[]).filter(r=>r.date===ds).forEach(r=>{
         // 팀캘린더(월간 표)와 동일하게 잔여횟수를 같이 보여줌(그 달 합계가 아니라 누적 순번) - 특별재택은 한도 밖이라 제외
@@ -19400,7 +19412,7 @@ function renderDashboardStaffLeave(){
   rows.sort((a,b)=> (b.todayL.length - a.todayL.length) || a.name.localeCompare(b.name, 'ko'));
   body.innerHTML = rows.map(r=>{
     const av = r.p.photo ? `<img src="${escHtml(r.p.photo)}" alt="">` : staffInitialCircleHtml(r.name, staffInitialColorOf(r.p, r.name), 32, '', r.p.initialText || '');
-    const typeOf = u=> leaveTeamCalShortType(u.type, u.subtype, u.publicReason);
+    const typeOf = u=> leaveTeamCalShortType(u.type, u.subtype, u.publicReason, u.date);
     const sub = r.todayL.length ? `<span class="home-dash-pres-dev" style="color:var(--coral); font-weight:700;">오늘 ${escHtml(r.todayL.map(typeOf).join(', '))}</span>`
       : r.next ? `<span class="home-dash-pres-dev">다음 휴가 ${md(r.next.date)} ${escHtml(typeOf(r.next))}</span>` : '';
     return `<div class="home-dash-pres-row pres-b" title="${escHtml(r.name)} · 잔여 연차 ${nf(r.remain)}일 · ${Number(month.slice(5))}월 사용 ${nf(r.used)}일">
@@ -19455,7 +19467,7 @@ function renderDashboardTodayStrip(){
       // [2026.09.30] 부재(휴가·반차)와 재택을 따로 묶어 보여줌(요청) - 반차+재택처럼 둘 다면 양쪽에 다 나옴
       if(leaves.length){
         const isHalf = leaves.every(u=>u.type==='반차' || u.type==='반반차');
-        people.push({ name, photo:p.photo||'', kind: isHalf ? 'half' : 'leave', label: leaves.map(u=>leaveTeamCalShortType(u.type, u.subtype, u.publicReason)).join(', ') });
+        people.push({ name, photo:p.photo||'', kind: isHalf ? 'half' : 'leave', label: leaves.map(u=>leaveTeamCalShortType(u.type, u.subtype, u.publicReason, u.date)).join(', ') });
       }
       if(remotes.length) people.push({ name, photo:p.photo||'', kind:'remote', label:'재택' });
     });
@@ -22753,7 +22765,7 @@ function notifyAdminsOfDirectLeave(type, subtype, dateList){
     const name = (settings && settings.employeeName) || (prof && prof.name) || currentStaffDisplayName() || me;
     const first = dateList[0], last = dateList[dateList.length-1];
     const range = first === last ? shortDateLabel(first) : `${shortDateLabel(first)}~${shortDateLabel(last)}`;
-    const label = leaveTeamCalShortType(type, subtype);
+    const label = leaveTeamCalShortType(type, subtype, null, first);
     const relatedId = `${activeProfileId}|${type}|${first}|${last}`;
     (sharedAdminEmails || []).map(e=>(e||'').toLowerCase()).filter(e=> e && e !== me).forEach(email=>{
       pushNotificationLogEntry({ type:'leave-direct', icon:'team-schedule', title:`휴가 등록: ${name} ${label}`, body:`${range} · 결재 없이 바로 등록된 휴가예요`, author:name, targetEmail:email, relatedId, eventAt:new Date().toISOString() });
@@ -37293,7 +37305,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 10:20';
+const APP_BUILD = '2026.10.02 10:55';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -39524,13 +39536,17 @@ function orgChartPrintHtml(){
   </div>
   <style>
     /* 조직도 출력엔 위쪽 회사명·구분선은 빼고 "조직도" 제목만 남김 - 회사명은 트리 맨 위 상자에 이미 있음 */
-    .print-header h1, .print-header .print-bar{ display:none; }
+    .print-header h1{ display:none; }
+    /* [2026.10.02] "조직도 제목이 엄청 커야 한다"(요청) - 작은 영문 부제 모양 대신 큰 제목 + 밑줄 막대, 회사명·대표회계사는 조금 작게 */
+    .print-header .print-sub{ font-size:30px !important; font-weight:800 !important; color:#1D1E33 !important; letter-spacing:10px !important; }
+    .print-header .print-bar{ display:block; width:90px !important; height:3px !important; margin:10px auto 0 !important; }
+    .print-header{ margin-bottom:22px !important; }
     .opa-root{ width:max-content; margin:0 auto; text-align:left; }
-    .opa-ceo{ margin:0 auto; width:max-content; background:#1D1E33; color:#fff; border-radius:10px; padding:10px 26px; font-weight:800; font-size:15px; }
+    .opa-ceo{ margin:0 auto; width:max-content; background:#1D1E33; color:#fff; border-radius:9px; padding:7px 20px; font-weight:800; font-size:13px; }
     .opa-v{ width:2px; height:16px; background:#C7C9DA; margin:0 auto; }
     .opa-reps{ display:flex; justify-content:center; gap:10px; }
-    .opa-rep{ border:2px solid #1D1E33; border-radius:10px; padding:6px 16px; font-weight:800; font-size:13px; background:#F4F4FA; }
-    .opa-rep small{ color:#75789A; font-weight:600; margin-left:4px; font-size:11px; }
+    .opa-rep{ border:1.5px solid #1D1E33; border-radius:9px; padding:4px 12px; font-weight:800; font-size:12px; background:#F4F4FA; }
+    .opa-rep small{ color:#75789A; font-weight:600; margin-left:4px; font-size:10px; }
     /* 세 갈래를 같은 폭으로 나눠서 가운데 갈래가 대표회계사 바로 아래에 오게 함(가지 위치가 좌우 대칭),
        각 갈래 안의 상자는 내용 폭(이름-직책 간격이 과하게 벌어지지 않는 정도)으로 가운데 정렬 */
     .opa-divs{ display:grid; grid-auto-flow:column; grid-auto-columns:max-content; justify-content:center; column-gap:24px; align-items:start; }
