@@ -2140,6 +2140,9 @@ try{
   .pr-unftable td{ height:33px; box-sizing:border-box; } /* 미신고 대상 표도 합산신고 계산 표와 같은 줄 높이(요청) */
   .pr-unf{ color:#C2415D !important; background:#FDE9EE !important; }
   .pr-cf-empty{ color:#B4B6C8; font-weight:600; }
+  .pr-slip{ border:none; background:transparent; color:var(--ink-soft); cursor:pointer; padding:2px 4px; border-radius:5px; vertical-align:middle; }
+  .pr-slip:hover{ color:var(--indigo-deep); background:var(--indigo-bg); }
+  #prSlipAll{ display:inline-flex; align-items:center; gap:4px; }
   .pr-calcv{ padding-right:9px !important; font-variant-numeric:tabular-nums; }
   /* [2026.10.02] 일용직 관리대장 */
   .dw-table th, .dw-table td{ padding:4px 2px !important; font-size:11.5px; }
@@ -26726,7 +26729,7 @@ function renderPayroll(){
   const kindSel = r => { const cur = r.kind === '현금' ? `현금|${r.cashAs === '기타' ? '기타' : '사업'}` : r.kind;
     const opts = [['근로','근로'],['사업','사업'],['기타','기타'],['일용','일용'],['현금|사업','현금 (사업 3.3%)'],['현금|기타','현금 (기타 8.8%)']];
     return `<select class="pr-kind" data-id="${r.id}" title="${r.kind === '현금' ? (r.cashAs === '기타' ? '현금 · 기타소득 8.8%' : '현금 · 사업소득 3.3%') : ''}">${opts.map(([v,l])=>`<option value="${v}" data-full="${l}" data-short="${v.split('|')[0]}" ${v===cur?'selected':''}>${v===cur ? v.split('|')[0] : l}</option>`).join('')}</select>`; };
-  let html = `<div class="pr-head"><div class="pr-cname">${escHtml(cl.name||'')}</div><h3 class="pr-title">급여현황</h3></div>
+  let html = `<div class="pr-head"><div class="pr-cname">${escHtml(cl.name||'')}</div><h3 class="pr-title">급여현황<button type="button" class="backup-info-btn" data-hint-info="payroll" title="설명 보기" aria-label="설명 보기" style="margin-left:4px; vertical-align:-3px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button></h3></div>
     <div class="pr-top"><select id="prYear">${ys.map(y=>`<option value="${y}" ${y===String(year)?'selected':''}>${y}년</option>`).join('')}</select>
       <div class="pr-months">${Array.from({length:12},(_,i)=>i+1).map(m=>`<button type="button" data-m="${m}" class="${m===month?'on':''}${counts[m]?'':' empty'}">${m}월</button>`).join('')}<button type="button" data-m="0" class="${!month?'on':''}">전체</button></div>
       ${prSaveBadgeHtml()}
@@ -26779,9 +26782,9 @@ function renderPayroll(){
     // 앞 달 비고에 "합산"이라고 적어둔 일용직(예: "9월 합산신고 예정")은 이달 합산신고 계산에 바로 넣을 수 있게 회색 칩으로 제안
     const [cpy, cpm] = prPrevYM(year, month);
     const sugg = prRows(cid, cpy, cpm).filter(r=> r.kind === '일용' && /합산/.test(r.memo||'') && !/후 지급|합산 후/.test(r.memo||'') && !calcs.some(c=> c.name === r.name));
-    html += `<div class="pr-calc"><div class="pr-calc-h">합산신고 계산 <span>앞 달 미신고분을 이달에 합쳐 신고한 일용직</span>${sugg.map(r=>`<button type="button" class="pr-sugg" data-name="${escHtml(r.name||'')}" title="${escHtml(r.memo||'')}">+ ${escHtml(r.name||'')} <em>${cpm}월분</em></button>`).join('')}<button type="button" class="del-btn" id="prCalcAdd">+ 추가</button></div>`;
+    html += `<div class="pr-calc"><div class="pr-calc-h">합산신고 계산 <span>앞 달 미신고분을 이달에 합쳐 신고한 일용직</span>${sugg.map(r=>`<button type="button" class="pr-sugg" data-name="${escHtml(r.name||'')}" title="${escHtml(r.memo||'')}">+ ${escHtml(r.name||'')} <em>${cpm}월분</em></button>`).join('')}${calcs.length ? `<button type="button" class="del-btn" id="prSlipAll" title="합산신고 대상 급여명세서 출력"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> 급여명세서</button>` : ''}<button type="button" class="del-btn" id="prCalcAdd"${calcs.length ? ' style="margin-left:6px;"' : ''}>+ 추가</button></div>`;
     if(calcs.length){
-      html += `<div class="pr-scroll"><table class="pr-table pr-ctable"><thead><tr><th>이름</th><th>미신고 귀속월</th><th>금액</th><th>당월 합산신고</th><th>고용</th><th>소득세</th><th>지방소득세</th><th>차인지급액</th><th>기지급액</th><th>차액 지급액</th><th style="width:26px"></th></tr></thead><tbody>`;
+      html += `<div class="pr-scroll"><table class="pr-table pr-ctable"><thead><tr><th>이름</th><th>미신고 귀속월</th><th>금액</th><th>당월 합산신고</th><th>고용</th><th>소득세</th><th>지방소득세</th><th>차인지급액</th><th>기지급액</th><th>차액 지급액</th><th style="width:48px"></th></tr></thead><tbody>`;
       calcs.forEach(c=>{
         const v = prCalcVals(cid, c);
         const inp = (f, val, ph) => `<input class="pr-in pr-num pr-cin" data-f="${f}" data-id="${c.id}" inputmode="numeric" value="${val === undefined || val === null || val === '' ? '' : nf(val)}" placeholder="${ph === undefined ? '' : nf(ph)}">`;
@@ -26790,7 +26793,7 @@ function renderPayroll(){
           <td class="n">${inp('amount', c.amount, v.dAmount)}</td><td class="n">${inp('total', c.total, v.dTotal)}</td>
           <td class="n">${inp('emp', c.emp)}</td><td class="n">${inp('it', c.it)}</td><td class="n">${inp('lit', c.lit)}</td>
           <td class="n pr-calcv">${nf(v.net)}</td><td class="n">${inp('prevPaid', c.prevPaid, v.dPrev)}</td><td class="n pr-calcv"><b>${nf(v.diff)}</b></td>
-          <td><button type="button" class="pr-cdel" data-id="${c.id}" title="삭제" aria-label="삭제">✕</button></td></tr>`;
+          <td style="white-space:nowrap;"><button type="button" class="pr-slip" data-id="${c.id}" title="급여명세서 출력" aria-label="급여명세서 출력"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></button><button type="button" class="pr-cdel" data-id="${c.id}" title="삭제" aria-label="삭제">✕</button></td></tr>`;
       });
       html += `</tbody></table></div>`;
     }
@@ -26807,9 +26810,9 @@ function renderPayroll(){
     const unf = prRows(cid, year, month).filter(prIsUnfiled);
     if(unf.length){
       const [ny, nm] = Number(month) === 12 ? [Number(year)+1, 1] : [Number(year), Number(month)+1];
-      html += `<div class="pr-calc"><div class="pr-calc-h">미신고 대상 <span>이달 신고하지 않은 일용직 · ${ny !== Number(year) ? ny + '년 ' : ''}${nm}월 합산신고 계산에 자동으로 올라가요</span></div>
-        <div class="pr-scroll"><table class="pr-table pr-ctable pr-unftable"><thead><tr><th>이름</th><th>발생금액</th><th>지급금액</th><th>비고</th></tr></thead><tbody>
-        ${unf.map(r=>`<tr><td><b>${escHtml(r.name||'')}</b></td><td class="n">${nf(r.reported)}</td><td class="n">${nf(prPaidOf(cid, r))}</td><td class="pr-memo">${escHtml(r.memo || prAutoMemo(cid, r))}</td></tr>`).join('')}
+      html += `<div class="pr-calc"><div class="pr-calc-h">미신고 대상 <span>이달 신고하지 않은 일용직 · ${ny !== Number(year) ? ny + '년 ' : ''}${nm}월 합산신고 계산에 자동으로 올라가요</span><button type="button" class="del-btn" id="prSlipUnfAll" title="미신고 대상 급여명세서 출력" style="display:inline-flex; align-items:center; gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> 급여명세서</button></div>
+        <div class="pr-scroll"><table class="pr-table pr-ctable pr-unftable"><thead><tr><th>이름</th><th>발생금액</th><th>지급금액</th><th>비고</th><th style="width:30px"></th></tr></thead><tbody>
+        ${unf.map(r=>`<tr><td><b>${escHtml(r.name||'')}</b></td><td class="n">${nf(r.reported)}</td><td class="n">${nf(prPaidOf(cid, r))}</td><td class="pr-memo">${escHtml(r.memo || prAutoMemo(cid, r))}</td><td><button type="button" class="pr-slip pr-slip-u" data-id="${r.id}" title="급여명세서 출력" aria-label="급여명세서 출력"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg></button></td></tr>`).join('')}
         </tbody></table></div></div>`;
     }
   }
@@ -26945,6 +26948,10 @@ function bindPayroll(){
     items.forEach(([id, f])=> resolve(id, f, b.dataset.act));
     prSetSave('saving'); saveSharedPayroll(); renderPayroll();
   }));
+  body.querySelector('#prSlipAll')?.addEventListener('click', ()=> prSlipPrint(prSlipItems(cid, payrollState.year, payrollState.month, 'calc', prCalcs(cid, payrollState.year, payrollState.month).map(c=> c.id))));
+  body.querySelectorAll('.pr-slip:not(.pr-slip-u)').forEach(b=> b.addEventListener('click', ()=> prSlipPrint(prSlipItems(cid, payrollState.year, payrollState.month, 'calc', [b.dataset.id]))));
+  body.querySelector('#prSlipUnfAll')?.addEventListener('click', ()=> prSlipPrint(prSlipItems(cid, payrollState.year, payrollState.month, 'unf', null)));
+  body.querySelectorAll('.pr-slip-u').forEach(b=> b.addEventListener('click', ()=> prSlipPrint(prSlipItems(cid, payrollState.year, payrollState.month, 'unf', [b.dataset.id]))));
   body.querySelector('#prCalcAdd')?.addEventListener('click', ()=>{
     const { year, month } = payrollState;
     const id = 'pc' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
@@ -26997,8 +27004,8 @@ function prPrint(){
     // 미신고 대상(요청) - 이달 신고하지 않은 일용직
     const unf = rows.filter(prIsUnfiled);
     if(unf.length){
-      body += `<div class="sec"><span class="st">미신고 대상</span></div><table class="calc"><thead><tr><th style="width:120px">이름</th><th style="width:130px">발생금액</th><th style="width:130px">지급금액</th><th>비고</th></tr></thead><tbody>`;
-      unf.forEach(r=>{ body += `<tr><td>${escHtml(r.name||'')}</td><td class="n">${nf(r.reported)}</td><td class="n">${nf(prPaidOf(cid, r))}</td><td class="memo">${escHtml(r.memo || prAutoMemo(cid, r))}</td></tr>`; });
+      body += `<div class="sec"><span class="st">미신고 대상</span></div><table class="calc"><thead><tr><th>이름</th><th>발생금액</th><th>지급금액</th></tr></thead><tbody>`; // 비고는 위 급여내역과 겹쳐서 뺌(요청)
+      unf.forEach(r=>{ body += `<tr><td>${escHtml(r.name||'')}</td><td class="n">${nf(r.reported)}</td><td class="n">${nf(prPaidOf(cid, r))}</td></tr>`; });
       body += `</tbody></table>`;
     }
   });
@@ -27020,11 +27027,71 @@ function prPrint(){
     th{ background:#F3F4FA; color:#4B4E6D; font-weight:800; padding:6px 5px; border:1px solid #D9DBE8; font-size:11px; }
     td{ padding:5px; border:1px solid #E3E4EE; text-align:center; }
     td.n{ text-align:center; font-variant-numeric:tabular-nums; }
-    td.memo{ text-align:left; color:#55587A; }
+    td.memo{ text-align:left; color:#55587A; white-space:nowrap; font-size:10px; letter-spacing:-0.2px; } /* 비고는 두 줄로 넘어가지 않게 한 줄·작은 글씨(요청) */
     tr.sum td{ font-weight:800; background:#FAFAFD; }
     table.calc th, table.calc td{ font-size:10.5px; }
   </style></head><body><div class="head"><div class="cname">${escHtml(cl.name||'')}</div><div class="ttl">급여현황</div></div>${body}
 </body></html>`; // 출력일자·회사명은 넣지 않음(요청)
+  printHtmlDocument(html);
+}
+// [2026.10.02] 급여명세서 출력(요청 - 세무 프로그램 명세서는 합산신고·미신고한 사람만 손으로 고쳐야 해서). 세무 프로그램 "일용직 급여명세서"
+// 양식 그대로(제목·회색 사원정보 칸·지급내역|지급액|공제내역|공제액). 사원정보는 칸 제목은 그대로 두고 사원명만 채움.
+// 지급액 = 당월 발생금액, 공제 = 합산신고 계산에 적은 고용보험·소득세·지방소득세(미신고 대상은 공제 없음), 차인지급액 = 지급액 - 공제액계.
+// 국민연금·건강·요양·기타비과세는 일용직에서 생기지 않아 뺌. 한 사람씩 출력하면 PDF 저장 이름이 "이름_연월_급여명세서"
+function prSlipItems(cid, year, month, kind, ids){
+  if(kind === 'calc'){
+    const p = prClient(cid);
+    return ids.map(id=> p.calcs[id]).filter(c=> c && !c.deleted).map(c=>{
+      const v = prCalcVals(cid, c);
+      const earned = v.curRow ? Number(v.curRow.reported) || 0 : Math.max(0, v.total - v.amount);
+      return { name:c.name, y:c.y, m:c.m, earned, emp:Number(c.emp)||0, it:Number(c.it)||0, lit:Number(c.lit)||0 };
+    });
+  }
+  return prRows(cid, year, month).filter(r=> prIsUnfiled(r) && (!ids || ids.includes(r.id))).map(r=> ({ name:r.name, y:r.y, m:r.m, earned:Number(r.reported)||0, emp:0, it:0, lit:0 }));
+}
+function prSlipPrint(items){
+  if(!items || !items.length){ showCenterToast('출력할 사람이 없어요'); return; }
+  const cid = payrollState.clientId;
+  const cl = (clients.list||[]).find(c=> c.id === cid) || {};
+  const nf = v => (v === null || v === undefined || v === '' || isNaN(v) || Number(v) === 0) ? '' : Number(v).toLocaleString();
+  const pages = items.map(it0=>{
+    const y = String(it0.y), mm = String(it0.m).padStart(2,'0');
+    const ded = it0.emp + it0.it + it0.lit;
+    const L = [['지급액', it0.earned]];
+    const R = [['고용보험', it0.emp], ['소득세', it0.it], ['지방소득세', it0.lit]];
+    const rowsHtml = R.map((r, i)=> `<tr><td class="lb">${L[i] ? L[i][0] : ''}</td><td class="am">${L[i] ? nf(L[i][1]) : ''}</td><td class="lb">${r[0]}</td><td class="am">${nf(r[1])}</td></tr>`).join('');
+    return `<div class="pg"><div class="ttl">${y}년${mm}월분 급여명세서</div>
+      <table class="slip"><tr class="info"><td colspan="4"><div class="ig">
+        <span>사원코드 :</span><b></b><span>사 원 명 :</span><b>${escHtml(it0.name||'')}</b><span>입 사 일 :</span><b></b>
+        <span>부&nbsp;&nbsp;&nbsp;&nbsp;서 :</span><b></b><span>직&nbsp;&nbsp;&nbsp;&nbsp;책 :</span><b></b><span>근무일수 :</span><b></b></div></td></tr>
+        <tr class="hd"><td>지 급 내 역</td><td>지 급 액</td><td>공 제 내 역</td><td>공 제 액</td></tr>
+        ${rowsHtml}
+        <tr><td class="lb"></td><td class="am"></td><td class="hdc">공 제 액 계</td><td class="am hdc">${nf(ded)}</td></tr>
+        <tr class="hd"><td>지 급 액 계</td><td class="am">${nf(it0.earned)}</td><td>차 인 지 급 액</td><td class="am">${nf(it0.earned - ded)}</td></tr>
+      </table>
+      <div class="ft"><span>귀하의 노고에 감사드립니다.</span><span>${escHtml(cl.name||'')}</span></div></div>`;
+  });
+  const ym = `${items[0].y}${String(items[0].m).padStart(2,'0')}`;
+  const title = items.length === 1 ? `${items[0].name}_${ym}_급여명세서` : `급여명세서_${ym}`;
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escHtml(title)}</title><style>
+    @page{ size:A4; margin:14mm 12mm; }
+    *{ box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    body{ margin:0; font-family:'Batang','Gulim','Malgun Gothic',serif; color:#111; font-size:12px; }
+    .pg{ page-break-after:always; padding-top:6mm; } .pg:last-child{ page-break-after:auto; }
+    .ttl{ text-align:center; font-size:22px; font-weight:700; letter-spacing:-0.5px; width:max-content; margin:0 auto 22px; border-bottom:3px double #111; padding:0 6px 2px; }
+    table.slip{ width:100%; border-collapse:collapse; table-layout:fixed; }
+    table.slip td{ border:1px solid #333; padding:0 6px; height:30px; }
+    tr.info td{ background:#D9D9D9; padding:10px 14px; }
+    .ig{ display:grid; grid-template-columns:70px 1fr 70px 1fr 70px 1fr; row-gap:6px; align-items:center; min-height:34px; }
+    .ig span{ text-align:right; padding-right:8px; } .ig b{ font-weight:400; }
+    tr.hd td{ background:#D9D9D9; text-align:center; height:32px; }
+    td.lb{ border-top:none !important; border-bottom:none !important; height:32px; }
+    td.am{ text-align:right; border-top:none !important; border-bottom:none !important; }
+    td.hdc{ background:#D9D9D9; text-align:center; border-top:1px solid #333 !important; border-bottom:1px solid #333 !important; }
+    td.am.hdc{ text-align:right; }
+    tr.hd td.am{ text-align:right; background:#fff; border-top:1px solid #333 !important; border-bottom:1px solid #333 !important; }
+    .ft{ display:flex; justify-content:space-between; margin-top:6px; font-size:12px; }
+  </style></head><body>${pages.join('')}</body></html>`;
   printHtmlDocument(html);
 }
 function prXlsDownload(){
@@ -35645,6 +35712,18 @@ HINT_INFO.dailyWorkers = { title:'일용직', html: infoTidyHtml(
   '<b>3개월 연속 신고 금지</b>: 두 달 연속 신고했으면 다음 달은 미신고로 쉬어요<br>'+
   '<b>합산신고</b>: 쉰 다음 달에 못 한 금액을 합쳐서 신고해요<br>'+
   '<b>퇴사</b>: 퇴사일을 넣으면 옅은 회색 줄로 재직자 아래로 내려가요') };
+// [2026.10.02] 급여현황 도움말 - 계산방식과 회색 글자(자동 채우기)(요청)
+HINT_INFO.payroll = { title:'급여현황', html: infoTidyHtml(
+  '<b>회색 숫자</b>: 비워둔 칸에 자동으로 채운 값이에요. 합계·지급률·출력·엑셀에 그대로 반영되고, 직접 입력하면 그 값이 우선이에요<br>'+
+  '<b>신고금액</b>: 비우면 발생금액과 같아요. 합산신고 대상은 전월 미신고분 + 당월 발생금액. 0을 적으면 미신고<br>'+
+  '<b>지급금액 자동계산</b>: 사업 3.3%·기타 8.8%만 - 신고금액 − (신고금액×3%(기타 8%) 10원 미만 버림 + 그 10%를 10원 미만 버림). 현금은 구분에서 사업·기타를 골라요. 근로·일용은 직접 입력<br>'+
+  '<b>지급률</b>: 지급금액 ÷ 신고금액. 합산신고 대상은 차인지급액 ÷ 합산신고금액<br>'+
+  '<b>합산신고 계산</b>: 금액 = 전월 발생금액, 당월 합산신고 = 전월 + 당월 발생금액, 기지급액 = 전월 지급금액(회색 자동). 고용·소득세·지방소득세는 직접 입력<br>'+
+  '<b>차인지급액·차액</b>: 차인지급액 = 당월 합산신고 − (고용 + 소득세 + 지방소득세), 차액 지급액 = 차인지급액 − 기지급액(이달 지급금액에 회색으로 들어가요)<br>'+
+  '<b>미신고</b>: 신고금액 0이면 미신고 칩이 붙고, 다음 달 합산신고 계산에 자동으로 올라가요<br>'+
+  '<b>비고 자동 문구</b>: 비고를 비워두면 미신고는 "다음달 귀속분에 합산", 합산신고 대상은 "전월 ○원 + 당월 ○원 합산신고"<br>'+
+  '<b>일용직 표 연동</b>: 같은 거래처·같은 이름이면 발생·신고(미신고)는 일용직 표와 같은 값이에요. 어느 쪽에서 고쳐도 같이 바뀌어요<br>'+
+  '<b>자동 저장</b>: 고치면 바로 저장돼요. 오른쪽 위에 저장 상태가 보여요') };
 HINT_INFO.dashPresence = { title:'실시간 근무현황', html: infoTidyHtml(
   '<b>직원</b>: 오늘 출근 기록 기준이에요<br>'+
   '<b>회계사</b>: 사무실 PC 접속 기준이에요<br>'+
@@ -38871,7 +38950,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 17:08';
+const APP_BUILD = '2026.10.02 17:52';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
