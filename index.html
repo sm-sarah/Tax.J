@@ -2174,6 +2174,10 @@ try{
   .dw-table .dw-focus{ border-left:2px solid var(--indigo) !important; border-right:2px solid var(--indigo) !important; }
   .dw-table th.dw-focus{ border-top:2px solid var(--indigo) !important; color:var(--indigo-deep); }
   .dw-table tbody tr:last-child td.dw-focus{ border-bottom:2px solid var(--indigo) !important; }
+  .dw-table tr.dw-left-tg td{ padding:0 !important; background:#FAFAFC; text-align:center; }
+  .dw-table tr.dw-left-tg button{ width:100%; border:none; background:transparent; font-family:inherit; font-size:11.5px; font-weight:700; color:var(--ink-soft); padding:7px 0; cursor:pointer; }
+  .dw-table tr.dw-left-tg button:hover{ color:var(--indigo-deep); background:var(--indigo-bg); }
+  .dw-table.has-tg tbody tr:nth-last-child(2) td.dw-focus{ border-bottom:2px solid var(--indigo) !important; }
   .dw-rep-menu{ position:fixed; z-index:9600; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:0 12px 28px -8px rgba(29,30,51,.35); padding:10px; width:210px; display:flex; flex-direction:column; gap:7px; }
   .dw-rm-h{ font-size:12px; font-weight:800; color:var(--ink); text-align:center; }
   .dw-rm-row{ display:flex; gap:6px; }
@@ -26305,6 +26309,7 @@ function renderSettlementMergedTable(){
 // 저장: sharedDailyWorkers { [workerId]: { id, clientId, name, joinDate, leaveDate, months:{ 'YYYY-MM': { earned, reported, state:'filed'|'skip' } }, deleted, modAt } }
 const DW_MONTH_W = 86;
 let dwClientFilter = '';
+let dwShowLeft = false; // [2026.10.02] 퇴사자는 평소엔 접어두고 펼칠 때만(요청)
 function dwYm(y, m){ return `${y}-${String(m).padStart(2,'0')}`; }
 function dwPrevYm(ym, k){ let y = Number(ym.slice(0,4)), m = Number(ym.slice(5,7)) - (k||1); while(m < 1){ m += 12; y--; } return dwYm(y, m); }
 function dwWorkers(){ return Object.values(sharedDailyWorkers || {}).filter(w=> w && !w.deleted); }
@@ -26385,6 +26390,8 @@ function renderDailyWorkersTable(){
   const wrap = document.getElementById(cfg.ids.wrap);
   if(!wrap) return;
   if(!list.length){ wrap.innerHTML = `<div class="empty-state">${year}년에 등록된 일용직이 없어요. 오른쪽 위 "+ 사원등록"으로 추가해 주세요.</div>`; return; }
+  const leftN = list.filter(w=> w.leaveDate).length;
+  if(!dwShowLeft) list = list.filter(w=> !w.leaveDate);
   const focus = itFocusPeriodNow();
   const fc = m => dwYm(year,m) === focus ? ' dw-focus' : '';
   const nf = v => (v === null || v === undefined || v === '') ? '' : Number(v).toLocaleString();
@@ -26428,7 +26435,9 @@ function renderDailyWorkersTable(){
     return `<tr class="dw-r1${off}">${clCell}<td class="cvb dw-nm" rowspan="2"><button type="button" class="dw-name-btn" data-id="${w.id}" data-tip="${escHtml(nameTip).replace(/"/g,'&quot;')}">${escHtml(w.name||'')}</button></td><td class="cvb dw-lb">발생</td>${earnedCells}</tr>
       <tr class="dw-r2${off}"><td class="cvb dw-lb">신고</td>${repCells}</tr>`;
   }).join('');
-  wrap.innerHTML = `<div class="table-scroll"><table class="dw-table"><thead><tr><th class="cvb dw-h-nm">이름</th><th class="cvb dw-h-lb"></th>${Array.from({length:12},(_,i)=>`<th class="cvb dw-m${fc(i+1)}">${i+1}월</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  const tgRow = leftN ? `<tr class="dw-left-tg"><td colspan="14"><button type="button" id="dwLeftToggle">${dwShowLeft ? `퇴사자 접기 ▴` : `퇴사자 ${leftN}명 보기 ▾`}</button></td></tr>` : '';
+  wrap.innerHTML = `<div class="table-scroll"><table class="dw-table${tgRow ? ' has-tg' : ''}"><thead><tr><th class="cvb dw-h-nm">이름</th><th class="cvb dw-h-lb"></th>${Array.from({length:12},(_,i)=>`<th class="cvb dw-m${fc(i+1)}">${i+1}월</th>`).join('')}</tr></thead><tbody>${rows}${tgRow}</tbody></table></div>`;
+  wrap.querySelector('#dwLeftToggle')?.addEventListener('click', ()=>{ dwShowLeft = !dwShowLeft; renderDailyWorkersTable(); });
   wrap.querySelectorAll('.dw-earn').forEach(inp=>{
     inp.addEventListener('focus', ()=>{ inp.select(); });
     inp.addEventListener('input', ()=> formatMoneyInputLive(inp)); // 입력하는 중에도 천단위 쉼표(요청)
@@ -27024,7 +27033,9 @@ function prPrint(){
     }
   });
   if(!body){ showCenterToast('출력할 자료가 없어요'); return; }
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escHtml(cl.name||'')} 급여현황</title><style>
+  // PDF 저장 이름: "급여현황_상호명_26.09월"(요청) - 전체(1년)로 뽑으면 "급여현황_상호명_26년"
+  const prTitle = `급여현황_${prFileName(cl)}_${String(year).slice(2)}${month ? '.' + String(month).padStart(2,'0') + '월' : '년'}`;
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escHtml(prTitle)}</title><style>
     @page{ size:A4; margin:14mm 12mm; }
     *{ box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     body{ font-family:'Pretendard','Malgun Gothic',sans-serif; color:#1D1E33; margin:0; font-size:11.5px; }
@@ -27052,6 +27063,12 @@ function prPrint(){
 // 양식 그대로(제목·회색 사원정보 칸·지급내역|지급액|공제내역|공제액). 사원정보는 칸 제목은 그대로 두고 사원명만 채움.
 // 지급액 = 당월 발생금액, 공제 = 합산신고 계산에 적은 고용보험·소득세·지방소득세(미신고 대상은 공제 없음), 차인지급액 = 지급액 - 공제액계.
 // 국민연금·건강·요양·기타비과세는 일용직에서 생기지 않아 뺌. 한 사람씩 출력하면 PDF 저장 이름이 "이름_연월_급여명세서"
+// 파일 이름에 쓰는 상호명 - 너무 긴 엽기떡볶이 분당수내점만 "엽떡 분당수내점"으로 줄임(요청), 나머지는 상호명 그대로
+function prFileName(cl){
+  const n = String((cl && cl.name) || '');
+  if(/엽기떡볶이/.test(n) && /수내/.test(n)) return '엽떡 분당수내점';
+  return n.replace(/[\\/:*?"<>|]/g,'');
+}
 function prSlipItems(cid, year, month, kind, ids){
   if(kind === 'calc'){
     const p = prClient(cid);
@@ -27086,17 +27103,20 @@ function prSlipPrint(items){
       </table>
       <div class="ft"><span class="dt">귀하의노고에감사드립니다.</span><span class="cn">${escHtml(cl.name||'')}</span></div></div>`;
   });
-  const ym = `${items[0].y}${String(items[0].m).padStart(2,'0')}`;
-  const title = items.length === 1 ? `${items[0].name}_${ym}_급여명세서` : `급여명세서_${ym}`;
+  // PDF 저장 이름: "이름_급여명세서_26.09월"(요청). 여러 명을 한 번에 뽑으면 "급여명세서_26.09월"
+  const ym = `${String(items[0].y).slice(2)}.${String(items[0].m).padStart(2,'0')}월`;
+  const title = items.length === 1 ? `${items[0].name}_급여명세서_${ym}` : `급여명세서_${ym}`;
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escHtml(title)}</title><style>
     /* [2026.10.02] 세무 프로그램 출력 PDF와 같은 느낌으로(요청): 항목 이름·칸 제목·사원정보 이름은 돋움(가변폭), 금액·값은 바탕체(고정폭),
        제목은 바탕(좁게) + 가는 줄·굵은 줄 이중 밑줄, 테두리는 가는 진회색, 맨 아래 줄은 글자 간격을 좁게 */
     @page{ size:A4; margin:14mm 12mm; }
     *{ box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     body{ margin:0; font-family:'돋움','Dotum','돋움체','DotumChe',sans-serif; color:#000; font-size:9.5pt; }
-    .num, td.am, .ig b{ font-family:'바탕체','BatangChe','바탕','Batang',serif; }
+    .num, td.am{ font-family:'바탕체','BatangChe','바탕','Batang',serif; }
+    /* 글자 선명도가 들쭉날쭉해 보이던 것(요청) - 사원명 값을 가는 바탕체 대신 항목명과 같은 돋움으로, 글자 겹침(음수 자간) 대신 가로 비율로 좁힘 */
+    .ig b{ font-family:'돋움','Dotum',sans-serif; }
     .pg{ page-break-after:always; padding-top:4mm; } .pg:last-child{ page-break-after:auto; }
-    .ttl{ position:relative; text-align:center; font-family:'바탕','Batang','바탕체',serif; font-size:18pt; letter-spacing:-1px; width:max-content; margin:0 auto 20pt; border-bottom:1px solid #000; padding:0 4px 1px; }
+    .ttl{ position:relative; text-align:center; font-family:'바탕','Batang','바탕체',serif; font-size:18pt; letter-spacing:0; width:max-content; margin:0 auto 20pt; transform:scaleX(0.94); border-bottom:1px solid #000; padding:0 4px 1px; }
     .ttl::after{ content:''; position:absolute; left:0; right:0; bottom:-6px; height:3px; background:#000; }
     table.slip{ width:100%; border-collapse:collapse; table-layout:fixed; }
     table.slip td{ border:0.75pt solid #555; padding:0 4px; height:28pt; white-space:pre; }
@@ -27110,7 +27130,8 @@ function prSlipPrint(items){
     td.am.hdc{ text-align:right; }
     tr.hd td.am{ text-align:right; background:#D6D6D6; height:28pt; border-top:0.75pt solid #555 !important; border-bottom:0.75pt solid #555 !important; }
     tr.hd:last-child td{ height:28pt; }
-    .ft{ display:flex; justify-content:space-between; margin-top:4pt; font-size:10pt; letter-spacing:-1px; }
+    .ft{ display:flex; justify-content:space-between; margin-top:4pt; font-size:10pt; letter-spacing:0; }
+    .ft span{ display:inline-block; transform:scaleX(0.9); transform-origin:left center; } .ft span.cn{ transform-origin:right center; }
     .ft .cn{ font-family:'바탕','Batang',serif; }
   </style></head><body>${pages.join('')}</body></html>`;
   printHtmlDocument(html);
@@ -27138,7 +27159,7 @@ function prXlsDownload(){
   ws['!cols'] = [{wch:12},{wch:12},{wch:12},{wch:14},{wch:14},{wch:14},{wch:10},{wch:24},{wch:12},{wch:12}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, `${year} 급여현황`);
-  XLSX.writeFile(wb, `taxj-급여현황-${String(cl.name||'').replace(/[\\/:*?"<>|]/g,'')}-${year}-${todayStr()}.xlsx`);
+  XLSX.writeFile(wb, `taxj-급여현황-${prFileName(cl)}-${year}-${todayStr()}.xlsx`);
 }
 // 일용직 표 엑셀 받기 - 화면과 같은 모양(상호·이름·입사일·퇴사일·발생/신고 두 줄 × 1~12월)
 function dwXlsDownload(){
@@ -38971,7 +38992,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 18:25';
+const APP_BUILD = '2026.10.02 18:46';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
