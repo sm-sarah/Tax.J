@@ -72,7 +72,19 @@ try{
   // (예전엔 "아직 안 만료된 토큰"일 때만 가려서, 한 시간 넘게 지나 새로고침하면 예전 정보가 그대로 잠깐 보였음)
   if(_t && _e > Date.now() - 12*60*60*1000){
     document.documentElement.classList.add('taxj-syncing');
-    setTimeout(function(){ document.documentElement.classList.remove('taxj-syncing'); }, 5000);
+    // [2026.10.02] "새로고침할 때 예전 자료가 순간 보인다"(요청) - 서버가 늦으면 5초 만에 예전 자료가 드러났음. 최대 15초까지 기다리고,
+    // 그래도 못 받았으면 보여주되 "예전 자료일 수 있어요" 안내를 띄움
+    setTimeout(function(){
+      if(!document.documentElement.classList.contains('taxj-syncing')) return;
+      document.documentElement.classList.remove('taxj-syncing');
+      try{
+        var b = document.createElement('div'); b.id = 'taxjStaleNote';
+        b.textContent = '최신 자료를 아직 받지 못했어요 · 이 기기에 저장된 예전 자료일 수 있어요 (연결되면 자동으로 바뀌어요)';
+        b.style.cssText = 'position:fixed; top:10px; left:50%; transform:translateX(-50%); z-index:10040; background:#FFF4D6; color:#7A5300; border:1.5px solid #F2C14E; border-radius:12px; padding:8px 14px; font:700 12.5px Pretendard,sans-serif; box-shadow:0 8px 20px -8px rgba(0,0,0,.25); pointer-events:none;';
+        (document.body || document.documentElement).appendChild(b);
+        window.__taxjStaleNote = b;
+      }catch(e){}
+    }, 15000);
   }
 }catch(e){}
 </script>
@@ -2081,6 +2093,11 @@ try{
   .dw-cchips button{ white-space:nowrap; border:1px solid var(--border); background:var(--surface); color:var(--ink-soft); font-family:inherit; font-size:11.5px; font-weight:700; height:26px; padding:0 12px; border-radius:999px; cursor:pointer; }
   .dw-cchips button:hover{ color:var(--indigo-deep); border-color:var(--indigo); }
   .dw-cchips button.on{ background:var(--indigo); border-color:var(--indigo); color:#fff; }
+  .dw-cchips button{ display:inline-flex; align-items:center; gap:5px; }
+  .dw-chip-pr{ display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:5px; margin-right:-6px; background:rgba(255,255,255,.22); }
+  .dw-cchips button:not(.on) .dw-chip-pr{ background:var(--indigo-bg); color:var(--indigo); }
+  .dw-chip-pr:hover{ background:rgba(255,255,255,.4); }
+  .dw-chip-pr svg{ width:12px; height:12px; }
   .dw-pr-btn{ display:inline-flex; width:22px; height:22px; border-radius:7px; border:1px solid var(--border); background:var(--surface); align-items:center; justify-content:center; color:var(--indigo); cursor:pointer; margin-top:6px; padding:0; }
   .dw-pr-btn:hover{ background:var(--indigo-bg); }
   .dw-pr-btn svg{ width:13px; height:13px; }
@@ -2128,7 +2145,7 @@ try{
   .pr-sum-k{ text-align:left !important; color:var(--ink-soft); font-weight:700 !important; font-size:11.5px; }
   .pr-empty{ padding:22px 0 !important; color:var(--ink-soft); line-height:2.2; }
   .pr-empty .submit-btn{ display:inline-block; margin:4px 0 0; height:30px; padding:0 14px; font-size:12px; border-radius:9px; }
-  .pr-calc{ margin-top:14px; border:1px solid #E3E4EE; border-radius:10px; padding:10px 12px; }
+  .pr-calc{ margin-top:14px; border:1px solid #E3E4EE; border-radius:10px; padding:10px 12px 3px; } /* 표 마지막 줄 아래 여백이 위보다 커서 글자가 위로 붙어 보였음(요청) - 상자 아래 안쪽 여백을 줄여 위아래를 맞춤 */
   .pr-calc-h{ display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:800; margin-bottom:6px; }
   .pr-calc-h span{ font-size:11px; font-weight:600; color:var(--ink-soft); }
   .pr-calc-h .del-btn{ margin-left:auto; height:26px; padding:0 10px; font-size:11.5px; }
@@ -2148,6 +2165,7 @@ try{
   .dw-table th, .dw-table td{ padding:4px 2px !important; font-size:11.5px; }
   /* [2026.10.02] "가로 스크롤 없이 한 번에"(요청) - 표를 화면 폭에 맞추고 1~12월은 남는 폭을 똑같이 나눔, 숫자 글씨는 조금 작게 */
   .table-scroll table.dw-table, .dw-table{ width:100%; table-layout:fixed; }
+  .table-scroll table.dw-table{ border:none; } /* 바깥 테두리가 이중으로 보였음(요청) - 둥근 상자 테두리와 표 자체 테두리가 겹쳐 있었음, 표 쪽 테두리를 뺌 */
   .dw-table th.dw-m, .dw-table td.dw-mc{ box-sizing:border-box; }
   .dw-table th.dw-h-cl{ width:124px; } .dw-table th.dw-h-nm{ width:64px; } .dw-table th.dw-h-lb{ width:26px; }
   .dw-table .dw-tag{ font-size:8.5px; padding:0 3px; margin-right:2px; letter-spacing:-0.3px; } /* 1~12월 폭 모두 같게 고정(요청) */
@@ -2158,6 +2176,7 @@ try{
   .dw-table .dw-cl{ font-weight:800; color:var(--ink); white-space:normal; word-break:keep-all; line-height:1.35; padding:0 6px !important; }
   .dw-table .dw-nm{ white-space:nowrap; }
   .dw-name-btn{ border:none; background:transparent; font-family:inherit; font-size:12.5px; font-weight:800; color:var(--ink); cursor:pointer; padding:2px 4px; border-radius:6px; }
+  .dw-birth{ display:block; font-size:9.5px; font-weight:600; color:var(--ink-soft); margin-top:1px; }
   .dw-name-btn:hover{ background:var(--indigo-bg); color:var(--indigo-deep); }
   .dw-table .dw-lb{ font-size:10.5px; color:var(--ink-soft); font-weight:700; white-space:nowrap; }
   .dw-earn{ width:100%; box-sizing:border-box; border:1px solid transparent; border-radius:6px; background:transparent; text-align:center; font-family:inherit; font-size:10.5px; padding:3px 1px; color:var(--ink); letter-spacing:-0.2px; }
@@ -6355,11 +6374,11 @@ try{
         <div class="approval-nav-branch">
           <button type="button" class="approval-cat-btn active" data-approval-cat="status"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path></svg> 신고현황</button>
           <div class="approval-subtype-branch" id="filingTypeToggle">
-            <button type="button" class="filing-type-btn active" data-filing-type="원천세">원천세</button>
+            <button type="button" class="filing-type-btn" data-filing-type="원천세">원천세</button>
             <button type="button" class="filing-type-btn" data-filing-type="부가세">부가세</button>
             <button type="button" class="filing-type-btn" data-filing-type="법인세">법인세</button>
             <button type="button" class="filing-type-btn" data-filing-type="종소세">종소세</button>
-            <button type="button" class="filing-type-btn" data-filing-type="일용직">일용직</button>
+            <button type="button" class="filing-type-btn active" data-filing-type="일용직">일용직</button>
             <button type="button" class="filing-type-btn" data-filing-type="결산통합">결산</button>
           </div>
         </div>
@@ -25765,7 +25784,7 @@ function bookkeepingClientList(){
 // ── 신고현황(원천세/부가세/법인세/종소세/결산) · 검토표(원천세/부가세만, 신고 전 단계 검토용 - 나중에 손익보고서에 활용) ──
 // 두 화면은 다루는 세목만 다르고 나머지(귀속기간 선택, 표, 수동저장)는 완전히 동일해서 kind('status'|'review')로 설정만 갈라 로직을 공유함.
 // 데이터 저장소는 서로 다름(sharedFilingStatus / sharedReviewStatus) - 신고 자체 상태와 그 전 단계 검토 상태를 별도로 관리하기 위함.
-let viewingFilingType = '원천세';
+let viewingFilingType = '일용직'; // [2026.10.02] 원천세는 원천세 메뉴(통합 화면)로 옮겨가서, 신고현황 묶음의 기본은 일용직(새로고침 때 원천세로 튀던 문제)
 let viewingReviewType = '원천세';
 let viewingTargetType = '원천세';
 const FILING_KINDS = {
@@ -25813,6 +25832,7 @@ function ensureFilingPeriodStateInit(kind){
 function saveFilingSubviewState(){
   try{
     const cat = document.querySelector('.approval-cat-btn.active')?.dataset.approvalCat || 'status';
+    if(cat === 'status' && viewingFilingType === '원천세') return; // 원천세는 곧바로 원천세 메뉴로 넘어가는 중간 상태라 기억하지 않음(새로고침하면 원천세로 튀던 원인)
     const st = FILING_KINDS.status.state;
     localStorage.setItem('worklog_last_filing_subview', JSON.stringify({
       cat,
@@ -26315,8 +26335,12 @@ function dwPrevYm(ym, k){ let y = Number(ym.slice(0,4)), m = Number(ym.slice(5,7
 function dwWorkers(){ return Object.values(sharedDailyWorkers || {}).filter(w=> w && !w.deleted); }
 function dwInEmploy(w, ym){
   const j = (w.joinDate||'').slice(0,7), l = (w.leaveDate||'').slice(0,7);
-  return (!j || ym >= j) && (!l || ym <= l);
+  if((!j || ym >= j) && (!l || ym <= l)) return true;
+  // [2026.10.02] 재입사(요청) - 예전 근무기간(periods)도 근무 중으로 봄
+  return (w.periods||[]).some(p=>{ const pj = (p.join||'').slice(0,7), pl = (p.leave||'').slice(0,7); return (!pj || ym >= pj) && (!pl || ym <= pl); });
 }
+// 같은 거래처에 같은 이름이 둘 이상이면(동명이인) 생년월일로 구분(요청)
+function dwIsDupName(w){ const n = String(w.name||'').trim(); return dwWorkers().some(x=> x.id !== w.id && x.clientId === w.clientId && String(x.name||'').trim() === n); }
 // 그 달에 해야 할 일 제안 - 앞 두 달을 연속 신고했으면 미신고(skip), 아니면 신고(filed) + 금액은 그 달 발생액 + 바로 앞의 미신고 달들 발생액 합
 function dwSuggest(w, ym){
   const mo = w.months || {};
@@ -26345,7 +26369,7 @@ function dwSetChrome(on){
     document.getElementById('dwXlsBtn').addEventListener('click', dwXlsDownload);
     // [2026.10.02] 엑셀 불러오기 버튼은 자료를 다 가져와서 화면에서 뺌(요청) - dwImportFile 함수는 남겨둠
     // [2026.10.02] 상호 선택은 드롭다운 대신 칩(일용직이 등록된 거래처만) - 고르면 그 거래처 관리표만 펼쳐짐. 표의 상호명 칸은 없앰(긴 상호명이 칸 밖으로 튀어나왔음 - 요청)
-    document.getElementById('dwClientSel').addEventListener('click', e=>{ const b = e.target.closest('button[data-cid]'); if(!b) return; dwClientFilter = b.dataset.cid; renderDailyWorkersTable(); });
+    document.getElementById('dwClientSel').addEventListener('click', e=>{ const pr = e.target.closest('[data-pr]'); if(pr){ e.stopPropagation(); openPayrollModal(pr.dataset.pr); return; } const b = e.target.closest('button[data-cid]'); if(!b) return; dwClientFilter = b.dataset.cid; renderDailyWorkersTable(); });
     document.getElementById('dwPrBtn').addEventListener('click', ()=>{ if(dwClientFilter) openPayrollModal(dwClientFilter); });
     document.getElementById('dwAddBtn').addEventListener('click', ()=> openDwEditModal(null));
   }
@@ -26381,10 +26405,11 @@ function renderDailyWorkersTable(){
   if(sel){
     const ids = [...new Set(list.map(w=>w.clientId))].sort((a,b)=> cname({clientId:a}).localeCompare(cname({clientId:b}), 'ko'));
     if(!dwClientFilter || !ids.includes(dwClientFilter)) dwClientFilter = ids[0] || '';
-    sel.innerHTML = ids.map(id=>`<button type="button" data-cid="${id}" class="${id===dwClientFilter?'on':''}">${escHtml(cname({clientId:id}))}</button>`).join('');
+    // [2026.10.02] 급여현황 아이콘은 그 거래처 칩 안에(요청 - 급여현황을 쓰는 거래처에만)
+    sel.innerHTML = ids.map(id=>`<button type="button" data-cid="${id}" class="${id===dwClientFilter?'on':''}">${escHtml(cname({clientId:id}))}${prHasData(id) ? `<span class="dw-chip-pr" data-pr="${id}" title="급여현황" aria-label="급여현황"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="14" x2="16" y2="14"/></svg></span>` : ''}</button>`).join('');
     sel.style.visibility = ids.length ? '' : 'hidden';
   }
-  { const pb = document.getElementById('dwPrBtn'); if(pb) pb.style.display = dwClientFilter ? '' : 'none'; } // 급여현황은 고른 거래처면 언제나(자료가 없으면 빈 표에서 + 추가로 시작)
+  { const pb = document.getElementById('dwPrBtn'); if(pb) pb.style.display = 'none'; } // 급여현황 아이콘은 거래처 칩 안으로 옮김
   if(dwClientFilter) list = list.filter(w=> w.clientId === dwClientFilter);
   list.sort((a,b)=> cname(a).localeCompare(cname(b), 'ko') || ((a.leaveDate?1:0) - (b.leaveDate?1:0)) || (a.leaveDate||'').localeCompare(b.leaveDate||'') || (a.joinDate||'').localeCompare(b.joinDate||'') || (a.name||'').localeCompare(b.name||'', 'ko')); // 퇴사자는 재직자 아래, 퇴사일 순으로 차례로 쌓임
   const wrap = document.getElementById(cfg.ids.wrap);
@@ -26431,8 +26456,11 @@ function renderDailyWorkersTable(){
       return `<td class="cvb dw-mc${cls}${fc(i+1)}"><button type="button" class="dw-rep-btn" data-id="${w.id}" data-ym="${ym}">${html || '&nbsp;'}</button></td>`;
     }).join('');
     // [2026.10.02] 입사일·퇴사일은 칸 대신 이름에 마우스를 올리면 말풍선으로(요청 - 가로 스크롤 줄이기)
-    const nameTip = appTipHtml(w.name||'', [['입사일', w.joinDate || '-'], ['퇴사일', w.leaveDate || '-']]);
-    return `<tr class="dw-r1${off}">${clCell}<td class="cvb dw-nm" rowspan="2"><button type="button" class="dw-name-btn" data-id="${w.id}" data-tip="${escHtml(nameTip).replace(/"/g,'&quot;')}">${escHtml(w.name||'')}</button></td><td class="cvb dw-lb">발생</td>${earnedCells}</tr>
+    const tipRows = [['생년월일', w.birth || '-'], ['입사일', w.joinDate || '-'], ['퇴사일', w.leaveDate || '-']];
+    (w.periods||[]).forEach((pp, i)=> tipRows.push([`이전 근무${(w.periods.length > 1) ? ' ' + (i+1) : ''}`, `${pp.join || '?'} ~ ${pp.leave || '?'}`]));
+    const nameTip = appTipHtml(w.name||'', tipRows);
+    const dupTag = dwIsDupName(w) && w.birth ? `<span class="dw-birth">${escHtml(w.birth)}</span>` : '';
+    return `<tr class="dw-r1${off}">${clCell}<td class="cvb dw-nm" rowspan="2"><button type="button" class="dw-name-btn" data-id="${w.id}" data-tip="${escHtml(nameTip).replace(/"/g,'&quot;')}">${escHtml(w.name||'')}${dupTag}</button></td><td class="cvb dw-lb">발생</td>${earnedCells}</tr>
       <tr class="dw-r2${off}"><td class="cvb dw-lb">신고</td>${repCells}</tr>`;
   }).join('');
   const tgRow = leftN ? `<tr class="dw-left-tg"><td colspan="14"><button type="button" id="dwLeftToggle">${dwShowLeft ? `퇴사자 접기 ▴` : `퇴사자 ${leftN}명 보기 ▾`}</button></td></tr>` : '';
@@ -26587,7 +26615,18 @@ function prRows(cid, y, m){ const p = sharedPayroll[cid]; return Object.values((
 // 발생금액 = 그 달 발생, 신고금액 = 신고(금액)·미신고(0)를 일용직 표에서 가져오고, 급여현황에서 고쳐도 일용직 표에 저장함.
 // 지급금액·비고는 급여현황에만 저장. 예전에 급여현황에 따로 적혀 있던 값이 일용직 표와 다르면 자동으로 고치지 않고 "일용직 표와 다른 값" 목록에 띄움(요청)
 function prYm(y, m){ return `${y}-${String(m).padStart(2,'0')}`; }
-function prWorkerFor(cid, name){ const n = String(name||'').trim(); if(!n || typeof dwWorkers !== 'function') return null; return dwWorkers().find(w=> w.clientId === cid && String(w.name||'').trim() === n) || null; }
+function prWorkerFor(cid, name, wid, ym){
+  if(typeof dwWorkers !== 'function') return null;
+  if(wid && sharedDailyWorkers[wid] && !sharedDailyWorkers[wid].deleted) return sharedDailyWorkers[wid];
+  const n = String(name||'').trim(); if(!n) return null;
+  const cands = dwWorkers().filter(w=> w.clientId === cid && String(w.name||'').trim() === n);
+  if(cands.length <= 1) return cands[0] || null;
+  // 동명이인이면 그 달 근무 중인 사람 → 그 달 입력이 있는 사람 순으로(그래도 둘 이상이면 연결하지 않음)
+  const inEmp = ym ? cands.filter(w=> dwInEmploy(w, ym)) : cands;
+  if(inEmp.length === 1) return inEmp[0];
+  const withData = ym ? inEmp.filter(w=>{ const e = (w.months||{})[ym] || {}; return (e.earned !== undefined && e.earned !== '') || e.state; }) : [];
+  return withData.length === 1 ? withData[0] : null;
+}
 function prDwVals(w, ym){
   const e = (w.months||{})[ym] || {};
   const num = v => (v === undefined || v === null || v === '') ? undefined : Number(v);
@@ -26599,7 +26638,7 @@ function prDwVals(w, ym){
 }
 function prOverlay(cid, r){
   if(!r || r.kind !== '일용') return r;
-  const w = prWorkerFor(cid, r.name); if(!w) return r;
+  const w = prWorkerFor(cid, r.name, r.wid, prYm(r.y, r.m)); if(!w) return r;
   const v = prDwVals(w, prYm(r.y, r.m));
   const o = Object.assign({}, r, { _w: w.id, _conf: [] });
   [['reported','earned','발생금액'], ['filed','filed','신고금액']].forEach(([f, k, label])=>{
@@ -26624,8 +26663,8 @@ function prNameMismatches(cid, year, month){
   const rows = prRows(cid, year, month).filter(r=> r.kind === '일용' && !r._w);
   const out = [];
   dwWorkers().filter(w=> w.clientId === cid).forEach(w=>{
-    const e = (w.months||{})[ym] || {};
-    if(!(e.earned !== undefined && e.earned !== '') && !e.state) return;
+    // 그 달 일용직 표에 입력이 없어도 이름이 한 글자 다른 짝이면 알려줌(급여현황에만 입력하면 연동이 안 되던 문제)
+    if(rows.some(r=> String(r.name||'').trim() === String(w.name||'').trim())) return;
     const r = rows.find(r=> prNameSimilar(r.name, w.name));
     if(r && !out.some(o=> o.prName === r.name)) out.push({ prName: String(r.name).trim(), dwName: String(w.name).trim(), wid: w.id });
   });
@@ -26667,11 +26706,13 @@ function prAutoDwRows(cid, year, months){
       const e = (w.months||{})[ym] || {};
       if(!(e.earned !== undefined && e.earned !== '') && !e.state) return;
       const nm = String(w.name||'').trim();
-      if(here.some(r=> r.kind === '일용' && String(r.name||'').trim() === nm)) return;
+      const dup = dwIsDupName(w);
+      if(here.some(r=> r.kind === '일용' && (r.wid === w.id || (!dup && !r.wid && String(r.name||'').trim() === nm)))) return;
+      if(dup && here.some(r=> r.kind === '일용' && !r.wid && String(r.name||'').trim() === nm && prWorkerFor(cid, r.name, null, ym) === w)) return;
       // 이름이 한 글자만 다른 일용 줄이 이미 있으면(예: 박흥재/박흥래) 새로 만들지 않고 "이름이 달라 연결 안 됨"으로 알려줌
       if(here.some(r=> !r.deleted && r.kind === '일용' && prNameSimilar(r.name, nm))) return;
       const id = 'pr' + Date.now().toString(36) + m + i + Math.random().toString(36).slice(2,5);
-      p.rows[id] = { id, y:String(year), m:Number(m), kind:'일용', name:nm, order: ++ord, auto:true, modAt:new Date().toISOString() };
+      p.rows[id] = { id, y:String(year), m:Number(m), kind:'일용', name:nm, wid:w.id, order: ++ord, auto:true, modAt:new Date().toISOString() };
       made = true;
     });
   });
@@ -26776,7 +26817,7 @@ function renderPayroll(){
       const mv = merged ? prCalcVals(cid, prCalcs(cid, year, m).find(c=> c.name === r.name)) : null;
       const rate = mv && mv.total ? (Math.round(mv.net / mv.total * 1000) / 10) + '%' : (rep && paid !== null ? (Math.round(paid / rep * 1000) / 10) + '%' : '');
       html += `<tr data-id="${r.id}"><td class="pr-k pr-k-${r.kind}">${kindSel(r)}</td>${month?'':`<td>${m}월</td>`}
-        <td><input class="pr-in pr-name" data-f="name" data-id="${r.id}" value="${escHtml(r.name||'')}"></td>
+        <td><input class="pr-in pr-name" data-f="name" data-id="${r.id}" value="${escHtml(r.name||'')}">${r._w && sharedDailyWorkers[r._w] && dwIsDupName(sharedDailyWorkers[r._w]) && sharedDailyWorkers[r._w].birth ? `<div class="dw-birth" style="margin-top:-3px;">${escHtml(sharedDailyWorkers[r._w].birth)}</div>` : ''}</td>
         <td class="n"><input class="pr-in pr-num" data-f="reported" data-id="${r.id}" inputmode="numeric" value="${nf(r.reported)}"${r._w ? ' title="일용직 표와 연동 - 여기서 고치면 일용직 표에도 저장돼요"' : ''}></td>
         <td class="n">${merged ? '<span class="dw-tag pr-mtag">합산</span>' : prIsUnfiled(r) ? '<span class="dw-tag pr-mtag pr-unf">미신고</span>' : ''}<input class="pr-in pr-num${merged || prIsUnfiled(r) ? ' pr-hasm' : ''}" data-f="filed" data-id="${r.id}" inputmode="numeric" value="${filedSet ? nf(r.filed) : ''}" placeholder="${!filedSet && rep ? nf(rep) : ''}"></td>
         <td class="n"><input class="pr-in pr-num" data-f="paid" data-id="${r.id}" inputmode="numeric" value="${r.paid !== undefined && r.paid !== null && r.paid !== '' ? nf(r.paid) : ''}" placeholder="${hint !== null ? nf(hint) : ''}"></td>
@@ -27038,22 +27079,22 @@ function prPrint(){
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escHtml(prTitle)}</title><style>
     @page{ size:A4; margin:14mm 12mm; }
     *{ box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-    body{ font-family:'Pretendard','Malgun Gothic',sans-serif; color:#1D1E33; margin:0; font-size:11.5px; }
+    body{ font-family:'Malgun Gothic','맑은 고딕',sans-serif; color:#000; margin:0; font-size:11.5px; } /* 인쇄 창엔 Pretendard가 없어 글자마다 다른 글꼴로 섞여 흐릿했음 - 맑은 고딕 하나로, 글자색은 진하게(요청) */
     .head{ text-align:center; margin-bottom:14px; }
-    .cname{ font-size:18px; font-weight:800; }
-    .ttl{ font-size:13px; font-weight:700; color:#75789A; margin-top:3px; }
+    .cname{ font-size:18px; font-weight:700; }
+    .ttl{ font-size:13px; font-weight:700; color:#444; margin-top:3px; }
     .sec{ display:flex; align-items:flex-end; justify-content:space-between; margin:16px 0 6px; padding-left:1em; }
-    .sec .st{ font-size:12.5px; font-weight:800; color:#4640D6; }
+    .sec .st{ font-size:12.5px; font-weight:700; color:#4640D6; }
     .ym{ font-size:12px; font-weight:700; }
     td.paid{ background:#FFF6E0; }
-    .unf{ display:inline-block; font-size:10px; font-weight:800; color:#C2415D; background:#FDE9EE; border-radius:999px; padding:1px 7px; }
+    .unf{ display:inline-block; font-size:10px; font-weight:700; color:#C2415D; background:#FDE9EE; border-radius:999px; padding:1px 7px; }
     tr.sum td.paid{ background:#FCEBC2; }
     table{ width:100%; border-collapse:collapse; page-break-inside:auto; }
-    th{ background:#F3F4FA; color:#4B4E6D; font-weight:800; padding:6px 5px; border:1px solid #D9DBE8; font-size:11px; }
-    td{ padding:5px; border:1px solid #E3E4EE; text-align:center; }
+    th{ background:#F1F2F7; color:#111; font-weight:700; padding:6px 5px; border:0.75pt solid #A9ABB8; font-size:11px; }
+    td{ padding:5px; border:0.75pt solid #A9ABB8; text-align:center; }
     td.n{ text-align:center; font-variant-numeric:tabular-nums; }
-    td.memo{ text-align:left; color:#55587A; white-space:nowrap; font-size:10px; letter-spacing:-0.2px; } /* 비고는 두 줄로 넘어가지 않게 한 줄·작은 글씨(요청) */
-    tr.sum td{ font-weight:800; background:#FAFAFD; }
+    td.memo{ text-align:left; color:#222; white-space:nowrap; font-size:10px; } /* 비고는 두 줄로 넘어가지 않게 한 줄·작은 글씨(요청) */
+    tr.sum td{ font-weight:700; background:#FAFAFD; }
     table.calc th, table.calc td{ font-size:10.5px; }
   </style></head><body><div class="head"><div class="cname">${escHtml(cl.name||'')}</div><div class="ttl">급여현황</div></div>${body}
 </body></html>`; // 출력일자·회사명은 넣지 않음(요청)
@@ -27103,9 +27144,9 @@ function prSlipPrint(items){
       </table>
       <div class="ft"><span class="dt">귀하의노고에감사드립니다.</span><span class="cn">${escHtml(cl.name||'')}</span></div></div>`;
   });
-  // PDF 저장 이름: "이름_급여명세서_26.09월"(요청). 여러 명을 한 번에 뽑으면 "급여명세서_26.09월"
+  // PDF 저장 이름: "이름_일용급여명세서_26.09월"(요청). 여러 명을 한 번에 뽑으면 "일용급여명세서_26.09월"
   const ym = `${String(items[0].y).slice(2)}.${String(items[0].m).padStart(2,'0')}월`;
-  const title = items.length === 1 ? `${items[0].name}_급여명세서_${ym}` : `급여명세서_${ym}`;
+  const title = items.length === 1 ? `${items[0].name}_일용급여명세서_${ym}` : `일용급여명세서_${ym}`; // 파일 이름은 "일용급여명세서"(요청)
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escHtml(title)}</title><style>
     /* [2026.10.02] 세무 프로그램 출력 PDF와 같은 느낌으로(요청): 항목 이름·칸 제목·사원정보 이름은 돋움(가변폭), 금액·값은 바탕체(고정폭),
        제목은 바탕(좁게) + 가는 줄·굵은 줄 이중 밑줄, 테두리는 가는 진회색, 맨 아래 줄은 글자 간격을 좁게 */
@@ -27136,6 +27177,38 @@ function prSlipPrint(items){
   </style></head><body>${pages.join('')}</body></html>`;
   printHtmlDocument(html);
 }
+// [2026.10.02] 엑셀 받기에서 글자 가운데 정렬(요청) - 지금 쓰는 엑셀 라이브러리(무료판)는 칸 서식(정렬)을 파일에 못 넣어서,
+// 서식을 넣을 수 있는 같은 계열 라이브러리(xlsx-js-style)를 엑셀 받기 때만 불러와 저장함. 못 불러오면 예전처럼(정렬 없이) 저장
+let _xlsStyleLib = null, _xlsStyleLoading = null;
+function loadXlsStyleLib(){
+  if(_xlsStyleLib) return Promise.resolve(_xlsStyleLib);
+  if(_xlsStyleLoading) return _xlsStyleLoading;
+  _xlsStyleLoading = new Promise(res=>{
+    const orig = window.XLSX;
+    const sc = document.createElement('script');
+    sc.src = 'https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js';
+    sc.onload = ()=>{ _xlsStyleLib = window.XLSX; window.XLSX = orig; res(_xlsStyleLib); };
+    sc.onerror = ()=>{ window.XLSX = orig; _xlsStyleLoading = null; res(null); };
+    document.head.appendChild(sc);
+  });
+  return _xlsStyleLoading;
+}
+async function xlsWriteCentered(wb, filename, opt){
+  opt = opt || {};
+  const lib = await loadXlsStyleLib();
+  if(!lib){ XLSX.writeFile(wb, filename); return; }
+  wb.SheetNames.forEach(n=>{
+    const ws = wb.Sheets[n];
+    Object.keys(ws).forEach(k=>{
+      if(k[0] === '!') return;
+      const r = XLSX.utils.decode_cell(k).r;
+      const c = ws[k];
+      const left = opt.leftRows && opt.leftRows.includes(r);
+      c.s = Object.assign({}, c.s || {}, { alignment:{ horizontal: left ? 'left' : 'center', vertical:'center' }, font:{ name:'맑은 고딕', sz:10, bold: !!(opt.boldRows && opt.boldRows.includes(r)) } });
+    });
+  });
+  lib.writeFile(wb, filename);
+}
 function prXlsDownload(){
   if(typeof XLSX === 'undefined'){ showCenterToast('엑셀 기능을 불러오지 못했어요'); return; }
   const { clientId:cid, year } = payrollState;
@@ -27159,7 +27232,7 @@ function prXlsDownload(){
   ws['!cols'] = [{wch:12},{wch:12},{wch:12},{wch:14},{wch:14},{wch:14},{wch:10},{wch:24},{wch:12},{wch:12}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, `${year} 급여현황`);
-  XLSX.writeFile(wb, `taxj-급여현황-${prFileName(cl)}-${year}-${todayStr()}.xlsx`);
+  xlsWriteCentered(wb, `taxj-급여현황-${prFileName(cl)}-${year}-${todayStr()}.xlsx`, { leftRows:[0], boldRows:[0, 2] });
 }
 // 일용직 표 엑셀 받기 - 화면과 같은 모양(상호·이름·입사일·퇴사일·발생/신고 두 줄 × 1~12월)
 function dwXlsDownload(){
@@ -27187,7 +27260,7 @@ function dwXlsDownload(){
   ws['!cols'] = [{wch:26},{wch:10},{wch:11},{wch:11},{wch:6}, ...Array.from({length:12},()=>({wch:13}))];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, `${year} 일용직`);
-  XLSX.writeFile(wb, `taxj-일용직-${year}-${todayStr()}.xlsx`);
+  xlsWriteCentered(wb, `taxj-일용직-${year}-${todayStr()}.xlsx`, { leftRows:[0], boldRows:[0, 2] });
 }
 // 엑셀 불러오기 - 지금 쓰던 "일용직 관리대장" 엑셀을 그대로 올림. 표마다 "일용직관리대장 | 1월..12월 | 급여 | 입사일" 머리글 아래
 // 두 줄씩(이름 줄: 상호·이름·월별 체크(신고함) / 신고금액 줄: 월별 금액·"미신고") 읽음. 체크된 달 = 신고(금액),
@@ -27286,7 +27359,9 @@ function openDwEditModal(id){
         <div id="dwEditTitle" style="text-align:center; font-weight:800; font-size:16px; color:var(--ink); margin-bottom:14px;">일용직 등록</div>
         <button type="button" id="dwEditCloseBtn" class="del-btn modal-close-btn modal-close-tr">✕</button>
         <div class="field"><label>상호명</label><select id="dwEditClient"></select></div>
-        <div class="field"><label>이름</label><input type="text" id="dwEditName"></div>
+        <div class="field" id="dwEditPickWrap" style="display:none;"><label>기존 명단에서 불러오기 <span style="font-weight:600; color:var(--ink-soft);">(퇴사자 재입사)</span></label><select id="dwEditPick"></select></div>
+        <div style="display:flex; gap:8px;"><div class="field" style="flex:1.2;"><label>이름</label><input type="text" id="dwEditName"></div><div class="field" style="flex:1;"><label>생년월일</label><input type="text" id="dwEditBirth" inputmode="numeric" maxlength="6" placeholder="예: 960129"></div></div>
+        <div id="dwEditPeriods" style="display:none; font-size:11.5px; color:var(--ink-soft); margin:-4px 0 8px; text-align:center;"></div>
         <div style="display:flex; gap:8px;"><div class="field" style="flex:1;"><label>입사일</label><input type="date" id="dwEditJoin"></div><div class="field" style="flex:1;"><label>퇴사일</label><input type="date" id="dwEditLeave"></div></div>
         <div style="display:flex; justify-content:center; gap:8px; margin-top:6px;"><button type="button" class="submit-btn" id="dwEditSave" style="width:auto; padding:8px 22px;">저장</button><button type="button" class="del-btn" id="dwEditDel" style="display:none;">삭제</button></div>
       </div></div>`);
@@ -27301,6 +27376,30 @@ function openDwEditModal(id){
   csel.innerHTML = `<option value="">상호명 선택</option>` + list.map(c=>`<option value="${c.id}">${escHtml(c.name||'')}</option>`).join('');
   csel.value = w ? w.clientId : (dwClientFilter || '');
   document.getElementById('dwEditName').value = w ? (w.name||'') : '';
+  document.getElementById('dwEditBirth').value = w ? (w.birth||'') : '';
+  // 재입사: 새로 등록할 때 그 거래처의 퇴사자를 고르면 같은 사람에 근무기간을 이어 붙임(예전 근무기간은 남겨둠)
+  let rehireId = '';
+  const pickWrap = document.getElementById('dwEditPickWrap'), pick = document.getElementById('dwEditPick');
+  const fillPick = ()=>{
+    const left = dwWorkers().filter(x=> x.clientId === csel.value && x.leaveDate).sort((a,b)=> (a.name||'').localeCompare(b.name||'', 'ko'));
+    pick.innerHTML = `<option value="">새 사람으로 등록</option>` + left.map(x=>`<option value="${x.id}">${escHtml(x.name||'')}${x.birth ? ' (' + escHtml(x.birth) + ')' : ''} · 퇴사 ${escHtml(x.leaveDate||'')}</option>`).join('');
+    pickWrap.style.display = !w && left.length ? '' : 'none';
+    rehireId = ''; pick.value = '';
+  };
+  fillPick();
+  csel.onchange = ()=>{ if(!w) fillPick(); };
+  pick.onchange = ()=>{
+    rehireId = pick.value;
+    const x = rehireId ? sharedDailyWorkers[rehireId] : null;
+    document.getElementById('dwEditName').value = x ? (x.name||'') : '';
+    document.getElementById('dwEditBirth').value = x ? (x.birth||'') : '';
+    document.getElementById('dwEditJoin').value = ''; document.getElementById('dwEditLeave').value = '';
+    if(x) setTimeout(()=> document.getElementById('dwEditJoin').focus(), 0);
+  };
+  const perEl = document.getElementById('dwEditPeriods');
+  const pers = w && w.periods && w.periods.length ? w.periods : [];
+  perEl.style.display = pers.length ? '' : 'none';
+  perEl.textContent = pers.length ? '이전 근무: ' + pers.map(pp=> `${pp.join || '?'} ~ ${pp.leave || '?'}`).join(', ') : '';
   document.getElementById('dwEditJoin').value = w ? (w.joinDate||'') : '';
   document.getElementById('dwEditLeave').value = w ? (w.leaveDate||'') : '';
   const delBtn = document.getElementById('dwEditDel'); delBtn.style.display = w ? '' : 'none';
@@ -27310,8 +27409,21 @@ function openDwEditModal(id){
     if(!clientId || !name){ appAlert('상호명과 이름을 입력해 주세요.'); return; }
     const joinDate = document.getElementById('dwEditJoin').value, leaveDate = document.getElementById('dwEditLeave').value;
     if(joinDate && leaveDate && leaveDate < joinDate){ appAlert('퇴사일이 입사일보다 빨라요.'); return; }
-    const rec = w || { id: genId(), months:{}, createdAt: new Date().toISOString() };
+    const birth = (document.getElementById('dwEditBirth').value || '').replace(/[^\d]/g,'');
+    if(birth && birth.length !== 6){ appAlert('생년월일은 6자리로 적어주세요. (예: 960129)'); return; }
+    if(!w && !rehireId){
+      const same = dwWorkers().find(x=> x.clientId === clientId && String(x.name||'').trim() === name && (!birth || !x.birth || x.birth === birth));
+      if(same && !(await appConfirm(`같은 이름(${name})이 이미 있어요.${same.leaveDate ? '\n퇴사자라면 "기존 명단에서 불러오기"로 재입사 처리할 수 있어요.' : ''}\n동명이인이면 생년월일을 꼭 적어주세요.\n\n새 사람으로 등록할까요?`, { okText:'새로 등록', cancelText:'취소' }))) return;
+    }
+    let rec;
+    if(!w && rehireId && sharedDailyWorkers[rehireId]){
+      rec = sharedDailyWorkers[rehireId];
+      if(!joinDate){ appAlert('재입사일(입사일)을 입력해 주세요.'); return; }
+      if(rec.leaveDate && joinDate <= rec.leaveDate){ appAlert('재입사일이 예전 퇴사일보다 빨라요.'); return; }
+      rec.periods = (rec.periods || []).concat([{ join: rec.joinDate || '', leave: rec.leaveDate || '' }]);
+    } else rec = w || { id: genId(), months:{}, createdAt: new Date().toISOString() };
     Object.assign(rec, { clientId, name, joinDate, leaveDate, modAt: new Date().toISOString() });
+    if(birth) rec.birth = birth; else delete rec.birth;
     sharedDailyWorkers[rec.id] = rec;
     ov.style.display = 'none';
     await saveDw(); renderDailyWorkersTable();
@@ -30956,14 +31068,22 @@ function printHtmlDocument(html){
     iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0; visibility:hidden;';
     document.body.appendChild(iframe);
     const cleanup = ()=>{ try{ iframe.remove(); }catch(e){} };
+    // [2026.10.02] PDF 저장 이름(요청) - 인쇄 창의 파일 이름은 출력 내용의 제목이 아니라 앱 자체 제목("Tax.J")을 따라가서 "Tax"로만 나왔음.
+    // 인쇄하는 동안만 앱 제목을 출력물 제목으로 바꿨다가 되돌림. ezPDF 같은 프로그램은 마지막 "." 뒤를 확장자로 잘라내서 끝에 ".pdf"를 붙임
+    const m = /<title>([^<]*)<\/title>/i.exec(html || '');
+    const docTitle = m ? m[1].replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").trim() : '';
+    const prevTitle = document.title;
+    const restoreTitle = ()=>{ if(docTitle) document.title = prevTitle; };
     iframe.onload = function(){
       setTimeout(function(){
         try{
           const win = iframe.contentWindow;
-          win.onafterprint = function(){ setTimeout(cleanup, 100); };
+          if(docTitle){ document.title = /\.pdf$/i.test(docTitle) ? docTitle : docTitle + '.pdf'; try{ win.document.title = document.title; }catch(e){} }
+          win.onafterprint = function(){ restoreTitle(); setTimeout(cleanup, 100); };
           win.focus();
           win.print();
-        }catch(e){ cleanup(); }
+          setTimeout(restoreTitle, 1000);
+        }catch(e){ restoreTitle(); cleanup(); }
       }, 150);
     };
     iframe.srcdoc = html;
@@ -38667,7 +38787,7 @@ function fsScheduleUiRefresh(){
     taxjSyncReveal();
   }, 150);
 }
-function taxjSyncReveal(){ try{ document.documentElement.classList.remove('taxj-syncing'); }catch(e){} }
+function taxjSyncReveal(){ try{ document.documentElement.classList.remove('taxj-syncing'); const n = document.getElementById('taxjStaleNote'); if(n) n.remove(); }catch(e){} }
 // 서버 최신 상태를 이 기기에 반영 - 이 기기에만 있는(아직 못 올린) 변경은 기존 병합 규칙으로 살려두고 곧바로 올림
 function fsApplyRemote(){
   if(gdriveSuspendPull) return;
@@ -38992,7 +39112,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 18:46';
+const APP_BUILD = '2026.10.02 19:45';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
