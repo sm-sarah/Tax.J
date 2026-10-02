@@ -2197,6 +2197,9 @@ try{
   .dw-table tr.dw-left-tg button{ width:100%; border:none; background:transparent; font-family:inherit; font-size:11.5px; font-weight:700; color:var(--ink-soft); padding:7px 0; cursor:pointer; }
   .dw-table tr.dw-left-tg button:hover{ color:var(--indigo-deep); background:var(--indigo-bg); }
   .dw-table.has-tg tbody tr:nth-last-child(2) td.dw-focus{ border-bottom:2px solid var(--indigo) !important; }
+  .dw-same-btn{ position:fixed; z-index:9500; border:1px solid var(--indigo); background:var(--surface); color:var(--indigo-deep); font-family:inherit; font-size:11px; font-weight:700; border-radius:999px; padding:3px 10px; cursor:pointer; box-shadow:0 6px 14px -6px rgba(29,30,51,.35); white-space:nowrap; }
+  .dw-same-btn b{ font-weight:800; margin-left:2px; }
+  .dw-same-btn:hover{ background:var(--indigo); color:#fff; }
   .dw-rep-menu{ position:fixed; z-index:9600; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:0 12px 28px -8px rgba(29,30,51,.35); padding:10px; width:210px; display:flex; flex-direction:column; gap:7px; }
   .dw-rm-h{ font-size:12px; font-weight:800; color:var(--ink); text-align:center; }
   .dw-rm-row{ display:flex; gap:6px; }
@@ -26466,8 +26469,27 @@ function renderDailyWorkersTable(){
   const tgRow = leftN ? `<tr class="dw-left-tg"><td colspan="14"><button type="button" id="dwLeftToggle">${dwShowLeft ? `퇴사자 접기 ▴` : `퇴사자 ${leftN}명 보기 ▾`}</button></td></tr>` : '';
   wrap.innerHTML = `<div class="table-scroll"><table class="dw-table${tgRow ? ' has-tg' : ''}"><thead><tr><th class="cvb dw-h-nm">이름</th><th class="cvb dw-h-lb"></th>${Array.from({length:12},(_,i)=>`<th class="cvb dw-m${fc(i+1)}">${i+1}월</th>`).join('')}</tr></thead><tbody>${rows}${tgRow}</tbody></table></div>`;
   wrap.querySelector('#dwLeftToggle')?.addEventListener('click', ()=>{ dwShowLeft = !dwShowLeft; renderDailyWorkersTable(); });
+  // [2026.10.02] "전월동일"(요청) - 비어 있는 발생 칸을 누르면 바로 아래에 "전월동일 700,000" 버튼이 떠서, 누르면 앞달 발생금액이 그대로 들어감
+  const dwHideSame = ()=>{ document.getElementById('dwSameBtn')?.remove(); };
   wrap.querySelectorAll('.dw-earn').forEach(inp=>{
-    inp.addEventListener('focus', ()=>{ inp.select(); });
+    inp.addEventListener('focus', ()=>{
+      inp.select();
+      dwHideSame();
+      const w = sharedDailyWorkers[inp.dataset.id]; if(!w || inp.value.trim()) return;
+      const pv = Number(((w.months||{})[dwPrevYm(inp.dataset.ym,1)]||{}).earned) || 0;
+      if(!pv) return;
+      const b = document.createElement('button');
+      b.type = 'button'; b.id = 'dwSameBtn'; b.className = 'dw-same-btn';
+      b.innerHTML = `전월동일 <b>${pv.toLocaleString()}</b>`;
+      document.body.appendChild(b);
+      const r = inp.getBoundingClientRect();
+      b.style.left = Math.max(4, r.left + r.width/2 - b.offsetWidth/2) + 'px';
+      b.style.top = (r.bottom + 30 > window.innerHeight ? r.top - b.offsetHeight - 3 : r.bottom + 3) + 'px'; // 화면 아래 끝이면 칸 위에
+      b.addEventListener('mousedown', e=> e.preventDefault()); // 칸 포커스를 잃지 않게
+      b.addEventListener('click', ()=>{ inp.value = pv.toLocaleString(); dwHideSame(); inp.dispatchEvent(new Event('change')); });
+    });
+    inp.addEventListener('blur', ()=> setTimeout(dwHideSame, 120));
+    inp.addEventListener('keydown', e=>{ if(e.key !== 'Enter' && e.key !== 'Tab') dwHideSame(); });
     inp.addEventListener('input', ()=> formatMoneyInputLive(inp)); // 입력하는 중에도 천단위 쉼표(요청)
     inp.addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); inp.blur(); } });
     inp.addEventListener('change', async ()=>{
@@ -26510,9 +26532,10 @@ function openDwRepMenu(btn){
   m.innerHTML = (isMerge ? `<div class="dw-rm-h">${Number(ym.slice(5,7))}월 신고 <span class="dw-tag">합산</span></div>
     <div class="dw-rm-row dw-rm-split"><span class="dw-rm-lab">미신고분<em>${skipLabel}</em></span><input type="text" inputmode="numeric" id="dwRmPrev" value="${e.state === 'filed' && e.reportedPrev !== undefined ? fmtN(e.reportedPrev) : (prevHint ? prevHint.toLocaleString() : '')}" placeholder="${prevHint ? prevHint.toLocaleString() : '금액'}"></div>
     <div class="dw-rm-row dw-rm-split"><span class="dw-rm-lab">이번 달<em>${Number(ym.slice(5,7))}월</em></span><input type="text" inputmode="numeric" id="dwRmCur" value="${e.state === 'filed' && e.reportedCur !== undefined ? fmtN(e.reportedCur) : ''}" placeholder="${curHint ? curHint.toLocaleString() : '0'}"></div>
-    <div class="dw-rm-row"><span class="dw-rm-sum">합계 <b id="dwRmSum"></b></span><button type="button" class="submit-btn" id="dwRmFile">신고</button></div>
+    ${e.state === 'filed' && e.reportedPrev === undefined && Number(e.reported) && Number(e.reported) !== prevHint + curHint && prevHint ? `<div class="dw-rm-hint" style="color:#C2415D;">지금 칸의 금액 ${Number(e.reported).toLocaleString()}원과 달라요 · 적용을 누르면 아래 합계로 바뀌어요</div>` : ''}
+    <div class="dw-rm-row"><span class="dw-rm-sum">합계 <b id="dwRmSum"></b></span><button type="button" class="submit-btn" id="dwRmFile">적용</button></div>
     <input type="hidden" id="dwRmAmt">` : `<div class="dw-rm-h">${Number(ym.slice(5,7))}월 신고</div>
-    <div class="dw-rm-row"><input type="text" inputmode="numeric" id="dwRmAmt" value="${amt ? Number(amt).toLocaleString() : ''}" placeholder="신고 금액"><button type="button" class="submit-btn" id="dwRmFile">신고</button></div>`) + `
+    <div class="dw-rm-row"><input type="text" inputmode="numeric" id="dwRmAmt" value="${amt ? Number(amt).toLocaleString() : ''}" placeholder="신고 금액"><button type="button" class="submit-btn" id="dwRmFile">적용</button></div>`) + `
     <div class="dw-rm-row"><button type="button" class="del-btn" id="dwRmSkip">미신고</button><button type="button" class="del-btn" id="dwRmClear">지우기</button></div>
     ${!isMerge && sg ? `<div class="dw-rm-hint">${sg.state === 'skip' ? '앞 두 달 연속 신고 - 이번 달은 미신고' : sg.merged ? `미신고 달 금액 합산 ${Number(sg.amount).toLocaleString()}` : ''}</div>` : ''}`;
   document.body.appendChild(m);
@@ -26546,8 +26569,12 @@ function openDwRepMenu(btn){
       }
       if(isMerge){
         const v = mergeVals();
-        en.state = 'filed'; en.reportedPrev = v.prev; en.reportedCur = v.cur;
-        if(v.prev + v.cur) en.reported = v.prev + v.cur; else delete en.reported;
+        // 두 칸 다 비어 있고 자동값도 없으면(발생 미입력) 이미 있던 신고금액을 0으로 지우지 않음
+        if(!(v.prev + v.cur) && Number(en.reported)){ en.state = 'filed'; }
+        else {
+          en.state = 'filed'; en.reportedPrev = v.prev; en.reportedCur = v.cur;
+          if(v.prev + v.cur) en.reported = v.prev + v.cur; else delete en.reported;
+        }
       } else {
         const v = amtEl.value.replace(/[^\d]/g,'');
         en.state = 'filed'; if(v) en.reported = Number(v); else delete en.reported;
@@ -39112,7 +39139,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 19:45';
+const APP_BUILD = '2026.10.02 20:00';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
