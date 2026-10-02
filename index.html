@@ -2042,6 +2042,11 @@
   .ito-kinds-menu{ position:fixed; z-index:9600; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:0 12px 28px -8px rgba(29,30,51,.35); padding:8px 10px; display:grid; grid-template-columns:repeat(2, auto); gap:6px 14px; }
   .ito-kinds-menu label{ display:flex; align-items:center; gap:6px; cursor:pointer; }
   .ito-kinds-menu input{ accent-color:var(--indigo); }
+  /* [2026.10.02] 결산(1차·2차 합친 표) - 묶음 사이 세로 구분선, 머리글에 고정 결산월 */
+  .st-merged-table .st-grp-start{ border-left:2px solid #C9CBE0 !important; }
+  .st-merged-table thead tr:first-child th[colspan]{ border-bottom:2px solid #C9CBE0 !important; color:var(--ink); font-weight:800; }
+  .st-merged-table .st-fixed-m{ display:inline-block; margin-left:4px; padding:1px 7px; border-radius:999px; background:var(--indigo-bg); color:var(--indigo-deep); font-size:10.5px; font-weight:800; }
+  .st-merged-table .filing-status-select{ font-size:11.5px; }
   /* 스크롤 시 떠서 따라오는 머리글 - 아래 내용이 비치지 않게 바탕을 채우고 맨 위로 */
   #itAllTableWrap table thead th{ z-index:6; }
   #itAllTableWrap table thead.it-head-floating tr:last-child th{ box-shadow:0 2px 4px -2px rgba(29,30,51,0.18); }
@@ -5298,8 +5303,7 @@
             <!-- 법인세/종소세/결산: 아직 신고현황만 있어서 펼칠 하위메뉴 없이 바로 이동함 -->
             <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="법인세"><span>법인세</span></div>
             <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="종소세"><span>종소세</span></div>
-            <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="결산1차"><span>1차 결산</span></div>
-            <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="결산2차"><span>2차 결산</span></div>
+            <div class="home-submenu-item" data-approval-cat-goto="status" data-filing-type-goto="결산통합"><span>결산</span></div>
           </div>
         </div>
         <div class="home-section-row" id="homeSectionSubmitStatus">
@@ -6195,8 +6199,7 @@
             <button type="button" class="filing-type-btn" data-filing-type="부가세">부가세</button>
             <button type="button" class="filing-type-btn" data-filing-type="법인세">법인세</button>
             <button type="button" class="filing-type-btn" data-filing-type="종소세">종소세</button>
-            <button type="button" class="filing-type-btn" data-filing-type="결산1차">1차 결산</button>
-            <button type="button" class="filing-type-btn" data-filing-type="결산2차">2차 결산</button>
+            <button type="button" class="filing-type-btn" data-filing-type="결산통합">결산</button>
           </div>
         </div>
         <div class="approval-nav-branch">
@@ -19835,7 +19838,7 @@ function dashGotoFilingStatus(taxType, vat){
   if(taxType === '원천세'){
     activateTab('approval', true);
     const f = itFocusFiling();
-    itAllYear = String(f.year);
+    itAllYear = String(f.year); itAllPeriod = f.period;
     itAllOnlyMonth = true; itAllOnlyPending = false; itAllOnlyTarget = false;
     document.querySelector('.approval-cat-btn[data-approval-cat="itall"]')?.click();
     renderIncomeTaxUnified();
@@ -20957,7 +20960,7 @@ function renderDashboardTaxSchedulePreview(){
         // 미신고 알림은 원천세 신고현황(통합)에서 그 귀속월 미신고만
         activateTab('approval', true);
         itAllOnlyPending = true; itAllOnlyMonth = false; itAllOnlyTarget = false;
-        itAllYear = String(f.year);
+        itAllYear = String(f.year); itAllPeriod = f.period;
         document.querySelector('.approval-cat-btn[data-approval-cat="itall"]')?.click();
         renderIncomeTaxUnified();
       });
@@ -25452,7 +25455,7 @@ const FILING_KINDS = {
   status: {
     // 결산은 1차/2차를 각각 별도 진행상태·완료일로 관리해야 해서 "결산1차"/"결산2차" 두 세목으로 분리함
     // (예전엔 "결산" 하나에 결산월(1차)/결산월(2차) 두 열만 있고 진행상태·완료일은 공용이었음)
-    types: ['원천세','부가세','법인세','종소세','결산1차','결산2차'],
+    types: ['원천세','부가세','법인세','종소세','결산통합'],
     getStore: ()=>sharedFilingStatus,
     save: ()=>saveSharedFilingStatus(),
     // 원천세=월별/반기 중 선택, 부가세=분기, 법인세·종소세·결산=연1회
@@ -25525,7 +25528,8 @@ function restoreFilingSubviewState(){
     if(!saved || typeof saved !== 'object' || !saved.cat) return;
     document.querySelector(`.approval-cat-btn[data-approval-cat="${saved.cat}"]`)?.click();
     if(saved.cat === 'status' && saved.filingType){
-      document.querySelector(`#filingTypeToggle .filing-type-btn[data-filing-type="${saved.filingType}"]`)?.click();
+      const ft = (saved.filingType === '결산1차' || saved.filingType === '결산2차') ? '결산통합' : saved.filingType; // 1차/2차 결산 메뉴는 "결산" 하나로 합쳐짐
+      document.querySelector(`#filingTypeToggle .filing-type-btn[data-filing-type="${ft}"]`)?.click();
       if(saved.filingState){
         const st = FILING_KINDS.status.state;
         if(saved.filingState.year) st.year = saved.filingState.year;
@@ -25665,7 +25669,7 @@ function renderFilingPeriodControls(kind){
   if(st.year) years.add(st.year); // 지금 보고 있는 연도도 항상 포함
   const sortedYears = Array.from(years).sort((a,b)=> Number(b) - Number(a));
   yearSel.innerHTML = sortedYears.map(y=>`<option value="${y}" ${y===st.year?'selected':''}>${y}년 귀속</option>`).join('');
-  if(taxType === '법인세' || taxType === '종소세' || taxType === '결산1차' || taxType === '결산2차' || (taxType === '원천세' && st.sourceMode === '연간')){
+  if(taxType === '법인세' || taxType === '종소세' || taxType === '결산1차' || taxType === '결산2차' || taxType === '결산통합' || (taxType === '원천세' && st.sourceMode === '연간')){
     subSel.style.display = 'none';
   } else if(taxType === '원천세' && st.sourceMode === '반기'){
     subSel.style.display = '';
@@ -25679,7 +25683,7 @@ function renderFilingPeriodControls(kind){
   }
 }
 // 세목 짧은 이름 -> 화면 상단 큰 제목에 쓸 정식 명칭 (원천세·법인세·결산은 이미 정식명칭이라 그대로 둠)
-const FILING_TYPE_FULL_NAME = { 원천세:'원천세', 부가세:'부가가치세', 법인세:'법인세', 종소세:'종합소득세', 결산1차:'1차 결산', 결산2차:'2차 결산' };
+const FILING_TYPE_FULL_NAME = { 원천세:'원천세', 부가세:'부가가치세', 법인세:'법인세', 종소세:'종합소득세', 결산1차:'1차 결산', 결산2차:'2차 결산', 결산통합:'결산' };
 // 신고현황/검토표는 상태를 바꾸거나 메모를 입력해도 바로 저장되지 않고, 화면 우측 하단에 고정된 저장 버튼을
 // 눌러야 저장됨(자동저장이었을 땐 언제 저장됐는지 알기 어렵다는 의견이 있어서 수동저장으로 바꿈).
 // 버튼은 표가 아무리 길어져도(내부 스크롤 없이 페이지 전체로 늘어남) 항상 화면에 고정돼 있고,
@@ -25739,6 +25743,7 @@ function renderFilingStatusTable(kind){
   // 신고일 입력)이라 기존 공용 렌더러를 쓰지 않고 별도 함수로 분기함. 검토표(review)의 원천세는 애초에
   // 이 함수 자체를 안 타므로(renderReviewPanel에서 reviewIncomeTaxBox로 처리) 여기선 안 건드림
   if(kind === 'status' && taxType === '원천세'){ renderIncomeTaxFilingStatusTable(); return; }
+  if(kind === 'status' && taxType === '결산통합'){ renderSettlementMergedTable(); return; }
   const isSettlement = (kind === 'status' && (taxType === '결산1차' || taxType === '결산2차'));
   renderFilingPeriodControls(kind);
   const period = currentFilingPeriodKey(kind, taxType);
@@ -25892,6 +25897,66 @@ function renderFilingStatusTable(kind){
       setFilingStatusDirty(kind, true);
     });
   });
+}
+// [2026.10.02] "1차·2차 결산을 하나로"(요청 · 가안) - 메뉴는 "결산" 하나, 거래처 한 줄에 1차·2차 진행상태·완료일을 나란히.
+// 결산월은 1차 6월·2차 9월로 고정(요청)이라 고르는 칸을 없애고 머리글에만 표시. 자료는 예전 그대로 결산1차/결산2차 저장소를 씀
+// (화면만 합침 - 이미 입력한 진행상태·완료일·메모가 그대로 이어짐). 메모는 한 칸으로 합치고, 예전에 1차·2차에 따로 적은 메모는 이어 붙여 보여줌
+const SETTLEMENT_FIXED_MONTH = { 결산1차:6, 결산2차:9 };
+function renderSettlementMergedTable(){
+  const kind = 'status', cfg = FILING_KINDS[kind];
+  renderFilingPeriodControls(kind);
+  const period = currentFilingPeriodKey(kind, '결산통합');
+  const titleEl = document.getElementById(cfg.ids.title);
+  if(titleEl) titleEl.textContent = '결산';
+  const tgtBtn = document.getElementById('filingStatusTargetToggle'); if(tgtBtn) tgtBtn.style.display = 'none';
+  const list = filingStatusClientList('결산1차');
+  const store = cfg.getStore();
+  const pd = t => { store[t] = store[t] || {}; return store[t][period] = store[t][period] || {}; };
+  (window.xlsFilingCtx = window.xlsFilingCtx || {}).status = { taxType:'결산통합', period, list, isSettlement:true, merged:true };
+  const wrap = document.getElementById(cfg.ids.wrap);
+  if(!wrap) return;
+  if(!list.length){ wrap.innerHTML = `<div class="empty-state">해당하는 거래처가 없어요.</div>`; return; }
+  const part = (t, c) => {
+    const e = pd(t)[c.id] || { status:'미확인' };
+    const on = e.status === '결산완료';
+    return `<td class="cvb st-grp-start"><select class="filing-status-select st-merged-status" data-t="${t}" data-client-id="${c.id}">
+        <option value="미확인" ${(!e.status||e.status==='미확인')?'selected':''}>미확인</option>
+        <option value="검토중" ${e.status==='검토중'?'selected':''}>검토중</option>
+        <option value="결산완료" ${on?'selected':''}>결산완료</option>
+      </select></td>
+      <td class="cvb"><input type="date" class="filing-settlement-completed-input st-merged-date" data-t="${t}" data-client-id="${c.id}" value="${escHtml(e.completedAt||'')}" ${on?'':'disabled'} style="border:1.5px solid var(--border); border-radius:6px; padding:2px 4px; font-size:11px; opacity:${on?1:0.5};"></td>`;
+  };
+  const rows = list.map((c, idx)=>{
+    const entityColor = c.entityType === '법인' ? '#0B5A78' : c.entityType === '개인' ? '#BE185D' : 'inherit';
+    const m1 = ((pd('결산1차')[c.id]||{}).memo||'').trim(), m2 = ((pd('결산2차')[c.id]||{}).memo||'').trim();
+    const memo = m2 && m2 !== m1 ? (m1 ? `${m1} / ${m2}` : m2) : m1;
+    return `<tr>
+      <td class="num cvb">${idx+1}</td>
+      <td class="cvb" style="color:${entityColor}; font-weight:800;">${escHtml(c.name)}</td>
+      ${part('결산1차', c)}${part('결산2차', c)}
+      <td class="st-grp-start"><input type="text" class="filing-status-memo st-merged-memo" data-client-id="${c.id}" value="${escHtml(memo)}" placeholder="메모" style="width:100%; border:1.5px solid var(--border); border-radius:6px; padding:4px 8px; font-family:'Pretendard',sans-serif; font-size:12px; box-sizing:border-box;"></td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<div class="table-scroll"><table class="st-merged-table"><thead>
+    <tr><th class="cvb" rowspan="2">순번</th><th class="cvb" rowspan="2">상호명</th><th class="cvb st-grp-start" colspan="2">1차 결산 <span class="st-fixed-m">${SETTLEMENT_FIXED_MONTH['결산1차']}월</span></th><th class="cvb st-grp-start" colspan="2">2차 결산 <span class="st-fixed-m">${SETTLEMENT_FIXED_MONTH['결산2차']}월</span></th><th class="st-grp-start" rowspan="2">메모</th></tr>
+    <tr><th class="cvb st-grp-start">진행상태</th><th class="cvb">완료일</th><th class="cvb st-grp-start">진행상태</th><th class="cvb">완료일</th></tr>
+  </thead><tbody>${rows}</tbody></table></div>`;
+  const ent = (t, cid) => { const d = pd(t); d[cid] = d[cid] || { status:'미확인', memo:'' }; d[cid].month = String(SETTLEMENT_FIXED_MONTH[t]); return d[cid]; };
+  wrap.querySelectorAll('.st-merged-status').forEach(sel=> sel.addEventListener('change', ()=>{
+    const e = ent(sel.dataset.t, sel.dataset.clientId);
+    e.status = sel.value; e.updatedAt = new Date().toLocaleString('ko-KR');
+    const dateInp = wrap.querySelector(`.st-merged-date[data-t="${sel.dataset.t}"][data-client-id="${sel.dataset.clientId}"]`);
+    if(dateInp){ const on = sel.value === '결산완료'; dateInp.disabled = !on; dateInp.style.opacity = on ? '1' : '0.5'; }
+    setFilingStatusDirty(kind, true);
+  }));
+  wrap.querySelectorAll('.st-merged-date').forEach(inp=> inp.addEventListener('input', ()=>{
+    ent(inp.dataset.t, inp.dataset.clientId).completedAt = inp.value; setFilingStatusDirty(kind, true);
+  }));
+  wrap.querySelectorAll('.st-merged-memo').forEach(inp=> inp.addEventListener('input', ()=>{
+    ent('결산1차', inp.dataset.clientId).memo = inp.value;
+    const e2 = pd('결산2차')[inp.dataset.clientId]; if(e2) e2.memo = ''; // 메모는 한 칸으로 합쳐서 1차 쪽에만 저장
+    setFilingStatusDirty(kind, true);
+  }));
 }
 // 저장 버튼에 바뀐 내용이 있는지(빨간색 표시) 반영 - 조회 중인 세목·기간과 상관없이 해당 화면 전체에 저장 안 된 변경이 있으면 켜짐
 function setFilingStatusDirty(kind, isDirty){
@@ -26810,6 +26875,7 @@ function renderIncomeTaxFilingStatusTable(){
 // 신고대상/신고현황 화면에 이미 입력해둔 내용이 여기 그대로 이어짐
 // ══════════════════════════════════════════════════════════
 let itAllYear = null;
+let itAllPeriod = null; // [2026.10.02] 위에서 고른 귀속월('YYYY-MM') - 그 달 칸을 테두리로 강조하고 요약줄도 그 달 기준. null이면 지금 챙길 귀속월
 // ── [2026.10.01] 원천세 총괄(요청) ──
 // 원천세 화면 위 "신고현황 | 총괄" 전환. 총괄은 연도 구분 없이 거래처별 원천세 업무 정보(급여종류·지급일·급여일·전달방법·사업장관리번호·
 // EDI·비고)를 엑셀 총괄표처럼 한 표에서 바로 고르고 입력함(바뀌면 바로 저장). 상호·신고구분·귀속/지급·신고대상·해지는 이미 다른 화면에
@@ -26915,7 +26981,10 @@ function renderItAllPeriodControls(){
   for(let y = nowY+1; y >= nowY-4; y--) years.add(String(y));
   years.add(itAllYear);
   const sortedYears = Array.from(years).sort((a,b)=> Number(b) - Number(a));
-  yearSel.innerHTML = sortedYears.map(y=>`<option value="${y}" ${y===itAllYear?'selected':''}>${y}년 귀속</option>`).join('');
+  // [2026.10.02] "연도만이 아니라 귀속월까지 고르고, 고른 달이 강조되게"(요청) - 처음엔 지금 챙길 귀속월
+  const nowP = itFocusPeriodNow();
+  if(!itAllPeriod || itAllPeriod.slice(0,4) !== itAllYear) itAllPeriod = nowP.slice(0,4) === itAllYear ? nowP : `${itAllYear}-${nowP.slice(5,7)}`;
+  yearSel.innerHTML = sortedYears.map(y=>`<optgroup label="${y}년">${Array.from({length:12},(_,i)=>12-i).map(m=>{ const v = `${y}-${String(m).padStart(2,'0')}`; return `<option value="${v}" ${v===itAllPeriod?'selected':''}>${y}년 ${m}월 귀속${v===nowP?' (지금)':''}</option>`; }).join('')}</optgroup>`).join('');
 }
 // 신고대상으로 체크된 지급시기(당월/익월) 하나를 신고일자·지방세일자·상태뱃지·메모까지 한 덩어리로 보여줌 -
 // itAllDateEditModal(신고일자 입력 팝업) 안에서 씀
@@ -27005,11 +27074,17 @@ const IT_ALL_TAX_KEYS = [['national','국세'], ['local','지방세']];
 let itAllOnlyPending = false;
 let itAllOnlyTarget = false;
 let itAllOnlyMonth = false; // [2026.10.01] 지금 챙길 귀속월에 신고대상인 거래처만(대시보드에서 들어올 때 기본)
-function itFocusFiling(){
+function itFocusPeriodNow(){
   const today = parseDate(todayStr());
-  let y = today.getFullYear(), m = today.getMonth() + 1;
-  let fy = y, fm = m;
-  if(today.getDate() <= 10){ fm = m - 1; if(fm < 1){ fm = 12; fy = y - 1; } }
+  let fy = today.getFullYear(), fm = today.getMonth() + 1;
+  if(today.getDate() <= 10){ fm = fm - 1; if(fm < 1){ fm = 12; fy = fy - 1; } }
+  return `${fy}-${String(fm).padStart(2,'0')}`;
+}
+// periodOverride('YYYY-MM')를 주면 그 귀속월 기준으로 대상/완료/남음·마감일을 계산(원천세 화면에서 귀속월을 고른 경우)
+function itFocusFiling(periodOverride){
+  const today = parseDate(todayStr());
+  const base = /^\d{4}-\d{2}$/.test(periodOverride||'') ? periodOverride : itFocusPeriodNow();
+  let fy = Number(base.slice(0,4)), fm = Number(base.slice(5,7));
   let dy = fy, dm = fm + 1; if(dm > 12){ dm = 1; dy++; }
   const due = new Date(dy, dm - 1, 10);
   const dday = Math.round((due - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000);
@@ -27060,7 +27135,7 @@ function renderIncomeTaxUnified(){
   let list = bookkeepingClientList();
   if(q) list = list.filter(c=>(c.name||'').toLowerCase().includes(q));
   // 표 위 요약줄 - "지금 챙길 신고"(itFocusFiling) 기준 대상/완료/남음과 "미신고만 보기" 필터
-  const focus = itFocusFiling();
+  const focus = itFocusFiling(itAllPeriod);
   if(itAllOnlyPending) list = list.filter(c=> focus.pendingIds.has(c.id));
   if(itAllOnlyMonth) list = list.filter(c=>{
     const per = `${focus.year}-${String(focus.month).padStart(2,'0')}`;
@@ -27077,7 +27152,8 @@ function renderIncomeTaxUnified(){
     }
     return false;
   });
-  const ddayTxt = focus.dday === 0 ? 'D-DAY' : focus.dday > 0 ? `D-${focus.dday}` : `기한 ${-focus.dday}일 지남`;
+  // 지난 귀속월을 골랐는데 남은 신고가 없으면 "기한 N일 지남"은 굳이 안 보여줌
+  const ddayTxt = focus.dday === 0 ? 'D-DAY' : focus.dday > 0 ? `D-${focus.dday}` : (focus.pending ? `기한 ${-focus.dday}일 지남` : '');
   const summaryHtml = `<div class="it-all-summary">
     <span class="it-sum-period">${focus.month}월 귀속 · ${focus.due.getMonth()+1}/${focus.due.getDate()} 마감 <b class="${focus.dday<=3 ? 'urgent' : ''}">${ddayTxt}</b></span>
     <span class="it-sum-num">대상 <b>${focus.total}</b></span><span class="it-sum-num">완료 <b class="ok">${focus.done}</b></span><span class="it-sum-num">남음 <b class="${focus.pending ? 'warn' : ''}">${focus.pending}</b></span>
@@ -27100,7 +27176,7 @@ function renderIncomeTaxUnified(){
   // [2026.10.01] "지금 신고할 귀속월을 한눈에"(요청) - 이번에 챙길 귀속월(기한 10일 기준) 칸에 it-focus 표시
   const isFocusM = m => String(year) === String(focus.year) && m === focus.month;
   const fc = m => isFocusM(m) ? ' it-focus' : '';
-  const monthHeaderCells = Array.from({length:12},(_,i)=>i+1).map(m=>`<th class="cvb it-all-mcol${fc(m)}" colspan="2">${m}월${isFocusM(m) ? '<span class="it-focus-tag">신고</span>' : ''}</th>`).join('');
+  const monthHeaderCells = Array.from({length:12},(_,i)=>i+1).map(m=>`<th class="cvb it-all-mcol${fc(m)}" colspan="2">${m}월${isFocusM(m) && focus.period === itFocusPeriodNow() ? '<span class="it-focus-tag">신고</span>' : ''}</th>`).join('');
   const taxSubHeaderCells = Array.from({length:12},(_,i)=>i+1).map(m=>
     `<th class="cvb it-all-mcol it-all-sub${fc(m)} it-focus-l">국세</th><th class="cvb it-all-sub${fc(m)} it-focus-r">지방세</th>`).join('');
   // "미대상은 테두리 칸 대신 바(—) 하나로만" 요청 - notarget은 테두리 없는 회색 "—"
@@ -27138,7 +27214,8 @@ function renderIncomeTaxUnified(){
       // 신고구분 수정 팝업이 열리도록 버튼은 그대로 두고 테두리·배경만 없앰
       // "색이 너무 많다 - 신고 칸은 배경칩 없이 글자색만" 요청 - 테두리·배경을 모두 없애고 글자색으로만 구분
       // (매월: 남색, 반기: 진한 황토색, 미대상·미등록: 회색)
-      const cycleTextColor = !latestCycleRec || !latestApplicable ? 'var(--ink-soft)' : (isBiannual ? '#B4830E' : 'var(--indigo-deep)');
+      // [2026.10.02] "화면이 피로하다 - 당월/익월 빼고는 색 정리"(요청) - 매월·반기도 남색·황토색 대신 기본 글자색, 미대상·미등록은 회색 그대로
+      const cycleTextColor = !latestCycleRec || !latestApplicable ? 'var(--ink-soft)' : 'var(--ink)';
       const cycleBtnStyle = `border:none; background:transparent; color:${cycleTextColor}; padding:3px 4px;`;
       // [2026.10.02] "매월/당월 글씨가 잘 안 보인다 + 당월·익월 색을 구분"(요청) - 글자 10.5→11.5px, 뒤의 당월(초록)·익월(주황)만 다른 색
       const laneColor = timingKey === 'sameMonth' ? '#0B8F6C' : timingKey === 'nextMonth' ? '#D9480F' : '';
@@ -27165,8 +27242,7 @@ function renderIncomeTaxUnified(){
             const [,mm,dd] = cs.doneDate.split('-');
             cellLabel = `${Number(mm)}.${Number(dd)}`;
             tipRows.push([`${taxLabel} 신고`, fmtYmd(cs.doneDate)]);
-          } else if(cs.state === 'notarget') tipRows.push(['신고', '대상 아님']);
-          else if(cs.state === 'halfyear') tipRows.push(['반기 신고', m <= 6 ? '1~6월분은 6월 칸에서' : '7~12월분은 12월 칸에서']);
+          } // [2026.10.02] 대상 아닌 달(미대상·반기 중간달)은 말풍선 없음(요청)
           // 진행 단계(명세서 전달·급여마감·신고서 마감) - 신고대상·신고완료 칸만. 점으로 표시하고 날짜는 말풍선에
           let stageDots = '';
           if(cs.state === 'target' || cs.state === 'done'){
@@ -27188,7 +27264,7 @@ function renderIncomeTaxUnified(){
           /* * 표시는 국세 칸에만(요청) */ const memoTxt = (taxKey === 'national' && (cs.state === 'target' || cs.state === 'done')) ? (()=>{ const ent2 = incomeTaxFilingEntry(period, c.id); const ks = timingKey ? [timingKey] : ['sameMonth','nextMonth']; return ks.map(k=> (ent2[k]||{}).memo).filter(Boolean).join(' / '); })() : '';
           const tip = appTipHtml(periodLabel, tipRows);
           const memoStar = memoTxt ? `<sup class="it-memo-star" role="button" data-name="${escHtml(c.name)}" data-label="${escHtml(`${year}년 ${m}월 귀속${timingSuffix ? ` (${timingSuffix}지급)` : ''}`)}" data-memo="${escHtml(memoTxt).replace(/"/g,'&quot;')}" data-tip="${escHtml(appTipHtml('급여 특이사항', [], memoTxt)).replace(/"/g,'&quot;')}">*</sup>` : ''; // [2026.10.02] "* 를 눌러도 아무것도 안 뜬다"(요청) - 누르면 그 달 특이사항 팝업
-          return `<td class="${colCls}" style="position:relative;">${memoStar}<button type="button" class="it-all-month-cell-btn" ${clickAttr} data-tip="${escHtml(tip).replace(/"/g,'&quot;')}" style="width:100%; border:${cellBorder}; border-radius:6px; padding:4px 1px; background:${stageDots ? 'transparent' : st.bg}; color:${st.text}; font-size:10.5px; font-weight:700; cursor:${(cs.state==='halfyear' || cs.state==='none') ? 'default' : (st.disabled?'not-allowed':'pointer')}; opacity:${st.disabled && cs.state!=='none'?'0.35':'1'};">${stageDots || escHtml(cellLabel)}</button></td>`;
+          return `<td class="${colCls}" style="position:relative;">${memoStar}<button type="button" class="it-all-month-cell-btn" ${clickAttr} ${tipRows.length ? `data-tip="${escHtml(tip).replace(/"/g,'&quot;')}"` : '' /* [2026.10.02] 보여줄 정보가 없는 칸은 말풍선 없음(요청) */} style="width:100%; border:${cellBorder}; border-radius:6px; padding:4px 1px; background:${stageDots ? 'transparent' : st.bg}; color:${st.text}; font-size:10.5px; font-weight:700; cursor:${(cs.state==='halfyear' || cs.state==='none') ? 'default' : (st.disabled?'not-allowed':'pointer')}; opacity:${st.disabled && cs.state!=='none'?'0.35':'1'};">${stageDots || escHtml(cellLabel)}</button></td>`;
         }).join('');
       }).join('');
       const span = lanes.length > 1 ? ` rowspan="${lanes.length}"` : '';
@@ -27257,7 +27333,7 @@ function syncItAllStickyHead(){
 }
 window.addEventListener('scroll', ()=> syncItAllStickyHead(), { passive:true, capture:true });
 window.addEventListener('resize', ()=> syncItAllStickyHead(), { passive:true });
-document.getElementById('itAllYear')?.addEventListener('change', (e)=>{ itAllYear = e.target.value; renderIncomeTaxUnified(); saveFilingSubviewState(); });
+document.getElementById('itAllYear')?.addEventListener('change', (e)=>{ const v = e.target.value; itAllPeriod = /^\d{4}-\d{2}$/.test(v) ? v : null; itAllYear = v.slice(0,4); renderIncomeTaxUnified(); saveFilingSubviewState(); });
 document.getElementById('itAllSearch')?.addEventListener('input', ()=> renderIncomeTaxUnified());
 // 신고일자 입력 팝업 - 이미 신고대상으로 등록된 달(칸)을 눌렀을 때 뜨며, 지급시기별 원천세·지방세 신고일자·
 // 메모를 입력함. 저장을 눌러야 실제로 반영됨(다른 신고대상/신고구분 팝업들과 같은 패턴)
@@ -33182,6 +33258,24 @@ XLS_SPECS['filingStatus'] = {
   sheets: () => {
     const c = xlsFilingCtx.status; if(!c) return [];
     const store = FILING_KINDS.status.getStore();
+    if(c.merged){
+      // 결산(1차·2차 합친 화면) - 1차/2차 진행상태·완료일 + 메모
+      const pdT = t => { store[t] = store[t] || {}; return store[t][c.period] = store[t][c.period] || {}; };
+      const cols = [{k:'s1',label:'1차 진행상태'},{k:'d1',label:'1차 완료일',t:'date'},{k:'s2',label:'2차 진행상태'},{k:'d2',label:'2차 완료일',t:'date'},{k:'memo',label:'메모'}];
+      return [{ grid:true, name:`결산 ${c.period}`, cols,
+        rows: () => c.list.map(cl=>{ const a = pdT('결산1차')[cl.id] || {}, b = pdT('결산2차')[cl.id] || {};
+          return { id:cl.id, name:cl.name, bizNo:cl.bizNo, cells:{ s1: a.status && a.status!=='미확인' ? a.status : '', d1:a.completedAt||'', s2: b.status && b.status!=='미확인' ? b.status : '', d2:b.completedAt||'', memo:a.memo||'' } }; }),
+        set: (id, k, v) => {
+          const t = (k === 's2' || k === 'd2') ? '결산2차' : '결산1차';
+          const e = pdT(t)[id] = pdT(t)[id] || { status:'미확인', memo:'' };
+          e.month = String(SETTLEMENT_FIXED_MONTH[t]);
+          if(k === 's1' || k === 's2') e.status = ['미확인','검토중','결산완료'].includes(v) ? v : '미확인';
+          else if(k === 'd1' || k === 'd2') e.completedAt = v || '';
+          else e.memo = v || '';
+          e.updatedAt = xlsNowKo();
+        },
+        commit: async () => { await saveSharedFilingStatus(); renderFilingStatusTable('status'); } }];
+    }
     const pd = () => { store[c.taxType] = store[c.taxType] || {}; return store[c.taxType][c.period] = store[c.taxType][c.period] || {}; };
     const cols = [];
     if(c.isSettlement) cols.push({k:'month',label:'결산월',t:'number'});
@@ -37457,7 +37551,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 12:57';
+const APP_BUILD = '2026.10.02 13:01';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
