@@ -2807,6 +2807,14 @@ try{
      보이지 않게, 예전에 문제였던 "우측 상단에 따로 뜬 버튼"과는 다름) */
   /* "설정의 등록 버튼 스타일·크기를 모두 같게" - 하위메뉴마다 달랐던 등록 버튼을 한 규격으로 */
   /* [2026.10.01] 경영지원실 직원 정보 입력 줄 - 직원 프로필 카드 느낌(요청): 왼쪽 이니셜/사진, 이름 굵게, 직위는 작은 칩, 연락처는 아이콘과 함께 */
+  /* [2026.10.02] 팀원별 정보 - 경영지원실 직원 목록과 같은 줄 모양(요청) */
+  .ci-mrow .ci-mrow-name{ font-size:14px; font-weight:800; color:var(--ink); padding:4px 2px; white-space:nowrap; }
+  .ci-mrow .ci-mrow-title{ flex:none; min-width:72px; border-radius:999px; background:var(--indigo-bg, #EEF0FF); color:var(--indigo-deep); font-size:11.5px; font-weight:700; text-align:center; padding:4px 12px; box-sizing:border-box; }
+  .ci-mrow .ci-mrow-items{ color:var(--ink-soft); }
+  .ci-mrow .ci-mrow-detail{ display:none; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); }
+  .ci-mrow.open .ci-mrow-detail{ display:block; }
+  .ci-mrow.open .hr-staff-summary{ visibility:hidden; }
+  .ci-mrow.open .ci-mrow-toggle svg{ transform:rotate(180deg); }
   .hr-staff-row{ margin-bottom:8px; padding:10px 12px; border:1px solid var(--border); border-radius:14px; background:var(--surface); transition:box-shadow .15s, border-color .15s; }
   .hr-staff-row:hover{ border-color:rgba(91,95,239,0.35); box-shadow:0 6px 16px -10px rgba(29,30,51,0.25); }
   .hr-staff-row .hr-staff-head{ display:flex; gap:10px; align-items:center; }
@@ -17299,6 +17307,7 @@ function activeEmployeeNamesForCi(){
   }).filter(p=> p.name && p.name !== '관리자' && p.employmentStatus !== '퇴사');
 }
 
+const ciTeamOpenRows = new Set(); // 팀원별 정보 목록에서 펼쳐 둔 사람(다시 그려도 그대로)
 async function renderCompanyInfoTeam(wrapId, generalWrapId, showControls){
   wrapId = wrapId || 'ciTeamListWrap';
   generalWrapId = generalWrapId || 'ciTeamGeneralListWrap';
@@ -17360,15 +17369,23 @@ async function renderCompanyInfoTeam(wrapId, generalWrapId, showControls){
     // "ID/PW 표랑 정보 표가 따로 나뉘어 있어서 번거롭다"는 요청으로, 종류(정보/계정) 구분 없이 표 하나로
     // 통합함(buildCiUnifiedTable) - 예전엔 buildCiInfoTable/buildCiAccountTable 두 표를 이어붙였음
     const bodyHtml = buildCiUnifiedTable(items, 'team', admin, p.person, showControls) || `<div class="empty-state" style="padding:10px;">등록된 항목이 없습니다.</div>`;
-    const titleLabel = p.title ? `${escHtml(p.person)} <span style="font-weight:600; color:var(--ink-soft); font-size:12px;">(${escHtml(p.title)})</span>` : escHtml(p.person);
+    // [2026.10.02] "경영지원실처럼 목록형으로"(요청) - 사람마다 한 줄(사진·이름·직위 칩·등록 항목 이름 요약), 오른쪽 펼치기(▾)를 누르면 항목 표가 열림
+    const names = items.map(it=> it.label || it.name || it.title || '').filter(Boolean);
+    const summary = items.length ? `<span class="ci-mrow-items">${escHtml(names.slice(0,4).join(' · '))}${names.length > 4 ? ' 외' : ''}</span><span class="hr-duty-n">항목 ${items.length}</span>` : `<span>등록된 항목이 없어요</span>`;
+    const open = ciTeamOpenRows.has(p.person);
     return `
-    <div style="background:var(--indigo-bg); border-radius:12px; padding:14px 16px; margin-bottom:14px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
-        <span style="font-size:13px; font-weight:800; color:var(--navy);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-1a7 7 0 0 1 14 0v1"></path></svg> ${titleLabel}</span>
+    <div class="hr-staff-row ci-mrow${open ? ' open' : ''}" data-person="${escHtml(p.person)}">
+      <div class="hr-staff-head">
+        <span class="hr-staff-av">${hrStaffAvatarHtml(p.person)}</span>
+        <span class="ci-mrow-name">${escHtml(p.person)}</span>
+        ${p.title ? `<span class="ci-mrow-title">${escHtml(p.title)}</span>` : ''}
+        <span class="hr-staff-summary">${summary}</span>
+        <button type="button" class="del-btn xls-io-btn ci-mrow-toggle" title="펼치기" aria-label="펼치기"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
       </div>
-      ${bodyHtml}
+      <div class="ci-mrow-detail">${bodyHtml}</div>
     </div>`;
   }).join('');
+  wrap.querySelectorAll('.ci-mrow-toggle').forEach(btn=> btn.addEventListener('click', ()=>{ const row = btn.closest('.ci-mrow'); const nm = row.dataset.person; row.classList.toggle('open'); if(row.classList.contains('open')) ciTeamOpenRows.add(nm); else ciTeamOpenRows.delete(nm); }));
   bindCiRowButtons(wrap);
   bindCiRevealButtons(wrap);
 }
@@ -39178,7 +39195,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 20:15';
+const APP_BUILD = '2026.10.02 20:25';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
