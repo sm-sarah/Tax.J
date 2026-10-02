@@ -2072,6 +2072,8 @@ try{
   html.taxj-syncing .app-main > section.tab-panel{ visibility:hidden; }
   html.taxj-syncing .app-main::before{ content:'최신 자료를 불러오는 중…'; position:absolute; left:0; right:0; top:120px; text-align:center; font-size:13px; font-weight:700; color:var(--ink-soft); z-index:5; animation:taxjSyncPulse 1.2s ease-in-out infinite; }
   @keyframes taxjSyncPulse{ 0%,100%{ opacity:.45; } 50%{ opacity:1; } }
+  /* [2026.10.02] "닫기(✕)는 팝업 오른쪽 위에"(요청) - 저장 버튼 옆 아래쪽에 붙어 있던 닫기 버튼을 팝업 오른쪽 위 모서리로 */
+  .modal-close-tr{ position:absolute !important; top:14px; right:14px; margin:0 !important; z-index:2; }
   /* 스크롤 시 떠서 따라오는 머리글 - 아래 내용이 비치지 않게 바탕을 채우고 맨 위로 */
   #itAllTableWrap table thead th{ z-index:6; }
   #itAllTableWrap table thead.it-head-floating tr:last-child th{ box-shadow:0 2px 4px -2px rgba(29,30,51,0.18); }
@@ -25485,6 +25487,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
   }, true);
 });
 
+// [2026.10.02] 아래쪽 버튼 줄(저장 옆)에 있던 닫기(✕)를 팝업 오른쪽 위 모서리로 옮김(요청) - 다른 팝업들과 같은 자리
+(function moveBottomCloseButtonsToCorner(){
+  ['empDataTransferCloseBtn','remoteImportCloseBtn','xlsDownCloseBtn','xlsUploadCloseBtn','gwExpenseImportCloseBtn','clockImportCloseBtn',
+   'filingTargetEditCloseBtn','vatTargetEditCloseBtn','targetBulkApplyCloseBtn'].forEach(id=>{
+    const btn = document.getElementById(id);
+    const overlay = btn && btn.closest('[id$="ModalOverlay"]');
+    const box = overlay && overlay.firstElementChild;
+    if(!btn || !box || box.contains(btn) === false) return;
+    box.style.position = 'relative';
+    btn.classList.add('modal-close-tr');
+    box.appendChild(btn);
+  });
+})();
 // ══════════════════════════════════════════════════════════
 // 🖋️ 결재 탭: 신고현황 / 신고도움 / 결재(그룹웨어)
 // ══════════════════════════════════════════════════════════
@@ -26540,6 +26555,8 @@ function vatEntryStatus(entry, period, entityType){
 }
 const VAT_JEONGGI_STATUS_LABEL = { filing:'예정신고대상', notice:'예정고지대상', 'notice-excluded':'예정고지대상(고지제외)', 'not-target':'미대상' };
 const VAT_HWAKJEONG_STATUS_LABEL = { target:'대상', 'not-target':'미대상' };
+// [2026.10.02] 신고대상 편집 팝업의 칩만 짧은 이름으로(요청) - 칩이 두 줄로 넘어가지 않게. 표 칸에는 위 원래 이름 그대로
+const VAT_JEONGGI_STATUS_CHIP_LABEL = { filing:'예정신고', notice:'예정고지', 'notice-excluded':'고지제외', 'not-target':'미대상' };
 let vatTargetYear = null;
 function populateVatFilingTargetYearSelect(){
   const sel = document.getElementById('vatTargetYear');
@@ -26636,9 +26653,9 @@ function openVatTargetEditModal(clientId, year, period){
     statusKeys = ['filing','notice','notice-excluded','not-target'];
     if(hint) hint.textContent = '법인은 예정신고를 직접 하거나, 예정고지를 받을 수 있어요.';
   }
-  const labelMap = isJeonggi ? VAT_JEONGGI_STATUS_LABEL : VAT_HWAKJEONG_STATUS_LABEL;
+  const labelMap = isJeonggi ? VAT_JEONGGI_STATUS_CHIP_LABEL : VAT_HWAKJEONG_STATUS_LABEL;
   if(toggle){
-    toggle.innerHTML = statusKeys.map(k=>`<button type="button" class="vt-status-btn" data-status="${k}">${escHtml(labelMap[k])}</button>`).join('');
+    toggle.innerHTML = statusKeys.map(k=>`<button type="button" class="vt-status-btn" data-status="${k}" title="${escHtml((isJeonggi ? VAT_JEONGGI_STATUS_LABEL : VAT_HWAKJEONG_STATUS_LABEL)[k])}">${escHtml(labelMap[k])}</button>`).join('');
     toggle.querySelectorAll('.vt-status-btn').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         const { clientId, year, period } = vatTargetEditCtx;
@@ -37623,7 +37640,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.02 13:07';
+const APP_BUILD = '2026.10.02 13:09';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
