@@ -11178,7 +11178,7 @@ function renderPermStatus(){
       if((snap.employmentStatus || p.employmentStatus) === '퇴사') return;
       const name = (p.name || snap.employeeName || '').trim(); const email = String(p.email||'').trim().toLowerCase();
       if(!name || name === '관리자' || !email) return;
-      people.push({ name, email, cpa: String(p.position||'').trim() === '회계사' });
+      people.push({ name, email, cpa: String(p.position||'').trim() === '회계사', pos: String(p.position || snap.position || '').trim() });
     });
   }catch(e){}
   if(!people.length){ wrap.innerHTML = `<p class="hint" style="text-align:center;">이메일이 등록된 직원이 없어요.</p>`; return; }
@@ -11188,7 +11188,7 @@ function renderPermStatus(){
     const gm = pr.gmailCount === 'on' ? chip('연결','var(--mint)') : pr.gmailCount === 'off' ? chip('안 씀','var(--ink-soft)') : chip('안 정함','var(--ink-soft)'); // [2026.10.03] "메일 숫자" → "Gmail 연결"(요청)
     const ck = pr.clockReminder === false ? chip('끔','var(--coral)') : chip('켬','var(--mint)');
     const devs = Object.values(pr.perm || {}).sort((a,b)=> String(b.at||'').localeCompare(String(a.at||'')));
-    const nameCell = `<b style="color:var(--ink);">${escHtml(pp.name)}</b>${pp.cpa ? '<span style="display:block; font-size:10.5px; color:var(--indigo-deep); margin-top:1px;">회계사</span>' : ''}`; // [2026.10.03] 직책은 이름 아래 줄로(요청)
+    const nameCell = `<b style="color:var(--ink);">${escHtml(pp.name)}</b>${pp.pos ? `<span style="display:block; font-size:10.5px; color:var(--indigo-deep); margin-top:1px;">${escHtml(pp.pos)}</span>` : ''}`; // [2026.10.03] 직책은 이름 아래 줄로 - 회계사·직원 모두(요청)
     if(!devs.length) return `<tr><td>${nameCell}</td><td colspan="3" style="color:var(--ink-soft);">기록 없음</td><td>${gm}</td><td>${ck}</td></tr>`;
     return devs.map((d,i)=>{
       const office = /사무실|회사|청인/.test(d.dev||'') && !d.mob;
@@ -40154,7 +40154,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.03 19:26';
+const APP_BUILD = '2026.10.03 19:29';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -41367,8 +41367,14 @@ function renderSeatFreeHtml(cells, walls){
   try{ body = seatChartOrderForStack(placed).map(seatCellViewHtml).join(''); }
   finally{ _seatViewCellsCtx = []; _seatViewAbs = false; }
   const lines = seatV2LinesHtml((walls||[]).filter(w=> w && w.x1 != null), false);
-  const W = Math.ceil(bd.r) + 8, H = Math.ceil(bd.b) + 8;
-  return `<div class="seat-free-view" style="position:relative; width:${W}px; height:${H}px; margin:0 auto;">${body}${lines}</div>`;
+  // 왼쪽·위 빈 여백은 잘라서(칸이 놓인 범위만) 조회·출력에서 가운데에 오게 함 - 편집 캔버스 크기는 출력에 영향 없음
+  let mx = Infinity, my = Infinity;
+  placed.forEach(c=>{ mx = Math.min(mx, c.col - 1); my = Math.min(my, c.row - 1); });
+  (walls||[]).forEach(w=>{ if(w && w.x1 != null){ mx = Math.min(mx, w.x1 - (w.w||3)); my = Math.min(my, w.y1 - (w.w||3)); } });
+  if(!isFinite(mx)) mx = 0; if(!isFinite(my)) my = 0;
+  mx = Math.max(0, Math.floor(mx)); my = Math.max(0, Math.floor(my));
+  const W = Math.ceil(bd.r) + 8 - mx, H = Math.ceil(bd.b) + 8 - my;
+  return `<div class="seat-free-view" style="position:relative; width:${W}px; height:${H}px; margin:0 auto;"><div style="position:absolute; left:${-mx}px; top:${-my}px; width:${W + mx}px; height:${H + my}px;">${body}${lines}</div></div>`;
 }
 var _seatViewAbs = false;
 // 조회 화면 칸 위치 - 예전은 CSS grid 칸, v2는 px 좌표(안쪽 3px 들여서 칸 사이 6px 간격)
@@ -41571,7 +41577,9 @@ function renderSeatChartEditPreview(){
   seatUndoNote();
   if(seatMultiAnchor !== seatChartSelectedId){ seatMultiSel.clear(); seatMultiAnchor = seatChartSelectedId; }
   if(seatSizeMode && seatSizeMode !== seatChartSelectedId) seatSizeMode = null;
-  if(seatV2()){ seatV2Normalize(seatChartDraft); seatV2FitCanvas(seatChartDraft); if(seatChartSelectedId || seatChartWallMode || !(seatChartDraft.walls||[])[seatLineSelIdx]) seatLineSelIdx = null; }
+  if(seatV2()){ seatV2Normalize(seatChartDraft); seatV2FitCanvas(seatChartDraft);
+    // [2026.10.03] "캔버스가 왼쪽으로 쏠려 보인다"(요청) - 캔버스 가로를 편집 영역 폭만큼 채움(출력은 칸이 놓인 범위만 나가서 영향 없음)
+    try{ const cs = getComputedStyle(wrap); const avail = Math.floor(wrap.clientWidth - (parseFloat(cs.paddingLeft)||0) - (parseFloat(cs.paddingRight)||0) - 2); if(avail > seatChartDraft.cols) seatChartDraft.cols = avail; }catch(e){} if(seatChartSelectedId || seatChartWallMode || !(seatChartDraft.walls||[])[seatLineSelIdx]) seatLineSelIdx = null; }
   const cols = Math.max(1, seatChartDraft.cols||9);
   const rows = seatChartRowsNeeded();
   const gridW = seatV2() ? cols : seatColX(cols+1) - SEAT_EDIT_GAP;
