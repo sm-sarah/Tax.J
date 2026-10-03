@@ -1745,7 +1745,13 @@ try{
   #homeFavoritesChips.is-reorder-mode .home-fav-tile{ padding-right:8px; }
   /* [2026.10.03] "즐겨찾기 별표·설정 위치 디자인이 별로"(요청, A안) - 맨 위에 "즐겨찾기" 제목과 ⚙를 한 줄로(아래 얇은 구분선),
      기본 화면은 이름 바로 옆 작은 ★만 항상 보이고(배경색 없음), 다른 줄의 ☆·✕는 그 줄에 마우스를 올렸을 때만 보임 */
-  .home-fav-tools-row{ justify-content:space-between; align-items:center; padding:0 2px 6px 10px; margin-bottom:4px; border-bottom:1px solid var(--border); }
+  .home-fav-tools-row{ display:none !important; } /* [2026.10.03] 제목·⚙ 줄 없앰(끌기 손잡이로 대신) */
+  .home-fav-tile{ padding-left:4px !important; }
+  .home-fav-drag{ display:inline-flex; align-items:center; justify-content:center; width:14px; height:18px; margin-right:-2px; color:var(--ink-soft); opacity:0; cursor:grab; touch-action:none; flex:none; transition:opacity .12s; }
+  .home-fav-tile:hover .home-fav-drag{ opacity:.55; }
+  .home-fav-drag:hover{ opacity:1 !important; color:var(--indigo); }
+  .home-fav-tile.is-dragging{ background:var(--indigo-bg) !important; box-shadow:0 4px 12px -6px rgba(29,30,51,.35); }
+  .is-touch-device .home-fav-drag{ opacity:.45; }
   .home-fav-head-title{ font-size:11.5px; font-weight:800; color:var(--ink-soft); letter-spacing:.02em; }
   .home-fav-pin{ opacity:0; }
   .home-fav-tile:hover .home-fav-pin{ opacity:.7; }
@@ -22127,13 +22133,15 @@ function renderFavoritesBar(){
   // 하단 시트, 기본 사이드바)에서 항상 같이 따라다니면서도 자기 목록 폭에 맞게 자연스러운 비율로 보임
   // (위 CSS .home-fav-tools-row 주석 참고). 클릭 핸들러는 아래에서 매번 새로 다시 그려지는 이 버튼에 매번
   // 다시 걸어줌(wrap.innerHTML로 매번 새로 만들어지므로)
-  let html = `<div class="home-fav-tools-row"><span class="home-fav-head-title">즐겨찾기</span><button type="button" id="homeFavReorderBtn" class="home-fav-reorder-btn${favReorderMode ? ' is-active' : ''}" title="즐겨찾기 순서 바꾸기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82A1.65 1.65 0 0 0 3 13.09H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button></div>`;
+  // [2026.10.03] "설정 아이콘·구분선·'즐겨찾기' 제목은 없애고, 이름 앞을 끌어서 순서 바꾸기"(요청) - ⚙(순서 편집 모드) 대신 줄마다 끌기 손잡이
+  let html = '';
   // 다른 팝오버(원천세/부가세 등)와 똑같은 납작한 목록 스타일(.home-submenu-item)로 통일함 - 예전엔
   // 카드형(.home-tile-plain, 왼쪽 컬러 바)이라 즐겨찾기만 다른 메뉴들과 스타일이 달라 보였음
   html += list.map((f,i)=>`
     <div class="home-submenu-item home-fav-tile${f.key===effectiveMainKey ? ' home-fav-tile-main' : ''}" data-fav-key="${escHtml(f.key)}">
       <button type="button" class="home-fav-move" data-fav-key="${escHtml(f.key)}" data-dir="-1" title="위로"${i===0 ? ' disabled' : ''}>▲</button>
       <button type="button" class="home-fav-move" data-fav-key="${escHtml(f.key)}" data-dir="1" title="아래로"${i===list.length-1 ? ' disabled' : ''}>▼</button>
+      <span class="home-fav-drag" data-fav-key="${escHtml(f.key)}" title="끌어서 순서 바꾸기"><svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="3" r="1.3"/><circle cx="7" cy="3" r="1.3"/><circle cx="3" cy="7" r="1.3"/><circle cx="7" cy="7" r="1.3"/><circle cx="3" cy="11" r="1.3"/><circle cx="7" cy="11" r="1.3"/></svg></span>
       <span>${escHtml(f.label)}</span>
       <button type="button" class="home-fav-pin${f.key===effectiveMainKey ? ' is-main' : ''}" data-fav-key="${escHtml(f.key)}" title="${f.key===effectiveMainKey ? '즐겨찾기의 메인 화면이에요 (즐겨찾기 아이콘을 누르면 바로 이 화면으로 이동)' : '이 화면을 즐겨찾기의 메인으로 설정'}"><svg width="11" height="11" viewBox="0 0 24 24" fill="${f.key===effectiveMainKey ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
       <button type="button" class="home-fav-remove" data-fav-key="${escHtml(f.key)}" title="즐겨찾기에서 제거">✕</button>
@@ -22151,7 +22159,8 @@ function renderFavoritesBar(){
   });
   wrap.querySelectorAll('.home-fav-tile').forEach(tile=>{
     tile.addEventListener('click', (e)=>{
-      if(e.target.closest('.home-fav-remove') || e.target.closest('.home-fav-pin') || e.target.closest('.home-fav-move')) return;
+      if(e.target.closest('.home-fav-remove') || e.target.closest('.home-fav-pin') || e.target.closest('.home-fav-move') || e.target.closest('.home-fav-drag')) return;
+      if(wrap._favJustDragged) return;
       if(favReorderMode) return; // 순서 편집 중엔 실수로 화면 이동되지 않게 항목 클릭 자체를 막음
       const target = findFavoriteMenuTarget(tile.dataset.favKey);
       if(target) target.click();
@@ -22160,6 +22169,35 @@ function renderFavoritesBar(){
   });
   wrap.querySelectorAll('.home-fav-pin').forEach(btn=>{
     btn.addEventListener('click', (e)=>{ e.stopPropagation(); setFavoriteMainKey(btn.dataset.favKey); });
+  });
+  // 손잡이를 누르고 위아래로 끌면 줄이 따라 움직이고, 손을 떼면 그 순서로 저장
+  wrap.querySelectorAll('.home-fav-drag').forEach(h=>{
+    h.addEventListener('click', e=> e.stopPropagation());
+    h.addEventListener('pointerdown', (e)=>{
+      e.preventDefault(); e.stopPropagation();
+      const tile = h.closest('.home-fav-tile'); if(!tile) return;
+      tile.classList.add('is-dragging');
+      let moved = false;
+      const onMove = (ev)=>{
+        const tiles = [...wrap.querySelectorAll('.home-fav-tile')].filter(t=> t !== tile);
+        const after = tiles.find(t=>{ const r = t.getBoundingClientRect(); return ev.clientY < r.top + r.height/2; });
+        if(after){ if(after.previousElementSibling !== tile){ wrap.insertBefore(tile, after); moved = true; } }
+        else { const last = tiles[tiles.length-1]; if(last && last.nextElementSibling !== tile){ last.after(tile); moved = true; } }
+      };
+      const onUp = ()=>{
+        window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onUp);
+        tile.classList.remove('is-dragging');
+        if(!moved) return;
+        wrap._favJustDragged = true; setTimeout(()=>{ wrap._favJustDragged = false; }, 50);
+        const order = [...wrap.querySelectorAll('.home-fav-tile')].map(t=> t.dataset.favKey);
+        const cur = getFavoriteMenuItems();
+        const next = order.map(k=> cur.find(f=> f.key === k)).filter(Boolean);
+        cur.forEach(f=>{ if(!next.includes(f)) next.push(f); });
+        saveFavoriteMenuItems(next);
+        renderFavoritesBar();
+      };
+      window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp); window.addEventListener('pointercancel', onUp);
+    });
   });
   wrap.querySelectorAll('.home-fav-remove').forEach(btn=>{
     btn.addEventListener('click', (e)=>{ e.stopPropagation(); removeFavoriteMenuItem(btn.dataset.favKey); });
