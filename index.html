@@ -5358,7 +5358,7 @@ try{
     <div style="display:grid; grid-template-columns:1fr auto 1fr; align-items:start; gap:10px; margin-bottom:6px;">
       <div></div>
       <div style="text-align:center;">
-        <div style="font-weight:800; font-size:15px; color:var(--ink);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg> 휴지통</div>
+        <div style="font-weight:800; font-size:15px; color:var(--ink);" title="지운 지 90일이 지나면 자동으로 완전히 삭제돼요"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg> 휴지통</div>
         <div style="font-size:10px; font-weight:600; color:var(--ink-soft); margin-top:2px;">↘ 우하단 모서리를 드래그하면 크기 조절</div>
       </div>
       <div style="justify-self:end;"><button type="button" id="trashModalClose" class="del-btn modal-close-btn" style="flex-shrink:0;">✕</button></div>
@@ -8386,6 +8386,7 @@ function loadSharedData(){
   try{ sharedFilingHelp = JSON.parse(localStorage.getItem('worklog_shared_filinghelp') || '{}') || {}; }catch(e){ sharedFilingHelp = {}; }
   try{ sharedApprovals = JSON.parse(localStorage.getItem('worklog_shared_approvals') || '[]') || []; }catch(e){ sharedApprovals = []; }
   try{ sharedTrash = JSON.parse(localStorage.getItem('worklog_shared_trash') || '[]') || []; }catch(e){ sharedTrash = []; }
+  if(purgeOldTrash()) saveSharedTrash();
   // 알림함 항목의 "실제 시각"(eventAt)/아이콘 보정과 "최근 한 달"만 보관하는 정리는, 원본 기안/공지 데이터
   // (sharedApprovals/sharedNoticeHistory)가 다 불러와진 뒤라야 정확히 계산되므로 여기(둘 다 로딩된 다음)에서 실행함
   if(typeof fixNotificationLogEntries === 'function') fixNotificationLogEntries();
@@ -8448,6 +8449,7 @@ function loadSharedData(){
   try{ const cl = localStorage.getItem('worklog_shared_clients'); clients = cl ? JSON.parse(cl) : { list:[] }; }catch(e){ console.error('거래처 불러오기 실패', e); clients = { list:[] }; }
   try{ const pi = localStorage.getItem('worklog_shared_personalinfo'); personalInfo = pi ? JSON.parse(pi) : { list:[] }; }catch(e){ console.error('개인정보 불러오기 실패', e); personalInfo = { list:[] }; }
   recoverMissingClientMemoAndPersonalInfo();
+  cleanupLegacyClientCopies();
   // 내부규정(인사지침/운영지침)도 거래처·개인정보와 같은 이유로 회사 공용 저장소에서만 불러옴 - 아직 없으면
   // (업데이트 후 첫 로딩) migratePolicyHistoryToSharedStore()가 프로필별로 흩어져 있던 이력을 한 번만 합쳐줌
   migratePolicyHistoryToSharedStore();
@@ -9135,6 +9137,18 @@ function migrateClientsToSharedStore(){
 // 이 함수는 그 손실을 되돌리기 위해, 아직 지운 적 없어서 각 직원 프로필 자리에 그대로 남아있는 옛 원본
 // 데이터를 다시 훑어서, 지금 공용 거래처엔 메모/개인정보가 비어있는데 옛 원본엔 있는 경우에만 채워 넣음
 // (이미 값이 있으면 절대 덮어쓰지 않음 - 그 사이 다시 입력한 내용을 지우지 않기 위함). 딱 한 번만 실행됨.
+// [2026.10.03] "불필요한 개인정보·예전 데이터 정리"(요청) - 직원별로 따로 있던 예전 거래처·개인정보 원본(worklog_clients__직원ID,
+// worklog_personalInfo__직원ID)은 위 공용 저장소 합치기와 메모·개인정보 복구(둘 다 한 번만 실행)에서만 읽음. 두 작업이 이 브라우저에서
+// 이미 끝났으면 더 쓸 데가 없으므로 지움(서버 동기화 대상이 아니라 브라우저마다 남아 있던 사본 - 앱을 여는 브라우저마다 각자 정리됨)
+function cleanupLegacyClientCopies(){
+  try{
+    if(localStorage.getItem('worklog_shared_clients') === null) return;
+    if(localStorage.getItem('worklog_client_memo_pi_recovery_v1') === null) return;
+    const del = [];
+    for(let i=0;i<localStorage.length;i++){ const k = localStorage.key(i)||''; if(/^worklog_(clients|personalInfo)__/.test(k)) del.push(k); }
+    del.forEach(k=> localStorage.removeItem(k));
+  }catch(e){ console.error('예전 거래처 사본 정리 실패', e); }
+}
 function recoverMissingClientMemoAndPersonalInfo(){
   if(localStorage.getItem('worklog_client_memo_pi_recovery_v1') !== null) return; // 이미 복구 시도함
   try{
@@ -12020,6 +12034,24 @@ function pushToTrash(type, kind, label, data){
   pushToSharedTrash(type, kind, `${profLabel}${label}`, data, activeProfileId);
   saveSharedTrash();
 }
+// [2026.10.03] "불필요한 개인정보·예전 데이터 정리"(요청) - 휴지통은 지운 지 90일이 지나면 완전히 삭제(개인정보가 기간 없이 남지 않게).
+// 알림·내규 삭제 기록은 "지운 것이 동기화로 되살아나지 않게" 막는 표시로도 쓰여서(삭제 확인용) 기간과 상관없이 남겨 둠.
+// 삭제 시각(deletedAt)은 "2026. 10. 3. 오후 4:24:15" 형식 - 날짜를 못 읽는 항목은 지우지 않음
+function trashKeepMs(){ return 90*24*60*60*1000; } // 보관 기간 90일 (함수로 둬서 불러오는 순서와 상관없이 쓸 수 있게)
+function trashItemExpired(t, cutoff){
+  if(!t || t.type === 'notification' || t.type === 'policy') return false;
+  const m = /(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})/.exec(String(t.deletedAt||''));
+  if(!m) return false;
+  return new Date(+m[1], +m[2]-1, +m[3]).getTime() < cutoff;
+}
+function purgeOldTrash(){
+  const cutoff = Date.now() - trashKeepMs();
+  let changed = false;
+  if(Array.isArray(sharedTrash)){ const n = sharedTrash.length; sharedTrash = sharedTrash.filter(t=> !trashItemExpired(t, cutoff)); changed = sharedTrash.length !== n; }
+  // 예전 개인 휴지통(직원 설정 안)도 같은 기준으로 정리 - 이 직원 설정을 다음에 저장할 때 같이 반영됨
+  if(typeof settings !== 'undefined' && settings && Array.isArray(settings.trash)) settings.trash = settings.trash.filter(t=> !trashItemExpired(t, cutoff));
+  return changed;
+}
 function pushToSharedTrash(type, kind, label, data, profileId){
   sharedTrash = sharedTrash || [];
   sharedTrash.unshift({ id: genId(), type, kind, label, deletedAt: new Date().toLocaleString('ko-KR'), data, profileId: profileId || undefined });
@@ -12812,6 +12844,7 @@ function normalizeState(){
   settings.leaveAsOfDate = settings.leaveAsOfDate || '';
   settings.employeeInfoHistory = settings.employeeInfoHistory || [];
   settings.trash = settings.trash || []; // 휴지통 - 근태·경비·일정·거래처·개인정보 삭제 시 여기로 먼저 들어감
+  { const n = settings.trash.length; settings.trash = settings.trash.filter(t=> !trashItemExpired(t, Date.now() - trashKeepMs())); if(settings.trash.length !== n) try{ localStorage.setItem(skey('settings'), JSON.stringify(settings)); }catch(e){} } // [2026.10.03] 예전 개인 휴지통도 90일 지난 항목 정리
   settings.clientImportSeeded = settings.clientImportSeeded || false; // 엑셀 초기 일괄가져오기를 이미 했는지 (한 번만 하고 다시 안 하기 위함)
   settings.contactInfoPatch2026 = settings.contactInfoPatch2026 || false; // 대표자 이메일/실무자 정보 보강을 이미 했는지 (한 번만)
   settings.birthDate = settings.birthDate || '';
