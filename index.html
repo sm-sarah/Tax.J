@@ -2285,6 +2285,15 @@ try{
   /* [2026.10.02] 특이사항 표시 = 엑셀 메모처럼 칸 오른쪽 위 모서리 빨간 삼각형(요청 - 예전 * 은 작아서 점처럼 보였음). 누르면 급여 특이사항 팝업 */
   .it-memo-star{ position:absolute; top:0; right:0; width:9px; height:9px; background:var(--coral); clip-path:polygon(0 0,100% 0,100% 100%); cursor:pointer; z-index:1; font-size:0; line-height:0; }
   .it-memo-star:hover{ width:11px; height:11px; }
+  /* [2026.10.03] "원천세 신고현황이 너무 화려하고 피곤하다"(요청) - 색은 "아직 안 한 것(연노랑)·진행 중(▶)·이번 귀속월 ✓"만 남김. 칸 크기·누르는 동작은 그대로
+     ① 대상 여부 안 정한 달·잠긴 달: 테두리 없이 비움(마우스를 올리면 테두리) ② 메모 표시: 빨간 삼각형 → 작은 연회색
+     ③ 미대상(회색 칸): 빈칸 ④ 신고 완료 ✓: 지난 달은 연회색, 지금 보는 귀속월(굵은 테두리 칸)만 진하게 */
+  .it-all-table .it-all-month-cell-btn:not(.submit-cell-btn)[data-cellstate="unset"], .it-all-table .it-all-month-cell-btn:not(.submit-cell-btn):disabled{ border-color:transparent !important; }
+  .it-all-table .it-all-month-cell-btn:not(.submit-cell-btn)[data-cellstate="unset"]:hover{ border-color:var(--border) !important; }
+  .it-all-table .it-all-month-cell-btn:not(.submit-cell-btn)[data-cellstate="notarget"]{ background:transparent !important; }
+  .it-all-table .it-memo-star{ width:7px; height:7px; background:#C3C7D4; }
+  .it-all-table .it-memo-star:hover{ width:9px; height:9px; background:var(--ink-soft); }
+  .it-all-table td:not(.it-focus) .it-done-mark svg{ stroke:#B9BECC; }
   /* [2026.10.02] 앱 공통 말풍선(appTipHtml + data-tip) - 브라우저 기본 글상자 대신 팝업과 같은 흰 카드 */
   .app-tip{ position:fixed; z-index:10050; max-width:320px; background:var(--surface); border:1px solid var(--border); border-radius:10px; box-shadow:0 10px 24px -8px rgba(29,30,51,.35); padding:9px 12px; font-size:12px; color:var(--ink); pointer-events:none; line-height:1.5; }
   .app-tip-h{ font-weight:800; font-size:12px; color:var(--indigo-deep); padding-bottom:5px; margin-bottom:5px; border-bottom:1px solid var(--border); white-space:nowrap; }
@@ -28789,7 +28798,7 @@ function renderItAllPeriodControls(){
   // [2026.10.02] "연도만이 아니라 귀속월까지 고르고, 고른 달이 강조되게"(요청) - 처음엔 지금 챙길 귀속월
   const nowP = itFocusPeriodNow();
   if(!itAllPeriod || itAllPeriod.slice(0,4) !== itAllYear) itAllPeriod = nowP.slice(0,4) === itAllYear ? nowP : `${itAllYear}-${nowP.slice(5,7)}`;
-  yearSel.innerHTML = sortedYears.map(y=>`<optgroup label="${y}년">${Array.from({length:12},(_,i)=>12-i).map(m=>{ const v = `${y}-${String(m).padStart(2,'0')}`; return `<option value="${v}" ${v===itAllPeriod?'selected':''}>${y}년 ${m}월 귀속${v===nowP?' (지금)':''}</option>`; }).join('')}</optgroup>`).join('');
+  yearSel.innerHTML = sortedYears.map(y=>`<optgroup label="${y}년">${Array.from({length:12},(_,i)=>12-i).map(m=>{ const v = `${y}-${String(m).padStart(2,'0')}`; return `<option value="${v}" ${v===itAllPeriod?'selected':''}>${y}년 ${m}월 귀속</option>`; }).join('')}</optgroup>`).join('');
 }
 // 신고대상으로 체크된 지급시기(당월/익월) 하나를 신고일자·지방세일자·상태뱃지·메모까지 한 덩어리로 보여줌 -
 // itAllDateEditModal(신고일자 입력 팝업) 안에서 씀
@@ -28981,7 +28990,7 @@ function renderIncomeTaxUnified(){
   // [2026.10.01] "지금 신고할 귀속월을 한눈에"(요청) - 이번에 챙길 귀속월(기한 10일 기준) 칸에 it-focus 표시
   const isFocusM = m => String(year) === String(focus.year) && m === focus.month;
   const fc = m => isFocusM(m) ? ' it-focus' : '';
-  const monthHeaderCells = Array.from({length:12},(_,i)=>i+1).map(m=>`<th class="cvb it-all-mcol it-all-m1 it-focus-l it-focus-r${fc(m)}">${m}월${isFocusM(m) && focus.period === itFocusPeriodNow() ? '<span class="it-focus-tag">신고</span>' : ''}</th>`).join('');
+  const monthHeaderCells = Array.from({length:12},(_,i)=>i+1).map(m=>`<th class="cvb it-all-mcol it-all-m1 it-focus-l it-focus-r${fc(m)}">${m}월</th>` /* [2026.10.03] 굵은 테두리 달 머리의 "신고" 칩 삭제(요청) */).join('');
   const taxSubHeaderCells = Array.from({length:12},(_,i)=>i+1).map(m=>
     `<th class="cvb it-all-mcol it-all-sub${fc(m)} it-focus-l">국세</th><th class="cvb it-all-sub${fc(m)} it-focus-r">지방세</th>`).join('');
   // "미대상은 테두리 칸 대신 바(—) 하나로만" 요청 - notarget은 테두리 없는 회색 "—"
@@ -39555,7 +39564,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.03 14:20';
+const APP_BUILD = '2026.10.03 14:35';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
