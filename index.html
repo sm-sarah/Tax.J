@@ -216,6 +216,9 @@ try{
      12.5px/12px → 13.5px/13px로 키우면서, 바로 그 "Google Drive 연동" 항목이 150px 폭에 딱 맞춰뒀던
      여유 없이 아슬아슬하게(1px 미만) 넘쳐서 줄바꿈될 뻔함 - 158px로 여유를 두어 다시 한 줄에 들어가게 함 */
   .app-sidebar.rail-mode{ flex:0 0 auto; width:auto; flex-direction:row; align-items:flex-start; padding-right:0; gap:8px; overflow:visible; }
+  /* [2026.10.03] "메뉴바가 지금보다 좀 아래, 대시보드 세로폭 기준으로"(요청) - 메뉴 레일 윗부분을 화면 제목 높이만큼 내려서
+     대시보드 카드(제목 아래 내용)와 위아래 범위가 맞게. 세로가 짧은 화면에서는 레일이 화면 밖으로 넘치지 않게 내리는 폭을 줄임(최대 88px) */
+  .app-sidebar.rail-mode > .home-menu-col{ margin-top:clamp(0px, calc(100vh - 1100px), 88px); }
   /* "대메뉴 아이콘이 조금 더 커도 될 것 같다, 글씨도 키워달라"는 요청으로 레일 카드 크기를 한 단계 키움
      (아이콘 칸 56px→66px, 아이콘 17px→21px, 글자 9px→11px) - 그만큼 레일 칼럼(home-menu-col)과 검색/전체메뉴
      버튼(app-rail-utility-btn)도 같이 넓혀서 서로 폭이 안 맞아 삐뚤어 보이지 않게 함 */
@@ -924,6 +927,10 @@ try{
   .cpa-crown-inline{ display:inline-block; width:15px; height:13px; margin-right:3px; vertical-align:-1px; }
   .cpa-crown-inline .pres-crown-mini{ display:block; width:100%; height:100%; }
   .cpa-crown-inline svg{ display:block; width:100%; height:100%; overflow:visible; }
+  /* [2026.10.03] "결재자 이름 줄이 안 맞음"(요청) - 왕관이 이름 앞 칸을 차지해서 같은 열의 다른 이름(왕관 없음)보다 오른쪽으로 밀려 보였음 →
+     왕관은 칸을 차지하지 않고 이름 왼쪽에 걸쳐 그리기만 해서, 이름끼리 가운데·왼쪽 줄이 맞게 */
+  .cpa-crown-inline{ position:relative; width:0; margin-right:0; }
+  .cpa-crown-inline .pres-crown-mini{ position:absolute; right:3px; top:-1px; width:15px; height:13px; }
   .pres-title-row{ flex:none; display:flex; justify-content:flex-end; margin:6px 4px 0 0; }
   .pres-inline-title{ display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:800; color:#8A7FB8; letter-spacing:.01em; white-space:nowrap; }
   .pres-inline-at{ font-weight:700; color:var(--ink-soft); }
@@ -8677,8 +8684,8 @@ function openPushTestMenu(anchor, t){
   dd.innerHTML = [['test','테스트 알림'],['checkIn','출근 알림 테스트'],['checkOut','퇴근 알림 테스트']].map(([k,l])=>`<button type="button" class="cal-owner-dd-item" data-k="${k}">${l}</button>`).join('');
   document.body.appendChild(dd);
   const r = anchor.getBoundingClientRect();
-  dd.style.left = Math.max(8, Math.min(window.innerWidth - dd.offsetWidth - 8, r.right - dd.offsetWidth)) + 'px';
-  dd.style.top = (r.bottom + 6) + 'px';
+  dd.style.left = (Math.max(8, Math.min(window.innerWidth - dd.offsetWidth - 8, r.right - dd.offsetWidth))) / pageZoomF() + 'px';
+  dd.style.top = ((r.bottom + 6)) / pageZoomF() + 'px';
   const onDoc = (e)=>{ if(!dd.contains(e.target) && !anchor.contains(e.target)) close(); };
   const onKey = (e)=>{ if(e.key === 'Escape') close(); };
   const onScroll = ()=> close();
@@ -13506,8 +13513,8 @@ function openCalOwnerSwitchPopup(screen){
   dd.innerHTML = profiles.map(p=>`<button type="button" class="cal-owner-dd-item${p.id===activeProfileId?' is-current':''}" data-id="${p.id}">${escHtml(p.name || '(이름 미등록)')}${p.id===activeProfileId ? '<span class="cal-owner-dd-check">✓</span>' : ''}</button>`).join('');
   document.body.appendChild(dd);
   const r = anchor.getBoundingClientRect();
-  dd.style.left = Math.max(8, Math.min(window.innerWidth - dd.offsetWidth - 8, r.left)) + 'px';
-  dd.style.top = (r.bottom + 6) + 'px';
+  dd.style.left = (Math.max(8, Math.min(window.innerWidth - dd.offsetWidth - 8, r.left))) / pageZoomF() + 'px';
+  dd.style.top = ((r.bottom + 6)) / pageZoomF() + 'px';
   anchor.classList.add('is-open');
   const onDoc = (e)=>{ if(!dd.contains(e.target) && !anchor.contains(e.target)) close(); };
   const onKey = (e)=>{ if(e.key === 'Escape') close(); };
@@ -13577,8 +13584,8 @@ function openNativeMonthPicker(inputId, anchorEl){
   if(anchorEl){
     const rect = anchorEl.getBoundingClientRect();
     input.style.position = 'fixed';
-    input.style.left = rect.left + 'px';
-    input.style.top = (rect.bottom + 6) + 'px';
+    input.style.left = (rect.left) / pageZoomF() + 'px';
+    input.style.top = ((rect.bottom + 6)) / pageZoomF() + 'px';
     input.style.opacity = '0';
     input.style.pointerEvents = 'none';
     // 위치를 바꾼 직후 바로 showPicker()를 부르면, 브라우저가 아직 레이아웃을 반영하기 전이라
@@ -13632,7 +13639,7 @@ function fitSidebarRail(){
     const col = sb && sb.querySelector(':scope > .home-menu-col');
     if(!sb || !col || !sb.classList.contains('rail-mode')) return;
     col.classList.remove('rail-compact'); col.style.maxHeight = ''; col.style.overflowY = '';
-    const avail = parseFloat(getComputedStyle(sb).maxHeight) || (window.innerHeight - 116);
+    const avail = (parseFloat(getComputedStyle(sb).maxHeight) || (window.innerHeight - 116)) - (parseFloat(getComputedStyle(col).marginTop) || 0); // 위에서 내린 만큼(margin-top) 빼고 계산
     if(col.scrollHeight <= avail) return;
     col.classList.add('rail-compact');
     if(col.scrollHeight > avail){ col.style.maxHeight = avail + 'px'; col.style.overflowY = 'auto'; }
@@ -16244,10 +16251,10 @@ function openClFeeMonthPopup(anchorEl){
   // 예전엔 팝업 오른쪽 끝을 아이콘에 맞춰서 아이콘 기준 왼쪽으로 넓게 펼쳐지다보니 앞쪽 열(사업자번호 등)을
   // 가려버렸음 - 아이콘 왼쪽 끝에 맞춰 오른쪽으로 펼쳐지게 바꿔서 표 앞쪽을 가리지 않게 함
   const popupWidth = popup.offsetWidth || 170;
-  popup.style.left = Math.min(rect.left, window.innerWidth - popupWidth - 8) + 'px';
+  popup.style.left = (Math.min(rect.left, window.innerWidth - popupWidth - 8)) / pageZoomF() + 'px';
   // 아이콘 아래로 펼치면 팝업이 바로 밑 거래처 행들(수임료·계약일 등)을 가려서, 아이콘 "위쪽"에 뜨도록 변경함
   const popupHeight = popup.offsetHeight || 90;
-  popup.style.top = Math.max(8, rect.top - popupHeight - 6) + 'px';
+  popup.style.top = (Math.max(8, rect.top - popupHeight - 6)) / pageZoomF() + 'px';
 }
 document.addEventListener('click', (e)=>{
   const popup = document.getElementById('clFeeMonthPopup');
@@ -27387,8 +27394,8 @@ function renderDailyWorkersTable(){
       b.innerHTML = `전월동일 <b>${pv.toLocaleString()}</b>`;
       document.body.appendChild(b);
       const r = inp.getBoundingClientRect();
-      b.style.left = Math.max(4, r.left + r.width/2 - b.offsetWidth/2) + 'px';
-      b.style.top = (r.bottom + 30 > window.innerHeight ? r.top - b.offsetHeight - 3 : r.bottom + 3) + 'px'; // 화면 아래 끝이면 칸 위에
+      b.style.left = (Math.max(4, r.left + r.width/2 - b.offsetWidth/2)) / pageZoomF() + 'px';
+      b.style.top = ((r.bottom + 30 > window.innerHeight ? r.top - b.offsetHeight - 3 : r.bottom + 3)) / pageZoomF() + 'px'; // 화면 아래 끝이면 칸 위에
       b.addEventListener('mousedown', e=> e.preventDefault()); // 칸 포커스를 잃지 않게
       b.addEventListener('click', ()=>{ inp.value = pv.toLocaleString(); dwHideSame(); inp.dispatchEvent(new Event('change')); });
     });
@@ -27444,8 +27451,8 @@ function openDwRepMenu(btn){
     ${!isMerge && sg ? `<div class="dw-rm-hint">${sg.state === 'skip' ? '앞 두 달 연속 신고 - 이번 달은 미신고' : sg.merged ? `미신고 달 금액 합산 ${Number(sg.amount).toLocaleString()}` : ''}</div>` : ''}`;
   document.body.appendChild(m);
   const r = btn.getBoundingClientRect();
-  m.style.left = Math.max(8, Math.min(window.innerWidth - m.offsetWidth - 8, r.left + r.width/2 - m.offsetWidth/2)) + 'px';
-  m.style.top = Math.min(window.innerHeight - m.offsetHeight - 8, r.bottom + 4) + 'px';
+  m.style.left = (Math.max(8, Math.min(window.innerWidth - m.offsetWidth - 8, r.left + r.width/2 - m.offsetWidth/2))) / pageZoomF() + 'px';
+  m.style.top = (Math.min(window.innerHeight - m.offsetHeight - 8, r.bottom + 4)) / pageZoomF() + 'px';
   const amtEl = m.querySelector('#dwRmAmt');
   const num = el => { const v = (el.value||'').replace(/[^\d]/g,''); return v === '' ? null : Number(v); };
   const prevEl = m.querySelector('#dwRmPrev'), curEl = m.querySelector('#dwRmCur');
@@ -29371,8 +29378,8 @@ function openItoKindsMenu(btn){
   m.innerHTML = ITO_PAY_KINDS.map(k=>`<label><input type="checkbox" value="${k}" ${cur.has(k)?'checked':''}><span class="ito-chip" data-k="${k}">${k}</span></label>`).join('');
   document.body.appendChild(m);
   const r = btn.getBoundingClientRect();
-  m.style.left = Math.max(8, Math.min(window.innerWidth - m.offsetWidth - 8, r.left)) + 'px';
-  m.style.top = Math.min(window.innerHeight - m.offsetHeight - 8, r.bottom + 4) + 'px';
+  m.style.left = (Math.max(8, Math.min(window.innerWidth - m.offsetWidth - 8, r.left))) / pageZoomF() + 'px';
+  m.style.top = (Math.min(window.innerHeight - m.offsetHeight - 8, r.bottom + 4)) / pageZoomF() + 'px';
   m.addEventListener('change', async ()=>{
     const arr = ITO_PAY_KINDS.filter(k=> m.querySelector(`input[value="${k}"]`).checked);
     await itoSet(id, 'payKinds', arr);
@@ -29896,7 +29903,10 @@ function vatFocusFiling(){
     total++;
     if(cs.filingEntry.status === '신고완료') done++; else ids.add(c.id);
   });
-  return Object.assign(f, { dday: Math.round((f.due - t) / 86400000), total, done, pending: total - done, pendingIds: ids });
+  // [2026.10.03] "대시보드 신고 진행률에 '부가세 2026년 undefined'"(요청) - 같은 이름의 예전 함수가 쓰던 label·quarter를 이 함수가 안 돌려줘서
+// 이름 자리에 undefined가 나왔음 → 기수 이름(예: 2기예정)과 분기(Q3)를 같이 돌려줌(대시보드 바로가기도 그 기수로 열림)
+  const q = Object.keys(VAT_QUARTER_TO_TARGET_PERIOD).find(k=> VAT_QUARTER_TO_TARGET_PERIOD[k] === f.period);
+  return Object.assign(f, { label: f.period, quarter: q, dday: Math.round((f.due - t) / 86400000), total, done, pending: total - done, pendingIds: ids });
 }
 let vatAllSeg = 'all'; // all | target | focus | pending
 function renderVatAllUnified(){ renderVatAllUnifiedInner(); tblPlaceXls(tblXlsBox('vatAllXlsBox'), document.getElementById('vatAllTableWrap')); }
@@ -30272,8 +30282,8 @@ function openSubmitCellMenu(anchor, apply){
   }
   document.body.appendChild(dd);
   const r = anchor.getBoundingClientRect();
-  dd.style.left = Math.max(8, Math.min(window.innerWidth - dd.offsetWidth - 8, r.left)) + 'px';
-  dd.style.top = (r.bottom + 6) + 'px';
+  dd.style.left = (Math.max(8, Math.min(window.innerWidth - dd.offsetWidth - 8, r.left))) / pageZoomF() + 'px';
+  dd.style.top = ((r.bottom + 6)) / pageZoomF() + 'px';
   const onDoc = (e)=>{ if(!dd.contains(e.target) && !anchor.contains(e.target)) close(); };
   const onKey = (e)=>{ if(e.key === 'Escape') close(); };
   function close(){ dd.remove(); document.removeEventListener('pointerdown', onDoc, true); document.removeEventListener('keydown', onKey); }
@@ -37609,7 +37619,7 @@ function renderEmployeeRoster(){
       const dd = document.createElement('div'); dd.className = 'cal-owner-dropdown emp-more-dd';
       dd.innerHTML = `<button type="button" class="cal-owner-dd-item" data-k="leave">휴가 조정</button><button type="button" class="cal-owner-dd-item" data-k="history">이력</button><button type="button" class="cal-owner-dd-item" data-k="del" style="color:var(--coral);">삭제</button>`;
       document.body.appendChild(dd);
-      const r = more.getBoundingClientRect(); dd.style.top = (r.bottom + 4) + 'px'; dd.style.left = Math.max(8, r.right - dd.offsetWidth) + 'px';
+      const r = more.getBoundingClientRect(); dd.style.top = ((r.bottom + 4)) / pageZoomF() + 'px'; dd.style.left = (Math.max(8, r.right - dd.offsetWidth)) / pageZoomF() + 'px';
       dd.addEventListener('click', ev=>{ const it = ev.target.closest('[data-k]'); if(!it) return; dd.remove();
         const map = { leave:'.employee-open-leave-btn', history:'.employee-open-history-btn', del:'.employee-del-btn' }; box.querySelector(map[it.dataset.k])?.click(); });
       setTimeout(()=> document.addEventListener('click', function off(){ dd.remove(); document.removeEventListener('click', off); }), 0);
@@ -40718,6 +40728,8 @@ function seatChartLayoutOf(chart){ return chart ? { cellW: chart.cellW||108, cel
 // 방도 이름이 "예정"·"미점유"·"공석" 등이면 빈 방으로 보고 아주 연한 회색 배경(그 외 방은 흰 배경)
 function seatIsEmptyRoom(cell){ return cell.type==='room' && /^(미점유|공석|빈자리|빈방|예정)$/.test(String(cell.text||'').trim()); }
 function seatIsEmptySeat(cell){ return cell.type==='seat' && (!cell.text || /^(미점유|공석|빈자리|예정)$/.test(String(cell.text).trim())); }
+// [2026.10.03] "이름을 '예정'이라고 붙였는데 '미점유'로 나옴"(요청) - 빈 자리 모양(연회색)은 그대로 두고 글자만 '예정'으로 보여줌
+function seatEmptyLabel(cell){ return String((cell && cell.text) || '').trim() === '예정' ? '예정' : '미점유'; }
 function seatCellViewHtml(cell){
   const empty = seatIsEmptySeat(cell);
   const { rowSpan, colSpan } = seatCellEffectiveSpans(cell);
@@ -40755,7 +40767,7 @@ function seatCellViewHtml(cell){
   // 그러면 "CPA"같은 영문만 통째로 90도 눕혀져서(고개를 옆으로 기울여야 읽히는 모양) "이게 방향이
   // 맞아?"라는 지적을 받음 - upright로 바꿔서 한글이든 영문이든 글자 하나하나를 눕히지 않고 그대로 세운
   // 채 위에서 아래로 쌓아, C·P·A가 각자 똑바로 선 채 세로로 나열되게 함(고개를 기울일 필요 없이 바로 읽힘)
-  const seatText = escHtml(empty ? '미점유' : (cell.type==='seat' ? seatDisplayText(cell.text) : (cell.text||'')));
+  const seatText = escHtml(empty ? seatEmptyLabel(cell) : (cell.type==='seat' ? seatDisplayText(cell.text) : (cell.text||'')));
   // 세로쓰기에서는 "조종환 CPA"의 띄어쓰기가 한 글자만큼 크게 벌어져 보여서, 아주 얇은 공백으로 바꿔 줌
   const seatTextHtml0 = (cell.type==='seat' && (isNarrowPortrait || seatIsCpaText(cell.text)) && seatText && !empty)
     ? seatStackedNameHtml(seatDisplayText(cell.text))
@@ -41040,7 +41052,7 @@ function seatChartEditCellHtml(cell){
     ? seatRoomBandHtml(cell, cell.text || '(이름없음)', 'seat-edit-cell-label')
     : (cell.type==='label' || cell.type==='item')
     ? seatCellIconBodyHtml(cell, escHtml(cell.text||'(이름없음)'), 'seat-edit-cell-label')
-    : (cell.type==='seat' && !empty ? seatWithTeamHtml((isNarrowPortrait || seatIsCpaText(cell.text)) ? seatStackedNameHtml(seatDisplayText(cell.text)||'(이름없음)', 'seat-edit-cell-label'+seatLabelClass) : `<span class="seat-edit-cell-label${seatLabelClass}"${seatLabelStyle}>${escHtml(seatDisplayText(cell.text)||'(이름없음)')}</span>`, cell.text) : `<span class="seat-edit-cell-label${seatLabelClass}"${seatLabelStyle}>${escHtml(empty ? '미점유' : (cell.text||'(이름없음)'))}</span>`);
+    : (cell.type==='seat' && !empty ? seatWithTeamHtml((isNarrowPortrait || seatIsCpaText(cell.text)) ? seatStackedNameHtml(seatDisplayText(cell.text)||'(이름없음)', 'seat-edit-cell-label'+seatLabelClass) : `<span class="seat-edit-cell-label${seatLabelClass}"${seatLabelStyle}>${escHtml(seatDisplayText(cell.text)||'(이름없음)')}</span>`, cell.text) : `<span class="seat-edit-cell-label${seatLabelClass}"${seatLabelStyle}>${escHtml(empty ? seatEmptyLabel(cell) : (cell.text||'(이름없음)'))}</span>`);
   return `<div class="seat-edit-cell${isSel ? ' is-selected' : ''}" data-id="${cell.id}" style="position:absolute; left:${visualLeft}px; top:${drawTop}px; width:${w}px; height:${drawH}px; ${bg}${sel} border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11.5px; text-align:center; padding:2px; cursor:grab; touch-action:none; user-select:none; box-sizing:border-box; line-height:1.2;">${dirArrow}${doorMark}${labelHtml}${rz}</div>`;
 }
 // ── PC 전용 작업 안내 ──
@@ -41570,6 +41582,10 @@ function renderSeatChartTray(){
 // 배치에서 빼서 미배치 트레이로 보내고, 나중에 트레이의 칩을 다시 그리드 위로 끌어오면 그 위치에 넣어줌.
 // 드래그 중에는 항상 화면 기준(position:fixed)으로 따라다니는 별도 "고스트" 사본을 하나 띄워서, 그리드
 // 안(position:absolute)이든 트레이(보통 문서 흐름)든 상관없이 자유롭게 오갈 수 있게 함
+// [2026.10.03] "배치예정 칸을 끌면 마우스 앞이 아니라 공중에 떠다님"(요청) - 창이 좁으면 화면 전체에 zoom(applyAutoZoom)이 걸리는데,
+// 화면 좌표(getBoundingClientRect·마우스 위치)는 zoom이 적용된 값이라 그대로 left/top에 넣으면 한 번 더 줄어들어 엉뚱한 곳에 그려졌음.
+// 화면 좌표로 계산하고 넣을 때만 zoom으로 나눔(끌기 고스트·각종 작은 팝업 메뉴 공통)
+function pageZoomF(){ try{ return parseFloat(getComputedStyle(document.documentElement).zoom) || 1; }catch(e){ return 1; } }
 function seatChartCellPointerDown(e){
   e.preventDefault();
   const el = e.currentTarget;
@@ -41596,8 +41612,8 @@ function seatChartCellPointerDown(e){
   ghost.removeAttribute('id');
   ghost.classList.add('seat-drag-ghost');
   Object.assign(ghost.style, {
-    position:'fixed', left:startRect.left+'px', top:startRect.top+'px',
-    width:startRect.width+'px', height:startRect.height+'px', margin:'0',
+    position:'fixed', left:(startRect.left/pageZoomF())+'px', top:(startRect.top/pageZoomF())+'px',
+    width:(startRect.width/pageZoomF())+'px', height:(startRect.height/pageZoomF())+'px', margin:'0',
     zIndex:'99999', pointerEvents:'none', opacity:'0.9',
     boxShadow:'0 8px 20px rgba(0,0,0,0.25)', cursor:'grabbing'
   });
@@ -41607,8 +41623,8 @@ function seatChartCellPointerDown(e){
   function onMove(ev){
     const dx = ev.clientX-startX, dy = ev.clientY-startY;
     if(Math.abs(dx)>3 || Math.abs(dy)>3) moved = true;
-    ghost.style.left = (startRect.left+dx)+'px';
-    ghost.style.top = (startRect.top+dy)+'px';
+    ghost.style.left = ((startRect.left+dx)/pageZoomF())+'px';
+    ghost.style.top = ((startRect.top+dy)/pageZoomF())+'px';
     if(tray){
       const tr = tray.getBoundingClientRect();
       const over = ev.clientX>=tr.left && ev.clientX<=tr.right && ev.clientY>=tr.top && ev.clientY<=tr.bottom;
@@ -42050,8 +42066,8 @@ document.getElementById('seatChartAddBtn')?.addEventListener('click', (ev)=>{
   dd.innerHTML = [['seat','좌석'],['label','구역'],['room','방']].map(([k,l])=>`<button type="button" class="cal-owner-dd-item" data-k="${k}">${l}</button>`).join('');
   document.body.appendChild(dd);
   const r = anchor.getBoundingClientRect();
-  dd.style.left = Math.max(8, Math.min(window.innerWidth - dd.offsetWidth - 8, r.left)) + 'px';
-  dd.style.top = (r.bottom + 6) + 'px';
+  dd.style.left = (Math.max(8, Math.min(window.innerWidth - dd.offsetWidth - 8, r.left))) / pageZoomF() + 'px';
+  dd.style.top = ((r.bottom + 6)) / pageZoomF() + 'px';
   const onDoc = (e)=>{ if(!dd.contains(e.target) && !anchor.contains(e.target)) close(); };
   const onKey = (e)=>{ if(e.key === 'Escape') close(); };
   const onScroll = ()=> close();
@@ -42073,7 +42089,9 @@ document.getElementById('seatChartAddTypeSelect')?.addEventListener('change', (e
   const row = seatChartFindOpenRow();
   const cell = type==='room'
     ? { id: genId(), type, text:'새 방', row, col:1, rowSpan:3, colSpan:3 }
-    : { id: genId(), type, text: type==='label' ? '새 구역' : '', row, col:1, rowSpan:1, colSpan:1 };
+    // [2026.10.03] "좌석이나 구역을 추가하면 미배정(배치예정) 칸으로 먼저"(요청) - 격자 맨 아래 새 줄에 넣던 것을 배치예정 칸에 넣음.
+    // 이름을 정한 뒤 끌어다 원하는 자리에 놓으면 됨(방은 크기가 커서 예전처럼 격자에 바로 넣음)
+    : { id: genId(), type, text: type==='label' ? '새 구역' : '', row:null, col:null, rowSpan:1, colSpan:1 };
   seatChartDraft.cells.push(cell);
   seatChartSelectedId = cell.id;
   seatChartEditorOpenId = cell.id;
@@ -42101,8 +42119,8 @@ function seatWallPopupOpen(){
     <div style="text-align:right;"><button type="button" class="submit-btn seat-wall-popup-done" style="padding:6px 14px; font-size:12px;">완료</button></div>`;
   document.body.appendChild(pop);
   const r = btn ? btn.getBoundingClientRect() : { left:20, bottom:80 };
-  pop.style.left = Math.max(8, Math.min(window.innerWidth - pop.offsetWidth - 8, r.left)) + 'px';
-  pop.style.top = (r.bottom + 8) + 'px';
+  pop.style.left = (Math.max(8, Math.min(window.innerWidth - pop.offsetWidth - 8, r.left))) / pageZoomF() + 'px';
+  pop.style.top = ((r.bottom + 8)) / pageZoomF() + 'px';
   pop.querySelectorAll('.sw').forEach(b=> b.addEventListener('click', ()=>{ seatWallStyle.color = b.dataset.color; pop.querySelectorAll('.sw').forEach(x=>x.classList.toggle('on', x===b)); }));
   pop.querySelectorAll('.tk').forEach(b=> b.addEventListener('click', ()=>{ seatWallStyle.w = Number(b.dataset.w); pop.querySelectorAll('.tk').forEach(x=>x.classList.toggle('on', x===b)); }));
   const off = ()=>{ if(seatChartWallMode) seatChartSetWallMode(false); };
