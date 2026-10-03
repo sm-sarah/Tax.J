@@ -20054,6 +20054,17 @@ function presMascotHtml(rows, acctRows){
     const man = (typeof presenceManualStatus === 'function') ? presenceManualStatus(me) : '';
     let pending = 0; try{ pending = myApprovalPendingInboxCount(); }catch(e){}
     state = out ? 'done' : inOffice ? 'working' : 'idle';
+    // [2026.10.03] "직원이 일하는 건 회계사님이 알아야지"(요청) - 회계사 멘트 사이사이에 직원 근무 상황도 섞어서 알려줌(인원수에 맞춰)
+    const sOffice = rows.filter(r=> r.kind === 'office').length, sHome = rows.filter(r=> r.kind === 'home').length;
+    const sWork = sOffice + sHome, sDone = rows.filter(r=> r.kind === 'done').length, sLeave = rows.filter(r=> r.kind === 'leave').length;
+    const sOne = rows.length <= 1;
+    const staffNews = [];
+    if(sWork > 0){
+      if(sOne) staffNews.push(sHome ? '직원 오늘 재택 중! 집에서도 열일이에요' : '직원 열일 중! 든든하시죠?', '직원이 오늘도 열심히 달리는 중!');
+      else staffNews.push(`직원 ${sWork}명 열일 중! 든든하시죠?`, sHome ? `직원 ${sHome}명은 오늘 재택이에요` : '직원들 오늘도 열심히 달리는 중!');
+    } else if(sLeave > 0 && sLeave === rows.length) staffNews.push(inOffice ? (sOne ? '직원 오늘 휴가예요! 사무실은 회계사님이 지켜요' : '직원 모두 휴가예요! 사무실은 회계사님이 지켜요') : (sOne ? '직원 오늘 휴가예요! 사무실이 텅 비었어요 ㅋㅋ' : '직원 모두 휴가예요! 사무실이 텅 비었어요 ㅋㅋ'));
+    else if(sDone > 0 && sDone + sLeave === rows.length) staffNews.push(sOne ? '직원은 퇴근했어요, 회계사님도 슬슬?' : '직원 모두 퇴근했어요, 회계사님도 슬슬?');
+    else if(rows.length && h < 12) staffNews.push(sOne ? '직원 아직 출근 전이에요… 곧 오겠죠?' : '직원들 아직 출근 전이에요… 곧 오겠죠?');
     if(h < 6) msg = pick(['회계사님, 이 시간엔 강아지도 자요 ㅋㅋ', '야식 생각나는 시간… 참고 주무세요!', '이 시간에 접속이요? 당장 퇴근하세요!', '내일을 위해 지금은 꿀잠 타임!']);
     else if(out) msg = pick(['퇴근 완료! 오늘 저녁 메뉴는요?', '수고하셨어요! 이제 치맥 타임!', '회계사님 퇴근! 직원도 슬슬 눈치 게임 끝', '오늘 하루도 든든하게 지켜주셔서 감사해요']);
     else if(offDay) msg = pick(['회계사님 쉬는 날! 오늘은 소파랑 한 몸', '쉬는 날엔 늦잠이 국룰이에요', '쉬는 날에도 접속하셨어요? 노트북 덮기!', '오늘은 일 생각 금지! 푹 쉬세요']);
@@ -20061,10 +20072,10 @@ function presMascotHtml(rows, acctRows){
     else if(man === '잠시 자리비움') msg = pick(['잠깐 바람 쐬고 오세요! 사무실은 직원이 지킵니다!', '산책 겸 뜨아 드실 거예요? 얼죽아 직원 몫도 배달!', '잠깐 쉬는 것도 일이에요!']);
     else if(lunch) msg = pick(['회계사님, 오늘 점심 메뉴 뭐예요?', '밥은 든든하게! 맛점하세요', '점심 쏘시는 거면 직원 대기 중 ㅋㅋ', '식후엔 가벼운 산책 어떠세요?']);
     else if(pending > 0) msg = pick([`결재 ${pending}건이 회계사님만 기다려요!`, `결재함에 ${pending}건… 도장 들고 출동!`, `결재 ${pending}건 대기 중! 직원 눈이 반짝반짝`, `도장 찍을 시간이에요! ${pending}건 대기`]);
-    else if(h >= 19) msg = pick(['회계사님이 퇴근해야 직원도 맘 편히 가요 ㅎㅎ', '저녁 드라마 시작할 시간이에요!', '오늘은 여기까지! 저녁 맛있게 드세요', '야근은 몸에 안 좋아요, 진짜로요']);
-    else if(!inOffice) msg = pick(['회계사님 어디 잘 계시죠?', '회계사님 없는 사무실… 묘하게 평화로워요 ㅋㅋ', '회계사님 자리 비운 사이 직원 혼자 콧노래 중(?)']);
-    else if(h < 12) msg = pick(['회계사님 등장! 오늘도 힘차게 시작해요', '좋은 아침! 오늘 날씨만큼 맑게 가요', '회계사님 출근! 직원 자세 고쳐 앉는 중 ㅋㅋ', '오늘도 든든한 회계사님 입장!']);
-    else msg = pick(['오늘도 뜨아세요? 직원은 얼죽아인 거 잊지 마세요!', '오후엔 스트레칭 한 번 쭉~', '눈이 뻑뻑하면 먼 산 한 번 보기!']);
+    else if(h >= 19) msg = pick(['저녁 드라마 시작할 시간이에요!', '오늘은 여기까지! 저녁 맛있게 드세요', '야근은 몸에 안 좋아요, 진짜로요'].concat(sWork > 0 ? ['회계사님이 퇴근해야 직원도 맘 편히 가요 ㅎㅎ', sOne ? '직원도 아직 일하는 중이에요, 같이 퇴근하세요!' : '직원들도 아직 남아 있어요, 같이 퇴근하세요!'] : staffNews));
+    else if(!inOffice) msg = pick(['회계사님 어디 잘 계시죠?', '회계사님 없는 사무실… 묘하게 평화로워요 ㅋㅋ'].concat(sWork > 0 && sOne ? ['회계사님 자리 비운 사이 직원 혼자 콧노래 중(?)'] : []).concat(staffNews));
+    else if(h < 12) msg = pick(['회계사님 등장! 오늘도 힘차게 시작해요', '좋은 아침! 오늘 날씨만큼 맑게 가요', '오늘도 든든한 회계사님 입장!'].concat(sWork > 0 ? [sOne ? '회계사님 출근! 직원 자세 고쳐 앉는 중 ㅋㅋ' : '회계사님 출근! 다들 자세 고쳐 앉는 중 ㅋㅋ'] : []).concat(staffNews));
+    else msg = pick(staffNews.concat(['오늘도 뜨아세요? 직원은 얼죽아인 거 잊지 마세요!', '오후엔 스트레칭 한 번 쭉~', '눈이 뻑뻑하면 먼 산 한 번 보기!']));
   }
   // [2026.10.03] "일하는 사람이 여러 명이면 여러 명 기준, 한 명이면 한 명 기준 멘트"(요청) - one: 지금 일하는 사람이 1명 이하 / solo: 직원이 1명뿐
   else if(working > 0){
@@ -39401,7 +39412,7 @@ function gdriveRefreshIfOtherTabChanged(){
 
 // 앱 버전(이 파일을 만든 날짜·시각) - 파일을 새로 받을 때마다 이 값이 바뀌므로, 화면에 보이는 버전을 보면
 // 지금 열린 파일이 최신인지 바로 알 수 있음(설정 화면 제목 아래·로그인 화면 아래에 표시)
-const APP_BUILD = '2026.10.03 12:25';
+const APP_BUILD = '2026.10.03 12:35';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
