@@ -3478,6 +3478,14 @@ try{
   .seat-wall-pick-v{ cursor:ew-resize; } .seat-wall-pick-h{ cursor:ns-resize; }
   /* 선택 테두리 - 선택한 토막과 위치가 같아 한 줄로 이어진 이웃 토막까지 하나의 테두리로 합쳐서 감쌈 */
   .seat-wall-selbox{ position:absolute; pointer-events:none; border:2px solid var(--indigo); border-radius:5px; box-shadow:inset 0 0 0 2px #fff; z-index:2; }
+  /* [2026.10.03] 자유배치 - 선 고르기·끝점·안내선 */
+  .seat-line-pick{ pointer-events:auto; cursor:move; touch-action:none; }
+  .seat-line-pick::before{ content:''; position:absolute; inset:-6px; }
+  .seat-line-pick.is-sel{ box-shadow:0 0 0 2px #fff, 0 0 0 4px var(--indigo); }
+  .seat-line-end{ position:absolute; width:10px; height:10px; margin:-5px 0 0 -5px; border-radius:50%; background:#fff; border:2px solid var(--indigo); z-index:31; pointer-events:auto; cursor:crosshair; touch-action:none; }
+  .seat-guide-v, .seat-guide-h{ position:absolute; pointer-events:none; z-index:45; display:none; }
+  .seat-guide-v{ top:0; bottom:0; width:0; border-left:1px dashed var(--coral); }
+  .seat-guide-h{ left:0; right:0; height:0; border-top:1px dashed var(--coral); }
   .seat-wall-overlay{ position:absolute; inset:0; z-index:50; cursor:crosshair; touch-action:none; }
   .seat-grid-vline{ position:absolute; top:0; width:1px; background:var(--border); pointer-events:none; }
   .seat-grid-hline{ position:absolute; left:0; height:1px; background:var(--border); pointer-events:none; }
@@ -7421,7 +7429,7 @@ try{
       </div>
 
       <div class="settings-sub-title" id="ssTitle-seatChart" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="3" y="4" width="18" height="16" rx="1"></rect><path d="M3 10h18"></path><path d="M9 10v10"></path></svg> 자리배치도</div>
-      <p class="hint" data-info style="text-align:center;"><b>구역</b>: 화장실·계단실·사물함처럼 이름표(아이콘)만 있는 칸<br><b>방</b>: 회의실·대표실처럼 테두리 안에 자리를 얹는 큰 칸 · 문 방향 표시 가능<br><b>칸 수</b>: 가로 칸·세로 칸 − + 로 격자를 늘리고 줄여요<br><b>칸 너비·높이</b>: − + 로 2px씩, 숫자를 눌러 직접 입력도 돼요(너비 1~300 · 높이 1~200) · 고른 손잡이가 없으면 전체, 있으면 고른 열·줄만 바뀌어요<br><b>격자선 손잡이</b>: 위·왼쪽 눈금의 작은 손잡이를 누르면 선택(진보라) · Shift+클릭으로 여러 개 · 빈 곳이나 Esc로 해제 · 끌면 크기 조절(고른 것끼리 같이) · 두 번 누르면 기본값<br><b>격자선 크기 초기화</b>: 따로 바꾼 열·줄과 칸 너비·높이를 모두 기본값(108×54)으로 · 자리·구분선은 그대로<br><b>되돌리기</b>: ↶ 버튼이나 Ctrl+Z로 방금 한 변경을 한 단계씩 되돌려요(저장 전까지)<br><b>이력</b>: 배치도 이름이나 기준일자가 바뀌면 이전 버전이 남아요 · 같은 이름·기준일자로 고쳐 저장하면 그 버전을 덮어써요</p>
+      <p class="hint" data-info style="text-align:center;"><b>구역</b>: 화장실·계단실·사물함처럼 이름표(아이콘)만 있는 칸<br><b>방</b>: 회의실·대표실처럼 테두리 안에 자리를 얹는 큰 칸 · 문 방향 표시 가능<br><b>옮기기</b>: 칸을 끌면 자유롭게 놓여요 · 다른 칸 가장자리·선에 6px 안으로 가까워지면 딱 붙고 빨간 점선(안내선)이 보여요 · Alt를 누른 채 끌면 안 붙어요<br><b>미세 조정</b>: 칸이나 선을 고르고 방향키 1px · Shift+방향키 10px · Shift+클릭으로 여러 칸을 같이 골라 함께 옮기기<br><b>크기</b>: 칸 가장자리·모서리를 끌거나, 도구줄 크기 버튼에서 − + (2px씩)<br><b>선 긋기</b>: 끈 방향으로 가로·세로 선이 그어져요 · 그냥 누르면 그 자리 선이 지워져요 · 평소엔 선을 눌러 고른 뒤 끌어 옮기고, 양 끝 점으로 길이 조절 · Delete로 삭제<br><b>미배치에서 넣기</b>: 항상 기본 좌석 크기(108×54)로 들어가요<br><b>되돌리기</b>: ↶ 버튼이나 Ctrl+Z로 방금 한 변경을 한 단계씩 되돌려요(저장 전까지)<br><b>이력</b>: 배치도 이름이나 기준일자가 바뀌면 이전 버전이 남아요 · 같은 이름·기준일자로 고쳐 저장하면 그 버전을 덮어써요</p>
       <!-- "가로스크롤이 안 나오게 영역을 넓혀서 가로폭을 최대한 활용하게 해달라"는 요청 - 이 패널이 900px로
            묶여 있어서, 정작 그 안의 배치도 그리드(#seatChartPreviewWrap)는 칸이 몇 개만 넘어가도 900px보다
            넓어져 항상 가로 스크롤이 생겼음. 화면 전체 폭(.app-shell 안쪽 콘텐츠 영역)은 이보다 훨씬 넓게
@@ -7474,30 +7482,11 @@ try{
             <option value="seat">좌석</option>
             <option value="label">구역</option>
           </select>
-          <button type="button" class="del-btn seat-tool-ic" id="seatChartWallModeBtn" title="선 긋기 (격자선 위에 테두리·구분선을 긋고 지워요)" aria-label="선 긋기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M8 3v7h7"/><path d="M15 10v11"/></svg></button>
+          <button type="button" class="del-btn seat-tool-ic" id="seatChartWallModeBtn" title="선 긋기 (끌어서 가로·세로 선을 긋고, 선을 누르면 지워요)" aria-label="선 긋기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M8 3v7h7"/><path d="M15 10v11"/></svg></button>
           <button type="button" class="del-btn seat-tool-ic" id="seatChartPasteBtn" title="붙여넣기 - 복사해 둔 칸과 같은 칸(종류·크기·방향·문)을 새로 추가해요" aria-label="붙여넣기" style="display:none;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></button>
           <button type="button" class="del-btn seat-tool-ic" id="seatChartPasteUndoBtn" title="되돌리기 (Ctrl+Z) - 방금 한 변경을 한 단계씩 되돌려요" aria-label="되돌리기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></button>
           <button type="button" class="del-btn seat-tool-ic" id="seatChartCopyClearBtn" title="복사 해제 - 복사해 둔 칸을 비워요 (Esc)" aria-label="복사 해제" style="display:none;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/><line x1="13" y1="13" x2="17" y2="17"/><line x1="17" y1="13" x2="13" y2="17"/></svg></button>
-          <span style="width:1px; height:16px; background:var(--border); margin:0 4px;"></span>
-          <span class="seat-tool-lab seat-tool-txt" title="가로 칸 수 (격자를 오른쪽으로 늘리고 줄여요)">가로 칸</span>
-          <button type="button" class="del-btn" id="seatChartColsMinusBtn" title="가로 칸 수 줄이기" style="padding:5px 10px;">−</button>
-          <span id="seatChartColsLabel" style="font-size:12.5px; font-weight:700; min-width:18px; text-align:center; display:inline-block;">9</span>
-          <button type="button" class="del-btn" id="seatChartColsPlusBtn" title="가로 칸 수 늘리기" style="padding:5px 10px;">+</button>
-          <span class="seat-tool-lab seat-tool-txt" title="세로 칸 수 (격자를 아래로 늘리고 줄여요)" style="margin-left:4px;">세로 칸</span>
-          <button type="button" class="del-btn" id="seatChartRowsMinusBtn" title="세로 칸 수 줄이기" style="padding:5px 10px;">−</button>
-          <span id="seatChartRowsLabel" style="font-size:12.5px; font-weight:700; min-width:18px; text-align:center; display:inline-block;">9</span>
-          <button type="button" class="del-btn" id="seatChartRowsPlusBtn" title="세로 칸 수 늘리기" style="padding:5px 10px;">+</button>
-          <span style="width:1px; height:16px; background:var(--border); margin:0 4px;"></span>
-          <span class="seat-tool-lab seat-tool-txt" id="seatChartCellWTxt" title="칸 너비(px) - 고른 열이 없으면 전체 열, 있으면 고른 열만">칸 너비</span>
-          <button type="button" class="del-btn" id="seatChartCellWMinusBtn" title="칸 가로 크기 줄이기" style="padding:5px 10px;">−</button>
-          <input type="text" inputmode="numeric" id="seatChartCellWLabel" class="seat-size-num" value="108" title="칸 너비(px) - 눌러서 숫자 입력 (1~300)" aria-label="칸 너비">
-          <button type="button" class="del-btn" id="seatChartCellWPlusBtn" title="칸 가로 크기 늘리기" style="padding:5px 10px;">+</button>
-          <span class="seat-tool-lab seat-tool-txt" id="seatChartCellHTxt" title="칸 높이(px) - 고른 줄이 없으면 전체 줄, 있으면 고른 줄만" style="margin-left:4px;">칸 높이</span>
-          <button type="button" class="del-btn" id="seatChartCellHMinusBtn" title="칸 세로 크기 줄이기" style="padding:5px 10px;">−</button>
-          <input type="text" inputmode="numeric" id="seatChartCellHLabel" class="seat-size-num" value="54" title="칸 높이(px) - 눌러서 숫자 입력 (1~200)" aria-label="칸 높이">
-          <button type="button" class="del-btn" id="seatChartCellHPlusBtn" title="칸 세로 크기 늘리기" style="padding:5px 10px;">+</button>
-          <!-- [2026.10.03] "격자선 초기화가 있으면 좋겠다"(요청) - 따로 끌어서 바꾼 열·줄과 칸 너비·높이를 기본값으로(자리·구분선은 그대로) -->
-          <button type="button" class="del-btn seat-tool-ic" id="seatChartGridResetBtn" title="격자선 크기 초기화 - 따로 바꾼 열·줄과 칸 너비·높이를 기본값(108×54)으로 되돌려요 · 자리·구분선은 그대로(저장해야 반영)" aria-label="격자선 크기 초기화"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+          <!-- [2026.10.03] 자유배치로 바꾸면서 가로·세로 칸 수, 칸 너비·높이, 격자선 크기 초기화는 뺌(요청) -->
         </div>
         <!-- "큰 책상을 끝에 배치하면 의자가 짤리네" - 의자·모니터 표시가 칸 테두리보다 6px 정도 밖으로
              튀어나오게 그려지는데, 자리가 배치도 맨 가장자리(첫 줄/첫 칸 등)에 있으면 그 튀어나온 부분이
@@ -7894,9 +7883,10 @@ try{
            각 기기가 앱을 열 때 자기 허용 상태를 계정 알림설정(sharedNotificationPrefs[이메일].perm[기기키])에 남기고, 여기서 직원별로 모아 보여줌 -->
       <div class="settings-sub-title" id="ssTitle-permStatus" style="scroll-margin-top:112px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg> 허용 현황</div>
       <p class="hint" data-info style="display:none;">
-        <b>언제 채워지나</b>: 그 기기에서 Tax.J를 열면 자동으로 남아요 · 상태가 바뀌면 바로, 아니면 일주일에 한 번 다시 확인해요<br>
+        <b>언제 채워지나</b>: 그 기기에서 Tax.J를 열면 자동으로 남아요 · 상태가 바뀌면 바로, 아니면 1시간에 한 번 다시 남겨요<br>
         <b>알림</b>: 브라우저 알림 허용 여부(기기마다 따로)<br>
-        <b>메일 숫자</b>: 메일 아이콘에 안 읽은 메일 표시를 켰는지(계정 기준)<br>
+        <b>마지막 접속</b>: 그 기기에서 Tax.J를 마지막으로 연 시각(켜 둔 동안은 1시간 간격으로 새로 남아요)<br>
+        <b>Gmail 연결</b>: Gmail을 연결해 메일 아이콘에 안 읽은 메일 수를 띄우는지(계정 기준) · 연결 / 안 씀 / 안 정함<br>
         <b>출퇴근 알림</b>: 출퇴근 5분 전 알림을 켰는지(계정 기준)<br>
         <b>기록 없음</b>: 그 직원이 이 기능이 생긴 뒤 아직 앱을 열지 않았어요
       </p>
@@ -11177,7 +11167,8 @@ async function permReportMine(){
     sharedNotificationPrefs = sharedNotificationPrefs || {};
     const cur = (sharedNotificationPrefs[me] && sharedNotificationPrefs[me].perm) || {};
     const prev = cur[key] || {};
-    if(['dev','mob','notif','idle'].every(k=> prev[k] === next[k]) && prev.at && Date.now() - Date.parse(prev.at) < 7*86400000) return;
+    // [2026.10.03] "확인 시각 대신 마지막 접속"(요청) - 상태가 같아도 1시간마다 시각을 새로 남겨서(앱을 켜 둔 동안 30분마다 확인) 그 기기의 마지막 접속으로 씀(예전: 일주일에 한 번)
+    if(['dev','mob','notif','idle'].every(k=> prev[k] === next[k]) && prev.at && Date.now() - Date.parse(prev.at) < 60*60*1000) return;
     sharedNotificationPrefs[me] = { ...(sharedNotificationPrefs[me]||{}), perm: { ...cur, [key]: { ...next, at: new Date().toISOString() } } };
     await saveSharedNotificationPrefs();
   }catch(e){ console.warn('허용 현황 기록 실패', e); }
@@ -11189,7 +11180,7 @@ function renderPermStatus(){
   const chip = (txt, color)=> `<span style="font-weight:700; color:${color};">${txt}</span>`;
   const NOTIF = { granted:chip('허용','var(--mint)'), denied:chip('차단','var(--coral)'), default:chip('안 정함','var(--ink-soft)'), unsupported:chip('미지원','var(--ink-soft)') };
   const IDLE = { granted:chip('허용','var(--mint)'), denied:chip('차단','var(--coral)'), declined:chip('거절','var(--coral)'), prompt:chip('안 물어봄','var(--ink-soft)'), unsupported:chip('미지원','var(--ink-soft)'), unknown:chip('확인 안 됨','var(--ink-soft)') };
-  const fmt = iso=>{ try{ const d = new Date(iso); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }catch(e){ return ''; } };
+  const fmt = iso=>{ try{ const d = new Date(iso), hm = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; return d.toDateString() === new Date().toDateString() ? `오늘 ${hm}` : `${d.getMonth()+1}/${d.getDate()} ${hm}`; }catch(e){ return ''; } };
   const people = [];
   try{
     getProfiles().forEach(p=>{
@@ -11204,7 +11195,7 @@ function renderPermStatus(){
   people.sort((a,b)=> (b.cpa - a.cpa) || a.name.localeCompare(b.name, 'ko'));
   const rows = people.map(pp=>{
     const pr = (sharedNotificationPrefs||{})[pp.email] || {};
-    const gm = pr.gmailCount === 'on' ? chip('켬','var(--mint)') : pr.gmailCount === 'off' ? chip('끔','var(--coral)') : chip('안 정함','var(--ink-soft)');
+    const gm = pr.gmailCount === 'on' ? chip('연결','var(--mint)') : pr.gmailCount === 'off' ? chip('안 씀','var(--ink-soft)') : chip('안 정함','var(--ink-soft)'); // [2026.10.03] "메일 숫자" → "Gmail 연결"(요청)
     const ck = pr.clockReminder === false ? chip('끔','var(--coral)') : chip('켬','var(--mint)');
     const devs = Object.values(pr.perm || {}).sort((a,b)=> String(b.at||'').localeCompare(String(a.at||'')));
     const nameCell = `<b style="color:var(--ink);">${escHtml(pp.name)}</b>${pp.cpa ? ' <span style="font-size:10.5px; color:var(--indigo-deep);">회계사</span>' : ''}`;
@@ -11216,7 +11207,7 @@ function renderPermStatus(){
       return `<tr>${i===0 ? `<td${span}>${nameCell}</td>` : ''}<td>${escHtml(d.dev || (d.mob ? '휴대폰(이름 없음)' : '이름 없는 기기'))}</td><td>${NOTIF[d.notif] || '-'}</td><td style="color:var(--ink-soft);">${escHtml(fmt(d.at))}</td>${i===0 ? `<td${span}>${gm}</td><td${span}>${ck}</td>` : ''}</tr>`;
     }).join('');
   }).join('');
-  wrap.innerHTML = `<div class="table-scroll"><table class="perm-st-table"><thead><tr><th>직원</th><th>기기</th><th>알림</th><th>확인 시각</th><th>메일 숫자</th><th>출퇴근 알림</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  wrap.innerHTML = `<div class="table-scroll"><table class="perm-st-table"><thead><tr><th>직원</th><th>기기</th><th>알림</th><th>마지막 접속</th><th>Gmail 연결</th><th>출퇴근 알림</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 // "알림메뉴 정리해서 단순하게" 요청으로, 원래 따로 떨어져있던 버튼(눌러서 켜짐/꺼짐 문구가 바뀌던 방식)을
 // 없애고 위 종류별 알림 스위치들과 같은 줄의 ios-toggle 체크박스(#clockReminderToggle)로 합침 - 그래서
@@ -40173,7 +40164,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.03 19:19';
+const APP_BUILD = '2026.10.03 19:21';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -40430,7 +40421,7 @@ function seatCellEffectiveSpans(cell){
   const rot = ((cell.dir||0)%360+360)%360;
   const rowSpan = cell.rowSpan||1, colSpan = cell.colSpan||1;
   if(rot!==90 && rot!==270) return { rowSpan, colSpan };
-  if(rowSpan===1 && colSpan===1) return { rowSpan:2, colSpan:1 };
+  if(rowSpan===1 && colSpan===1 && !cell.px) return { rowSpan:2, colSpan:1 };
   return { rowSpan:colSpan, colSpan:rowSpan };
 }
 // 위에서 세로 2칸을 차지하게 늘린 자리는, 그 2칸 너비(가로 1칸분)를 그대로 다 채워버리면 오히려 "가로로
@@ -40438,7 +40429,7 @@ function seatCellEffectiveSpans(cell){
 // 좁혀서, 세로 2칸짜리 영역 안에 얇고 긴 책상이 가운데 놓인 것처럼 보이게 함(자리를 차지하는 영역은
 // 그대로 2칸이라 옆·아래 자리와 겹치지 않으면서도, 실제 모양은 "가늘고 길게" 보임)
 function seatIsAutoInflatedPortrait(cell){
-  if(cell.type!=='seat') return false;
+  if(cell.type!=='seat' || cell.px) return false;
   const rot = ((cell.dir||0)%360+360)%360;
   return (rot===90 || rot===270) && (cell.rowSpan||1)===1 && (cell.colSpan||1)===1;
 }
@@ -40773,7 +40764,7 @@ function bindSeatChartWallOverlay(grid, cols, rows){
 }
 let _seatViewCellsCtx = [];
 function _seatCellsMaxRow(cells){ return (cells||[]).reduce((m,c)=>{ if(!c.row || c.type==='divider') return m; const sp = seatCellEffectiveSpans(c); return Math.max(m, c.row + (sp.rowSpan||1) - 1); }, 0); }
-function seatChartLayoutOf(chart){ return chart ? { cellW: chart.cellW||108, cellH: chart.cellH||54, colWidths: chart.colWidths||null, rowHeights: chart.rowHeights||null } : null; }
+function seatChartLayoutOf(chart){ return chart ? { cellW: chart.cellW||108, cellH: chart.cellH||54, colWidths: chart.colWidths||null, rowHeights: chart.rowHeights||null, v: chart.v||0 } : null; }
 // "미점유"·"공석"처럼 적혀 있는 자리도 빈 자리로(노란 칸) - 어떤 건 흰 칸 "미점유", 어떤 건 노란 칸으로 달라 보였음
 // 방도 이름이 "예정"·"미점유"·"공석" 등이면 빈 방으로 보고 아주 연한 회색 배경(그 외 방은 흰 배경)
 function seatIsEmptyRoom(cell){ return cell.type==='room' && /^(미점유|공석|빈자리|빈방|예정)$/.test(String(cell.text||'').trim()); }
@@ -40835,8 +40826,9 @@ function seatCellViewHtml(cell){
   // 방을 격자 칸 안에서 자유롭게 줄인 경우(trim) - 격자 영역은 그대로 차지하고, 테두리 상자만 비율(%)대로 안쪽에 그림
   const tr = seatRoomTrim(cell);
   if(tr){
-    return `<div style="position:relative; grid-row:${cell.row} / span ${rowSpan}; grid-column:${cell.col} / span ${colSpan}; ${z} min-height:34px; pointer-events:none;"><div style="position:absolute; left:${(tr.l*100).toFixed(2)}%; right:${(tr.r*100).toFixed(2)}%; top:${(tr.t*100).toFixed(2)}%; bottom:${(tr.b*100).toFixed(2)}%; box-sizing:border-box; ${SEAT_CELL_STYLE_COMMON} ${bg} min-height:0;">${doorMark}${bodyHtml}</div></div>`;
+    return `<div style="position:relative; ${seatViewPosStyle(cell, rowSpan, colSpan)} ${z} min-height:34px;${_seatViewAbs ? ' min-height:0;' : ''} pointer-events:none;"><div style="position:absolute; left:${(tr.l*100).toFixed(2)}%; right:${(tr.r*100).toFixed(2)}%; top:${(tr.t*100).toFixed(2)}%; bottom:${(tr.b*100).toFixed(2)}%; box-sizing:border-box; ${SEAT_CELL_STYLE_COMMON} ${bg} min-height:0;">${doorMark}${bodyHtml}</div></div>`;
   }
+  if(_seatViewAbs) return `<div style="${SEAT_CELL_STYLE_COMMON} ${bg} ${z} ${seatViewPosStyle(cell, rowSpan, colSpan, roomIns)} min-height:0;">${dividerBar}${dirArrow}${doorMark}${bodyHtml}</div>`;
   return `<div style="position:relative; grid-row:${cell.row} / span ${rowSpan}; grid-column:${cell.col} / span ${colSpan}; ${SEAT_CELL_STYLE_COMMON} ${bg} ${z} ${narrowStyle} ${roomInsStyle}">${dividerBar}${dirArrow}${doorMark}${bodyHtml}</div>`;
 }
 // 구분선(divider)을 배열 맨 앞으로 보내 먼저 그리게 함 - CSS grid는 같은 자리를 두고 여러 칸이 겹치면
@@ -40864,6 +40856,7 @@ function seatFitAll(root){
 }
 window.addEventListener('resize', ()=> seatFitAll(document));
 function renderSeatGridHtml(cells, cols, walls, layout, exact){
+  if(layout && layout.v === 2) return renderSeatFreeHtml(cells, walls); // [2026.10.03] 자유배치
   const safeCols = Math.max(1, cols||9);
   _seatViewCellsCtx = (cells||[]).filter(c=> c.row && c.col && c.type!=='divider');
   const body = seatChartOrderForStack(_seatViewCellsCtx).map(seatCellViewHtml).join('');
@@ -40911,11 +40904,12 @@ function seatApplySizeDelta(dRow, dCol){
     const cell = seatChartDraft.cells.find(c=>c.id===id && c.row && c.col);
     if(!cell) return;
     const eff = seatCellEffectiveSpans(cell);
-    const nr = (eff.rowSpan||1) + dRow, nc = (eff.colSpan||1) + dCol;
-    if(nr < 1 || nc < 1 || cell.col + nc - 1 > cols){ fail++; return; }
+    const k = seatV2() ? 2 : 1;
+    const nr = (eff.rowSpan||1) + dRow*k, nc = (eff.colSpan||1) + dCol*k;
+    if(nr < (seatV2() ? 16 : 1) || nc < (seatV2() ? 16 : 1) || (!seatV2() && cell.col + nc - 1 > cols)){ fail++; return; }
     const next = { ...cell };
     seatSetEffectiveSpans(next, nr, nc);
-    if(!nonOcc(cell.type) && seatChartDraft.cells.some(c=> c.id!==cell.id && !nonOcc(c.type) && c.row && c.col && seatChartRangesOverlap(c, next))){ fail++; return; }
+    if(!seatV2() && !nonOcc(cell.type) && seatChartDraft.cells.some(c=> c.id!==cell.id && !nonOcc(c.type) && c.row && c.col && seatChartRangesOverlap(c, next))){ fail++; return; }
     seatPasteUndoStack.push({ kind:'size', id: cell.id, rowSpan: cell.rowSpan, colSpan: cell.colSpan });
     cell.rowSpan = next.rowSpan; cell.colSpan = next.colSpan;
   });
@@ -41018,23 +41012,393 @@ function seatUndo(){
   renderSeatChartEditPreview();
   showCenterToast('되돌렸어요');
 }
+// ════════ [2026.10.03] 자리배치도 "보이지 않는 눈금 + 자유배치"(요청) ════════
+// "격자선 조절이 너무 복잡하다 · 한 칸만 미세하게 맞추고 싶다 · 미배치에서 넣으면 작게 들어간다"는 의견으로,
+// 격자(열·줄) 대신 칸마다 화면 좌표(px)로 자유롭게 두는 방식(v:2)으로 바꿈.
+// - 데이터는 그대로 row/col/rowSpan/colSpan을 쓰되 단위가 1px(col = 왼쪽 x+1, colSpan = 너비). 그래서 겹침·방 안 판정 등 기존 계산을 그대로 씀
+// - 칸 하나가 차지하는 영역 안쪽으로 3px씩 들여 그려서 칸 사이 6px 간격(예전 격자 간격)이 그대로 보임
+// - 끌 때 다른 칸 가장자리에 6px 안으로 가까워지면 딱 붙고 안내선이 보임(Alt를 누르면 안 붙음), 방향키 1px · Shift+방향키 10px
+// - 구분선은 격자선 토막 대신 자유롭게 긋는 가로·세로 선 {x1,y1,x2,y2,color,w}
+// - 예전(격자) 배치도는 편집 화면을 열 때 지금 모양 그대로 이 방식으로 바뀜(저장해야 반영 · 이력은 예전 모양 그대로 보임)
+const SEAT_V2_INSET = 3, SEAT_V2_UNIT_W = 114, SEAT_V2_UNIT_H = 60, SEAT_V2_SNAP = 6;
+function seatV2(){ return !!(seatChartDraft && seatChartDraft.v === 2); }
+// 예전 격자 배치도를 지금 보이는 모양 그대로 px 좌표로 바꿈 - 반드시 v를 바꾸기 전에(예전 격자 계산으로) 불러야 함
+function seatV2ConvertDraft(d){
+  if(!d || d.v === 2) return;
+  const cols = Math.max(1, d.cols || 9);
+  const rows = (()=>{ const maxRow = (d.cells||[]).reduce((m,c)=>{ if(!c.row) return m; const sp = seatCellEffectiveSpans(c); return Math.max(m, c.row + (sp.rowSpan||1) - 1); }, 0); return Math.max(d.rows||0, maxRow, 1); })();
+  const out = [];
+  (d.cells||[]).forEach(c0=>{
+    const c = { ...c0 };
+    if(c.type === 'divider') return; // 예전 칸 방식 구분선은 이미 쓰지 않음
+    const eff = seatCellEffectiveSpans(c0);
+    if(c.row && c.col){
+      let x = seatColX(c.col), y = seatRowY(c.row), w = seatSpanW(c.col, eff.colSpan||1), h = seatSpanH(c.row, eff.rowSpan||1);
+      if(seatIsAutoInflatedPortrait(c0)){ const nw = Math.min(w, (d.cellH||54)); x += (w - nw)/2; w = nw; }
+      const tr = seatRoomTrim(c0);
+      if(tr){ const W0 = w, H0 = h; x += W0*tr.l; w = W0*(1-tr.l-tr.r); y += H0*tr.t; h = H0*(1-tr.t-tr.b); }
+      delete c.trim;
+      c.col = Math.round(x) + 1; c.row = Math.round(y) + 1;
+      seatSetEffectiveSpans(c, Math.max(16, Math.round(h) + SEAT_V2_INSET*2), Math.max(16, Math.round(w) + SEAT_V2_INSET*2));
+    } else {
+      // 배치예정 칸은 기본 크기(가로 칸 수 × 108 + 간격)로
+      c.rowSpan = Math.max(1, c.rowSpan||1) * SEAT_V2_UNIT_H; c.colSpan = Math.max(1, c.colSpan||1) * SEAT_V2_UNIT_W;
+      if(seatIsAutoInflatedPortrait(c0)){ /* 돌린 1칸 자리는 저장값 그대로 바꿔도 가로세로가 바뀌어 보임 */ }
+    }
+    c.px = true;
+    out.push(c);
+  });
+  // 격자선 토막(구분선)을 이어진 가로·세로 선으로
+  const segs = (d.walls||[]).filter(w=> w && w.t).map(w=>{
+    const rc = seatEditWallRect(w, cols, rows), th = w.w || 3;
+    if(w.t === 'h'){ const yy = rc.top + th/2; return { t:'h', a: rc.left + th/2 + SEAT_V2_INSET, b: rc.left + rc.width - th/2 + SEAT_V2_INSET, k: yy + SEAT_V2_INSET, color: w.color || '#1E2A5E', w: th }; }
+    const xx = rc.left + th/2; return { t:'v', a: rc.top + th/2 + SEAT_V2_INSET, b: rc.top + rc.height - th/2 + SEAT_V2_INSET, k: xx + SEAT_V2_INSET, color: w.color || '#1E2A5E', w: th };
+  });
+  segs.sort((p,q)=> p.t.localeCompare(q.t) || p.k - q.k || p.a - q.a);
+  const lines = [];
+  segs.forEach(s=>{
+    const last = lines[lines.length-1];
+    if(last && last.t === s.t && Math.abs(last.k - s.k) < 0.6 && last.color === s.color && last.w === s.w && s.a <= last.b + 1){ last.b = Math.max(last.b, s.b); return; }
+    lines.push({ ...s });
+  });
+  d.walls = lines.map(s=> s.t === 'h'
+    ? { x1: Math.round(s.a), y1: Math.round(s.k), x2: Math.round(s.b), y2: Math.round(s.k), color: s.color, w: s.w }
+    : { x1: Math.round(s.k), y1: Math.round(s.a), x2: Math.round(s.k), y2: Math.round(s.b), color: s.color, w: s.w });
+  d.cells = out;
+  d.colWidths = {}; d.rowHeights = {}; d.cellW = 108; d.cellH = 54; d.rows = 0;
+  d.v = 2;
+  seatV2FitCanvas(d);
+}
+// 새로 만든 칸(칸 추가·조직도 가져오기 등은 예전처럼 "칸 수"로 만들어짐)을 기본 크기(px)로
+function seatV2Normalize(d){
+  (d.cells||[]).forEach(c=>{
+    if(c.px) return;
+    c.rowSpan = Math.max(1, c.rowSpan||1) * SEAT_V2_UNIT_H; c.colSpan = Math.max(1, c.colSpan||1) * SEAT_V2_UNIT_W;
+    if(c.row && c.col && !(c.row > 1 || c.col > 1)){ /* 1,1이면 그대로 */ }
+    c.px = true;
+  });
+}
+// 그리는 영역 크기 - 칸이 놓인 곳보다 오른쪽·아래로 넉넉하게(끌어서 더 넓힐 수 있게 자동으로 늘어남)
+function seatV2Bounds(cells, walls){
+  let r = 0, b = 0;
+  (cells||[]).forEach(c=>{ if(!c.row || !c.col || c.type==='divider') return; const sp = seatCellEffectiveSpans(c); r = Math.max(r, c.col - 1 + (sp.colSpan||0)); b = Math.max(b, c.row - 1 + (sp.rowSpan||0)); });
+  (walls||[]).forEach(w=>{ if(w && w.x1 != null){ r = Math.max(r, w.x1, w.x2); b = Math.max(b, w.y1, w.y2); } });
+  return { r, b };
+}
+function seatV2FitCanvas(d){
+  const bd = seatV2Bounds(d.cells, d.walls);
+  d.cols = Math.max(1000, Math.ceil(bd.r) + 240);
+  d.canvasH = Math.max(560, Math.ceil(bd.b) + 200);
+}
+// 칸 하나의 영역(px, 그리는 좌표) - 들여쓰기 전
+function seatV2Rect(c){ const sp = seatCellEffectiveSpans(c); return { x: c.col - 1, y: c.row - 1, w: sp.colSpan||0, h: sp.rowSpan||0 }; }
+// 끌고 있는 영역(rect)을 다른 칸 가장자리·선에 맞춤 - 6px 안이면 붙임. 돌려주는 값: 보정량과 안내선 위치
+function seatV2SnapRect(rect, skipIds, opts){
+  opts = opts || {};
+  const xs = [], ys = [];
+  (seatChartDraft.cells||[]).forEach(c=>{
+    if(!c.row || !c.col || skipIds.has(c.id) || c.type==='divider') return;
+    const r = seatV2Rect(c);
+    xs.push(r.x, r.x + r.w); ys.push(r.y, r.y + r.h);
+  });
+  (seatChartDraft.walls||[]).forEach(w=>{ if(w && w.x1 != null){ xs.push(w.x1 - SEAT_V2_INSET, w.x1 + SEAT_V2_INSET, w.x2 - SEAT_V2_INSET, w.x2 + SEAT_V2_INSET); ys.push(w.y1 - SEAT_V2_INSET, w.y1 + SEAT_V2_INSET, w.y2 - SEAT_V2_INSET, w.y2 + SEAT_V2_INSET); } });
+  const pick = (edges, list)=>{ let best = null; edges.forEach(ed=>{ if(ed.v == null) return; list.forEach(t=>{ const dd = t - ed.v; if(Math.abs(dd) <= SEAT_V2_SNAP && (!best || Math.abs(dd) < Math.abs(best.d))) best = { d: dd, at: t }; }); }); return best; };
+  const ex = opts.edgesX || [ { v: rect.x }, { v: rect.x + rect.w } ];
+  const ey = opts.edgesY || [ { v: rect.y }, { v: rect.y + rect.h } ];
+  const bx = opts.noX ? null : pick(ex, xs), by = opts.noY ? null : pick(ey, ys);
+  return { dx: bx ? bx.d : 0, dy: by ? by.d : 0, gx: bx ? bx.at : null, gy: by ? by.at : null };
+}
+function seatV2ShowGuides(grid, gx, gy){
+  if(!grid) return;
+  let vg = grid.querySelector('.seat-guide-v'), hg = grid.querySelector('.seat-guide-h');
+  if(!vg){ vg = document.createElement('span'); vg.className = 'seat-guide-v'; grid.appendChild(vg); }
+  if(!hg){ hg = document.createElement('span'); hg.className = 'seat-guide-h'; grid.appendChild(hg); }
+  vg.style.display = gx == null ? 'none' : 'block'; if(gx != null) vg.style.left = gx + 'px';
+  hg.style.display = gy == null ? 'none' : 'block'; if(gy != null) hg.style.top = gy + 'px';
+}
+// 칸 끌어 옮기기(v2) - 고른 칸들(Shift로 같이 고른 칸 포함)을 같이 옮김
+function seatV2CellPointerDown(e, el, cell){
+  const id = cell.id;
+  const grid = document.getElementById('seatChartEditGrid');
+  const tray = document.getElementById('seatChartTrayWrap');
+  const z = pageZoomF();
+  const startX = e.clientX, startY = e.clientY;
+  const ids = (seatChartSelectedId === id && seatMultiSel.size) ? [id, ...seatMultiSel] : [id];
+  const group = ids.map(i=> seatChartDraft.cells.find(c=>c.id===i)).filter(c=> c && c.row && c.col);
+  const start = group.map(c=>({ c, col:c.col, row:c.row, el: grid && grid.querySelector(`.seat-edit-cell[data-id="${c.id}"]`) }));
+  start.forEach(s=>{ if(s.el){ s.left = parseFloat(s.el.style.left)||0; s.top = parseFloat(s.el.style.top)||0; } });
+  const skip = new Set(ids);
+  const box = group.reduce((a,c)=>{ const r = seatV2Rect(c); return a ? { x1:Math.min(a.x1,r.x), y1:Math.min(a.y1,r.y), x2:Math.max(a.x2,r.x+r.w), y2:Math.max(a.y2,r.y+r.h) } : { x1:r.x, y1:r.y, x2:r.x+r.w, y2:r.y+r.h }; }, null);
+  let moved = false, ddx = 0, ddy = 0;
+  try{ el.setPointerCapture(e.pointerId); }catch(err){}
+  const onMove = ev=>{
+    let dx = (ev.clientX - startX)/z, dy = (ev.clientY - startY)/z;
+    if(!moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
+    moved = true;
+    dx = Math.round(dx); dy = Math.round(dy);
+    if(box.x1 + dx < 0) dx = -box.x1;
+    if(box.y1 + dy < 0) dy = -box.y1;
+    let gx = null, gy = null;
+    if(!ev.altKey){
+      const sn = seatV2SnapRect({ x: box.x1 + dx, y: box.y1 + dy, w: box.x2 - box.x1, h: box.y2 - box.y1 }, skip);
+      dx += sn.dx; dy += sn.dy; gx = sn.gx; gy = sn.gy;
+    }
+    ddx = dx; ddy = dy;
+    start.forEach(s=>{ if(s.el){ s.el.style.left = (s.left + dx) + 'px'; s.el.style.top = (s.top + dy) + 'px'; s.el.style.zIndex = '20'; } });
+    seatV2ShowGuides(grid, gx, gy);
+    if(tray){ const tr = tray.getBoundingClientRect(); tray.classList.toggle('seat-tray-hover', ev.clientX>=tr.left && ev.clientX<=tr.right && ev.clientY>=tr.top && ev.clientY<=tr.bottom); }
+  };
+  let done = false;
+  const finish = ev=>{
+    if(done) return; done = true;
+    window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', finish); window.removeEventListener('pointercancel', finish);
+    seatV2ShowGuides(grid, null, null);
+    if(tray) tray.classList.remove('seat-tray-hover');
+    if(!moved){ seatChartCellClickLogic(id, false); return; }
+    if(tray){
+      const tr = tray.getBoundingClientRect();
+      if(ev.clientX>=tr.left && ev.clientX<=tr.right && ev.clientY>=tr.top && ev.clientY<=tr.bottom){
+        group.forEach(c=>{ c.row = null; c.col = null; });
+        seatChartSelectedId = id; renderSeatChartEditPreview(); return;
+      }
+    }
+    start.forEach(s=>{ s.c.col = Math.max(1, s.col + ddx); s.c.row = Math.max(1, s.row + ddy); });
+    seatChartSelectedId = id;
+    renderSeatChartEditPreview();
+  };
+  window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', finish); window.addEventListener('pointercancel', finish);
+}
+// 칸 크기 조절(v2) - 끈 만큼 px로, 가장자리는 다른 칸 가장자리에 붙음
+function seatV2ResizePointerDown(e, handle, cell){
+  const edge = handle.dataset.edge || 'corner';
+  const grid = document.getElementById('seatChartEditGrid');
+  const el = handle.parentElement;
+  const z = pageZoomF();
+  const r0 = seatV2Rect(cell);
+  const L = edge==='left', R = edge==='right' || edge==='corner', T = edge==='top', B = edge==='bottom' || edge==='corner';
+  const startX = e.clientX, startY = e.clientY;
+  const skip = new Set([cell.id]);
+  let cur = { ...r0 };
+  try{ handle.setPointerCapture(e.pointerId); }catch(err){}
+  const draw = ()=>{ if(!el) return; const ins = SEAT_V2_INSET; el.style.left = (cur.x+ins)+'px'; el.style.top = (cur.y+ins)+'px'; el.style.width = Math.max(4, cur.w-ins*2)+'px'; el.style.height = Math.max(4, cur.h-ins*2)+'px'; };
+  const onMove = ev=>{
+    const dx = Math.round((ev.clientX-startX)/z), dy = Math.round((ev.clientY-startY)/z);
+    let x1 = r0.x, x2 = r0.x + r0.w, y1 = r0.y, y2 = r0.y + r0.h;
+    if(L) x1 = Math.min(x2 - 16, Math.max(0, x1 + dx)); if(R) x2 = Math.max(x1 + 16, x2 + dx);
+    if(T) y1 = Math.min(y2 - 16, Math.max(0, y1 + dy)); if(B) y2 = Math.max(y1 + 16, y2 + dy);
+    let gx = null, gy = null;
+    if(!ev.altKey){
+      const sn = seatV2SnapRect({ x:x1, y:y1, w:x2-x1, h:y2-y1 }, skip, { edgesX: [ L ? { v:x1 } : { v:null }, R ? { v:x2 } : { v:null } ], edgesY: [ T ? { v:y1 } : { v:null }, B ? { v:y2 } : { v:null } ], noX: !(L||R), noY: !(T||B) });
+      if(sn.gx != null){ if(L) x1 = Math.min(x2 - 16, x1 + sn.dx); else x2 = Math.max(x1 + 16, x2 + sn.dx); gx = sn.gx; }
+      if(sn.gy != null){ if(T) y1 = Math.min(y2 - 16, y1 + sn.dy); else y2 = Math.max(y1 + 16, y2 + sn.dy); gy = sn.gy; }
+    }
+    cur = { x:x1, y:y1, w:x2-x1, h:y2-y1 };
+    draw(); seatV2ShowGuides(grid, gx, gy);
+  };
+  const finish = ()=>{
+    handle.removeEventListener('pointermove', onMove); handle.removeEventListener('pointerup', finish); handle.removeEventListener('pointercancel', finish);
+    seatV2ShowGuides(grid, null, null);
+    if(cur.x !== r0.x || cur.y !== r0.y || cur.w !== r0.w || cur.h !== r0.h){
+      cell.col = cur.x + 1; cell.row = cur.y + 1;
+      seatSetEffectiveSpans(cell, cur.h, cur.w);
+    }
+    renderSeatChartEditPreview();
+  };
+  handle.addEventListener('pointermove', onMove); handle.addEventListener('pointerup', finish); handle.addEventListener('pointercancel', finish);
+}
+// ── 선(구분선·벽) v2 ──
+var seatLineSelIdx = null;
+function seatV2LineRect(w){
+  const th = w.w || 3, x1 = Math.min(w.x1, w.x2), x2 = Math.max(w.x1, w.x2), y1 = Math.min(w.y1, w.y2), y2 = Math.max(w.y1, w.y2);
+  return { left: x1 - th/2, top: y1 - th/2, width: (x2 - x1) + th, height: (y2 - y1) + th };
+}
+function seatV2LinesHtml(walls, pickable){
+  return (walls||[]).map((w, i)=>{
+    if(!w || w.x1 == null) return '';
+    const rc = seatV2LineRect(w), horiz = Math.abs(w.y2 - w.y1) <= Math.abs(w.x2 - w.x1);
+    const sel = pickable && i === seatLineSelIdx;
+    const cls = pickable ? ` seat-line-pick ${horiz ? 'is-h' : 'is-v'}${sel ? ' is-sel' : ''}` : '';
+    let h = `<span class="seat-wall${cls}" data-line-idx="${i}" style="left:${rc.left}px; top:${rc.top}px; width:${rc.width}px; height:${rc.height}px; background:${w.color||'#1E2A5E'};"></span>`;
+    if(sel) h += `<span class="seat-line-end" data-line-idx="${i}" data-end="1" style="left:${w.x1}px; top:${w.y1}px;"></span><span class="seat-line-end" data-line-idx="${i}" data-end="2" style="left:${w.x2}px; top:${w.y2}px;"></span>`;
+    return h;
+  }).join('');
+}
+// 선이 붙을 자리 - 칸 사이 간격 한가운데(칸 영역의 가장자리)와 다른 선
+function seatV2LineSnapTargets(skipIdx){
+  const xs = [], ys = [];
+  (seatChartDraft.cells||[]).forEach(c=>{ if(!c.row || !c.col || c.type==='divider') return; const r = seatV2Rect(c); xs.push(r.x, r.x + r.w); ys.push(r.y, r.y + r.h); });
+  (seatChartDraft.walls||[]).forEach((w, i)=>{ if(i === skipIdx || !w || w.x1 == null) return; xs.push(w.x1, w.x2); ys.push(w.y1, w.y2); });
+  return { xs, ys };
+}
+function seatV2SnapVal(v, list){ let best = null; list.forEach(t=>{ const d = t - v; if(Math.abs(d) <= SEAT_V2_SNAP && (best === null || Math.abs(d) < Math.abs(best - v))) best = t; }); return best; }
+// 선 긋기 모드 - 누른 곳에서 끈 방향(가로/세로)으로 곧은 선을 긋고, 그냥 누르면(끌지 않으면) 그 자리의 선을 지움
+function bindSeatV2LineOverlay(grid){
+  const ov = grid.querySelector('.seat-wall-overlay'); const prev = grid.querySelector('.seat-wall-hover');
+  if(!ov || !prev) return;
+  const z = pageZoomF();
+  const pos = ev=>{ const rc = grid.getBoundingClientRect(); return { x: Math.round((ev.clientX - rc.left)/z), y: Math.round((ev.clientY - rc.top)/z) }; };
+  let st = null;
+  const T = ()=> seatV2LineSnapTargets(-1);
+  ov.addEventListener('pointerdown', ev=>{
+    ev.preventDefault(); ev.stopPropagation();
+    try{ ov.setPointerCapture(ev.pointerId); }catch(_){}
+    const p = pos(ev), t = T();
+    const sx = ev.altKey ? null : seatV2SnapVal(p.x, t.xs), sy = ev.altKey ? null : seatV2SnapVal(p.y, t.ys);
+    st = { p, x: sx != null ? sx : p.x, y: sy != null ? sy : p.y, t, line: null };
+  });
+  ov.addEventListener('pointermove', ev=>{
+    if(!st) return;
+    const p = pos(ev);
+    const dx = p.x - st.p.x, dy = p.y - st.p.y;
+    if(Math.abs(dx) < 4 && Math.abs(dy) < 4){ prev.style.display = 'none'; st.line = null; return; }
+    const horiz = Math.abs(dx) >= Math.abs(dy);
+    let x2 = horiz ? p.x : st.x, y2 = horiz ? st.y : p.y;
+    if(!ev.altKey){ if(horiz){ const s = seatV2SnapVal(x2, st.t.xs); if(s != null) x2 = s; } else { const s = seatV2SnapVal(y2, st.t.ys); if(s != null) y2 = s; } }
+    st.line = { x1: st.x, y1: st.y, x2, y2, color: seatWallStyle.color, w: seatWallStyle.w };
+    const rc = seatV2LineRect(st.line);
+    Object.assign(prev.style, { display:'block', left:rc.left+'px', top:rc.top+'px', width:rc.width+'px', height:rc.height+'px', background: seatWallStyle.color });
+  });
+  const end = ev=>{
+    if(!st) return;
+    const s = st; st = null; prev.style.display = 'none';
+    if(!Array.isArray(seatChartDraft.walls)) seatChartDraft.walls = [];
+    if(s.line){
+      const l = s.line;
+      if(l.x1 > l.x2){ [l.x1, l.x2] = [l.x2, l.x1]; } if(l.y1 > l.y2){ [l.y1, l.y2] = [l.y2, l.y1]; }
+      seatChartDraft.walls.push(l);
+    } else {
+      // 그냥 누른 곳(6px 안)에 선이 있으면 지움
+      const p = s.p;
+      const idx = seatChartDraft.walls.findIndex(w=>{ if(!w || w.x1 == null) return false; const rc = seatV2LineRect(w); return p.x >= rc.left - 6 && p.x <= rc.left + rc.width + 6 && p.y >= rc.top - 6 && p.y <= rc.top + rc.height + 6; });
+      if(idx > -1) seatChartDraft.walls.splice(idx, 1);
+    }
+    renderSeatChartEditPreview();
+  };
+  ov.addEventListener('pointerup', end); ov.addEventListener('pointercancel', end);
+}
+// 평소 화면 - 선을 눌러 고르고, 끌어서 옮기기(가로선은 위아래, 세로선은 좌우 + 길이 방향도 함께) / 양 끝 점을 끌어 길이 조절
+function bindSeatV2LinePick(grid){
+  const z = pageZoomF();
+  grid.querySelectorAll('.seat-line-pick').forEach(el=>{
+    el.addEventListener('pointerdown', ev=>{
+      ev.preventDefault(); ev.stopPropagation();
+      const i = Number(el.dataset.lineIdx); const w = seatChartDraft.walls[i]; if(!w) return;
+      seatChartSelectedId = null; seatLineSelIdx = i;
+      const o = { ...w }, sx = ev.clientX, sy = ev.clientY, horiz = Math.abs(w.y2 - w.y1) <= Math.abs(w.x2 - w.x1);
+      const t = seatV2LineSnapTargets(i);
+      let moved = false;
+      const mv = e2=>{
+        let dx = Math.round((e2.clientX - sx)/z), dy = Math.round((e2.clientY - sy)/z);
+        if(!moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return; moved = true;
+        if(!e2.altKey){
+          if(horiz){ const s = seatV2SnapVal(o.y1 + dy, t.ys); if(s != null) dy = s - o.y1; const s2 = seatV2SnapVal(o.x1 + dx, t.xs); if(s2 != null) dx = s2 - o.x1; }
+          else { const s = seatV2SnapVal(o.x1 + dx, t.xs); if(s != null) dx = s - o.x1; const s2 = seatV2SnapVal(o.y1 + dy, t.ys); if(s2 != null) dy = s2 - o.y1; }
+        }
+        w.x1 = Math.max(0, o.x1 + dx); w.x2 = Math.max(0, o.x2 + dx); w.y1 = Math.max(0, o.y1 + dy); w.y2 = Math.max(0, o.y2 + dy);
+        const rc = seatV2LineRect(w); Object.assign(el.style, { left:rc.left+'px', top:rc.top+'px' });
+      };
+      const up = ()=>{ window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); renderSeatChartEditPreview(); };
+      window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+    });
+  });
+  grid.querySelectorAll('.seat-line-end').forEach(el=>{
+    el.addEventListener('pointerdown', ev=>{
+      ev.preventDefault(); ev.stopPropagation();
+      const i = Number(el.dataset.lineIdx), end = el.dataset.end; const w = seatChartDraft.walls[i]; if(!w) return;
+      const horiz = Math.abs(w.y2 - w.y1) <= Math.abs(w.x2 - w.x1);
+      const o = { ...w }, sx = ev.clientX, sy = ev.clientY, t = seatV2LineSnapTargets(i);
+      const mv = e2=>{
+        const dx = Math.round((e2.clientX - sx)/z), dy = Math.round((e2.clientY - sy)/z);
+        if(horiz){ let v = Math.max(0, (end==='1' ? o.x1 : o.x2) + dx); if(!e2.altKey){ const s = seatV2SnapVal(v, t.xs); if(s != null) v = s; } if(end==='1') w.x1 = v; else w.x2 = v; }
+        else { let v = Math.max(0, (end==='1' ? o.y1 : o.y2) + dy); if(!e2.altKey){ const s = seatV2SnapVal(v, t.ys); if(s != null) v = s; } if(end==='1') w.y1 = v; else w.y2 = v; }
+        const line = grid.querySelector(`.seat-line-pick[data-line-idx="${i}"]`);
+        if(line){ const rc = seatV2LineRect(w); Object.assign(line.style, { left:rc.left+'px', top:rc.top+'px', width:rc.width+'px', height:rc.height+'px' }); }
+        el.style.left = (end==='1' ? w.x1 : w.x2) + 'px'; el.style.top = (end==='1' ? w.y1 : w.y2) + 'px';
+      };
+      const up = ()=>{
+        window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up);
+        if(w.x1 > w.x2){ [w.x1, w.x2] = [w.x2, w.x1]; } if(w.y1 > w.y2){ [w.y1, w.y2] = [w.y2, w.y1]; }
+        if(Math.abs(w.x2 - w.x1) + Math.abs(w.y2 - w.y1) < 4){ seatChartDraft.walls.splice(i, 1); seatLineSelIdx = null; }
+        renderSeatChartEditPreview();
+      };
+      window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+    });
+  });
+  grid.querySelectorAll('.seat-line-toolbar [data-lact]').forEach(btn=>{
+    btn.addEventListener('pointerdown', e=> e.stopPropagation());
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
+      const w = seatChartDraft.walls[seatLineSelIdx]; if(!w) return;
+      if(btn.dataset.lact === 'delete'){ seatChartDraft.walls.splice(seatLineSelIdx, 1); seatLineSelIdx = null; }
+      else if(btn.dataset.lact === 'style'){ w.color = seatWallStyle.color; w.w = seatWallStyle.w; }
+      renderSeatChartEditPreview();
+    });
+  });
+}
+function seatV2LineToolbarHtml(){
+  const w = (seatChartDraft.walls||[])[seatLineSelIdx];
+  if(!w || w.x1 == null) return '';
+  const rc = seatV2LineRect(w);
+  const flip = rc.top < 40;
+  return `<div class="seat-cell-toolbar seat-line-toolbar" style="left:${rc.left + rc.width}px; top:${flip ? rc.top + rc.height : rc.top}px;${flip ? ' transform:translate(-100%, 6px);' : ''}">
+    <span class="seat-sz-lab">길이 ${Math.round(Math.abs(w.x2 - w.x1) + Math.abs(w.y2 - w.y1))}px</span>
+    <button type="button" data-lact="style" title="선 긋기에서 고른 색·굵기로 바꾸기"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><circle cx="17.5" cy="15.5" r="2.5"/></svg></button>
+    <button type="button" data-lact="delete" title="이 선 삭제" class="danger">✕</button>
+  </div>`;
+}
+// 방향키로 고른 칸·선을 1px(Shift 10px)씩 옮김
+function seatV2Nudge(dx, dy){
+  if(!seatV2()) return false;
+  if(seatLineSelIdx !== null && seatChartDraft.walls[seatLineSelIdx]){
+    const w = seatChartDraft.walls[seatLineSelIdx];
+    w.x1 = Math.max(0, w.x1 + dx); w.x2 = Math.max(0, w.x2 + dx); w.y1 = Math.max(0, w.y1 + dy); w.y2 = Math.max(0, w.y2 + dy);
+    renderSeatChartEditPreview(); return true;
+  }
+  if(!seatChartSelectedId) return false;
+  const ids = [seatChartSelectedId, ...seatMultiSel];
+  const cs = ids.map(i=> seatChartDraft.cells.find(c=> c.id===i)).filter(c=> c && c.row && c.col);
+  if(!cs.length) return false;
+  cs.forEach(c=>{ c.col = Math.max(1, c.col + dx); c.row = Math.max(1, c.row + dy); });
+  renderSeatChartEditPreview(); return true;
+}
+// 조회·출력·이력 보기(v2) - 편집 화면과 같은 px 그대로 그리고, 자리가 좁으면 seatFitAll이 통째로 줄임
+function renderSeatFreeHtml(cells, walls){
+  const placed = (cells||[]).filter(c=> c.row && c.col && c.type!=='divider');
+  const bd = seatV2Bounds(placed, walls);
+  _seatViewCellsCtx = placed; _seatViewAbs = true;
+  let body = '';
+  try{ body = seatChartOrderForStack(placed).map(seatCellViewHtml).join(''); }
+  finally{ _seatViewCellsCtx = []; _seatViewAbs = false; }
+  const lines = seatV2LinesHtml((walls||[]).filter(w=> w && w.x1 != null), false);
+  const W = Math.ceil(bd.r) + 8, H = Math.ceil(bd.b) + 8;
+  return `<div class="seat-free-view" style="position:relative; width:${W}px; height:${H}px; margin:0 auto;">${body}${lines}</div>`;
+}
+var _seatViewAbs = false;
+// 조회 화면 칸 위치 - 예전은 CSS grid 칸, v2는 px 좌표(안쪽 3px 들여서 칸 사이 6px 간격)
+function seatViewPosStyle(cell, rowSpan, colSpan, ins){
+  if(!_seatViewAbs) return `grid-row:${cell.row} / span ${rowSpan}; grid-column:${cell.col} / span ${colSpan};`;
+  const i = ins || { t:0, r:0, b:0, l:0 };
+  const L = cell.col - 1 + SEAT_V2_INSET + i.l, T = cell.row - 1 + SEAT_V2_INSET + i.t;
+  const W = Math.max(4, colSpan - SEAT_V2_INSET*2 - i.l - i.r), H = Math.max(4, rowSpan - SEAT_V2_INSET*2 - i.t - i.b);
+  return `position:absolute; left:${L}px; top:${T}px; width:${W}px; height:${H}px; box-sizing:border-box;`;
+}
 function SEAT_EDIT_CELL_W(){ return (seatChartDraft && seatChartDraft.cellW) || 108; }
 function SEAT_EDIT_CELL_H(){ return (seatChartDraft && seatChartDraft.cellH) || 54; }
 const SEAT_EDIT_GAP = 6;
 // "격자선을 이동시켜 간격을 조정하고 싶다(복도 표현 등)" 요청 - 예전엔 모든 칸이 같은 가로/세로 크기라 좌표를
 // (칸번호-1)×(칸크기+간격)으로만 계산했는데, 이제 열마다(colWidths)·줄마다(rowHeights) 크기를 따로 가질 수
 // 있음(값이 없으면 기본 칸 크기). 편집 화면의 좌표 계산은 전부 아래 함수들을 거침
-function seatColW(c){ const m = seatChartDraft && seatChartDraft.colWidths; return (m && m[c]) || SEAT_EDIT_CELL_W(); }
-function seatRowH(r){ const m = seatChartDraft && seatChartDraft.rowHeights; return (m && m[r]) || SEAT_EDIT_CELL_H(); }
-function seatColX(c){ let x = 0; for(let i=1;i<c;i++) x += seatColW(i) + SEAT_EDIT_GAP; return x; }
-function seatRowY(r){ let y = 0; for(let i=1;i<r;i++) y += seatRowH(i) + SEAT_EDIT_GAP; return y; }
-function seatSpanW(c, span){ return seatColX(c + span) - seatColX(c) - SEAT_EDIT_GAP; }
-function seatSpanH(r, span){ return seatRowY(r + span) - seatRowY(r) - SEAT_EDIT_GAP; }
-function seatNearestCol(x, maxC){ let best = 1, bd = Infinity; for(let c=1;c<=maxC;c++){ const d = Math.abs(seatColX(c) - x); if(d < bd){ bd = d; best = c; } } return best; }
-function seatNearestRow(y, maxR){ let best = 1, bd = Infinity; for(let r=1;r<=maxR;r++){ const d = Math.abs(seatRowY(r) - y); if(d < bd){ bd = d; best = r; } } return best; }
+function seatColW(c){ if(seatV2()) return 1; const m = seatChartDraft && seatChartDraft.colWidths; return (m && m[c]) || SEAT_EDIT_CELL_W(); }
+function seatRowH(r){ if(seatV2()) return 1; const m = seatChartDraft && seatChartDraft.rowHeights; return (m && m[r]) || SEAT_EDIT_CELL_H(); }
+function seatColX(c){ if(seatV2()) return c - 1; let x = 0; for(let i=1;i<c;i++) x += seatColW(i) + SEAT_EDIT_GAP; return x; }
+function seatRowY(r){ if(seatV2()) return r - 1; let y = 0; for(let i=1;i<r;i++) y += seatRowH(i) + SEAT_EDIT_GAP; return y; }
+function seatSpanW(c, span){ if(seatV2()) return span; return seatColX(c + span) - seatColX(c) - SEAT_EDIT_GAP; }
+function seatSpanH(r, span){ if(seatV2()) return span; return seatRowY(r + span) - seatRowY(r) - SEAT_EDIT_GAP; }
+function seatNearestCol(x, maxC){ if(seatV2()) return Math.max(1, Math.min(maxC, Math.round(x) + 1)); let best = 1, bd = Infinity; for(let c=1;c<=maxC;c++){ const d = Math.abs(seatColX(c) - x); if(d < bd){ bd = d; best = c; } } return best; }
+function seatNearestRow(y, maxR){ if(seatV2()) return Math.max(1, Math.min(maxR, Math.round(y) + 1)); let best = 1, bd = Infinity; for(let r=1;r<=maxR;r++){ const d = Math.abs(seatRowY(r) - y); if(d < bd){ bd = d; best = r; } } return best; }
 // 오른쪽/아래 끝 좌표(px)에 가장 가깝게 끝나는 칸 번호
-function seatNearestColEnd(xEnd, fromC, maxC){ let best = fromC, bd = Infinity; for(let c=fromC;c<=maxC;c++){ const d = Math.abs(seatColX(c+1) - SEAT_EDIT_GAP - xEnd); if(d < bd){ bd = d; best = c; } } return best; }
-function seatNearestRowEnd(yEnd, fromR, maxR){ let best = fromR, bd = Infinity; for(let r=fromR;r<=maxR;r++){ const d = Math.abs(seatRowY(r+1) - SEAT_EDIT_GAP - yEnd); if(d < bd){ bd = d; best = r; } } return best; }
+function seatNearestColEnd(xEnd, fromC, maxC){ if(seatV2()) return Math.max(fromC, Math.min(maxC, Math.round(xEnd))); let best = fromC, bd = Infinity; for(let c=fromC;c<=maxC;c++){ const d = Math.abs(seatColX(c+1) - SEAT_EDIT_GAP - xEnd); if(d < bd){ bd = d; best = c; } } return best; }
+function seatNearestRowEnd(yEnd, fromR, maxR){ if(seatV2()) return Math.max(fromR, Math.min(maxR, Math.round(yEnd))); let best = fromR, bd = Infinity; for(let r=fromR;r<=maxR;r++){ const d = Math.abs(seatRowY(r+1) - SEAT_EDIT_GAP - yEnd); if(d < bd){ bd = d; best = r; } } return best; }
 // 칸 회전 - 방향(dir)과 함께 문 위치도 같이 90도 돌림("방은 회전이 안 된다" - 정사각형 방은 가로세로를
 // 맞바꿔도 모양이 같아서 회전해도 아무 변화가 없어 보였음. 문이 같이 돌아가야 회전한 게 보임)
 function seatRotateCell(cell){
@@ -41060,11 +41424,15 @@ function seatChartInitDraft(){
     cells: seatChartCloneCells(seatChartCellsForRender(sharedSeatChart)),
     walls: seatChartHasAnyData() ? (sharedSeatChart.walls||[]).map(w=>({ ...w })) : [],
     colWidths: seatChartHasAnyData() && sharedSeatChart.colWidths ? { ...sharedSeatChart.colWidths } : {},
-    rowHeights: seatChartHasAnyData() && sharedSeatChart.rowHeights ? { ...sharedSeatChart.rowHeights } : {}
+    rowHeights: seatChartHasAnyData() && sharedSeatChart.rowHeights ? { ...sharedSeatChart.rowHeights } : {},
+    v: seatChartHasAnyData() ? (sharedSeatChart.v || 0) : 0,
+    canvasH: 0
   };
   // "구분선 기능은 삭제" 요청 - 예전 칸 방식 구분선(type:'divider')은 편집을 열 때 빼두고, 저장하면 완전히 지워짐
   // (격자선 위에 긋는 새 구분선(walls)은 그대로)
   seatChartDraft.cells = seatChartDraft.cells.filter(c=> c.type!=='divider');
+  seatLineSelIdx = null;
+  if(seatChartDraft.v !== 2) seatV2ConvertDraft(seatChartDraft); // [2026.10.03] 자유배치로 - 예전 격자 모양 그대로 옮김
   // 예전엔 편집을 열 때마다 조직도 명단을 배치예정에 자동으로 채웠는데, "조직도 목록 가져오기" 버튼을 따로
   // 두기로 하면서(초기화 후 다시 채울지 사람이 정할 수 있게) 자동 채우기는 끔 - 버튼을 누를 때만 채움
   seatChartSelectedId = null;
@@ -41106,6 +41474,7 @@ function seatChartRangesOverlap(a,b){
   return aR1<=bR2 && bR1<=aR2 && aC1<=bC2 && bC1<=aC2;
 }
 function seatChartRowsNeeded(){
+  if(seatV2()) return Math.max(seatChartDraft.canvasH || 560, 560);
   const maxRow = seatChartDraft.cells.reduce((m,c)=>{ const sp=seatCellEffectiveSpans(c); return Math.max(m, (c.row||1)+(sp.rowSpan||1)-1); }, 0);
   // "아래쪽도 늘리게"(요청) - 세로 칸 수(rows)를 직접 정했으면 그 값(단, 칸이 놓인 줄보다 작아지지는 않음),
   // 안 정했으면 예전처럼 아래로 항상 여유 3줄
@@ -41147,6 +41516,7 @@ function seatChartEditCellHtml(cell){
   let drawTop = top, drawH = h;
   const trm = seatRoomTrim(cell);
   if(trm){ const W0 = w, H0 = h; visualLeft += W0*trm.l; w = W0*(1-trm.l-trm.r); drawTop += H0*trm.t; drawH = H0*(1-trm.t-trm.b); }
+  if(cell.px){ visualLeft += SEAT_V2_INSET; w -= SEAT_V2_INSET*2; drawTop += SEAT_V2_INSET; drawH -= SEAT_V2_INSET*2; } // v2 - 칸 사이 6px 간격
   const roomIns = seatInsetsInsideRoom(cell, seatChartDraft ? seatChartDraft.cells : [], 8);
   if(roomIns){
     drawTop += roomIns.t; drawH -= roomIns.t + roomIns.b;
@@ -41204,22 +41574,23 @@ function renderSeatChartEditPreview(){
   seatUndoNote();
   if(seatMultiAnchor !== seatChartSelectedId){ seatMultiSel.clear(); seatMultiAnchor = seatChartSelectedId; }
   if(seatSizeMode && seatSizeMode !== seatChartSelectedId) seatSizeMode = null;
+  if(seatV2()){ seatV2Normalize(seatChartDraft); seatV2FitCanvas(seatChartDraft); if(seatChartSelectedId || seatChartWallMode || !(seatChartDraft.walls||[])[seatLineSelIdx]) seatLineSelIdx = null; }
   const cols = Math.max(1, seatChartDraft.cols||9);
   const rows = seatChartRowsNeeded();
-  const gridW = seatColX(cols+1) - SEAT_EDIT_GAP;
-  const gridH = seatRowY(rows+1) - SEAT_EDIT_GAP;
+  const gridW = seatV2() ? cols : seatColX(cols+1) - SEAT_EDIT_GAP;
+  const gridH = seatV2() ? rows : seatRowY(rows+1) - SEAT_EDIT_GAP;
   const cellsHtml = seatChartDraft.cells.filter(c=> c.row && c.col && c.type!=='divider').map(seatChartEditCellHtml).join('');
   // 배경 격자선 - 열/줄 크기가 제각각일 수 있어서 반복 배경(gradient) 대신 선을 하나씩 그림
   let lines = '';
   // [2026.09.30] "격자선 안에서 칸 여백이 좌우·위아래가 다르다" - 선이 칸 왼쪽/위쪽 가장자리에 딱 붙어 그려져서, 칸이 선에서
   // 왼쪽·위는 0px, 오른쪽·아래는 간격(6px)만큼 떨어져 보였음. 선을 칸 사이 간격의 한가운데로 옮겨서 네 방향 여백을 같게 함
   const half = SEAT_EDIT_GAP / 2;
-  for(let c=1;c<=cols;c++) lines += `<span class="seat-grid-vline" style="left:${seatColX(c)-half-0.5}px; top:${-half}px; height:${gridH+SEAT_EDIT_GAP}px;"></span>`;
-  for(let r=1;r<=rows;r++) lines += `<span class="seat-grid-hline" style="top:${seatRowY(r)-half-0.5}px; left:${-half}px; width:${gridW+SEAT_EDIT_GAP}px;"></span>`;
+  if(!seatV2()) for(let c=1;c<=cols;c++) lines += `<span class="seat-grid-vline" style="left:${seatColX(c)-half-0.5}px; top:${-half}px; height:${gridH+SEAT_EDIT_GAP}px;"></span>`;
+  if(!seatV2()) for(let r=1;r<=rows;r++) lines += `<span class="seat-grid-hline" style="top:${seatRowY(r)-half-0.5}px; left:${-half}px; width:${gridW+SEAT_EDIT_GAP}px;"></span>`;
   // 격자선 간격 조절 손잡이 - 위쪽 눈금자에는 열 경계마다, 왼쪽 눈금자에는 줄 경계마다 작은 손잡이를 두고,
   // 끌면 그 경계 왼쪽(위쪽) 열(줄)의 크기가 바뀜. 두 번 누르면 기본 크기로 되돌아감
   let rulers = '';
-  if(!seatChartWallMode){
+  if(!seatChartWallMode && !seatV2()){
     for(let c=1;c<=cols;c++){
       const x = seatColX(c+1) - SEAT_EDIT_GAP/2 - 1;
       const custom = seatChartDraft.colWidths && seatChartDraft.colWidths[c];
@@ -41243,8 +41614,8 @@ function renderSeatChartEditPreview(){
     toolbar = `<div class="seat-cell-toolbar" style="left:${tx}px; top:${ty}px;${flipBelow ? ' transform:translate(-100%, 6px);' : ''}">
 ${seatSizeMode === selCell.id ? `
       ${seatMultiSel.size ? `<span class="seat-sz-lab" title="Shift+클릭으로 더 고르거나 뺄 수 있어요">${seatMultiSel.size + 1}칸 선택 ·</span>` : ''}
-      <span class="seat-sz-lab">가로</span><button type="button" data-act="szw-" data-id="${selCell.id}" title="가로 한 칸 줄이기">−</button><span class="seat-sz-val">${sp.colSpan}칸</span><button type="button" data-act="szw+" data-id="${selCell.id}" title="가로 한 칸 늘리기">+</button>
-      <span class="seat-sz-lab">세로</span><button type="button" data-act="szh-" data-id="${selCell.id}" title="세로 한 칸 줄이기">−</button><span class="seat-sz-val">${sp.rowSpan}칸</span><button type="button" data-act="szh+" data-id="${selCell.id}" title="세로 한 칸 늘리기">+</button>
+      <span class="seat-sz-lab">가로</span><button type="button" data-act="szw-" data-id="${selCell.id}" title="가로 한 칸 줄이기">−</button><span class="seat-sz-val">${seatV2() ? (sp.colSpan - SEAT_V2_INSET*2)+'px' : sp.colSpan+'칸'}</span><button type="button" data-act="szw+" data-id="${selCell.id}" title="가로 한 칸 늘리기">+</button>
+      <span class="seat-sz-lab">세로</span><button type="button" data-act="szh-" data-id="${selCell.id}" title="세로 한 칸 줄이기">−</button><span class="seat-sz-val">${seatV2() ? (sp.rowSpan - SEAT_V2_INSET*2)+'px' : sp.rowSpan+'칸'}</span><button type="button" data-act="szh+" data-id="${selCell.id}" title="세로 한 칸 늘리기">+</button>
       <button type="button" data-act="szdone" data-id="${selCell.id}" title="크기 조절 끝">✓</button>
     </div>` : `
       <button type="button" data-act="edit" data-id="${selCell.id}" title="수정"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button>
@@ -41255,9 +41626,10 @@ ${seatSizeMode === selCell.id ? `
       <button type="button" data-act="delete" data-id="${selCell.id}" title="삭제" class="danger">✕</button>
     </div>`}`;
   }
-  if(seatChartSelectedId || seatChartWallMode || !(seatChartDraft.walls||[])[seatWallSelIdx]) seatWallSelIdx = null;
+  if(seatV2() || seatChartSelectedId || seatChartWallMode || !(seatChartDraft.walls||[])[seatWallSelIdx]) seatWallSelIdx = null;
   // 평소엔 그려둔 선을 눌러 옮길 수 있게 칸·방보다 위(z-index 30)에 둠 - 방 테두리 등에 가려 선이 안 눌리던 문제
-  const wallsLayer = `<div class="seat-walls-layer" style="position:absolute; inset:0; pointer-events:none; z-index:${seatChartWallMode ? 3 : 30};">${seatEditWallsHtml(seatChartDraft.walls, cols, rows, !seatChartWallMode)}</div>`;
+  const wallsLayer = `<div class="seat-walls-layer" style="position:absolute; inset:0; pointer-events:none; z-index:${seatChartWallMode ? 3 : 30};">${seatV2() ? seatV2LinesHtml(seatChartDraft.walls, !seatChartWallMode) : seatEditWallsHtml(seatChartDraft.walls, cols, rows, !seatChartWallMode)}</div>`;
+  if(seatV2() && !toolbar && seatLineSelIdx !== null) toolbar = seatV2LineToolbarHtml();
   // 선택한 격자선 옆에 뜨는 도구줄(옮기기·원위치·삭제)
   if(seatWallSelIdx !== null && !toolbar){
     const sw = seatChartDraft.walls[seatWallSelIdx];
@@ -41299,7 +41671,10 @@ ${seatSizeMode === selCell.id ? `
     }
   }catch(e){}
   bindSeatChartEditCellEvents();
-  if(seatChartWallMode) bindSeatChartWallOverlay(document.getElementById('seatChartEditGrid'), cols, rows);
+  if(seatV2()){
+    const g2 = document.getElementById('seatChartEditGrid');
+    if(seatChartWallMode) bindSeatV2LineOverlay(g2); else bindSeatV2LinePick(g2);
+  } else if(seatChartWallMode) bindSeatChartWallOverlay(document.getElementById('seatChartEditGrid'), cols, rows);
   renderSeatChartTray();
   renderSeatChartCellEditor();
   seatUpdatePasteBtn();
@@ -41339,6 +41714,7 @@ function seatPasteNewCell(){
   if(!seatChartDraft || !seatSizeClipboard || !seatSizeClipboard.src) return;
   const src = seatSizeClipboard.src;
   const cell = { id: genId(), type: src.type, text:'', row:null, col:null, rowSpan: src.rowSpan, colSpan: src.colSpan, dir: src.dir };
+  if(src.px) cell.px = true;
   if(src.doorSide) cell.doorSide = src.doorSide;
   if(src.icon) cell.icon = src.icon;
   if(src.dividerColor) cell.dividerColor = src.dividerColor;
@@ -41349,8 +41725,9 @@ function seatPasteNewCell(){
   // 방은 다른 방과, 그 외 칸은 다른 자리·구역과 안 겹치는 첫 빈 곳
   const clash = (cand)=> seatChartDraft.cells.some(c=> c.row && c.col && c.id!==cand.id && (cell.type==='room' ? c.type==='room' : !nonOcc(c.type)) && seatChartRangesOverlap(c, cand));
   const maxRow = seatChartRowsNeeded() + 10;
-  outer: for(let r=1; r<=maxRow; r++){
-    for(let c=1; c + (eff.colSpan||1) - 1 <= cols; c++){
+  const stp = seatV2() ? 20 : 1;
+  outer: for(let r=1; r<=maxRow; r+=stp){
+    for(let c=1; c + (eff.colSpan||1) - 1 <= cols; c+=stp){
       const cand = { ...cell, row:r, col:c };
       if(!clash(cand)){ cell.row = r; cell.col = c; break outer; }
     }
@@ -41367,9 +41744,9 @@ function seatPasteSizeTo(cell){
   const turned = rot===90 || rot===270;
   const next = { ...cell, rowSpan: turned ? seatSizeClipboard.colSpan : seatSizeClipboard.rowSpan, colSpan: turned ? seatSizeClipboard.rowSpan : seatSizeClipboard.colSpan };
   const eff = seatCellEffectiveSpans(next);
-  if(cell.col + (eff.colSpan||1) - 1 > (seatChartDraft.cols||9)){ showCenterToast('오른쪽 끝을 넘어가서 붙여넣을 수 없어요'); return; }
+  if(!seatV2() && cell.col + (eff.colSpan||1) - 1 > (seatChartDraft.cols||9)){ showCenterToast('오른쪽 끝을 넘어가서 붙여넣을 수 없어요'); return; }
   const nonOcc = t => t==='divider' || t==='room';
-  if(!nonOcc(cell.type)){
+  if(!seatV2() && !nonOcc(cell.type)){
     const hit = seatChartDraft.cells.find(c=> c.id!==cell.id && !nonOcc(c.type) && c.row && c.col && seatChartRangesOverlap(c, next));
     if(hit){ showCenterToast('다른 칸과 겹쳐서 붙여넣을 수 없어요'); return; }
   }
@@ -41401,7 +41778,7 @@ function bindSeatChartEditCellEvents(){
       else if(act==='rotate'){ seatRotateCell(cell); renderSeatChartEditPreview(); }
       else if(act==='copysize'){
         // 복사 - 크기뿐 아니라 칸 종류·방향·문 위치까지 기억해서, 위쪽 "붙여넣기"로 똑같은 칸을 새로 만들 수 있게 함
-        seatSizeClipboard = { ...seatCellEffectiveSpans(cell), src: { type: cell.type, rowSpan: cell.rowSpan||1, colSpan: cell.colSpan||1, dir: cell.dir||0, doorSide: cell.doorSide||'', icon: cell.icon||'', dividerColor: cell.dividerColor, trim: cell.trim ? { ...cell.trim } : null } };
+        seatSizeClipboard = { ...seatCellEffectiveSpans(cell), src: { type: cell.type, px: !!cell.px, rowSpan: cell.rowSpan||1, colSpan: cell.colSpan||1, dir: cell.dir||0, doorSide: cell.doorSide||'', icon: cell.icon||'', dividerColor: cell.dividerColor, trim: cell.trim ? { ...cell.trim } : null } };
         showCenterToast(`복사했어요 · 위쪽 "붙여넣기"로 같은 칸 추가, 다른 칸을 골라 도구줄의 붙여넣기로 크기만 맞추기`);
         renderSeatChartEditPreview(); seatUpdatePasteBtn();
       }
@@ -41469,8 +41846,8 @@ function bindSeatChartEditCellEvents(){
   // 빈 격자(칸이 없는 곳)를 누르면 선택 해제 - 도구줄도 같이 사라짐
   const gridEl = document.getElementById('seatChartEditGrid');
   gridEl?.addEventListener('pointerdown', (e)=>{
-    if(e.target !== gridEl || (!seatChartSelectedId && seatWallSelIdx === null && !seatGridSel.cols.size && !seatGridSel.rows.size)) return;
-    seatChartSelectedId = null; seatWallSelIdx = null; seatGridClearSel();
+    if(e.target !== gridEl || (!seatChartSelectedId && seatWallSelIdx === null && seatLineSelIdx === null && !seatGridSel.cols.size && !seatGridSel.rows.size)) return;
+    seatChartSelectedId = null; seatWallSelIdx = null; seatLineSelIdx = null; seatGridClearSel();
     renderSeatChartEditPreview();
   });
   // 격자선(벽) 선택·끌어서 옮기기 - "격자선을 한 번 그리면 수정·삭제가 안 된다"·"선을 특정 부분만 옮기고 싶다" 요청.
@@ -41611,6 +41988,7 @@ function seatChartResizeHandlePointerDown(e){
   const cell = seatChartDraft?.cells.find(c=>c.id===id);
   const parentEl = handle.parentElement;
   if(!cell || !parentEl) return;
+  if(seatV2()){ seatV2ResizePointerDown(e, handle, cell); return; }
   const growW = edge==='corner' || edge==='right' || edge==='left';
   const growH = edge==='corner' || edge==='bottom' || edge==='top';
   const fromLeft = edge==='left';
@@ -41720,6 +42098,31 @@ function renderSeatChartTray(){
 // 화면 좌표(getBoundingClientRect·마우스 위치)는 zoom이 적용된 값이라 그대로 left/top에 넣으면 한 번 더 줄어들어 엉뚱한 곳에 그려졌음.
 // 화면 좌표로 계산하고 넣을 때만 zoom으로 나눔(끌기 고스트·각종 작은 팝업 메뉴 공통)
 function pageZoomF(){ try{ return parseFloat(getComputedStyle(document.documentElement).zoom) || 1; }catch(e){ return 1; } }
+// 칸을 끌지 않고 누르기만 했을 때 - 한 번 누르면 선택(도구줄), 두 번 연달아 누르면 수정창
+function seatChartCellClickLogic(id, fromTray){
+  // 두 번 연달아 누르면(더블클릭) 바로 수정창을 엶 - 한 번 누르면 선택만 되고 위쪽에 도구줄이 뜸
+  const now = Date.now();
+  if(seatChartLastClick.id===id && now - seatChartLastClick.t < 380){
+    seatChartLastClick = { id:null, t:0 };
+    seatChartOpenCellEditorClick({ stopPropagation(){}, currentTarget:{ dataset:{ id } } });
+    return;
+  }
+  seatChartLastClick = { id, t:now };
+  // 수정 창이 열려 있는 채로 다른 칸을 누르면, 수정 버튼을 또 누르지 않아도 수정 창이 그 칸으로 바로 바뀜
+  if(!fromTray && seatChartEditorOpenId && seatChartEditorOpenId !== id){
+    seatChartCloseCellEditor(true);
+    seatChartOpenCellEditorClick({ stopPropagation(){}, currentTarget:{ dataset:{ id } } });
+    return;
+  }
+  if(!fromTray){ seatChartSelectedId = id; renderSeatChartEditPreview(); return; }
+  if(seatChartSelectedId===id){
+    seatChartSelectedId = null;
+    if(seatChartEditorOpenId===id) seatChartEditorOpenId = null;
+  } else {
+    seatChartSelectedId = id;
+  }
+  renderSeatChartEditPreview();
+}
 function seatChartCellPointerDown(e){
   e.preventDefault();
   const el = e.currentTarget;
@@ -41733,6 +42136,7 @@ function seatChartCellPointerDown(e){
     return;
   }
   const fromTray = !(cell.row && cell.col);
+  if(seatV2() && !fromTray){ seatLineSelIdx = null; seatV2CellPointerDown(e, el, cell); return; }
   const grid = document.getElementById('seatChartEditGrid');
   const tray = document.getElementById('seatChartTrayWrap');
   const startX = e.clientX, startY = e.clientY;
@@ -41774,8 +42178,8 @@ function seatChartCellPointerDown(e){
     window.removeEventListener('pointercancel', finish);
     ghost.remove();
     if(tray) tray.classList.remove('seat-tray-hover');
-    if(!moved){
-      // 두 번 연달아 누르면(더블클릭) 바로 수정창을 엶 - 한 번 누르면 선택만 되고 위쪽에 도구줄이 뜸
+    if(!moved){ seatChartCellClickLogic(id, fromTray); return; }
+    if(false){
       const now = Date.now();
       if(seatChartLastClick.id===id && now - seatChartLastClick.t < 380){
         seatChartLastClick = { id:null, t:0 };
@@ -41830,8 +42234,9 @@ function seatChartCellPointerDown(e){
     if(fromTray){
       const relLeft = (startRect.left + (ev.clientX-startX)) - gridRect.left;
       const relTop = (startRect.top + (ev.clientY-startY)) - gridRect.top;
-      newCol = seatNearestCol(relLeft, seatChartDraft.cols||9);
-      newRow = seatNearestRow(relTop, seatChartRowsNeeded() + 20);
+      const z2 = seatV2() ? pageZoomF() : 1;
+      newCol = seatNearestCol(relLeft/z2 - (seatV2() ? SEAT_V2_INSET : 0), seatChartDraft.cols||9);
+      newRow = seatNearestRow(relTop/z2 - (seatV2() ? SEAT_V2_INSET : 0), seatChartRowsNeeded() + 20);
     } else {
       const dx = ev.clientX-startX, dy = ev.clientY-startY;
       const startLeft = parseFloat(el.style.left)||0, startTop = parseFloat(el.style.top)||0;
@@ -41848,7 +42253,7 @@ function seatChartCellPointerDown(e){
     // 배치하는 형태" 요청으로 방(room)도 똑같이 취급함(방을 옮길 때 안에 있던 자리들과 서로 자리를
     // 맞바꾸려 들면 안 되고, 자리를 방 위로 옮길 때도 "이미 방이 있으니 맞바꾸자"고 하면 안 됨)
     const isNonOccupying = t => t==='divider' || t==='room';
-    const occupant = isNonOccupying(cell.type) ? null : seatChartDraft.cells.find(c=> c.id!==cell.id && !isNonOccupying(c.type) && c.row && c.col && seatChartRangesOverlap(c, target));
+    const occupant = (seatV2() || isNonOccupying(cell.type)) ? null : seatChartDraft.cells.find(c=> c.id!==cell.id && !isNonOccupying(c.type) && c.row && c.col && seatChartRangesOverlap(c, target));
     if(occupant){
       if(fromTray || !oldRow || !oldCol){
         occupant.row = null; occupant.col = null; // 바꿔줄 원래 자리가 없으면 그 자리를 대신 미배치로
@@ -42151,6 +42556,12 @@ document.addEventListener('keydown', (e)=>{
   const tag = (e.target && e.target.tagName) || '';
   if(tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target && e.target.isContentEditable)) return;
   if((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')){ e.preventDefault(); seatUndo(); }
+  else if(/^Arrow(Left|Right|Up|Down)$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey){
+    const st = e.shiftKey ? 10 : 1;
+    const d = { ArrowLeft:[-st,0], ArrowRight:[st,0], ArrowUp:[0,-st], ArrowDown:[0,st] }[e.key];
+    if(seatV2Nudge(d[0], d[1])) e.preventDefault();
+  }
+  else if((e.key === 'Delete' || e.key === 'Backspace') && seatV2() && seatLineSelIdx !== null && seatChartDraft.walls[seatLineSelIdx]){ e.preventDefault(); seatChartDraft.walls.splice(seatLineSelIdx, 1); seatLineSelIdx = null; renderSeatChartEditPreview(); }
   else if(e.key === 'Escape' && (seatGridSel.cols.size || seatGridSel.rows.size)){ e.stopPropagation(); seatGridClearSel(); renderSeatChartEditPreview(); }
   else if(e.key === 'Escape' && seatSizeClipboard){ e.stopPropagation(); seatCopyClear(); }
 }, true);
@@ -42247,10 +42658,10 @@ function seatWallPopupOpen(){
   pop.className = 'seat-wall-popup';
   const colors = [['#1E2A5E','남색'],['#75789A','회색'],['#5B5FEF','인디고'],['#F0506E','빨강'],['#0FB88A','초록']];
   const thicks = [[2,'얇게'],[3,'보통'],[5,'굵게']];
-  pop.innerHTML = `<div class="seat-wall-popup-head"><span>격자선 긋기</span><button type="button" class="seat-wall-popup-x" title="끄기">✕</button></div>
+  pop.innerHTML = `<div class="seat-wall-popup-head"><span>선 긋기</span><button type="button" class="seat-wall-popup-x" title="끄기">✕</button></div>
     <div class="seat-wall-popup-row"><span class="lb">색상</span>${colors.map(([c,n])=>`<button type="button" class="sw${seatWallStyle.color===c?' on':''}" data-color="${c}" title="${n}" style="background:${c};"></button>`).join('')}</div>
     <div class="seat-wall-popup-row"><span class="lb">굵기</span>${thicks.map(([t,n])=>`<button type="button" class="tk${seatWallStyle.w===t?' on':''}" data-w="${t}" title="${n}"><span style="height:${t}px;"></span></button>`).join('')}</div>
-    <div class="seat-wall-popup-hint">격자선을 누르거나 끌면 선이 생기고, 같은 선을 다시 누르면 지워져요. 완료한 뒤엔 그려진 선을 눌러 옆으로 옮기거나 삭제할 수 있어요.</div>
+    <div class="seat-wall-popup-hint">끄는 방향으로 가로·세로 선이 그어지고, 선을 그냥 누르면 지워져요. 완료한 뒤엔 선을 눌러 옮기거나 양 끝 점으로 길이를 바꿀 수 있어요.</div>
     <div style="text-align:right;"><button type="button" class="submit-btn seat-wall-popup-done" style="padding:6px 14px; font-size:12px;">완료</button></div>`;
   document.body.appendChild(pop);
   const r = btn ? btn.getBoundingClientRect() : { left:20, bottom:80 };
@@ -42924,7 +43335,8 @@ document.getElementById('seatChartSaveBtn')?.addEventListener('click', async ()=
   const oldWalls = sharedSeatChart.walls || [];
   const newColWidths = { ...(seatChartDraft.colWidths||{}) }, newRowHeights = { ...(seatChartDraft.rowHeights||{}) };
   const oldColWidths = sharedSeatChart.colWidths || {}, oldRowHeights = sharedSeatChart.rowHeights || {};
-  const changed = JSON.stringify(oldCells) !== JSON.stringify(newCells) || oldAsOf !== newAsOf || oldCols !== newCols || oldTitle !== newTitle || oldCellW !== newCellW || oldCellH !== newCellH || JSON.stringify(oldWalls) !== JSON.stringify(newWalls) || JSON.stringify(oldColWidths) !== JSON.stringify(newColWidths) || JSON.stringify(oldRowHeights) !== JSON.stringify(newRowHeights);
+  const newV = seatChartDraft.v || 0, oldV = sharedSeatChart.v || 0;
+  const changed = newV !== oldV || JSON.stringify(oldCells) !== JSON.stringify(newCells) || oldAsOf !== newAsOf || oldCols !== newCols || oldTitle !== newTitle || oldCellW !== newCellW || oldCellH !== newCellH || JSON.stringify(oldWalls) !== JSON.stringify(newWalls) || JSON.stringify(oldColWidths) !== JSON.stringify(newColWidths) || JSON.stringify(oldRowHeights) !== JSON.stringify(newRowHeights);
   if(!changed && newRows === (sharedSeatChart.rows || 0)){ showCenterToast('바뀐 내용이 없어요'); return; }
   // 수정 전 상태를 이력에 남겨서, 나중에도 그 시점 자리배치를 다시 찾아볼 수 있게 함(인사지침 이력과
   // 같은 방식) - 한 번도 저장한 적 없는 첫 저장은 남길 "이전 상태"가 없어 건너뜀. "사무실을 이사할 수도
@@ -42934,7 +43346,7 @@ document.getElementById('seatChartSaveBtn')?.addEventListener('click', async ()=
   if(seatChartHasAnyData() && (oldTitle !== newTitle || oldAsOf !== newAsOf)){
     if(!Array.isArray(sharedSeatChart.history)) sharedSeatChart.history = [];
     const autoTitle = oldTitle || `배치도 ${sharedSeatChart.history.length+1}`;
-    sharedSeatChart.history.unshift({ id: genId(), title: autoTitle, asOf: oldAsOf, cols: oldCols, cellW: oldCellW, cellH: oldCellH, cells: oldCells, walls: oldWalls, colWidths: oldColWidths, rowHeights: oldRowHeights, editedAt: sharedSeatChart.updatedAt || new Date().toISOString(), editedBy: sharedSeatChart.updatedBy || '' });
+    sharedSeatChart.history.unshift({ id: genId(), v: oldV, title: autoTitle, asOf: oldAsOf, cols: oldCols, cellW: oldCellW, cellH: oldCellH, cells: oldCells, walls: oldWalls, colWidths: oldColWidths, rowHeights: oldRowHeights, editedAt: sharedSeatChart.updatedAt || new Date().toISOString(), editedBy: sharedSeatChart.updatedBy || '' });
   }
   sharedSeatChart.cells = newCells;
   sharedSeatChart.asOf = newAsOf;
@@ -42946,6 +43358,7 @@ document.getElementById('seatChartSaveBtn')?.addEventListener('click', async ()=
   sharedSeatChart.walls = newWalls;
   sharedSeatChart.colWidths = newColWidths;
   sharedSeatChart.rowHeights = newRowHeights;
+  sharedSeatChart.v = newV;
   sharedSeatChart.updatedBy = currentStaffDisplayName() || currentUserEmail || '';
   await saveSharedSeatChart();
   seatChartDraft = null; // 저장한 값 기준으로 다시 초기화되게 함(바로 아래 renderSeatChartEdit가 새로 만듦)
@@ -43005,7 +43418,7 @@ function bindSeatChartHistoryPopupEvents(el){
       // 지금 저장돼 있는 걸 먼저 이력에 남기고(되돌리기 전 상태도 잃지 않게), 고른 이력의 내용을 그대로
       // 현재 값으로 바꿔치기함 - "복원"도 결국 하나의 저장이라 이력 쌓는 방식은 저장 버튼과 동일
       if(!Array.isArray(sharedSeatChart.history)) sharedSeatChart.history = [];
-      sharedSeatChart.history.unshift({ id: genId(), title: sharedSeatChart.title || `배치도 ${sharedSeatChart.history.length+1}`, asOf: sharedSeatChart.asOf||'', cols: sharedSeatChart.cols||9, cellW: sharedSeatChart.cellW||108, cellH: sharedSeatChart.cellH||54, cells: sharedSeatChart.cells||[], walls: sharedSeatChart.walls||[], colWidths: sharedSeatChart.colWidths||{}, rowHeights: sharedSeatChart.rowHeights||{}, editedAt: sharedSeatChart.updatedAt || new Date().toISOString(), editedBy: sharedSeatChart.updatedBy || '' });
+      sharedSeatChart.history.unshift({ id: genId(), v: sharedSeatChart.v || 0, title: sharedSeatChart.title || `배치도 ${sharedSeatChart.history.length+1}`, asOf: sharedSeatChart.asOf||'', cols: sharedSeatChart.cols||9, cellW: sharedSeatChart.cellW||108, cellH: sharedSeatChart.cellH||54, cells: sharedSeatChart.cells||[], walls: sharedSeatChart.walls||[], colWidths: sharedSeatChart.colWidths||{}, rowHeights: sharedSeatChart.rowHeights||{}, editedAt: sharedSeatChart.updatedAt || new Date().toISOString(), editedBy: sharedSeatChart.updatedBy || '' });
       sharedSeatChart.history = sharedSeatChart.history.filter(h=>h.id!==entry.id); // 복원 대상 자체는 중복으로 안 남김
       sharedSeatChart.cells = seatChartCloneCells(entry.cells);
       sharedSeatChart.asOf = entry.asOf || '';
@@ -43016,6 +43429,7 @@ function bindSeatChartHistoryPopupEvents(el){
       sharedSeatChart.walls = (entry.walls||[]).map(w=>({ ...w }));
       sharedSeatChart.colWidths = { ...(entry.colWidths||{}) };
       sharedSeatChart.rowHeights = { ...(entry.rowHeights||{}) };
+      sharedSeatChart.v = entry.v || 0;
       sharedSeatChart.updatedBy = currentStaffDisplayName() || currentUserEmail || '';
       await saveSharedSeatChart();
       seatChartDraft = null;
