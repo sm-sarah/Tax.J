@@ -2207,6 +2207,15 @@ try{
   .st-calm-table select.st-sel[data-st="검토중"]{ color:#B4830E; }
   .st-calm-table select.st-sel[data-st="기안완료"]{ color:var(--indigo-deep); }
   .st-calm-table select.st-sel[data-st="신고완료"], .st-calm-table select.st-sel[data-st="결산완료"]{ color:var(--mint); border-color:transparent; background:transparent; }
+  /* [2026.10.03] 결산·법인세·종소세 표를 원천세처럼 - 진행상태 칸은 글자만, 누르면 팝업 */
+  .st-compact .st-cell-btn{ display:flex; align-items:center; justify-content:center; width:100%; min-height:30px; border:none; background:transparent; border-radius:8px; cursor:pointer; font-family:inherit; padding:2px 4px; }
+  .st-compact .st-cell-btn:hover{ background:var(--indigo-bg); }
+  .st-cv{ font-size:12px; font-weight:800; white-space:nowrap; }
+  .st-cv-done{ color:var(--mint); } .st-cv-rev{ color:#B4830E; } .st-cv-draft{ color:var(--indigo-deep); } .st-cv-na{ color:#B9BECC; font-weight:600; }
+  .st-cv-none::before{ content:'+'; color:var(--border); font-size:14px; font-weight:800; }
+  .st-compact .st-cell-btn:hover .st-cv-none::before{ color:var(--indigo); }
+  #stCellEditBody .st-date-wrap{ display:inline-flex; gap:6px; align-items:center; }
+  #stCellEditBody select.st-sel, #stCellEditBody input[type="date"]{ height:32px; font-size:12.5px !important; padding:0 8px !important; }
   .st-calm-table select.st-sel[data-st="미대상"]{ color:#B9BECC; border-color:transparent; background:transparent; }
   .st-date-wrap{ display:inline-flex; align-items:center; gap:4px; }
   .st-today-btn{ border:1px solid var(--border); background:var(--surface); color:var(--ink-soft); font-family:inherit; font-size:10.5px; font-weight:700; height:22px; padding:0 7px; border-radius:6px; cursor:pointer; }
@@ -7026,7 +7035,8 @@ try{
           <h2 class="section-title section-title-tab-header" style="justify-content:center;">기안작성</h2>
           <!-- 실제 사내 그룹웨어 기안문 양식을 참고해서, 기안자/소속/기안일이 자동으로 채워지는 문서 머리글과
                기안→승인 결재선을 시각적으로 보여주는 formal한 문서 느낌으로 구성함 -->
-          <div class="settings-box" style="max-width:560px; padding:0; overflow:hidden;">
+          <!-- [2026.10.03] "기안작성 양식이 화면에 비해 너무 작음"(요청) - 폭 560px → 820px -->
+          <div class="settings-box" style="max-width:820px; padding:0; overflow:hidden;">
             <div style="background:linear-gradient(160deg, var(--navy), #2B3768); color:#fff; padding:14px 22px; display:flex; align-items:center; justify-content:space-between;">
               <div style="display:flex; align-items:center; gap:8px;">
                 <div id="approvalDraftFormTitle" style="font-weight:800; font-size:15px; letter-spacing:0.02em;">업무기안</div>
@@ -7160,7 +7170,7 @@ try{
                     <button type="button" class="del-btn ad-rt-color" data-color="" title="색상 지우기" style="background:var(--surface); width:16px; height:16px; padding:0; border-radius:50%; border:1.5px solid var(--border); position:relative;"><span style="position:absolute; inset:0; border-top:1.5px solid var(--coral); transform:rotate(45deg);"></span></button>
                   </div>
                   <label style="display:block; margin:0 0 4px;">내용</label>
-                  <div id="ad-content" contenteditable="true" data-placeholder="결재 내용을 적어주세요" style="width:100%; min-height:120px; max-height:40vh; overflow-y:auto; font-family:'Pretendard',sans-serif; font-size:13px; line-height:1.6; border:1.5px solid transparent; border-radius:10px; padding:10px; background:var(--bg); color:var(--ink);"></div>
+                  <div id="ad-content" contenteditable="true" data-placeholder="결재 내용을 적어주세요" style="width:100%; min-height:200px; max-height:50vh; overflow-y:auto; font-family:'Pretendard',sans-serif; font-size:13px; line-height:1.6; border:1.5px solid transparent; border-radius:10px; padding:10px; background:var(--bg); color:var(--ink);"></div>
                 </div>
                 <div class="field"><label>첨부 <span style="font-weight:400; color:var(--ink-soft);">— 파일을 올리거나, 구글드라이브 등 링크를 붙여넣으세요</span></label>
                   <div id="ad-attach-link-rows" style="display:flex; flex-direction:column; gap:6px; margin-bottom:6px;"></div>
@@ -26773,6 +26783,89 @@ function stSummaryHtml(label, due, total, done, segs){
     <span class="it-seg st-seg" role="group" aria-label="보기 범위">${segs.map(([k,l,tt])=>`<button type="button" class="${filingStatusSeg===k?'on':''}" data-seg="${k}"${tt?` title="${tt}"`:''}>${l}</button>`).join('')}</span></div>`;
 }
 function stBindSummary(wrap){ itSplitSummary(wrap); if(wrap && wrap.id === 'filingStatusTableWrap') stPlaceHead(); wrap.querySelectorAll('.st-seg button').forEach(b=> b.addEventListener('click', ()=>{ filingStatusSeg = b.dataset.seg; renderFilingStatusTable('status'); })); }
+// [2026.10.03] "결산·법인세·종소세도 원천세처럼"(요청) - 표에는 진행상태·날짜를 글자로만(완료면 ✓ 날짜) 보여 주고,
+// 칸을 누르면 팝업에서 진행상태·날짜를 고친 뒤 저장(원천세 신고일자 팝업과 같은 방식). 표를 그리는 코드·저장 구조는 그대로 두고,
+// 그려진 표의 진행상태 드롭다운·날짜칸을 숨긴 뒤 누를 때만 팝업으로 옮겨 쓰는 방식이라 기존 동작(완료로 바꾸면 오늘 날짜 등)이 그대로 유지됨
+function stCellSummaryHtml(sel, dateInp){
+  const v = sel ? sel.value : '';
+  const d = dateInp && dateInp.value ? dateInp.value.slice(5).replace('-', '.') : '';
+  if(v === '신고완료' || v === '결산완료') return `<span class="st-cv st-cv-done">✓${d ? ' ' + d : ''}</span>`;
+  if(v === '검토중') return `<span class="st-cv st-cv-rev">검토중</span>`;
+  if(v === '기안완료') return `<span class="st-cv st-cv-draft">기안완료</span>`;
+  if(v === '미대상') return `<span class="st-cv st-cv-na">—</span>`;
+  return `<span class="st-cv st-cv-none"></span>`;
+}
+function stCompactTable(wrap){
+  const table = wrap && wrap.querySelector('table.st-calm-table'); if(!table || table.classList.contains('st-compact')) return; // 두 번 정리되지 않게
+  table.classList.add('st-compact');
+  // 날짜 열 머리글 숨김(결산은 묶음 머리글 colspan 2 → 1)
+  table.querySelectorAll('thead th').forEach(th=>{ const t = (th.textContent||'').trim(); if(t === '완료일' || t === '신고일') th.style.display = 'none'; if(th.getAttribute('colspan') === '2') th.setAttribute('colspan', '1'); });
+  table.querySelectorAll('tbody tr').forEach(tr=>{
+    tr.querySelectorAll('select.st-sel').forEach(sel=>{
+      const td = sel.closest('td'); const dtd = td && td.nextElementSibling && td.nextElementSibling.querySelector('.st-date-wrap') ? td.nextElementSibling : null;
+      const dateWrap = dtd ? dtd.querySelector('.st-date-wrap') : null, dateInp = dateWrap ? dateWrap.querySelector('input[type="date"]') : null;
+      if(dtd) dtd.style.display = 'none';
+      sel.style.display = 'none';
+      const cell = document.createElement('button'); cell.type = 'button'; cell.className = 'st-cell-btn'; cell.title = '눌러서 진행상태·날짜 입력';
+      cell.innerHTML = stCellSummaryHtml(sel, dateInp); td.appendChild(cell);
+      cell.addEventListener('click', ()=> stOpenCellEdit(tr, td, sel, dtd, dateWrap, dateInp, cell));
+    });
+  });
+}
+function stOpenCellEdit(tr, td, sel, dtd, dateWrap, dateInp, cell){
+  let ov = document.getElementById('stCellEditOverlay');
+  if(!ov){
+    document.body.insertAdjacentHTML('beforeend', `<div id="stCellEditOverlay" style="display:none; position:fixed; inset:0; z-index:950; background:rgba(15,16,30,0.6); padding:14px; align-items:center; justify-content:center;">
+      <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:400px; width:100%; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; gap:8px;">
+          <h3 style="margin:0; font-size:15.5px; font-weight:800;"><span id="stCellEditName"></span> · <span id="stCellEditWhat" style="color:var(--ink-soft); font-weight:700;"></span></h3>
+          <button type="button" id="stCellEditCloseBtn" class="del-btn modal-close-btn" style="flex-shrink:0;">✕</button>
+        </div>
+        <div id="stCellEditBody" class="st-calm-table" style="display:grid; grid-template-columns:auto 1fr; gap:10px 12px; align-items:center; font-size:12.5px;"></div>
+        <div style="display:flex; justify-content:center; margin-top:16px;"><button type="button" id="stCellEditSaveBtn" class="submit-btn" style="width:auto; padding:9px 28px; margin:0;">저장</button></div>
+      </div></div>`);
+    ov = document.getElementById('stCellEditOverlay');
+    ov.addEventListener('click', e=>{ if(e.target === ov) stCloseCellEdit(false); });
+    document.getElementById('stCellEditCloseBtn').addEventListener('click', ()=> stCloseCellEdit(false));
+    document.getElementById('stCellEditSaveBtn').addEventListener('click', ()=> stCloseCellEdit(true));
+  }
+  const table = tr.closest('table');
+  // 머리글에서 이 칸의 이름(결산 1 / 법인세 등)
+  const nameEl = tr.querySelector('.it-all-name');
+  let what = '';
+  const grp = sel.dataset.t; if(grp) what = grp === '결산1차' ? '결산 1' : '결산 2';
+  else what = (document.getElementById('filingStatusTitle')?.textContent || '').replace(/\s*신고현황$/, '');
+  document.getElementById('stCellEditName').textContent = nameEl ? nameEl.textContent.trim() : '';
+  document.getElementById('stCellEditWhat').textContent = what;
+  const body = document.getElementById('stCellEditBody'); body.innerHTML = '';
+  const lab = t=>{ const l = document.createElement('b'); l.textContent = t; l.style.cssText = 'color:var(--ink-soft); font-weight:700;'; return l; };
+  body.appendChild(lab('진행상태')); sel.style.display = ''; body.appendChild(sel);
+  if(dateWrap){ body.appendChild(lab(sel.dataset.t ? '완료일' : '신고일')); body.appendChild(dateWrap); }
+  // 팝업으로 옮긴 동안에는 표 안에서 날짜칸을 찾는 원래 코드가 못 찾으므로, 완료로 바꾸면 날짜칸 켜기·오늘 날짜 채우기를 여기서 같이 해 줌
+  const onSel = ()=>{ if(!dateInp) return; const on = sel.value === '결산완료' || sel.value === '신고완료'; dateInp.disabled = !on; dateInp.style.opacity = on ? '1' : '0.5'; const tb = dateWrap.querySelector('.st-today-btn'); if(tb) tb.disabled = !on; if(on && !dateInp.value){ dateInp.value = todayStr(); dateInp.dispatchEvent(new Event('input')); } };
+  sel.addEventListener('change', onSel);
+  stOpenCellEdit.ctx = { td, sel, dtd, dateWrap, dateInp, cell, onSel, before: { s: sel.value, d: dateInp ? dateInp.value : '' } };
+  ov.style.display = 'flex';
+}
+async function stCloseCellEdit(save){
+  const ov = document.getElementById('stCellEditOverlay'), x = stOpenCellEdit.ctx; if(!x){ if(ov) ov.style.display = 'none'; return; }
+  // 취소(✕·바깥 클릭)면 팝업에서 바꾼 값을 되돌림
+  if(!save){
+    if(x.sel.value !== x.before.s){ x.sel.value = x.before.s; x.sel.dispatchEvent(new Event('change')); }
+    if(x.dateInp && x.dateInp.value !== x.before.d){ x.dateInp.value = x.before.d; x.dateInp.dispatchEvent(new Event('input')); }
+  }
+  x.sel.removeEventListener('change', x.onSel);
+  x.sel.style.display = 'none'; x.td.insertBefore(x.sel, x.cell);
+  if(x.dateWrap && x.dtd) x.dtd.appendChild(x.dateWrap);
+  x.cell.innerHTML = stCellSummaryHtml(x.sel, x.dateInp);
+  stOpenCellEdit.ctx = null; ov.style.display = 'none';
+  const changed = x.sel.value !== x.before.s || (x.dateInp && x.dateInp.value !== x.before.d);
+  if(save && changed){ // 원천세 팝업처럼 저장 버튼을 누르면 바로 저장하고, 요약(완료·남음)도 새로 계산되게 표를 다시 그림
+    const cfg = FILING_KINDS.status;
+    try{ await cfg.save(); flashFilingStatusSaveMsg('status'); setFilingStatusDirty('status', false); }catch(e){ console.error('저장 실패', e); appAlert('저장하지 못했어요. 다시 시도해 주세요.'); }
+    renderFilingStatusTable('status');
+  }
+}
 function stDateCellHtml(cls, cid, val, on, extra){
   return `<td class="cvb"><span class="st-date-wrap"><input type="date" class="${cls}" data-client-id="${cid}"${extra||''} value="${escHtml(val||'')}" ${on?'':'disabled'} style="border:1.5px solid var(--border); border-radius:6px; padding:2px 4px; font-size:11px; font-family:inherit; opacity:${on?1:0.5};"><button type="button" class="st-today-btn" ${on?'':'disabled'} title="오늘 날짜로">오늘</button></span></td>`;
 }
@@ -26938,6 +27031,7 @@ function renderFilingStatusTableInner(kind){
     stBindDateCells(wrap, 'st-filed-date', cid=> entOf(cid), 'filedDate', ()=> setFilingStatusDirty(kind, true));
     stBindMemoCells(wrap, cid=> entOf(cid), `${String(period).slice(0,4)}년 귀속 ${FILING_TYPE_FULL_NAME[taxType] || taxType} 메모`, ()=> renderFilingStatusTable(kind));
   }
+  if(isPLTaxType) setTimeout(()=> stCompactTable(wrap), 0); // 아래 드롭다운 변경 이벤트를 다 붙인 뒤 표를 원천세처럼 정리
   syncItAllStickyHead();
   if(isPLTaxType){
     wrap.querySelectorAll('.cf-status-open-btn').forEach(btn=>{
@@ -27077,6 +27171,7 @@ function renderSettlementMergedTable(){
   // 메모는 한 칸(1차 쪽에 저장). 예전에 2차에 따로 적은 메모는 합쳐 보여주고, 팝업에서 저장할 때 1차로 옮김
   stBindMemoCells(wrap, cid=>{ const e1 = ent('결산1차', cid); const e2 = pd('결산2차')[cid]; const m1 = (e1.memo||'').trim(), m2 = ((e2||{}).memo||'').trim(); if(m2 && m2 !== m1){ e1.memo = m1 ? `${m1} / ${m2}` : m2; e2.memo = ''; } else if(m2 && e2){ e2.memo = ''; } return e1; }, `${period}년 결산 메모`, renderSettlementMergedTable);
   stBindSummary(wrap);
+  stCompactTable(wrap);
   syncItAllStickyHead();
 }
 // ── [2026.10.02] 신고 > 일용직 관리대장(요청) ──
