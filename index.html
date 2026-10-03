@@ -37889,6 +37889,9 @@ async function maybePromptNewDeviceRegister(){
   try{
     if(typeof Notification === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
     if(Notification.permission === 'denied') return;
+    // [2026.10.03] "알림 기기로 등록해놨는데 등록 안내가 또 뜸"(요청) - Firebase 실시간 연결이 실패한 상태(주황 "실시간 연결 안 됨")에서는
+    // 기기 목록이 최신이 아니라 등록된 기기도 미등록으로 잘못 판단할 수 있음. 이때는 묻지 않고 다음 접속 때 다시 확인
+    if((typeof fsActive !== 'undefined') && !fsActive && typeof fsInitError !== 'undefined' && !!fsInitError) return;
     const me = (currentUserEmail||'').toLowerCase(); if(!me) return;
     let myToken = null; try{ myToken = localStorage.getItem('worklog_my_push_token'); }catch(e){}
     const registered = !!myToken && (sharedPushTokens||[]).some(t=> t.token === myToken && String(t.email||'').toLowerCase() === me);
