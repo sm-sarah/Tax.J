@@ -3838,6 +3838,9 @@ try{
   .section-title-tab-header .badge{ font-size:11px; vertical-align:middle; }
   /* [2026.10.03] "도움말 아이콘이 제목 글자와 너무 떨어져 어색"(요청) - 제목 줄 gap(10px)에 아이콘 자체 왼쪽 여백(6px)이 더해져 16px이던 것을 6px로 */
   .section-title-tab-header > .backup-info-btn{ margin-left:-4px !important; }
+  /* [2026.10.03] "건수는 제목 밑으로"(요청) - 기장·기타·해지거래처 제목 옆 건수(27건)를 제목 바로 아래 가운데로. 제목 줄 높이·도움말 위치는 그대로 */
+  .section-title-tab-header{ position:relative; }
+  .section-title-tab-header > .badge{ position:absolute; top:100%; left:50%; transform:translateX(-50%); margin-top:3px; white-space:nowrap; }
   /* [2026.10.03] "제목+도움말 아이콘 사이가 벌어진 곳 검토해서 붙여줘"(요청) - 설정·데이터 화면 소제목(14px)·근무기준 소제목(13px)이
      다른 제목(약 7px)보다 넓었음. 줄 gap에 아이콘 왼쪽 여백(6px)이 더해진 탓 - 다른 제목과 같은 간격으로 맞춤 */
   .settings-sub-title > .backup-info-btn{ margin-left:-1px !important; }
@@ -4232,6 +4235,9 @@ try{
 <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-database-compat.js"></script>
 </head>
 <body>
+<!-- [2026.10.03] "직원 목록의 왕관이 흰색"(요청 확인) - 왕관 금색 테두리(그라데이션)를 왕관 그림마다 넣어 두었더니, 첫 번째 왕관이
+     숨겨진 화면 안에 있으면 브라우저가 그 그라데이션을 못 찾아 다른 왕관까지 테두리 없이 흰색으로 보였음 → 그라데이션을 문서에 한 번만, 항상 보이는 자리에 둠 -->
+<svg width="0" height="0" style="position:absolute; width:0; height:0; overflow:hidden;" aria-hidden="true"><defs><linearGradient id="pcLine" x1="0" y1="0" x2=".5" y2="1"><stop offset="0" stop-color="#FFCF5C"/><stop offset="1" stop-color="#E58E12"/></linearGradient></defs></svg>
 <!-- 월 선택용 보조 input(showPicker로 브라우저 기본 달력 팝업을 띄우는 용도) - 근태현황·개인캘린더 두 탭에서
      같이 씀. 원래 개인캘린더 탭(.tab-panel) 안에 있었는데, 탭 패널은 안 보이는 동안 display:none이라
      근태현황 탭에서 열었을 때(개인캘린더 탭이 숨겨진 상태) 위치 계산이 깨져서 팝업이 화면 왼쪽 위 구석에
@@ -11286,6 +11292,12 @@ function checkClockReminderTick(){
   if(typeof settings === 'undefined' || typeof attendance === 'undefined') return; // 로그인/데이터 로딩 전에는 건너뜀
   const d = todayStr();
   const now = new Date();
+  // [2026.10.03] "휴일(토요일·개천절)인데 퇴근 알림이 왔다"(요청) - 서버는 공휴일이라 안 보냈는데, 앱이 열려 있던 기기의 안전장치(서버 푸시가 90초 안에
+  // 안 오면 직접 띄움)가 주말·공휴일·종일 휴가를 확인하지 않고 띄웠음 → 서버(sendPush)와 같은 기준으로 이런 날은 건너뜀
+  if(now.getDay() === 0 || now.getDay() === 6) return;
+  if(['01-01','03-01','05-05','06-06','08-15','10-03','10-09','12-25'].includes(d.slice(5))) return;
+  try{ if((sharedExclusionDays||[]).some(x=> x && x.date === d && x.reason === '공휴일')) return; }catch(e){}
+  if((attendance.leaveUsage||[]).some(l=> l && l.date === d && ['연차','포상휴가','경조사휴가','공가','기타휴가'].includes(l.type))) return;
   const nowMin = now.getHours()*60 + now.getMinutes();
   const entry = (attendance.clockLog||[]).find(e=>e.date===d); // 오늘 기록만(자정 넘은 야근 기록이 오늘 출근 알림을 막지 않게)
   const startMin = timeStrToMinutes(getWorkStartTime(d));
@@ -20451,7 +20463,7 @@ function dashPresenceDevIcon(name){
 // idle(출근 전): 살짝 웃는 입 / working(근무 중): 다문 작은 입 / done(모두 퇴근): 활짝 웃으며 혀
 // [2026.10.02] "회계사는 프로필 왼쪽 위에 작은 왕관 포인트"(요청) - 얼굴 동그라미 위에 겹쳐 얹기만 해서 크기·배치는 그대로
 // 선(stroke) 아이콘 모양, 안쪽은 흰색 그대로(요청) - 선에만 젤리 같은 노란 그라데이션과 반짝 줄. 흰 테두리를 한 겹 깔아서 프로필 위에서도 또렷하게
-const PRES_CROWN_SVG = '<span class="pres-crown" aria-hidden="true"><svg viewBox="0 0 28 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="pcLine" x1="0" y1="0" x2=".5" y2="1"><stop offset="0" stop-color="#FFCF5C"/><stop offset="1" stop-color="#E58E12"/></linearGradient></defs><path d="M5 18.5 3.2 7.5l5.6 4.6L14 4l5.2 8.1 5.6-4.6L23 18.5Z" stroke="#fff" stroke-width="3.6"/><path d="M5 18.5 3.2 7.5l5.6 4.6L14 4l5.2 8.1 5.6-4.6L23 18.5Z" fill="#fff" stroke="url(#pcLine)" stroke-width="2.2"/><path d="M4.6 10.4l.5 3.2" stroke="#fff" stroke-width=".9" opacity=".9"/></svg></span>';
+const PRES_CROWN_SVG = '<span class="pres-crown" aria-hidden="true"><svg viewBox="0 0 28 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18.5 3.2 7.5l5.6 4.6L14 4l5.2 8.1 5.6-4.6L23 18.5Z" stroke="#fff" stroke-width="3.6"/><path d="M5 18.5 3.2 7.5l5.6 4.6L14 4l5.2 8.1 5.6-4.6L23 18.5Z" fill="#fff" stroke="url(#pcLine)" stroke-width="2.2"/><path d="M4.6 10.4l.5 3.2" stroke="#fff" stroke-width=".9" opacity=".9"/></svg></span>';
 // [2026.10.03] "결재 화면에서는 회계사 이름 앞에 왕관"(요청) - 직원은 표시 없이 이름만. 대시보드 왕관과 같은 그림을 글자 크기에 맞춰 작게
 // [2026.10.03] "CPA 프로필 좋은데 직원은 Staff 어때 · 직원정보에서도 대시보드 프로필 따라가야"(요청) - 사진이 없으면 회계사는 CPA, 그 외는 Staff
 function staffRoleAvatarText(p){ return String((p && p.position) || '').trim() === '회계사' ? 'CPA' : 'Staff'; }
@@ -37583,6 +37595,28 @@ function renderEmployeeRoster(){
       </span>
     </div>`;
   }).join('');
+  // [2026.10.03] "직원정보 줄마다 아이콘이 너무 많음"(요청, A안) - 줄(이름)을 누르면 현황, 오른쪽엔 수정(연필)과 ⋯만.
+  // ⋯를 누르면 휴가 조정·이력·삭제 메뉴. 원래 버튼들은 숨겨 두고 메뉴에서 그 버튼을 대신 눌러 주는 방식이라 동작은 예전과 같음
+  wrap.querySelectorAll('.employee-open-status-btn').forEach(stBtn=>{
+    const box = stBtn.parentElement, row = box && box.parentElement; if(!box || !row) return;
+    ['.employee-open-status-btn','.employee-open-leave-btn','.employee-open-history-btn','.employee-del-btn'].forEach(sel=>{ const b = box.querySelector(sel); if(b) b.style.setProperty('display','none','important'); });
+    const more = document.createElement('button'); more.type = 'button'; more.className = 'del-btn xls-io-btn emp-icon-btn emp-more-btn'; more.title = '더보기 (휴가 조정·이력·삭제)'; more.setAttribute('aria-label','더보기');
+    more.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>';
+    box.appendChild(more);
+    more.addEventListener('click', e=>{
+      e.stopPropagation();
+      document.querySelectorAll('.emp-more-dd').forEach(x=>x.remove());
+      const dd = document.createElement('div'); dd.className = 'cal-owner-dropdown emp-more-dd';
+      dd.innerHTML = `<button type="button" class="cal-owner-dd-item" data-k="leave">휴가 조정</button><button type="button" class="cal-owner-dd-item" data-k="history">이력</button><button type="button" class="cal-owner-dd-item" data-k="del" style="color:var(--coral);">삭제</button>`;
+      document.body.appendChild(dd);
+      const r = more.getBoundingClientRect(); dd.style.top = (r.bottom + 4) + 'px'; dd.style.left = Math.max(8, r.right - dd.offsetWidth) + 'px';
+      dd.addEventListener('click', ev=>{ const it = ev.target.closest('[data-k]'); if(!it) return; dd.remove();
+        const map = { leave:'.employee-open-leave-btn', history:'.employee-open-history-btn', del:'.employee-del-btn' }; box.querySelector(map[it.dataset.k])?.click(); });
+      setTimeout(()=> document.addEventListener('click', function off(){ dd.remove(); document.removeEventListener('click', off); }), 0);
+    });
+    row.style.cursor = 'pointer'; row.title = '눌러서 현황 보기';
+    row.addEventListener('click', e=>{ if(e.target.closest('button') || e.target.closest('.employee-roster-photo')) return; stBtn.click(); });
+  });
   wrap.querySelectorAll('.employee-roster-photo').forEach(img=>{
     img.addEventListener('click', (e)=>{
       e.stopPropagation();
