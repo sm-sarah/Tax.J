@@ -34896,6 +34896,7 @@ function openDraggablePopup(opts){
   el.style.left = `calc(50% - min(${w}px, 92vw) / 2 + ${cascade}px)`;
   el.style.width = w + 'px';
   el.style.maxWidth = '92vw';
+  floatPopupZ = Math.max(floatPopupZ, (window.__overlayTopZ ? window.__overlayTopZ() : 0)); // 이미 떠 있는 팝업·창보다 위로
   el.style.zIndex = String(++floatPopupZ);
   el.innerHTML = `
     <div class="floating-popup-header">
@@ -40182,7 +40183,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.03 22:55';
+const APP_BUILD = '2026.10.03 23:02';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -44759,6 +44760,9 @@ scheduleTwemojiParse();
     return false;
   }
   function bringToFront(el){
+    // [2026.10.03] "배포 확인창이 자리배치도 팝업 뒤로 숨는다"(요청) - 끌 수 있는 팝업(openDraggablePopup)은 따로 floatPopupZ로
+    // 순서를 매겨서, 그보다 낮은 값이 나오면 확인창이 뒤로 갔음. 두 번호 중 큰 값 다음으로 올림
+    try{ if(typeof floatPopupZ === 'number' && floatPopupZ > topZ) topZ = floatPopupZ; }catch(e){}
     topZ += 1;
     lastSetZ.set(el, String(topZ));
     el.style.zIndex = String(topZ);
@@ -44768,6 +44772,7 @@ scheduleTwemojiParse();
   // (신고 확인창을 눌렀는데 안 뜨는 것처럼 보이던 버그의 원인). 그런 팝업이 열릴 때 이 함수로 topZ 최신값 기준
   // 맨 앞으로 강제로 끌어올릴 수 있게 밖에서도 부를 수 있도록 노출해둠.
   window.__bringOverlayToFront = bringToFront;
+  window.__overlayTopZ = ()=> topZ;
   // 안전장치: 위 자기참조 방지 로직으로도 못 막는 예상 못한 반복(예: 다른 코드가 계속 같은 팝업을 지웠다 다시
   // 그리는 경우)이 생기면, 화면이 완전히 멈추는 것보단 이 겹침 기능만 조용히 꺼지는 쪽이 낫다고 판단해
   // 아주 짧은 시간 안에 비정상적으로 많이 반응하면 옵저버 자체를 끊어버림.
