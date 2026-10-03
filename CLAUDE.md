@@ -36,3 +36,21 @@
 | 푸시 알림 | Cloud Run 함수 `sendpush` + `firebase-messaging-sw.js` |
 | 출퇴근 알림 | Cloud Scheduler `taxj-clock-reminder` (1분마다) → `sendpush` |
 | 사이트 | GitHub Pages https://sm-sarah.github.io/Tax.J/ |
+
+## 5. 작업 방식 (사용량 절약)
+- 파일을 채팅에 올려달라고 하지 않는다. 저장소를 직접 내려받는다:
+  `git clone --depth 1 https://github.com/sm-sarah/Tax.J.git`
+  사용자가 새 버전을 올렸다고 하면 `git pull`로 갱신한 뒤 작업한다.
+- `index.html`은 4만 줄이 넘는다. 전체를 읽지 않는다. 함수명·탭 이름·화면 문구·클래스명으로 grep해서 해당 부분만 열어 본다.
+  (data URI 이미지 때문에 한 줄이 매우 길 수 있으니 grep 결과는 잘라서 본다.)
+- 요청이 모호하면 넓게 뒤지기 전에 어느 탭·화면 요소인지 한 줄로 묻는다.
+- 수정은 필요한 부분만 문자열 치환으로 한다. 함수나 파일을 통째로 다시 쓰지 않는다.
+- 채팅에 코드를 길게 옮겨 적지 않는다. 무엇을 왜 바꿨는지 한두 문장으로 알려준다.
+- 고친 파일은 파일명 `index.html` 그대로 전달한다. 사용자가 직접 GitHub에 올린다. 허락 없이 저장소에 push하지 않는다.
+
+## 6. 개인웹 works와의 연동 주의
+- 사용자의 개인웹 works(https://github.com/sm-sarah/SM, `SM.html`)는 Tax.J 데이터를 가져와서 쓴다.
+  현재는 Tax.J 엑셀 가져오기이고, 앞으로는 같은 Firestore를 실시간으로 읽을 예정이다.
+- 데이터 필드명, 저장 구조, 엑셀 내보내기 형식, Firestore 경로·보안 규칙을 바꾸면 works에 영향이 갈 수 있다.
+  이런 변경이 있으면 답변 끝에 "works 쪽도 맞춰야 할 수 있음"을 한 줄로 알려준다.
+- works를 위해 Tax.J를 고치는 일은 사용자가 요청할 때만 한다. works 작업 규칙은 SM 저장소의 CLAUDE.md를 따른다.
