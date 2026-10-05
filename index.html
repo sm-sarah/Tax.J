@@ -2407,9 +2407,17 @@ try{
   .it-all-table thead th.it-focus.it-all-m1.it-focus-l.it-focus-r{ box-shadow:inset 2px 2px 0 #5B5FEF, inset -2px 0 0 #5B5FEF; color:#3730A3 !important; }
   .it-all-table td.it-focus.it-focus-l.it-focus-r{ box-shadow:inset 2px 0 0 #5B5FEF, inset -2px 0 0 #5B5FEF; }
   .it-all-table tbody tr:last-child td.it-focus.it-focus-l.it-focus-r{ box-shadow:inset 2px 0 0 #5B5FEF, inset -2px 0 0 #5B5FEF, inset 0 -2px 0 #5B5FEF; }
-  .it-stage-tri{ display:inline-flex; align-items:center; justify-content:center; gap:0; font-size:10.5px; line-height:1; letter-spacing:-0.5px; font-family:'Pretendard',sans-serif; }
-  .it-stage-tri svg{ width:9px; height:9px; display:block; fill:none; stroke:rgba(91,95,239,0.45); stroke-width:1.3; stroke-linejoin:round; }
-  .it-stage-tri svg.on{ fill:#5B5FEF; stroke:#5B5FEF; }
+  /* [2026.10.05] 진행 표시 ▶▷▷ → 세그먼트 바(요청 A+E안): 끝난 단계는 남색 칸, 다음 차례 칸은 천천히 깜빡, 해당 없음(급여명세서 '전달 안 함')은 빗금. 원천세·부가세 신고현황 공통 */
+  .it-stage-tri{ display:inline-flex; align-items:center; justify-content:center; gap:2px; line-height:1; vertical-align:middle; }
+  /* [2026.10.05] 색은 농도 단계(요청 3안) - 칸이 찰수록 진해짐(연보라 → 중간 → 완료 체크와 같은 남색) */
+  .it-stage-tri i{ display:block; width:9px; height:6px; border-radius:2px; background:#E8E9FB; }
+  .it-stage-tri i.on:nth-child(1){ background:#A5A8F6; }
+  .it-stage-tri i.on:nth-child(2){ background:#7F83F2; }
+  .it-stage-tri i.on:nth-child(3){ background:#5B5FEF; }
+  .it-stage-tri i.skip{ background:repeating-linear-gradient(135deg, #CDCFF8 0 2px, #fff 2px 4px); }
+  .it-stage-tri i.next{ animation:itStageNext 1.6s ease-in-out infinite; }
+  @keyframes itStageNext{ 0%,100%{ background:#E8E9FB; } 50%{ background:#C3C5F8; } }
+  @media (prefers-reduced-motion: reduce){ .it-stage-tri i.next{ animation:none; background:#D6D8FA; } }
   /* [2026.10.01] 지금 신고할 귀속월(②안) - 그 달 두 칸을 남색 테두리로 감싸고 월 옆에 "신고" 표시 */
   .it-all-table th.it-focus.it-all-mcol[colspan]{ box-shadow:inset 2px 2px 0 #5B5FEF, inset -2px 0 0 #5B5FEF; color:#3730A3 !important; }
   .it-all-table .it-focus.it-focus-l:not([colspan]){ box-shadow:inset 2px 0 0 #5B5FEF; }
@@ -29478,6 +29486,8 @@ function renderItAllPeriodControls(){
 const IT_ALL_STAGES = [['payslip','급여명세서 전달'], ['payroll','급여마감'], ['returnClose','신고서 마감']];
 // [2026.10.04] "급여명세서 전달은 필수가 아닐 때가 있다"(요청) - 원천세 총괄의 "급여명세서 전달방법"을 '전달 안 함'으로 둔 거래처는
 // 그 단계를 건너뜀: 신고일자 팝업엔 날짜칸 대신 "해당 없음", 표의 진행 점(▶)은 끝난 것으로 봄
+// [2026.10.05] 진행 표시 세그먼트 바 - st: 단계별 'on'(끝남)·'skip'(해당 없음)·''(아직). 아직인 첫 칸이 다음 차례(깜빡)
+function itStageBarHtml(st){ const nx = st.indexOf(''); return `<span class="it-stage-tri">${st.map((x,i)=> `<i class="${x || (i === nx ? 'next' : '')}"></i>`).join('')}</span>`; }
 function itPayslipSkip(cid){ try{ return (itoEntry(cid).payslipVia || '') === '전달 안 함'; }catch(e){ return false; } }
 function itAllTimingBlockHtml(c, period, timingKey){
   const entry = incomeTaxFilingEntry(period, c.id);
@@ -29730,7 +29740,7 @@ function renderIncomeTaxUnifiedInner(){
       const monthCells = Array.from({length:12},(_,i)=>i+1).map(m=>{
         const period = `${year}-${String(m).padStart(2,'0')}`;
         // [2026.10.02] "원천세는 한 달에 한 칸"(요청 · 나안) - 국세·지방세를 한 칸으로 합침. 둘 다 신고하면 ✓ 표시(신고일은 말풍선),
-        // 하나만 했거나 단계 진행 중이면 ▶▷▷, 아직이면 연한 노랑, 미대상은 회색. 칸을 누르면 예전처럼 국세·지방세 신고일을 각각 넣는 팝업
+        // 하나만 했거나 단계 진행 중이면 진행 바(▬▭▭), 아직이면 연한 노랑, 미대상은 회색. 칸을 누르면 예전처럼 국세·지방세 신고일을 각각 넣는 팝업
         const fixState = cs => {
           if(cs.state === 'notarget' && latestCycleRec && !latestApplicable) cs.state = neverApplicable ? 'none' : 'locked';
           if(neverApplicable && cs.state !== 'done') cs.state = 'none';
@@ -29761,8 +29771,8 @@ function renderIncomeTaxUnifiedInner(){
           [['국세', csN], ['지방세', csL]].forEach(([lab, cs])=>{ if(['target','done'].includes(cs.state)) tipRows.push([`${lab} 신고`, cs.state === 'done' && cs.doneDate ? fmtYmd(cs.doneDate) : '아직']); });
           const taxDoneCnt = [csN, csL].filter(cs=> cs.state === 'done').length;
           if(bothDone) inner = '<span class="it-done-mark" aria-label="신고 완료"><svg viewBox="0 0 16 16"><path d="M4 8.3l2.6 2.6L12 5.5"/></svg></span>';
-          // 국세·지방세 중 하나라도 신고했으면 앞 단계는 끝난 것으로 보고 ▶▶▶(남은 건 다른 세목 신고)
-          else if(stageInfo.some(x=>x.done && !x.skip) || taxDoneCnt) inner = `<span class="it-stage-tri">${stageInfo.map(x=> (x.done || taxDoneCnt) ? '<svg viewBox="0 0 10 10" class="on"><polygon points="2,1 9,5 2,9"></polygon></svg>' : '<svg viewBox="0 0 10 10"><polygon points="2,1 9,5 2,9"></polygon></svg>').join('')}</span>`;
+          // 국세·지방세 중 하나라도 신고했으면 앞 단계는 끝난 것으로 보고 바 3칸 모두(남은 건 다른 세목 신고)
+          else if(stageInfo.some(x=>x.done && !x.skip) || taxDoneCnt) inner = itStageBarHtml(stageInfo.map(x=> x.skip ? 'skip' : (x.done || taxDoneCnt) ? 'on' : ''));
         }
         const colCls = 'cvb it-all-mcol it-focus-l it-focus-r' + fc(m);
         // [2026.10.03] 앞 달 메모가 그대로 따라온 줄은 화면에서만 숨김(요청 A안 - 저장된 메모는 그대로). 다 겹치면 빨간 삼각형도 안 보임
@@ -30013,7 +30023,7 @@ function renderVatAllUnifiedInner(){
   const fc = p => isF(p) ? ' it-focus it-focus-l it-focus-r' : '';
   const periodHeaderCells = periods.map(p=>`<th class="cvb it-all-mcol vat-pcol${fc(p)}">${VAT_TARGET_PERIOD_LABEL[p]}</th>`).join('');
   const STAGE = { '미확인':0, '검토중':1, '기안완료':2 };
-  const tri = n => `<span class="it-stage-tri">${[0,1,2].map(i=> `<svg viewBox="0 0 10 10"${i < n ? ' class="on"' : ''}><polygon points="2,1 9,5 2,9"></polygon></svg>`).join('')}</span>`;
+  const tri = n => itStageBarHtml([0,1,2].map(i=> i < n ? 'on' : ''));
   const fmtYmd = d=>{ const [yy,mm,dd] = d.split('-'); return `${yy}년 ${Number(mm)}월 ${Number(dd)}일`; };
   const rows = list.map((c, idx)=>{
     const entityColor = c.entityType === '법인' ? '#0B5A78' : c.entityType === '개인' ? '#BE185D' : 'inherit';
