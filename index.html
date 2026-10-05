@@ -29368,7 +29368,7 @@ let itAllPeriod = null; // [2026.10.02] 위에서 고른 귀속월('YYYY-MM') - 
 let itAllView = 'status';
 const ITO_PAY_KINDS = ['근로','사업','일용','특고','기타','퇴직','이자','예술'];
 const ITO_COMM = ['카톡','이메일'];
-const ITO_VIA = ['개인카톡','채널카톡','개인이메일','채널이메일','채널톡&이메일'];
+const ITO_VIA = ['개인카톡','채널카톡','개인이메일','채널이메일','채널톡&이메일','전달 안 함']; // [2026.10.04] '전달 안 함' - 급여명세서를 안 보내는 거래처(아래 itPayslipSkip)
 const ITO_PAYDAY_SUGGEST = ['당월 말일','익월 5일','익월 10일','익월 15일','익월 20일','익월 말일'];
 const ITO_TEXT_FIELDS = [
   ['reportPayDay','신고 지급일',96], ['actualPayDay','실 급여일',96]
@@ -29476,6 +29476,9 @@ function renderItAllPeriodControls(){
 // [2026.10.01] 원천세 진행 단계(요청) - 급여명세서 전달 → 급여마감 → 신고서 마감 → 신고. 앞의 세 단계도 날짜로 기록하고,
 // 표에서는 칸 안의 작은 점 3개(채워진 점 = 끝난 단계)로만 보여주고 날짜는 마우스를 올리면 보임. 신고는 기존처럼 신고일자로 표시
 const IT_ALL_STAGES = [['payslip','급여명세서 전달'], ['payroll','급여마감'], ['returnClose','신고서 마감']];
+// [2026.10.04] "급여명세서 전달은 필수가 아닐 때가 있다"(요청) - 원천세 총괄의 "급여명세서 전달방법"을 '전달 안 함'으로 둔 거래처는
+// 그 단계를 건너뜀: 신고일자 팝업엔 날짜칸 대신 "해당 없음", 표의 진행 점(▶)은 끝난 것으로 봄
+function itPayslipSkip(cid){ try{ return (itoEntry(cid).payslipVia || '') === '전달 안 함'; }catch(e){ return false; } }
 function itAllTimingBlockHtml(c, period, timingKey){
   const entry = incomeTaxFilingEntry(period, c.id);
   const t = entry[timingKey];
@@ -29485,7 +29488,10 @@ function itAllTimingBlockHtml(c, period, timingKey){
       <span style="font-size:12px; font-weight:800; color:var(--ink); white-space:nowrap;">${timingLabel}</span>
       <span class="it-all-status-badge">${incomeTaxStatusBadgeHtml(t)}</span>
     </div>
-    ${IT_ALL_STAGES.map(([f,l])=>`<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+    ${IT_ALL_STAGES.map(([f,l])=> (f === 'payslip' && itPayslipSkip(c.id)) ? `<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;" title="원천세 총괄에서 급여명세서 전달방법을 '전달 안 함'으로 둔 거래처예요">
+      <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:74px;">${l}</span>
+      <span style="font-size:12px; color:var(--ink-soft);">해당 없음</span>
+    </div>` : `<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
       <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:74px;">${l}</span>
       <input type="date" class="it-all-date-input" data-field="${f}" value="${t[f]||''}" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink);">
       <button type="button" class="del-btn it-all-today-btn" data-field="${f}" style="flex-shrink:0; padding:5px 9px; font-size:11px;">오늘</button>
@@ -29493,12 +29499,12 @@ function itAllTimingBlockHtml(c, period, timingKey){
     <div style="border-top:1px dashed var(--border); margin:2px 0;"></div>
     <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
       <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:74px;">원천세 신고</span>
-      <input type="date" class="it-all-date-input" data-field="national" value="${t.national||''}" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink); flex:1 1 auto; min-width:0;">
+      <input type="date" class="it-all-date-input" data-field="national" value="${t.national||''}" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink);">
       <button type="button" class="del-btn it-all-today-btn" data-field="national" style="flex-shrink:0; padding:5px 9px; font-size:11px;">오늘</button>
     </div>
     <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
       <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:74px;">지방세 신고</span>
-      <input type="date" class="it-all-date-input" data-field="local" value="${t.local||''}" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink); flex:1 1 auto; min-width:0;">
+      <input type="date" class="it-all-date-input" data-field="local" value="${t.local||''}" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink);">
       <button type="button" class="del-btn it-all-today-btn" data-field="local" style="flex-shrink:0; padding:5px 9px; font-size:11px;">오늘</button>
     </div>
     <input type="text" class="it-all-memo-input" value="${escHtml(t.memo||'')}" placeholder="이달 급여 특이사항 (표에는 칸 모서리 빨간 삼각형으로 표시)" style="width:100%; border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink); box-sizing:border-box;">
@@ -29747,15 +29753,16 @@ function renderIncomeTaxUnifiedInner(){
           const ent = incomeTaxFilingEntry(period, c.id);
           const stageInfo = IT_ALL_STAGES.map(([f,l])=>{
             const ds = lanesT.map(k=> (ent[k]||{})[f]).filter(Boolean).sort();
+            if(f === 'payslip' && itPayslipSkip(c.id)) return { l, done: true, date: '', skip: true };
             const doneAll = lanesT.length && lanesT.every(k=> (ent[k]||{})[f]);
             return { l, done: !!doneAll, date: ds[ds.length-1] || '' };
           });
-          if(!bothDone) stageInfo.forEach(x=> tipRows.push([x.l, x.date ? fmtYmd(x.date) : '아직']));
+          if(!bothDone) stageInfo.forEach(x=> tipRows.push([x.l, x.skip ? '해당 없음' : x.date ? fmtYmd(x.date) : '아직']));
           [['국세', csN], ['지방세', csL]].forEach(([lab, cs])=>{ if(['target','done'].includes(cs.state)) tipRows.push([`${lab} 신고`, cs.state === 'done' && cs.doneDate ? fmtYmd(cs.doneDate) : '아직']); });
           const taxDoneCnt = [csN, csL].filter(cs=> cs.state === 'done').length;
           if(bothDone) inner = '<span class="it-done-mark" aria-label="신고 완료"><svg viewBox="0 0 16 16"><path d="M4 8.3l2.6 2.6L12 5.5"/></svg></span>';
           // 국세·지방세 중 하나라도 신고했으면 앞 단계는 끝난 것으로 보고 ▶▶▶(남은 건 다른 세목 신고)
-          else if(stageInfo.some(x=>x.done) || taxDoneCnt) inner = `<span class="it-stage-tri">${stageInfo.map(x=> (x.done || taxDoneCnt) ? '<svg viewBox="0 0 10 10" class="on"><polygon points="2,1 9,5 2,9"></polygon></svg>' : '<svg viewBox="0 0 10 10"><polygon points="2,1 9,5 2,9"></polygon></svg>').join('')}</span>`;
+          else if(stageInfo.some(x=>x.done && !x.skip) || taxDoneCnt) inner = `<span class="it-stage-tri">${stageInfo.map(x=> (x.done || taxDoneCnt) ? '<svg viewBox="0 0 10 10" class="on"><polygon points="2,1 9,5 2,9"></polygon></svg>' : '<svg viewBox="0 0 10 10"><polygon points="2,1 9,5 2,9"></polygon></svg>').join('')}</span>`;
         }
         const colCls = 'cvb it-all-mcol it-focus-l it-focus-r' + fc(m);
         // [2026.10.03] 앞 달 메모가 그대로 따라온 줄은 화면에서만 숨김(요청 A안 - 저장된 메모는 그대로). 다 겹치면 빨간 삼각형도 안 보임
