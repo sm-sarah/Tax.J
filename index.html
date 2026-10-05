@@ -2391,7 +2391,8 @@ try{
   .it-all-table .it-all-month-cell-btn:not(.submit-cell-btn)[data-cellstate="notarget"]{ background:transparent !important; }
   .it-all-table .it-memo-star{ width:7px; height:7px; background:#C3C7D4; }
   .it-all-table .it-memo-star:hover{ width:9px; height:9px; background:var(--ink-soft); }
-  .it-all-table td:not(.it-focus) .it-done-mark svg{ stroke:#B9BECC; }
+  .it-all-table td:not(.it-focus):not(.it-focus-nx) .it-done-mark svg{ stroke:#B9BECC; }
+  .it-all-table td.it-focus-nx{ box-shadow:inset 0 0 0 2px #5B5FEF; } /* [2026.10.05] 익월지급 앞 달 귀속분(이번에 같이 신고) */
   /* [2026.10.02] 앱 공통 말풍선(appTipHtml + data-tip) - 브라우저 기본 글상자 대신 팝업과 같은 흰 카드 */
   .app-tip{ position:fixed; z-index:10050; max-width:320px; background:var(--surface); border:1px solid var(--border); border-radius:10px; box-shadow:0 10px 24px -8px rgba(29,30,51,.35); padding:9px 12px; font-size:12px; color:var(--ink); pointer-events:none; line-height:1.5; }
   .app-tip-h{ font-weight:800; font-size:12px; color:var(--indigo-deep); padding-bottom:5px; margin-bottom:5px; border-bottom:1px solid var(--border); white-space:nowrap; }
@@ -5241,6 +5242,7 @@ try{
     </div>
     <div style="text-align:center; margin-top:16px; display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
       <button type="button" id="filingCycleHistoryBtn" class="del-btn seat-chart-action-btn">이력</button>
+      <button type="button" id="filingCycleResetBtn" class="del-btn seat-chart-action-btn" style="color:var(--coral);" title="이 거래처의 원천세 설정(신고구분 이력 · 달마다 대상/당월·익월 체크)을 모두 지우고 미등록으로 되돌려요. 신고일자·메모·검증 숫자는 남아요">초기화</button>
       <button type="button" id="filingCycleSaveBtn" class="submit-btn seat-chart-action-btn">등록</button>
     </div>
   </div>
@@ -6874,7 +6876,7 @@ try{
         </div>
         <!-- [2026.10.03] "엑셀 아이콘은 표 오른쪽 위로"(요청) - 검색줄에 있던 엑셀 받기·올리기를 표 바로 위 오른쪽으로 옮김.
              신고현황은 보기 선택(전체/대상…) 줄의 오른쪽 끝, 총괄은 표 위 오른쪽 줄에 놓임(tblPlaceXls) -->
-        <div id="itAllXlsBox" class="tbl-xls-box"><button type="button" class="del-btn xls-io-btn" data-xls="itAll" data-xls-act="down" title="엑셀 받기" aria-label="엑셀 받기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2" y="2" width="12" height="12" rx="2"></rect><line x1="2" y1="6.5" x2="14" y2="6.5"></line><line x1="6.5" y1="2" x2="6.5" y2="14"></line><path d="M19 8v14"></path><path d="M15 18l4 4 4-4"></path></svg></button><button type="button" class="del-btn xls-io-btn" data-xls="itAll" data-xls-act="up" title="엑셀 올리기 (추가 또는 교체)" aria-label="엑셀 올리기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2" y="2" width="12" height="12" rx="2"></rect><line x1="2" y1="6.5" x2="14" y2="6.5"></line><line x1="6.5" y1="2" x2="6.5" y2="14"></line><path d="M19 22V8"></path><path d="M15 12l4-4 4 4"></path></svg></button></div>
+        <div id="itAllXlsBox" class="tbl-xls-box"><button type="button" class="del-btn xls-io-btn" data-xls="itAll" data-xls-act="down" title="엑셀 받기" aria-label="엑셀 받기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2" y="2" width="12" height="12" rx="2"></rect><line x1="2" y1="6.5" x2="14" y2="6.5"></line><line x1="6.5" y1="2" x2="6.5" y2="14"></line><path d="M19 8v14"></path><path d="M15 18l4 4 4-4"></path></svg></button><button type="button" class="del-btn xls-io-btn" data-xls="itAll" data-xls-act="up" title="엑셀 올리기 (추가 또는 교체)" aria-label="엑셀 올리기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2" y="2" width="12" height="12" rx="2"></rect><line x1="2" y1="6.5" x2="14" y2="6.5"></line><line x1="6.5" y1="2" x2="6.5" y2="14"></line><path d="M19 22V8"></path><path d="M15 12l4-4 4 4"></path></svg></button><button type="button" id="itRawImportBtn" class="del-btn xls-io-btn" title="원데이터 불러오기 (원천세 엑셀의 거래처별 검토표 → 검증 빈 칸만 채움)" aria-label="원데이터 불러오기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><ellipse cx="10" cy="5" rx="7" ry="3"></ellipse><path d="M3 5v12c0 1.66 3.13 3 7 3"></path><path d="M3 11c0 1.66 3.13 3 7 3"></path><path d="M17 5v5"></path><path d="M19 14v8"></path><path d="M15 18l4 4 4-4"></path></svg></button><input type="file" id="itRawImportFile" accept=".xlsx,.xls" style="display:none;"></div>
         <div id="itAllTableWrap"></div>
       </div>
       <!-- 신고일자 입력 팝업(원천세 통합) -->
@@ -28860,6 +28862,22 @@ document.getElementById('filingCycleEditCloseBtn')?.addEventListener('click', ()
   document.getElementById('filingCycleEditModalOverlay').style.display = 'none';
   filingCycleEditCtx = null;
 });
+// [2026.10.05] "등록·최초등록·수정 여부에 따라 해제하는 게 복잡하다 - 다시 세팅할 수 있게"(요청) - 이 거래처의 원천세 설정
+// (신고구분 이력 + 달마다 대상/당월·익월 체크)만 모두 지우고 미등록으로 되돌린 뒤, 같은 팝업을 새 등록 상태로 다시 엶.
+// 신고일자·급여 단계 날짜·메모·검증 숫자는 지우지 않음(다시 대상으로 등록하면 그대로 보임)
+document.getElementById('filingCycleResetBtn')?.addEventListener('click', async ()=>{
+  if(!filingCycleEditCtx) return;
+  const { clientId } = filingCycleEditCtx;
+  const name = document.getElementById('filingCycleEditClientName')?.textContent || '';
+  if(!(await appConfirm(`${name} 원천세 설정을 초기화할까요?\n\n신고구분 이력과 달마다 대상·당월/익월 체크를 모두 지우고 미등록으로 되돌려요.\n신고일자·메모·검증 숫자는 남아요.`, { okText:'초기화' }))) return;
+  delete sharedFilingCycles[clientId];
+  delete sharedFilingTargets[clientId];
+  await saveSharedFilingCycles();
+  await saveSharedFilingTargets();
+  if(typeof renderIncomeTaxUnified === 'function') renderIncomeTaxUnified();
+  showCenterToast('초기화했어요 · 다시 등록해 주세요');
+  openFilingCycleEditModal(clientId);
+});
 document.getElementById('filingCycleHistoryBtn')?.addEventListener('click', ()=>{
   if(!filingCycleEditCtx) return;
   renderFilingCycleHistoryModal(filingCycleEditCtx.clientId);
@@ -29396,6 +29414,7 @@ function syncItAllViewControls(){
   if(yearSel) yearSel.style.display = itAllView === 'overview' ? 'none' : '';
   // 엑셀 받기·올리기도 지금 보는 표 기준으로
   document.querySelectorAll('.approval-panel[data-approval-cat="itall"] .xls-io-btn').forEach(b=> b.dataset.xls = itAllView === 'overview' ? 'itOverview' : 'itAll');
+  const rawBtn = document.getElementById('itRawImportBtn'); if(rawBtn) rawBtn.style.display = itAllView === 'overview' ? 'none' : ''; // [2026.10.05] 원데이터 불러오기는 신고현황에서만
 }
 function itoKindChips(arr){
   return (arr && arr.length) ? arr.map(k=>`<span class="ito-chip" data-k="${escHtml(k)}">${escHtml(k)}</span>`).join('') : '<span class="ito-empty">선택</span>';
@@ -29489,16 +29508,33 @@ const IT_ALL_STAGES = [['payslip','급여명세서 전달'], ['payroll','급여�
 // [2026.10.05] 진행 표시 세그먼트 바 - st: 단계별 'on'(끝남)·'skip'(해당 없음)·''(아직). 아직인 첫 칸이 다음 차례(깜빡)
 function itStageBarHtml(st){ const nx = st.indexOf(''); return `<span class="it-stage-tri">${st.map((x,i)=> `<i class="${x || (i === nx ? 'next' : '')}"></i>`).join('')}</span>`; }
 function itPayslipSkip(cid){ try{ return (itoEntry(cid).payslipVia || '') === '전달 안 함'; }catch(e){ return false; } }
-function itAllTimingBlockHtml(c, period, timingKey){
+// [2026.10.05] "반기는 신고만 6·12월이고 급여작업·마감은 매달 있다"(요청) - 반기 거래처의 6·12월 외 달도 칸을 눌러
+// 급여명세서 전달·급여마감을 기록함(신고서 마감·원천세/지방세 신고는 6·12월 칸에서). 이 달의 지급시기는 그 반기
+// 신고월(6·12월) 신고대상 설정을 따르고, 없으면 그 달 설정 → 당월지급 순으로 봄(빈 설정을 새로 만들지 않음)
+function itIsHalfOffMonth(cid, period){
+  if(!filingCycleRecordsOf(cid).length || effectiveCycleFor(cid, period) !== '반기') return false;
+  const mm = Number(period.slice(5,7)); return mm !== 6 && mm !== 12;
+}
+function itHalfLanes(cid, period, timingKey){
+  if(timingKey) return [timingKey];
+  const byP = sharedFilingTargets[cid] || {};
+  const endP = `${period.slice(0,4)}-${Number(period.slice(5,7)) <= 6 ? '06' : '12'}`;
+  const t = [byP[endP], byP[period]].find(x=> x && x.marked && x.applicable);
+  const l = t ? [t.sameMonthPay ? 'sameMonth' : null, t.nextMonthPay ? 'nextMonth' : null].filter(Boolean) : [];
+  return l.length ? l : ['sameMonth'];
+}
+const IT_HALF_STAGES = IT_ALL_STAGES.filter(([f])=> f !== 'returnClose');
+function itAllTimingBlockHtml(c, period, timingKey, half){
   const entry = incomeTaxFilingEntry(period, c.id);
   const t = entry[timingKey];
   const timingLabel = timingKey === 'sameMonth' ? '당월귀속·당월지급' : '당월귀속·익월지급';
+  const halfEndM = Number(period.slice(5,7)) <= 6 ? 6 : 12;
   return `<div class="it-all-timing-block" data-client-id="${c.id}" data-timing="${timingKey}" style="display:flex; flex-direction:column; gap:7px; padding:12px 14px; border:1px solid var(--border); border-radius:10px; margin-bottom:8px; background:var(--bg);">
     <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:wrap;">
       <span style="font-size:12px; font-weight:800; color:var(--ink); white-space:nowrap;">${timingLabel}</span>
-      <span class="it-all-status-badge">${incomeTaxStatusBadgeHtml(t)}</span>
+      ${half ? `<span style="font-size:11px; font-weight:700; color:var(--ink-soft);">반기 신고 · ${halfEndM}월 칸에서 신고</span>` : `<span class="it-all-status-badge">${incomeTaxStatusBadgeHtml(t)}</span>`}
     </div>
-    ${IT_ALL_STAGES.map(([f,l])=> (f === 'payslip' && itPayslipSkip(c.id)) ? `<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;" title="원천세 총괄에서 급여명세서 전달방법을 '전달 안 함'으로 둔 거래처예요">
+    ${(half ? IT_HALF_STAGES : IT_ALL_STAGES).map(([f,l])=> (f === 'payslip' && itPayslipSkip(c.id)) ? `<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;" title="원천세 총괄에서 급여명세서 전달방법을 '전달 안 함'으로 둔 거래처예요">
       <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:74px;">${l}</span>
       <span style="font-size:12px; color:var(--ink-soft);">해당 없음</span>
     </div>` : `<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
@@ -29506,7 +29542,7 @@ function itAllTimingBlockHtml(c, period, timingKey){
       <input type="date" class="it-all-date-input" data-field="${f}" value="${t[f]||''}" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink);">
       <button type="button" class="del-btn it-all-today-btn" data-field="${f}" style="flex-shrink:0; padding:5px 9px; font-size:11px;">오늘</button>
     </div>`).join('')}
-    <div style="border-top:1px dashed var(--border); margin:2px 0;"></div>
+    ${half ? '' : `<div style="border-top:1px dashed var(--border); margin:2px 0;"></div>
     <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
       <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:74px;">원천세 신고</span>
       <input type="date" class="it-all-date-input" data-field="national" value="${t.national||''}" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink);">
@@ -29516,7 +29552,7 @@ function itAllTimingBlockHtml(c, period, timingKey){
       <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:74px;">지방세 신고</span>
       <input type="date" class="it-all-date-input" data-field="local" value="${t.local||''}" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink);">
       <button type="button" class="del-btn it-all-today-btn" data-field="local" style="flex-shrink:0; padding:5px 9px; font-size:11px;">오늘</button>
-    </div>
+    </div>`}
     <input type="text" class="it-all-memo-input" value="${escHtml(t.memo||'')}" placeholder="이달 급여 특이사항 (표에는 칸 모서리 빨간 삼각형으로 표시)" style="width:100%; border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink); box-sizing:border-box;">
   </div>`;
 }
@@ -29582,6 +29618,13 @@ function itFocusPeriodNow(){
   return `${fy}-${String(fm).padStart(2,'0')}`;
 }
 // periodOverride('YYYY-MM')를 주면 그 귀속월 기준으로 대상/완료/남음·마감일을 계산(원천세 화면에서 귀속월을 고른 경우)
+// 앞 달(prevPeriod) 귀속분 중 익월지급으로 이번 신고에 같이 들어가는 줄 - 두 줄 거래처면 'nextMonth', 익월지급만 등록한
+// 한 줄 거래처면 null(그 줄 전체), 해당 없으면 false. 표의 테두리와 요약줄 집계가 같은 기준을 씀
+function itFocusNxLane(cid, prevPeriod){
+  if(clientHasDualTiming(cid, prevPeriod.slice(0,4))) return 'nextMonth';
+  const tg = (sharedFilingTargets[cid] || {})[prevPeriod];
+  return (tg && tg.nextMonthPay && !tg.sameMonthPay) ? null : false;
+}
 function itFocusFiling(periodOverride){
   const today = parseDate(todayStr());
   const base = /^\d{4}-\d{2}$/.test(periodOverride||'') ? periodOverride : itFocusPeriodNow();
@@ -29590,6 +29633,7 @@ function itFocusFiling(periodOverride){
   const due = new Date(dy, dm - 1, 10);
   const dday = Math.round((due - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000);
   const period = `${fy}-${String(fm).padStart(2,'0')}`;
+  const prevPeriod = fm === 1 ? `${fy-1}-12` : `${fy}-${String(fm-1).padStart(2,'0')}`;
   let total = 0, done = 0;
   const pendingIds = new Set();
   bookkeepingClientList().forEach(c=>{
@@ -29602,8 +29646,14 @@ function itFocusFiling(periodOverride){
       total++;
       if(n.state==='done' && l.state==='done') done++; else pendingIds.add(c.id);
     });
+    // [2026.10.05] "앞 달 귀속·이번 달 지급(익월지급)분도 같이 신고하니 같이 세어 달라"(요청) - 앞 달 칸의 익월지급 줄
+    const nx = itFocusNxLane(c.id, prevPeriod);
+    if(nx !== false){
+      const n = itAllMonthCellState(c.id, prevPeriod, nx, 'national'), l = itAllMonthCellState(c.id, prevPeriod, nx, 'local');
+      if(['target','done'].includes(n.state) || ['target','done'].includes(l.state)){ total++; if(n.state==='done' && l.state==='done') done++; else pendingIds.add(c.id); }
+    }
   });
-  return { year:fy, month:fm, period, due, dday, total, done, pending: total - done, pendingIds };
+  return { year:fy, month:fm, period, due, dday, total, done, pending: total - done, pendingIds, prevPeriod };
 }
 
 // [2026.10.01] 원천세 표 "검증" 옆 상태 - 그 거래처(지급시기 줄)의 귀속월 검토표 금액이 신고서와 맞는지.
@@ -29655,11 +29705,17 @@ function renderIncomeTaxUnifiedInner(){
   if(itAllOnlyMonth) list = list.filter(c=>{
     const per = `${focus.year}-${String(focus.month).padStart(2,'0')}`;
     if(String(year) !== String(focus.year)) return true;
-    return ['national','local'].some(tk=> ['target','done'].includes(itAllMonthCellState(c.id, per, null, tk).state));
+    if(['national','local'].some(tk=> ['target','done'].includes(itAllMonthCellState(c.id, per, null, tk).state))) return true;
+    const nx = itFocusNxLane(c.id, focus.prevPeriod); // 앞 달 귀속 익월지급분(같이 신고)
+    return nx !== false && ['national','local'].some(tk=> ['target','done'].includes(itAllMonthCellState(c.id, focus.prevPeriod, nx, tk).state));
   });
   // "신고대상만 보기" - 이 해에 한 달이라도 신고대상인(칸이 잠기지 않고 미대상도 아닌) 거래처만 남김. 미등록·미대상 거래처는 숨김
   if(itAllOnlyTarget) list = list.filter(c=>{
     if(!filingCycleRecordsOf(c.id).length) return false;
+    // [2026.10.05] "미대상으로 수정했는데 대상 칩에서 안 사라진다"(요청) - 지금(지난 해를 보면 그 해 12월) 기준 미대상인 거래처는 숨김
+    // (미대상 적용 시작월 전의 달이 대상이었어도). 신고 칸 글자(미대상)와 같은 기준
+    const refP = String(year) === todayStr().slice(0,4) ? todayStr().slice(0,7) : `${year}-12`;
+    if(String(year) <= todayStr().slice(0,4) && !filingCycleRecApplicable(filingCycleRecordAt(c.id, refP))) return false;
     for(let m=1;m<=12;m++){
       const period = `${year}-${String(m).padStart(2,'0')}`;
       const st = itAllMonthCellState(c.id, period, null, 'national').state;
@@ -29673,7 +29729,7 @@ function renderIncomeTaxUnifiedInner(){
     <span class="it-sum-period">${focus.month}월 귀속 · ${focus.due.getMonth()+1}/${focus.due.getDate()} 마감 <b class="${focus.dday<=3 ? 'urgent' : ''}">${ddayTxt}</b></span>
     <span class="it-sum-num">대상 <b>${focus.total}</b></span><span class="it-sum-num">완료 <b class="ok">${focus.done}</b></span><span class="it-sum-num">남음 <b class="${focus.pending ? 'warn' : ''}">${focus.pending}</b></span>
     <span class="it-seg" role="group" aria-label="보기 범위">
-      <button type="button" class="${!itAllOnlyPending && !itAllOnlyTarget && !itAllOnlyMonth ? 'on' : ''}" data-seg="all">전체</button><button type="button" class="${itAllOnlyTarget ? 'on' : ''}" data-seg="target" title="한 달이라도 신고대상인 거래처만">대상</button><button type="button" class="${itAllOnlyMonth ? 'on' : ''}" data-seg="month" title="${focus.month}월 귀속 신고대상 거래처만">${focus.month}월 대상</button><button type="button" class="${itAllOnlyPending ? 'on' : ''}" data-seg="pending" title="${focus.month}월 귀속 미신고 거래처만">미신고</button>
+      <button type="button" class="${!itAllOnlyPending && !itAllOnlyTarget && !itAllOnlyMonth ? 'on' : ''}" data-seg="all">전체</button><button type="button" class="${itAllOnlyTarget ? 'on' : ''}" data-seg="target" title="한 달이라도 신고대상인 거래처만 (지금 미대상인 거래처는 빼고)">대상</button><button type="button" class="${itAllOnlyMonth ? 'on' : ''}" data-seg="month" title="${focus.month}월 귀속 신고대상 거래처만">${focus.month}월 대상</button><button type="button" class="${itAllOnlyPending ? 'on' : ''}" data-seg="pending" title="${focus.month}월 귀속 미신고 거래처만">미신고</button>
     </span>
   </div>`;
   const bindSummary = ()=>{
@@ -29702,7 +29758,7 @@ function renderIncomeTaxUnifiedInner(){
     locked:  { label:'',   color:'var(--border)',    bg:'transparent', text:'var(--ink-soft)', disabled:true,  plain:false },
     unset:   { label:'',   color:'var(--border)',    bg:'transparent', text:'var(--ink-soft)', disabled:false, plain:false },
     notarget:{ label:'',   color:'transparent',      bg:'#EDEFF4',     text:'var(--ink-soft)', disabled:false, plain:true },
-    halfyear:{ label:'',   color:'transparent',      bg:'transparent', text:'var(--ink-soft)', disabled:true,  plain:true },
+    halfyear:{ label:'',   color:'transparent',      bg:'transparent', text:'var(--ink-soft)', disabled:false, plain:true }, // [2026.10.05] 반기 거래처의 신고 없는 달 - 급여작업 기록용으로 누를 수 있음
     none:    { label:'',   color:'transparent',      bg:'transparent', text:'var(--ink-soft)', disabled:true,  plain:true }, // [2026.10.02] 처음부터 미대상인 거래처 - 칸 없이 빈칸
     target:  { label:'',   color:'transparent',      bg:'#FFF8DC',     text:'var(--ink-soft)', disabled:false, plain:true },
     done:    { label:'',   color:'transparent',      bg:'transparent', text:'#3F4157',          disabled:false, plain:true } // [2026.10.02] 신고일 글자는 민트 대신 짙은 회색(요청 - 완료됐다는 게 중요하지 날짜가 화려할 필요 없음)
@@ -29757,6 +29813,19 @@ function renderIncomeTaxUnifiedInner(){
         const fmtYmd = d=>{ const [yy,mm,dd] = d.split('-'); return `${yy}년 ${Number(mm)}월 ${Number(dd)}일`; };
         const tipRows = [];
         let inner = '';
+        if(state === 'halfyear'){
+          const lanesH = itHalfLanes(c.id, period, timingKey);
+          const entH = incomeTaxFilingEntry(period, c.id);
+          const infoH = IT_HALF_STAGES.map(([f,l])=>{
+            if(f === 'payslip' && itPayslipSkip(c.id)) return { l, done:true, date:'', skip:true };
+            const ds = lanesH.map(k=> (entH[k]||{})[f]).filter(Boolean).sort();
+            return { l, done: lanesH.every(k=> (entH[k]||{})[f]), date: ds[ds.length-1] || '' };
+          });
+          infoH.forEach(x=> tipRows.push([x.l, x.skip ? '해당 없음' : x.date ? fmtYmd(x.date) : '아직']));
+          tipRows.push(['신고', `반기 신고(${m <= 6 ? 6 : 12}월 귀속에)`]);
+          if(infoH.every(x=> x.done) && infoH.some(x=> !x.skip)) inner = '<span class="it-done-mark" aria-label="급여 작업 완료"><svg viewBox="0 0 16 16"><path d="M4 8.3l2.6 2.6L12 5.5"/></svg></span>';
+          else if(infoH.some(x=> x.done && !x.skip)) inner = itStageBarHtml(infoH.map(x=> x.skip ? 'skip' : x.done ? 'on' : ''));
+        }
         if(anyTarget){
           const tgt = csN.target || csL.target || filingTargetEntry(c.id, period);
           const lanesT = timingKey ? [timingKey] : [tgt.sameMonthPay ? 'sameMonth' : null, tgt.nextMonthPay ? 'nextMonth' : null].filter(Boolean);
@@ -29774,13 +29843,16 @@ function renderIncomeTaxUnifiedInner(){
           // 국세·지방세 중 하나라도 신고했으면 앞 단계는 끝난 것으로 보고 바 3칸 모두(남은 건 다른 세목 신고)
           else if(stageInfo.some(x=>x.done && !x.skip) || taxDoneCnt) inner = itStageBarHtml(stageInfo.map(x=> x.skip ? 'skip' : (x.done || taxDoneCnt) ? 'on' : ''));
         }
-        const colCls = 'cvb it-all-mcol it-focus-l it-focus-r' + fc(m);
+        // [2026.10.05] "익월지급은 앞 달 귀속분을 이번 달 귀속분과 같이 신고하니 그 칸도 같은 테두리로"(요청) - 지금 챙길 귀속월의
+        // 바로 앞 달 칸 중 익월지급 줄(또는 익월지급만 등록한 한 줄 거래처)에 같은 보라 테두리
+        const nxFocus = period === focus.prevPeriod && (()=>{ const nx = itFocusNxLane(c.id, period); return nx !== false && (timingKey ? timingKey === nx : nx === null); })();
+        const colCls = 'cvb it-all-mcol it-focus-l it-focus-r' + fc(m) + (nxFocus ? ' it-focus-nx' : '');
         // [2026.10.03] 앞 달 메모가 그대로 따라온 줄은 화면에서만 숨김(요청 A안 - 저장된 메모는 그대로). 다 겹치면 빨간 삼각형도 안 보임
-        const memoTxt = anyTarget ? itMemoNewPart(c.id, period, timingKey) : '';
+        const memoTxt = (anyTarget || state === 'halfyear') ? itMemoNewPart(c.id, period, timingKey) : '';
         const tip = appTipHtml(periodLabel, tipRows);
         const memoStar = memoTxt ? `<sup class="it-memo-star" role="button" data-name="${escHtml(c.name)}" data-cid="${c.id}" data-period="${period}" data-tk="${timingKey||''}" data-label="${escHtml(periodLabel)}" data-memo="${escHtml(memoTxt).replace(/"/g,'&quot;')}" data-tip="${escHtml(appTipHtml('급여 특이사항', [], memoTxt)).replace(/"/g,'&quot;')}">*</sup>` : '';
         const bg = inner ? 'transparent' : st.bg;
-        return `<td class="${colCls}" style="position:relative;">${memoStar}<button type="button" class="it-all-month-cell-btn" ${clickAttr} ${tipRows.length ? `data-tip="${escHtml(tip).replace(/"/g,'&quot;')}"` : ''} style="width:100%; border:${st.plain ? 'none' : `1.5px solid ${st.color}`}; border-radius:6px; padding:4px 1px; background:${bg}; color:${st.text}; font-size:10.5px; font-weight:700; cursor:${(state==='halfyear' || state==='none') ? 'default' : (st.disabled?'not-allowed':'pointer')}; opacity:${st.disabled && state!=='none'?'0.35':'1'};">${inner}</button></td>`;
+        return `<td class="${colCls}" style="position:relative;">${memoStar}<button type="button" class="it-all-month-cell-btn" ${clickAttr} ${tipRows.length ? `data-tip="${escHtml(tip).replace(/"/g,'&quot;')}"` : ''} style="width:100%; border:${st.plain ? 'none' : `1.5px solid ${st.color}`}; border-radius:6px; padding:4px 1px; background:${bg}; color:${st.text}; font-size:10.5px; font-weight:700; cursor:${state==='none' ? 'default' : (st.disabled?'not-allowed':'pointer')}; opacity:${st.disabled && state!=='none'?'0.35':'1'};">${inner}</button></td>`;
       }).join('');
       const span = lanes.length > 1 ? ` rowspan="${lanes.length}"` : '';
       const headCells = laneIdx > 0 ? '' : `<td class="num cvb"${span} style="color:var(--ink-soft);">${rowNo}</td>
@@ -29883,8 +29955,9 @@ function renderItAllDateEditBody(){
   const { clientId, period } = itAllDateEditCtx;
   const body = document.getElementById('itAllDateEditBody');
   if(!body || !clientId) return;
-  const target = filingTargetEntry(clientId, period);
-  const blocksHtml = [
+  const half = itIsHalfOffMonth(clientId, period);
+  const target = half ? null : filingTargetEntry(clientId, period);
+  const blocksHtml = half ? itHalfLanes(clientId, period, null).map(k=> itAllTimingBlockHtml({id:clientId}, period, k, true)).join('') : [
     target.sameMonthPay ? itAllTimingBlockHtml({id:clientId}, period, 'sameMonth') : '',
     target.nextMonthPay ? itAllTimingBlockHtml({id:clientId}, period, 'nextMonth') : ''
   ].join('');
@@ -31296,6 +31369,9 @@ function reviewSeedAutoMatchClientId(names){
   return '';
 }
 function openReviewSeedImportModal(){
+  itRawImportCtx = null;
+  const seedHint = document.querySelector('#reviewSeedImportModalOverlay p.hint');
+  if(seedHint && seedHint.dataset.orig) seedHint.textContent = seedHint.dataset.orig;
   const wrap = document.getElementById('reviewSeedImportListWrap');
   const list = bookkeepingClientList();
   if(!wrap) return;
@@ -31353,12 +31429,158 @@ function applyReviewSeedImport(){
 }
 document.getElementById('reviewSeedImportBtn')?.addEventListener('click', openReviewSeedImportModal);
 document.getElementById('reviewSeedImportModalClose')?.addEventListener('click', ()=>{
+  itRawImportCtx = null;
   const overlay = document.getElementById('reviewSeedImportModalOverlay');
   if(overlay) overlay.style.display = 'none';
 });
 document.getElementById('reviewSeedImportApplyBtn')?.addEventListener('click', ()=>{
+  if(itRawImportCtx){ applyItRawImport(); return; }
   applyReviewSeedImport();
 });
+// ── [2026.10.05] 원천세 원데이터 불러오기(요청) - 사용자가 쓰던 원천세_YYYY.xlsx(거래처마다 '원천세 검토표' 시트)를 그대로 올리면
+// 시트의 급여 검증(소득별 지급액·신고서 총지급액)·납부세액 검증(유형별 소득세·지방소득세)을 검증 팝업 입력칸으로 옮김.
+// 이미 입력된 칸은 건드리지 않고 빈 칸만 채움. 머리글 글자로 열을 찾아서(배당소득·이자소득(익월)처럼 열이 하나 더 있는 시트도) 읽고,
+// 같은 앱 칸으로 가는 열(이자·배당)은 더함. 신고서 소득세(유형별)·지방세(신고서)는 원데이터에 같은 구분이 없어 채우지 않음.
+// 지급시기: 시트 이름 끝 _익/_당 또는 시트의 귀속/지급 칸. 앱에서 당월·익월 두 줄인 거래처의 익월 시트는 익월 검증표로,
+// 한 줄인 거래처에 시트가 둘이면 귀속월 기준으로 더해서 채움. 고른 매칭은 이 브라우저에 기억해 다음에 자동으로 맞춤
+let itRawImportCtx = null;
+const IT_RAW_INCOME_MAP = { '근로소득-과세':'근로과세', '근로소득-제출비과세':'근로제출비과세', '근로소득-미제출비과세':'근로미제출비과세', '근로-중도(과세)':'중도과세', '근로-중도(제출비과세)':'중도제출비과세', '근로-중도(미제출비과세)':'중도미제출비과세', '근로-연말':'연말', '사업소득':'사업', '기타소득-간이미대상':'기타간이미대상', '기타소득-간이대상':'기타간이대상', '일용소득':'일용', '퇴직소득':'퇴직', '이자소득':'이자', '이자소득(익월)':'이자', '배당소득':'이자' };
+const IT_RAW_TAX_MAP = { '근로-간이':'간이', '근로-중도':'중도', '근로-일용':'일용', '근로-연말':'연말', '사업소득':'사업', '기타소득(간이미대상)':'기타간이미대상', '기타소득(간이대상)':'기타간이대상', '퇴직소득':'퇴직', '이자소득':'이자', '이자소득(익월)':'이자', '환급잔액':'환급잔액' };
+const itRawKey = v => String(v == null ? '' : v).replace(/\s+/g, '');
+const itRawNum = v => typeof v === 'number' && isFinite(v) ? v : (typeof v === 'string' && v.trim() !== '' && !isNaN(Number(v.replace(/,/g,''))) ? Number(v.replace(/,/g,'')) : null);
+const itRawAdd = (a, b) => b == null ? a : (a == null ? b : a + b);
+function itRawParseSheet(name, ws){
+  const rows = XLSX.utils.sheet_to_json(ws, { header:1, raw:true, defval:null });
+  const hi = rows.findIndex(r=> r && itRawKey(r[0]) === '귀속월' && r.some(v=> itRawKey(v) === '근로소득-과세'));
+  if(hi < 0) return null;
+  const hdr = rows[hi], lab = rows[hi-1] || [];
+  const incCols = []; hdr.forEach((v,i)=>{ const k = IT_RAW_INCOME_MAP[itRawKey(v)]; if(i > 0 && k) incCols.push([i,k]); });
+  const totCols = hdr.map((v,i)=> itRawKey(v) === '총지급액' ? i : -1).filter(i=> i >= 0);
+  const repCol = totCols.length > 1 ? totCols[1] : null;
+  const cyc = lab.findIndex(v=> itRawKey(v) === '신고주기'), tim = lab.findIndex(v=> itRawKey(v) === '귀속/지급');
+  const cycle = cyc >= 0 && itRawKey(hdr[cyc]) === '반기' ? '반기' : '매월';
+  const suffix = (name.match(/_(익|당)$/) || [])[1];
+  const timing = suffix ? (suffix === '익' ? 'nextMonth' : 'sameMonth') : (tim >= 0 && itRawKey(hdr[tim]).endsWith('익월') ? 'nextMonth' : 'sameMonth');
+  const months = {}; // 'YYYY-M' → { income:{}, incomeReported, tax:{key:{tax,local}} }
+  const mon = d => (d instanceof Date && !isNaN(d)) ? `${d.getFullYear()}-${d.getMonth()+1}` : null;
+  const slot = k => months[k] = months[k] || { income:{}, incomeReported:null, tax:{} };
+  for(let r = hi+1; r < rows.length; r++){
+    const k = mon((rows[r]||[])[0]); if(!k) break;
+    const o = slot(k);
+    incCols.forEach(([i,f])=>{ o.income[f] = itRawAdd(o.income[f], itRawNum(rows[r][i])); });
+    if(repCol != null) o.incomeReported = itRawNum(rows[r][repCol]);
+  }
+  const ti = rows.findIndex((r,i)=> i > hi && r && itRawKey(r[0]) === '귀속월' && r.some(v=> itRawKey(v) === '소득세'));
+  if(ti > 0){
+    const grp = rows[ti-1] || [], th = rows[ti];
+    const tCols = []; grp.forEach((v,i)=>{ const g = IT_RAW_TAX_MAP[itRawKey(v)]; if(g && itRawKey(th[i]) === '소득세') tCols.push([i,g]); });
+    for(let r = ti+1; r < rows.length; r++){
+      const k = mon((rows[r]||[])[0]); if(!k) break;
+      const o = slot(k);
+      tCols.forEach(([i,g])=>{ const t = o.tax[g] = o.tax[g] || { tax:null, local:null }; t.tax = itRawAdd(t.tax, itRawNum(rows[r][i])); t.local = itRawAdd(t.local, itRawNum(rows[r][i+1])); });
+    }
+  }
+  return { name, label: name.replace(/_(익|당)$/, ''), timing, cycle, months };
+}
+function itRawMatchMemo(){ try{ return JSON.parse(localStorage.getItem('taxj_itraw_match') || '{}') || {}; }catch(e){ return {}; } }
+// 이름 맞추기: ① 전에 고른 매칭 ② (주)·㈜·주)를 '주식회사'로 바꾸고 공백만 뺀 이름이 같은 곳(본점·지점이나 '프린웍스산업'/'프린웍스 산업'처럼
+// 비슷한 이름이 여럿일 때 정확한 쪽) ③ 주식회사 등을 뺀 이름이 같은 곳(하나뿐일 때) ④ 서로 포함하는 이름(하나뿐일 때). 못 찾으면 직접 고름
+function itRawMatchClient(sheet){
+  const list = bookkeepingClientList();
+  const memo = itRawMatchMemo()[sheet.name];
+  if(memo && list.some(c=> c.id === memo)) return memo;
+  const canon = s => String(s||'').replace(/\(주\)|㈜|주\)/g, '주식회사').replace(/\s+/g, '');
+  const one = arr => arr.length === 1 ? arr[0].id : '';
+  const c1 = list.filter(c=> canon(c.name) === canon(sheet.label)); if(c1.length) return c1[0].id;
+  const n = reviewSeedNormalizeName(sheet.label); if(!n) return '';
+  const c2 = one(list.filter(c=> reviewSeedNormalizeName(c.name) === n)); if(c2) return c2;
+  const c3 = one(list.filter(c=>{ const nn = reviewSeedNormalizeName(c.name); return nn && (nn.includes(n) || n.includes(nn)); })); if(c3) return c3;
+  const words = (IT_RAW_ALIAS[n] || sheet.label).replace(/\(주\)|㈜|주\)|주식회사/g, ' ').split(/\s+/).filter(Boolean);
+  return words.length ? one(list.filter(c=>{ const nn = String(c.name||'').replace(/\s+/g,''); return words.every(w=> nn.includes(w)); })) : '';
+}
+const IT_RAW_ALIAS = { '엽떡':'엽기떡볶이' }; // 시트 이름 줄임말
+// 고른 매칭대로 채울 칸을 셈(apply면 실제로 채움). 같은 저장칸으로 가는 시트가 둘이면(한 줄 거래처의 당월·익월 시트) 귀속월 기준으로 더함
+function itRawFillPlan(picks, apply){
+  const { year } = itRawImportCtx;
+  const groups = {}; // storeKey → { cid, sheets:[] }
+  picks.forEach(({ sheet, cid })=>{
+    if(!cid) return;
+    const key = (sheet.timing === 'nextMonth' && clientHasDualTiming(cid, year)) ? cid + '@nextMonth' : cid;
+    (groups[key] = groups[key] || { cid, sheets:[] }).sheets.push(sheet);
+  });
+  const perSheet = new Map(); let total = 0;
+  Object.entries(groups).forEach(([key, g])=>{
+    let cnt = 0;
+    for(let m = 1; m <= 12; m++){
+      const src = { income:{}, incomeReported:null, tax:{} };
+      g.sheets.forEach(sh=>{ const o = sh.months[`${year}-${m}`]; if(!o) return;
+        Object.entries(o.income).forEach(([f,v])=> src.income[f] = itRawAdd(src.income[f], v));
+        src.incomeReported = itRawAdd(src.incomeReported, o.incomeReported);
+        Object.entries(o.tax).forEach(([gk,t])=>{ const d = src.tax[gk] = src.tax[gk] || { tax:null, local:null }; d.tax = itRawAdd(d.tax, t.tax); d.local = itRawAdd(d.local, t.local); });
+      });
+      const ex = ((sharedReviewFigures[key] || {})[year] || {})[String(m)];
+      let d = null;
+      const tgt = ()=>{ if(d) return d; sharedReviewFigures[key] = sharedReviewFigures[key] || {}; sharedReviewFigures[key][year] = sharedReviewFigures[key][year] || {};
+        d = sharedReviewFigures[key][year][String(m)] = sharedReviewFigures[key][year][String(m)] || { income:{}, incomeReported:null, tax:{}, taxReported:{}, taxReportedLocal:null }; d.income = d.income || {}; d.tax = d.tax || {}; return d; };
+      REVIEW_INCOME_FIELDS.forEach(f=>{ const v = src.income[f.key]; if(v == null || (ex && ex.income && ex.income[f.key] != null && ex.income[f.key] !== '')) return; cnt++; if(apply) tgt().income[f.key] = v; });
+      if(src.incomeReported != null && !(ex && ex.incomeReported != null && ex.incomeReported !== '')){ cnt++; if(apply) tgt().incomeReported = src.incomeReported; }
+      REVIEW_TAX_GROUPS.forEach(gr=>{ const s = src.tax[gr.key]; if(!s) return; const e = (ex && ex.tax && ex.tax[gr.key]) || {};
+        ['tax','local'].forEach(p=>{ if(s[p] == null || (e[p] != null && e[p] !== '')) return; cnt++; if(apply){ const t = tgt().tax[gr.key] = tgt().tax[gr.key] || {}; t[p] = s[p]; } }); });
+    }
+    g.sheets.forEach(sh=> perSheet.set(sh.name, cnt));
+    total += cnt;
+    if(apply && !sharedReviewMeta[g.cid]){ const sh = g.sheets[0]; sharedReviewMeta[g.cid] = { sameMonth: sh.timing !== 'nextMonth', payCycle: sh.cycle, secondHalfPayCycle:null }; }
+  });
+  return { perSheet, total, clients: new Set(Object.values(groups).map(g=> g.cid)).size };
+}
+const IT_RAW_HINT = '원데이터의 거래처 시트를 앱 거래처와 맞춰주세요. 이미 입력된 칸은 그대로 두고 빈 칸만 채워요. 신고서 소득세(유형별)·지방세(신고서)는 원데이터에 같은 구분이 없어 채우지 않아요.';
+function itRawPicks(){
+  return [...document.querySelectorAll('#reviewSeedImportListWrap .it-raw-match-select')].map(sel=> ({ sheet: itRawImportCtx.sheets[Number(sel.dataset.idx)], cid: sel.value }));
+}
+function itRawRefreshCounts(){
+  const plan = itRawFillPlan(itRawPicks(), false);
+  document.querySelectorAll('#reviewSeedImportListWrap .it-raw-cnt').forEach(el=>{ const sh = itRawImportCtx.sheets[Number(el.dataset.idx)]; const n = plan.perSheet.get(sh.name); el.textContent = n == null ? '' : n ? `빈 칸 ${n}` : '채울 칸 없음'; });
+  const msgEl = document.getElementById('reviewSeedImportMsg');
+  if(msgEl) msgEl.textContent = `${itRawImportCtx.year}년 · ${plan.clients}개 거래처 · 빈 칸 ${plan.total}개를 채워요`;
+}
+async function itRawImportFile(file){
+  if(!file || typeof XLSX === 'undefined') return;
+  let wb;
+  try{ wb = XLSX.read(await file.arrayBuffer(), { type:'array', cellDates:true }); }catch(e){ await appAlert('엑셀 파일을 읽지 못했어요.'); return; }
+  const sheets = wb.SheetNames.filter(n=> n !== '양식').map(n=> itRawParseSheet(n, wb.Sheets[n])).filter(Boolean);
+  if(!sheets.length){ await appAlert("'원천세 검토표' 시트(귀속월·근로소득-과세 머리글)가 있는 원데이터 파일이 아니에요."); return; }
+  const yc = {}; sheets.forEach(sh=> Object.keys(sh.months).forEach(k=>{ const y = k.split('-')[0]; yc[y] = (yc[y]||0) + 1; }));
+  const year = Number(Object.keys(yc).sort((a,b)=> yc[b] - yc[a])[0]);
+  itRawImportCtx = { year, sheets };
+  const list = bookkeepingClientList();
+  const optionsHtml = `<option value="">(건너뛰기)</option>` + list.map(c=>`<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
+  const wrap = document.getElementById('reviewSeedImportListWrap');
+  wrap.innerHTML = sheets.map((sh,i)=> `<div style="display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--border);">
+      <span style="flex:1; font-weight:800; font-size:12.5px;">${escHtml(sh.name)}</span>
+      <span class="it-raw-cnt" data-idx="${i}" style="flex:0 0 76px; font-size:11px; color:var(--ink-soft); text-align:right;"></span>
+      <select class="it-raw-match-select" data-idx="${i}" style="border:1.5px solid var(--border); border-radius:8px; padding:5px 6px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12px; width:200px;">${optionsHtml}</select>
+    </div>`).join('');
+  wrap.querySelectorAll('.it-raw-match-select').forEach(sel=>{ sel.value = itRawMatchClient(sheets[Number(sel.dataset.idx)]); sel.addEventListener('change', itRawRefreshCounts); });
+  const hint = document.querySelector('#reviewSeedImportModalOverlay p.hint');
+  if(hint){ hint.dataset.orig = hint.dataset.orig || hint.textContent; hint.textContent = IT_RAW_HINT; }
+  itRawRefreshCounts();
+  document.getElementById('reviewSeedImportModalOverlay').style.display = 'flex';
+}
+async function applyItRawImport(){
+  const picks = itRawPicks();
+  const plan = itRawFillPlan(picks, false);
+  if(!plan.total){ showCenterToast('채울 빈 칸이 없어요'); return; }
+  if(!(await appConfirm(`${itRawImportCtx.year}년 검증표 빈 칸 ${plan.total}개를 원데이터로 채울까요?\n(이미 입력된 칸은 그대로 둬요)`, { okText:'채우기' }))) return;
+  itRawFillPlan(picks, true);
+  try{ const memo = itRawMatchMemo(); picks.forEach(({ sheet, cid })=>{ if(cid) memo[sheet.name] = cid; else delete memo[sheet.name]; }); localStorage.setItem('taxj_itraw_match', JSON.stringify(memo)); }catch(e){}
+  await saveSharedReviewFigures();
+  await saveSharedReviewMeta();
+  document.getElementById('reviewSeedImportModalOverlay').style.display = 'none';
+  showCenterToast(`빈 칸 ${plan.total}개를 채웠어요`);
+  if(typeof renderIncomeTaxUnified === 'function') renderIncomeTaxUnified();
+}
+document.getElementById('itRawImportBtn')?.addEventListener('click', ()=> document.getElementById('itRawImportFile')?.click());
+document.getElementById('itRawImportFile')?.addEventListener('change', async (e)=>{ const f = e.target.files && e.target.files[0]; e.target.value = ''; if(f) await itRawImportFile(f); });
 
 // ══════════════════════════════════════════════════════════
 // 🧾 검토표(부가세): 원본 엑셀 "부가가치세 신고자료 통합조회" 시트 구조를 그대로 옮김. 원천세 검토표와 같은 방식으로
