@@ -8530,10 +8530,11 @@ function renderFilingTitleBadges(){
   setFilingTitleBadge(document.getElementById('vatAllTitleBadge'), '부가세', 'vatAllTableWrap');
   const t = typeof viewingFilingType !== 'undefined' ? viewingFilingType : '';
   const h = document.getElementById('filingStatusTitle');
-  if(h && ['법인세','종소세','결산통합','일용직'].includes(t)){
+  // [2026.10.07] 일용직 화면은 진행률 배지 없앰(요청)
+  if(h && ['법인세','종소세','결산통합'].includes(t)){
     let b = h.querySelector(':scope > .badge.filing-title-badge');
     if(!b){ b = document.createElement('span'); b.className = 'badge filing-title-badge'; h.appendChild(b); }
-    setFilingTitleBadge(b, t, t === '일용직' ? null : 'filingStatusTableWrap');
+    setFilingTitleBadge(b, t, 'filingStatusTableWrap');
   } else if(h){ h.querySelector(':scope > .badge.filing-title-badge')?.remove(); }
 }
 function scheduleFilingSideBadges(){ clearTimeout(scheduleFilingSideBadges._t); scheduleFilingSideBadges._t = setTimeout(()=>{ try{ renderFilingTitleBadges(); }catch(e){} }, 300); }
@@ -26898,6 +26899,9 @@ function ensureFilingPeriodStateInit(kind){
 // 페이지 로드 시 복원 로직은 파일 맨 아래쪽(worklog_last_tab 복원부 근처)에 있음.
 function saveFilingSubviewState(){
   try{
+    // [2026.10.07] "새로고침하면 일용직 메뉴가 뜰 때가 있다"(요청) - 앱 시작 때(로그인·데이터 불러오기) 세무신고 화면을 미리 그리면서
+    // 기본 화면(신고현황 > 일용직)을 마지막 화면으로 덮어써서, 그 뒤 복원이 일용직으로 갔음. 세무신고 화면을 실제로 보고 있을 때만 기억함
+    if(currentActiveTabName !== 'approval') return;
     const cat = document.querySelector('.approval-cat-btn.active')?.dataset.approvalCat || 'status';
     if(cat === 'status' && viewingFilingType === '원천세') return; // 원천세는 곧바로 원천세 메뉴로 넘어가는 중간 상태라 기억하지 않음(새로고침하면 원천세로 튀던 원인)
     const st = FILING_KINDS.status.state;
@@ -29801,6 +29805,8 @@ function openItoKindsMenu(btn, opt){
   m.id = 'itoKindsMenu'; m.className = 'ito-kinds-menu';
   m.innerHTML = ITO_PAY_KINDS.map(k=>`<label><input type="checkbox" value="${k}" ${cur.has(k)?'checked':''}><span class="ito-chip" data-k="${k}">${k}</span></label>`).join('');
   document.body.appendChild(m);
+  // [2026.10.07] "검증 팝업에서 발생 급여종류를 눌러도 반응이 없다"(요청) - 메뉴(z-index 9600)가 전체화면 검증 팝업(9999 이상) 뒤에 숨어 있었음. 열린 팝업들보다 위로 올림
+  try{ if(window.__bringOverlayToFront) window.__bringOverlayToFront(m); }catch(e){}
   const r = btn.getBoundingClientRect();
   m.style.left = (Math.max(8, Math.min(window.innerWidth - m.offsetWidth - 8, r.left))) / pageZoomF() + 'px';
   m.style.top = (Math.min(window.innerHeight - m.offsetHeight - 8, r.bottom + 4)) / pageZoomF() + 'px';
@@ -30638,7 +30644,8 @@ function renderVatBulkModal(){
   if(tg){ tg.innerHTML = VAT_SEND_ITEMS.map(([k, l])=> `<button type="button" class="${k === vatBulkField ? 'active' : ''}" data-k="${k}">${l}</button>`).join('');
     tg.querySelectorAll('button').forEach(b=> b.addEventListener('click', ()=>{ vatBulkField = b.dataset.k; renderVatBulkModal(); })); }
   const year = vatAllYear, p = vatBulkCurPeriod();
-  const rows = bookkeepingClientList().map(c=> ({ c, st: vatAllCellState(c, year, p).targetStatus, cur: vatSendGet(c.id, year, p, vatBulkField) })).filter(r=> r.st !== 'not-target');
+  const rows = bookkeepingClientList().map(c=> ({ c, st: vatAllCellState(c, year, p).targetStatus, cur: vatSendGet(c.id, year, p, vatBulkField) })).filter(r=> r.st !== 'not-target')
+    .filter(r=> !(vatBulkField === 'bill' && p.endsWith('예정') && r.st === 'notice-excluded')); // [2026.10.07] 예정 기수 납부서는 고지제외 빼고(요청)
   const listEl = document.getElementById('vatBulkList');
   const stLab = { target:'대상', filing:'예정신고', notice:'예정고지', 'notice-excluded':'고지제외' };
   listEl.innerHTML = rows.length ? rows.map((r, i)=> `<label style="display:flex; align-items:center; gap:8px; padding:7px 2px; border-bottom:1px dashed var(--border); font-size:12.5px; cursor:pointer;">
@@ -30863,6 +30870,7 @@ function vatTaxbotDetailHtml(year, period, q, verifyCellOf){
     const stCell = `<td class="cvb" style="position:relative;">${star}<button type="button" class="vat-all-cell-btn vat-tb-stbtn" data-client-id="${x.c.id}" data-period="${period}" data-filer="${cs.filerCase?'1':'0'}" data-tip="${escHtml(tip).replace(/"/g,'&quot;')}"><span class="vat-tb-st ${x.st}">${escHtml(labels[x.st] || '')}</span>${mark}</button></td>`;
     const sendCells = VAT_SEND_ITEMS.map(([k])=>{
       if(x.st === 'not-target') return `<td class="cvb"></td>`;
+      if(pre && k === 'bill' && x.st === 'notice-excluded') return `<td class="cvb">${na}</td>`; // [2026.10.07] 예정 기수 납부서는 예정고지·예정신고만(요청) - 고지제외는 비활성 "-"
       const v = vatSendGet(x.c.id, year, period, k);
       return `<td class="cvb"><button type="button" class="vat-send-btn${v ? ' on' : ''}" data-client-id="${x.c.id}" data-k="${k}" title="${v ? `${v} 발송 · 다시 누르면 해제` : '눌러서 오늘 발송으로 체크'}">${v ? Number(v.slice(5,7)) + '/' + Number(v.slice(8,10)) : ''}</button></td>`;
     }).join('');
