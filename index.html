@@ -30034,7 +30034,8 @@ function renderIncomeTaxUnifiedInner(){
         // [2026.10.03] 앞 달 메모가 그대로 따라온 줄은 화면에서만 숨김(요청 A안 - 저장된 메모는 그대로). 다 겹치면 빨간 삼각형도 안 보임
         const memoTxt = (anyTarget || state === 'halfyear') ? itMemoNewPart(c.id, period, timingKey) : '';
         const tip = appTipHtml(periodLabel, tipRows);
-        const memoStar = memoTxt ? `<sup class="it-memo-star" role="button" data-name="${escHtml(c.name)}" data-cid="${c.id}" data-period="${period}" data-tk="${timingKey||''}" data-label="${escHtml(periodLabel)}" data-memo="${escHtml(memoTxt).replace(/"/g,'&quot;')}" data-tip="${escHtml(appTipHtml('급여 특이사항', [], memoTxt)).replace(/"/g,'&quot;')}">*</sup>` : '';
+        // [2026.10.06] 칸 모서리 메모 표시 삭제(요청) - 월별 급여 특이사항은 메모 칸의 "급여 특이사항" 팝업에서 봐요
+        const memoStar = '';
         const bg = inner ? 'transparent' : st.bg;
         return `<td class="${colCls}" style="position:relative;">${memoStar}<button type="button" class="it-all-month-cell-btn" ${clickAttr} ${tipRows.length ? `data-tip="${escHtml(tip).replace(/"/g,'&quot;')}"` : ''} style="width:100%; border:${st.plain ? 'none' : `1.5px solid ${st.color}`}; border-radius:6px; padding:4px 1px; background:${bg}; color:${st.text}; font-size:10.5px; font-weight:700; cursor:${state==='none' ? 'default' : (st.disabled?'not-allowed':'pointer')}; opacity:${st.disabled && state!=='none'?'0.35':'1'};">${inner}</button></td>`;
       }).join('');
@@ -32203,8 +32204,20 @@ function itRawFillPlan(picks, apply){
         d = sharedReviewFigures[key][year][String(m)] = sharedReviewFigures[key][year][String(m)] || { income:{}, incomeReported:null, tax:{}, taxReported:{}, taxReportedLocal:null }; d.income = d.income || {}; d.tax = d.tax || {}; return d; };
       REVIEW_INCOME_FIELDS.forEach(f=>{ const v = src.income[f.key]; if(v == null || (ex && ex.income && ex.income[f.key] != null && ex.income[f.key] !== '')) return; cnt++; if(apply) tgt().income[f.key] = v; });
       if(src.incomeReported != null && !(ex && ex.incomeReported != null && ex.incomeReported !== '')){ cnt++; if(apply) tgt().incomeReported = src.incomeReported; }
+      const newRefund = {};   // [2026.10.06] 이번에 새로 채운 근로-연말·근로-중도 금액 → 환급금 등록 자동 생성(요청)
       REVIEW_TAX_GROUPS.forEach(gr=>{ const s = src.tax[gr.key]; if(!s) return; const e = (ex && ex.tax && ex.tax[gr.key]) || {};
-        ['tax','local'].forEach(p=>{ if(s[p] == null || (e[p] != null && e[p] !== '')) return; cnt++; if(apply){ const t = tgt().tax[gr.key] = tgt().tax[gr.key] || {}; t[p] = s[p]; } }); });
+        ['tax','local'].forEach(p=>{ if(s[p] == null || (e[p] != null && e[p] !== '')) return; cnt++; if(apply){ const t = tgt().tax[gr.key] = tgt().tax[gr.key] || {}; t[p] = s[p]; if(REVIEW_TOTAL_SKIP.has(gr.key) && Number(s[p])) (newRefund[gr.key] = newRefund[gr.key] || {})[p] = s[p]; } }); });
+      if(apply) Object.keys(newRefund).forEach(g=>{
+        const kind = Object.keys(REVIEW_REFUND_GROUP).find(k=> REVIEW_REFUND_GROUP[k] === g);
+        const tax = Math.abs(Number(newRefund[g].tax) || 0), local = Math.abs(Number(newRefund[g].local) || 0);
+        if(!kind || (!tax && !local)) return;
+        const rm = kind === '연말정산' ? 2 : m;   // 신고서 반영월: 연말정산은 2월, 중도퇴사는 급여에 나온 그 달(등록 팝업에서 바꿀 수 있음)
+        sharedReviewFigures[key] = sharedReviewFigures[key] || {}; sharedReviewFigures[key][year] = sharedReviewFigures[key][year] || {};
+        const rd = sharedReviewFigures[key][year][String(rm)] = sharedReviewFigures[key][year][String(rm)] || { income:{}, incomeReported:null, tax:{}, taxReported:{}, taxReportedLocal:null };
+        const list = reviewItRegList(rd);
+        if(list.some(r=> r.kind === kind && Math.abs(Number(r.tax)||0) === tax && Math.abs(Number(r.local)||0) === local)) return;   // 같은 등록이 이미 있으면 건너뜀
+        rd.refundReg = list.concat([{ kind, tax, local, auto: true }]);
+      });
       // [2026.10.06] 환급잔액은 신고서 쪽 칸(taxRefund / taxRefundLocal)으로 - 이미 적혀 있으면 그대로 둠
       { const s = src.tax['환급잔액']; if(s){ [['tax','taxRefund'],['local','taxRefundLocal']].forEach(([p, f])=>{ if(s[p] == null || (ex && ex[f] != null && ex[f] !== '')) return; cnt++; if(apply) tgt()[f] = Math.abs(Number(s[p])) || 0; }); } }
     }
@@ -41148,7 +41161,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.06 15:47';
+const APP_BUILD = '2026.10.06 15:59';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
