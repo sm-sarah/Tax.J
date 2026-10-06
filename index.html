@@ -34,6 +34,8 @@
      - 연월 선택: 흰 알약 모양 칸 안에 ‹ 2026년 9월 › 📅, 직원 이름은 연보라 칩(누르면 바로 아래 드롭다운)
      - 팝업: openDraggablePopup / 확인창: appConfirm·appAlert (브라우저 기본 alert/confirm 금지)
      - 자리배치도·검증표처럼 PC용 작업은 모바일에서 "PC에서 진행해 주세요" 안내만 띄우고 모바일용으로 억지로 재배치하지 않음
+     - 입력하면 바로 저장되는 화면(저장 버튼 없음)은 표 위 도구줄에 자동 저장 표시(저장 중… → 저장됨 시:분:초)를 붙인다:
+       autoSaveMount(도구줄, key, 보일지) + 저장하는 곳에서 autoSaveTouch(key). 예: 원천세 총괄(itOverview), 급여현황(prSaveBadge) (2026.10.07 요청)
 
   5. 데이터 안전 (동기화 코드 수정 시)
      - 역할 구분: 데이터 저장 = Firebase(Firestore, 실시간) / 계정·로그인 = Google 계정 / 공유 드라이브 = 결재 첨부·3시간 자동백업·비상용 예전 저장소
@@ -28205,6 +28207,40 @@ function prOnSyncStatus(text){
   if(/저장됨|동기화함/.test(text) && !/대기|실패/.test(text)) prSetSave('saved');
   else if(/대기|실패|권한/.test(text)) prSetSave('wait');
 }
+// [2026.10.07] "입력만 하면 저장되는 화면은 저장 중·저장 완료가 바로바로 보이게"(요청) - 급여현황의 자동 저장 표시(.pr-save)를 다른 화면에서도 쓰는 공용판.
+// 화면마다 key 하나: autoSaveMount(도구줄, key, 보일지)로 표시를 붙이고, 저장하는 곳에서 autoSaveTouch(key). 서버 저장 알림(gdriveSetStatus)을 받으면 "저장됨 시:분:초"
+const autoSaveStates = {};
+function autoSaveBadgeHtml(key){
+  const s = autoSaveStates[key] || { st:'idle', at:'' };
+  const label = s.st === 'saving' ? '저장 중…' : s.st === 'saved' ? `저장됨 ${s.at}` : s.st === 'wait' ? '저장 대기 중 (이 기기엔 저장됨)' : '자동 저장';
+  return `<span class="pr-save ${s.st}" data-autosave="${key}" title="입력하면 바로 자동으로 저장돼요"><i></i>${label}</span>`;
+}
+function autoSaveSet(key, st){
+  const s = autoSaveStates[key] = autoSaveStates[key] || { st:'idle', at:'' };
+  s.st = st;
+  if(st === 'saved') s.at = new Date().toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false });
+  document.querySelectorAll(`[data-autosave="${key}"]`).forEach(el=>{ el.outerHTML = autoSaveBadgeHtml(key); });
+}
+function autoSaveTouch(key){
+  autoSaveSet(key, 'saving');
+  // 동기화가 꺼져 있거나 서버 저장 알림이 오지 않으면, 이 기기에 저장된 것으로 표시(급여현황 prTouch와 같은 기준)
+  clearTimeout((autoSaveTouch._t = autoSaveTouch._t || {})[key]);
+  autoSaveTouch._t[key] = setTimeout(()=>{ if((autoSaveStates[key] || {}).st === 'saving'){ let on = false; try{ on = !!(gdriveAccessToken && gdriveFileId); }catch(e){} autoSaveSet(key, on ? 'wait' : 'saved'); } }, 12000);
+}
+function autoSaveOnSyncStatus(text){
+  Object.keys(autoSaveStates).forEach(key=>{
+    const st = autoSaveStates[key].st;
+    if(st !== 'saving' && st !== 'wait') return;
+    if(/저장됨|동기화함/.test(text) && !/대기|실패/.test(text)) autoSaveSet(key, 'saved');
+    else if(/대기|실패|권한/.test(text)) autoSaveSet(key, 'wait');
+  });
+}
+function autoSaveMount(box, key, show){
+  if(!box) return;
+  const cur = box.querySelector(`:scope > [data-autosave="${key}"]`);
+  if(!show){ cur?.remove(); return; }
+  if(!cur) box.insertAdjacentHTML('afterbegin', autoSaveBadgeHtml(key));
+}
 function prConflictHtml(rows, nf){
   const list = []; rows.forEach(r=> (r._conf||[]).forEach(c=> list.push({ r, c })));
   if(!list.length) return '';
@@ -29690,7 +29726,17 @@ let itAllView = 'status';
 const ITO_PAY_KINDS = ['근로','사업','일용','특고','기타','퇴직','이자','예술'];
 const ITO_COMM = ['카톡','이메일'];
 const ITO_VIA = ['개인카톡','채널카톡','개인이메일','채널이메일','채널톡&이메일','전달 안 함']; // [2026.10.04] '전달 안 함' - 급여명세서를 안 보내는 거래처(아래 itPayslipSkip)
-const ITO_PAYDAY_SUGGEST = ['당월 말일','익월 5일','익월 10일','익월 15일','익월 20일','익월 말일'];
+const ITO_PAYDAY_SUGGEST = ['귀속월 말일','익월 5일','익월 10일','익월 15일','익월 20일','익월 말일','발생일']; // [2026.10.07] '발생일' 추가, '당월 말일'→'귀속월 말일'(요청)
+// [2026.10.07] "귀속월 말일로(당월 말일·말일 삭제)"(요청) - 예전에 고른 '당월 말일'·직접 적은 '말일'은 '귀속월 말일'로 한 번 바꿔 저장
+const ITO_PAYDAY_RENAME = { '당월 말일':'귀속월 말일', '말일':'귀속월 말일' };
+function itoMigratePayDays(){
+  let changed = false;
+  Object.values(sharedItOverview || {}).forEach(e=>{
+    if(!e) return;
+    ['reportPayDay','actualPayDay'].forEach(f=>{ const v = String(e[f] || '').trim(); if(ITO_PAYDAY_RENAME[v]){ e[f] = ITO_PAYDAY_RENAME[v]; e.updatedAt = new Date().toISOString(); changed = true; } });
+  });
+  if(changed) saveSharedItOverview();
+}
 // [2026.10.06] "신고 지급일은 당월 말일·익월 10일·익월 15일만 드롭다운 + 직접입력, 실 급여일은 지금 목록 + 직접입력"(요청)
 // [2026.10.06] "실 급여일·신고 지급일 드롭다운 목록은 같게"(요청) - 둘 다 ITO_PAYDAY_SUGGEST + 직접입력
 const ITO_DIRECT = '__direct__';
@@ -29707,6 +29753,7 @@ async function itoSet(id, f, v){
   const empty = v === '' || v === null || v === undefined || v === false || (Array.isArray(v) && !v.length);
   if(empty) delete e[f]; else e[f] = v;
   e.updatedAt = new Date().toISOString();
+  autoSaveTouch('itOverview'); // [2026.10.07] 총괄 표 위 자동 저장 표시
   await saveSharedItOverview();
 }
 function syncItAllViewControls(){
@@ -29735,9 +29782,55 @@ function itoCycleCellHtml(c, year){
   const inner = dual ? `${escHtml(base)}<span style="color:var(--ink-soft); font-weight:600;">/</span><span style="color:#0B8F6C;">당월</span><span style="color:var(--ink-soft); font-weight:600;">·</span><span style="color:#D9480F;">익월</span>` : escHtml(base);
   return `<button type="button" class="filing-cycle-chip" data-client-id="${c.id}" style="border:none; background:transparent; color:${col}; padding:3px 4px; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap; font-family:inherit;">${inner}</button>`;
 }
+// [2026.10.07] 총괄 비고(요청) - "글자가 많을 수 있으니 칸은 아이콘, 누르면 팝업 / 등록할 때마다 목록으로 한 건씩".
+// 저장은 예전과 같은 note 칸(글자)에 한 건 = 한 줄로 둠 - 원천세 신고현황의 "전체 특이사항"·엑셀·works가 같은 값을 그대로 씀
+function itoNoteItems(cid){ return String(itoEntry(cid).note || '').split('\n').map(x=> x.trim()).filter(Boolean); }
+function openItoNoteModal(cid, name){
+  const ICON_EDIT = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>';
+  const ICON_DEL = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+  const ICON_ADD = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+  const oneLine = v=> String(v || '').replace(/\s*\n+\s*/g, ' ').trim(); // 한 건 = 한 줄
+  const saveItems = async (items)=>{ await itoSet(cid, 'note', items.join('\n')); try{ renderItOverview(); }catch(e){} };
+  let editing = itoNoteItems(cid).length ? null : 'add'; // null | 'add' | 순번(수정 중)
+  const render = ()=>{
+    const items = itoNoteItems(cid);
+    let h = `<div class="itm-sec"><span>등록 ${items.length}건</span>${editing === 'add' ? '' : `<button type="button" class="it-memo-act" data-act="add" title="비고 등록" aria-label="등록">${ICON_ADD}</button>`}</div>`;
+    if(editing === 'add') h += `<textarea class="itm-ta" id="itoNoteAddTa" placeholder="비고 한 건을 적어요"></textarea><div class="itm-btns" style="margin-bottom:8px;">${items.length ? '<button type="button" class="del-btn" data-act="cancel">취소</button>' : ''}<button type="button" class="submit-btn" style="width:auto; padding:6px 16px; margin:0;" data-act="add-save">등록</button></div>`;
+    if(!items.length && editing !== 'add') h += `<div class="itm-box empty">없어요</div>`;
+    h += items.map((t, i)=> editing === i
+      ? `<div class="itm-row" style="display:block;"><div class="itm-m" style="margin-bottom:4px;">${i+1}</div><textarea class="itm-ta" id="itoNoteEditTa">${escHtml(t)}</textarea><div class="itm-btns"><button type="button" class="del-btn" data-act="cancel">취소</button><button type="button" class="submit-btn" style="width:auto; padding:6px 16px; margin:0;" data-act="edit-save" data-i="${i}">저장</button></div></div>`
+      : `<div class="itm-row"><span class="itm-m" style="width:18px;">${i+1}</span><span class="itm-t">${escHtml(t)}</span>${editing === null ? `<span class="itm-acts"><button type="button" class="it-memo-act" data-act="edit" data-i="${i}" title="수정" aria-label="수정">${ICON_EDIT}</button><button type="button" class="it-memo-act del" data-act="del" data-i="${i}" title="삭제" aria-label="삭제">${ICON_DEL}</button></span>` : ''}</div>`).join('');
+    openClientNamedInfoModal(name, '비고', h);
+    const body = document.getElementById('memoModalBody');
+    body.querySelector('textarea')?.focus();
+    body.querySelectorAll('[data-act]').forEach(b=> b.addEventListener('click', ()=> onAct(b.dataset.act, Number(b.dataset.i))));
+  };
+  const onAct = async (act, i)=>{
+    const items = itoNoteItems(cid);
+    if(act === 'cancel'){ editing = null; return render(); }
+    if(act === 'add'){ editing = 'add'; return render(); }
+    if(act === 'edit'){ editing = i; return render(); }
+    if(act === 'add-save'){
+      const v = oneLine(document.getElementById('itoNoteAddTa')?.value);
+      if(!v){ appAlert('비고를 적어주세요.'); return; }
+      await saveItems(items.concat(v)); editing = null; showCenterToast('등록했어요'); return render();
+    }
+    if(act === 'edit-save'){
+      const v = oneLine(document.getElementById('itoNoteEditTa')?.value);
+      if(v) items[i] = v; else items.splice(i, 1);
+      await saveItems(items); editing = null; showCenterToast('저장됐어요'); return render();
+    }
+    if(act === 'del'){
+      if(!(await appConfirm(`${i+1}번 비고를 지울까요?`, { okText:'삭제', cancelText:'취소' }))) return;
+      items.splice(i, 1); await saveItems(items); showCenterToast('삭제했어요'); return render();
+    }
+  };
+  render();
+}
 function renderItOverview(){
   const wrap = document.getElementById('itAllTableWrap');
   if(!wrap) return;
+  try{ itoMigratePayDays(); }catch(e){}
   const q = (document.getElementById('itAllSearch')?.value || '').trim().toLowerCase();
   let list = bookkeepingClientList();
   if(q) list = list.filter(c=>(c.name||'').toLowerCase().includes(q));
@@ -29761,15 +29854,16 @@ function renderItOverview(){
       <td class="cvb">${txt('wpNo',124)}</td>
       <td class="cvb">${txt('wpNoSpecial',124)}</td>
       <td class="cvb"><input type="checkbox" class="ito-chk" data-id="${c.id}" data-f="edi" ${e.edi?'checked':''}></td>
-      <td>${txt('note',170)}</td>
+      <td class="cvb it-all-memo-col">${(()=>{ const nt = (e.note||'').trim(); const n = itoNoteItems(c.id).length; return `<span class="it-note-ic ito-note-btn${nt ? '' : ' empty'}" role="button" data-id="${c.id}" data-name="${escHtml(c.name||'')}" data-tip="${escHtml(appTipHtml('비고', n > 1 ? [['등록', `${n}건`]] : [], nt || '눌러서 비고를 등록해요')).replace(/"/g,'&quot;')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line></svg></span>`; })()}</td>
     </tr>`;
   });
   wrap.innerHTML = `    <div class="table-scroll"><table class="it-ov-table"><thead><tr>
       <th class="cvb">순번</th><th class="cvb">상호명</th><th class="cvb">신고</th><th class="cvb">신고 지급일</th><th class="cvb">실 급여일</th>
       <th class="cvb">급여소통</th><th class="cvb">급여명세서<br>전달방법</th><th class="cvb">납부서<br>전달방법</th>
-      <th class="cvb">사업장관리번호<br>(일반)</th><th class="cvb">사업장관리번호<br>(특고·예술인·기타)</th><th class="cvb">EDI<br>수임</th><th>비고</th>
+      <th class="cvb">사업장관리번호<br>(일반)</th><th class="cvb">사업장관리번호<br>(특고·예술인·기타)</th><th class="cvb">EDI<br>수임</th><th class="cvb" style="min-width:52px;">비고</th>
     </tr></thead><tbody>${rows.join('') || `<tr><td colspan="12" style="padding:18px; color:var(--ink-soft);">기장거래처가 없어요</td></tr>`}</tbody></table></div>`;
   wrap.querySelectorAll('.ito-in').forEach(inp=> inp.addEventListener('change', ()=>{ itoSet(inp.dataset.id, inp.dataset.f, inp.value.trim()); }));
+  wrap.querySelectorAll('.ito-note-btn').forEach(el=> el.addEventListener('click', ()=> openItoNoteModal(el.dataset.id, el.dataset.name)));
   wrap.querySelectorAll('.ito-sel').forEach(sel=> sel.addEventListener('change', ()=>{
     // 직접입력 - 그 자리에 같은 크기 입력칸을 띄우고, 다 적으면(Enter·칸 벗어남) 저장 후 다시 드롭다운으로(적은 값이 목록에 들어감)
     if(sel.value === ITO_DIRECT){
@@ -29789,6 +29883,7 @@ function renderItOverview(){
     ev.stopPropagation();
     if(!(await appConfirm(`${btn.dataset.name}의 총괄 값을 모두 지울까요?\n\n신고 지급일·실 급여일·급여소통·전달방법·사업장관리번호·EDI·비고(급여 특이사항)가 지워져요.`, { okText:'지우기' }))) return;
     delete sharedItOverview[btn.dataset.id];
+    autoSaveTouch('itOverview');
     await saveSharedItOverview();
     renderItOverview();
     showCenterToast('지웠어요');
@@ -30036,7 +30131,7 @@ function tblPlaceXls(box, wrap){
   if(sum){ sum.style.position = 'relative'; box.classList.add('in-sum'); sum.appendChild(box); }
   else { box.classList.remove('in-sum'); if(box.nextElementSibling !== wrap) wrap.parentElement.insertBefore(box, wrap); }
 }
-function renderIncomeTaxUnified(){ renderIncomeTaxUnifiedInner(); tblPlaceXls(tblXlsBox('itAllXlsBox'), document.getElementById('itAllTableWrap')); try{ renderFilingTitleBadges(); }catch(e){} }
+function renderIncomeTaxUnified(){ renderIncomeTaxUnifiedInner(); tblPlaceXls(tblXlsBox('itAllXlsBox'), document.getElementById('itAllTableWrap')); autoSaveMount(tblXlsBox('itAllXlsBox'), 'itOverview', itAllView === 'overview'); try{ renderFilingTitleBadges(); }catch(e){} }
 // [2026.10.06] 연간대상 판정을 함수로 뺌 - 신고현황 '연간대상' 칩과 총괄 표(연간대상 거래처만, 요청)가 같이 씀
 function itIsAnnualTarget(c, year){
     if(!filingCycleRecordsOf(c.id).length) return false;
@@ -39691,6 +39786,7 @@ function updateSyncStatusChip(statusText){
 function gdriveSetStatus(text){
   if(/저장됨|동기화함|동기화 중/.test(text || '') && !/실패|대기/.test(text || '')) syncLastAt = new Date();
   try{ if(typeof prOnSyncStatus === 'function') prOnSyncStatus(text || ''); }catch(e){}
+  try{ if(typeof autoSaveOnSyncStatus === 'function') autoSaveOnSyncStatus(text || ''); }catch(e){}
   setTimeout(()=> updateSyncStatusChip(text), 0);
   const el = document.getElementById('gdriveStatusMsg');
   if(el) el.textContent = text;
@@ -41517,7 +41613,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.06 19:06';
+const APP_BUILD = '2026.10.07 00:37';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
