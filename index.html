@@ -2187,6 +2187,7 @@ try{
   .ito-in, .ito-sel{ height:26px; box-sizing:border-box; border:1px solid var(--border); border-radius:7px; background:var(--surface); font-family:inherit; font-size:12px; padding:0 7px; color:var(--ink); }
   .ito-in:focus, .ito-sel:focus{ outline:none; border-color:var(--indigo); }
   .ito-sel{ min-width:92px; font-weight:700; cursor:pointer; }
+  .it-ov-table .ito-in{ text-align:center; font-weight:700; } /* [2026.10.07] "사업장관리번호 칸이 스타일이 달라 보인다"(요청) - 옆 선택칸처럼 가운데·굵게 */
   .ito-sel[data-v="카톡"], .ito-sel[data-v="개인카톡"], .ito-sel[data-v="채널카톡"]{ background:#FFF6D6; border-color:#F2DE8C; color:#7A5B00; }
   .ito-sel[data-v="이메일"], .ito-sel[data-v="개인이메일"], .ito-sel[data-v="채널이메일"]{ background:#FDECEF; border-color:#F7C3CF; color:#B4234A; }
   .ito-sel[data-v="채널톡&이메일"]{ background:#F1ECFF; border-color:#D6CCFA; color:#5B3FC4; }
@@ -2773,6 +2774,7 @@ try{
     color:var(--ink-soft); border-radius:20px; box-shadow:0 1px 2px rgba(29,30,51,0.05);
   }
   .policy-category-toggle button.active{color:#fff; background:var(--guide-slate);}
+  #vatBulkFieldToggle button:not(.active){ box-shadow:inset 0 0 0 1px var(--border); } /* [2026.10.07] 일괄 입력 칩이 흰 배경과 구분 안 됨(요청) - 연한 테두리 */
   /* 원천세 신고대상 편집팝업의 "대상/미대상" 토글 - 흰 팝업 배경 위에 기본 칩 배경(var(--surface))도 흰색이라
      선택 안 된 상태의 칩이 배경에 묻혀 안 보이던 문제가 있었음(#bulkExcelSheetToggle과 같은 문제) - 옅은
      테두리를 둘러서 항상 칩 모양이 뚜렷하게 보이게 하고, 선택된 칩은 배경색과 같은 톤의 진한 테두리를 둘러서
@@ -5349,8 +5351,16 @@ try{
       <div id="itBulkPeriod" style="font-size:13px; font-weight:700; color:var(--ink-soft); margin-top:4px;"></div>
     </div>
     <div style="display:flex; flex-direction:column; gap:10px; font-size:12.5px;">
-      <span class="policy-category-toggle ft-cycle-toggle" id="itBulkFieldToggle" style="margin:0; display:flex; flex-wrap:wrap; justify-content:center; gap:6px;"></span>
+      <!-- [2026.10.07] 항목이 늘어서(신고 지급일·실 급여일 추가) 칩 대신 드롭다운으로(요청) -->
       <div style="display:flex; align-items:center; justify-content:center; gap:6px;">
+        <span style="font-weight:700; color:var(--ink-soft);">항목</span>
+        <select id="itBulkFieldSel" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-weight:700; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink); min-width:170px;"></select>
+      </div>
+      <div id="itBulkPayDayRow" style="display:none; align-items:center; justify-content:center; gap:6px;">
+        <span style="font-weight:700; color:var(--ink-soft);">값</span>
+        <select id="itBulkPayDaySel" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-weight:700; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink); min-width:170px;"></select>
+      </div>
+      <div id="itBulkDateRow" style="display:flex; align-items:center; justify-content:center; gap:6px;">
         <span style="font-weight:700; color:var(--ink-soft);">날짜</span>
         <input type="date" id="itBulkDate" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink);">
         <button type="button" id="itBulkTodayBtn" class="del-btn" style="flex-shrink:0; padding:5px 9px; font-size:11px;">오늘</button>
@@ -26799,7 +26809,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // [2026.10.02] 아래쪽 버튼 줄(저장 옆)에 있던 닫기(✕)를 팝업 오른쪽 위 모서리로 옮김(요청) - 다른 팝업들과 같은 자리
 (function moveBottomCloseButtonsToCorner(){
   ['empDataTransferCloseBtn','remoteImportCloseBtn','xlsDownCloseBtn','xlsUploadCloseBtn','gwExpenseImportCloseBtn','clockImportCloseBtn',
-   'filingTargetEditCloseBtn','vatTargetEditCloseBtn','targetBulkApplyCloseBtn'].forEach(id=>{
+   'filingTargetEditCloseBtn','vatTargetEditCloseBtn','targetBulkApplyCloseBtn',
+   'itBulkCloseBtn','vatBulkCloseBtn'].forEach(id=>{ // [2026.10.07] 일괄 입력 팝업(원천세·부가세) 닫기도 오른쪽 위로(요청)
     const btn = document.getElementById(id);
     const overlay = btn && btn.closest('[id$="ModalOverlay"]');
     const box = overlay && overlay.firstElementChild;
@@ -29730,12 +29741,12 @@ const ITO_COMM = ['카톡','이메일'];
 const ITO_VIA = ['개인카톡','채널카톡','개인이메일','채널이메일','채널톡&이메일','전달 안 함']; // [2026.10.04] '전달 안 함' - 급여명세서를 안 보내는 거래처(아래 itPayslipSkip)
 const ITO_PAYDAY_SUGGEST = ['귀속월 말일','익월 5일','익월 10일','익월 15일','익월 20일','익월 말일','발생일']; // [2026.10.07] '발생일' 추가, '당월 말일'→'귀속월 말일'(요청)
 // [2026.10.07] "귀속월 말일로(당월 말일·말일 삭제)"(요청) - 예전에 고른 '당월 말일'·직접 적은 '말일'은 '귀속월 말일'로 한 번 바꿔 저장
-const ITO_PAYDAY_RENAME = { '당월 말일':'귀속월 말일', '말일':'귀속월 말일' };
+const ITO_PAYDAY_RENAME = { '당월말일':'귀속월 말일', '말일':'귀속월 말일' }; // 띄어쓰기 빼고 비교('당월 말일'·'당월말일' 모두)
 function itoMigratePayDays(){
   let changed = false;
   Object.values(sharedItOverview || {}).forEach(e=>{
     if(!e) return;
-    ['reportPayDay','actualPayDay'].forEach(f=>{ const v = String(e[f] || '').trim(); if(ITO_PAYDAY_RENAME[v]){ e[f] = ITO_PAYDAY_RENAME[v]; e.updatedAt = new Date().toISOString(); changed = true; } });
+    ['reportPayDay','actualPayDay'].forEach(f=>{ const v = String(e[f] || '').replace(/\s+/g,''); if(ITO_PAYDAY_RENAME[v]){ e[f] = ITO_PAYDAY_RENAME[v]; e.updatedAt = new Date().toISOString(); changed = true; } });
   });
   if(changed) saveSharedItOverview();
 }
@@ -29792,6 +29803,7 @@ function openItoNoteModal(cid, name){
   const ICON_DEL = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
   const ICON_ADD = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
   const oneLine = v=> String(v || '').replace(/\s*\n+\s*/g, ' ').trim(); // 한 건 = 한 줄
+  // [2026.10.07] "배경이 다 하얘서 안 보인다"(요청) - 한 건마다 회색 상자(기장거래처 메모 목록과 같은 바탕)
   const saveItems = async (items)=>{ await itoSet(cid, 'note', items.join('\n')); try{ renderItOverview(); }catch(e){} };
   let editing = itoNoteItems(cid).length ? null : 'add'; // null | 'add' | 순번(수정 중)
   const render = ()=>{
@@ -29800,8 +29812,8 @@ function openItoNoteModal(cid, name){
     if(editing === 'add') h += `<textarea class="itm-ta" id="itoNoteAddTa" placeholder="비고 한 건을 적어요"></textarea><div class="itm-btns" style="margin-bottom:8px;">${items.length ? '<button type="button" class="del-btn" data-act="cancel">취소</button>' : ''}<button type="button" class="submit-btn" style="width:auto; padding:6px 16px; margin:0;" data-act="add-save">등록</button></div>`;
     if(!items.length && editing !== 'add') h += `<div class="itm-box empty">없어요</div>`;
     h += items.map((t, i)=> editing === i
-      ? `<div class="itm-row" style="display:block;"><div class="itm-m" style="margin-bottom:4px;">${i+1}</div><textarea class="itm-ta" id="itoNoteEditTa">${escHtml(t)}</textarea><div class="itm-btns"><button type="button" class="del-btn" data-act="cancel">취소</button><button type="button" class="submit-btn" style="width:auto; padding:6px 16px; margin:0;" data-act="edit-save" data-i="${i}">저장</button></div></div>`
-      : `<div class="itm-row"><span class="itm-m" style="width:18px;">${i+1}</span><span class="itm-t">${escHtml(t)}</span>${editing === null ? `<span class="itm-acts"><button type="button" class="it-memo-act" data-act="edit" data-i="${i}" title="수정" aria-label="수정">${ICON_EDIT}</button><button type="button" class="it-memo-act del" data-act="del" data-i="${i}" title="삭제" aria-label="삭제">${ICON_DEL}</button></span>` : ''}</div>`).join('');
+      ? `<div class="itm-row" style="display:block; background:var(--bg); border-radius:10px; padding:9px 10px 9px 12px; margin-bottom:6px; border-bottom:none; align-items:center;"><div class="itm-m" style="margin-bottom:4px;">${i+1}</div><textarea class="itm-ta" id="itoNoteEditTa">${escHtml(t)}</textarea><div class="itm-btns"><button type="button" class="del-btn" data-act="cancel">취소</button><button type="button" class="submit-btn" style="width:auto; padding:6px 16px; margin:0;" data-act="edit-save" data-i="${i}">저장</button></div></div>`
+      : `<div class="itm-row" style="background:var(--bg); border-radius:10px; padding:9px 10px 9px 12px; margin-bottom:6px; border-bottom:none; align-items:center;"><span class="itm-m" style="width:18px; padding-top:0;">${i+1}</span><span class="itm-t">${escHtml(t)}</span>${editing === null ? `<span class="itm-acts"><button type="button" class="it-memo-act" data-act="edit" data-i="${i}" title="수정" aria-label="수정">${ICON_EDIT}</button><button type="button" class="it-memo-act del" data-act="del" data-i="${i}" title="삭제" aria-label="삭제">${ICON_DEL}</button></span>` : ''}</div>`).join('');
     openClientNamedInfoModal(name, '비고', h);
     const body = document.getElementById('memoModalBody');
     body.querySelector('textarea')?.focus();
@@ -30481,11 +30493,18 @@ document.getElementById('itAllDateEditSaveBtn')?.addEventListener('click', async
 // 이미 날짜가 있는 줄은 처음엔 체크 해제(덮어쓰려면 직접 체크). 저장 위치는 신고일자 팝업과 같음(incomeTaxFilingEntry)
 // ══════════════════════════════════════════════════════════
 const IT_BULK_FIELDS = IT_ALL_STAGES.concat([['national','원천세 신고'], ['local','지방세 신고']]);
+// [2026.10.07] 원천세 총괄의 신고 지급일·실 급여일도 일괄 입력(요청) - 날짜 대신 총괄과 같은 목록(ITO_PAYDAY_SUGGEST)에서 고름. 거래처당 한 줄(지급시기 구분 없음)
+const IT_BULK_OV_FIELDS = [['reportPayDay','신고 지급일'], ['actualPayDay','실 급여일']];
+const itBulkIsOv = f => IT_BULK_OV_FIELDS.some(([k])=> k === f);
 let itBulkField = 'payslip';
 function itBulkRows(){
   const period = itAllPeriod;
   const rows = [];
   if(!period) return rows;
+  if(itBulkIsOv(itBulkField)){
+    bookkeepingClientList().forEach(c=>{ if(!filingApplicableAt(c.id, period)) return; rows.push({ c, lane:null, dual:false, cur: itoEntry(c.id)[itBulkField] || '' }); });
+    return rows;
+  }
   bookkeepingClientList().forEach(c=>{
     if(!filingApplicableAt(c.id, period)) return;
     const half = itIsHalfOffMonth(c.id, period);
@@ -30505,9 +30524,17 @@ function itBulkRows(){
   return rows;
 }
 function renderItBulkModal(){
-  const tg = document.getElementById('itBulkFieldToggle');
-  if(tg) tg.innerHTML = IT_BULK_FIELDS.map(([f, l])=> `<button type="button" class="${f === itBulkField ? 'active' : ''}" data-field="${f}">${l}</button>`).join('');
-  tg?.querySelectorAll('button').forEach(b=> b.addEventListener('click', ()=>{ itBulkField = b.dataset.field; renderItBulkModal(); }));
+  const fs = document.getElementById('itBulkFieldSel');
+  if(fs){
+    const opt = ([f, l])=> `<option value="${f}" ${f === itBulkField ? 'selected' : ''}>${l}</option>`;
+    fs.innerHTML = `<optgroup label="진행 단계 (날짜)">${IT_BULK_FIELDS.map(opt).join('')}</optgroup><optgroup label="총괄">${IT_BULK_OV_FIELDS.map(opt).join('')}</optgroup>`;
+    fs.onchange = ()=>{ itBulkField = fs.value; renderItBulkModal(); };
+  }
+  const ov = itBulkIsOv(itBulkField);
+  const dr = document.getElementById('itBulkDateRow'); if(dr) dr.style.display = ov ? 'none' : 'flex';
+  const pr = document.getElementById('itBulkPayDayRow'); if(pr) pr.style.display = ov ? 'flex' : 'none';
+  const ps = document.getElementById('itBulkPayDaySel');
+  if(ps && ov && !ps.options.length) ps.innerHTML = ITO_PAYDAY_SUGGEST.map(o=> `<option value="${escHtml(o)}">${escHtml(o)}</option>`).join('');
   const rows = itBulkRows();
   const listEl = document.getElementById('itBulkList');
   if(!listEl) return;
@@ -30545,8 +30572,22 @@ document.getElementById('itBulkRunBtn')?.addEventListener('click', async ()=>{
   const listEl = document.getElementById('itBulkList');
   const rows = (listEl && listEl._rows) || [];
   const picked = [...listEl.querySelectorAll('.it-bulk-chk')].filter(x=> x.checked).map(x=> rows[Number(x.dataset.i)]).filter(Boolean);
+  const label = (IT_BULK_FIELDS.concat(IT_BULK_OV_FIELDS).find(([f])=> f === itBulkField) || [,''])[1];
+  if(itBulkIsOv(itBulkField)){
+    const v = document.getElementById('itBulkPayDaySel')?.value || '';
+    if(!v){ appAlert('값을 골라주세요.'); return; }
+    if(!picked.length){ appAlert('적용할 거래처를 체크해주세요.'); return; }
+    const overV = picked.filter(r=> r.cur && r.cur !== v).length;
+    if(!(await appConfirm(`${picked.length}곳에 ${label}을(를) '${v}'(으)로 넣을까요?${overV ? `\n이미 다른 값이 있는 ${overV}곳은 새 값으로 바뀌어요.` : ''}`, { okText:'적용', cancelText:'취소' }))) return;
+    picked.forEach(r=>{ const e = itoEnsure(r.c.id); e[itBulkField] = v; e.updatedAt = new Date().toISOString(); });
+    autoSaveTouch('itOverview');
+    await saveSharedItOverview();
+    document.getElementById('itBulkModalOverlay').style.display = 'none';
+    showCenterToast(`${picked.length}곳에 적용했어요`);
+    renderIncomeTaxUnified();
+    return;
+  }
   const date = document.getElementById('itBulkDate')?.value;
-  const label = (IT_BULK_FIELDS.find(([f])=> f === itBulkField) || [,''])[1];
   if(!date){ appAlert('날짜를 골라주세요.'); return; }
   if(!picked.length){ appAlert('적용할 거래처를 체크해주세요.'); return; }
   const over = picked.filter(r=> r.cur && r.cur !== date).length;
@@ -41618,7 +41659,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.07 00:43';
+const APP_BUILD = '2026.10.07 00:56';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
