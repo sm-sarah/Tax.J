@@ -5296,6 +5296,30 @@ try{
     </div>
   </div>
 </div>
+<!-- [2026.10.06] 원천세 진행 단계 일괄 입력(요청) - 항목(급여명세서 전달·급여마감·신고서 마감·원천세 신고·지방세 신고) 하나를 고르고
+     날짜(오늘 또는 특정일)를 정한 뒤, 적용할 거래처를 체크해 한 번에 넣음. 지금 보고 있는 귀속월 기준 -->
+<div id="itBulkModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:460px; width:100%; max-height:88vh; display:flex; flex-direction:column; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="text-align:center; margin-bottom:12px;">
+      <div style="font-weight:800; font-size:16px; color:var(--ink);">일괄 입력</div>
+      <div id="itBulkPeriod" style="font-size:13px; font-weight:700; color:var(--ink-soft); margin-top:4px;"></div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:10px; font-size:12.5px;">
+      <span class="policy-category-toggle ft-cycle-toggle" id="itBulkFieldToggle" style="margin:0; display:flex; flex-wrap:wrap; justify-content:center; gap:6px;"></span>
+      <div style="display:flex; align-items:center; justify-content:center; gap:6px;">
+        <span style="font-weight:700; color:var(--ink-soft);">날짜</span>
+        <input type="date" id="itBulkDate" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink);">
+        <button type="button" id="itBulkTodayBtn" class="del-btn" style="flex-shrink:0; padding:5px 9px; font-size:11px;">오늘</button>
+      </div>
+      <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--ink-soft); border-bottom:1px solid var(--border); padding:4px 2px 8px;"><input type="checkbox" id="itBulkAll"> 전체 선택 <span id="itBulkCount" style="margin-left:auto; font-weight:600;"></span></label>
+    </div>
+    <div id="itBulkList" style="flex:1; overflow:auto; min-height:80px; margin-top:4px;"></div>
+    <div style="text-align:center; margin-top:14px; display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
+      <button type="button" id="itBulkRunBtn" class="submit-btn" style="width:auto; padding:8px 18px;">적용</button>
+      <button type="button" id="itBulkCloseBtn" class="del-btn modal-close-btn">✕</button>
+    </div>
+  </div>
+</div>
 <!-- 원천세/부가세 신고대상 공용 일괄적용 팝업 - 선택한 연도의 특정 달(원천세)/기수(부가세) 또는 전체에
      대해 모든 거래처에 같은 값을 한 번에 적용함. appConfirm으로 한 번 더 확인받은 뒤에만 실제로 적용됨 -->
 <div id="targetBulkApplyModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
@@ -6898,7 +6922,7 @@ try{
         </div>
         <!-- [2026.10.03] "엑셀 아이콘은 표 오른쪽 위로"(요청) - 검색줄에 있던 엑셀 받기·올리기를 표 바로 위 오른쪽으로 옮김.
              신고현황은 보기 선택(전체/대상…) 줄의 오른쪽 끝, 총괄은 표 위 오른쪽 줄에 놓임(tblPlaceXls) -->
-        <div id="itAllXlsBox" class="tbl-xls-box"><button type="button" class="del-btn xls-io-btn" data-xls="itAll" data-xls-act="down" title="엑셀 받기" aria-label="엑셀 받기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2" y="2" width="12" height="12" rx="2"></rect><line x1="2" y1="6.5" x2="14" y2="6.5"></line><line x1="6.5" y1="2" x2="6.5" y2="14"></line><path d="M19 8v14"></path><path d="M15 18l4 4 4-4"></path></svg></button><button type="button" class="del-btn xls-io-btn" data-xls="itAll" data-xls-act="up" title="엑셀 올리기 (추가 또는 교체)" aria-label="엑셀 올리기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2" y="2" width="12" height="12" rx="2"></rect><line x1="2" y1="6.5" x2="14" y2="6.5"></line><line x1="6.5" y1="2" x2="6.5" y2="14"></line><path d="M19 22V8"></path><path d="M15 12l4-4 4 4"></path></svg></button><button type="button" id="itRawImportBtn" class="del-btn xls-io-btn" title="원데이터 불러오기 (원천세 엑셀의 거래처별 검토표 → 검증 빈 칸만 채움)" aria-label="원데이터 불러오기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><ellipse cx="10" cy="5" rx="7" ry="3"></ellipse><path d="M3 5v12c0 1.66 3.13 3 7 3"></path><path d="M3 11c0 1.66 3.13 3 7 3"></path><path d="M17 5v5"></path><path d="M19 14v8"></path><path d="M15 18l4 4 4-4"></path></svg></button><input type="file" id="itRawImportFile" accept=".xlsx,.xls" style="display:none;"></div>
+        <div id="itAllXlsBox" class="tbl-xls-box"><button type="button" class="del-btn xls-io-btn" data-xls="itAll" data-xls-act="down" title="엑셀 받기" aria-label="엑셀 받기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2" y="2" width="12" height="12" rx="2"></rect><line x1="2" y1="6.5" x2="14" y2="6.5"></line><line x1="6.5" y1="2" x2="6.5" y2="14"></line><path d="M19 8v14"></path><path d="M15 18l4 4 4-4"></path></svg></button><button type="button" class="del-btn xls-io-btn" data-xls="itAll" data-xls-act="up" title="엑셀 올리기 (추가 또는 교체)" aria-label="엑셀 올리기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2" y="2" width="12" height="12" rx="2"></rect><line x1="2" y1="6.5" x2="14" y2="6.5"></line><line x1="6.5" y1="2" x2="6.5" y2="14"></line><path d="M19 22V8"></path><path d="M15 12l4-4 4 4"></path></svg></button><button type="button" id="itRawImportBtn" class="del-btn xls-io-btn" title="원데이터 불러오기 (원천세 엑셀의 거래처별 검토표 → 검증 빈 칸만 채움)" aria-label="원데이터 불러오기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><ellipse cx="10" cy="5" rx="7" ry="3"></ellipse><path d="M3 5v12c0 1.66 3.13 3 7 3"></path><path d="M3 11c0 1.66 3.13 3 7 3"></path><path d="M17 5v5"></path><path d="M19 14v8"></path><path d="M15 18l4 4 4-4"></path></svg></button><input type="file" id="itRawImportFile" accept=".xlsx,.xls" style="display:none;"><button type="button" id="itBulkOpenBtn" class="del-btn xls-io-btn" title="일괄 입력 (급여명세서 전달·급여마감·신고일 등을 여러 거래처에 한 번에)" aria-label="일괄 입력"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="3 6 5 8 8 4"></polyline><polyline points="3 13 5 15 8 11"></polyline><polyline points="3 20 5 22 8 18"></polyline><line x1="11" y1="6" x2="21" y2="6"></line><line x1="11" y1="13" x2="21" y2="13"></line><line x1="11" y1="20" x2="21" y2="20"></line></svg></button></div>
         <div id="itAllTableWrap"></div>
       </div>
       <!-- 신고일자 입력 팝업(원천세 통합) -->
@@ -22053,7 +22077,7 @@ function renderDashboardTaxSchedulePreview(){
         e.stopPropagation();
         // 미신고 알림은 원천세 신고현황(통합)에서 그 귀속월 미신고만
         activateTab('approval', true);
-        itAllOnlyPending = true; itAllOnlyMonth = false; itAllOnlyTarget = false;
+        itAllOnlyPending = true; itAllOnlyMonth = false; itAllOnlyTarget = false; itAllOnlyMismatch = false;
         itAllYear = String(f.year); itAllPeriod = f.period;
         document.querySelector('.approval-cat-btn[data-approval-cat="itall"]')?.click();
         renderIncomeTaxUnified();
@@ -29671,6 +29695,7 @@ const IT_ALL_TAX_KEYS = [['national','국세'], ['local','지방세']];
 // 세무일정 쪽 계산과 다를 수 있어 D-day는 참고용
 let itAllOnlyPending = false;
 let itAllOnlyTarget = false;
+let itAllOnlyMismatch = false; // [2026.10.06] 검증 불일치(✕)가 있는 거래처만(요청)
 let itAllOnlyMonth = false; // [2026.10.01] 지금 챙길 귀속월에 신고대상인 거래처만(대시보드에서 들어올 때 기본)
 function itFocusPeriodNow(){
   const today = parseDate(todayStr());
@@ -29784,20 +29809,22 @@ function renderIncomeTaxUnifiedInner(){
     }
     return false;
   });
+  // [2026.10.06] "불일치만"(요청) - 이 해에 검증 금액이 안 맞는(✕) 달이 하나라도 있는 거래처만(당월·익월지급 줄 모두 봄, 수기검증 사유를 적은 칸은 맞는 것으로 봄)
+  if(itAllOnlyMismatch) list = list.filter(c=> [null, 'nextMonth'].some(tk=> Array.from({length:12}, (_,i)=> i+1).some(m=> itAllVerifyStatus(c.id, tk, Number(year), m) === 'bad')));
   // 지난 귀속월을 골랐는데 남은 신고가 없으면 "기한 N일 지남"은 굳이 안 보여줌
   const ddayTxt = focus.dday === 0 ? 'D-DAY' : focus.dday > 0 ? `D-${focus.dday}` : (focus.pending ? `기한 ${-focus.dday}일 지남` : '');
   const summaryHtml = `<div class="it-all-summary">
     <span class="it-sum-period">${focus.month}월 귀속 · ${focus.due.getMonth()+1}/${focus.due.getDate()} 마감 <b class="${focus.dday<=3 ? 'urgent' : ''}">${ddayTxt}</b></span>
     <span class="it-sum-num">대상 <b>${focus.total}</b></span><span class="it-sum-num">완료 <b class="ok">${focus.done}</b></span><span class="it-sum-num">남음 <b class="${focus.pending ? 'warn' : ''}">${focus.pending}</b></span>
     <span class="it-seg" role="group" aria-label="보기 범위">
-      <button type="button" class="${!itAllOnlyPending && !itAllOnlyTarget && !itAllOnlyMonth ? 'on' : ''}" data-seg="all">전체</button><button type="button" class="${itAllOnlyTarget ? 'on' : ''}" data-seg="target" title="한 달이라도 신고대상인 거래처만 (지금 미대상인 거래처는 빼고)">대상</button><button type="button" class="${itAllOnlyMonth ? 'on' : ''}" data-seg="month" title="${focus.month}월 귀속 신고대상 거래처만">${focus.month}월 대상</button><button type="button" class="${itAllOnlyPending ? 'on' : ''}" data-seg="pending" title="${focus.month}월 귀속 미신고 거래처만">미신고</button>
+      <button type="button" class="${!itAllOnlyPending && !itAllOnlyTarget && !itAllOnlyMonth && !itAllOnlyMismatch ? 'on' : ''}" data-seg="all">전체</button><button type="button" class="${itAllOnlyTarget ? 'on' : ''}" data-seg="target" title="한 달이라도 신고대상인 거래처만 (지금 미대상인 거래처는 빼고)">대상</button><button type="button" class="${itAllOnlyMonth ? 'on' : ''}" data-seg="month" title="${focus.month}월 귀속 신고대상 거래처만">${focus.month}월 대상</button><button type="button" class="${itAllOnlyPending ? 'on' : ''}" data-seg="pending" title="${focus.month}월 귀속 미신고 거래처만">미신고</button><button type="button" class="${itAllOnlyMismatch ? 'on' : ''}" data-seg="mismatch" title="${year}년 검증 금액이 맞지 않는(✕) 달이 있는 거래처만">불일치</button>
     </span>
   </div>`;
   const bindSummary = ()=>{
     itSplitSummary(wrap);
     // [2026.10.01] "미신고만·신고대상만 칩이 자리를 많이 차지하고 높이도 달라 어색"(요청) - 작은 3칸 선택(전체/대상/미신고) 하나로
     document.querySelectorAll('#itAllTableWrap .it-seg button').forEach(btn=> btn.addEventListener('click', ()=>{
-      const k = btn.dataset.seg; itAllOnlyPending = k === 'pending'; itAllOnlyTarget = k === 'target'; itAllOnlyMonth = k === 'month'; renderIncomeTaxUnified();
+      const k = btn.dataset.seg; itAllOnlyPending = k === 'pending'; itAllOnlyTarget = k === 'target'; itAllOnlyMonth = k === 'month'; itAllOnlyMismatch = k === 'mismatch'; renderIncomeTaxUnified();
     }));
   };
   if(!list.length){ wrap.innerHTML = summaryHtml + `<div class="empty-state">${itAllOnlyPending ? `${focus.month}월 귀속 미신고 거래처가 없어요.` : q ? '검색 결과가 없습니다.' : '거래처 없음'}</div>`; bindSummary(); return; }
@@ -30062,6 +30089,89 @@ document.getElementById('itAllDateEditSaveBtn')?.addEventListener('click', async
   await saveSharedIncomeTaxFilingStatus();
   showCenterToast('저장됐어요');
   closeItAllDateEditModal();
+});
+
+// ══════════════════════════════════════════════════════════
+// [2026.10.06] 원천세 진행 단계 일괄 입력(요청) - "일일이 하나하나 들어가서 하지 않아도" 항목·날짜를 정하고 거래처를 체크해 한 번에.
+// 대상 거래처: 지금 보는 귀속월(itAllPeriod)에 신고대상으로 등록된 지급시기(당월/익월) 줄. 반기 거래처의 6·12월 외 달은
+// 급여명세서 전달·급여마감만(신고서 마감·신고는 6·12월 칸). 급여명세서 '전달 안 함' 거래처는 급여명세서 전달에서 빠짐.
+// 이미 날짜가 있는 줄은 처음엔 체크 해제(덮어쓰려면 직접 체크). 저장 위치는 신고일자 팝업과 같음(incomeTaxFilingEntry)
+// ══════════════════════════════════════════════════════════
+const IT_BULK_FIELDS = IT_ALL_STAGES.concat([['national','원천세 신고'], ['local','지방세 신고']]);
+let itBulkField = 'payslip';
+function itBulkRows(){
+  const period = itAllPeriod;
+  const rows = [];
+  if(!period) return rows;
+  bookkeepingClientList().forEach(c=>{
+    if(!filingApplicableAt(c.id, period)) return;
+    const half = itIsHalfOffMonth(c.id, period);
+    if(half && !['payslip','payroll'].includes(itBulkField)) return;
+    if(itBulkField === 'payslip' && itPayslipSkip(c.id)) return;
+    let lanes;
+    if(half) lanes = itHalfLanes(c.id, period, null);
+    else {
+      const t = (sharedFilingTargets[c.id] || {})[period];   // 읽기만(빈 설정을 새로 만들지 않음)
+      if(!t || !t.marked || !t.applicable) return;
+      lanes = [t.sameMonthPay ? 'sameMonth' : null, t.nextMonthPay ? 'nextMonth' : null].filter(Boolean);
+    }
+    const ex = ((sharedIncomeTaxFilingStatus[period] || {})[c.id]) || {};
+    lanes.forEach(k=> rows.push({ c, lane:k, dual: lanes.length > 1, cur: (ex[k] || {})[itBulkField] || '' }));
+  });
+  return rows;
+}
+function renderItBulkModal(){
+  const tg = document.getElementById('itBulkFieldToggle');
+  if(tg) tg.innerHTML = IT_BULK_FIELDS.map(([f, l])=> `<button type="button" class="${f === itBulkField ? 'active' : ''}" data-field="${f}">${l}</button>`).join('');
+  tg?.querySelectorAll('button').forEach(b=> b.addEventListener('click', ()=>{ itBulkField = b.dataset.field; renderItBulkModal(); }));
+  const rows = itBulkRows();
+  const listEl = document.getElementById('itBulkList');
+  if(!listEl) return;
+  listEl.innerHTML = rows.length ? rows.map((r, i)=> `<label style="display:flex; align-items:center; gap:8px; padding:7px 2px; border-bottom:1px dashed var(--border); font-size:12.5px; cursor:pointer;">
+      <input type="checkbox" class="it-bulk-chk" data-i="${i}" ${r.cur ? '' : 'checked'}>
+      <span style="font-weight:700; color:var(--ink); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml(r.c.name)}${r.dual ? ` <span style="font-weight:700; font-size:11px; color:${r.lane === 'sameMonth' ? 'var(--mint)' : 'var(--coral)'};">${r.lane === 'sameMonth' ? '당월' : '익월'}</span>` : ''}</span>
+      <span style="font-size:11.5px; color:var(--ink-soft); white-space:nowrap;">${r.cur ? escHtml(r.cur) : ''}</span>
+    </label>`).join('') : `<div class="empty-state">이 귀속월에 적용할 수 있는 거래처가 없어요.</div>`;
+  const sync = ()=>{
+    const all = [...listEl.querySelectorAll('.it-bulk-chk')], on = all.filter(x=> x.checked).length;
+    const a = document.getElementById('itBulkAll'); if(a){ a.checked = all.length > 0 && on === all.length; a.indeterminate = on > 0 && on < all.length; }
+    const cnt = document.getElementById('itBulkCount'); if(cnt) cnt.textContent = `${on} / ${all.length}`;
+  };
+  listEl.querySelectorAll('.it-bulk-chk').forEach(x=> x.addEventListener('change', sync));
+  listEl._rows = rows;
+  sync();
+}
+document.getElementById('itBulkOpenBtn')?.addEventListener('click', ()=>{
+  if(!itAllPeriod){ appAlert('귀속월을 먼저 골라주세요.'); return; }
+  const [y, m] = itAllPeriod.split('-');
+  const pe = document.getElementById('itBulkPeriod'); if(pe) pe.textContent = `${y}년 ${Number(m)}월 귀속`;
+  const d = document.getElementById('itBulkDate'); if(d) d.value = todayStr();
+  renderItBulkModal();
+  document.getElementById('itBulkModalOverlay').style.display = 'flex';
+});
+document.getElementById('itBulkTodayBtn')?.addEventListener('click', ()=>{ const d = document.getElementById('itBulkDate'); if(d) d.value = todayStr(); });
+document.getElementById('itBulkAll')?.addEventListener('change', (e)=>{
+  document.querySelectorAll('#itBulkList .it-bulk-chk').forEach(x=>{ x.checked = e.target.checked; });
+  const all = document.querySelectorAll('#itBulkList .it-bulk-chk').length;
+  const cnt = document.getElementById('itBulkCount'); if(cnt) cnt.textContent = `${e.target.checked ? all : 0} / ${all}`;
+});
+document.getElementById('itBulkCloseBtn')?.addEventListener('click', ()=>{ document.getElementById('itBulkModalOverlay').style.display = 'none'; });
+document.getElementById('itBulkModalOverlay')?.addEventListener('click', (e)=>{ if(e.target.id === 'itBulkModalOverlay') e.target.style.display = 'none'; });
+document.getElementById('itBulkRunBtn')?.addEventListener('click', async ()=>{
+  const listEl = document.getElementById('itBulkList');
+  const rows = (listEl && listEl._rows) || [];
+  const picked = [...listEl.querySelectorAll('.it-bulk-chk')].filter(x=> x.checked).map(x=> rows[Number(x.dataset.i)]).filter(Boolean);
+  const date = document.getElementById('itBulkDate')?.value;
+  const label = (IT_BULK_FIELDS.find(([f])=> f === itBulkField) || [,''])[1];
+  if(!date){ appAlert('날짜를 골라주세요.'); return; }
+  if(!picked.length){ appAlert('적용할 거래처를 체크해주세요.'); return; }
+  const over = picked.filter(r=> r.cur && r.cur !== date).length;
+  if(!(await appConfirm(`${picked.length}곳(줄)에 ${label} 날짜를 ${date}로 넣을까요?${over ? `\n이미 다른 날짜가 있는 ${over}곳은 새 날짜로 바뀌어요.` : ''}`, { okText:'적용', cancelText:'취소' }))) return;
+  picked.forEach(r=>{ incomeTaxFilingEntry(itAllPeriod, r.c.id)[r.lane][itBulkField] = date; });
+  await saveSharedIncomeTaxFilingStatus();
+  document.getElementById('itBulkModalOverlay').style.display = 'none';
+  showCenterToast(`${picked.length}곳에 적용했어요`);
+  renderIncomeTaxUnified();
 });
 
 // ══════════════════════════════════════════════════════════
@@ -30787,8 +30897,21 @@ const REVIEW_TAX_GROUPS = [
   { key:'기타간이대상', label:'기타소득(간이대상)' },
   { key:'퇴직', label:'퇴직소득' },
   { key:'이자', label:'이자배당소득' },
-  { key:'환급잔액', label:'환급잔액' },
+  // [2026.10.06] 환급잔액은 급여(세액) 쪽이 아니라 신고서 쪽 국세·지방세에 각각 따로 적도록 옮김(요청) - reviewItRefund 참고
 ];
+// [2026.10.06] 환급잔액(국세/지방세) - 신고서 표에 입력(data.taxRefund / data.taxRefundLocal, 양수로 저장).
+// 검증은 환급 전 금액(신고서 유형별 합계 = 세액 계산 합계)으로 하고, 납부세액 = 합계 − 환급잔액은 계산해서 보여주기만 함(요청).
+// 예전엔 세액 표의 '환급잔액' 유형(data.tax.환급잔액, 음수로 적음)에 있었음 → 새 칸이 비어 있으면 그 값을 양수로 읽어 이어 씀
+// [2026.10.06] "환급잔액은 전월에 차감하고 남은 잔액이 계속 이어진다"(요청) - 칸을 비워 두면 전월 남은 환급잔액을 자동으로 이어 받음
+//   이번 달 환급잔액(적용) = 직접 적은 값, 없으면 전월에서 넘어온 잔액
+//   납부세액 = 신고서 합계 − 환급잔액(적용). 0보다 작으면 납부 0, 남은 금액은 다음 달 환급잔액으로 넘어감
+// 직접 적은 값만 돌려줌(없으면 null)
+function reviewItRefund(data, kind){
+  const v = kind === 'local' ? data.taxRefundLocal : data.taxRefund;
+  if(v != null && v !== '') return Math.abs(Number(v)) || 0;
+  const old = ((data.tax || {})['환급잔액'] || {})[kind === 'local' ? 'local' : 'tax'];
+  return (old != null && old !== '') ? (Math.abs(Number(old)) || 0) : null;
+}
 // 소득세(신고서)는 실제 신고서를 보고 6개 소득유형으로 나눠 입력함. headerHint는 각 칸이 급여명세서
 // 쪽(계산값) 어느 항목들과 비슷해야 하는지 참고용으로만 보여주는 것이고, 자동 합산은 아님(신고서에
 // 적힌 숫자를 그대로 옮겨 적는 칸이라 사람이 직접 입력해야 함). 지방세(신고서)는 신고서에 유형별
@@ -30980,6 +31103,44 @@ function refreshReviewItTaxRow(clientId, year, month){
   if(checkCell) checkCell.innerHTML = reviewItTaxCheckMark(clientId, year, month, meta);
   const localCheckCell = wrap.querySelector(`.review-it-tax-local-check-cell[data-month="${month}"]`);
   if(localCheckCell) localCheckCell.innerHTML = reviewItTaxLocalCheckMark(clientId, year, month, meta);
+  refreshReviewItRefundAll(clientId, year);
+}
+// 납부세액 = (국세: 신고서 유형별 합계 / 지방세: 신고서 세액) − 환급잔액. 신고서 값이 없으면 빈칸
+function reviewItRefundBase(d, kind){
+  if(kind === 'local') return (d.taxReportedLocal != null && d.taxReportedLocal !== '') ? Number(d.taxReportedLocal) : null;
+  const t = typeof d.taxReported === 'number' ? { 근로: d.taxReported } : (d.taxReported || {});
+  const dd = { taxReported: t };
+  return reviewItTaxReportedHasAny(dd) ? reviewItTaxReportedSum(dd) : null;
+}
+// 그 달 계산(읽기만 함 - 빈 달을 새로 만들지 않음). storeKey = 검토표 저장 키(익월지급 줄이면 '거래처id@nextMonth')
+function reviewItRefundCalc(storeKey, year, month, kind, depth){
+  depth = depth || 0;
+  const d = ((((sharedReviewFigures || {})[storeKey] || {})[year] || {})[String(month)]);
+  // 전월에서 넘어온 잔액
+  let carry = 0;
+  if(depth < 36){
+    let py = Number(year), pm = month - 1; if(pm < 1){ pm = 12; py -= 1; }
+    const pd = ((((sharedReviewFigures || {})[storeKey] || {})[py] || {})[String(pm)]);
+    if(pd) carry = reviewItRefundCalc(storeKey, py, pm, kind, depth + 1).leftover;
+  }
+  const explicit = d ? reviewItRefund(d, kind) : null;
+  const refund = explicit != null ? explicit : carry;
+  const base = d ? reviewItRefundBase(d, kind) : null;
+  const diff = (base || 0) - refund;
+  return { carry, explicit, refund, base, payable: Math.max(0, diff), leftover: Math.max(0, -diff) };
+}
+function reviewItPayableHtml(storeKey, year, month, kind){
+  const r = reviewItRefundCalc(storeKey, year, month, kind);
+  if(r.base == null && !r.refund) return '';
+  return r.payable.toLocaleString() + (r.leftover ? `<div style="font-size:10px; font-weight:600; color:var(--ink-soft);" title="다음 달로 넘어가는 환급잔액">잔액 ${r.leftover.toLocaleString()}</div>` : '');
+}
+// 환급잔액·신고서 값이 바뀌면 그 뒤 달들의 이월 잔액도 바뀌므로 표 전체의 납부세액·자동 잔액(흐린 글씨)을 다시 맞춤
+function refreshReviewItRefundAll(clientId, year){
+  const wrap = document.getElementById('reviewItTaxWrap');
+  if(!wrap) return;
+  const key = reviewItStoreKey(clientId);
+  wrap.querySelectorAll('.review-it-tax-payable-cell').forEach(td=>{ td.innerHTML = reviewItPayableHtml(key, year, Number(td.dataset.month), td.dataset.kind); });
+  wrap.querySelectorAll('.review-it-tax-refund-input').forEach(inp=>{ const c = reviewItRefundCalc(key, year, Number(inp.dataset.month), inp.dataset.kind).carry; inp.placeholder = c ? c.toLocaleString() : ''; });
 }
 // [2026.10.06] "자동저장도 되고 저장 버튼을 눌러도 저장되게 둘 다"(요청) - 입력하면 1.5초 뒤 자동 저장, 저장 버튼은 바로 저장.
 // 엑셀 올리기로 채운 값은 확인하고 저장하도록 자동 저장하지 않음(noAuto)
@@ -31133,13 +31294,17 @@ function renderReviewItTaxTable(clientId, year){
     const reportedLocalCell = isEnd
       ? `<td style="border-left:2px solid var(--border);">${reviewItMoneyInputHtml('review-it-tax-reported-local-input', month, {}, data.taxReportedLocal, {width:'88px', bg:'#FFFBEA'})}</td>`
       : `<td style="border-left:2px solid var(--border); text-align:center; color:var(--ink-soft);">-</td>`;
+    const refundCell = kind => isEnd ? `<td title="비워 두면 전월에서 남은 환급잔액(흐린 글씨)이 자동으로 들어가요. 신고서 금액이 다르면 직접 적어주세요">${reviewItMoneyInputHtml('review-it-tax-refund-input', month, {kind}, reviewItRefund(data, kind), {width:'76px', bg:'#FFFBEA'})}</td>` : dash;
+    const payableCell = kind => isEnd ? `<td class="num cvb review-it-tax-payable-cell" data-month="${month}" data-kind="${kind}" style="font-weight:800;"></td>` : dash;
     return `<tr data-month="${month}">
       <td class="num cvb" style="font-weight:700; width:56px;">${month}월</td>
       ${taxReturnCells}
       ${reportedSumCell}
       <td class="review-it-tax-check-cell" data-month="${month}" style="text-align:center; font-size:14px;">${reviewItTaxCheckMark(clientId, year, month, meta)}</td>
+      ${refundCell('tax')}${payableCell('tax')}
       ${reportedLocalCell}
       <td class="review-it-tax-local-check-cell" data-month="${month}" style="text-align:center; font-size:14px;">${reviewItTaxLocalCheckMark(clientId, year, month, meta)}</td>
+      ${refundCell('local')}${payableCell('local')}
     </tr>`;
   }).join('');
   const headerCells = REVIEW_TAX_GROUPS.map(g=>`<th class="cvb" colspan="2" style="white-space:nowrap;"${g.headerHint?` title="${escHtml(g.headerHint)}"`:''}>${escHtml(g.label)}</th>`).join('');
@@ -31149,7 +31314,7 @@ function renderReviewItTaxTable(clientId, year){
   // 덩어리로 나뉘는데, 예전엔 이 구분이 헤더 글자 크기·색만 다르고 시각적으로 한 덩어리처럼 붙어있어서
   // 어디까지가 국세고 어디부터 지방세인지 한눈에 안 들어왔음 - "국세"/"지방세" 대분류 헤더를 새로 얹고,
   // 지방세 쪽 칸 전체에 왼쪽 굵은 구분선 + 옅은 배경을 줘서 국세 덩어리와 뚜렷하게 갈라 보이게 함
-  const nationalSpan = REVIEW_TAXRETURN_FIELDS.length + 2; // 유형별 칸 + 합계 + 검증
+  const nationalSpan = REVIEW_TAXRETURN_FIELDS.length + 4; // 유형별 칸 + 합계 + 검증 + 환급잔액 + 납부세액
   // 귀속월 칸 폭: 두 표가 따로따로면 브라우저가 표마다 알아서 폭을 잡아서(신고서 기준 표는 칸 수가 적어
   // 귀속월 칸이 더 넓어지는 등) 위아래로 폭이 안 맞았음 - 두 표 모두 같은 고정폭을 줘서 맞춤
   const monthColStyle = `width:56px;`;
@@ -31168,12 +31333,14 @@ function renderReviewItTaxTable(clientId, year){
       <tr>
         <th class="cvb" rowspan="2" style="${monthColStyle}">귀속월</th>
         <th class="cvb" colspan="${nationalSpan}">국세</th>
-        <th class="cvb" colspan="2" style="background:var(--indigo-bg);">지방세</th>
+        <th class="cvb" colspan="4" style="background:var(--indigo-bg);">지방세</th>
       </tr>
       <tr>
         ${taxReturnHeaderCells}
         <th class="cvb">합계</th><th class="cvb">검증</th>
+        <th class="cvb" title="이번 달에 차감할 환급잔액 - 비워 두면 전월 남은 잔액이 자동으로 이어져요. 검증은 환급 전 합계로 해요">환급잔액</th><th class="cvb" title="합계 − 환급잔액 (모자라면 0, 남은 잔액은 다음 달로)">납부세액</th>
         <th class="cvb" style="background:var(--indigo-bg); border-left:2px solid var(--border);">세액</th><th class="cvb" style="background:var(--indigo-bg);">검증</th>
+        <th class="cvb" style="background:var(--indigo-bg);" title="지방세 환급잔액 - 비워 두면 전월 남은 잔액이 자동으로 이어져요. 검증은 환급 전 세액으로 해요">환급잔액</th><th class="cvb" style="background:var(--indigo-bg);" title="세액 − 환급잔액 (모자라면 0, 남은 잔액은 다음 달로)">납부세액</th>
       </tr>
     </thead><tbody>${returnRows}</tbody></table>`;
   wrap.querySelectorAll('.review-it-tax-input').forEach(inp=>{
@@ -31198,6 +31365,19 @@ function renderReviewItTaxTable(clientId, year){
       const data = reviewItMonthData(clientId, year, month);
       data.taxReported = data.taxReported || {};
       data.taxReported[inp.dataset.field] = moneyParse(inp.value);
+      setReviewItDirty(true);
+      refreshReviewItTaxRow(clientId, year, month);
+    });
+  });
+  refreshReviewItRefundAll(clientId, year);
+  wrap.querySelectorAll('.review-it-tax-refund-input').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      formatMoneyInputLive(inp);
+      const month = Number(inp.dataset.month), kind = inp.dataset.kind;
+      const data = reviewItMonthData(clientId, year, month);
+      const parsed = moneyParse(inp.value);
+      if(kind === 'local') data.taxRefundLocal = parsed === undefined ? null : parsed; else data.taxRefund = parsed === undefined ? null : parsed;
+      if(data.tax && data.tax['환급잔액']){ delete data.tax['환급잔액'][kind === 'local' ? 'local' : 'tax']; } // 예전 자리 값은 정리
       setReviewItDirty(true);
       refreshReviewItTaxRow(clientId, year, month);
     });
@@ -31822,6 +32002,8 @@ function itRawFillPlan(picks, apply){
       if(src.incomeReported != null && !(ex && ex.incomeReported != null && ex.incomeReported !== '')){ cnt++; if(apply) tgt().incomeReported = src.incomeReported; }
       REVIEW_TAX_GROUPS.forEach(gr=>{ const s = src.tax[gr.key]; if(!s) return; const e = (ex && ex.tax && ex.tax[gr.key]) || {};
         ['tax','local'].forEach(p=>{ if(s[p] == null || (e[p] != null && e[p] !== '')) return; cnt++; if(apply){ const t = tgt().tax[gr.key] = tgt().tax[gr.key] || {}; t[p] = s[p]; } }); });
+      // [2026.10.06] 환급잔액은 신고서 쪽 칸(taxRefund / taxRefundLocal)으로 - 이미 적혀 있으면 그대로 둠
+      { const s = src.tax['환급잔액']; if(s){ [['tax','taxRefund'],['local','taxRefundLocal']].forEach(([p, f])=>{ if(s[p] == null || (ex && ex[f] != null && ex[f] !== '')) return; cnt++; if(apply) tgt()[f] = Math.abs(Number(s[p])) || 0; }); } }
     }
     g.sheets.forEach(sh=> perSheet.set(sh.name, cnt));
     total += cnt;
@@ -40753,7 +40935,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.06 11:11';
+const APP_BUILD = '2026.10.06 11:43';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
