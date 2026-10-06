@@ -2396,6 +2396,20 @@ try{
   .perm-st-table td{ padding:7px 8px; border-bottom:1px solid var(--border); text-align:center; vertical-align:middle; white-space:nowrap; }
   .it-note-ic{ display:inline-flex; vertical-align:-1px; margin-left:4px; color:var(--indigo-deep); opacity:.75; cursor:pointer; }
   .it-note-ic:hover{ opacity:1; }
+  .it-note-ic.empty{ opacity:.3; } .it-note-ic.empty:hover{ opacity:.8; }
+  /* [2026.10.06] 급여 특이사항 통합 팝업 - 위: 전체, 아래: 월별 */
+  .itm-sec{ font-size:11.5px; font-weight:800; color:var(--ink-soft); margin:14px 2px 6px; display:flex; align-items:center; justify-content:space-between; gap:6px; }
+  .itm-sec:first-child{ margin-top:0; }
+  .itm-box{ background:var(--bg); border-radius:10px; padding:10px 12px; font-size:12.5px; line-height:1.7; color:var(--ink); white-space:pre-wrap; word-break:break-all; }
+  .itm-box.empty{ color:var(--ink-soft); }
+  .itm-row{ display:flex; gap:10px; align-items:flex-start; padding:8px 0; border-bottom:1px dashed var(--border); }
+  .itm-row:last-child{ border-bottom:none; }
+  .itm-m{ flex-shrink:0; width:44px; font-size:12px; font-weight:800; color:var(--indigo-deep); padding-top:2px; }
+  .itm-t{ flex:1; min-width:0; font-size:12.5px; line-height:1.6; color:var(--ink); white-space:pre-wrap; word-break:break-all; }
+  .itm-acts{ display:flex; gap:4px; flex-shrink:0; }
+  .itm-acts .it-memo-act{ width:24px; height:24px; }
+  .itm-ta{ width:100%; min-height:80px; border:1.5px solid var(--border); border-radius:10px; padding:8px 10px; font-size:12.5px; line-height:1.6; font-family:Pretendard,sans-serif; background:var(--surface); color:var(--ink); box-sizing:border-box; resize:vertical; }
+  .itm-btns{ display:flex; justify-content:flex-end; gap:6px; margin-top:6px; }
   .it-all-memo-col .it-note-ic{ width:24px; height:24px; margin:0; box-sizing:border-box; border:1.5px solid var(--indigo-bg); border-radius:6px; align-items:center; justify-content:center; background:var(--surface); opacity:1; vertical-align:middle; } /* [2026.10.02] 메모 칸 아이콘 = 검증 돋보기 버튼과 같은 크기·테두리 */
   /* [2026.10.02] 특이사항 표시 = 엑셀 메모처럼 칸 오른쪽 위 모서리 빨간 삼각형(요청 - 예전 * 은 작아서 점처럼 보였음). 누르면 급여 특이사항 팝업 */
   .it-memo-star{ position:absolute; top:0; right:0; width:9px; height:9px; background:var(--coral); clip-path:polygon(0 0,100% 0,100% 100%); cursor:pointer; z-index:1; font-size:0; line-height:0; }
@@ -6789,7 +6803,7 @@ try{
                   <button type="button" id="reviewItRevertBtn" title="되돌리기 (아직 저장하지 않은 입력 내용을 모두 취소하고 마지막 저장 상태로 되돌려요)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:1.5px solid var(--border); background:var(--surface); color:var(--ink-soft); box-shadow:0 2px 6px -2px rgba(29,30,51,0.2); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
                 </button>
-                  <button type="button" id="reviewItSaveBtn" title="저장 - 입력하면 잠시 뒤 자동 저장되고, 누르면 바로 저장돼요 (엑셀로 채운 값은 눌러야 저장)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:none; background:var(--indigo); color:#fff; box-shadow:0 4px 10px -3px rgba(29,30,51,0.35); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
+                  <button type="button" id="reviewItSaveBtn" title="저장 - 입력하면 바로 자동 저장되고, 눌러도 저장돼요 (엑셀로 채운 값은 눌러야 저장)" style="flex-shrink:0; width:30px; height:30px; border-radius:50%; border:none; background:var(--indigo); color:#fff; box-shadow:0 4px 10px -3px rgba(29,30,51,0.35); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background 0.15s, transform 0.15s;">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                 </button>
                   <span style="width:1px; height:20px; background:var(--border); margin:0 6px 0 8px;"></span>
@@ -15560,6 +15574,88 @@ function openItMonthMemoModal(name, label, cid, period, tk){
     };
   };
   view();
+}
+// ══════════════════════════════════════════════════════════
+// [2026.10.06] 급여 특이사항 통합 팝업(요청) - 원천세 표 메모 칸에서 엶. 위: 전체 특이사항(원천세 총괄 note), 아래: 월별 특이사항
+// (그 해 귀속월별 메모 - 신고일자 팝업에 있던 "이달 급여 특이사항"과 같은 저장소). 수정·삭제만, 이력은 두지 않음(요청)
+// ══════════════════════════════════════════════════════════
+function itClientMonthMemos(cid, year){
+  const out = [];
+  for(let m = 1; m <= 12; m++){
+    const p = `${year}-${String(m).padStart(2,'0')}`;
+    const e = ((sharedIncomeTaxFilingStatus || {})[p] || {})[cid];   // 읽기만(빈 칸을 새로 만들지 않음)
+    if(!e) continue;
+    const parts = [['sameMonth','당월지급'], ['nextMonth','익월지급']].filter(([k])=> e[k] && (e[k].memo||'').trim());
+    if(parts.length) out.push({ m, p, parts: parts.map(([k, l])=> ({ k, l, t: e[k].memo.trim() })) });
+  }
+  return out;
+}
+function openItClientMemoModal(cid, name, year){
+  year = String(year || itAllYear || todayStr().slice(0,4));
+  const ICON_EDIT = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>';
+  const ICON_DEL = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+  const ICON_ADD = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+  const btns = (pfx)=> `<span class="itm-acts"><button type="button" class="it-memo-act" data-act="${pfx}-edit" title="수정" aria-label="수정">${ICON_EDIT}</button><button type="button" class="it-memo-act del" data-act="${pfx}-del" title="삭제" aria-label="삭제">${ICON_DEL}</button></span>`;
+  const after = ()=>{ try{ renderIncomeTaxUnified(); }catch(e){} };
+  let editing = null;   // 'note' | 'm:YYYY-MM' | 'add'
+  const lanesOf = (p)=>{ const t = (sharedFilingTargets[cid] || {})[p]; const l = t && t.marked && t.applicable ? [t.sameMonthPay ? 'sameMonth' : null, t.nextMonthPay ? 'nextMonth' : null].filter(Boolean) : []; return l.length ? l : ['sameMonth']; };
+  const laneLab = { sameMonth:'당월지급', nextMonth:'익월지급' };
+  const render = ()=>{
+    const note = (itoEntry(cid).note || '').trim();
+    const months = itClientMonthMemos(cid, year);
+    let h = `<div class="itm-sec"><span>전체 특이사항</span>${editing === 'note' ? '' : btns('note')}</div>`;
+    h += editing === 'note'
+      ? `<textarea class="itm-ta" id="itmNoteTa" placeholder="이 거래처 급여에 늘 해당하는 특이사항">${escHtml(note)}</textarea><div class="itm-btns"><button type="button" class="del-btn" data-act="cancel">취소</button><button type="button" class="submit-btn" style="width:auto; padding:6px 16px; margin:0;" data-act="note-save">저장</button></div>`
+      : `<div class="itm-box${note ? '' : ' empty'}">${note ? escHtml(note) : '없어요'}</div>`;
+    h += `<div class="itm-sec"><span>월별 특이사항 · ${year}년 귀속</span>${editing === 'add' ? '' : `<button type="button" class="it-memo-act" data-act="add" title="월별 특이사항 추가" aria-label="추가">${ICON_ADD}</button>`}</div>`;
+    if(editing === 'add'){
+      const used = new Set(months.map(x=> x.m));
+      const focusM = (()=>{ try{ return Number((itAllPeriod || '').slice(5,7)) || (new Date().getMonth()+1); }catch(e){ return new Date().getMonth()+1; } })();
+      h += `<div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;"><select id="itmAddMonth" style="border:1.5px solid var(--border); border-radius:8px; padding:5px 8px; font-size:12px; font-family:'Pretendard',sans-serif; background:var(--surface);">${Array.from({length:12},(_,i)=>i+1).map(m=>`<option value="${m}" ${m===focusM?'selected':''}>${m}월${used.has(m)?' (있음)':''}</option>`).join('')}</select></div>
+        <textarea class="itm-ta" id="itmAddTa" placeholder="그 달 급여 특이사항"></textarea><div class="itm-btns"><button type="button" class="del-btn" data-act="cancel">취소</button><button type="button" class="submit-btn" style="width:auto; padding:6px 16px; margin:0;" data-act="add-save">저장</button></div>`;
+    }
+    if(!months.length && editing !== 'add') h += `<div class="itm-box empty">없어요</div>`;
+    h += months.map(x=>{
+      if(editing === 'm:' + x.p){
+        const ent = incomeTaxFilingEntry(x.p, cid);
+        const ks = Array.from(new Set(lanesOf(x.p).concat(x.parts.map(pp=> pp.k))));
+        return `<div class="itm-row" style="display:block;"><div class="itm-m" style="margin-bottom:4px;">${x.m}월</div>${ks.map(k=> `${ks.length > 1 ? `<div style="font-size:11px; font-weight:700; color:var(--ink-soft); margin:4px 2px;">${laneLab[k]}</div>` : ''}<textarea class="itm-ta itm-m-ta" data-k="${k}">${escHtml((ent[k]||{}).memo||'')}</textarea>`).join('')}<div class="itm-btns"><button type="button" class="del-btn" data-act="cancel">취소</button><button type="button" class="submit-btn" style="width:auto; padding:6px 16px; margin:0;" data-act="m-save" data-p="${x.p}">저장</button></div></div>`;
+      }
+      const txt = x.parts.length > 1 ? x.parts.map(pp=> `[${pp.l}] ${pp.t}`).join('\n') : x.parts[0].t;
+      return `<div class="itm-row"><span class="itm-m">${x.m}월</span><span class="itm-t">${escHtml(txt)}</span>${editing ? '' : btns('m:' + x.p)}</div>`;
+    }).join('');
+    openClientNamedInfoModal(name, '급여 특이사항', h);
+    const body = document.getElementById('memoModalBody');
+    body.querySelector('textarea')?.focus();
+    body.querySelectorAll('[data-act]').forEach(b=> b.addEventListener('click', ()=> onAct(b.dataset.act, b)));
+  };
+  const onAct = async (act, b)=>{
+    if(act === 'cancel'){ editing = null; return render(); }
+    if(act === 'note-edit'){ editing = 'note'; return render(); }
+    if(act === 'add'){ editing = 'add'; return render(); }
+    if(act === 'note-del'){ if(!(await appConfirm('전체 특이사항을 지울까요?', { okText:'삭제', cancelText:'취소' }))) return; await itoSet(cid, 'note', ''); showCenterToast('삭제했어요'); after(); return render(); }
+    if(act === 'note-save'){ await itoSet(cid, 'note', (document.getElementById('itmNoteTa')?.value || '').trim()); editing = null; showCenterToast('저장됐어요'); after(); return render(); }
+    if(act === 'add-save'){
+      const m = Number(document.getElementById('itmAddMonth')?.value), v = (document.getElementById('itmAddTa')?.value || '').trim();
+      if(!v){ editing = null; return render(); }
+      const p = `${year}-${String(m).padStart(2,'0')}`, ent = incomeTaxFilingEntry(p, cid), k = lanesOf(p)[0];
+      ent[k].memo = ent[k].memo && ent[k].memo.trim() ? ent[k].memo.trim() + '\n' + v : v;   // 이미 있으면 아래에 덧붙임
+      await saveSharedIncomeTaxFilingStatus(); editing = null; showCenterToast('저장됐어요'); after(); return render();
+    }
+    if(act === 'm-save'){
+      const p = b.dataset.p, ent = incomeTaxFilingEntry(p, cid);
+      document.querySelectorAll('#memoModalBody .itm-m-ta').forEach(ta=>{ const k = ta.dataset.k; if(!ent[k]) ent[k] = { national:null, local:null, memo:'' }; ent[k].memo = ta.value.trim(); });
+      await saveSharedIncomeTaxFilingStatus(); editing = null; showCenterToast('저장됐어요'); after(); return render();
+    }
+    const m = act.match(/^m:(\d{4}-\d{2})-(edit|del)$/);
+    if(m){
+      if(m[2] === 'edit'){ editing = 'm:' + m[1]; return render(); }
+      if(!(await appConfirm(`${Number(m[1].slice(5))}월 급여 특이사항을 지울까요?`, { okText:'삭제', cancelText:'취소' }))) return;
+      const ent = incomeTaxFilingEntry(m[1], cid); ['sameMonth','nextMonth'].forEach(k=>{ if(ent[k]) ent[k].memo = ''; });
+      await saveSharedIncomeTaxFilingStatus(); showCenterToast('삭제했어요'); after(); return render();
+    }
+  };
+  render();
 }
 // 수정이력 팝업 (같은 모달 틀을 재사용, 목록이라 innerHTML로 넣음)
 function openHistoryModal(title, history){
@@ -29638,7 +29734,7 @@ function itAllTimingBlockHtml(c, period, timingKey, half){
       <input type="date" class="it-all-date-input" data-field="local" value="${t.local||''}" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink);">
       <button type="button" class="del-btn it-all-today-btn" data-field="local" style="flex-shrink:0; padding:5px 9px; font-size:11px;">오늘</button>
     </div>`}
-    <input type="text" class="it-all-memo-input" value="${escHtml(t.memo||'')}" placeholder="이달 급여 특이사항 (표에는 칸 모서리 회색 삼각형으로 표시)" style="width:100%; border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink); box-sizing:border-box;">
+    <!-- [2026.10.06] 이달 급여 특이사항 입력칸은 메모 칸의 "급여 특이사항" 팝업(월별)으로 옮김(요청 - 화면이 복잡) -->
   </div>`;
 }
 // period 한 칸의 표시 상태를 계산 - 신고대상 미등록/미대상/(대상인데) 미신고/신고완료 네 단계
@@ -29961,7 +30057,8 @@ function renderIncomeTaxUnifiedInner(){
           </span>
         </td>`;
       // [2026.10.02] "상호명 옆 급여 특이사항 아이콘이 지저분하다 → 검증 옆에 메모 칸으로 따로"(요청) - 거래처당 한 칸(지급시기 줄을 합침)
-      const memoCell = laneIdx > 0 ? '' : `<td class="cvb it-all-memo-col"${span}>${(()=>{ const nt = (itoEntry(c.id).note||'').trim(); return nt ? `<span class="it-note-ic" role="button" data-name="${escHtml(c.name)}" data-memo="${escHtml(nt).replace(/"/g,'&quot;')}" data-tip="${escHtml(appTipHtml('급여 특이사항', [], nt)).replace(/"/g,'&quot;')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line></svg></span>` : ''; })()}</td>`;
+      // [2026.10.06] "메모에 급여 특이사항 메뉴 - 위에 전체 특이사항, 아래 월별 특이사항"(요청) - 내용이 없어도 아이콘을 흐리게 두어 눌러서 추가
+      const memoCell = laneIdx > 0 ? '' : `<td class="cvb it-all-memo-col"${span}>${(()=>{ const nt = (itoEntry(c.id).note||'').trim(); const mc = itClientMonthMemos(c.id, year).length; const tipRows = mc ? [['월별 특이사항', `${mc}개월`]] : []; const has = nt || mc; return `<span class="it-note-ic${has ? '' : ' empty'}" role="button" data-cid="${c.id}" data-name="${escHtml(c.name)}" data-tip="${escHtml(appTipHtml('급여 특이사항', tipRows, nt || (has ? undefined : '눌러서 특이사항을 적어요'))).replace(/"/g,'&quot;')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line></svg></span>`; })()}</td>`;
       rowsHtml.push(`<tr>${headCells}${cycleCell}${monthCells}${verifyCell}${memoCell}</tr>`);
     });
   });
@@ -29980,6 +30077,7 @@ function renderIncomeTaxUnifiedInner(){
       const isNote = el.classList.contains('it-note-ic');
       if(!isNote && el.dataset.period){ openItMonthMemoModal(el.dataset.name || '', el.dataset.label || '', el.dataset.cid, el.dataset.period, el.dataset.tk || null); return; }
       // [2026.10.02] 팝업 제목 규칙(요청) - 거래처 팝업은 기장거래처 메모 팝업처럼 위에 상호명(큰 제목), 그 아래 작은 소제목 칩, 본문은 연한 상자
+      if(isNote && el.dataset.cid){ openItClientMemoModal(el.dataset.cid, el.dataset.name || '', year); return; }
       openClientNamedInfoModal(el.dataset.name || '', isNote ? '급여 특이사항' : `${el.dataset.label||''} 급여 특이사항`, `<div style="background:var(--bg); border-radius:10px; padding:12px 14px; font-size:12.5px; line-height:1.7; color:var(--ink); white-space:pre-wrap; word-break:break-all;">${escHtml(el.dataset.memo||'')}</div>`);
     });
   });
@@ -30893,7 +30991,7 @@ const REVIEW_TAX_GROUPS = [
   { key:'간이', label:'근로-간이', headerHint:'개별 원천징수영수증을 확인하고 입력하세요' },
   { key:'중도', label:'근로-중도', headerHint:'개별 원천징수영수증을 확인하고 입력하세요' },
   { key:'일용', label:'근로-일용' },
-  { key:'연말', label:'근로-연말' },
+  { key:'연말', label:'근로-연말', headerHint:'연말정산 환급금 - 소득세·지방세 합계(계산)에서 빠지고, 신고서 쪽 "환급금 등록"의 연말정산 금액과 맞는지 따로 검증해요' },
   { key:'사업', label:'사업소득' },
   { key:'기타간이미대상', label:'기타소득(간이미대상)' },
   { key:'기타간이대상', label:'기타소득(간이대상)' },
@@ -30967,13 +31065,14 @@ function reviewItPayCycleForMonth(meta, month){
 function reviewItIncomeTotal(monthData){
   return REVIEW_INCOME_FIELDS.reduce((sum,f)=> sum + (f.excludeFromTotal ? 0 : (Number(monthData.income[f.key])||0)), 0);
 }
+// [2026.10.06] 근로-연말(연말정산 환급금)은 합계에서 뺌(요청) - 신고서 쪽 "환급금 등록"으로 따로 차감·검증
 function reviewItTaxTotal(monthData){
-  return REVIEW_TAX_GROUPS.reduce((sum,g)=> sum + (Number((monthData.tax[g.key]||{}).tax)||0), 0);
+  return REVIEW_TAX_GROUPS.reduce((sum,g)=> g.key === '연말' ? sum : sum + (Number((monthData.tax[g.key]||{}).tax)||0), 0);
 }
 // 지방세합계 - 소득세합계와 같은 10개 유형에서 이번엔 local(지방소득세) 칸만 더함. 신고서/납부서 양쪽의
 // 지방세 검증이 모두 이 하나의 계산값과 비교됨
 function reviewItTaxLocalTotal(monthData){
-  return REVIEW_TAX_GROUPS.reduce((sum,g)=> sum + (Number((monthData.tax[g.key]||{}).local)||0), 0);
+  return REVIEW_TAX_GROUPS.reduce((sum,g)=> g.key === '연말' ? sum : sum + (Number((monthData.tax[g.key]||{}).local)||0), 0);
 }
 // 소득세(신고서) 6칸 합계 - 신고서를 유형별로 나눠 적은 값을 다 더한 것으로, 소득세합계(계산)와
 // 대조하는 검증값으로 씀 (퇴직소득세 칸도 포함돼 있어서 퇴직소득이 있는 달도 정상적으로 값이 맞아야 함)
@@ -31128,39 +31227,52 @@ function reviewItRefundCalc(storeKey, year, month, kind, depth){
   const explicit = d ? reviewItRefund(d, kind) : null;
   const refund = explicit != null ? explicit : carry;
   const base = d ? reviewItRefundBase(d, kind) : null;
-  const diff = (base || 0) - refund;
-  return { carry, explicit, refund, base, payable: Math.max(0, diff), leftover: Math.max(0, -diff) };
+  const reg = d ? reviewItRegSum(d, kind) : 0;   // [2026.10.06] 등록한 환급금(연말정산·중도퇴사) 중 이 달 신고서에 반영하는 금액
+  const diff = (base || 0) - reg - refund;
+  return { carry, explicit, refund, base, reg, payable: Math.max(0, diff), leftover: Math.max(0, -diff) };
 }
 function reviewItPayableHtml(storeKey, year, month, kind){
   const r = reviewItRefundCalc(storeKey, year, month, kind);
-  if(r.base == null && !r.refund) return '';
+  if(r.base == null && !r.refund && !r.reg) return '';
   return r.payable.toLocaleString() + (r.leftover ? `<div style="font-size:10px; font-weight:600; color:var(--ink-soft);" title="차월이월환급세액 - 다음 달 전월미환급세액으로 자동으로 넘어가요">차월이월 ${r.leftover.toLocaleString()}</div>` : '');
 }
 // 환급잔액·신고서 값이 바뀌면 그 뒤 달들의 이월 잔액도 바뀌므로 표 전체의 납부세액·자동 잔액(흐린 글씨)을 다시 맞춤
+// [2026.10.06] 환급금 등록(요청) - 연말정산·중도퇴사 환급금을 "신고서에 반영하는 귀속월" 데이터에 [{kind, tax, local}]로 둠
+const REVIEW_REFUND_KINDS = ['연말정산', '중도퇴사'];
+function reviewItRegList(d){ return Array.isArray(d && d.refundReg) ? d.refundReg : []; }
+function reviewItRegSum(d, kind){ return reviewItRegList(d).reduce((s, r)=> s + (Math.abs(Number(kind === 'local' ? r.local : r.tax)) || 0), 0); }
+function reviewItRegCellHtml(storeKey, year, month, kind){
+  const d = ((((sharedReviewFigures || {})[storeKey] || {})[year] || {})[String(month)]);
+  const v = d ? reviewItRegSum(d, kind) : 0;
+  const kinds = d ? [...new Set(reviewItRegList(d).filter(r=> Number(kind === 'local' ? r.local : r.tax)).map(r=> r.kind))] : [];
+  return v ? `<span style="color:var(--coral); font-weight:800;">${v.toLocaleString()}</span><div style="font-size:10px; font-weight:600; color:var(--ink-soft);">${escHtml(kinds.join('·'))}</div>` : '<span style="color:#C9CBD6;">+</span>';
+}
 function refreshReviewItRefundAll(clientId, year){
   const wrap = document.getElementById('reviewItTaxWrap');
   if(!wrap) return;
   const key = reviewItStoreKey(clientId);
+  wrap.querySelectorAll('.review-it-reg-cell').forEach(td=>{ td.innerHTML = reviewItRegCellHtml(key, year, Number(td.dataset.month), td.dataset.kind); });
   wrap.querySelectorAll('.review-it-tax-payable-cell').forEach(td=>{ td.innerHTML = reviewItPayableHtml(key, year, Number(td.dataset.month), td.dataset.kind); });
   wrap.querySelectorAll('.review-it-tax-refund-input').forEach(inp=>{ const c = reviewItRefundCalc(key, year, Number(inp.dataset.month), inp.dataset.kind).carry; inp.placeholder = c ? c.toLocaleString() : ''; });
 }
 // [2026.10.06] "자동저장도 되고 저장 버튼을 눌러도 저장되게 둘 다"(요청) - 입력하면 1.5초 뒤 자동 저장, 저장 버튼은 바로 저장.
 // 엑셀 올리기로 채운 값은 확인하고 저장하도록 자동 저장하지 않음(noAuto)
-let reviewItAutoSaveT = null;
+// [2026.10.06] "자동저장이 안 된다 - 다시 켜면 데이터가 없다"(제보) 원인: 1.5초 뒤에 저장하는 사이 다른 직원이 뭔가 저장하면
+// 실시간 수신(fsApplyRemote → loadSharedData)이 메모리를 마지막 저장본으로 되돌려서, 그다음 자동 저장이 방금 입력이 빠진 값을
+// 저장했음. 이제는 입력할 때마다 곧바로 이 기기에 저장(서버 업로드는 기존처럼 2초 모아서)해서 되돌려질 틈을 없앰
+let reviewItAutoSaveT = null;   // '자동 저장됨' 표시용 타이머
 function setReviewItDirty(isDirty, opts){
   const btn = document.getElementById('reviewItSaveBtn');
   if(btn) btn.classList.toggle('is-dirty', !!isDirty);
-  clearTimeout(reviewItAutoSaveT); reviewItAutoSaveT = null;
-  if(isDirty && !(opts && opts.noAuto)) reviewItAutoSaveT = setTimeout(()=> reviewItSaveNow(true), 1500);
+  if(isDirty && !(opts && opts.noAuto)) reviewItSaveNow(true);
 }
-async function reviewItSaveNow(auto){
-  clearTimeout(reviewItAutoSaveT); reviewItAutoSaveT = null;
-  await saveSharedReviewFigures();
-  await saveSharedReviewMeta();
+function reviewItSaveNow(auto){
+  saveSharedReviewFigures();   // 이 기기 저장 + 서버 업로드 예약(동기적으로 바로 끝남)
+  saveSharedReviewMeta();
+  const btn = document.getElementById('reviewItSaveBtn'); if(btn) btn.classList.remove('is-dirty');
   const msgEl = document.getElementById('reviewItSaveMsg');
   if(!auto) showCenterToast('저장됐어요');
   if(msgEl){ msgEl.textContent = auto ? '자동 저장됨' : '저장됨'; clearTimeout(msgEl._flashT); msgEl._flashT = setTimeout(()=>{ msgEl.textContent=''; }, 1500); }
-  setReviewItDirty(false);
 }
 // 검토표 숫자 입력칸: 네이티브 number input의 스핀버튼(위아래 화살표)이 필요없다고 해서
 // type="text" + inputmode="numeric"으로 바꾸고, 입력 중/완료 후 모두 천단위 콤마가 항상 보이도록
@@ -31296,6 +31408,7 @@ function renderReviewItTaxTable(clientId, year){
     const reportedLocalCell = isEnd
       ? `<td style="border-left:2px solid var(--border);">${reviewItMoneyInputHtml('review-it-tax-reported-local-input', month, {}, data.taxReportedLocal, {width:'88px', bg:'#FFFBEA'})}</td>`
       : `<td style="border-left:2px solid var(--border); text-align:center; color:var(--ink-soft);">-</td>`;
+    const regCell = kind => isEnd ? `<td class="num cvb review-it-reg-cell" data-month="${month}" data-kind="${kind}" style="cursor:pointer;" title="눌러서 환급금 등록(연말정산·중도퇴사)"></td>` : dash;
     const refundCell = kind => isEnd ? `<td title="비워 두면 전월 차월이월환급세액(흐린 글씨)이 자동으로 들어가요. 신고서 금액이 다르면 직접 적어주세요">${reviewItMoneyInputHtml('review-it-tax-refund-input', month, {kind}, reviewItRefund(data, kind), {width:'76px', bg:'#FFFBEA'})}</td>` : dash;
     const payableCell = kind => isEnd ? `<td class="num cvb review-it-tax-payable-cell" data-month="${month}" data-kind="${kind}" style="font-weight:800;"></td>` : dash;
     return `<tr data-month="${month}">
@@ -31303,10 +31416,10 @@ function renderReviewItTaxTable(clientId, year){
       ${taxReturnCells}
       ${reportedSumCell}
       <td class="review-it-tax-check-cell" data-month="${month}" style="text-align:center; font-size:14px;">${reviewItTaxCheckMark(clientId, year, month, meta)}</td>
-      ${refundCell('tax')}${payableCell('tax')}
+      ${regCell('tax')}${refundCell('tax')}${payableCell('tax')}
       ${reportedLocalCell}
       <td class="review-it-tax-local-check-cell" data-month="${month}" style="text-align:center; font-size:14px;">${reviewItTaxLocalCheckMark(clientId, year, month, meta)}</td>
-      ${refundCell('local')}${payableCell('local')}
+      ${regCell('local')}${refundCell('local')}${payableCell('local')}
     </tr>`;
   }).join('');
   const headerCells = REVIEW_TAX_GROUPS.map(g=>`<th class="cvb" colspan="2" style="white-space:nowrap;"${g.headerHint?` title="${escHtml(g.headerHint)}"`:''}>${escHtml(g.label)}</th>`).join('');
@@ -31316,7 +31429,7 @@ function renderReviewItTaxTable(clientId, year){
   // 덩어리로 나뉘는데, 예전엔 이 구분이 헤더 글자 크기·색만 다르고 시각적으로 한 덩어리처럼 붙어있어서
   // 어디까지가 국세고 어디부터 지방세인지 한눈에 안 들어왔음 - "국세"/"지방세" 대분류 헤더를 새로 얹고,
   // 지방세 쪽 칸 전체에 왼쪽 굵은 구분선 + 옅은 배경을 줘서 국세 덩어리와 뚜렷하게 갈라 보이게 함
-  const nationalSpan = REVIEW_TAXRETURN_FIELDS.length + 4; // 유형별 칸 + 합계 + 검증 + 환급잔액 + 납부세액
+  const nationalSpan = REVIEW_TAXRETURN_FIELDS.length + 5; // 유형별 칸 + 합계 + 검증 + 환급금 + 전월미환급세액 + 납부세액
   // 귀속월 칸 폭: 두 표가 따로따로면 브라우저가 표마다 알아서 폭을 잡아서(신고서 기준 표는 칸 수가 적어
   // 귀속월 칸이 더 넓어지는 등) 위아래로 폭이 안 맞았음 - 두 표 모두 같은 고정폭을 줘서 맞춤
   const monthColStyle = `width:56px;`;
@@ -31335,14 +31448,14 @@ function renderReviewItTaxTable(clientId, year){
       <tr>
         <th class="cvb" rowspan="2" style="${monthColStyle}">귀속월</th>
         <th class="cvb" colspan="${nationalSpan}">국세</th>
-        <th class="cvb" colspan="4" style="background:var(--indigo-bg);">지방세</th>
+        <th class="cvb" colspan="5" style="background:var(--indigo-bg);">지방세</th>
       </tr>
       <tr>
         ${taxReturnHeaderCells}
         <th class="cvb">합계</th><th class="cvb">검증</th>
-        <th class="cvb" title="신고서의 전월미환급세액 - 비워 두면 전월 차월이월환급세액이 자동으로 이어져요. 검증은 합계(차감 전)로 해요"><span style="color:var(--coral);">−</span> 전월미환급세액<button type="button" class="backup-info-btn" data-hint-info="reviewItRefund" title="도움말" aria-label="도움말" style="margin-left:4px; vertical-align:-3px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button></th><!-- [2026.10.06] 입력 방법·원리 도움말(요청) --><th class="cvb" title="합계 − 전월미환급세액 (모자라면 0, 남은 금액은 차월이월)"><span style="color:var(--indigo);">=</span> 납부세액</th>
+        <th class="cvb" title="등록한 연말정산·중도퇴사 환급금 중 이 달 신고서에 반영하는 금액"><span style="color:var(--coral);">−</span> 환급금<button type="button" class="review-it-reg-open del-btn" style="margin-left:4px; padding:1px 6px; font-size:10px; vertical-align:1px;" title="환급금 등록 (연말정산·중도퇴사)">등록</button></th><th class="cvb" title="신고서의 전월미환급세액 - 비워 두면 전월 차월이월환급세액이 자동으로 이어져요. 검증은 합계(차감 전)로 해요"><span style="color:var(--coral);">−</span> 전월미환급세액<button type="button" class="backup-info-btn" data-hint-info="reviewItRefund" title="도움말" aria-label="도움말" style="margin-left:4px; vertical-align:-3px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button></th><!-- [2026.10.06] 입력 방법·원리 도움말(요청) --><th class="cvb" title="합계 − 환급금 − 전월미환급세액 (모자라면 0, 남은 금액은 차월이월)"><span style="color:var(--indigo);">=</span> 납부세액</th>
         <th class="cvb" style="background:var(--indigo-bg); border-left:2px solid var(--border);">세액</th><th class="cvb" style="background:var(--indigo-bg);">검증</th>
-        <th class="cvb" style="background:var(--indigo-bg);" title="지방세 전월미환급세액 - 비워 두면 전월 차월이월환급세액이 자동으로 이어져요. 검증은 세액(차감 전)으로 해요"><span style="color:var(--coral);">−</span> 전월미환급세액</th><th class="cvb" style="background:var(--indigo-bg);" title="세액 − 전월미환급세액 (모자라면 0, 남은 금액은 차월이월)"><span style="color:var(--indigo);">=</span> 납부세액</th>
+        <th class="cvb" style="background:var(--indigo-bg);" title="등록한 환급금(지방세) 중 이 달 신고서에 반영하는 금액"><span style="color:var(--coral);">−</span> 환급금</th><th class="cvb" style="background:var(--indigo-bg);" title="지방세 전월미환급세액 - 비워 두면 전월 차월이월환급세액이 자동으로 이어져요. 검증은 세액(차감 전)으로 해요"><span style="color:var(--coral);">−</span> 전월미환급세액</th><th class="cvb" style="background:var(--indigo-bg);" title="세액 − 환급금 − 전월미환급세액 (모자라면 0, 남은 금액은 차월이월)"><span style="color:var(--indigo);">=</span> 납부세액</th>
       </tr>
     </thead><tbody>${returnRows}</tbody></table>`;
   wrap.querySelectorAll('.review-it-tax-input').forEach(inp=>{
@@ -31372,6 +31485,8 @@ function renderReviewItTaxTable(clientId, year){
     });
   });
   refreshReviewItRefundAll(clientId, year);
+  wrap.querySelectorAll('.review-it-reg-cell').forEach(td=> td.addEventListener('click', ()=> openReviewItRefundRegModal(clientId, year, Number(td.dataset.month))));
+  wrap.querySelectorAll('.review-it-reg-open').forEach(b=> b.addEventListener('click', (e)=>{ e.stopPropagation(); openReviewItRefundRegModal(clientId, year, null); }));
   wrap.querySelectorAll('.review-it-tax-refund-input').forEach(inp=>{
     inp.addEventListener('change', ()=>{ if(inp.value.trim().startsWith('-')){ inp.value = inp.value.trim().slice(1); } }); // 칸을 벗어나면 마이너스 표시를 지움
     inp.addEventListener('input', ()=>{
@@ -31519,6 +31634,85 @@ function renderReviewItFsSection(){
 // [2026.10.06] "원천세 검증에서 키보드 화살표로 해당 칸으로 이동"(요청) - 엑셀처럼 ↑↓는 바로 위·아래 칸, ←→는 글자 맨 앞/끝에서
 // (또는 칸 전체가 선택된 상태에서) 왼쪽·오른쪽 칸으로. 화면에 보이는 입력칸의 실제 위치로 가장 가까운 칸을 찾아서, 표가 바뀌어도
 // (급여 표 12월 → 아래 세액 표 1월처럼) 그대로 이어짐. 옮긴 칸은 전체 선택돼서 바로 덮어쓸 수 있음
+// ══════════════════════════════════════════════════════════
+// [2026.10.06] 환급금 등록 팝업(요청) - 연말정산·중도퇴사 환급금을 구분·금액·신고서 반영 귀속월로 등록(수정·삭제).
+// 등록한 금액은 그 귀속월 신고서 계산(합계 − 환급금 − 전월미환급세액)에서 빠짐. 급여 쪽 근로-연말 한 해 합계와 등록한 연말정산 합계를 검증
+// ══════════════════════════════════════════════════════════
+function openReviewItRefundRegModal(clientId, year, focusMonth){
+  const key = reviewItStoreKey(clientId);
+  const client = bookkeepingClientList().find(c=> c.id === clientId);
+  const name = (client ? client.name : '') + (reviewItFsTiming === 'sameMonth' ? ' · 당월지급' : reviewItFsTiming === 'nextMonth' ? ' · 익월지급' : '');
+  let editing = null;   // { m, i }
+  const raw = m=> ((((sharedReviewFigures || {})[key] || {})[year] || {})[String(m)]);
+  const fmt = v=> (Number(v)||0).toLocaleString();
+  const ICON_EDIT = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>';
+  const ICON_DEL = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+  const refreshTable = ()=>{ try{ refreshReviewItRefundAll(clientId, year); }catch(e){} };
+  const render = ()=>{
+    const rows = [];
+    for(let m = 1; m <= 12; m++) reviewItRegList(raw(m)).forEach((r, i)=> rows.push({ m, i, r }));
+    // 검증: 급여 근로-연말 한 해 합계(환급은 마이너스) ↔ 등록한 연말정산 합계
+    let payT = 0, payL = 0, regT = 0, regL = 0;
+    for(let m = 1; m <= 12; m++){ const d = raw(m); if(!d) continue; const y = (d.tax || {})['연말'] || {}; payT += Number(y.tax) || 0; payL += Number(y.local) || 0; }
+    rows.filter(x=> x.r.kind === '연말정산').forEach(x=>{ regT += Math.abs(Number(x.r.tax)) || 0; regL += Math.abs(Number(x.r.local)) || 0; });
+    const chk = (pay, reg)=>{ if(!pay && !reg) return '<span style="color:var(--ink-soft);">-</span>'; const ok = Math.abs(pay) === reg && (pay <= 0 || !reg); return `<span style="font-weight:800; color:${ok ? 'var(--mint)' : 'var(--coral)'};">${ok ? '✓ 일치' : '✕ 불일치'}</span>`; };
+    const ed = editing ? rows.find(x=> x.m === editing.m && x.i === editing.i) : null;
+    const fm = ed ? ed.m : (focusMonth || 2);
+    const inSty = "border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); box-sizing:border-box;";
+    const h = `
+      <div class="itm-sec"><span>등록한 환급금 · ${year}년</span></div>
+      ${rows.length ? rows.map(x=> `<div class="itm-row"><span class="itm-m">${x.m}월</span><span class="itm-t"><b>${escHtml(x.r.kind || '')}</b> · 국세 ${fmt(Math.abs(x.r.tax))} · 지방세 ${fmt(Math.abs(x.r.local))}</span><span class="itm-acts"><button type="button" class="it-memo-act" data-act="edit" data-m="${x.m}" data-i="${x.i}" title="수정" aria-label="수정">${ICON_EDIT}</button><button type="button" class="it-memo-act del" data-act="del" data-m="${x.m}" data-i="${x.i}" title="삭제" aria-label="삭제">${ICON_DEL}</button></span></div>`).join('') : '<div class="itm-box empty">없어요</div>'}
+      <div class="itm-sec"><span>${ed ? '수정' : '새로 등록'}</span></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <label style="font-size:11px; font-weight:700; color:var(--ink-soft);">구분<select id="rrKind" style="${inSty} width:100%; margin-top:3px;">${REVIEW_REFUND_KINDS.map(k=> `<option ${ed && ed.r.kind === k ? 'selected' : ''}>${k}</option>`).join('')}</select></label>
+        <label style="font-size:11px; font-weight:700; color:var(--ink-soft);">신고서 반영 귀속월<select id="rrMonth" style="${inSty} width:100%; margin-top:3px;">${Array.from({length:12},(_,i)=>i+1).map(m=> `<option value="${m}" ${m === fm ? 'selected' : ''}>${m}월</option>`).join('')}</select></label>
+        <label style="font-size:11px; font-weight:700; color:var(--ink-soft);">국세 환급금<input id="rrTax" type="text" inputmode="numeric" value="${ed ? fmt(Math.abs(ed.r.tax)) : ''}" style="${inSty} width:100%; margin-top:3px; text-align:right;"></label>
+        <label style="font-size:11px; font-weight:700; color:var(--ink-soft);">지방세 환급금<input id="rrLocal" type="text" inputmode="numeric" value="${ed ? fmt(Math.abs(ed.r.local)) : ''}" style="${inSty} width:100%; margin-top:3px; text-align:right;"></label>
+      </div>
+      <div class="itm-btns">${ed ? '<button type="button" class="del-btn" data-act="cancel">취소</button>' : ''}<button type="button" class="submit-btn" style="width:auto; padding:6px 16px; margin:0;" data-act="save">${ed ? '저장' : '등록'}</button></div>
+      <div class="itm-sec"><span>연말정산 환급금 검증 (급여 근로-연말 한 해 합계 ↔ 등록 합계)</span></div>
+      <div class="itm-box" style="white-space:normal;">국세: 급여 ${fmt(payT)} · 등록 ${fmt(regT)} → ${chk(payT, regT)}<br>지방세: 급여 ${fmt(payL)} · 등록 ${fmt(regL)} → ${chk(payL, regL)}</div>`;
+    openClientNamedInfoModal(name, '환급금 등록', h);
+    const body = document.getElementById('memoModalBody');
+    ['rrTax','rrLocal'].forEach(id=>{ const el = document.getElementById(id); el?.addEventListener('input', ()=> formatMoneyInputLive(el)); });
+    body.querySelectorAll('[data-act]').forEach(b=> b.addEventListener('click', ()=> onAct(b)));
+  };
+  const onAct = async (b)=>{
+    const act = b.dataset.act;
+    if(act === 'cancel'){ editing = null; return render(); }
+    if(act === 'edit'){ editing = { m: Number(b.dataset.m), i: Number(b.dataset.i) }; return render(); }
+    if(act === 'del'){
+      if(!(await appConfirm('이 환급금 등록을 지울까요?', { okText:'삭제', cancelText:'취소' }))) return;
+      const d = reviewItMonthData(clientId, year, Number(b.dataset.m)); d.refundReg = reviewItRegList(d).filter((_, i)=> i !== Number(b.dataset.i));
+      if(!d.refundReg.length) delete d.refundReg;
+      reviewItSaveNow(true); editing = null; refreshTable(); return render();
+    }
+    if(act === 'save'){
+      const tax = Math.abs(moneyParse(document.getElementById('rrTax').value) || 0), local = Math.abs(moneyParse(document.getElementById('rrLocal').value) || 0);
+      if(!tax && !local){ appAlert('국세나 지방세 환급금을 적어주세요.'); return; }
+      const m = Number(document.getElementById('rrMonth').value), kind = document.getElementById('rrKind').value;
+      if(editing){ const od = reviewItMonthData(clientId, year, editing.m); od.refundReg = reviewItRegList(od).filter((_, i)=> i !== editing.i); if(!od.refundReg.length) delete od.refundReg; }
+      const d = reviewItMonthData(clientId, year, m); d.refundReg = reviewItRegList(d).concat([{ kind, tax, local }]);
+      reviewItSaveNow(true); editing = null; showCenterToast('저장됐어요'); refreshTable(); return render();
+    }
+  };
+  render();
+}
+// [2026.10.06] "엔터 쳐도 다음 칸으로(탭처럼)"(요청) - Enter = 다음 입력칸, Shift+Enter = 이전 칸(화면 순서대로)
+document.getElementById('reviewItFullscreenOverlay')?.addEventListener('keydown', (e)=>{
+  if(e.key !== 'Enter' || e.isComposing || e.altKey || e.ctrlKey || e.metaKey) return;
+  const cur = e.target;
+  if(!cur || cur.tagName !== 'INPUT' || (cur.type && !['text','number','tel'].includes(cur.type))) return;
+  const ov = document.getElementById('reviewItFullscreenOverlay');
+  const list = [...ov.querySelectorAll('input[type="text"], input:not([type])')].filter(x=> !x.disabled && x.getClientRects().length);
+  const i = list.indexOf(cur);
+  const nx = list[i + (e.shiftKey ? -1 : 1)];
+  if(!nx) return;
+  e.preventDefault();
+  nx.focus({ preventScroll:true });
+  nx.scrollIntoView({ block:'nearest', inline:'nearest' });
+  try{ nx.select(); }catch(err){}
+});
 document.getElementById('reviewItFullscreenOverlay')?.addEventListener('keydown', (e)=>{
   if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key) || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
   const cur = e.target;
@@ -31697,7 +31891,6 @@ document.getElementById('reviewItRevertBtn')?.addEventListener('click', async ()
 // 저장 상태로 조용히 되돌려서, 저장하지 않은 숫자는 다른 화면에 갔다 오면 안 보이게 함
 function discardUnsavedReviewItChangesIfAny(){
   if(!document.getElementById('reviewItSaveBtn')?.classList.contains('is-dirty')) return;
-  if(reviewItAutoSaveT){ reviewItSaveNow(true); return; } // [2026.10.06] 자동 저장 대기 중(직접 입력)이면 버리지 않고 바로 저장
   try{ sharedReviewFigures = JSON.parse(localStorage.getItem('worklog_shared_reviewfigures') || '{}') || {}; }catch(e){ sharedReviewFigures = {}; }
   try{ sharedReviewMeta = JSON.parse(localStorage.getItem('worklog_shared_reviewmeta') || '{}') || {}; }catch(e){ sharedReviewMeta = {}; }
   setReviewItDirty(false);
@@ -37551,15 +37744,15 @@ HINT_INFO.dailyWorkers = { title:'일용직', html: infoTidyHtml(
   '<b>합산신고</b>: 쉰 다음 달에 못 한 금액을 합쳐서 신고해요') };
 // [2026.10.02] 급여현황 도움말 - 계산방식과 회색 글자(자동 채우기)(요청)
 // [2026.10.06] 원천세 검증 > 신고서 - 환급잔액 입력 방법과 원리(요청)
-HINT_INFO.reviewItRefund = { title:'신고서 · 전월미환급세액', html: infoTidyHtml(
-  '<b>계산</b>: 합계(신고서 세액) − 전월미환급세액 = 납부세액. 전월미환급세액이 더 크면 납부세액은 0이고, 남은 금액은 "차월이월"로 다음 달에 넘어가요<br>'+
-  '<b>합계</b>: 신고서의 소득유형별 소득세(지방세는 세액)를 차감 전 금액 그대로 적은 합이에요. 급여 쪽 세액과 같으면 ✓<br>'+
-  '<b>전월미환급세액</b>: 신고서에 적힌 금액을 플러스(+)로 적어요(마이너스로 적어도 플러스로 바뀌어요)<br>'+
-  '<b>비워두면</b>: 전월 차월이월 금액이 흐린 글씨로 자동으로 들어가요. 신고서 금액과 같으면 비워 두면 돼요<br>'+
+HINT_INFO.reviewItRefund = { title:'신고서 · 환급금 · 전월미환급세액', html: infoTidyHtml(
+  '<b>계산</b>: 합계 − 환급금 − 전월미환급세액 = 납부세액. 모자라면 납부세액은 0이고, 남은 금액은 "차월이월"로 다음 달에 넘어가요<br>'+
+  '<b>합계</b>: 신고서의 소득유형별 소득세(지방세는 세액)를 환급 차감 전 금액으로 적은 합이에요. 급여 쪽 세액과 같으면 ✓(근로-연말은 빼고 비교)<br>'+
+  '<b>환급금</b>: "등록"을 눌러 연말정산·중도퇴사 환급금을 적고, 신고서에 반영하는 귀속월을 골라요. 그 달 납부세액 계산에서 빠져요<br>'+
+  '<b>환급금 검증</b>: 급여 쪽 근로-연말(연말정산 환급금) 한 해 합계와 등록한 연말정산 환급금이 같은지 등록 팝업에서 확인해요. 급여에서 차감한 달과 신고서 반영 달이 달라도 돼요<br>'+
+  '<b>전월미환급세액</b>: 신고서에 적힌 금액을 플러스(+)로. 비워 두면 전월 차월이월 금액이 흐린 글씨로 자동으로 들어가요<br>'+
   '<b>직접 적을 때</b>: 환급이 처음 생긴 달, 또는 환급을 받거나 조정돼서 자동 금액과 신고서 금액이 다른 달<br>'+
-  '<b>검증</b>: 차감 전 합계로 해요(전월미환급세액은 검증에 들어가지 않아요)<br>'+
-  '<b>예시</b>: 1월 합계 477,990 − 전월미환급세액 2,500,780 = 납부 0, 차월이월 2,022,790 → 2월 전월미환급세액을 비우면 2,022,790이 자동으로 들어가요<br>'+
-  '<b>지방세</b>: 세액 − 전월미환급세액 = 납부세액, 국세와 같은 방식이에요') };
+  '<b>검증</b>: 차감 전 합계로 해요(환급금·전월미환급세액은 검증에 들어가지 않아요)<br>'+
+  '<b>지방세</b>: 세액 − 환급금 − 전월미환급세액 = 납부세액, 국세와 같은 방식이에요') };
 HINT_INFO.payroll = { title:'급여현황', html: infoTidyHtml(
   '<b>회색 숫자</b>: 비워둔 칸에 자동으로 채운 값이에요. 합계·지급률·출력·엑셀에 그대로 반영되고, 직접 입력하면 그 값이 우선이에요<br>'+
   '<b>신고금액</b>: 비우면 발생금액과 같아요. 합산신고 대상은 전월 미신고분 + 당월 발생금액. 0을 적으면 미신고<br>'+
@@ -40949,7 +41142,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.06 14:14';
+const APP_BUILD = '2026.10.06 15:40';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
