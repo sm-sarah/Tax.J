@@ -29962,6 +29962,8 @@ function renderIncomeTaxUnifiedInner(){
   if(itAllOnlyMismatch) list = list.filter(c=> [null, 'nextMonth'].some(tk=> Array.from({length:12}, (_,i)=> i+1).some(m=> itAllVerifyStatus(c.id, tk, Number(year), m) === 'bad')));
   // 지난 귀속월을 골랐는데 남은 신고가 없으면 "기한 N일 지남"은 굳이 안 보여줌
   const ddayTxt = focus.dday === 0 ? 'D-DAY' : focus.dday > 0 ? `D-${focus.dday}` : (focus.pending ? `기한 ${-focus.dday}일 지남` : '');
+  // [2026.10.06] "전체현황에서는 급여종류를 빼줘"(요청) → "연간대상·N월 대상·미신고에서만"(요청) - 전체현황·불일치에서는 급여종류 칸 없음
+  const itShowKinds = itAllOnlyPending || itAllOnlyTarget || itAllOnlyMonth;
   const summaryHtml = `<div class="it-all-summary">
     <span class="it-sum-period">${focus.month}월 귀속 · ${focus.due.getMonth()+1}/${focus.due.getDate()} 마감 <b class="${focus.dday<=3 ? 'urgent' : ''}">${ddayTxt}</b></span>
     <span class="it-sum-num">대상 <b>${focus.total}</b></span><span class="it-sum-num">완료 <b class="ok">${focus.done}</b></span><span class="it-sum-num">남음 <b class="${focus.pending ? 'warn' : ''}">${focus.pending}</b></span>
@@ -30117,11 +30119,11 @@ function renderIncomeTaxUnifiedInner(){
       // [2026.10.02] "상호명 옆 급여 특이사항 아이콘이 지저분하다 → 검증 옆에 메모 칸으로 따로"(요청) - 거래처당 한 칸(지급시기 줄을 합침)
       // [2026.10.06] "메모에 급여 특이사항 메뉴 - 위에 전체 특이사항, 아래 월별 특이사항"(요청) - 내용이 없어도 아이콘을 흐리게 두어 눌러서 추가
       const memoCell = laneIdx > 0 ? '' : `<td class="cvb it-all-memo-col"${span}>${(()=>{ const nt = (itoEntry(c.id).note||'').trim(); const mc = itClientMonthMemos(c.id, year).length; const tipRows = mc ? [['월별 특이사항', `${mc}개월`]] : []; const has = nt || mc; return `<span class="it-note-ic${has ? '' : ' empty'}" role="button" data-cid="${c.id}" data-name="${escHtml(c.name)}" data-tip="${escHtml(appTipHtml('급여 특이사항', tipRows, nt || (has ? undefined : '눌러서 특이사항을 적어요'))).replace(/"/g,'&quot;')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line></svg></span>`; })()}</td>`;
-      const kindsCell = laneIdx > 0 ? '' : `<td class="cvb"${span}><button type="button" class="ito-kinds" data-id="${c.id}" title="급여종류 고르기">${itoKindChips(itoEntry(c.id).payKinds)}</button></td>`; // [2026.10.06] 총괄에서 옮겨 옴(요청)
+      const kindsCell = (laneIdx > 0 || !itShowKinds) ? '' : `<td class="cvb"${span}><button type="button" class="ito-kinds" data-id="${c.id}" title="급여종류 고르기">${itoKindChips(itoEntry(c.id).payKinds)}</button></td>`; // [2026.10.06] 총괄에서 옮겨 옴(요청)
       rowsHtml.push(`<tr>${headCells}${cycleCell}${kindsCell}${monthCells}${verifyCell}${memoCell}</tr>`);
     });
   });
-  wrap.innerHTML = summaryHtml + `<div class="table-scroll"><table class="it-all-table"><thead><tr><th class="cvb" rowspan="2">순번</th><th class="cvb" rowspan="2">상호명</th><th class="cvb" rowspan="2">신고</th><th class="cvb" rowspan="2">급여종류</th><th class="cvb" colspan="12">귀속월</th><th class="cvb" rowspan="2" style="min-width:52px;">검증</th><th class="cvb" rowspan="2" style="min-width:52px;">메모</th></tr><tr>${monthHeaderCells}</tr></thead><tbody>${rowsHtml.join('')}</tbody></table></div>`;
+  wrap.innerHTML = summaryHtml + `<div class="table-scroll"><table class="it-all-table"><thead><tr><th class="cvb" rowspan="2">순번</th><th class="cvb" rowspan="2">상호명</th><th class="cvb" rowspan="2">신고</th>${itShowKinds ? '<th class="cvb" rowspan="2">급여종류</th>' : ''}<th class="cvb" colspan="12">귀속월</th><th class="cvb" rowspan="2" style="min-width:52px;">검증</th><th class="cvb" rowspan="2" style="min-width:52px;">메모</th></tr><tr>${monthHeaderCells}</tr></thead><tbody>${rowsHtml.join('')}</tbody></table></div>`;
   bindSummary();
   wrap.querySelectorAll('.ito-kinds').forEach(btn=> btn.addEventListener('click', (ev)=>{ ev.stopPropagation(); openItoKindsMenu(btn); }));
   wrap.querySelectorAll('.review-it-open-btn').forEach(btn=>{
