@@ -3870,6 +3870,7 @@ try{
   .emp-icon-btn.danger{ color:var(--coral); }
   .ci-prof .ci-prof-more{ align-self:flex-end; height:30px; padding:0 10px; border:1.5px dashed var(--border); border-radius:8px; background:transparent; color:var(--ink-soft); font-family:inherit; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap; }
   .ci-prof .ci-prof-more:hover{ color:var(--indigo-deep); border-color:var(--indigo); }
+  .seat-marquee{ position:absolute; z-index:40; border:1.5px dashed var(--indigo); background:rgba(91,95,239,0.08); border-radius:3px; pointer-events:none; } /* [2026.10.06] 자리배치도 끌어서 고르기 네모 */
   .emp-row .emp-acts{ flex:none; display:inline-flex; align-items:center; gap:4px; } /* [2026.10.06] 직원정보 줄 오른쪽 아이콘들 */
   .emp-row .hr-staff-summary .tag{ flex:none; }
   .xls-io-row{ display:flex; justify-content:flex-end; gap:6px; margin:-4px 0 8px; }
@@ -5045,7 +5046,7 @@ try{
     <div id="expenseHistoryModalWrap"></div>
   </div>
 </div>
-<div id="memoModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+<div id="memoModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px; overscroll-behavior:contain;">
   <div id="memoModalBox" style="background:var(--surface); border-radius:16px; max-width:480px; width:100%; max-height:70vh; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4); position:relative; overflow:hidden; display:flex; flex-direction:column;">
     <!-- 이 팝업(법정연차 자동부여 일정, 식대기준일수 계산법 등 memoModal을 재사용하는 모든 안내창)의 닫기 버튼 대비색은
          이제 모든 팝업이 공통으로 쓰는 .modal-close-btn 클래스에서 나옴(과거엔 이 팝업에만 인디고 톤을 따로
@@ -5061,7 +5062,8 @@ try{
          위치에서도 모서리 바깥으로 아무것도 삐져나오지 않게 함. #memoModalTitleExtra는 평소엔
          비어있고(다른 안내 팝업엔 영향 없음), openClientDetailModal에서만 아이콘 버튼 줄을 여기에
          채워 넣음 - 팝업을 닫을 때(closeMemoModal) 항상 비워서 다음에 여는 다른 팝업에 남아있지 않게 함 -->
-    <div id="memoModalScroll" style="overflow-y:auto; flex:1 1 auto; min-height:0;">
+    <!-- [2026.10.06] "거래처 상세조회에서 스크롤이 마음대로 안 움직인다"(요청) - 팝업 끝까지 굴리면 뒤 화면(거래처 표)까지 같이 밀려 내려가던 것(스크롤 연쇄)을 막음(overscroll-behavior:contain), 아래 휠 처리 참고 -->
+    <div id="memoModalScroll" style="overflow-y:auto; flex:1 1 auto; min-height:0; overscroll-behavior:contain;">
       <div id="memoModalTitleWrap" style="position:sticky; top:0; z-index:5; background:var(--surface); text-align:center; padding:30px 68px 10px; display:flex; flex-direction:column;">
         <span id="memoModalTitle" style="display:inline-block; font-weight:800; font-size:19px; color:var(--ink);"></span>
         <div id="memoModalTitleExtra"></div>
@@ -15780,6 +15782,13 @@ function wireClientDetailHeadIcons(c, reopenType){
   });
 }
 // 거래처 표에는 자리를 다 못 넣은 나머지 등록 정보(프로그램·담당자·이메일 등)를 팝업으로 보여줌
+// [2026.10.06] 팝업이 떠 있을 때 바깥 어두운 곳에서 휠을 굴리면 뒤 화면이 움직이던 것 - 팝업 안 내용이 대신 움직이게
+document.getElementById('memoModalOverlay')?.addEventListener('wheel', (e)=>{
+  const sc = document.getElementById('memoModalScroll');
+  if(!sc || sc.contains(e.target)) return;
+  e.preventDefault();
+  sc.scrollTop += e.deltaY;
+}, { passive:false });
 function openClientDetailModal(c){
   document.getElementById('memoModalTitle').textContent = c.name || '추가정보';
   const programDisplay = c.program === '기타' ? (c.programEtc || '기타') : (c.program && c.program !== '없음' ? c.program : '-');
@@ -30002,7 +30011,10 @@ function itAllVerifyStatus(clientId, timingKey, year, month){
   if(reviewItTaxReportedHasAny(cur)) checks.push(['tax', reviewItTaxReportedSum(cur), months.reduce((s,m)=> s + reviewItTaxTotal(md(m)), 0)]);
   if(cur.taxReportedLocal != null && cur.taxReportedLocal !== '') checks.push(['taxLocal', Number(cur.taxReportedLocal), months.reduce((s,m)=> s + reviewItTaxLocalTotal(md(m)), 0)]);
   if(!checks.length) return '';
-  return checks.every(([f, rep, tot])=> rep === tot || cur.manualCheck[f]) ? 'ok' : 'bad';
+  const allMatch = checks.every(([f, rep, tot])=> rep === tot || cur.manualCheck[f]);
+  if(!allMatch) return 'bad';
+  // [2026.10.07] "급여 검증이 안 됐는데 초록색이 떠 있다"(요청) - 세액 쪽만 입력돼 맞아도 초록이 되던 것 → 급여(총지급액 신고서) 검증까지 들어가 있어야 초록
+  return checks.some(([f])=> f === 'income') ? 'ok' : '';
 }
 // [2026.10.03] "엑셀 아이콘은 표 오른쪽 위로"(요청) - 표를 다시 그릴 때마다 아이콘 줄을 보기 선택 줄 오른쪽 끝(없으면 표 바로 위)에 다시 붙임
 // 표를 다시 그리면(innerHTML) 그 안에 붙여둔 아이콘 줄이 문서에서 떨어져 나가 id로 다시 못 찾으므로, 처음 찾은 요소를 기억해 둠
@@ -42253,6 +42265,101 @@ let seatChartSelectedId = null;
 let seatSizeMode = null;
 const seatMultiSel = new Set();
 let seatMultiAnchor = null;
+// [2026.10.06] "끌어서 네모로 고른 영역을 한 번에 옮기기 · 고른 칸·구분선을 복사해서 바로 옆에 겹쳐 붙여넣기"(요청)
+// seatLineMultiSel = 같이 고른 구분선(walls 인덱스). seatGroupClip = 복사해 둔 칸·선(붙일 때마다 20px씩 비켜서 붙음)
+const seatLineMultiSel = new Set();
+var seatGroupClip = null, seatGroupPasteN = 0;
+function seatSelCellsAll(){
+  if(!seatChartDraft) return [];
+  return [seatChartSelectedId, ...seatMultiSel].filter((v,i,a)=> v && a.indexOf(v) === i).map(id=> seatChartDraft.cells.find(c=> c.id === id)).filter(c=> c && c.row && c.col);
+}
+function seatSelLineIdxs(){
+  if(!seatChartDraft) return [];
+  const st = new Set(seatLineMultiSel); if(seatLineSelIdx !== null && seatLineSelIdx !== undefined) st.add(seatLineSelIdx);
+  return [...st].filter(i=> seatChartDraft.walls && seatChartDraft.walls[i] && seatChartDraft.walls[i].x1 != null);
+}
+const SEAT_COPY_KEYS = ['type','px','rowSpan','colSpan','dir','doorSide','icon','dividerColor','dividerShape','dividerThickness','dividerOffset'];
+function seatGroupCopy(){
+  if(!seatChartDraft || !seatV2()) return false;
+  const cells = seatSelCellsAll(), lines = seatSelLineIdxs().map(i=> ({ ...seatChartDraft.walls[i] }));
+  if(!cells.length && !lines.length) return false;
+  seatGroupClip = {
+    cells: cells.map(c=>{ const o = { row:c.row, col:c.col }; SEAT_COPY_KEYS.forEach(k=>{ if(c[k] !== undefined) o[k] = c[k]; }); if(c.trim) o.trim = { ...c.trim }; if(c.type !== 'seat' && c.text) o.text = c.text; return o; }), // 좌석은 이름(사람)은 비우고 모양만
+    lines
+  };
+  seatGroupPasteN = 0;
+  seatUpdatePasteBtn();
+  showCenterToast(`${cells.length ? cells.length + '칸' : ''}${cells.length && lines.length ? ' · ' : ''}${lines.length ? '선 ' + lines.length + '개' : ''} 복사했어요 · Ctrl+V(붙여넣기)로 바로 옆에 붙어요`);
+  return true;
+}
+function seatGroupPaste(){
+  if(!seatChartDraft || !seatGroupClip || !seatV2()) return false;
+  seatGroupPasteN++;
+  let dx = 20 * seatGroupPasteN, dy = 20 * seatGroupPasteN;
+  const CV = seatV2CanvasSize();
+  let x2 = 0, y2 = 0;
+  seatGroupClip.cells.forEach(c=>{ const sp = seatCellEffectiveSpans(c); x2 = Math.max(x2, c.col - 1 + (sp.colSpan||0)); y2 = Math.max(y2, c.row - 1 + (sp.rowSpan||0)); });
+  seatGroupClip.lines.forEach(l=>{ x2 = Math.max(x2, l.x1, l.x2); y2 = Math.max(y2, l.y1, l.y2); });
+  if(x2 + dx > CV.W) dx = Math.max(-20, CV.W - x2); // 캔버스 밖으로 나가면 안쪽으로
+  if(y2 + dy > CV.H) dy = Math.max(-20, CV.H - y2);
+  const newIds = [];
+  seatGroupClip.cells.forEach(c=>{ const n = { ...c, id: genId(), text: c.text || '', col: Math.max(1, c.col + dx), row: Math.max(1, c.row + dy) }; if(c.trim) n.trim = { ...c.trim }; seatChartDraft.cells.push(n); newIds.push(n.id); });
+  if(!Array.isArray(seatChartDraft.walls)) seatChartDraft.walls = [];
+  const newLines = [];
+  seatGroupClip.lines.forEach(l=>{ seatChartDraft.walls.push({ ...l, x1: Math.max(0, l.x1 + dx), x2: Math.max(0, l.x2 + dx), y1: Math.max(0, l.y1 + dy), y2: Math.max(0, l.y2 + dy) }); newLines.push(seatChartDraft.walls.length - 1); });
+  // 붙인 것들이 고른 상태가 되어 바로 끌어 옮길 수 있음
+  seatChartSelectedId = newIds[0] || null; seatMultiSel.clear(); newIds.slice(1).forEach(i=> seatMultiSel.add(i)); seatMultiAnchor = seatChartSelectedId;
+  seatLineSelIdx = null; seatLineMultiSel.clear(); newLines.forEach(i=> seatLineMultiSel.add(i));
+  if(!seatChartSelectedId && newLines.length === 1){ seatLineSelIdx = newLines[0]; seatLineMultiSel.clear(); }
+  seatChartEditorOpenId = null;
+  renderSeatChartEditPreview();
+  showCenterToast('붙여넣었어요 · 끌어서 원하는 자리로 옮겨요');
+  return true;
+}
+// 고른 칸·선을 한꺼번에 끌어 옮기기(v2) - onClick: 끌지 않고 그냥 눌렀을 때
+function seatV2GroupDrag(e, capEl, onClick){
+  const grid = document.getElementById('seatChartEditGrid');
+  const z = seatGridZ();
+  const startX = e.clientX, startY = e.clientY;
+  const cells = seatSelCellsAll(), lidx = seatSelLineIdxs();
+  const sc = cells.map(c=>{ const el = grid && grid.querySelector(`.seat-edit-cell[data-id="${c.id}"]`); return { c, col:c.col, row:c.row, el, left: el ? parseFloat(el.style.left)||0 : 0, top: el ? parseFloat(el.style.top)||0 : 0 }; });
+  const sl = lidx.map(i=>{ const w = seatChartDraft.walls[i]; const el = grid && grid.querySelector(`.seat-wall[data-line-idx="${i}"]`); return { w, o:{ ...w }, el, left: el ? parseFloat(el.style.left)||0 : 0, top: el ? parseFloat(el.style.top)||0 : 0 }; });
+  let box = null;
+  const add = (x1,y1,x2,y2)=>{ box = box ? { x1:Math.min(box.x1,x1), y1:Math.min(box.y1,y1), x2:Math.max(box.x2,x2), y2:Math.max(box.y2,y2) } : { x1,y1,x2,y2 }; };
+  cells.forEach(c=>{ const r = seatV2Rect(c); add(r.x, r.y, r.x + r.w, r.y + r.h); });
+  sl.forEach(s=> add(Math.min(s.o.x1,s.o.x2), Math.min(s.o.y1,s.o.y2), Math.max(s.o.x1,s.o.x2), Math.max(s.o.y1,s.o.y2)));
+  if(!box) return;
+  const skip = new Set(cells.map(c=> c.id));
+  let moved = false, ddx = 0, ddy = 0;
+  try{ capEl.setPointerCapture(e.pointerId); }catch(err){}
+  const onMove = ev=>{
+    let dx = (ev.clientX - startX)/z, dy = (ev.clientY - startY)/z;
+    if(!moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
+    moved = true;
+    dx = Math.round(dx); dy = Math.round(dy);
+    const CV = seatV2CanvasSize();
+    const clampD = ()=>{ dx = Math.max(-box.x1, Math.min(CV.W - box.x2, dx)); dy = Math.max(-box.y1, Math.min(CV.H - box.y2, dy)); };
+    clampD();
+    let gx = null, gy = null;
+    if(!ev.altKey && cells.length){ const sn = seatV2SnapRect({ x: box.x1 + dx, y: box.y1 + dy, w: box.x2 - box.x1, h: box.y2 - box.y1 }, skip); dx += sn.dx; dy += sn.dy; gx = sn.gx; gy = sn.gy; clampD(); }
+    seatV2PosTip(ev, `x ${box.x1 + dx} · y ${box.y1 + dy}`);
+    ddx = dx; ddy = dy;
+    sc.forEach(s=>{ if(s.el){ s.el.style.left = (s.left + dx) + 'px'; s.el.style.top = (s.top + dy) + 'px'; s.el.style.zIndex = '20'; } });
+    sl.forEach(s=>{ if(s.el){ s.el.style.left = (s.left + dx) + 'px'; s.el.style.top = (s.top + dy) + 'px'; } });
+    seatV2ShowGuides(grid, gx, gy);
+  };
+  let done = false;
+  const finish = ()=>{
+    if(done) return; done = true;
+    window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', finish); window.removeEventListener('pointercancel', finish);
+    seatV2ShowGuides(grid, null, null); seatV2PosTip(null, '');
+    if(!moved){ if(onClick) onClick(); return; }
+    sc.forEach(s=>{ s.c.col = Math.max(1, s.col + ddx); s.c.row = Math.max(1, s.row + ddy); });
+    sl.forEach(s=>{ s.w.x1 = Math.max(0, s.o.x1 + ddx); s.w.x2 = Math.max(0, s.o.x2 + ddx); s.w.y1 = Math.max(0, s.o.y1 + ddy); s.w.y2 = Math.max(0, s.o.y2 + ddy); });
+    renderSeatChartEditPreview();
+  };
+  window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', finish); window.addEventListener('pointercancel', finish);
+}
 function seatApplySizeDelta(dRow, dCol){
   const ids = [seatChartSelectedId, ...seatMultiSel].filter(Boolean);
   const cols = seatChartDraft.cols || 9;
@@ -42366,7 +42473,7 @@ function seatUndo(){
   if(!target){ showCenterToast('되돌릴 게 없어요'); return; }
   Object.assign(seatChartDraft, JSON.parse(target));
   seatUndoBase = target;
-  seatChartSelectedId = null; seatWallSelIdx = null; seatGridClearSel();
+  seatChartSelectedId = null; seatWallSelIdx = null; seatGridClearSel(); seatLineMultiSel.clear(); seatLineSelIdx = null;
   renderSeatChartEditPreview();
   showCenterToast('되돌렸어요');
 }
@@ -42509,6 +42616,8 @@ function seatV2ShowGuides(grid, gx, gy){
 // 칸 끌어 옮기기(v2) - 고른 칸들(Shift로 같이 고른 칸 포함)을 같이 옮김
 function seatV2CellPointerDown(e, el, cell){
   const id = cell.id;
+  if(seatLineMultiSel.size && (seatChartSelectedId === id || seatMultiSel.has(id))){ seatV2GroupDrag(e, el, ()=> seatChartCellClickLogic(id, false)); return; } // [2026.10.06] 칸+선 같이 옮기기
+  if(!(seatChartSelectedId === id || seatMultiSel.has(id))) seatLineMultiSel.clear();
   const grid = document.getElementById('seatChartEditGrid');
   const tray = document.getElementById('seatChartTrayWrap');
   const z = seatGridZ();
@@ -42613,7 +42722,7 @@ function seatV2LinesHtml(walls, pickable){
     if(!w || w.x1 == null) return '';
     const rc = seatV2LineRect(w), horiz = Math.abs(w.y2 - w.y1) <= Math.abs(w.x2 - w.x1);
     const sel = pickable && i === seatLineSelIdx;
-    const cls = pickable ? ` seat-line-pick ${horiz ? 'is-h' : 'is-v'}${sel ? ' is-sel' : ''}` : '';
+    const cls = pickable ? ` seat-line-pick ${horiz ? 'is-h' : 'is-v'}${(sel || seatLineMultiSel.has(i)) ? ' is-sel' : ''}` : '';
     let h = `<span class="seat-wall${cls}" data-line-idx="${i}" style="left:${rc.left}px; top:${rc.top}px; width:${rc.width}px; height:${rc.height}px; background:${w.color||'#1E2A5E'};"></span>`;
     if(sel) h += `<span class="seat-line-end" data-line-idx="${i}" data-end="1" style="left:${w.x1}px; top:${w.y1}px;"></span><span class="seat-line-end" data-line-idx="${i}" data-end="2" style="left:${w.x2}px; top:${w.y2}px;"></span>`;
     return h;
@@ -42720,6 +42829,10 @@ function bindSeatV2LinePick(grid){
     el.addEventListener('pointerdown', ev=>{
       ev.preventDefault(); ev.stopPropagation();
       const i = Number(el.dataset.lineIdx); const w = seatChartDraft.walls[i]; if(!w) return;
+      // [2026.10.06] Ctrl+클릭 = 선을 같이 고르기/빼기 · 같이 고른 선을 끌면 고른 칸·선이 모두 같이 움직임(요청)
+      if(ev.ctrlKey || ev.metaKey){ if(seatLineMultiSel.has(i)) seatLineMultiSel.delete(i); else seatLineMultiSel.add(i); if(seatLineSelIdx !== null && seatLineSelIdx !== i){ seatLineMultiSel.add(seatLineSelIdx); } seatLineSelIdx = null; renderSeatChartEditPreview(); return; }
+      if(seatLineMultiSel.has(i) && (seatSelCellsAll().length + seatSelLineIdxs().length) > 1){ seatV2GroupDrag(ev, el, ()=>{ seatLineMultiSel.clear(); seatChartSelectedId = null; seatMultiSel.clear(); seatLineSelIdx = i; renderSeatChartEditPreview(); }); return; }
+      seatLineMultiSel.clear();
       seatChartSelectedId = null; seatLineSelIdx = i;
       const o = { ...w }, sx = ev.clientX, sy = ev.clientY, horiz = Math.abs(w.y2 - w.y1) <= Math.abs(w.x2 - w.x1);
       const t = seatV2LineSnapTargets(i);
@@ -43159,10 +43272,10 @@ var seatSizeClipboard = null;
 // 위쪽 "붙여넣기" - 복사해 둔 칸과 같은 종류·크기·방향·문 위치의 새 칸(이름은 비움)을 격자의 빈 곳에 추가하고 선택함
 function seatUpdatePasteBtn(){
   const b = document.getElementById('seatChartPasteBtn');
-  if(b) b.style.display = (seatSizeClipboard && seatSizeClipboard.src) ? '' : 'none';
+  if(b) b.style.display = ((seatSizeClipboard && seatSizeClipboard.src) || seatGroupClip) ? '' : 'none';
   // [2026.10.03] seatChartPasteUndoBtn은 이제 모든 변경 되돌리기(seatUndo)라 항상 보임
   const x = document.getElementById('seatChartCopyClearBtn');
-  if(x) x.style.display = seatSizeClipboard ? '' : 'none';
+  if(x) x.style.display = (seatSizeClipboard || seatGroupClip) ? '' : 'none';
 }
 // 붙여넣기 되돌리기용 기록 - {kind:'new', id} 새로 붙인 칸 / {kind:'size', id, rowSpan, colSpan} 크기만 바꾼 칸
 var seatPasteUndoStack = [];
@@ -43180,7 +43293,7 @@ function seatPasteUndo(){
   showCenterToast('붙여넣기를 취소했어요');
 }
 function seatCopyClear(){
-  seatSizeClipboard = null;
+  seatSizeClipboard = null; seatGroupClip = null;
   renderSeatChartEditPreview();
   showCenterToast('복사를 해제했어요');
 }
@@ -43264,7 +43377,7 @@ function bindSeatChartEditCellEvents(){
       else if(act==='copysize'){
         // 복사 - 크기뿐 아니라 칸 종류·방향·문 위치까지 기억해서, 위쪽 "붙여넣기"로 똑같은 칸을 새로 만들 수 있게 함
         seatSizeClipboard = { ...seatCellEffectiveSpans(cell), src: { type: cell.type, px: !!cell.px, rowSpan: cell.rowSpan||1, colSpan: cell.colSpan||1, dir: cell.dir||0, doorSide: cell.doorSide||'', icon: cell.icon||'', dividerColor: cell.dividerColor, trim: cell.trim ? { ...cell.trim } : null } };
-        showCenterToast(`복사했어요 · 위쪽 "붙여넣기"로 같은 칸 추가, 다른 칸을 골라 도구줄의 붙여넣기로 크기만 맞추기`);
+        if(!seatGroupCopy()) showCenterToast(`복사했어요 · 위쪽 "붙여넣기"로 같은 칸 추가, 다른 칸을 골라 도구줄의 붙여넣기로 크기만 맞추기`);
         renderSeatChartEditPreview(); seatUpdatePasteBtn();
       }
       else if(act==='pastesize'){ seatSelectedCells(cell).forEach(c=> seatPasteSizeTo(c, true)); renderSeatChartEditPreview(); }
@@ -43332,8 +43445,46 @@ function bindSeatChartEditCellEvents(){
   // 빈 격자(칸이 없는 곳)를 누르면 선택 해제 - 도구줄도 같이 사라짐
   const gridEl = document.getElementById('seatChartEditGrid');
   gridEl?.addEventListener('pointerdown', (e)=>{
+    // [2026.10.06] "빈 곳에서 마우스로 끌어 네모 안에 들어온 칸·구분선을 한 번에 고르기"(요청) - 네모 안에 완전히 들어온 것만(방 안 좌석만 골라도 방은 안 따라옴)
+    if(e.target === gridEl && seatV2() && !seatChartWallMode && e.button === 0){
+      const z = seatGridZ(), rc0 = gridEl.getBoundingClientRect();
+      const p0 = { x:(e.clientX - rc0.left)/z, y:(e.clientY - rc0.top)/z };
+      let mq = null, moved = false;
+      const mv = ev=>{
+        const p = { x:(ev.clientX - rc0.left)/z, y:(ev.clientY - rc0.top)/z };
+        if(!moved && Math.abs(p.x - p0.x) < 4 && Math.abs(p.y - p0.y) < 4) return;
+        moved = true;
+        if(!mq){ mq = document.createElement('span'); mq.className = 'seat-marquee'; gridEl.appendChild(mq); }
+        Object.assign(mq.style, { left: Math.min(p0.x,p.x)+'px', top: Math.min(p0.y,p.y)+'px', width: Math.abs(p.x-p0.x)+'px', height: Math.abs(p.y-p0.y)+'px' });
+        mq._r = { x1:Math.min(p0.x,p.x), y1:Math.min(p0.y,p.y), x2:Math.max(p0.x,p.x), y2:Math.max(p0.y,p.y) };
+      };
+      const up = ()=>{
+        window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+        const R = mq && mq._r; if(mq) mq.remove();
+        const keep = e.ctrlKey || e.metaKey || e.shiftKey; // Ctrl·Shift를 누르고 끌면 지금 고른 것에 더함
+        if(!moved || !R){
+          if(!keep && (seatChartSelectedId || seatWallSelIdx !== null || seatLineSelIdx !== null || seatLineMultiSel.size || seatGridSel.cols.size || seatGridSel.rows.size)){
+            seatChartSelectedId = null; seatWallSelIdx = null; seatLineSelIdx = null; seatLineMultiSel.clear(); seatMultiSel.clear(); seatGridClearSel(); renderSeatChartEditPreview();
+          }
+          return;
+        }
+        const inR = (x1,y1,x2,y2)=> x1 >= R.x1 && y1 >= R.y1 && x2 <= R.x2 && y2 <= R.y2;
+        const ids = keep ? seatSelCellsAll().map(c=> c.id) : [];
+        (seatChartDraft.cells||[]).forEach(c=>{ if(!c.row || !c.col || ids.includes(c.id)) return; const r = seatV2Rect(c); if(inR(r.x, r.y, r.x + r.w, r.y + r.h)) ids.push(c.id); });
+        const lines = keep ? seatSelLineIdxs() : [];
+        (seatChartDraft.walls||[]).forEach((w, i)=>{ if(!w || w.x1 == null || lines.includes(i)) return; if(inR(Math.min(w.x1,w.x2), Math.min(w.y1,w.y2), Math.max(w.x1,w.x2), Math.max(w.y1,w.y2))) lines.push(i); });
+        seatChartSelectedId = ids[0] || null; seatMultiSel.clear(); ids.slice(1).forEach(i=> seatMultiSel.add(i)); seatMultiAnchor = seatChartSelectedId;
+        seatLineSelIdx = null; seatLineMultiSel.clear(); lines.forEach(i=> seatLineMultiSel.add(i));
+        if(!ids.length && lines.length === 1){ seatLineSelIdx = lines[0]; seatLineMultiSel.clear(); }
+        seatChartEditorOpenId = null; seatWallSelIdx = null; seatGridClearSel();
+        renderSeatChartEditPreview();
+        if(ids.length || lines.length) showCenterToast(`${ids.length ? ids.length + '칸' : ''}${ids.length && lines.length ? ' · ' : ''}${lines.length ? '선 ' + lines.length + '개' : ''} 골랐어요 · 끌어서 같이 옮기고, Ctrl+C·Ctrl+V로 복사·붙여넣기`);
+      };
+      window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+      return;
+    }
     if(e.target !== gridEl || (!seatChartSelectedId && seatWallSelIdx === null && seatLineSelIdx === null && !seatGridSel.cols.size && !seatGridSel.rows.size)) return;
-    seatChartSelectedId = null; seatWallSelIdx = null; seatLineSelIdx = null; seatGridClearSel();
+    seatChartSelectedId = null; seatWallSelIdx = null; seatLineSelIdx = null; seatLineMultiSel.clear(); seatGridClearSel();
     renderSeatChartEditPreview();
   });
   // 격자선(벽) 선택·끌어서 옮기기 - "격자선을 한 번 그리면 수정·삭제가 안 된다"·"선을 특정 부분만 옮기고 싶다" 요청.
@@ -43611,6 +43762,7 @@ document.getElementById('seatZoomBtn')?.addEventListener('click', ()=> seatSetEd
 function pageZoomF(){ try{ return parseFloat(getComputedStyle(document.documentElement).zoom) || 1; }catch(e){ return 1; } }
 // 칸을 끌지 않고 누르기만 했을 때 - 한 번 누르면 선택(도구줄), 두 번 연달아 누르면 수정창
 function seatChartCellClickLogic(id, fromTray){
+  seatLineMultiSel.clear(); // [2026.10.06] 칸 하나를 그냥 누르면 같이 고른 선은 풀림
   // 두 번 연달아 누르면(더블클릭) 바로 수정창을 엶 - 한 번 누르면 선택만 되고 위쪽에 도구줄이 뜸
   const now = Date.now();
   if(seatChartLastClick.id===id && now - seatChartLastClick.t < 380){
@@ -44094,7 +44246,7 @@ document.getElementById('seatChartImportOrgBtn')?.addEventListener('click', ()=>
   renderSeatChartEditPreview();
   showCenterToast(added || updated ? `배치예정 ${added}명 추가${updated ? ` · 팀/직책 ${updated}명 최신화` : ''}` : '이미 모두 가져와져 있어요');
 });
-document.getElementById('seatChartPasteBtn')?.addEventListener('click', seatPasteNewCell);
+document.getElementById('seatChartPasteBtn')?.addEventListener('click', ()=>{ if(seatGroupClip && seatV2()) seatGroupPaste(); else seatPasteNewCell(); }); // [2026.10.06] 복사한 칸·선 바로 옆에 겹쳐 붙이기
 document.getElementById('seatChartPasteUndoBtn')?.addEventListener('click', seatUndo);
 document.getElementById('seatChartAlignLinesBtn')?.addEventListener('click', ()=>{
   if(!seatChartDraft) return;
@@ -44111,6 +44263,9 @@ document.addEventListener('keydown', (e)=>{
   const tag = (e.target && e.target.tagName) || '';
   if(tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target && e.target.isContentEditable)) return;
   if((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')){ e.preventDefault(); seatUndo(); }
+  else if((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C') && seatV2()){ if(seatGroupCopy()){ e.preventDefault(); renderSeatChartEditPreview(); } }
+  else if((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V') && seatV2() && seatGroupClip){ e.preventDefault(); seatGroupPaste(); }
+  else if((e.key === 'Delete' || e.key === 'Backspace') && seatV2() && seatLineMultiSel.size){ e.preventDefault(); const del = new Set(seatSelLineIdxs()); seatChartDraft.walls = seatChartDraft.walls.filter((w, i)=> !del.has(i)); seatLineSelIdx = null; seatLineMultiSel.clear(); renderSeatChartEditPreview(); }
   else if(/^Arrow(Left|Right|Up|Down)$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey){
     const st = e.shiftKey ? 10 : 1;
     const d = { ArrowLeft:[-st,0], ArrowRight:[st,0], ArrowUp:[0,-st], ArrowDown:[0,st] }[e.key];
