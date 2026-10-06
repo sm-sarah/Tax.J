@@ -2174,7 +2174,8 @@ try{
   #itAllViewSeg button{ height:32px; padding:0 16px; font-size:12.5px; font-weight:800; border:1.5px solid var(--border); border-radius:8px; background:var(--surface); color:var(--ink-soft); box-sizing:border-box; }
   #itAllViewSeg button.on{ background:var(--indigo); border-color:var(--indigo); color:#fff; }
   .it-ov-table th{ font-size:11.5px; line-height:1.3; }
-  .it-ov-table tr.ito-off > td:not(.ito-cyc){ opacity:.4; } /* [2026.10.06] 미대상 거래처 줄은 흐리게(신고 칸만 또렷하게 - 눌러서 바꿀 수 있게) */
+  .it-ov-table tr.ito-off > td:not(.ito-cyc){ opacity:.4; }
+  .it-ov-table .ito-cyc .ito-clear{ width:22px; height:22px; border-radius:6px; margin-left:2px; vertical-align:middle; } /* [2026.10.06] 미대상 거래처 줄은 흐리게(신고 칸만 또렷하게 - 눌러서 바꿀 수 있게) */
   .it-ov-table tr.ito-off .ito-in, .it-ov-table tr.ito-off .ito-sel{ background:var(--bg); cursor:not-allowed; }
   .it-ov-table td{ padding:5px 6px !important; }
   .it-ov-table .ito-name{ font-weight:800; white-space:nowrap; padding-left:10px !important; padding-right:10px !important; }
@@ -29691,7 +29692,7 @@ function renderItOverview(){
     return `<tr${off ? ' class="ito-off"' : ''}>
       <td class="num cvb" style="color:var(--ink-soft);">${i+1}</td>
       <td class="cvb ito-name" style="color:${entityColor};">${escHtml(c.name||'')}</td>
-      <td class="cvb ito-cyc" title="눌러서 신고구분(대상·미대상, 매월·반기) 고르기">${itoCycleCellHtml(c, ovYear)}</td>
+      <td class="cvb ito-cyc" title="눌러서 신고구분(대상·미대상, 매월·반기) 고르기">${itoCycleCellHtml(c, ovYear)}${off && Object.keys(e).some(k=> k !== 'updatedAt') ? `<button type="button" class="it-memo-act del ito-clear" data-id="${c.id}" data-name="${escHtml(c.name||'')}" title="이 거래처의 총괄 값 지우기" aria-label="총괄 값 지우기"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>` : ''}</td>
       ${ITO_TEXT_FIELDS.map(([f,,w])=>`<td class="cvb" style="min-width:${w}px;">${itoPayDaySelectHtml(c.id, f, ITO_PAYDAY_SUGGEST, e[f])}</td>`).join('')}
       <td class="cvb">${itoSelectHtml(c.id,'payComm',ITO_COMM,e.payComm)}</td>
       <td class="cvb">${itoSelectHtml(c.id,'payslipVia',ITO_VIA,e.payslipVia)}</td>
@@ -29721,6 +29722,15 @@ function renderItOverview(){
       return;
     }
     sel.dataset.v = sel.value; itoSet(sel.dataset.id, sel.dataset.f, sel.value);
+  }));
+  // [2026.10.06] "미대상인데 잘못 가져와 입력된 값 삭제"(요청) - 값이 남은 미대상 줄의 신고 칸 옆 휴지통 → 확인 후 그 거래처 총괄 값을 모두 지움
+  wrap.querySelectorAll('.ito-clear').forEach(btn=> btn.addEventListener('click', async (ev)=>{
+    ev.stopPropagation();
+    if(!(await appConfirm(`${btn.dataset.name}의 총괄 값을 모두 지울까요?\n\n신고 지급일·실 급여일·급여소통·전달방법·사업장관리번호·EDI·비고(급여 특이사항)가 지워져요.`, { okText:'지우기' }))) return;
+    delete sharedItOverview[btn.dataset.id];
+    await saveSharedItOverview();
+    renderItOverview();
+    showCenterToast('지웠어요');
   }));
   wrap.querySelectorAll('tr.ito-off').forEach(tr=> tr.querySelectorAll('.ito-in, .ito-sel, .ito-chk').forEach(el=>{ el.disabled = true; }));
   wrap.querySelectorAll('.filing-cycle-chip').forEach(btn=> btn.addEventListener('click', ()=> openFilingCycleEditModal(btn.dataset.clientId)));
