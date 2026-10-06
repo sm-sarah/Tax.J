@@ -30409,11 +30409,11 @@ function vatTaxbotDetailHtml(year, period){
     const en = sharedVatFilingTargets[c.id] && sharedVatFilingTargets[c.id][year] && sharedVatFilingTargets[c.id][year][period];
     if(en && en.taxbot) list.push({ c, tb: en.taxbot, st: vatEntryStatus(en, period, c.entityType) });
   });
-  const title = `<div class="vat-tb-title">택스봇 예정고지 상세<span>${year}년 ${VAT_TARGET_PERIOD_LABEL[period]}</span></div>`;
+  const title = `<div class="vat-tb-title">예정고지 상세<span>${year}년 ${VAT_TARGET_PERIOD_LABEL[period]}</span></div>`;
   if(!list.length) return `<div class="vat-tb-sec">${title}<div class="empty-state">불러온 택스봇 예정고지가 없어요. 표 오른쪽 위 택스봇 아이콘으로 "부가가치세예정고지" 엑셀을 가져와 주세요.</div></div>`;
   list.sort((a, b)=> (order[a.st] - order[b.st]) || ((bkIdx.has(a.c.id) ? bkIdx.get(a.c.id) : 1e6) - (bkIdx.has(b.c.id) ? bkIdx.get(b.c.id) : 1e6)));
   const n = k=> list.filter(x=> x.st === k).length;
-  const taxSum = list.filter(x=> x.st === 'notice').reduce((s, x)=> s + (Number(x.tb.noticeTax) || 0), 0);
+  // [2026.10.06] 제목에서 '택스봇' 빼고, 고지세액 합계도 빼 달라(요청)
   const na = '<span class="vat-tb-na">—</span>';
   const rows = list.map((x, i)=>{
     const entityColor = x.c.entityType === '법인' ? '#0B5A78' : x.c.entityType === '개인' ? '#BE185D' : 'inherit';
@@ -30432,7 +30432,7 @@ function vatTaxbotDetailHtml(year, period){
     </tr>`;
   }).join('');
   return `<div class="vat-tb-sec">${title}
-    <div class="vat-tb-counts">예정신고 <b>${n('filing')}</b> · 예정고지 <b>${n('notice')}</b> (고지세액 합계 <b>${taxSum.toLocaleString('ko-KR')}</b>원) · 고지제외 <b>${n('notice-excluded')}</b>${n('not-target') ? ` · 미대상 <b>${n('not-target')}</b>` : ''}</div>
+    <div class="vat-tb-counts">예정신고 <b>${n('filing')}</b> · 예정고지 <b>${n('notice')}</b> · 고지제외 <b>${n('notice-excluded')}</b>${n('not-target') ? ` · 미대상 <b>${n('not-target')}</b>` : ''}</div>
     <div class="table-scroll"><table class="vat-tb-table"><thead><tr><th class="cvb">순번</th><th class="cvb">상호명</th><th class="cvb">사업자번호</th><th class="cvb">구분</th><th class="cvb">제외사유</th><th class="cvb">직전 과세기간 공급가액</th><th class="cvb">예정고지세액</th><th class="cvb">관할서</th><th class="cvb">전자납부번호</th><th class="cvb">납부기한</th></tr></thead><tbody>${rows}</tbody></table></div>
   </div>`;
 }
@@ -31325,6 +31325,38 @@ function renderReviewItFsSection(){
   if(viewingReviewItSection === 'tax') reviewItMergeTotalsIntoReturnTable();
   reviewItFixStickyHeads();
 }
+// [2026.10.06] "원천세 검증에서 키보드 화살표로 해당 칸으로 이동"(요청) - 엑셀처럼 ↑↓는 바로 위·아래 칸, ←→는 글자 맨 앞/끝에서
+// (또는 칸 전체가 선택된 상태에서) 왼쪽·오른쪽 칸으로. 화면에 보이는 입력칸의 실제 위치로 가장 가까운 칸을 찾아서, 표가 바뀌어도
+// (급여 표 12월 → 아래 세액 표 1월처럼) 그대로 이어짐. 옮긴 칸은 전체 선택돼서 바로 덮어쓸 수 있음
+document.getElementById('reviewItFullscreenOverlay')?.addEventListener('keydown', (e)=>{
+  if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key) || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+  const cur = e.target;
+  if(!cur || cur.tagName !== 'INPUT' || (cur.type && !['text','number','tel'].includes(cur.type))) return;
+  const len = (cur.value || '').length, ss = cur.selectionStart, se = cur.selectionEnd;
+  const allSel = ss === 0 && se === len;
+  if(e.key === 'ArrowLeft' && !(allSel || (ss === 0 && se === 0))) return;
+  if(e.key === 'ArrowRight' && !(allSel || (ss === len && se === len))) return;
+  const ov = document.getElementById('reviewItFullscreenOverlay');
+  const r0 = cur.getBoundingClientRect(), cx = r0.left + r0.width/2, cy = r0.top + r0.height/2;
+  let best = null, bestScore = Infinity;
+  ov.querySelectorAll('input[type="text"], input:not([type])').forEach(inp=>{
+    if(inp === cur || inp.disabled) return;
+    const r = inp.getBoundingClientRect();
+    if(!r.width || !r.height) return;
+    const x = r.left + r.width/2, y = r.top + r.height/2, dx = x - cx, dy = y - cy;
+    let ok, score;
+    if(e.key === 'ArrowDown'){ ok = dy > 4 && Math.abs(dx) < Math.max(r0.width, r.width) / 2 + 4; score = dy + Math.abs(dx) * 3; }
+    else if(e.key === 'ArrowUp'){ ok = dy < -4 && Math.abs(dx) < Math.max(r0.width, r.width) / 2 + 4; score = -dy + Math.abs(dx) * 3; }
+    else if(e.key === 'ArrowRight'){ ok = dx > 4 && Math.abs(dy) < r0.height / 2 + 2; score = dx; }
+    else { ok = dx < -4 && Math.abs(dy) < r0.height / 2 + 2; score = -dx; }
+    if(ok && score < bestScore){ best = inp; bestScore = score; }
+  });
+  if(!best) return;
+  e.preventDefault();
+  best.focus({ preventScroll:true });
+  best.scrollIntoView({ block:'nearest', inline:'nearest' });
+  try{ best.select(); }catch(err){}
+});
 // [2026.10.06] "스크롤하면 고정행이 같이 움직임"(요청) - 머리행이 두 줄인 표는 두 줄 모두 top:0으로 붙어서 둘째 줄이 첫째 줄을
 // 덮고, 첫째 줄은 위로 밀려 사라졌음 → 둘째 줄부터는 윗줄 높이만큼 내려서 붙임(그려진 뒤 실제 높이를 재서 맞춤)
 function reviewItFixStickyHeads(){
@@ -40714,7 +40746,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.06 10:57';
+const APP_BUILD = '2026.10.06 11:09';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
