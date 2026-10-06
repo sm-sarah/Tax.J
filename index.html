@@ -31400,7 +31400,50 @@ let reviewItAutoSaveT = null;   // '자동 저장됨' 표시용 타이머
 function setReviewItDirty(isDirty, opts){
   const btn = document.getElementById('reviewItSaveBtn');
   if(btn) btn.classList.toggle('is-dirty', !!isDirty);
-  if(isDirty && !(opts && opts.noAuto)) reviewItSaveNow(true);
+  if(isDirty && !(opts && opts.noAuto)){ reviewItSaveNow(true); reviewItScheduleCloseAsk(); }
+}
+// [2026.10.06] "검증이 다 되면 신고서 마감을 설정하시겠습니까? → 예면 그 날짜로 원천세·지방세 신고서 마감일에"(요청).
+// 팝업을 열 때(·연도를 바꿀 때) 달별 검증 상태를 기억해 두고, 입력이 멈춘 뒤(0.8초) 어떤 달이 '맞음'으로 새로 바뀌면 물어봄.
+// 그 달·그 지급시기의 원천세·지방세 신고서 마감일이 이미 둘 다 있으면 묻지 않고, 예를 누르면 비어 있는 쪽만 오늘 날짜로 채움
+let reviewItVerifySnaps = {};
+let reviewItCloseAskT = null;
+function reviewItVerifyCtx(){
+  const cid = reviewItFsClientId; if(!cid) return null;
+  const year = Number(document.getElementById('reviewItFsYearSelect')?.value) || Number(todayStr().slice(0,4));
+  const tk = reviewItFsTiming === 'nextMonth' ? 'nextMonth' : null;
+  return { cid, year, tk, key: `${cid}|${reviewItFsTiming || ''}|${year}` };
+}
+function reviewItVerifyStatuses(ctx){ return Array.from({length:12}, (_,i)=> itAllVerifyStatus(ctx.cid, ctx.tk, ctx.year, i+1)); }
+function reviewItSnapVerify(){ const ctx = reviewItVerifyCtx(); if(ctx) reviewItVerifySnaps[ctx.key] = reviewItVerifyStatuses(ctx); }
+// 검증표의 지급시기 → 신고일자 팝업의 줄(sameMonth/nextMonth). 지급시기가 하나뿐인 거래처는 그 달 등록된 쪽
+function reviewItFilingLane(cid, period){
+  if(reviewItFsTiming) return reviewItFsTiming;
+  const t = (sharedFilingTargets[cid] || {})[period] || {};
+  return (t.nextMonthPay && !t.sameMonthPay) ? 'nextMonth' : 'sameMonth';
+}
+function reviewItScheduleCloseAsk(){ clearTimeout(reviewItCloseAskT); reviewItCloseAskT = setTimeout(reviewItCheckCloseAsk, 800); }
+async function reviewItCheckCloseAsk(){
+  const ctx = reviewItVerifyCtx(); if(!ctx) return;
+  const now = reviewItVerifyStatuses(ctx);
+  const prev = reviewItVerifySnaps[ctx.key];
+  reviewItVerifySnaps[ctx.key] = now;
+  if(!prev) return;
+  const months = now.map((st,i)=> (st === 'ok' && prev[i] !== 'ok') ? i+1 : 0).filter(Boolean);
+  for(const m of months){
+    const period = `${ctx.year}-${String(m).padStart(2,'0')}`;
+    const lane = reviewItFilingLane(ctx.cid, period);
+    const ex = (((sharedIncomeTaxFilingStatus || {})[period] || {})[ctx.cid] || {})[lane] || {};
+    if(ex.returnClose && ex.returnCloseLocal) continue;
+    const today = todayStr();
+    const ok = await appConfirm(`${m}월 귀속 검증이 완료됐어요.\n신고서 마감을 설정하시겠습니까?\n(원천세·지방세 신고서 마감일 → ${today})`, { okText:'예', cancelText:'아니요' });
+    if(!ok || ctx.cid !== reviewItFsClientId) continue;
+    const t = incomeTaxFilingEntry(period, ctx.cid)[lane];
+    if(!t.returnClose) t.returnClose = today;
+    if(!t.returnCloseLocal) t.returnCloseLocal = today;
+    await saveSharedIncomeTaxFilingStatus();
+    try{ renderIncomeTaxUnified(); }catch(e){}
+    showCenterToast(`${m}월 귀속 신고서 마감일을 입력했어요`);
+  }
 }
 function reviewItSaveNow(auto){
   saveSharedReviewFigures();   // 이 기기 저장 + 서버 업로드 예약(동기적으로 바로 끝남)
@@ -31967,6 +32010,7 @@ function openReviewItFullscreen(clientId, section, timing){
   renderReviewItFsMeta(clientId);
   showReviewItFsSection(viewingReviewItSection);
   setReviewItDirty(false);
+  reviewItSnapVerify();
   document.getElementById('reviewItFullscreenOverlay').style.display = 'flex';
   document.documentElement.style.overflow = 'hidden'; // 팝업 안에서 스크롤할 때 뒤 화면이 같이 움직이지 않게(요청)
 }
@@ -32006,6 +32050,7 @@ document.getElementById('reviewItFsYearSelect')?.addEventListener('change', ()=>
   populateReviewItYearSelectEl('reviewItFsYearSelect', reviewItFsClientId); // 그 거래처 기준 연도 목록 유지
   renderReviewItFsMeta(reviewItFsClientId);
   renderReviewItFsSection();
+  reviewItSnapVerify();
 });
 document.getElementById('reviewItXlsDownBtn')?.addEventListener('click', ()=>{ try{ reviewItXlsDownload(); }catch(e){ console.error(e); showCenterToast('엑셀을 만들지 못했어요'); } });
 document.getElementById('reviewItXlsUpBtn')?.addEventListener('click', ()=> document.getElementById('reviewItXlsFile')?.click());
@@ -41296,7 +41341,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.06 16:46';
+const APP_BUILD = '2026.10.06 16:53';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
