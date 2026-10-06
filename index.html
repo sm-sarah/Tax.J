@@ -2187,6 +2187,7 @@ try{
   .ito-in, .ito-sel{ height:26px; box-sizing:border-box; border:1px solid var(--border); border-radius:7px; background:var(--surface); font-family:inherit; font-size:12px; padding:0 7px; color:var(--ink); }
   .ito-in:focus, .ito-sel:focus{ outline:none; border-color:var(--indigo); }
   .ito-sel{ min-width:92px; font-weight:700; cursor:pointer; }
+  .submit-na{ display:inline-block; color:var(--ink-soft); opacity:.55; font-weight:600; font-size:12px; } button.submit-na{ width:100%; height:24px; border:none; background:transparent; cursor:pointer; font-family:inherit; } button.submit-na:hover{ opacity:1; color:var(--indigo); } /* [2026.10.07] 제출현황 미대상 칸 = 회색 — */
   .it-ov-table .ito-in{ text-align:center; font-weight:700; } /* [2026.10.07] "사업장관리번호 칸이 스타일이 달라 보인다"(요청) - 옆 선택칸처럼 가운데·굵게 */
   .ito-sel[data-v="카톡"], .ito-sel[data-v="개인카톡"], .ito-sel[data-v="채널카톡"]{ background:#FFF6D6; border-color:#F2DE8C; color:#7A5B00; }
   .ito-sel[data-v="이메일"], .ito-sel[data-v="개인이메일"], .ito-sel[data-v="채널이메일"]{ background:#FDECEF; border-color:#F7C3CF; color:#B4234A; }
@@ -30208,7 +30209,7 @@ function itAllVerifyStatus(clientId, timingKey, year, month){
   const yearData = ((sharedReviewFigures||{})[key]||{})[year] || {};
   const md = (m)=>{ const d = yearData[String(m)] || {}; return { income:d.income||{}, incomeReported:d.incomeReported, tax:d.tax||{}, taxReported: (typeof d.taxReported==='number' ? {근로:d.taxReported} : (d.taxReported||{})), taxReportedLocal:d.taxReportedLocal, manualCheck:d.manualCheck||{} }; };
   const meta = (sharedReviewMeta||{})[clientId] || { payCycle:'매월' };
-  const payCycle = reviewItPayCycleForMonth(meta, month);
+  const payCycle = reviewItCycleFromRecords(clientId, year, month) || reviewItPayCycleForMonth(meta, month, year); // [2026.10.07] 신고구분 이력(반기) 우선
   if(!reviewItIsPeriodEnd(month, payCycle)) return '';
   const months = reviewItPeriodMonths(month, payCycle);
   const cur = md(month);
@@ -30407,7 +30408,16 @@ function renderIncomeTaxUnifiedInner(){
         // [2026.10.06] 칸 모서리 메모 표시 삭제(요청) - 월별 급여 특이사항은 메모 칸의 "급여 특이사항" 팝업에서 봐요
         const memoStar = '';
         const bg = inner ? 'transparent' : st.bg;
-        return `<td class="${colCls}" style="position:relative;">${memoStar}<button type="button" class="it-all-month-cell-btn" ${clickAttr} ${tipRows.length ? `data-tip="${escHtml(tip).replace(/"/g,'&quot;')}"` : ''} style="width:100%; border:${st.plain ? 'none' : `1.5px solid ${st.color}`}; border-radius:6px; padding:4px 1px; background:${bg}; color:${st.text}; font-size:10.5px; font-weight:700; cursor:${state==='none' ? 'default' : (st.disabled?'not-allowed':'pointer')}; opacity:${st.disabled && state!=='none'?'0.35':'1'};">${inner}</button></td>`;
+        // [2026.10.07] "매월 신고인데 완료 체크칸이 안 눌린다"(요청) - 잠긴 칸은 이유를 말풍선으로(신고구분 이력상 그 달이 미대상이면 잠김)
+        let lockTip = '';
+        if(st.disabled){
+          const rec = filingCycleRecordAt(c.id, period), recs0 = filingCycleRecordsOf(c.id)[0];
+          const ym = p=> `${p.slice(0,4)}년 ${Number(p.slice(5,7))}월`;
+          const recTxt = recs0 && period < recs0.effectiveFrom ? `${ym(recs0.effectiveFrom)}부터 등록돼 있어 그 전 달은 신고구분 없음`
+            : rec && rec.effectiveFrom ? `${ym(rec.effectiveFrom)}부터 미대상` : '미대상';
+          lockTip = ` data-tip="${escHtml(appTipHtml(periodLabel, [['신고구분', recTxt], ['', '신고 칸(매월·반기)을 눌러 신고구분 이력의 적용 시작월을 고치면 이 달도 눌려요']])).replace(/"/g,'&quot;')}"`;
+        }
+        return `<td class="${colCls}" style="position:relative;"${lockTip}>${memoStar}<button type="button" class="it-all-month-cell-btn" ${clickAttr} ${tipRows.length ? `data-tip="${escHtml(tip).replace(/"/g,'&quot;')}"` : ''} style="width:100%; border:${st.plain ? 'none' : `1.5px solid ${st.color}`}; border-radius:6px; padding:4px 1px; background:${bg}; color:${st.text}; font-size:10.5px; font-weight:700; cursor:${state==='none' ? 'default' : (st.disabled?'not-allowed':'pointer')}; opacity:${st.disabled && state!=='none'?'0.35':'1'};${st.disabled ? ' pointer-events:none;' : ''}">${inner}</button></td>`;
       }).join('');
       const span = lanes.length > 1 ? ` rowspan="${lanes.length}"` : '';
       const headCells = laneIdx > 0 ? '' : `<td class="num cvb"${span} style="color:var(--ink-soft);">${rowNo}</td>
@@ -31245,7 +31255,7 @@ const SUBMIT_AUTO_MAP = {
   근로연간:['근로과세','근로제출비과세','근로미제출비과세','중도과세','중도제출비과세','중도미제출비과세','연말'],
   사업연간:['사업'], 기타연간:['기타간이미대상'], 퇴직연간:['퇴직'], 이자배당연간:['이자']
 };
-function submitAutoApplicable(clientId, itemKey, period){
+function submitAutoApplicable(clientId, itemKey, period, reviewKeys){
   const keys = SUBMIT_AUTO_MAP[itemKey];
   if(!keys) return null;
   const p = String(period);
@@ -31254,10 +31264,86 @@ function submitAutoApplicable(clientId, itemKey, period){
   if(/^\d{4}$/.test(p)) months = [1,2,3,4,5,6,7,8,9,10,11,12];
   else if(/^\d{4}-\d{2}$/.test(p)) months = [Number(p.slice(5,7))];
   else months = /하|2|H2/i.test(p.slice(5)) ? [7,8,9,10,11,12] : [1,2,3,4,5,6];
-  return [clientId, clientId + '@nextMonth'].some(k=>{
+  return (reviewKeys || [clientId, clientId + '@nextMonth']).some(k=>{
     const yd = ((sharedReviewFigures||{})[k]||{})[year] || {};
     return months.some(m=> keys.some(f=> Number(((yd[String(m)]||{}).income||{})[f]) ));
   });
+}
+// [2026.10.07] 지급명세서 월별 제출기한(요청 - "귀속월+지급월이 중요, 지급월 익월 말일까지 같은 게 많아서")
+// pay = 지급월 익월 말일(사업·기타 간이지급명세서, 일용 지급명세서) / att15 = 귀속월 익월 15일(일용 근로내용확인신고, 특고 월보수액)
+// pay10 = 지급월 익월 10일(학자금상환명세서, 원천세 신고와 같이) / 기타 = 기한 없음
+const SUBMIT_DUE_RULE = { 사업간이:'pay', 기타간이:'pay', 일용지급:'pay', 일용근확:'att15', 특고:'att15' }; // [2026.10.07] 학자금상환은 기준일 없음(요청)
+const SUBMIT_DUE_BASIS_LABEL = { pay:'지급월 익월 말일', att15:'귀속 익월 15일', pay10:'지급월 익월 10일' };
+function submitAddMonth(ym, n){ let y = Number(ym.slice(0,4)), m = Number(ym.slice(5,7)) + n; while(m > 12){ m -= 12; y++; } while(m < 1){ m += 12; y--; } return `${y}-${String(m).padStart(2,'0')}`; }
+function submitPayMonthOf(entry, period, lane){ return (entry && /^\d{4}-\d{2}$/.test(entry.payMonth || '')) ? entry.payMonth : (lane === 'nextMonth' ? submitAddMonth(period, 1) : period); }
+function submitDueDate(itemKey, period, payMonth){
+  const rule = SUBMIT_DUE_RULE[itemKey];
+  if(!rule || !/^\d{4}-\d{2}$/.test(period)) return '';
+  const base = submitAddMonth(rule === 'att15' ? period : payMonth, 1);
+  if(rule === 'att15') return `${base}-15`;
+  if(rule === 'pay10') return `${base}-10`;
+  const last = new Date(Number(base.slice(0,4)), Number(base.slice(5,7)), 0).getDate();
+  return `${base}-${String(last).padStart(2,'0')}`;
+}
+function submitPayMonthSelectHtml(ek, period, payMonth){
+  const opts = [0, 1, 2].map(n=> submitAddMonth(period, n));
+  if(!opts.includes(payMonth)) opts.push(payMonth);
+  const lab = ym=> ym.slice(0,4) !== period.slice(0,4) ? `${ym.slice(2,4)}년 ${Number(ym.slice(5,7))}월` : `${Number(ym.slice(5,7))}월`;
+  return `<select class="submit-paymonth-sel" data-ek="${ek}" title="지급월 - 바꾸면 지급월 기준 제출기한이 다시 계산돼요" style="border:1px solid var(--border); border-radius:7px; height:24px; padding:0 4px; font-size:11.5px; font-weight:700; font-family:inherit; background:var(--surface); color:var(--ink);">${opts.map(o=> `<option value="${o}" ${o === payMonth ? 'selected' : ''}>${lab(o)}</option>`).join('')}</select>`;
+}
+// [2026.10.07] 지급명세서 제출현황 원데이터 엑셀 가져오기(요청) - 머리글 "상호 | 귀속월 | 지급월 | 원천세 | 지방세 | 사업(간이) | 기타(간이) | 일용(지급) | 일용(근확) | 특고_월보수액신고서 | 학자금상환명세서 | 기타( )"
+// 칸 값: 날짜 = 그 날 제출, '해당없음'·'급여없음'·빈칸 = 건드리지 않음, 그 밖의 글자(예: 노무사) = 처리됨으로 글자 그대로. 원천세·지방세 신고일은 가져오지 않음(원천세 신고현황에서 관리)
+const SUBMIT_RAW_COLS = [['사업(간이)','사업간이'], ['기타(간이)','기타간이'], ['일용(지급)','일용지급'], ['일용(근확)','일용근확'], ['특고','특고'], ['학자금','학자금상환'], ['기타()','기타매월']];
+function submitRawFind(wb){
+  const ws = wb.Sheets[wb.SheetNames[0]]; if(!ws) return null;
+  const aoa = XLSX.utils.sheet_to_json(ws, { header:1, raw:true, defval:'' });
+  const hIdx = aoa.findIndex(r=> { const h = r.map(xlsNorm); return h.includes('귀속월') && h.includes('지급월') && h.includes('상호'); });
+  return hIdx < 0 ? null : { aoa, hIdx };
+}
+async function importSubmitRaw(wb){
+  const f = submitRawFind(wb); if(!f) return;
+  const head = f.aoa[f.hIdx].map(xlsNorm);
+  const iName = head.indexOf('상호'), iAtt = head.indexOf('귀속월'), iPay = head.indexOf('지급월');
+  const cols = SUBMIT_RAW_COLS.map(([lbl, key])=> [key, head.findIndex(h=> lbl === '기타()' ? h === '기타()' : h.startsWith(xlsNorm(lbl)))]).filter(([,i])=> i >= 0);
+  const normName = v=> String(v||'').replace(/\s+/g,'').replace(/주식회사|\(주\)|㈜|^주\)/g,'').toLowerCase();
+  const pool = []; const seen = new Set(); [...bookkeepingClientList(), ...(clients.list||[])].forEach(c=>{ if(!seen.has(c.id)){ seen.add(c.id); pool.push(c); } });
+  const ym = v=>{ const d = gwExpenseDateStr(v); if(d) return d.slice(0,7); const m = String(v||'').trim().match(/^(\d{4})\D(\d{1,2})$/); return m ? `${m[1]}-${m[2].padStart(2,'0')}` : ''; };
+  const recs = [], unmatched = new Set(); let skipped = 0;
+  f.aoa.slice(f.hIdx+1).forEach(r=>{
+    const name = String(r[iName]||'').trim(); if(!name) return;
+    const period = ym(r[iAtt]), payMonth = ym(r[iPay]) || period;
+    if(!period){ skipped++; return; }
+    const c = pool.find(x=> normName(x.name) === normName(name));
+    if(!c){ if(![...unmatched].some(u=> normName(u) === normName(name))) unmatched.add(name); return; }
+    const vals = {};
+    cols.forEach(([key, i])=>{
+      const v = r[i]; const d = gwExpenseDateStr(v); const t = String(v === null || v === undefined ? '' : v).trim();
+      if(d) vals[key] = { date:d };
+      else if(t && !/^(해당없음|급여없음|-)$/.test(t.replace(/\s/g,''))) vals[key] = { note:t };
+    });
+    recs.push({ c, period, payMonth, lane: payMonth > period ? 'nextMonth' : 'sameMonth', vals });
+  });
+  if(!recs.length){ appAlert(`가져올 줄을 찾지 못했어요.${unmatched.size ? `\n\n상호를 못 찾은 거래처: ${[...unmatched].slice(0,8).join(', ')}` : ''}`); return; }
+  const groups = {}; recs.forEach(x=>{ const k = x.c.id + '|' + x.period; (groups[k] = groups[k] || new Set()).add(x.lane); });
+  const cells = recs.reduce((a,x)=> a + Object.keys(x.vals).length, 0);
+  if(!(await appConfirm(`지급명세서 제출현황 원데이터를 가져올까요?\n\n· ${recs.length}줄 · 제출 기록 ${cells}칸 (지급월 포함)\n· 이미 있는 제출일은 엑셀 값으로 바뀌어요${skipped ? `\n· 귀속월을 읽지 못한 ${skipped}줄은 건너뜀` : ''}${unmatched.size ? `\n· 상호를 못 찾은 ${unmatched.size}곳: ${[...unmatched].slice(0,6).join(', ')}${unmatched.size > 6 ? ' 등' : ''}` : ''}`, { okText:'가져오기', cancelText:'취소' }))) return;
+  sharedFilingStatus['원천세'] = sharedFilingStatus['원천세'] || {};
+  recs.forEach(x=>{
+    const pd = sharedFilingStatus['원천세'][x.period] = sharedFilingStatus['원천세'][x.period] || {};
+    const t = (sharedFilingTargets[x.c.id] || {})[x.period] || {};
+    const dual = groups[x.c.id + '|' + x.period].size > 1 || (t.sameMonthPay && t.nextMonthPay);
+    const ek = dual && x.lane === 'nextMonth' ? x.c.id + '@nextMonth' : x.c.id;
+    const e = pd[ek] = pd[ek] || { memo:'' }; e.items = e.items || {}; e.itemDates = e.itemDates || {};
+    e.payMonth = x.payMonth;
+    Object.entries(x.vals).forEach(([key, v])=>{
+      e.items[key] = true;
+      if(v.date){ e.itemDates[key] = v.date; if(e.itemNotes) delete e.itemNotes[key]; }
+      else { delete e.itemDates[key]; e.itemNotes = e.itemNotes || {}; e.itemNotes[key] = v.note; }
+    });
+  });
+  await saveSharedFilingStatus();
+  showCenterToast(`${recs.length}줄을 가져왔어요`);
+  renderSubmitStatusTable();
 }
 function renderSubmitStatusTable(){ const r = renderSubmitStatusTableInner(); tblPlaceXls(tblXlsBox('submitStatusXlsBox'), document.getElementById('submitStatusTableWrap')); return r; }
 function renderSubmitStatusTableInner(){
@@ -31266,7 +31352,10 @@ function renderSubmitStatusTableInner(){
   const period = submitPeriodKey();
   const titleEl = document.getElementById('submitStatusTitle');
   if(titleEl) titleEl.textContent = '지급명세서 제출현황';
-  const list = bookkeepingClientList().filter(c=>isSubmitStatusPayrollTarget(c.id));
+  const monthly = submitState.sourceMode === '월별';
+  // [2026.10.07] 월별은 원데이터로 가져온 거래처(이 귀속월에 기록이 있는 거래처)도 명단에 넣음
+  const pdNow = ((sharedFilingStatus['원천세'] || {})[period]) || {};
+  const list = bookkeepingClientList().filter(c=> isSubmitStatusPayrollTarget(c.id) || (monthly && (pdNow[c.id] || pdNow[c.id + '@nextMonth'])));
   const wrap = document.getElementById('submitStatusTableWrap');
   if(!wrap) return;
   if(!list.length){ wrap.innerHTML = `<div class="empty-state">이 기간에 검증 급여를 입력했거나 원천세 신고를 마친 거래처가 없어요.</div>`; return; }
@@ -31274,11 +31363,26 @@ function renderSubmitStatusTableInner(){
   sharedFilingStatus['원천세'][period] = sharedFilingStatus['원천세'][period] || {};
   const periodData = sharedFilingStatus['원천세'][period];
   const subitems = FILING_STATUS_SUBITEMS[submitState.sourceMode] || [];
-  const subitemHeaderCells = subitems.map(it=>`<th class="cvb" style="white-space:nowrap; font-size:11px;">${escHtml(it.label)}</th>`).join('');
-  const rows = list.map((c, idx)=>{
-    const entry = periodData[c.id] || { memo:'' };
+  // [2026.10.07] 월별 머리글 아래에 제출기한 기준을 작게(지급월 익월 말일 / 귀속 익월 15일 / 지급월 익월 10일)
+  const subitemHeaderCells = subitems.map(it=>{ const b = monthly ? SUBMIT_DUE_BASIS_LABEL[SUBMIT_DUE_RULE[it.key]] : ''; return `<th class="cvb" style="white-space:nowrap; font-size:11px;">${escHtml(it.label)}${b ? `<br><span style="font-size:9.5px; font-weight:600; color:var(--ink-soft);">${b}</span>` : ''}</th>`; }).join('');
+  // [2026.10.07] 월별은 지급시기 줄마다(당월·익월 둘 다 있는 거래처는 두 줄) + 지급월 칸. 익월지급 줄 저장 자리 = periodData['거래처@nextMonth']
+  const rowDefs = [];
+  list.forEach(c=>{
+    if(!monthly){ rowDefs.push({ c, ek:c.id, lane:null, dual:false }); return; }
+    const t = (sharedFilingTargets[c.id] || {})[period] || {};
+    const dual = (t.sameMonthPay && t.nextMonthPay) || !!periodData[c.id + '@nextMonth'];
+    if(dual){ rowDefs.push({ c, ek:c.id, lane:'sameMonth', dual:true }, { c, ek:c.id + '@nextMonth', lane:'nextMonth', dual:true }); }
+    else rowDefs.push({ c, ek:c.id, lane: (t.nextMonthPay && !t.sameMonthPay) ? 'nextMonth' : 'sameMonth', dual:false });
+  });
+  let rowNo = 0;
+  const rows = rowDefs.map((rd, idx)=>{
+    const c = rd.c;
+    const first = idx === 0 || rowDefs[idx-1].c.id !== c.id;
+    if(first) rowNo++;
+    const entry = periodData[rd.ek] || { memo:'' };
     entry.items = entry.items || {};
     entry.itemDates = entry.itemDates || {};
+    const payMonth = monthly ? submitPayMonthOf(entry, period, rd.lane) : '';
     const entityColor = c.entityType === '법인' ? '#0B5A78' : c.entityType === '개인' ? '#BE185D' : 'inherit';
     // 예전엔 해당없음/검토중/제출완료 3단계 select였는데, "제출했는지 아닌지, 날짜만 있으면 되는 거 아니냐"는
     // 요청으로 해당여부 체크박스 하나 + 제출일(비어있으면 아직 미제출) 하나로 단순화함. 날짜는 여전히
@@ -31288,24 +31392,34 @@ function renderSubmitStatusTableInner(){
     // 소득 종류는 자동으로 제출대상, 없으면 미대상(연한 회색). 대상인데 미제출은 아주 연한 노랑, 제출하면 음영 없이 제출일만.
     // 칸을 누르면 작은 창에서 제출일(오늘 버튼)·지우기, 미대상 칸은 "제출대상으로 지정"(특고·학자금상환·기타처럼 검토표와 안 이어지는 칸도 같은 방식)
     const subitemCells = subitems.map(it=>{
-      const auto = submitAutoApplicable(c.id, it.key, period);
+      const auto = submitAutoApplicable(c.id, it.key, period, monthly && rd.dual ? [rd.lane === 'nextMonth' ? c.id + '@nextMonth' : c.id] : null);
       const manual = submitItemApplicable(entry.items[it.key]);
       const applicable = !!auto || manual;
       const dateVal = entry.itemDates[it.key] || '';
-      const st = !applicable ? 'off' : (dateVal ? 'done' : 'todo');
+      const noteVal = (entry.itemNotes || {})[it.key] || ''; // [2026.10.07] 원데이터의 "노무사"처럼 날짜 대신 적힌 글자 = 다른 곳에서 처리(완료로 봄)
+      const st = !applicable ? 'off' : ((dateVal || noteVal) ? 'done' : 'todo');
+      const due = monthly ? submitDueDate(it.key, period, payMonth) : '';
       // [2026.10.02] "급여가 해당되는 칸만 활성화"(요청) - 검토표와 이어지는 칸(사업·기타·일용 등)은 금액이 없으면 눌리지 않음.
       // 특고·학자금상환·기타처럼 검토표와 안 이어지는 칸만 예전처럼 눌러서 제출대상으로 지정
       const locked = st === 'off' && auto === false;
       const bg = st === 'off' ? '#EDEFF4' : st === 'todo' ? '#FFF8DC' : 'transparent';
-      const label = st === 'done' ? `${Number(dateVal.slice(5,7))}.${Number(dateVal.slice(8,10))}` : ''; // [2026.10.02] 9.1 모양 · 글자는 원천세 신고일과 같은 짙은 회색(요청)
-      const tip = appTipHtml(it.label, st === 'done' ? [['제출일', `${dateVal.slice(0,4)}년 ${Number(dateVal.slice(5,7))}월 ${Number(dateVal.slice(8,10))}일`]]
-        : st === 'todo' ? [['제출', '아직'], ['', auto ? '검토표에 금액이 있어 제출대상 · 눌러서 제출일 입력' : '제출대상 · 눌러서 제출일 입력']]
+      const dueLeft = due ? Math.round((parseDate(due) - parseDate(todayStr())) / 86400000) : null;
+      const md = d=> `${Number(d.slice(5,7))}.${Number(d.slice(8,10))}`;
+      const label = st === 'done' ? (dateVal ? md(dateVal) : escHtml(noteVal)) : st === 'todo' && due ? `<span style="font-weight:700; color:${dueLeft < 0 ? 'var(--coral)' : dueLeft <= 3 ? '#B7791F' : 'var(--ink-soft)'};">~${md(due)}</span>` : ''; // [2026.10.02] 9.1 모양 · 글자는 원천세 신고일과 같은 짙은 회색(요청)
+      const dueRows = due ? [['지급월', `${Number(payMonth.slice(5,7))}월`], ['제출기한', `${Number(due.slice(5,7))}월 ${Number(due.slice(8,10))}일${st === 'todo' ? (dueLeft < 0 ? ` (${-dueLeft}일 지남)` : ` (D-${dueLeft})`) : ''}`]] : [];
+      const tip = appTipHtml(it.label, st === 'done' ? (dateVal ? [['제출일', `${dateVal.slice(0,4)}년 ${Number(dateVal.slice(5,7))}월 ${Number(dateVal.slice(8,10))}일`]] : [['처리', noteVal]]).concat(dueRows)
+        : st === 'todo' ? [['제출', '아직']].concat(dueRows, [['', auto ? '검토표에 금액이 있어 제출대상 · 눌러서 제출일 입력' : '제출대상 · 눌러서 제출일 입력']])
         : [['제출', '대상 아님'], ['', auto === false ? '검토표에 이 귀속기간 금액이 없어요' : '눌러서 제출대상으로 지정할 수 있어요']]);
-      return `<td class="cvb submit-status-cell"><button type="button" class="it-all-month-cell-btn submit-cell-btn" data-client-id="${c.id}" data-item-key="${it.key}" data-st="${st}" data-auto="${auto?1:0}" data-date="${dateVal}"${locked ? ' disabled' : ''} data-tip="${escHtml(tip).replace(/"/g,'&quot;')}" style="width:100%; min-width:46px; height:24px; box-sizing:border-box; border:none; border-radius:6px; background:${bg}; color:#3F4157; font-size:10.5px; font-weight:700; cursor:${locked ? 'default' : 'pointer'};">${label}</button></td>`;
+      // [2026.10.07] "해당 안 되는 항목은 비활성화 깨끗하게"(요청) - 미대상 칸은 배경 없이 회색 "—"(검토표와 이어지는 칸은 안 눌림)
+      if(st === 'off') return `<td class="cvb submit-status-cell">${locked ? `<span class="submit-na" data-tip="${escHtml(tip).replace(/"/g,'&quot;')}">—</span>` : `<button type="button" class="it-all-month-cell-btn submit-cell-btn submit-na" data-client-id="${c.id}" data-ek="${rd.ek}" data-item-key="${it.key}" data-st="off" data-auto="0" data-date="" data-tip="${escHtml(tip).replace(/"/g,'&quot;')}">—</button>`}</td>`;
+      return `<td class="cvb submit-status-cell"><button type="button" class="it-all-month-cell-btn submit-cell-btn" data-client-id="${c.id}" data-ek="${rd.ek}" data-item-key="${it.key}" data-st="${st}" data-auto="${auto?1:0}" data-date="${dateVal}" data-tip="${escHtml(tip).replace(/"/g,'&quot;')}" style="width:100%; min-width:46px; height:24px; box-sizing:border-box; border:none; border-radius:6px; background:${bg}; color:#3F4157; font-size:10.5px; font-weight:700; cursor:pointer;">${label}</button></td>`;
     }).join('');
+    const laneTag = rd.dual ? ` <span style="font-size:11px; font-weight:700; color:${rd.lane === 'sameMonth' ? '#0B8F6C' : '#D9480F'};">${rd.lane === 'sameMonth' ? '당월' : '익월'}</span>` : '';
+    const payCell = monthly ? `<td class="cvb">${submitPayMonthSelectHtml(rd.ek, period, payMonth)}</td>` : '';
     return `<tr>
-      <td class="num cvb">${idx+1}</td>
-      <td class="cvb" style="color:${entityColor}; font-weight:800;">${escHtml(c.name)}</td>
+      <td class="num cvb">${first ? rowNo : ''}</td>
+      <td class="cvb" style="color:${entityColor}; font-weight:800;">${first ? escHtml(c.name) : ''}${laneTag}</td>
+      ${payCell}
       ${subitemCells}
     </tr>`;
   }).join('');
@@ -31319,20 +31433,21 @@ function renderSubmitStatusTableInner(){
     <button type="button" class="del-btn" id="submitBulkApplyBtn" title="아직 제출 안 한 노란 칸 모두에 이 날짜를 넣어요" style="height:30px; box-sizing:border-box;">미제출 칸 모두 적용</button>
     ${submitSaveBtnHtml}
   </div>`;
-  wrap.innerHTML = toolbarHtml + `<div class="table-scroll"><table class="submit-status-table"><thead><tr><th class="cvb">순번</th><th class="cvb">상호명</th>${subitemHeaderCells}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  wrap.innerHTML = toolbarHtml + `<div class="table-scroll"><table class="submit-status-table"><thead><tr><th class="cvb">순번</th><th class="cvb">상호명</th>${monthly ? '<th class="cvb" title="그 귀속월 급여를 실제로 지급한 달 - 사업·기타·일용(지급) 제출기한(지급월 익월 말일)의 기준">지급월</th>' : ''}${subitemHeaderCells}</tr></thead><tbody>${rows}</tbody></table></div>`;
   bindSubmitStatusSaveBtn(wrap);
-  const setVal = (cid, key, fn)=>{ periodData[cid] = periodData[cid] || { memo:'' }; periodData[cid].items = periodData[cid].items || {}; periodData[cid].itemDates = periodData[cid].itemDates || {}; fn(periodData[cid]); setSubmitStatusDirty(true); renderSubmitStatusTable(); setSubmitStatusDirty(true); };
+  const setVal = (cid, key, fn)=>{ periodData[cid] = periodData[cid] || { memo:'' }; periodData[cid].items = periodData[cid].items || {}; periodData[cid].itemDates = periodData[cid].itemDates || {}; periodData[cid].itemNotes = periodData[cid].itemNotes || {}; fn(periodData[cid]); if(!Object.keys(periodData[cid].itemNotes).length) delete periodData[cid].itemNotes; setSubmitStatusDirty(true); renderSubmitStatusTable(); setSubmitStatusDirty(true); };
+  wrap.querySelectorAll('.submit-paymonth-sel').forEach(sel=> sel.addEventListener('change', ()=> setVal(sel.dataset.ek, null, e=>{ e.payMonth = sel.value; })));
   wrap.querySelector('#submitBulkApplyBtn')?.addEventListener('click', ()=>{
     const d = wrap.querySelector('#submitBulkDate')?.value;
     if(!d) return;
     const todo = [...wrap.querySelectorAll('.submit-cell-btn[data-st="todo"]')];
     if(!todo.length){ showCenterToast('아직 제출 안 한 칸이 없어요'); return; }
-    todo.forEach(b=>{ const cid = b.dataset.clientId; periodData[cid] = periodData[cid] || { memo:'' }; periodData[cid].itemDates = periodData[cid].itemDates || {}; periodData[cid].itemDates[b.dataset.itemKey] = d; });
+    todo.forEach(b=>{ const cid = b.dataset.ek || b.dataset.clientId; periodData[cid] = periodData[cid] || { memo:'' }; periodData[cid].itemDates = periodData[cid].itemDates || {}; periodData[cid].itemDates[b.dataset.itemKey] = d; });
     renderSubmitStatusTable(); setSubmitStatusDirty(true);
     showCenterToast(`${todo.length}칸에 날짜를 넣었어요 · 저장을 눌러주세요`);
   });
   wrap.querySelectorAll('.submit-cell-btn:not([disabled])').forEach(btn=>{
-    btn.addEventListener('click', ()=> openSubmitCellMenu(btn, (fn)=> setVal(btn.dataset.clientId, btn.dataset.itemKey, fn)));
+    btn.addEventListener('click', ()=> openSubmitCellMenu(btn, (fn)=> setVal(btn.dataset.ek || btn.dataset.clientId, btn.dataset.itemKey, fn)));
   });
 }
 // 제출현황 칸을 눌렀을 때 뜨는 작은 창 - 대상 칸: 제출일 입력(오늘)·지우기·(직접 지정한 칸이면) 대상 해제 / 미대상 칸: 제출대상으로 지정
@@ -31352,7 +31467,7 @@ function openSubmitCellMenu(anchor, apply){
         <input type="date" class="submit-cell-date" value="${curVal}" style="border:1.5px solid var(--border); border-radius:8px; padding:4px 6px; font-size:12px; font-family:'Pretendard',sans-serif;">
         <button type="button" class="del-btn" data-act="today" style="height:26px; padding:0 8px;">오늘</button>
       </div>
-      ${curVal ? `<button type="button" class="cal-owner-dd-item" data-act="clear">제출일 지우기</button>` : ''}
+      ${curVal || anchor.dataset.st === 'done' ? `<button type="button" class="cal-owner-dd-item" data-act="clear">제출일 지우기</button>` : ''}
       ${!auto ? `<button type="button" class="cal-owner-dd-item" data-act="off">제출대상 해제</button>` : ''}`;
   }
   document.body.appendChild(dd);
@@ -31364,10 +31479,10 @@ function openSubmitCellMenu(anchor, apply){
   function close(){ dd.remove(); document.removeEventListener('pointerdown', onDoc, true); document.removeEventListener('keydown', onKey); }
   dd._close = close;
   setTimeout(()=>{ document.addEventListener('pointerdown', onDoc, true); document.addEventListener('keydown', onKey); }, 0);
-  const setDate = (d)=>{ close(); apply(e=>{ e.items[key] = true; e.itemDates[key] = d; }); };
+  const setDate = (d)=>{ close(); apply(e=>{ e.items[key] = true; e.itemDates[key] = d; delete e.itemNotes[key]; }); };
   dd.querySelector('.submit-cell-date')?.addEventListener('change', (e)=>{ if(e.target.value) setDate(e.target.value); });
   dd.querySelector('[data-act="today"]')?.addEventListener('click', ()=> setDate(todayStr()));
-  dd.querySelector('[data-act="clear"]')?.addEventListener('click', ()=>{ close(); apply(e=>{ delete e.itemDates[key]; }); });
+  dd.querySelector('[data-act="clear"]')?.addEventListener('click', ()=>{ close(); apply(e=>{ delete e.itemDates[key]; delete e.itemNotes[key]; }); });
   dd.querySelector('[data-act="off"]')?.addEventListener('click', ()=>{ close(); apply(e=>{ delete e.items[key]; delete e.itemDates[key]; }); });
   dd.querySelector('[data-act="on"]')?.addEventListener('click', ()=>{ close(); apply(e=>{ e.items[key] = true; }); });
 }
@@ -31551,11 +31666,22 @@ function reviewItMonthData(clientId, year, month){
 function reviewItMeta(clientId){
   sharedReviewMeta[clientId] = sharedReviewMeta[clientId] || { sameMonth:true, payCycle:'매월', secondHalfPayCycle:null };
   if(sharedReviewMeta[clientId].secondHalfPayCycle === undefined) sharedReviewMeta[clientId].secondHalfPayCycle = null;
+  // 아래 reviewItPayCycleForMonth가 신고구분 이력을 찾을 수 있게 거래처 id를 숨겨서 달아 둠(저장되지 않음)
+  try{ Object.defineProperty(sharedReviewMeta[clientId], '__cid', { value: String(clientId).replace(/@nextMonth$/, ''), enumerable:false, configurable:true, writable:true }); }catch(e){}
   return sharedReviewMeta[clientId];
+}
+function reviewItCurYear(){ return Number(document.getElementById('reviewItFsYearSelect')?.value) || Number(todayStr().slice(0,4)); }
+// [2026.10.07] "반기 거래처는 1~6월 합계를 6·12월 신고서와 검증하는데 그게 안 걸려 있다"(요청) - 검증 팝업의 신고구분(매월/반기) 선택값만 보고 있어서,
+// 원천세 신고구분 이력이 반기여도 팝업에서 따로 반기로 안 바꾸면 달마다 검증했음 → 신고구분 이력이 있으면 그 달의 이력(매월/반기)을 따름(엑셀 받기 수식도 같이)
+function reviewItCycleFromRecords(clientId, year, month){
+  if(!clientId || typeof filingCycleRecordsOf !== 'function' || !filingCycleRecordsOf(clientId).length) return null;
+  return effectiveCycleFor(clientId, `${year}-${String(month).padStart(2,'0')}`) === '반기' ? '반기' : '매월';
 }
 // 연중에 신고구분이 바뀌는 거래처용 - 7월부터는 secondHalfPayCycle이 있으면 그걸, 없으면 원래
 // payCycle을 그대로 씀(신고구분 전환은 반기 단위로만 일어나므로 7월 기준 한 번만 지원)
-function reviewItPayCycleForMonth(meta, month){
+function reviewItPayCycleForMonth(meta, month, year){
+  const fromRec = reviewItCycleFromRecords(meta && meta.__cid, year || reviewItCurYear(), month);
+  if(fromRec) return fromRec;
   return (month >= 7 && meta.secondHalfPayCycle) ? meta.secondHalfPayCycle : meta.payCycle;
 }
 // ※ 검증 계산식을 바꾸면 파일 맨 아래 taxjFormulaDoc(works에서 불러오는 계산식 정리)도 같이 고친다
@@ -31623,7 +31749,7 @@ function reviewItCheckBadge(clientId, year, month, field, isMatch){
   return reviewCheckChipHtml(state, { kind:'it', clientId, year, period:month, field, title });
 }
 function reviewItIncomeCheckMark(clientId, year, month, meta){
-  const payCycle = reviewItPayCycleForMonth(meta, month);
+  const payCycle = reviewItPayCycleForMonth(meta, month, year);
   if(!reviewItIsPeriodEnd(month, payCycle)) return '<span style="color:var(--ink-soft);">-</span>';
   const data = reviewItMonthData(clientId, year, month);
   if(data.incomeReported == null || data.incomeReported === '') return '';
@@ -31633,7 +31759,7 @@ function reviewItIncomeCheckMark(clientId, year, month, meta){
 // 소득세(신고서) 합계/지방세(신고서) 검증 둘 다 "period 합계(계산값) vs 사람이 입력한 값이 같은가"라는
 // 같은 모양이라 공용 함수로 뽑음 - totalFn만 바꿔 끼우면 어떤 계산값이든 비교 가능
 function reviewItGenericCheckMark(clientId, year, month, meta, reportedVal, totalFn, field){
-  const payCycle = reviewItPayCycleForMonth(meta, month);
+  const payCycle = reviewItPayCycleForMonth(meta, month, year);
   if(!reviewItIsPeriodEnd(month, payCycle)) return '<span style="color:var(--ink-soft);">-</span>';
   if(reportedVal == null || reportedVal === '') return '';
   const periodTotal = reviewItPeriodMonths(month, payCycle).reduce((s,m)=> s + totalFn(reviewItMonthData(clientId, year, m)), 0);
@@ -31895,7 +32021,7 @@ function renderReviewItIncomeTable(clientId, year){
   const IF = vis ? REVIEW_INCOME_FIELDS.filter(f=> vis.inc.has(f.key)) : REVIEW_INCOME_FIELDS;
   const rows = Array.from({length:12}, (_,i)=>i+1).map(month=>{
     const data = reviewItMonthData(clientId, year, month);
-    const isEnd = reviewItIsPeriodEnd(month, reviewItPayCycleForMonth(meta, month));
+    const isEnd = reviewItIsPeriodEnd(month, reviewItPayCycleForMonth(meta, month, year));
     const fieldCells = IF.map(f=>{
       const v = data.income[f.key];
       return `<td><input type="text" inputmode="numeric" class="review-it-income-input" data-month="${month}" data-key="${f.key}" value="${v!=null?Number(v).toLocaleString():''}" style="width:76px; border:1.5px solid var(--border); border-radius:6px; padding:3px 5px; font-family:'IBM Plex Mono',monospace; font-size:11px; text-align:right;"${f.excludeFromTotal?' title="총지급액 계산에서 제외됨"':''}></td>`;
@@ -31935,7 +32061,7 @@ function renderReviewItIncomeTable(clientId, year){
       setReviewItDirty(true);
       refreshReviewItIncomeRow(clientId, year, month);
       reviewItIncomeFootRefresh(clientId, year);
-      if(reviewItPayCycleForMonth(meta, month) === '반기'){
+      if(reviewItPayCycleForMonth(meta, month, year) === '반기'){
         const endMonth = month <= 6 ? 6 : 12;
         if(endMonth !== month) refreshReviewItIncomeRow(clientId, year, endMonth);
       }
@@ -31986,7 +32112,7 @@ function renderReviewItTaxTable(clientId, year){
   }).join('');
   const returnRows = Array.from({length:12}, (_,i)=>i+1).map(month=>{
     const data = reviewItMonthData(clientId, year, month);
-    const isEnd = reviewItIsPeriodEnd(month, reviewItPayCycleForMonth(meta, month));
+    const isEnd = reviewItIsPeriodEnd(month, reviewItPayCycleForMonth(meta, month, year));
     const dash = `<td style="text-align:center; color:var(--ink-soft);">-</td>`;
     // 소득세(신고서) - 신고서를 보고 유형별로 나눠 입력하는 6칸(REVIEW_TAXRETURN_FIELDS) + 합계.
     // 지방세(신고서)는 신고서에 유형 구분이 따로 없어서 기존처럼 1칸 그대로 유지
@@ -32059,7 +32185,7 @@ function renderReviewItTaxTable(clientId, year){
       setReviewItDirty(true);
       refreshReviewItTaxRow(clientId, year, month);
       reviewItTaxFootRefresh(clientId, year);
-      if(reviewItPayCycleForMonth(meta, month) === '반기'){
+      if(reviewItPayCycleForMonth(meta, month, year) === '반기'){
         const endMonth = month <= 6 ? 6 : 12;
         if(endMonth !== month) refreshReviewItTaxRow(clientId, year, endMonth);
       }
@@ -32183,6 +32309,12 @@ function renderReviewItFsMeta(clientId){
   if(!box) return;
   if(!clientId){ box.innerHTML = ''; return; }
   const meta = reviewItMeta(clientId);
+  // [2026.10.07] 신고구분 이력이 있는 거래처는 선택칸 대신 이력 기준 구분을 글자로만(계산도 이력을 따름)
+  const ry = reviewItCurYear(), c1 = reviewItCycleFromRecords(String(clientId).replace(/@nextMonth$/, ''), ry, 1), c7 = reviewItCycleFromRecords(String(clientId).replace(/@nextMonth$/, ''), ry, 7);
+  if(c1){
+    box.innerHTML = `<span style="display:inline-flex; align-items:center; gap:5px;" title="원천세 신고구분 이력을 따라요 - 바꾸려면 원천세 신고현황의 신고 칸에서 고쳐주세요"><span style="font-weight:700;">신고구분</span><span style="font-weight:700; color:var(--ink);">${c1}${c7 !== c1 ? ` → 7월부터 ${c7}` : ''}</span><span style="font-size:10.5px;">(신고구분 이력 기준${c1 === '반기' || c7 === '반기' ? ' · 반기는 6·12월에 6개월 합계로 검증' : ''})</span></span>`;
+    return;
+  }
   box.innerHTML = `
     <!-- [2026.10.01] "매월·반기 칩은 비중 작게"(요청) - 큰 칩 대신 작은 선택칸 -->
     <span style="display:inline-flex; align-items:center; gap:5px;">
@@ -32525,7 +32657,7 @@ function reviewItXlsDownload(){
     F.forEach((f,i)=> put(ws1, r, i+1, num(d.income[f.key])));
     const first = reviewItXlsCol(1), last = reviewItXlsCol(F.length);
     put(ws1, r, colTotal, fml(`SUM(${first}${row}:${last}${row})` + (exclCols.length ? `-(${exclCols.map(c=>c+row).join('+')})` : '')));
-    const pc = reviewItPayCycleForMonth(meta, m);
+    const pc = reviewItPayCycleForMonth(meta, m, year);
     if(reviewItIsPeriodEnd(m, pc)){
       put(ws1, r, colRep, num(d.incomeReported));
       const ms = reviewItPeriodMonths(m, pc);
@@ -32557,7 +32689,7 @@ function reviewItXlsDownload(){
     const taxRefs = G.map((g,i)=> reviewItXlsCol(gStart + i*2) + row), locRefs = G.map((g,i)=> reviewItXlsCol(gStart + i*2 + 1) + row);
     put(ws2, r, cTaxSum, fml(taxRefs.join('+')));
     put(ws2, r, cLocSum, fml(locRefs.join('+')));
-    const pc = reviewItPayCycleForMonth(meta, m);
+    const pc = reviewItPayCycleForMonth(meta, m, year);
     if(reviewItIsPeriodEnd(m, pc)){
       const tr = d.taxReported || {};
       R.forEach((f,i)=> put(ws2, r, rStart + i, num(tr[f.key])));
@@ -32593,7 +32725,7 @@ async function reviewItXlsUpload(file){
   const F = REVIEW_INCOME_FIELDS, G = REVIEW_TAX_GROUPS, R = REVIEW_TAXRETURN_FIELDS;
   for(let m=1;m<=12;m++){
     const d = reviewItMonthData(clientId, year, m);
-    const pe = reviewItIsPeriodEnd(m, reviewItPayCycleForMonth(meta, m));
+    const pe = reviewItIsPeriodEnd(m, reviewItPayCycleForMonth(meta, m, year));
     if(ws1){
       const r = 2 + m;
       F.forEach((f,i)=>{ d.income[f.key] = val(ws1, r, i+1); });
@@ -36945,6 +37077,7 @@ async function xlsHandleFile(key, file){
   catch(e){ console.error(e); appAlert('엑셀을 읽지 못했어요. 파일을 확인해주세요.'); return; }
   // [2026.10.06] 부가세 화면에서 택스봇 "부가가치세예정고지" 엑셀을 올리면 예정고지 불러오기로 처리(요청)
   if(key === 'vatAll' && taxbotVatNoticeHeader(wb)){ await importTaxbotVatNotice(wb); return; }
+  if(key === 'submitStatus' && submitRawFind(wb)){ await importSubmitRaw(wb); return; } // [2026.10.07] 지급명세서 원데이터
   const plans = [];
   let unmatchedEmp = 0;
   spec.sheets.forEach(sh=>{
@@ -41784,7 +41917,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.07 01:05';
+const APP_BUILD = '2026.10.07 01:28';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
