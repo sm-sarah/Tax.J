@@ -30989,7 +30989,7 @@ const REVIEW_INCOME_FIELDS = [
 // 납부세액검증의 "소득세합계"는 10개 유형의 소득세 칸만 더함(지방소득세는 별도로 "지방세합계"에서 더함) - 원본 엑셀 수식 그대로
 const REVIEW_TAX_GROUPS = [
   { key:'간이', label:'근로-간이', headerHint:'개별 원천징수영수증을 확인하고 입력하세요' },
-  { key:'중도', label:'근로-중도', headerHint:'개별 원천징수영수증을 확인하고 입력하세요' },
+  { key:'중도', label:'근로-중도', headerHint:'중도퇴사자 정산 환급금 - 소득세·지방세 합계(계산)에서 빠지고, 신고서 쪽 "환급금 등록"의 중도퇴사 금액과 맞는지 따로 검증해요(개별 원천징수영수증 확인)' },
   { key:'일용', label:'근로-일용' },
   { key:'연말', label:'근로-연말', headerHint:'연말정산 환급금 - 소득세·지방세 합계(계산)에서 빠지고, 신고서 쪽 "환급금 등록"의 연말정산 금액과 맞는지 따로 검증해요' },
   { key:'사업', label:'사업소득' },
@@ -31065,14 +31065,16 @@ function reviewItPayCycleForMonth(meta, month){
 function reviewItIncomeTotal(monthData){
   return REVIEW_INCOME_FIELDS.reduce((sum,f)=> sum + (f.excludeFromTotal ? 0 : (Number(monthData.income[f.key])||0)), 0);
 }
-// [2026.10.06] 근로-연말(연말정산 환급금)은 합계에서 뺌(요청) - 신고서 쪽 "환급금 등록"으로 따로 차감·검증
+// [2026.10.06] 근로-연말(연말정산 환급금)·근로-중도(중도퇴사 환급금)는 합계에서 뺌(요청) - 신고서 쪽 "환급금 등록"으로 따로 차감·검증
+const REVIEW_REFUND_GROUP = { '연말정산':'연말', '중도퇴사':'중도' };   // 환급금 구분 → 급여 쪽 세액 유형
+const REVIEW_TOTAL_SKIP = new Set(Object.values(REVIEW_REFUND_GROUP));
 function reviewItTaxTotal(monthData){
-  return REVIEW_TAX_GROUPS.reduce((sum,g)=> g.key === '연말' ? sum : sum + (Number((monthData.tax[g.key]||{}).tax)||0), 0);
+  return REVIEW_TAX_GROUPS.reduce((sum,g)=> REVIEW_TOTAL_SKIP.has(g.key) ? sum : sum + (Number((monthData.tax[g.key]||{}).tax)||0), 0);
 }
 // 지방세합계 - 소득세합계와 같은 10개 유형에서 이번엔 local(지방소득세) 칸만 더함. 신고서/납부서 양쪽의
 // 지방세 검증이 모두 이 하나의 계산값과 비교됨
 function reviewItTaxLocalTotal(monthData){
-  return REVIEW_TAX_GROUPS.reduce((sum,g)=> g.key === '연말' ? sum : sum + (Number((monthData.tax[g.key]||{}).local)||0), 0);
+  return REVIEW_TAX_GROUPS.reduce((sum,g)=> REVIEW_TOTAL_SKIP.has(g.key) ? sum : sum + (Number((monthData.tax[g.key]||{}).local)||0), 0);
 }
 // 소득세(신고서) 6칸 합계 - 신고서를 유형별로 나눠 적은 값을 다 더한 것으로, 소득세합계(계산)와
 // 대조하는 검증값으로 씀 (퇴직소득세 칸도 포함돼 있어서 퇴직소득이 있는 달도 정상적으로 값이 맞아야 함)
@@ -31636,7 +31638,7 @@ function renderReviewItFsSection(){
 // (급여 표 12월 → 아래 세액 표 1월처럼) 그대로 이어짐. 옮긴 칸은 전체 선택돼서 바로 덮어쓸 수 있음
 // ══════════════════════════════════════════════════════════
 // [2026.10.06] 환급금 등록 팝업(요청) - 연말정산·중도퇴사 환급금을 구분·금액·신고서 반영 귀속월로 등록(수정·삭제).
-// 등록한 금액은 그 귀속월 신고서 계산(합계 − 환급금 − 전월미환급세액)에서 빠짐. 급여 쪽 근로-연말 한 해 합계와 등록한 연말정산 합계를 검증
+// 등록한 금액은 그 귀속월 신고서 계산(합계 − 환급금 − 전월미환급세액)에서 빠짐. 급여 쪽 근로-연말·근로-중도 한 해 합계와 등록한 연말정산·중도퇴사 합계를 각각 검증
 // ══════════════════════════════════════════════════════════
 function openReviewItRefundRegModal(clientId, year, focusMonth){
   const key = reviewItStoreKey(clientId);
@@ -31651,10 +31653,14 @@ function openReviewItRefundRegModal(clientId, year, focusMonth){
   const render = ()=>{
     const rows = [];
     for(let m = 1; m <= 12; m++) reviewItRegList(raw(m)).forEach((r, i)=> rows.push({ m, i, r }));
-    // 검증: 급여 근로-연말 한 해 합계(환급은 마이너스) ↔ 등록한 연말정산 합계
-    let payT = 0, payL = 0, regT = 0, regL = 0;
-    for(let m = 1; m <= 12; m++){ const d = raw(m); if(!d) continue; const y = (d.tax || {})['연말'] || {}; payT += Number(y.tax) || 0; payL += Number(y.local) || 0; }
-    rows.filter(x=> x.r.kind === '연말정산').forEach(x=>{ regT += Math.abs(Number(x.r.tax)) || 0; regL += Math.abs(Number(x.r.local)) || 0; });
+    // 검증: 구분별로 급여 쪽 세액 유형(근로-연말 / 근로-중도) 한 해 합계(환급은 마이너스) ↔ 등록한 환급금 합계
+    const verify = REVIEW_REFUND_KINDS.map(kind=>{
+      const g = REVIEW_REFUND_GROUP[kind];
+      let payT = 0, payL = 0, regT = 0, regL = 0;
+      for(let m = 1; m <= 12; m++){ const d = raw(m); if(!d) continue; const y = (d.tax || {})[g] || {}; payT += Number(y.tax) || 0; payL += Number(y.local) || 0; }
+      rows.filter(x=> x.r.kind === kind).forEach(x=>{ regT += Math.abs(Number(x.r.tax)) || 0; regL += Math.abs(Number(x.r.local)) || 0; });
+      return { kind, label: (REVIEW_TAX_GROUPS.find(x=> x.key === g) || {}).label || g, payT, payL, regT, regL };
+    });
     const chk = (pay, reg)=>{ if(!pay && !reg) return '<span style="color:var(--ink-soft);">-</span>'; const ok = Math.abs(pay) === reg && (pay <= 0 || !reg); return `<span style="font-weight:800; color:${ok ? 'var(--mint)' : 'var(--coral)'};">${ok ? '✓ 일치' : '✕ 불일치'}</span>`; };
     const ed = editing ? rows.find(x=> x.m === editing.m && x.i === editing.i) : null;
     const fm = ed ? ed.m : (focusMonth || 2);
@@ -31670,8 +31676,8 @@ function openReviewItRefundRegModal(clientId, year, focusMonth){
         <label style="font-size:11px; font-weight:700; color:var(--ink-soft);">지방세 환급금<input id="rrLocal" type="text" inputmode="numeric" value="${ed ? fmt(Math.abs(ed.r.local)) : ''}" style="${inSty} width:100%; margin-top:3px; text-align:right;"></label>
       </div>
       <div class="itm-btns">${ed ? '<button type="button" class="del-btn" data-act="cancel">취소</button>' : ''}<button type="button" class="submit-btn" style="width:auto; padding:6px 16px; margin:0;" data-act="save">${ed ? '저장' : '등록'}</button></div>
-      <div class="itm-sec"><span>연말정산 환급금 검증 (급여 근로-연말 한 해 합계 ↔ 등록 합계)</span></div>
-      <div class="itm-box" style="white-space:normal;">국세: 급여 ${fmt(payT)} · 등록 ${fmt(regT)} → ${chk(payT, regT)}<br>지방세: 급여 ${fmt(payL)} · 등록 ${fmt(regL)} → ${chk(payL, regL)}</div>`;
+      ${verify.map(v=> `<div class="itm-sec"><span>${v.kind} 환급금 검증 (급여 ${escHtml(v.label)} 한 해 합계 ↔ 등록 합계)</span></div>
+      <div class="itm-box" style="white-space:normal;">국세: 급여 ${fmt(v.payT)} · 등록 ${fmt(v.regT)} → ${chk(v.payT, v.regT)}<br>지방세: 급여 ${fmt(v.payL)} · 등록 ${fmt(v.regL)} → ${chk(v.payL, v.regL)}</div>`).join('')}`;
     openClientNamedInfoModal(name, '환급금 등록', h);
     const body = document.getElementById('memoModalBody');
     ['rrTax','rrLocal'].forEach(id=>{ const el = document.getElementById(id); el?.addEventListener('input', ()=> formatMoneyInputLive(el)); });
@@ -37746,9 +37752,9 @@ HINT_INFO.dailyWorkers = { title:'일용직', html: infoTidyHtml(
 // [2026.10.06] 원천세 검증 > 신고서 - 환급잔액 입력 방법과 원리(요청)
 HINT_INFO.reviewItRefund = { title:'신고서 · 환급금 · 전월미환급세액', html: infoTidyHtml(
   '<b>계산</b>: 합계 − 환급금 − 전월미환급세액 = 납부세액. 모자라면 납부세액은 0이고, 남은 금액은 "차월이월"로 다음 달에 넘어가요<br>'+
-  '<b>합계</b>: 신고서의 소득유형별 소득세(지방세는 세액)를 환급 차감 전 금액으로 적은 합이에요. 급여 쪽 세액과 같으면 ✓(근로-연말은 빼고 비교)<br>'+
+  '<b>합계</b>: 신고서의 소득유형별 소득세(지방세는 세액)를 환급 차감 전 금액으로 적은 합이에요. 급여 쪽 세액과 같으면 ✓(근로-연말·근로-중도는 빼고 비교)<br>'+
   '<b>환급금</b>: "등록"을 눌러 연말정산·중도퇴사 환급금을 적고, 신고서에 반영하는 귀속월을 골라요. 그 달 납부세액 계산에서 빠져요<br>'+
-  '<b>환급금 검증</b>: 급여 쪽 근로-연말(연말정산 환급금) 한 해 합계와 등록한 연말정산 환급금이 같은지 등록 팝업에서 확인해요. 급여에서 차감한 달과 신고서 반영 달이 달라도 돼요<br>'+
+  '<b>환급금 검증</b>: 급여 쪽 근로-연말(연말정산)·근로-중도(중도퇴사) 한 해 합계와 등록한 환급금이 구분별로 같은지 등록 팝업에서 확인해요. 급여에서 차감한 달과 신고서 반영 달이 달라도 돼요<br>'+
   '<b>전월미환급세액</b>: 신고서에 적힌 금액을 플러스(+)로. 비워 두면 전월 차월이월 금액이 흐린 글씨로 자동으로 들어가요<br>'+
   '<b>직접 적을 때</b>: 환급이 처음 생긴 달, 또는 환급을 받거나 조정돼서 자동 금액과 신고서 금액이 다른 달<br>'+
   '<b>검증</b>: 차감 전 합계로 해요(환급금·전월미환급세액은 검증에 들어가지 않아요)<br>'+
@@ -41142,7 +41148,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.06 15:40';
+const APP_BUILD = '2026.10.06 15:47';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
