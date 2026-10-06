@@ -2219,6 +2219,10 @@ try{
   .vat-all-table th.vat-pcol{ min-width:72px; }
   .vat-all-table thead th.it-focus{ box-shadow:inset 2px 2px 0 #5B5FEF, inset -2px 0 0 #5B5FEF !important; color:#3730A3 !important; }
   .vat-notice-t{ font-size:10px; font-weight:700; color:var(--guide-teal); }
+  /* [2026.10.06] 부가세 안내문·납부서 발송 체크 칸 - 안 보냄: 원천세 미입력 칸처럼 연노랑, 보냄: 날짜(민트) */
+  .vat-send-btn{ width:100%; height:24px; border:none; border-radius:6px; background:#FFF8E1; color:var(--mint); font-family:inherit; font-size:11px; font-weight:800; cursor:pointer; }
+  .vat-send-btn.on{ background:transparent; }
+  .vat-send-btn:hover{ box-shadow:inset 0 0 0 1.5px var(--border); }
   /* [2026.10.06] 택스봇 예정고지 상세(요청) - 부가세 화면에서 '예정'을 고르면 표 아래에 나옴 / 기수 칸 팝업 안 상세 상자 */
   .vat-tb-sec{ margin-top:22px; }
   .vat-tb-title{ text-align:center; font-size:13.5px; font-weight:800; color:var(--navy); margin:0 0 4px; }
@@ -5334,6 +5338,29 @@ try{
     </div>
   </div>
 </div>
+<!-- [2026.10.06] 부가세 안내문·납부서 발송 일괄 체크(요청) - 기수·항목·날짜를 고르고 거래처를 체크해 한 번에 -->
+<div id="vatBulkModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:460px; width:100%; max-height:88vh; display:flex; flex-direction:column; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
+    <div style="text-align:center; margin-bottom:12px;">
+      <div style="font-weight:800; font-size:16px; color:var(--ink);">발송 일괄 체크</div>
+      <div style="margin-top:6px;"><select id="vatBulkPeriod" style="border:1.5px solid var(--border); border-radius:8px; padding:5px 8px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px; font-weight:700;"></select></div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:10px; font-size:12.5px;">
+      <span class="policy-category-toggle ft-cycle-toggle" id="vatBulkFieldToggle" style="margin:0; display:flex; flex-wrap:wrap; justify-content:center; gap:6px;"></span>
+      <div style="display:flex; align-items:center; justify-content:center; gap:6px;">
+        <span style="font-weight:700; color:var(--ink-soft);">날짜</span>
+        <input type="date" id="vatBulkDate" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink);">
+        <button type="button" id="vatBulkTodayBtn" class="del-btn" style="flex-shrink:0; padding:5px 9px; font-size:11px;">오늘</button>
+      </div>
+      <label style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--ink-soft); border-bottom:1px solid var(--border); padding:4px 2px 8px;"><input type="checkbox" id="vatBulkAll"> 전체 선택 <span id="vatBulkCount" style="margin-left:auto; font-weight:600;"></span></label>
+    </div>
+    <div id="vatBulkList" style="flex:1; overflow:auto; min-height:80px; margin-top:4px;"></div>
+    <div style="text-align:center; margin-top:14px; display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
+      <button type="button" id="vatBulkRunBtn" class="submit-btn" style="width:auto; padding:8px 18px;">적용</button>
+      <button type="button" id="vatBulkCloseBtn" class="del-btn modal-close-btn">✕</button>
+    </div>
+  </div>
+</div>
 <!-- 원천세/부가세 신고대상 공용 일괄적용 팝업 - 선택한 연도의 특정 달(원천세)/기수(부가세) 또는 전체에
      대해 모든 거래처에 같은 값을 한 번에 적용함. appConfirm으로 한 번 더 확인받은 뒤에만 실제로 적용됨 -->
 <div id="targetBulkApplyModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
@@ -6985,7 +7012,7 @@ try{
           <input type="text" id="vatAllSearch" placeholder="거래처 검색" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 10px; background:var(--surface); font-family:'Pretendard',sans-serif; font-size:12.5px;"><!-- [2026.10.03] 신고대상만 보기 버튼은 표 위 요약줄의 작은 선택(전체/대상/이번 기수/미신고)으로 옮김(원천세와 통일) -->
         </div>
         <!-- [2026.10.03] 엑셀 아이콘은 표 오른쪽 위로(원천세와 같은 방식, 요청) - 보기 선택 줄 오른쪽 끝에 붙음(tblPlaceXls) -->
-        <div id="vatAllXlsBox" class="tbl-xls-box"><button type="button" class="del-btn xls-io-btn" data-xls="vatAll" data-xls-act="down" title="엑셀 받기" aria-label="엑셀 받기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2" y="2" width="12" height="12" rx="2"></rect><line x1="2" y1="6.5" x2="14" y2="6.5"></line><line x1="6.5" y1="2" x2="6.5" y2="14"></line><path d="M19 8v14"></path><path d="M15 18l4 4 4-4"></path></svg></button><button type="button" class="del-btn xls-io-btn" data-xls="vatAll" data-xls-act="up" title="엑셀 올리기 (추가 또는 교체)" aria-label="엑셀 올리기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2" y="2" width="12" height="12" rx="2"></rect><line x1="2" y1="6.5" x2="14" y2="6.5"></line><line x1="6.5" y1="2" x2="6.5" y2="14"></line><path d="M19 22V8"></path><path d="M15 12l4-4 4 4"></path></svg></button><button type="button" id="vatTaxbotImportBtn" class="del-btn xls-io-btn" title="택스봇 예정고지 가져오기" aria-label="택스봇 예정고지 가져오기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2.5" y="2.5" width="19" height="19" rx="5"></rect><path d="M7 8.5h10"></path><path d="M10.5 8.5L8 16"></path><path d="M17 8.5v7h-5"></path><path d="M12.5 12h4.5"></path></svg></button><input type="file" id="vatTaxbotImportFile" accept=".xlsx,.xls" style="display:none;"><!-- [2026.10.06] 택스봇 아이콘을 선으로 따라 그림(요청) --></div>
+        <div id="vatAllXlsBox" class="tbl-xls-box"><button type="button" class="del-btn xls-io-btn" data-xls="vatAll" data-xls-act="down" title="엑셀 받기" aria-label="엑셀 받기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2" y="2" width="12" height="12" rx="2"></rect><line x1="2" y1="6.5" x2="14" y2="6.5"></line><line x1="6.5" y1="2" x2="6.5" y2="14"></line><path d="M19 8v14"></path><path d="M15 18l4 4 4-4"></path></svg></button><button type="button" class="del-btn xls-io-btn" data-xls="vatAll" data-xls-act="up" title="엑셀 올리기 (추가 또는 교체)" aria-label="엑셀 올리기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2" y="2" width="12" height="12" rx="2"></rect><line x1="2" y1="6.5" x2="14" y2="6.5"></line><line x1="6.5" y1="2" x2="6.5" y2="14"></line><path d="M19 22V8"></path><path d="M15 12l4-4 4 4"></path></svg></button><button type="button" id="vatTaxbotImportBtn" class="del-btn xls-io-btn" title="택스봇 예정고지 가져오기" aria-label="택스봇 예정고지 가져오기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="2.5" y="2.5" width="19" height="19" rx="5"></rect><path d="M7 8.5h10"></path><path d="M10.5 8.5L8 16"></path><path d="M17 8.5v7h-5"></path><path d="M12.5 12h4.5"></path></svg></button><input type="file" id="vatTaxbotImportFile" accept=".xlsx,.xls" style="display:none;"><button type="button" id="vatBulkOpenBtn" class="del-btn xls-io-btn" title="안내문·납부서 발송 일괄 체크" aria-label="안내문·납부서 발송 일괄 체크"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="3 6 5 8 8 4"></polyline><polyline points="3 13 5 15 8 11"></polyline><polyline points="3 20 5 22 8 18"></polyline><line x1="11" y1="6" x2="21" y2="6"></line><line x1="11" y1="13" x2="21" y2="13"></line><line x1="11" y1="20" x2="21" y2="20"></line></svg></button><!-- [2026.10.06] 택스봇 아이콘을 선으로 따라 그림(요청) --></div>
                 <div id="vatAllTableWrap"></div>
       </div>
       <!-- 진행상태 입력 팝업(부가세 통합) -->
@@ -15491,10 +15518,15 @@ function appTipHtml(title, rows, text){
 // [2026.10.02] 거래처 정보 팝업 공통 모양(규칙) - 맨 위 큰 제목 = 상호명, 그 아래 소제목 칩(예: 거래처 특이사항), 그 아래 본문.
 // 기장거래처 메모 팝업(openMemoModal)과 같은 틀(memoModalOverlay)·같은 소제목 칩(section-subtitle-label)을 씀
 function openClientNamedInfoModal(name, subtitle, bodyHtml){
+  // [2026.10.06] "환급금 눌러도 팝업이 안 떠"(제보) - 이 팝업 틀이 다른 화면(숨겨진 탭) 안에 있어서, 원천세 검증 팝업처럼 다른 화면에서
+  // 열면 부모가 숨겨진 채라 안 보였음 → 열 때 항상 문서 맨 바깥(body)으로 옮겨서 어느 화면에서든 보이게 함
+  { const ov = document.getElementById('memoModalOverlay'); if(ov && ov.parentElement !== document.body) document.body.appendChild(ov); }
   document.getElementById('memoModalTitleExtra').innerHTML = '';
   document.getElementById('memoModalTitle').textContent = name || '거래처';
   document.getElementById('memoModalBody').innerHTML = `<div style="text-align:center; margin-bottom:12px;"><span class="section-subtitle-label">${escHtml(subtitle||'')}</span></div>${bodyHtml||''}`;
   document.getElementById('memoModalOverlay').style.display = 'flex';
+  // [2026.10.06] "창 뒤로 가려진다"(제보) - 원천세 검증 팝업처럼 이미 맨 앞으로 올라간 팝업 위에서 열 때도 확실히 그 위로(확인창과 같은 방식)
+  try{ if(window.__bringOverlayToFront) window.__bringOverlayToFront(document.getElementById('memoModalOverlay')); }catch(e){}
 }
 // [2026.10.03] 표 칸 메모 팝업 공통(부가세·법인세·종소세·결산) - 원천세 급여 특이사항 팝업과 같은 모양(수정·삭제)
 function openCellMemoModal(o){
@@ -29395,14 +29427,14 @@ document.getElementById('targetBulkApplyRunBtn')?.addEventListener('click', asyn
       periods.forEach(p=>{
         const isJeonggi = p.endsWith('예정');
         if(!isJeonggi){
-          const keepTb = (sharedVatFilingTargets[c.id][year][p] || {}).taxbot; // [2026.10.06] 택스봇 상세는 유지
-          sharedVatFilingTargets[c.id][year][p] = keepTb ? { applicable: value !== 'not-target', taxbot: keepTb } : { applicable: value !== 'not-target' };
+          const old = sharedVatFilingTargets[c.id][year][p] || {}; // [2026.10.06] 택스봇 상세·발송 체크는 유지
+          sharedVatFilingTargets[c.id][year][p] = Object.assign({ applicable: value !== 'not-target' }, old.taxbot ? { taxbot: old.taxbot } : {}, old.send ? { send: old.send } : {});
         } else {
           let status = value === 'target' ? 'filing' : value;
           // 개인사업자는 예정신고 개념이 없으므로 "대상"을 골라도 예정고지대상으로 적용됨
           if(status === 'filing' && c.entityType === '개인') status = 'notice';
-          const keepTb = (sharedVatFilingTargets[c.id][year][p] || {}).taxbot; // [2026.10.06] 택스봇 상세는 유지
-          sharedVatFilingTargets[c.id][year][p] = keepTb ? { status, taxbot: keepTb } : { status };
+          const old = sharedVatFilingTargets[c.id][year][p] || {}; // [2026.10.06] 택스봇 상세·발송 체크는 유지
+          sharedVatFilingTargets[c.id][year][p] = Object.assign({ status }, old.taxbot ? { taxbot: old.taxbot } : {}, old.send ? { send: old.send } : {});
         }
       });
     });
@@ -30370,6 +30402,14 @@ function renderVatAllUnifiedInner(){
   const STAGE = { '미확인':0, '검토중':1, '기안완료':2 };
   const tri = n => itStageBarHtml([0,1,2].map(i=> i < n ? 'on' : ''));
   const fmtYmd = d=>{ const [yy,mm,dd] = d.split('-'); return `${yy}년 ${Number(mm)}월 ${Number(dd)}일`; };
+  // [2026.10.06] 안내문·납부서 발송 체크(요청) - 기수를 하나만 골라 볼 때 그 기수 칸 옆에 두 칸. 누르면 오늘 날짜로 체크, 다시 누르면 해제
+  const sendP = periods.length === 1 ? periods[0] : null;
+  const sendCells = c=> !sendP ? '' : VAT_SEND_ITEMS.map(([k])=>{
+    const st = vatAllCellState(c, year, sendP).targetStatus;
+    if(st === 'not-target') return `<td class="cvb it-all-mcol"></td>`;
+    const v = vatSendGet(c.id, year, sendP, k);
+    return `<td class="cvb it-all-mcol"><button type="button" class="vat-send-btn${v ? ' on' : ''}" data-client-id="${c.id}" data-k="${k}" title="${v ? `${v} 발송 · 다시 누르면 해제` : '눌러서 오늘 발송으로 체크'}">${v ? Number(v.slice(5,7)) + '/' + Number(v.slice(8,10)) : ''}</button></td>`;
+  }).join('');
   const rows = list.map((c, idx)=>{
     const entityColor = c.entityType === '법인' ? '#0B5A78' : c.entityType === '개인' ? '#BE185D' : 'inherit';
     const periodCells = periods.map(p=>{
@@ -30398,16 +30438,23 @@ function renderVatAllUnifiedInner(){
     return `<tr>
       <td class="num cvb" style="color:var(--ink-soft);">${idx+1}</td>
       <td class="cvb it-all-name" style="color:${entityColor}; font-weight:800; white-space:nowrap;">${escHtml(c.name)}</td>
-      ${periodCells}${verifyCell}
+      ${periodCells}${sendCells(c)}${verifyCell}
     </tr>`;
   }).join('');
-  wrap.innerHTML = summaryHtml + `<div class="table-scroll"><table class="it-all-table vat-all-table"><thead><tr><th class="cvb">순번</th><th class="cvb">상호명</th>${periodHeaderCells}<th class="cvb it-all-mcol" style="width:70px;">검증</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  wrap.innerHTML = summaryHtml + `<div class="table-scroll"><table class="it-all-table vat-all-table"><thead><tr><th class="cvb">순번</th><th class="cvb">상호명</th>${periodHeaderCells}${sendP ? VAT_SEND_ITEMS.map(([, l])=> `<th class="cvb it-all-mcol" style="width:80px;">${l}</th>`).join('') : ''}<th class="cvb it-all-mcol" style="width:70px;">검증</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   bindSummary();
   // [2026.10.06] '예정'을 고르면 표 아래에 택스봇 예정고지 상세(요청)
   if(half !== 'all' && kind === 'pre') wrap.insertAdjacentHTML('beforeend', vatTaxbotDetailHtml(year, `${half}기예정`));
   wrap.querySelectorAll('.review-vat-open-btn').forEach(btn=>{
     btn.addEventListener('click', ()=> openReviewVatFullscreen(btn.dataset.clientId));
   });
+  wrap.querySelectorAll('.vat-send-btn').forEach(btn=> btn.addEventListener('click', async ()=>{
+    const { clientId, k } = btn.dataset, cur = vatSendGet(clientId, year, sendP, k);
+    const label = (VAT_SEND_ITEMS.find(x=> x[0] === k) || [,''])[1];
+    if(cur){ if(!(await appConfirm(`${label} 발송 체크(${cur})를 지울까요?`, { okText:'해제', cancelText:'취소' }))) return; vatSendSet(clientId, year, sendP, k, null); }
+    else vatSendSet(clientId, year, sendP, k, todayStr());
+    await saveSharedVatFilingTargets(); renderVatAllUnified();
+  }));
   wrap.querySelectorAll('.vat-memo-star').forEach(el=> el.addEventListener('click', e=>{
     e.stopPropagation(); e.preventDefault();
     const { cid, period } = el.dataset, cs = vatAllCellState({ id:cid, entityType:(bookkeepingClientList().find(x=>x.id===cid)||{}).entityType }, year, period);
@@ -30478,6 +30525,74 @@ document.getElementById('vatAllStatusEditSaveBtn')?.addEventListener('click', as
   await saveSharedFilingStatus();
   showCenterToast('저장됐어요');
   closeVatAllStatusEditModal();
+});
+
+// ══════════════════════════════════════════════════════════
+// [2026.10.06] 부가세 안내문·납부서 발송 체크(요청) - 기수별로 sharedVatFilingTargets[거래처][연도][기수].send = { notice, bill } (날짜)
+// 표: 기수를 하나만 골라 볼 때 그 기수 옆에 두 칸. 일괄: 표 오른쪽 위 체크목록 아이콘 → 기수·항목·날짜·거래처를 골라 한 번에
+// ══════════════════════════════════════════════════════════
+const VAT_SEND_ITEMS = [['notice','안내문'], ['bill','납부서']];
+function vatSendGet(cid, year, period, k){ const e = ((sharedVatFilingTargets[cid] || {})[year] || {})[period]; return (e && e.send && e.send[k]) || ''; }
+function vatSendSet(cid, year, period, k, v){
+  const e = vatFilingTargetEntry(cid, year, period);
+  e.send = e.send || {};
+  if(v) e.send[k] = v; else delete e.send[k];
+  if(!Object.keys(e.send).length) delete e.send;
+}
+let vatBulkField = 'notice';
+function vatBulkCurPeriod(){ return document.getElementById('vatBulkPeriod')?.value || ''; }
+function renderVatBulkModal(){
+  const tg = document.getElementById('vatBulkFieldToggle');
+  if(tg){ tg.innerHTML = VAT_SEND_ITEMS.map(([k, l])=> `<button type="button" class="${k === vatBulkField ? 'active' : ''}" data-k="${k}">${l}</button>`).join('');
+    tg.querySelectorAll('button').forEach(b=> b.addEventListener('click', ()=>{ vatBulkField = b.dataset.k; renderVatBulkModal(); })); }
+  const year = vatAllYear, p = vatBulkCurPeriod();
+  const rows = bookkeepingClientList().map(c=> ({ c, st: vatAllCellState(c, year, p).targetStatus, cur: vatSendGet(c.id, year, p, vatBulkField) })).filter(r=> r.st !== 'not-target');
+  const listEl = document.getElementById('vatBulkList');
+  const stLab = { target:'대상', filing:'예정신고', notice:'예정고지', 'notice-excluded':'고지제외' };
+  listEl.innerHTML = rows.length ? rows.map((r, i)=> `<label style="display:flex; align-items:center; gap:8px; padding:7px 2px; border-bottom:1px dashed var(--border); font-size:12.5px; cursor:pointer;">
+      <input type="checkbox" class="vat-bulk-chk" data-i="${i}" ${r.cur ? '' : 'checked'}>
+      <span style="font-weight:700; color:var(--ink); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml(r.c.name)} <span style="font-size:11px; font-weight:700; color:var(--ink-soft);">${stLab[r.st] || ''}</span></span>
+      <span style="font-size:11.5px; color:var(--ink-soft); white-space:nowrap;">${r.cur ? escHtml(r.cur) : ''}</span>
+    </label>`).join('') : `<div class="empty-state">이 기수에 해당하는 거래처가 없어요.</div>`;
+  listEl._rows = rows;
+  const sync = ()=>{ const all = [...listEl.querySelectorAll('.vat-bulk-chk')], on = all.filter(x=> x.checked).length;
+    const a = document.getElementById('vatBulkAll'); if(a){ a.checked = all.length > 0 && on === all.length; a.indeterminate = on > 0 && on < all.length; }
+    const cnt = document.getElementById('vatBulkCount'); if(cnt) cnt.textContent = `${on} / ${all.length}`; };
+  listEl.querySelectorAll('.vat-bulk-chk').forEach(x=> x.addEventListener('change', sync));
+  sync();
+}
+document.getElementById('vatBulkOpenBtn')?.addEventListener('click', ()=>{
+  const year = vatAllYear || todayStr().slice(0,4);
+  const half = document.getElementById('vatAllHalf')?.value || 'all', kind = half === 'all' ? 'both' : (document.getElementById('vatAllKind')?.value || 'both');
+  const shown = VAT_TARGET_PERIODS.filter(p=> (half === 'all' || p.startsWith(half + '기')) && (kind === 'both' || (kind === 'pre' ? p.endsWith('예정') : p.endsWith('확정'))));
+  const def = shown.length === 1 ? shown[0] : vatFocusFiling().period;
+  const sel = document.getElementById('vatBulkPeriod');
+  if(sel){ sel.innerHTML = VAT_TARGET_PERIODS.map(p=> `<option value="${p}" ${p === def ? 'selected' : ''}>${year}년 ${VAT_TARGET_PERIOD_LABEL[p]}</option>`).join(''); sel.onchange = renderVatBulkModal; }
+  const d = document.getElementById('vatBulkDate'); if(d) d.value = todayStr();
+  renderVatBulkModal();
+  document.getElementById('vatBulkModalOverlay').style.display = 'flex';
+});
+document.getElementById('vatBulkTodayBtn')?.addEventListener('click', ()=>{ const d = document.getElementById('vatBulkDate'); if(d) d.value = todayStr(); });
+document.getElementById('vatBulkAll')?.addEventListener('change', (e)=>{
+  const all = document.querySelectorAll('#vatBulkList .vat-bulk-chk'); all.forEach(x=>{ x.checked = e.target.checked; });
+  const cnt = document.getElementById('vatBulkCount'); if(cnt) cnt.textContent = `${e.target.checked ? all.length : 0} / ${all.length}`;
+});
+document.getElementById('vatBulkCloseBtn')?.addEventListener('click', ()=>{ document.getElementById('vatBulkModalOverlay').style.display = 'none'; });
+document.getElementById('vatBulkModalOverlay')?.addEventListener('click', (e)=>{ if(e.target.id === 'vatBulkModalOverlay') e.target.style.display = 'none'; });
+document.getElementById('vatBulkRunBtn')?.addEventListener('click', async ()=>{
+  const listEl = document.getElementById('vatBulkList'), rows = (listEl && listEl._rows) || [];
+  const picked = [...listEl.querySelectorAll('.vat-bulk-chk')].filter(x=> x.checked).map(x=> rows[Number(x.dataset.i)]).filter(Boolean);
+  const date = document.getElementById('vatBulkDate')?.value, p = vatBulkCurPeriod(), year = vatAllYear;
+  const label = (VAT_SEND_ITEMS.find(x=> x[0] === vatBulkField) || [,''])[1];
+  if(!date){ appAlert('날짜를 골라주세요.'); return; }
+  if(!picked.length){ appAlert('적용할 거래처를 체크해주세요.'); return; }
+  const over = picked.filter(r=> r.cur && r.cur !== date).length;
+  if(!(await appConfirm(`${year}년 ${VAT_TARGET_PERIOD_LABEL[p]} · ${picked.length}곳에 ${label} 발송을 ${date}로 체크할까요?${over ? `\n이미 다른 날짜가 있는 ${over}곳은 새 날짜로 바뀌어요.` : ''}`, { okText:'적용', cancelText:'취소' }))) return;
+  picked.forEach(r=> vatSendSet(r.c.id, year, p, vatBulkField, date));
+  await saveSharedVatFilingTargets();
+  document.getElementById('vatBulkModalOverlay').style.display = 'none';
+  showCenterToast(`${picked.length}곳에 적용했어요`);
+  renderVatAllUnified();
 });
 
 // ══════════════════════════════════════════════════════════
@@ -31488,8 +31603,10 @@ function renderReviewItTaxTable(clientId, year){
     });
   });
   refreshReviewItRefundAll(clientId, year);
-  wrap.querySelectorAll('.review-it-reg-cell').forEach(td=> td.addEventListener('click', ()=> openReviewItRefundRegModal(clientId, year, Number(td.dataset.month))));
-  wrap.querySelectorAll('.review-it-reg-open').forEach(b=> b.addEventListener('click', (e)=>{ e.stopPropagation(); openReviewItRefundRegModal(clientId, year, null); }));
+  // 팝업이 안 뜨는 경우 원인을 바로 알 수 있게 오류를 화면에 띄움
+  const openReg = m=>{ try{ openReviewItRefundRegModal(clientId, year, m); }catch(err){ console.error('환급금 등록 팝업 오류', err); appAlert('환급금 등록 창을 열지 못했어요: ' + (err && err.message || err)); } };
+  wrap.querySelectorAll('.review-it-reg-cell').forEach(td=> td.addEventListener('click', ()=> openReg(Number(td.dataset.month))));
+  wrap.querySelectorAll('.review-it-reg-open').forEach(b=> b.addEventListener('click', (e)=>{ e.stopPropagation(); openReg(null); }));
   wrap.querySelectorAll('.review-it-tax-refund-input').forEach(inp=>{
     inp.addEventListener('change', ()=>{ if(inp.value.trim().startsWith('-')){ inp.value = inp.value.trim().slice(1); } }); // 칸을 벗어나면 마이너스 표시를 지움
     inp.addEventListener('input', ()=>{
@@ -41161,7 +41278,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.06 15:59';
+const APP_BUILD = '2026.10.06 16:29';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
