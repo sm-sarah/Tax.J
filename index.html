@@ -2226,7 +2226,7 @@ try{
   .vat-tb-counts{ text-align:center; font-size:12px; color:var(--ink-soft); margin:0 0 8px; }
   .vat-tb-counts b{ color:var(--ink); font-weight:800; }
   .vat-tb-table td, .vat-tb-table th{ white-space:nowrap; font-size:12px; }
-  .vat-tb-table td.vat-tb-r{ text-align:right; font-variant-numeric:tabular-nums; }
+  .vat-tb-table td.vat-tb-r{ text-align:center; font-variant-numeric:tabular-nums; } /* [2026.10.06] 이 표는 제목·내용 모두 가운데 정렬(요청) */
   .vat-tb-table .vat-tb-na{ color:#C9CBD6; } /* [2026.10.06] 빈칸은 거래처 표 빈칸(client-cell-na)처럼 짧은 '-' + 아주 옅은 회색(요청) */
   .vat-tb-st{ font-weight:800; }
   .vat-tb-st.filing{ color:var(--indigo-deep); } .vat-tb-st.notice{ color:var(--guide-teal); } .vat-tb-st.notice-excluded{ color:#8A5A05; } .vat-tb-st.not-target{ color:var(--ink-soft); }
@@ -29638,7 +29638,7 @@ function itAllTimingBlockHtml(c, period, timingKey, half){
       <input type="date" class="it-all-date-input" data-field="local" value="${t.local||''}" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink);">
       <button type="button" class="del-btn it-all-today-btn" data-field="local" style="flex-shrink:0; padding:5px 9px; font-size:11px;">오늘</button>
     </div>`}
-    <input type="text" class="it-all-memo-input" value="${escHtml(t.memo||'')}" placeholder="이달 급여 특이사항 (표에는 칸 모서리 빨간 삼각형으로 표시)" style="width:100%; border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink); box-sizing:border-box;">
+    <input type="text" class="it-all-memo-input" value="${escHtml(t.memo||'')}" placeholder="이달 급여 특이사항 (표에는 칸 모서리 회색 삼각형으로 표시)" style="width:100%; border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink); box-sizing:border-box;">
   </div>`;
 }
 // period 한 칸의 표시 상태를 계산 - 신고대상 미등록/미대상/(대상인데) 미신고/신고완료 네 단계
@@ -29896,7 +29896,7 @@ function renderIncomeTaxUnifiedInner(){
         const bothDone = csN.state === 'done' && csL.state === 'done';
         const state = bothDone ? 'done' : anyTarget ? 'target' : csN.state;
         const st = CELL_STYLE[state];
-        const clickAttr = st.disabled ? 'disabled' : `data-client-id="${c.id}" data-period="${period}" data-cellstate="${state}"`;
+        const clickAttr = st.disabled ? 'disabled' : `data-client-id="${c.id}" data-period="${period}" data-cellstate="${state}" data-tk="${timingKey || ''}"`;
         const periodLabel = `${year}년 ${m}월 귀속${timingSuffix ? ` (${timingSuffix}지급)` : ''}`;
         const fmtYmd = d=>{ const [yy,mm,dd] = d.split('-'); return `${yy}년 ${Number(mm)}월 ${Number(dd)}일`; };
         const tipRows = [];
@@ -29985,9 +29985,9 @@ function renderIncomeTaxUnifiedInner(){
   });
   wrap.querySelectorAll('.it-all-month-cell-btn:not([disabled])').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const { clientId, period, cellstate } = btn.dataset;
+      const { clientId, period, cellstate, tk } = btn.dataset;
       if(cellstate === 'unset' || cellstate === 'notarget') openFilingTargetEditModal(clientId, period);
-      else openItAllDateEditModal(clientId, period);
+      else openItAllDateEditModal(clientId, period, tk || null);
     });
   });
   syncItAllStickyHead();
@@ -30015,8 +30015,9 @@ document.getElementById('itAllSearch')?.addEventListener('input', ()=> renderInc
 // 신고일자 입력 팝업 - 이미 신고대상으로 등록된 달(칸)을 눌렀을 때 뜨며, 지급시기별 원천세·지방세 신고일자·
 // 메모를 입력함. 저장을 눌러야 실제로 반영됨(다른 신고대상/신고구분 팝업들과 같은 패턴)
 let itAllDateEditCtx = { clientId:null, period:null };
-function openItAllDateEditModal(clientId, period){
-  itAllDateEditCtx = { clientId, period };
+// [2026.10.06] "당월/당월 줄을 눌렀으면 당월/익월 칸은 필요 없다"(요청) - 지급시기 줄(당월·익월)이 나뉜 거래처는 누른 줄의 지급시기만 보여줌
+function openItAllDateEditModal(clientId, period, timing){
+  itAllDateEditCtx = { clientId, period, timing: timing || null };
   const client = bookkeepingClientList().find(c=>c.id===clientId);
   const [y,m] = period.split('-');
   const nameEl = document.getElementById('itAllDateEditClientName');
@@ -30045,9 +30046,10 @@ function renderItAllDateEditBody(){
   if(!body || !clientId) return;
   const half = itIsHalfOffMonth(clientId, period);
   const target = half ? null : filingTargetEntry(clientId, period);
-  const blocksHtml = half ? itHalfLanes(clientId, period, null).map(k=> itAllTimingBlockHtml({id:clientId}, period, k, true)).join('') : [
-    target.sameMonthPay ? itAllTimingBlockHtml({id:clientId}, period, 'sameMonth') : '',
-    target.nextMonthPay ? itAllTimingBlockHtml({id:clientId}, period, 'nextMonth') : ''
+  const only = itAllDateEditCtx.timing; // 누른 줄의 지급시기(없으면 둘 다)
+  const blocksHtml = half ? itHalfLanes(clientId, period, only).map(k=> itAllTimingBlockHtml({id:clientId}, period, k, true)).join('') : [
+    target.sameMonthPay && (!only || only === 'sameMonth') ? itAllTimingBlockHtml({id:clientId}, period, 'sameMonth') : '',
+    target.nextMonthPay && (!only || only === 'nextMonth') ? itAllTimingBlockHtml({id:clientId}, period, 'nextMonth') : ''
   ].join('');
   body.innerHTML = blocksHtml || `<div class="hint" style="margin:0;">등록된 지급시기가 없어요. 신고대상 설정에서 당월지급/익월지급을 먼저 선택해주세요.</div>`;
   body.querySelectorAll('.it-all-date-input').forEach(inp=>{
@@ -30537,13 +30539,13 @@ function vatTaxbotDetailHtml(year, period){
     const reason = x.tb.excludeReason && x.tb.excludeReason !== '없음' ? escHtml(x.tb.excludeReason) : na;
     return `<tr>
       <td class="num cvb" style="color:var(--ink-soft);">${i+1}</td>
-      <td class="cvb" style="text-align:left; color:${entityColor}; font-weight:800;">${escHtml(x.c.name)}</td>
+      <td class="cvb" style="color:${entityColor}; font-weight:800;">${escHtml(x.c.name)}</td>
       <td class="cvb">${escHtml(formatBizRegNo ? formatBizRegNo(x.c.bizNo || '') : (x.c.bizNo || ''))}</td>
       <td class="cvb"><span class="vat-tb-st ${x.st}">${escHtml(VAT_JEONGGI_STATUS_CHIP_LABEL[x.st] || '')}</span></td>
       <td class="cvb">${reason}</td>
       <td class="cvb vat-tb-r">${x.tb.prevSupply == null ? na : Number(x.tb.prevSupply).toLocaleString('ko-KR')}</td>
       <td class="cvb vat-tb-r">${x.tb.noticeTax == null ? na : Number(x.tb.noticeTax).toLocaleString('ko-KR')}</td>
-      <td class="cvb" style="text-align:left;">${x.tb.office ? escHtml(x.tb.office) : na}</td>
+      <td class="cvb">${x.tb.office ? escHtml(x.tb.office) : na}</td>
       <td class="cvb">${x.tb.epayNo ? escHtml(x.tb.epayNo) : na}</td>
       <td class="cvb">${x.tb.dueDate ? escHtml(x.tb.dueDate) : na}</td>
     </tr>`;
@@ -40935,7 +40937,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.06 11:43';
+const APP_BUILD = '2026.10.06 12:20';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
