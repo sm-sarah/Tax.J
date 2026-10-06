@@ -8496,22 +8496,33 @@ function filingProgressOf(k){
   if(k === '일용직'){ const ym = itFocusPeriodNow(); const by = {}; dwWorkers().forEach(w=>{ if(!dwInEmploy(w, ym)) return; const e = (w.months || {})[ym] || {}; if(!(Number(e.earned) > 0)) return; by[w.clientId] = (by[w.clientId] !== false) && (e.state === 'filed' || e.state === 'skip'); }); const v = Object.values(by); return { total:v.length, done:v.filter(Boolean).length }; }
   return { total:0, done:0 };
 }
-function setFilingTitleBadge(el, k){
-  if(!el) return;
+// [2026.10.06] "진행률은 제목 아래 말고 표 아래 꼬리줄(마감·대상·완료·남음) 오른쪽 끝에, 건수 없이 진행률만"(요청) -
+// 꼬리줄(it-all-foot)이 있는 화면은 제목 배지를 숨기고 꼬리줄 끝에 '진행률 N%'. 꼬리줄이 없는 화면(일용직)은 제목 배지에 진행률만
+function setFilingTitleBadge(el, k, wrapId){
   let p; try{ p = filingProgressOf(k); }catch(e){ p = { total:0, done:0 }; }
-  if(!p.total){ el.style.display = 'none'; el.textContent = ''; return; }
-  el.style.display = ''; el.textContent = `완료 ${p.done}/${p.total} · ${Math.round(p.done / p.total * 100)}%`;
-  el.title = `신고할 곳 ${p.total}개 중 ${p.done}개 완료 (남음 ${p.total - p.done})`;
+  const foot = wrapId ? document.querySelector(`#${wrapId} > .it-all-foot`) : null;
+  if(foot){ foot.querySelectorAll(':scope > .it-foot-prog').forEach(x=> x.remove()); }
+  if(!p.total){ if(el){ el.style.display = 'none'; el.textContent = ''; } return; }
+  const pct = Math.round(p.done / p.total * 100);
+  const tip = `신고할 곳 ${p.total}개 중 ${p.done}개 완료 (남음 ${p.total - p.done})`;
+  if(foot){
+    if(el){ el.style.display = 'none'; el.textContent = ''; }
+    foot.insertAdjacentHTML('beforeend', `<i class="it-foot-prog">·</i><span class="it-foot-prog" title="${tip}">진행률 <b>${pct}%</b></span>`);
+    return;
+  }
+  if(!el) return;
+  el.style.display = ''; el.textContent = `진행률 ${pct}%`;
+  el.title = tip;
 }
 function renderFilingTitleBadges(){
-  setFilingTitleBadge(document.getElementById('itAllTitleBadge'), '원천세');
-  setFilingTitleBadge(document.getElementById('vatAllTitleBadge'), '부가세');
+  setFilingTitleBadge(document.getElementById('itAllTitleBadge'), '원천세', 'itAllTableWrap');
+  setFilingTitleBadge(document.getElementById('vatAllTitleBadge'), '부가세', 'vatAllTableWrap');
   const t = typeof viewingFilingType !== 'undefined' ? viewingFilingType : '';
   const h = document.getElementById('filingStatusTitle');
   if(h && ['법인세','종소세','결산통합','일용직'].includes(t)){
     let b = h.querySelector(':scope > .badge.filing-title-badge');
     if(!b){ b = document.createElement('span'); b.className = 'badge filing-title-badge'; h.appendChild(b); }
-    setFilingTitleBadge(b, t);
+    setFilingTitleBadge(b, t, t === '일용직' ? null : 'filingStatusTableWrap');
   } else if(h){ h.querySelector(':scope > .badge.filing-title-badge')?.remove(); }
 }
 function scheduleFilingSideBadges(){ clearTimeout(scheduleFilingSideBadges._t); scheduleFilingSideBadges._t = setTimeout(()=>{ try{ renderFilingTitleBadges(); }catch(e){} }, 300); }
