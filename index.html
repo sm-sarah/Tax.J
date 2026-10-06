@@ -31134,7 +31134,7 @@ function reviewItRefundCalc(storeKey, year, month, kind, depth){
 function reviewItPayableHtml(storeKey, year, month, kind){
   const r = reviewItRefundCalc(storeKey, year, month, kind);
   if(r.base == null && !r.refund) return '';
-  return r.payable.toLocaleString() + (r.leftover ? `<div style="font-size:10px; font-weight:600; color:var(--ink-soft);" title="다음 달로 넘어가는 환급잔액">잔액 ${r.leftover.toLocaleString()}</div>` : '');
+  return r.payable.toLocaleString() + (r.leftover ? `<div style="font-size:10px; font-weight:600; color:var(--ink-soft);" title="차월이월환급세액 - 다음 달 전월미환급세액으로 자동으로 넘어가요">차월이월 ${r.leftover.toLocaleString()}</div>` : '');
 }
 // 환급잔액·신고서 값이 바뀌면 그 뒤 달들의 이월 잔액도 바뀌므로 표 전체의 납부세액·자동 잔액(흐린 글씨)을 다시 맞춤
 function refreshReviewItRefundAll(clientId, year){
@@ -31296,7 +31296,7 @@ function renderReviewItTaxTable(clientId, year){
     const reportedLocalCell = isEnd
       ? `<td style="border-left:2px solid var(--border);">${reviewItMoneyInputHtml('review-it-tax-reported-local-input', month, {}, data.taxReportedLocal, {width:'88px', bg:'#FFFBEA'})}</td>`
       : `<td style="border-left:2px solid var(--border); text-align:center; color:var(--ink-soft);">-</td>`;
-    const refundCell = kind => isEnd ? `<td title="비워 두면 전월에서 남은 환급잔액(흐린 글씨)이 자동으로 들어가요. 신고서 금액이 다르면 직접 적어주세요">${reviewItMoneyInputHtml('review-it-tax-refund-input', month, {kind}, reviewItRefund(data, kind), {width:'76px', bg:'#FFFBEA'})}</td>` : dash;
+    const refundCell = kind => isEnd ? `<td title="비워 두면 전월 차월이월환급세액(흐린 글씨)이 자동으로 들어가요. 신고서 금액이 다르면 직접 적어주세요">${reviewItMoneyInputHtml('review-it-tax-refund-input', month, {kind}, reviewItRefund(data, kind), {width:'76px', bg:'#FFFBEA'})}</td>` : dash;
     const payableCell = kind => isEnd ? `<td class="num cvb review-it-tax-payable-cell" data-month="${month}" data-kind="${kind}" style="font-weight:800;"></td>` : dash;
     return `<tr data-month="${month}">
       <td class="num cvb" style="font-weight:700; width:56px;">${month}월</td>
@@ -31340,9 +31340,9 @@ function renderReviewItTaxTable(clientId, year){
       <tr>
         ${taxReturnHeaderCells}
         <th class="cvb">합계</th><th class="cvb">검증</th>
-        <th class="cvb" title="이번 달에 차감할 환급잔액 - 비워 두면 전월 남은 잔액이 자동으로 이어져요. 검증은 환급 전 합계로 해요">환급잔액</th><th class="cvb" title="합계 − 환급잔액 (모자라면 0, 남은 잔액은 다음 달로)">납부세액</th>
+        <th class="cvb" title="신고서의 전월미환급세액 - 비워 두면 전월 차월이월환급세액이 자동으로 이어져요. 검증은 합계(차감 전)로 해요"><span style="color:var(--coral);">−</span> 전월미환급세액<button type="button" class="backup-info-btn" data-hint-info="reviewItRefund" title="도움말" aria-label="도움말" style="margin-left:4px; vertical-align:-3px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button></th><!-- [2026.10.06] 입력 방법·원리 도움말(요청) --><th class="cvb" title="합계 − 전월미환급세액 (모자라면 0, 남은 금액은 차월이월)"><span style="color:var(--indigo);">=</span> 납부세액</th>
         <th class="cvb" style="background:var(--indigo-bg); border-left:2px solid var(--border);">세액</th><th class="cvb" style="background:var(--indigo-bg);">검증</th>
-        <th class="cvb" style="background:var(--indigo-bg);" title="지방세 환급잔액 - 비워 두면 전월 남은 잔액이 자동으로 이어져요. 검증은 환급 전 세액으로 해요">환급잔액</th><th class="cvb" style="background:var(--indigo-bg);" title="세액 − 환급잔액 (모자라면 0, 남은 잔액은 다음 달로)">납부세액</th>
+        <th class="cvb" style="background:var(--indigo-bg);" title="지방세 전월미환급세액 - 비워 두면 전월 차월이월환급세액이 자동으로 이어져요. 검증은 세액(차감 전)으로 해요"><span style="color:var(--coral);">−</span> 전월미환급세액</th><th class="cvb" style="background:var(--indigo-bg);" title="세액 − 전월미환급세액 (모자라면 0, 남은 금액은 차월이월)"><span style="color:var(--indigo);">=</span> 납부세액</th>
       </tr>
     </thead><tbody>${returnRows}</tbody></table>`;
   wrap.querySelectorAll('.review-it-tax-input').forEach(inp=>{
@@ -31373,12 +31373,14 @@ function renderReviewItTaxTable(clientId, year){
   });
   refreshReviewItRefundAll(clientId, year);
   wrap.querySelectorAll('.review-it-tax-refund-input').forEach(inp=>{
+    inp.addEventListener('change', ()=>{ if(inp.value.trim().startsWith('-')){ inp.value = inp.value.trim().slice(1); } }); // 칸을 벗어나면 마이너스 표시를 지움
     inp.addEventListener('input', ()=>{
       formatMoneyInputLive(inp);
       const month = Number(inp.dataset.month), kind = inp.dataset.kind;
       const data = reviewItMonthData(clientId, year, month);
       const parsed = moneyParse(inp.value);
-      if(kind === 'local') data.taxRefundLocal = parsed === undefined ? null : parsed; else data.taxRefund = parsed === undefined ? null : parsed;
+      const v = parsed === undefined ? null : Math.abs(parsed);   // [2026.10.06] 환급잔액은 플러스로 저장(마이너스로 적어도 플러스로)
+      if(kind === 'local') data.taxRefundLocal = v; else data.taxRefund = v;
       if(data.tax && data.tax['환급잔액']){ delete data.tax['환급잔액'][kind === 'local' ? 'local' : 'tax']; } // 예전 자리 값은 정리
       setReviewItDirty(true);
       refreshReviewItTaxRow(clientId, year, month);
@@ -37548,6 +37550,16 @@ HINT_INFO.dailyWorkers = { title:'일용직', html: infoTidyHtml(
   '<b>3개월 연속 신고 금지</b>: 두 달 연속 신고했으면 다음 달은 미신고로 쉬어요<br>'+
   '<b>합산신고</b>: 쉰 다음 달에 못 한 금액을 합쳐서 신고해요') };
 // [2026.10.02] 급여현황 도움말 - 계산방식과 회색 글자(자동 채우기)(요청)
+// [2026.10.06] 원천세 검증 > 신고서 - 환급잔액 입력 방법과 원리(요청)
+HINT_INFO.reviewItRefund = { title:'신고서 · 전월미환급세액', html: infoTidyHtml(
+  '<b>계산</b>: 합계(신고서 세액) − 전월미환급세액 = 납부세액. 전월미환급세액이 더 크면 납부세액은 0이고, 남은 금액은 "차월이월"로 다음 달에 넘어가요<br>'+
+  '<b>합계</b>: 신고서의 소득유형별 소득세(지방세는 세액)를 차감 전 금액 그대로 적은 합이에요. 급여 쪽 세액과 같으면 ✓<br>'+
+  '<b>전월미환급세액</b>: 신고서에 적힌 금액을 플러스(+)로 적어요(마이너스로 적어도 플러스로 바뀌어요)<br>'+
+  '<b>비워두면</b>: 전월 차월이월 금액이 흐린 글씨로 자동으로 들어가요. 신고서 금액과 같으면 비워 두면 돼요<br>'+
+  '<b>직접 적을 때</b>: 환급이 처음 생긴 달, 또는 환급을 받거나 조정돼서 자동 금액과 신고서 금액이 다른 달<br>'+
+  '<b>검증</b>: 차감 전 합계로 해요(전월미환급세액은 검증에 들어가지 않아요)<br>'+
+  '<b>예시</b>: 1월 합계 477,990 − 전월미환급세액 2,500,780 = 납부 0, 차월이월 2,022,790 → 2월 전월미환급세액을 비우면 2,022,790이 자동으로 들어가요<br>'+
+  '<b>지방세</b>: 세액 − 전월미환급세액 = 납부세액, 국세와 같은 방식이에요') };
 HINT_INFO.payroll = { title:'급여현황', html: infoTidyHtml(
   '<b>회색 숫자</b>: 비워둔 칸에 자동으로 채운 값이에요. 합계·지급률·출력·엑셀에 그대로 반영되고, 직접 입력하면 그 값이 우선이에요<br>'+
   '<b>신고금액</b>: 비우면 발생금액과 같아요. 합산신고 대상은 전월 미신고분 + 당월 발생금액. 0을 적으면 미신고<br>'+
@@ -40937,7 +40949,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.06 12:20';
+const APP_BUILD = '2026.10.06 14:14';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
