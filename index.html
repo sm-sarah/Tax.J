@@ -2080,14 +2080,14 @@ try{
   .pc-only-desc{ font-size:12.5px; margin-bottom:14px; line-height:1.5; }
   /* 설정 > 회사정보 입력 화면 - "조회 화면처럼 정리" 요청: 칸마다 따로 있던 테두리 상자를 없애고, 흰 카드 한 장 안에
      "회색 항목명 | 입력칸"을 점선으로 나눠 나열(조회 화면 등록증과 같은 느낌). 입력칸은 평소엔 선 없이, 누르면 밑줄 */
-  #companyNameForm{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px 22px 16px; max-width:560px; margin:0 auto; box-shadow:0 1px 2px rgba(29,30,51,0.04); }
-  #companyNameForm .flat-row{ display:grid; grid-template-columns:110px minmax(0,1fr); gap:0 14px; align-items:center; max-width:none; margin:0; padding:7px 0; border:none; border-bottom:1px dashed var(--border); border-radius:0; }
-  #companyNameForm .flat-row:last-of-type{ border-bottom:none; }
-  #companyNameForm .flat-row-label{ color:var(--ink-soft); font-size:12px; font-weight:700; }
-  #companyNameForm .flat-input{ border-bottom-color:transparent; font-size:13px; font-weight:600; color:var(--ink); }
-  #companyNameForm .flat-input:hover{ border-bottom-color:var(--border); }
-  #companyNameForm .flat-input:focus{ border-bottom-color:var(--indigo); outline:none; }
-  #companyNameForm .flat-input::placeholder{ font-weight:400; }
+  #companyNameForm, #teamInfoForm{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px 22px 16px; max-width:560px; margin:0 auto; box-shadow:0 1px 2px rgba(29,30,51,0.04); }
+  #companyNameForm .flat-row, #teamInfoForm .flat-row{ display:grid; grid-template-columns:110px minmax(0,1fr); gap:0 14px; align-items:center; max-width:none; margin:0; padding:7px 0; border:none; border-bottom:1px dashed var(--border); border-radius:0; }
+  #companyNameForm .flat-row:last-of-type, #teamInfoForm .flat-row:last-of-type{ border-bottom:none; }
+  #companyNameForm .flat-row-label, #teamInfoForm .flat-row-label{ color:var(--ink-soft); font-size:12px; font-weight:700; }
+  #companyNameForm .flat-input, #teamInfoForm .flat-input{ border-bottom-color:transparent; font-size:13px; font-weight:600; color:var(--ink); }
+  #companyNameForm .flat-input:hover, #teamInfoForm .flat-input:hover{ border-bottom-color:var(--border); }
+  #companyNameForm .flat-input:focus, #teamInfoForm .flat-input:focus{ border-bottom-color:var(--indigo); outline:none; }
+  #companyNameForm .flat-input::placeholder, #teamInfoForm .flat-input::placeholder{ font-weight:400; }
   .settings-provisional-banner{ max-width:520px; margin:0 auto 12px; padding:7px 12px; border-radius:10px; background:var(--indigo-bg); color:var(--indigo-deep); font-size:12px; font-weight:700; text-align:center; }
   .pv-row{ display:flex; gap:6px; margin-bottom:6px; align-items:center; }
   .pv-row .pv-key{ flex:0 0 38%; } .pv-row .pv-val{ flex:1 1 auto; }
@@ -4449,6 +4449,19 @@ try{
         <span style="font-size:10.5px; color:var(--ink-soft); margin-left:4px;">텍스트를 드래그로 선택한 뒤 눌러주세요</span>
       </div>
       <div id="nm-content" contenteditable="true" data-placeholder="예: 8/15(금) 전사 워크숍으로 사무실 휴무입니다." style="width:100%; min-height:160px; font-family:'Pretendard',sans-serif; font-size:13.5px; line-height:1.7; border:1.5px solid transparent; border-radius:10px; padding:14px; background:var(--bg); color:var(--ink); overflow-y:auto; max-height:40vh;"></div>
+      <!-- [2026.10.07] 공지 첨부(요청 - "기안작성처럼") - 기안의 첨부칸과 같은 모양: 링크 줄(＋ 링크 추가) + 파일 업로드(회사 공유 드라이브) -->
+      <div class="field" style="margin:10px 0 0;"><label>첨부 <span style="font-weight:400; color:var(--ink-soft);">— 파일을 올리거나, 구글드라이브 등 링크를 붙여넣으세요</span></label>
+        <div id="nm-attach-link-rows" style="display:flex; flex-direction:column; gap:6px; margin-bottom:6px;"></div>
+        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">
+          <button type="button" id="nm-attach-link-add-btn" class="del-btn" style="background:var(--bg); color:var(--ink-soft); white-space:nowrap;">＋ 링크 추가</button>
+          <label class="del-btn" id="nm-attach-upload-label" style="cursor:pointer; background:var(--indigo-bg); color:var(--indigo-deep); white-space:nowrap;">
+            <span id="nm-attach-upload-label-text">📎 파일 업로드</span>
+            <input type="file" id="nm-attach-file-input" multiple style="display:none;">
+          </label>
+        </div>
+        <div id="nm-attach-msg" class="hint" style="margin:0;"></div>
+        <div id="nm-attach-uploaded-list" style="display:flex; flex-direction:column; gap:4px; margin-top:6px;"></div>
+      </div>
       <div style="text-align:center; margin-top:10px;">
         <button type="submit" id="noticeModalSaveBtn" class="submit-btn" style="width:auto; padding:9px 20px;">등록</button>
       </div>
@@ -11739,6 +11752,7 @@ function renderNoticeList(){
       <div style="padding:14px 18px; background:var(--bg); border-radius:10px; margin:0 4px;">
         <div style="text-align:center; margin-bottom:8px; font-size:11.5px; color:var(--ink-soft);">${escHtml(n.savedAt||'')} · ${escHtml(n.authorName||'-')} · ${n.scope||'개인'} 공지${n.important ? ' · <svg width="11" height="11" viewBox="0 0 24 24" fill="#F5A524" stroke="#F5A524" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>중요' : ''}</div>
         <div style="white-space:pre-wrap; line-height:1.7; padding:14px; background:var(--surface); border-radius:10px; user-select:text; ${styleStr}">${contentHtml}</div>
+        ${noticeAttachHtml(n)}
         <!-- [2026.10.01] "목록 줄에 아이콘이 너무 많다"(요청) - 이력·수정·삭제는 공지를 펼쳤을 때 내용 아래에서 -->
         <div style="display:flex; justify-content:flex-end; align-items:center; gap:6px; margin-top:8px;">
           <button type="button" class="del-btn approval-icon-btn notice-history-btn" data-id="${n.id}" title="수정이력${histCnt?` (${histCnt}건)`:''}" aria-label="수정이력" style="width:28px; height:28px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:9px; --icon-bg:var(--bg2, #E5E7EB); --icon-fg:var(--ink-soft);">${clockSvg}</button>
@@ -11836,7 +11850,8 @@ function openNoticeViewPopup(n){
   document.getElementById('memoModalBody').innerHTML = `
     <div style="text-align:center; margin-bottom:12px;"><span class="section-subtitle-label">공지사항</span></div>
     <div style="text-align:center; margin-bottom:10px; font-size:11.5px; color:var(--ink-soft);">${escHtml(n.savedAt||'')} · ${escHtml(n.authorName||'-')} · ${n.scope||'개인'} 공지${n.important ? ' · <svg width="11" height="11" viewBox="0 0 24 24" fill="#F5A524" stroke="#F5A524" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>중요' : ''}</div>
-    <div style="white-space:pre-wrap; line-height:1.7; padding:14px; background:var(--bg); border-radius:10px; user-select:text; ${styleStr}">${contentHtml}</div>`;
+    <div style="white-space:pre-wrap; line-height:1.7; padding:14px; background:var(--bg); border-radius:10px; user-select:text; ${styleStr}">${contentHtml}</div>${noticeAttachHtml(n)}`;
+  try{ initApprovalAttachmentImages(document.getElementById('memoModalBody')); }catch(e){}
   document.getElementById('memoModalOverlay').dataset.noBackdropClose = '1';
   document.getElementById('memoModalOverlay').style.display = 'flex';
   markNoticeRead(n.id);
@@ -11844,6 +11859,70 @@ function openNoticeViewPopup(n){
 }
 
 let editingNoticeModalId = null;
+// [2026.10.07] 공지 첨부(요청 - "기안작성처럼"). 저장 모양도 결재와 같음: n.attachments = [{ id, name, mimeType, url, thumb }(업로드) | { url, manual:true }(링크)]
+// 파일은 결재 첨부와 같은 회사 공유 드라이브("01.기장대리" > "0004.전자결재첨부") 안 "공지사항" 폴더(연/월)에 올라감
+let nmUploadedAttachments = [];
+function noticeAttachHtml(n){
+  const h = (n && Array.isArray(n.attachments) && n.attachments.length && typeof attachmentListHtml === 'function') ? attachmentListHtml(n) : '';
+  return h ? `<div style="margin-top:8px; padding:8px 14px 10px; background:var(--surface); border-radius:10px;"><div style="font-size:11px; font-weight:800; color:var(--ink-soft);">첨부 ${n.attachments.filter(a=>a && a.url).length}개</div>${h}</div>` : '';
+}
+function nmRenderLinkRows(values){
+  const wrap = document.getElementById('nm-attach-link-rows');
+  if(!wrap) return;
+  const list = (values && values.length) ? values : [''];
+  wrap.innerHTML = list.map((v,i)=>`
+    <div style="display:flex; gap:6px; align-items:center;">
+      <input type="text" class="nm-attach-link-input" data-idx="${i}" placeholder="https://drive.google.com/..." value="${escHtml(v||'')}" style="flex:1; min-width:200px;">
+      <button type="button" class="del-btn nm-attach-link-remove-btn" data-idx="${i}" style="padding:4px 10px; background:var(--coral-bg); color:var(--coral);" title="이 링크 칸 지우기">✕</button>
+    </div>`).join('');
+  wrap.querySelectorAll('.nm-attach-link-remove-btn').forEach(btn=> btn.addEventListener('click', ()=>{ const rows = nmLinkValues(true); rows.splice(Number(btn.dataset.idx), 1); nmRenderLinkRows(rows); }));
+}
+function nmLinkValues(keepEmpty){
+  const vals = [...document.querySelectorAll('#nm-attach-link-rows .nm-attach-link-input')].map(el=> el.value.trim());
+  return keepEmpty ? vals : vals.filter(Boolean);
+}
+function nmRenderUploadedList(){
+  const wrap = document.getElementById('nm-attach-uploaded-list');
+  if(!wrap) return;
+  wrap.innerHTML = nmUploadedAttachments.map((a,i)=>`
+    <div style="display:flex; align-items:center; gap:6px; background:var(--bg); border-radius:8px; padding:5px 9px; font-size:12px;">
+      <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${(a.mimeType||'').startsWith('image/') ? '🖼️' : '📎'} ${escHtml(a.name||a.url)}</span>
+      <button type="button" class="del-btn nm-attach-remove-btn" data-idx="${i}" title="첨부 삭제" style="padding:2px 10px; font-size:13px; font-weight:800; line-height:1; background:var(--coral-bg); color:var(--coral);">−</button>
+    </div>`).join('');
+  wrap.querySelectorAll('.nm-attach-remove-btn').forEach(btn=> btn.addEventListener('click', ()=>{ nmUploadedAttachments.splice(Number(btn.dataset.idx), 1); nmRenderUploadedList(); }));
+}
+function nmSetAttachments(list){
+  list = Array.isArray(list) ? list : [];
+  nmUploadedAttachments = list.filter(a=> a && !a.manual).map(a=> ({ ...a }));
+  nmRenderLinkRows(list.filter(a=> a && a.manual).map(a=> a.url));
+  nmRenderUploadedList();
+  const msg = document.getElementById('nm-attach-msg'); if(msg) msg.textContent = '';
+}
+function nmCombinedAttachments(){ return [...nmUploadedAttachments, ...nmLinkValues().map(url=> ({ url, manual:true }))]; }
+document.getElementById('nm-attach-link-add-btn')?.addEventListener('click', ()=>{ const rows = nmLinkValues(true); rows.push(''); nmRenderLinkRows(rows); });
+document.getElementById('nm-attach-file-input')?.addEventListener('change', async (e)=>{
+  const files = Array.from(e.target.files || []);
+  if(!files.length) return;
+  const label = document.getElementById('nm-attach-upload-label'), labelText = document.getElementById('nm-attach-upload-label-text'), msgEl = document.getElementById('nm-attach-msg');
+  const originalText = labelText.textContent;
+  label.style.pointerEvents = 'none'; label.style.opacity = '0.6';
+  const meta = { title: document.getElementById('nm-title')?.value.trim() || '(제목없음)', drafter: (typeof currentStaffDisplayName === 'function' ? currentStaffDisplayName() : '') || '' };
+  try{
+    for(let i=0;i<files.length;i++){
+      labelText.textContent = `업로드 중... (${i+1}/${files.length})`;
+      if(msgEl) msgEl.textContent = `${files[i].name} 업로드 중...`;
+      nmUploadedAttachments.push(await gdriveUploadApprovalAttachment(files[i], '공지사항', meta));
+      nmRenderUploadedList();
+      if(msgEl) msgEl.textContent = `${files[i].name} 업로드 완료`;
+    }
+  }catch(err){
+    console.error('공지 첨부파일 업로드 실패', err);
+    appAlert(err && err.message ? err.message : '첨부파일 업로드에 실패했어요. 회사 공유 드라이브("01.기장대리")의 멤버로 등록돼 있는지 확인해주세요.');
+    if(msgEl) msgEl.textContent = '업로드 실패';
+  }finally{
+    labelText.textContent = originalText; label.style.pointerEvents = ''; label.style.opacity = ''; e.target.value = '';
+  }
+});
 
 function openNoticeFormModal(editId){
   editingNoticeModalId = editId || null;
@@ -11859,6 +11938,7 @@ function openNoticeFormModal(editId){
     document.getElementById('nm-size').value = n.size || '13.5';
     document.getElementById('nm-important').checked = !!n.important;
     document.getElementById('nm-content').innerHTML = n.content ? (noticeContentIsRich(n.content) ? n.content : escHtml(n.content).replace(/\n/g,'<br>')) : '';
+    nmSetAttachments(n.attachments);
     document.getElementById('noticeModalSaveBtn').textContent = '수정 완료';
   } else {
     document.getElementById('noticeFormModalTitle').textContent = '공지 등록';
@@ -11867,6 +11947,7 @@ function openNoticeFormModal(editId){
     document.getElementById('nm-size').value = '13.5';
     document.getElementById('nm-important').checked = false;
     document.getElementById('nm-content').innerHTML = '';
+    nmSetAttachments([]);
     document.getElementById('noticeModalSaveBtn').textContent = '등록';
   }
   document.getElementById('noticeModalSaveMsg').textContent = '';
@@ -11891,6 +11972,7 @@ document.getElementById('noticeModalForm').addEventListener('submit', async (e)=
   const scope = isAdmin ? (document.getElementById('nm-scope').value || '개인') : '개인';
   const size = document.getElementById('nm-size').value;
   const important = isAdmin ? document.getElementById('nm-important').checked : false;
+  const attachments = nmCombinedAttachments();
   const myProfile = currentUserEmail ? getProfiles().find(p=>(p.email||'').toLowerCase()===currentUserEmail) : null;
   // 우선순위: 내 직원 프로필 이름 > (직원 프로필이 없는 관리자라면) 관리자 목록에 등록해둔 이름 > 이 기기 개인설정 이름 > 기본값
   const adminRegisteredName = currentUserEmail ? sharedAdminNames[currentUserEmail] : null;
@@ -11905,11 +11987,14 @@ document.getElementById('noticeModalForm').addEventListener('submit', async (e)=
       const changes = [];
       if(n.title !== title) changes.push({label:'제목', before:n.title||'(제목 없음)', after:title||'(제목 없음)'});
       if(n.content !== content) changes.push({label:'내용', before:stripHtmlToText(n.content)||'(내용 없음)', after:stripHtmlToText(content)||'(내용 없음)'});
+      const attTxt = list=> (list||[]).map(a=> a.name || a.url).join(', ');
+      if(attTxt(n.attachments) !== attTxt(attachments)) changes.push({label:'첨부', before:attTxt(n.attachments)||'(없음)', after:attTxt(attachments)||'(없음)'});
       if(changes.length){
         if(!n.editHistory) n.editHistory = [];
         n.editHistory.unshift({ date: new Date().toLocaleString('ko-KR'), changes, byEmail: (currentUserEmail||'').toLowerCase(), byName: authorName });
       }
       n.title = title; n.content = content; n.scope = scope; n.size = size;
+      if(attachments.length) n.attachments = attachments; else delete n.attachments;
       if(isAdmin) n.important = important;
       n.editedAt = new Date().toLocaleString('ko-KR');
     }
@@ -11918,7 +12003,7 @@ document.getElementById('noticeModalForm').addEventListener('submit', async (e)=
     const savedAt = new Date().toLocaleString('ko-KR');
     const savedAtDate = todayStr();
     const newId = genId();
-    sharedNoticeHistory.unshift({ id: newId, title, content, scope, authorName, authorEmail: (currentUserEmail||'').toLowerCase(), savedAt, savedAtDate, size, important });
+    sharedNoticeHistory.unshift({ id: newId, title, content, scope, authorName, authorEmail: (currentUserEmail||'').toLowerCase(), savedAt, savedAtDate, size, important, ...(attachments.length ? { attachments } : {}) });
     markNoticeRead(newId);
     showCenterToast('등록됐어요'); document.getElementById('noticeModalSaveMsg').textContent = '등록됨';
   }
@@ -17643,9 +17728,13 @@ function buildCiAccountTable(list, category, admin, person, titlePrefix, showCon
     if(!it.sensitiveEnc){ idCell = cell(it.idVal); pwCell = cell(it.pwVal); }
     else if(ciRevealedValues[it.id]){ idCell = cell(ciRevealedValues[it.id].idVal); pwCell = cell(ciRevealedValues[it.id].pwVal); }
     else { idCell = pwCell = ciRevealBtnHtml(it.id); }
+    // [2026.10.07] 정보(info) 항목은 ID·PW 두 칸을 합쳐 내용 하나로(회사 공용정보에서 정보 항목이 안 보여 고치거나 지울 수 없던 문제)
+    const isInfo = (it.type||'account') === 'info';
+    const valCells = !isInfo ? `<td>${idCell}</td><td>${pwCell}</td>`
+      : `<td colspan="2">${!it.sensitiveEnc ? cell(it.content) : ciRevealedValues[it.id] ? cell(ciRevealedValues[it.id].content) : ciRevealBtnHtml(it.id)}</td>`;
     return `<tr>
       <td style="font-weight:700;">${escHtml(it.label||'')}</td>
-      <td>${idCell}</td><td>${pwCell}</td>
+      ${valCells}
       <td>${noteCell(it)}</td>
       ${ciRowButtons(admin, category, it.id, person, it.history&&it.history.length, showControls)}
     </tr>`;
@@ -18021,7 +18110,8 @@ async function renderCompanyInfoCorp(wrapId, showControls){
     bindCiKeychain(wrap);
     return;
   }
-  const acctHtml = buildCiAccountTable(acctList, 'corp', admin, null, '', showControls, showControls);
+  // [2026.10.07] "조회 화면엔 두 개인데 입력하는 곳엔 하나라 지울 수 없다"(요청) - 조회 화면 공용정보에 나오는 기타 정보 항목(기본정보 표준 항목이 아닌 것)도 여기 표에 같이 보여서 수정·삭제할 수 있게
+  const acctHtml = buildCiAccountTable([...acctList, ...infoList.filter(it => !CORP_BASIC_INFO_ORDER.includes(it.label))], 'corp', admin, null, '', showControls, showControls);
   wrap.innerHTML = infoHtml + acctHtml;
   bindCiRowButtons(wrap);
   bindCiRevealButtons(wrap);
@@ -31771,6 +31861,32 @@ function moneyParse(str){
   const n = Number(s);
   return isNaN(n) ? undefined : n;
 }
+// [2026.10.07] "월별 행 합계 말고 급여 종류별 열 합계도"(요청) - 급여·세액 표 맨 아래 합계 줄(1~12월 합). 입력할 때마다 바로 다시 계산
+function reviewItSumFmt(n){ return n ? n.toLocaleString() : '<span style="color:var(--ink-soft);">-</span>'; }
+function reviewItIncomeFootRefresh(clientId, year){
+  const cells = document.querySelectorAll('#reviewItIncomeWrap .rv-inc-sum');
+  if(!cells.length) return;
+  const ms = Array.from({length:12}, (_,i)=> reviewItMonthData(clientId, year, i+1));
+  cells.forEach(td=>{
+    const k = td.dataset.key;
+    const sum = k === '__total' ? ms.reduce((a,d)=> a + (Number(reviewItIncomeTotal(d)) || 0), 0)
+      : k === '__reported' ? ms.reduce((a,d)=> a + (Number(d.incomeReported) || 0), 0)
+      : ms.reduce((a,d)=> a + (Number((d.income||{})[k]) || 0), 0);
+    td.innerHTML = reviewItSumFmt(sum);
+  });
+}
+function reviewItTaxFootRefresh(clientId, year){
+  const cells = document.querySelectorAll('#reviewItTaxWrap .rv-tax-sum');
+  if(!cells.length) return;
+  const ms = Array.from({length:12}, (_,i)=> reviewItMonthData(clientId, year, i+1));
+  cells.forEach(td=>{
+    const g = td.dataset.group;
+    const sum = g === '__total' ? ms.reduce((a,d)=> a + (Number(reviewItTaxTotal(d)) || 0), 0)
+      : g === '__local' ? ms.reduce((a,d)=> a + (Number(reviewItTaxLocalTotal(d)) || 0), 0)
+      : ms.reduce((a,d)=> a + (Number(((d.tax||{})[g]||{})[td.dataset.sub]) || 0), 0);
+    td.innerHTML = reviewItSumFmt(sum);
+  });
+}
 function renderReviewItIncomeTable(clientId, year){
   const wrap = document.getElementById('reviewItIncomeWrap');
   if(!wrap) return;
@@ -31797,7 +31913,9 @@ function renderReviewItIncomeTable(clientId, year){
     </tr>`;
   }).join('');
   const headerCells = IF.map(f=>`<th class="cvb" style="white-space:nowrap;">${escHtml(f.label)}</th>`).join('');
-  wrap.innerHTML = `<table><thead><tr><th class="cvb">귀속월</th><th class="cvb" title="달마다 발생한 급여종류를 고르면 고른 종류와 관련된 칸만 보여요(아무 달도 안 고르면 전부)">발생<br>급여종류</th>${headerCells}<th class="cvb">총지급액<br>(급여명세서)</th><th class="cvb rv-inc-rep">총지급액<br>(신고서)</th><th class="cvb rv-inc-rep">검증</th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.innerHTML = `<table><thead><tr><th class="cvb">귀속월</th><th class="cvb" title="달마다 발생한 급여종류를 고르면 고른 종류와 관련된 칸만 보여요(아무 달도 안 고르면 전부)">발생<br>급여종류</th>${headerCells}<th class="cvb">총지급액<br>(급여명세서)</th><th class="cvb rv-inc-rep">총지급액<br>(신고서)</th><th class="cvb rv-inc-rep">검증</th></tr></thead><tbody>${rows}</tbody>
+    <tfoot><tr class="rv-sum-row"><td class="cvb" style="font-weight:800; background:var(--bg); border-top:2px solid var(--border); text-align:center; font-size:12px; font-family:'IBM Plex Mono',monospace;">합계</td><td style="font-weight:800; background:var(--bg); border-top:2px solid var(--border); text-align:center; font-size:12px; font-family:'IBM Plex Mono',monospace;"></td>${IF.map(f=>`<td class="cvb rv-inc-sum" data-key="${f.key}" style="font-weight:800; background:var(--bg); border-top:2px solid var(--border); text-align:center; font-size:12px; font-family:'IBM Plex Mono',monospace;"></td>`).join('')}<td class="cvb rv-inc-sum" data-key="__total" style="font-weight:800; background:var(--bg); border-top:2px solid var(--border); text-align:center; font-size:12px; font-family:'IBM Plex Mono',monospace;"></td><td class="cvb rv-inc-rep rv-inc-sum" data-key="__reported" style="font-weight:800; background:var(--bg); border-top:2px solid var(--border); text-align:center; font-size:12px; font-family:'IBM Plex Mono',monospace;"></td><td class="rv-inc-rep" style="font-weight:800; background:var(--bg); border-top:2px solid var(--border); text-align:center; font-size:12px; font-family:'IBM Plex Mono',monospace;"></td></tr></tfoot></table>`;
+  reviewItIncomeFootRefresh(clientId, year);
   wrap.querySelectorAll('.rv-kinds').forEach(btn=> btn.addEventListener('click', (ev)=>{
     ev.stopPropagation();
     const month = Number(btn.dataset.month);
@@ -31816,6 +31934,7 @@ function renderReviewItIncomeTable(clientId, year){
       data.income[inp.dataset.key] = moneyParse(inp.value);
       setReviewItDirty(true);
       refreshReviewItIncomeRow(clientId, year, month);
+      reviewItIncomeFootRefresh(clientId, year);
       if(reviewItPayCycleForMonth(meta, month) === '반기'){
         const endMonth = month <= 6 ? 6 : 12;
         if(endMonth !== month) refreshReviewItIncomeRow(clientId, year, endMonth);
@@ -31830,6 +31949,7 @@ function renderReviewItIncomeTable(clientId, year){
       reviewItMonthData(clientId, year, month).incomeReported = parsed === undefined ? null : parsed;
       setReviewItDirty(true);
       refreshReviewItIncomeRow(clientId, year, month);
+      reviewItIncomeFootRefresh(clientId, year);
     });
   });
 }
@@ -31912,7 +32032,8 @@ function renderReviewItTaxTable(clientId, year){
         <th class="cvb" rowspan="2">소득세합계<br>(계산)</th><th class="cvb" rowspan="2">지방세합계<br>(계산)</th>
       </tr>
       <tr>${subHeaderCells}</tr>
-    </thead><tbody>${monthlyCells}</tbody></table>
+    </thead><tbody>${monthlyCells}</tbody>
+    <tfoot><tr class="rv-sum-row"><td class="cvb" style="font-weight:800; background:var(--bg); border-top:2px solid var(--border); text-align:center; font-size:12px; font-family:'IBM Plex Mono',monospace;">합계</td>${TG.map(g=>`<td class="cvb rv-tax-sum" data-group="${g.key}" data-sub="tax" style="font-weight:800; background:var(--bg); border-top:2px solid var(--border); text-align:center; font-size:12px; font-family:'IBM Plex Mono',monospace;"></td><td class="cvb rv-tax-sum" data-group="${g.key}" data-sub="local" style="font-weight:800; background:var(--bg); border-top:2px solid var(--border); text-align:center; font-size:12px; font-family:'IBM Plex Mono',monospace;"></td>`).join('')}<td class="cvb rv-tax-sum" data-group="__total" style="font-weight:800; background:var(--bg); border-top:2px solid var(--border); text-align:center; font-size:12px; font-family:'IBM Plex Mono',monospace;"></td><td class="cvb rv-tax-sum" data-group="__local" style="font-weight:800; background:var(--bg); border-top:2px solid var(--border); text-align:center; font-size:12px; font-family:'IBM Plex Mono',monospace;"></td></tr></tfoot></table>
     <div style="font-size:12px; font-weight:800; color:var(--indigo-deep); margin:0 0 8px 12px;">신고서</div>
     <table><thead>
       <tr>
@@ -31937,6 +32058,7 @@ function renderReviewItTaxTable(clientId, year){
       data.tax[inp.dataset.group][inp.dataset.sub] = moneyParse(inp.value);
       setReviewItDirty(true);
       refreshReviewItTaxRow(clientId, year, month);
+      reviewItTaxFootRefresh(clientId, year);
       if(reviewItPayCycleForMonth(meta, month) === '반기'){
         const endMonth = month <= 6 ? 6 : 12;
         if(endMonth !== month) refreshReviewItTaxRow(clientId, year, endMonth);
@@ -31955,6 +32077,7 @@ function renderReviewItTaxTable(clientId, year){
     });
   });
   refreshReviewItRefundAll(clientId, year);
+  reviewItTaxFootRefresh(clientId, year);
   // 팝업이 안 뜨는 경우 원인을 바로 알 수 있게 오류를 화면에 띄움
   const openReg = m=>{ try{ openReviewItRefundRegModal(clientId, year, m); }catch(err){ console.error('환급금 등록 팝업 오류', err); appAlert('환급금 등록 창을 열지 못했어요: ' + (err && err.message || err)); } };
   wrap.querySelectorAll('.review-it-reg-cell').forEach(td=> td.addEventListener('click', ()=> openReg(Number(td.dataset.month))));
@@ -39101,7 +39224,9 @@ function renderEmployeeRoster(){
     const userXSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="17" y1="8" x2="22" y2="13"></line><line x1="22" y1="8" x2="17" y2="13"></line></svg>';
     // [2026.10.06] "퇴사자 버튼은 아이콘을 다르게"(요청) - 직원 등록(사람+)과 헷갈리지 않게 문 밖으로 나가는(로그아웃) 아이콘
     const exitSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>';
-    toggleBtn.innerHTML = exitSvg;
+    // [2026.10.07] "나가기 버튼 같다"(요청) - 퇴사자 = 보관된 사람이라 보관함(상자) 아이콘으로
+    const archiveSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="5" rx="1"></rect><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path><line x1="10" y1="12" x2="14" y2="12"></line></svg>';
+    toggleBtn.innerHTML = archiveSvg;
     toggleBtn.title = showTerminatedEmployees ? '퇴사자 숨기기 (지금 퇴사자도 보이는 중)' : '퇴사자 보기';
     toggleBtn.setAttribute('aria-label', toggleBtn.title);
     toggleBtn.style.background = showTerminatedEmployees ? 'var(--indigo-bg)' : '';
@@ -41659,7 +41784,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.07 00:56';
+const APP_BUILD = '2026.10.07 01:05';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
