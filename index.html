@@ -2227,7 +2227,7 @@ try{
   .vat-tb-counts b{ color:var(--ink); font-weight:800; }
   .vat-tb-table td, .vat-tb-table th{ white-space:nowrap; font-size:12px; }
   .vat-tb-table td.vat-tb-r{ text-align:right; font-variant-numeric:tabular-nums; }
-  .vat-tb-table .vat-tb-na{ color:var(--ink-soft); }
+  .vat-tb-table .vat-tb-na{ color:#C9CBD6; } /* [2026.10.06] 빈칸은 거래처 표 빈칸(client-cell-na)처럼 짧은 '-' + 아주 옅은 회색(요청) */
   .vat-tb-st{ font-weight:800; }
   .vat-tb-st.filing{ color:var(--indigo-deep); } .vat-tb-st.notice{ color:var(--guide-teal); } .vat-tb-st.notice-excluded{ color:#8A5A05; } .vat-tb-st.not-target{ color:var(--ink-soft); }
   .vat-tb-box{ margin-top:10px; background:var(--bg); border-radius:10px; padding:6px 12px; text-align:left; }
@@ -30399,7 +30399,10 @@ function vatTaxbotInfoHtml(tb, entityType){
     + (tb.prevStatus ? row('불러오기 전 구분', VAT_JEONGGI_STATUS_LABEL[tb.prevStatus] || tb.prevStatus) : '')
     + `</div>`;
 }
-// 부가세 화면 '예정' 선택 시 표 아래 상세 목록 - 예정신고 → 예정고지 → 고지제외 순
+// 부가세 화면 '예정' 선택 시 표 아래 상세 목록 - 기장거래처 순번 순
+// [2026.10.06] "필터를 걸 수 있으면 좋겠다"(요청) - 건수 줄을 다른 표 위 보기 선택과 같은 모양(it-seg)으로, 누르면 그 구분만
+let vatTbFilter = 'all';
+function setVatTbFilter(k){ vatTbFilter = k; renderVatAllUnified(); }
 function vatTaxbotDetailHtml(year, period){
   const order = { filing:0, notice:1, 'notice-excluded':2, 'not-target':3 };
   const bkList = bookkeepingClientList(), bkIdx = new Map(bkList.map((c, i)=> [c.id, i]));
@@ -30411,11 +30414,15 @@ function vatTaxbotDetailHtml(year, period){
   });
   const title = `<div class="vat-tb-title">예정고지 상세<span>${year}년 ${VAT_TARGET_PERIOD_LABEL[period]}</span></div>`;
   if(!list.length) return `<div class="vat-tb-sec">${title}<div class="empty-state">불러온 택스봇 예정고지가 없어요. 표 오른쪽 위 택스봇 아이콘으로 "부가가치세예정고지" 엑셀을 가져와 주세요.</div></div>`;
-  list.sort((a, b)=> (order[a.st] - order[b.st]) || ((bkIdx.has(a.c.id) ? bkIdx.get(a.c.id) : 1e6) - (bkIdx.has(b.c.id) ? bkIdx.get(b.c.id) : 1e6)));
+  // [2026.10.06] 구분별로 묶지 말고 기장거래처 순번대로(요청) - 기장거래처가 아닌 거래처만 맨 뒤
+  list.sort((a, b)=> (bkIdx.has(a.c.id) ? bkIdx.get(a.c.id) : 1e6) - (bkIdx.has(b.c.id) ? bkIdx.get(b.c.id) : 1e6));
   const n = k=> list.filter(x=> x.st === k).length;
   // [2026.10.06] 제목에서 '택스봇' 빼고, 고지세액 합계도 빼 달라(요청)
-  const na = '<span class="vat-tb-na">—</span>';
-  const rows = list.map((x, i)=>{
+  const na = '<span class="vat-tb-na">-</span>';
+  const segs = [['all','전체',list.length],['filing','예정신고',n('filing')],['notice','예정고지',n('notice')],['notice-excluded','고지제외',n('notice-excluded')]].concat(n('not-target') ? [['not-target','미대상',n('not-target')]] : []);
+  if(!segs.some(([k])=> k === vatTbFilter)) vatTbFilter = 'all';
+  const shownList = vatTbFilter === 'all' ? list : list.filter(x=> x.st === vatTbFilter);
+  const rows = shownList.map((x, i)=>{
     const entityColor = x.c.entityType === '법인' ? '#0B5A78' : x.c.entityType === '개인' ? '#BE185D' : 'inherit';
     const reason = x.tb.excludeReason && x.tb.excludeReason !== '없음' ? escHtml(x.tb.excludeReason) : na;
     return `<tr>
@@ -30432,7 +30439,7 @@ function vatTaxbotDetailHtml(year, period){
     </tr>`;
   }).join('');
   return `<div class="vat-tb-sec">${title}
-    <div class="vat-tb-counts">예정신고 <b>${n('filing')}</b> · 예정고지 <b>${n('notice')}</b> · 고지제외 <b>${n('notice-excluded')}</b>${n('not-target') ? ` · 미대상 <b>${n('not-target')}</b>` : ''}</div>
+    <div class="vat-tb-counts"><span class="it-seg" role="group" aria-label="구분 필터">${segs.map(([k, label, cnt])=> `<button type="button" class="${vatTbFilter === k ? 'on' : ''}" onclick="setVatTbFilter('${k}')">${label} ${cnt}</button>`).join('')}</span></div>
     <div class="table-scroll"><table class="vat-tb-table"><thead><tr><th class="cvb">순번</th><th class="cvb">상호명</th><th class="cvb">사업자번호</th><th class="cvb">구분</th><th class="cvb">제외사유</th><th class="cvb">직전 과세기간 공급가액</th><th class="cvb">예정고지세액</th><th class="cvb">관할서</th><th class="cvb">전자납부번호</th><th class="cvb">납부기한</th></tr></thead><tbody>${rows}</tbody></table></div>
   </div>`;
 }
@@ -40746,7 +40753,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.06 11:09';
+const APP_BUILD = '2026.10.06 11:11';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
