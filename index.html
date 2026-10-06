@@ -8531,7 +8531,9 @@ function setFilingTitleBadge(el, k, wrapId){
   el.title = tip;
 }
 function renderFilingTitleBadges(){
-  setFilingTitleBadge(document.getElementById('itAllTitleBadge'), '원천세', 'itAllTableWrap');
+  // [2026.10.07] 원천세 총괄(업무 정보 표)에는 진행률 없앰(요청) - 신고현황 화면에서만 꼬리줄에 보임
+  if(typeof itAllView !== 'undefined' && itAllView === 'overview'){ const b = document.getElementById('itAllTitleBadge'); if(b){ b.style.display = 'none'; b.textContent = ''; } }
+  else setFilingTitleBadge(document.getElementById('itAllTitleBadge'), '원천세', 'itAllTableWrap');
   setFilingTitleBadge(document.getElementById('vatAllTitleBadge'), '부가세', 'vatAllTableWrap');
   const t = typeof viewingFilingType !== 'undefined' ? viewingFilingType : '';
   const h = document.getElementById('filingStatusTitle');
@@ -36707,6 +36709,8 @@ function xlsReadSheetObjs(ws, sh){
     if(sh.perEmployee) o._emp = iEmp>=0 ? String(r[iEmp]||'').trim() : '';
     if(sh.grid){ o._name = iName>=0 ? String(r[iName]||'').trim() : ''; o._biz = iBiz>=0 ? xlsBizDigits(r[iBiz]) : ''; }
     colIdx.forEach(({c,i})=>{ if(i>=0){ o[c.k] = xlsParse(r[i], c.t); o._present[c.k] = true; } });
+    // [2026.10.07] 원천세 총괄 원데이터(상호·사업장관리번호·EDI)처럼 사업자번호 열이 없으면, 사업장관리번호 앞 10자리(= 사업자번호)로 거래처를 찾음(상호가 조금 달라도 맞게)
+    if(sh.grid && !o._biz && sh.bizFrom){ const d = xlsBizDigits(o[sh.bizFrom]); if(d.length >= 10) o._biz = d.slice(0,10); }
     objs.push(o);
   });
   return { objs, missingCols: colIdx.filter(x=>x.i<0).map(x=>x.c.label) };
@@ -37300,7 +37304,7 @@ XLS_SPECS['itAll'] = {
 // [2026.10.03] 원천세 "예전 진행표 엑셀 가져오기"(초기 세팅용 임시 기능)는 다 가져와서 버튼·코드 모두 삭제(요청)
 XLS_SPECS['itOverview'] = {
   title:'원천세 총괄', tag: () => '원천세총괄',
-  sheets: () => [{ grid:true, acceptPlain:true, name:'원천세 총괄',
+  sheets: () => [{ grid:true, acceptPlain:true, bizFrom:'wpNo', name:'원천세 총괄',
     cols: [
       // [2026.10.06] 급여종류는 총괄·신고현황에서 삭제(요청) → 엑셀 열도 뺌
       { k:'reportPayDay', label:'신고 지급일' }, { k:'actualPayDay', label:'실 급여일' },
@@ -41613,7 +41617,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.07 00:37';
+const APP_BUILD = '2026.10.07 00:39';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
