@@ -2450,6 +2450,7 @@ try{
   .it-stage-tri i.on:nth-child(1){ background:#A5A8F6; }
   .it-stage-tri i.on:nth-child(2){ background:#7F83F2; }
   .it-stage-tri i.on:nth-child(3){ background:#5B5FEF; }
+  .it-stage-tri i.on:nth-child(4){ background:#4347D9; }
   .it-stage-tri i.skip{ background:repeating-linear-gradient(135deg, #CDCFF8 0 2px, #fff 2px 4px); }
   .it-stage-tri i.next{ animation:itStageNext 1.6s ease-in-out infinite; }
   @keyframes itStageNext{ 0%,100%{ background:#E8E9FB; } 50%{ background:#C3C5F8; } }
@@ -5314,7 +5315,7 @@ try{
     </div>
   </div>
 </div>
-<!-- [2026.10.06] 원천세 진행 단계 일괄 입력(요청) - 항목(급여명세서 전달·급여마감·신고서 마감·원천세 신고·지방세 신고) 하나를 고르고
+<!-- [2026.10.06] 원천세 진행 단계 일괄 입력(요청) - 항목(급여명세서 전달·급여마감·원천세·지방세 신고서 마감·원천세 신고·지방세 신고) 하나를 고르고
      날짜(오늘 또는 특정일)를 정한 뒤, 적용할 거래처를 체크해 한 번에 넣음. 지금 보고 있는 귀속월 기준 -->
 <div id="itBulkModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(29,30,51,0.45); z-index:9999; align-items:center; justify-content:center; padding:20px;">
   <div style="background:var(--surface); border-radius:16px; padding:20px 22px; max-width:460px; width:100%; max-height:88vh; display:flex; flex-direction:column; box-shadow:0 20px 40px -12px rgba(29,30,51,0.4);">
@@ -29715,12 +29716,16 @@ function renderItAllPeriodControls(){
 // itAllDateEditModal(신고일자 입력 팝업) 안에서 씀
 // [2026.10.01] 원천세 진행 단계(요청) - 급여명세서 전달 → 급여마감 → 신고서 마감 → 신고. 앞의 세 단계도 날짜로 기록하고,
 // 표에서는 칸 안의 작은 점 3개(채워진 점 = 끝난 단계)로만 보여주고 날짜는 마우스를 올리면 보임. 신고는 기존처럼 신고일자로 표시
-const IT_ALL_STAGES = [['payslip','급여명세서 전달'], ['payroll','급여마감'], ['returnClose','신고서 마감']];
+// [2026.10.06] "신고서 마감은 원천세·지방세 각각"(요청) - returnClose = 원천세 신고서 마감(기존 값 그대로), returnCloseLocal = 지방세 신고서 마감.
+// 완료(✓) 표시는 신고서 마감이 아니라 원천세·지방세 신고일이 모두 들어간 경우에만
+const IT_ALL_STAGES = [['payslip','급여명세서 전달'], ['payroll','급여마감'], ['returnClose','원천세 신고서 마감'], ['returnCloseLocal','지방세 신고서 마감']];
 // [2026.10.04] "급여명세서 전달은 필수가 아닐 때가 있다"(요청) - 원천세 총괄의 "급여명세서 전달방법"을 '전달 안 함'으로 둔 거래처는
 // 그 단계를 건너뜀: 신고일자 팝업엔 날짜칸 대신 "해당 없음", 표의 진행 점(▶)은 끝난 것으로 봄
 // [2026.10.05] 진행 표시 세그먼트 바 - st: 단계별 'on'(끝남)·'skip'(해당 없음)·''(아직). 아직인 첫 칸이 다음 차례(깜빡)
 function itStageBarHtml(st){ const nx = st.indexOf(''); return `<span class="it-stage-tri">${st.map((x,i)=> `<i class="${x || (i === nx ? 'next' : '')}"></i>`).join('')}</span>`; }
 function itPayslipSkip(cid){ try{ return (itoEntry(cid).payslipVia || '') === '전달 안 함'; }catch(e){ return false; } }
+// [2026.10.06] "급여명세서를 안 보내는 달도 있다"(요청) - 신고일자 팝업에서 그 달·그 지급시기만 '해당 없음'(t.payslipNA)으로 둘 수 있음
+function itPayslipLaneSkip(cid, t){ return itPayslipSkip(cid) || !!(t && t.payslipNA); }
 // [2026.10.05] "반기는 신고만 6·12월이고 급여작업·마감은 매달 있다"(요청) - 반기 거래처의 6·12월 외 달도 칸을 눌러
 // 급여명세서 전달·급여마감을 기록함(신고서 마감·원천세/지방세 신고는 6·12월 칸에서). 이 달의 지급시기는 그 반기
 // 신고월(6·12월) 신고대상 설정을 따르고, 없으면 그 달 설정 → 당월지급 순으로 봄(빈 설정을 새로 만들지 않음)
@@ -29736,7 +29741,7 @@ function itHalfLanes(cid, period, timingKey){
   const l = t ? [t.sameMonthPay ? 'sameMonth' : null, t.nextMonthPay ? 'nextMonth' : null].filter(Boolean) : [];
   return l.length ? l : ['sameMonth'];
 }
-const IT_HALF_STAGES = IT_ALL_STAGES.filter(([f])=> f !== 'returnClose');
+const IT_HALF_STAGES = IT_ALL_STAGES.filter(([f])=> !['returnClose','returnCloseLocal'].includes(f));
 function itAllTimingBlockHtml(c, period, timingKey, half){
   const entry = incomeTaxFilingEntry(period, c.id);
   const t = entry[timingKey];
@@ -29747,25 +29752,25 @@ function itAllTimingBlockHtml(c, period, timingKey, half){
       <span style="font-size:12px; font-weight:800; color:var(--ink); white-space:nowrap;">${timingLabel}</span>
       ${half ? `<span style="font-size:11px; font-weight:700; color:var(--ink-soft);">반기 신고 · ${halfEndM}월 칸에서 신고</span>` : `<span class="it-all-status-badge">${incomeTaxStatusBadgeHtml(t)}</span>`}
     </div>
-    ${(half ? IT_HALF_STAGES : IT_ALL_STAGES).map(([f,l])=> (f === 'payslip' && itPayslipSkip(c.id)) ? `<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;" title="원천세 총괄에서 급여명세서 전달방법을 '전달 안 함'으로 둔 거래처예요">
+    ${(()=>{
+      const inpS = "border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink);";
+      const row = (f, l)=> `<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
       <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:74px;">${l}</span>
-      <span style="font-size:12px; color:var(--ink-soft);">해당 없음</span>
-    </div>` : `<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-      <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:74px;">${l}</span>
-      <input type="date" class="it-all-date-input" data-field="${f}" value="${t[f]||''}" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink);">
+      <input type="date" class="it-all-date-input" data-field="${f}" value="${t[f]||''}" style="${inpS}">
       <button type="button" class="del-btn it-all-today-btn" data-field="${f}" style="flex-shrink:0; padding:5px 9px; font-size:11px;">오늘</button>
-    </div>`).join('')}
-    ${half ? '' : `<div style="border-top:1px dashed var(--border); margin:2px 0;"></div>
-    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-      <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:74px;">원천세 신고</span>
-      <input type="date" class="it-all-date-input" data-field="national" value="${t.national||''}" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink);">
-      <button type="button" class="del-btn it-all-today-btn" data-field="national" style="flex-shrink:0; padding:5px 9px; font-size:11px;">오늘</button>
-    </div>
-    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-      <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:74px;">지방세 신고</span>
-      <input type="date" class="it-all-date-input" data-field="local" value="${t.local||''}" style="border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); color:var(--ink);">
-      <button type="button" class="del-btn it-all-today-btn" data-field="local" style="flex-shrink:0; padding:5px 9px; font-size:11px;">오늘</button>
-    </div>`}
+    </div>`;
+      const payslipRow = itPayslipSkip(c.id) ? `<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;" title="원천세 총괄에서 급여명세서 전달방법을 '전달 안 함'으로 둔 거래처예요">
+      <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:74px;">급여명세서 전달</span>
+      <span style="font-size:12px; color:var(--ink-soft); margin-left:10px;">해당 없음</span>
+    </div>` : t.payslipNA ? `<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:74px;">급여명세서 전달</span>
+      <span style="font-size:12px; color:var(--ink-soft); margin-left:10px;">해당 없음</span>
+      <button type="button" class="del-btn it-all-payslip-na-btn" data-na="0" style="flex-shrink:0; padding:5px 9px; font-size:11px;">되돌리기</button>
+    </div>` : row('payslip','급여명세서 전달').replace('</div>', `<button type="button" class="del-btn it-all-payslip-na-btn" data-na="1" title="이 달은 급여명세서를 전달하지 않아요" style="flex-shrink:0; padding:5px 9px; font-size:11px;">해당 없음</button>
+    </div>`);
+      const grp = l=> `<div style="border-top:1px dashed var(--border); margin:2px 0;"></div><span style="font-size:11.5px; font-weight:800; color:var(--ink);">${l}</span>`;
+      return payslipRow + row('payroll','급여마감') + (half ? '' : grp('원천세') + row('returnClose','신고서 마감') + row('national','신고 완료') + grp('지방세') + row('returnCloseLocal','신고서 마감') + row('local','신고 완료'));
+    })()}
     <!-- [2026.10.06] 이달 급여 특이사항 입력칸은 메모 칸의 "급여 특이사항" 팝업(월별)으로 옮김(요청 - 화면이 복잡) -->
   </div>`;
 }
@@ -29822,7 +29827,7 @@ const IT_ALL_TAX_KEYS = [['national','국세'], ['local','지방세']];
 // 10일이 지났으면 이번 달 귀속분(다음 달 10일 마감)을 "지금 챙길 신고"로 봄. 실제 기한이 주말·공휴일이면
 // 세무일정 쪽 계산과 다를 수 있어 D-day는 참고용
 let itAllOnlyPending = false;
-let itAllOnlyTarget = false;
+let itAllOnlyTarget = true; // [2026.10.06] 기본 보기 = 대상(요청)
 let itAllOnlyMismatch = false; // [2026.10.06] 검증 불일치(✕)가 있는 거래처만(요청)
 let itAllOnlyMonth = false; // [2026.10.01] 지금 챙길 귀속월에 신고대상인 거래처만(대시보드에서 들어올 때 기본)
 function itFocusPeriodNow(){
@@ -30033,9 +30038,9 @@ function renderIncomeTaxUnifiedInner(){
           const lanesH = itHalfLanes(c.id, period, timingKey);
           const entH = incomeTaxFilingEntry(period, c.id);
           const infoH = IT_HALF_STAGES.map(([f,l])=>{
-            if(f === 'payslip' && itPayslipSkip(c.id)) return { l, done:true, date:'', skip:true };
+            if(f === 'payslip' && lanesH.every(k=> itPayslipLaneSkip(c.id, entH[k]))) return { l, done:true, date:'', skip:true };
             const ds = lanesH.map(k=> (entH[k]||{})[f]).filter(Boolean).sort();
-            return { l, done: lanesH.every(k=> (entH[k]||{})[f]), date: ds[ds.length-1] || '' };
+            return { l, done: lanesH.every(k=> (entH[k]||{})[f] || (f === 'payslip' && itPayslipLaneSkip(c.id, entH[k]))), date: ds[ds.length-1] || '' };
           });
           infoH.forEach(x=> tipRows.push([x.l, x.skip ? '해당 없음' : x.date ? fmtYmd(x.date) : '아직']));
           tipRows.push(['신고', `반기 신고(${m <= 6 ? 6 : 12}월 귀속에)`]);
@@ -30048,8 +30053,8 @@ function renderIncomeTaxUnifiedInner(){
           const ent = incomeTaxFilingEntry(period, c.id);
           const stageInfo = IT_ALL_STAGES.map(([f,l])=>{
             const ds = lanesT.map(k=> (ent[k]||{})[f]).filter(Boolean).sort();
-            if(f === 'payslip' && itPayslipSkip(c.id)) return { l, done: true, date: '', skip: true };
-            const doneAll = lanesT.length && lanesT.every(k=> (ent[k]||{})[f]);
+            if(f === 'payslip' && lanesT.length && lanesT.every(k=> itPayslipLaneSkip(c.id, ent[k]))) return { l, done: true, date: '', skip: true };
+            const doneAll = lanesT.length && lanesT.every(k=> (ent[k]||{})[f] || (f === 'payslip' && itPayslipLaneSkip(c.id, ent[k])));
             return { l, done: !!doneAll, date: ds[ds.length-1] || '' };
           });
           if(!bothDone) stageInfo.forEach(x=> tipRows.push([x.l, x.skip ? '해당 없음' : x.date ? fmtYmd(x.date) : '아직']));
@@ -30078,10 +30083,13 @@ function renderIncomeTaxUnifiedInner(){
       // (data-timing으로 어느 지급시기의 검증표를 열지 넘김, 한 줄짜리 거래처는 예전과 같음)
       const timingAttr = timingKey ? ` data-timing="${timingKey}"` : '';
       // [2026.10.01] "검증은 아이콘 하나로 팝업을 열고, 지금 챙길 귀속월에 오류가 없으면 옆에 표시"(요청) - 팝업 안에서 급여/납부세액 탭으로 오감
-      const vst = (String(year) === String(focus.year)) ? itAllVerifyStatus(c.id, timingKey, Number(year), focus.month) : '';
+      // [2026.10.06] "익월지급은 검증 완료인데 초록으로 안 바뀐다"(요청) - 익월지급 줄은 이번 신고에 들어가는 앞 달 귀속분(예: 9월 귀속 화면이면 8월)을 봄
+      const vNx = timingKey === 'nextMonth' || (!timingKey && itFocusNxLane(c.id, focus.prevPeriod) === null);
+      const vY = vNx ? Number(focus.prevPeriod.slice(0,4)) : Number(focus.year), vM = vNx ? Number(focus.prevPeriod.slice(5,7)) : focus.month;
+      const vst = (String(year) === String(vY)) ? itAllVerifyStatus(c.id, timingKey, vY, vM) : '';
       // [2026.10.01 ③안] "검증 표시는 돋보기 버튼 색으로"(요청) - 맞으면 연한 초록, 틀리면 연한 빨강 버튼(자리 넓어지지 않게 아이콘 하나로)
       const vstCls = vst === 'ok' ? ' vst-ok' : vst === 'bad' ? ' vst-bad' : '';
-      const vstTip = vst === 'ok' ? ` · ${focus.month}월 귀속 검증 금액이 모두 맞아요` : vst === 'bad' ? ` · ${focus.month}월 귀속 검증 금액이 맞지 않는 곳이 있어요` : '';
+      const vstTip = vst === 'ok' ? ` · ${vM}월 귀속 검증 금액이 모두 맞아요` : vst === 'bad' ? ` · ${vM}월 귀속 검증 금액이 맞지 않는 곳이 있어요` : '';
       const vstHtml = '';
       const verifyCell = `<td class="cvb" style="white-space:nowrap;">
           <span style="display:inline-flex; align-items:center; gap:6px; vertical-align:middle;">
@@ -30205,6 +30213,15 @@ function renderItAllDateEditBody(){
       inp.dispatchEvent(new Event('input', { bubbles:true }));
     });
   });
+  body.querySelectorAll('.it-all-payslip-na-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const block = btn.closest('.it-all-timing-block');
+      if(!block) return;
+      const t = incomeTaxFilingEntry(period, block.dataset.clientId)[block.dataset.timing];
+      if(btn.dataset.na === '1'){ t.payslipNA = true; t.payslip = null; } else delete t.payslipNA;
+      renderItAllDateEditBody();
+    });
+  });
   body.querySelectorAll('.it-all-memo-input').forEach(inp=>{
     inp.addEventListener('input', ()=>{
       const block = inp.closest('.it-all-timing-block');
@@ -30249,6 +30266,7 @@ function itBulkRows(){
       lanes = [t.sameMonthPay ? 'sameMonth' : null, t.nextMonthPay ? 'nextMonth' : null].filter(Boolean);
     }
     const ex = ((sharedIncomeTaxFilingStatus[period] || {})[c.id]) || {};
+    lanes = lanes.filter(k=> !(itBulkField === 'payslip' && (ex[k] || {}).payslipNA));
     lanes.forEach(k=> rows.push({ c, lane:k, dual: lanes.length > 1, cur: (ex[k] || {})[itBulkField] || '' }));
   });
   return rows;
@@ -41278,7 +41296,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.06 16:29';
+const APP_BUILD = '2026.10.06 16:46';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
