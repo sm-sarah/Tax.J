@@ -39249,6 +39249,16 @@ async function githubDeployContent(file, onStatus){
   const say = t=>{ try{ onStatus && onStatus(t); }catch(e){} };
   say('파일 읽는 중...');
   const content = await file.text();
+  // [2026.10.08] 개인웹(works) 파일이 실수로 Tax.J로 배포돼 회사웹이 works 화면으로 바뀐 사고 방지(요청: "이름만이 아니라 안의 내용까지 보고 판단") -
+  // 파일 이름과 상관없이 내용으로 판단: Tax.J에만 있는 표시가 모두 있어야 하고, works에만 있는 표시가 하나라도 있으면 배포하지 않음.
+  // (표시 글자를 그대로 적으면 이 코드 자체가 그 글자를 품게 되므로 잘라서 이어 붙임)
+  {
+    const has = t=> content.indexOf(t) >= 0;
+    const mustHave = [['<ti'+'tle>Tax.J</ti'+'tle>', 'Tax.J 제목'], ["FS_COLLECTION = 'ta"+"xj'", 'Tax.J 저장소 설정'], ["GITHUB_DEPLOY_REPO_NAME = 'Ta"+"x.J'", 'Tax.J 배포 설정']];
+    const mustNot = [["Sunmin"+"'s Works", 'works 이름'], ["GITHUB_DEPLOY_REPO_NAME = 'S"+"M'", 'works 배포 설정']];
+    const miss = mustHave.filter(([t])=> !has(t)).map(x=> x[1]), bad = mustNot.filter(([t])=> has(t)).map(x=> x[1]);
+    if(miss.length || bad.length) throw new Error(`Tax.J 파일이 아니에요(${bad.length ? bad.join('·') + ' 들어 있음' : miss.join('·') + ' 없음'}). 회사웹 index.html을 골라 주세요. 개인웹 SM.html은 works에서 배포해요.`);
+  }
   const apiBase = `https://api.github.com/repos/${GITHUB_DEPLOY_REPO_OWNER}/${GITHUB_DEPLOY_REPO_NAME}/contents/${GITHUB_DEPLOY_FILE_PATH}`;
   const headers = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' };
   say('기존 파일 정보 확인 중...');
@@ -39259,6 +39269,15 @@ async function githubDeployContent(file, onStatus){
     throw new Error(`GitHub 조회 실패 (${getRes.status})`);
   }
   const cur = await getRes.json();
+  // 지금 올라가 있는 파일과 크기가 30% 넘게 다르면(통째로 다른 파일일 가능성) 한 번 더 확인
+  {
+    const newSize = new Blob([content]).size, oldSize = Number(cur.size) || 0;
+    if(oldSize && Math.abs(newSize - oldSize) / oldSize > 0.3){
+      const kb = n=> Math.round(n / 1024).toLocaleString() + 'KB';
+      const go = await appConfirm(`지금 올라가 있는 파일과 크기가 많이 달라요 (${kb(oldSize)} → ${kb(newSize)}). 다른 파일일 수 있어요. 그래도 배포할까요?`, { okText:'그래도 배포', cancelText:'취소' });
+      if(!go) throw new Error('크기가 많이 달라서 배포를 멈췄어요.');
+    }
+  }
   say('GitHub에 커밋하는 중...');
   const putRes = await fetch(apiBase, {
     method: 'PUT',
