@@ -30410,8 +30410,9 @@ function renderIncomeTaxUnifiedInner(){
     const neverApplicable = cycleRecs.length > 0 && cycleRecs.every(r=> !filingCycleRecApplicable(r));
     const dual = clientHasDualTiming(c.id, year);
     const lanes = dual ? [['sameMonth','당월'], ['nextMonth','익월']] : [[null, null]];
-    rowNo++;
+    // [2026.10.08] "신고 건수로 세면 12개인데 순번은 10까지"(요청) - 순번은 신고 줄마다(당월·익월 두 줄 거래처는 번호 두 개), 상호명 칸은 그대로 합침
     lanes.forEach(([timingKey, timingSuffix], laneIdx)=>{
+      rowNo++;
       const cycleLabel = timingSuffix ? `${cycleLabelBase}/${timingSuffix}` : cycleLabelBase;
       // "신고 칸에 미대상인 거래처는 칩 배경 없이 회색 글자로 미대상이라고만" 요청 - 누르면 예전처럼
       // 신고구분 수정 팝업이 열리도록 버튼은 그대로 두고 테두리·배경만 없앰
@@ -30500,8 +30501,8 @@ function renderIncomeTaxUnifiedInner(){
         return `<td class="${colCls}" style="position:relative;"${lockTip}>${memoStar}<button type="button" class="it-all-month-cell-btn" ${clickAttr} ${tipRows.length ? `data-tip="${escHtml(tip).replace(/"/g,'&quot;')}"` : ''} style="width:100%; border:${st.plain ? 'none' : `1.5px solid ${st.color}`}; border-radius:6px; padding:4px 1px; background:${bg}; color:${st.text}; font-size:10.5px; font-weight:700; cursor:${state==='none' ? 'default' : (st.disabled?'not-allowed':'pointer')}; opacity:${st.disabled && state!=='none'?'0.35':'1'};${st.disabled ? ' pointer-events:none;' : ''}">${inner}</button></td>`;
       }).join('');
       const span = lanes.length > 1 ? ` rowspan="${lanes.length}"` : '';
-      const headCells = laneIdx > 0 ? '' : `<td class="num cvb"${span} style="color:var(--ink-soft);">${rowNo}</td>
-          <td class="cvb it-all-name"${span} style="color:${entityColor}; font-weight:800; white-space:nowrap;">${escHtml(c.name)}</td>`; // [2026.10.02] 총괄 비고(거래처 특이사항)가 있으면 상호명 옆 남색 메모 아이콘(요청)
+      const headCells = `<td class="num cvb" style="color:var(--ink-soft);">${rowNo}</td>` + (laneIdx > 0 ? '' : `
+          <td class="cvb it-all-name"${span} style="color:${entityColor}; font-weight:800; white-space:nowrap;">${escHtml(c.name)}</td>`); // [2026.10.02] 총괄 비고(거래처 특이사항)가 있으면 상호명 옆 남색 메모 아이콘(요청)
       // "매월/당월·매월/익월이 같이 있는 거래처는 검증도 각각 필요" 요청 - 지급시기 줄마다 따로 검증 버튼을 둠
       // (data-timing으로 어느 지급시기의 검증표를 열지 넘김, 한 줄짜리 거래처는 예전과 같음)
       const timingAttr = timingKey ? ` data-timing="${timingKey}"` : '';
@@ -42255,7 +42256,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.08 11:20';
+const APP_BUILD = '2026.10.08 11:35';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
