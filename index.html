@@ -12055,12 +12055,12 @@ function noticeCleanTableHtml(table, title){
   t.querySelectorAll('button').forEach(b=>{ if(/^오늘$/.test((b.textContent||'').trim())) b.remove(); }); // 날짜칸의 '오늘' 버튼
   const headRow = t.querySelector('thead tr:last-child') || t.querySelector('tr');
   const dropIdx = new Set();
-  if(headRow) [...headRow.children].forEach((th, i)=>{ if(/^(검증|메모|손익보고서)$/.test((th.textContent||'').trim())) dropIdx.add(i); });
+  if(headRow) [...headRow.children].forEach((th, i)=>{ if(/^(검증|메모|신고도움|손익보고서)$/.test((th.textContent||'').trim())) dropIdx.add(i); });
   const cell = (c, tag)=>{ const txt = (c.textContent || '').replace(/\s+/g, ' ').trim(); const span = (c.rowSpan > 1 ? ` rowspan="${c.rowSpan}"` : '') + (c.colSpan > 1 ? ` colspan="${c.colSpan}"` : ''); return `<${tag}${span} style="border:1px solid #D9DBE6; padding:4px 8px; ${tag === 'th' ? 'background:#F1F2F8; font-weight:700;' : ''} white-space:nowrap; text-align:center;">${escHtml(txt)}</${tag}>`; };
   const rows = [...t.querySelectorAll('tr')].map(tr=>{
     const cells = [...tr.children];
     const isHead = tr.parentElement && tr.parentElement.tagName === 'THEAD';
-    const keep = (isHead && tr === headRow) || (!isHead && cells.length === (headRow ? headRow.children.length : cells.length)) ? cells.filter((c, i)=> !dropIdx.has(i)) : cells.filter(c=> !/^(검증|메모|손익보고서)$/.test((c.textContent||'').trim()));
+    const keep = (isHead && tr === headRow) || (!isHead && cells.length === (headRow ? headRow.children.length : cells.length)) ? cells.filter((c, i)=> !dropIdx.has(i)) : cells.filter(c=> !/^(검증|메모|신고도움|손익보고서)$/.test((c.textContent||'').trim()));
     return `<tr>${keep.map(c=> cell(c, c.tagName === 'TH' ? 'th' : 'td')).join('')}</tr>`;
   }).join('');
   return `<p><b>${escHtml(title)}</b></p><table style="border-collapse:collapse; font-size:12px; margin:4px 0 10px;">${rows}</table><p><br></p>`;
@@ -30963,6 +30963,20 @@ function renderVatAllUnifiedInner(){
     else vatSendSet(clientId, year, sendP, k, todayStr());
     await saveSharedVatFilingTargets(); renderVatAllUnified();
   }));
+  wrap.querySelectorAll('.vat-memo-btn').forEach(el=> el.addEventListener('click', e=>{
+    e.stopPropagation(); e.preventDefault();
+    const cid = el.dataset.clientId, pk = vatMemoPeriodKey(year, sendP);
+    openCellMemoModal({ name: el.dataset.name, subtitle: `${year}년 ${VAT_TARGET_PERIOD_LABEL[sendP] || sendP} 메모`, startEdit: el.classList.contains('st-memo-add'), get: ()=> vatMemoGet(cid, year, sendP),
+      set: async v=>{ sharedFilingStatus['부가세'] = sharedFilingStatus['부가세'] || {}; const pd = sharedFilingStatus['부가세'][pk] = sharedFilingStatus['부가세'][pk] || {}; const en = pd[cid] = pd[cid] || { status:'미확인', memo:'' }; en.memo = v; en.updatedAt = new Date().toLocaleString('ko-KR'); await saveSharedFilingStatus(); },
+      after: renderVatAllUnified });
+  }));
+  wrap.querySelectorAll('.vat-help-btn').forEach(el=> el.addEventListener('click', e=>{
+    e.stopPropagation(); e.preventDefault();
+    const cid = el.dataset.clientId;
+    openCellMemoModal({ name: el.dataset.name, subtitle: '신고도움', startEdit: el.classList.contains('st-memo-add'), get: ()=> vatHelpGet(cid),
+      set: async v=>{ sharedVatFilingTargets[cid] = sharedVatFilingTargets[cid] || {}; if(v) sharedVatFilingTargets[cid].__help = v; else delete sharedVatFilingTargets[cid].__help; await saveSharedVatFilingTargets(); },
+      after: renderVatAllUnified });
+  }));
   wrap.querySelectorAll('.vat-memo-star').forEach(el=> el.addEventListener('click', e=>{
     e.stopPropagation(); e.preventDefault();
     const { cid, period } = el.dataset, cs = vatAllCellState({ id:cid, entityType:(bookkeepingClientList().find(x=>x.id===cid)||{}).entityType }, year, period);
@@ -31238,6 +31252,17 @@ function vatTaxbotInfoHtml(tb, entityType){
 // [2026.10.06] "필터를 걸 수 있으면 좋겠다"(요청) - 건수 줄을 다른 표 위 보기 선택과 같은 모양(it-seg)으로, 누르면 그 구분만
 let vatTbFilter = 'all';
 function setVatTbFilter(k){ vatTbFilter = k; renderVatAllUnified(); }
+// [2026.10.08] 부가세 상세 목록 검증 왼쪽에 메모·신고도움(요청). 메모 = 이 기수 신고 특이사항(신고현황 부가세 메모와 같은 자리
+// sharedFilingStatus['부가세'][연도-분기][거래처].memo - 별표 메모와 같은 값), 신고도움 = 업체 특징(차량·직원여부·안분·의제 등), 기수와 무관하게
+// sharedVatFilingTargets[거래처].__help 에 둠(연도 키만 읽는 곳은 /^\d{4}$/로 거르므로 영향 없음). 모양은 다른 신고현황 메모 칸(stMemoCellHtml)과 같음
+function vatMemoPeriodKey(year, period){ const q = Object.keys(VAT_QUARTER_TO_TARGET_PERIOD).find(k=> VAT_QUARTER_TO_TARGET_PERIOD[k] === period); return `${year}-${q}`; }
+function vatMemoGet(cid, year, period){ return ((((sharedFilingStatus || {})['부가세'] || {})[vatMemoPeriodKey(year, period)] || {})[cid] || {}).memo || ''; }
+function vatHelpGet(cid){ return ((sharedVatFilingTargets || {})[cid] || {}).__help || ''; }
+function vatMemoCellHtml(c, year, period){ return stMemoCellHtml(c, vatMemoGet(c.id, year, period)).replace(/st-memo-btn/g, 'vat-memo-btn'); }
+function vatHelpCellHtml(c){
+  const v = vatHelpGet(c.id).trim();
+  return `<td class="cvb">${v ? `<span class="it-note-ic vat-help-btn" role="button" data-client-id="${c.id}" data-name="${escHtml(c.name)}" data-tip="${escHtml(appTipHtml('신고도움', [], v)).replace(/"/g,'&quot;')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line></svg></span>` : `<button type="button" class="st-memo-add vat-help-btn" data-client-id="${c.id}" data-name="${escHtml(c.name)}" title="신고도움 쓰기" aria-label="신고도움 쓰기">+</button>`}</td>`;
+}
 function vatTaxbotDetailHtml(year, period, q, verifyCellOf){
   // [2026.10.06] 부가세 화면의 본 목록이 됨(요청) - 예정은 택스봇 예정고지 불러온 값, 확정은 같은 틀(값은 나중에 채움).
   // 기장거래처 전체(순번 순) + 불러온 값이 있는 기장 외 거래처. 전자납부번호 칸은 뺌(요청). 구분 칸을 누르면 예전 기수 칸처럼
@@ -31294,14 +31319,14 @@ function vatTaxbotDetailHtml(year, period, q, verifyCellOf){
       <td class="cvb vat-tb-r">${x.tb.noticeTax == null ? na : Number(x.tb.noticeTax).toLocaleString('ko-KR')}</td>
       <td class="cvb">${x.tb.office ? escHtml(x.tb.office) : na}</td>
       <td class="cvb">${x.tb.dueDate ? escHtml(x.tb.dueDate) : na}</td>
-      ${sendCells}${verifyCellOf ? verifyCellOf(x.c) : ''}
+      ${sendCells}${vatMemoCellHtml(x.c, year, period)}${vatHelpCellHtml(x.c)}${verifyCellOf ? verifyCellOf(x.c) : ''}
     </tr>`;
   }).join('');
   const title = `<div class="vat-tb-title">${pre ? '예정고지' : '확정신고'} 상세<span>${plab}</span></div>`;
   const hint = pre && !list.some(x=> x.hasTb) ? `<div class="vat-tb-counts">불러온 택스봇 예정고지가 없어요. 표 오른쪽 위 택스봇 아이콘으로 "부가가치세예정고지" 엑셀을 가져와 주세요.</div>` : '';
   return `<div class="vat-tb-sec vat-tb-main">${title}${hint}
     <div class="vat-tb-counts"><span class="it-seg" role="group" aria-label="구분 필터">${segs.map(([k, label, cnt])=> `<button type="button" class="${vatTbFilter === k ? 'on' : ''}" onclick="setVatTbFilter('${k}')">${label} ${cnt}</button>`).join('')}</span></div>
-    <div class="table-scroll"><table class="vat-tb-table"><thead><tr><th class="cvb">순번</th><th class="cvb">상호명</th><th class="cvb">사업자번호</th><th class="cvb">구분</th><th class="cvb">제외사유</th><th class="cvb">직전 과세기간 공급가액</th><th class="cvb">예정고지세액</th><th class="cvb">관할서</th><th class="cvb">납부기한</th>${VAT_SEND_ITEMS.map(([, l])=> `<th class="cvb" style="width:80px;">${l}</th>`).join('')}<th class="cvb" style="width:52px;">검증</th></tr></thead><tbody>${rows || `<tr><td colspan="${12}" style="padding:18px; color:var(--ink-soft);">${q ? '검색 결과가 없어요' : '거래처가 없어요'}</td></tr>`}</tbody></table></div>
+    <div class="table-scroll"><table class="vat-tb-table"><thead><tr><th class="cvb">순번</th><th class="cvb">상호명</th><th class="cvb">사업자번호</th><th class="cvb">구분</th><th class="cvb">제외사유</th><th class="cvb">직전 과세기간 공급가액</th><th class="cvb">예정고지세액</th><th class="cvb">관할서</th><th class="cvb">납부기한</th>${VAT_SEND_ITEMS.map(([, l])=> `<th class="cvb" style="width:80px;">${l}</th>`).join('')}<th class="cvb" style="width:52px;" title="이 기수 신고에 대한 특이사항">메모</th><th class="cvb" style="width:64px;" title="이 업체의 부가세 특징(차량·직원·안분·의제 등) - 기수와 상관없이 계속 이어져요">신고도움</th><th class="cvb" style="width:52px;">검증</th></tr></thead><tbody>${rows || `<tr><td colspan="${12}" style="padding:18px; color:var(--ink-soft);">${q ? '검색 결과가 없어요' : '거래처가 없어요'}</td></tr>`}</tbody></table></div>
   </div>`;
 }
 
@@ -42386,7 +42411,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.08 15:00';
+const APP_BUILD = '2026.10.08 15:45';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
