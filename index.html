@@ -4571,7 +4571,7 @@ try{
           </div>
           <div class="field field-tile" id="remoteTypeField" style="display:none; flex:1 1 170px; background:rgba(91,95,239,0.05);"><label>재택 종류</label>
             <select id="r-type">
-              <option value="regular-auto">정기재택 (자동 · 월 2회까지 식대포함)</option>
+              <option value="regular-auto">정기재택 (2회만 식대포함)</option>
               <option value="regular">정기재택 (식대포함)</option>
               <option value="regular-nolunch">정기재택 (식대제외)</option>
               <option value="bonus">특별재택 (월 한도 미포함)</option>
@@ -24192,7 +24192,7 @@ function remoteAutoNoLunch(dateStr, entries){
   return n >= REMOTE_LUNCH_INCLUDED_PER_MONTH;
 }
 const REMOTE_TYPE_OPTIONS_FULL = [
-  { value:'regular-auto', text:'정기재택 (자동 · 월 2회까지 식대포함)' },
+  { value:'regular-auto', text:'정기재택 (2회만 식대포함)' },
   { value:'regular', text:'정기재택 (식대포함)' },
   { value:'regular-nolunch', text:'정기재택 (식대제외)' },
   { value:'bonus', text:'특별재택 (월 한도 미포함)' }
@@ -24525,8 +24525,26 @@ document.getElementById('usageForm').addEventListener('submit', async (e)=>{
     const skippedRemote = remoteDates.filter(d=>alreadyRemote.has(d));
     remoteDates = remoteDates.filter(d=>!alreadyRemote.has(d));
     if(!remoteDates.length){ appAlert('선택한 날짜에는 이미 재택이 모두 등록돼 있어요.'); return; }
+    // [2026.10.08] "정기재택 한도(월 6회)를 넘겨 7번째를 정기재택으로 올리면 그냥 등록되던 것"(요청) - 종일 정기재택(당겨쓰기 제외)을
+    // 새로 등록할 때 그 달 한도를 넘는 날이 있으면 "넘는 날은 특별재택으로 등록할까요?"를 물음. 확인 → 넘는 날만 특별재택, 취소 → 등록 안 함
+    const overQuota = new Set();
+    if(!bonus && !half && !useAdvance){
+      const used = {};
+      remoteDates.forEach(ds=>{
+        const ym = ds.slice(0,7);
+        if(used[ym] == null) used[ym] = (attendance.remoteEntries||[]).filter(r=> remoteCountsTowardQuota(r) && remoteCreditMonthOf(r) === ym).length;
+        if(used[ym] >= regularRemoteMonthlyQuotaFor(ym)) overQuota.add(ds); else used[ym]++;
+      });
+      if(overQuota.size){
+        const list = [...overQuota].map(d=> `${Number(d.slice(5,7))}/${Number(d.slice(8,10))}`).join(', ');
+        const q = Number([...overQuota][0].slice(5,7));
+        const ok = await appConfirm(`이번 달 정기재택 한도(${regularRemoteMonthlyQuotaFor([...overQuota][0].slice(0,7))}회)를 다 썼어요.\n${overQuota.size > 1 || remoteDates.length > 1 ? `한도를 넘는 날(${list})은 ` : `${q}월 ${Number([...overQuota][0].slice(8,10))}일은 `}특별재택으로 등록할까요?`, { okText:'특별재택으로 등록', cancelText:'취소' });
+        if(!ok) return;
+      }
+    }
     remoteDates.forEach(ds=>{
-      const entry = { id:genId(), date: ds, memo, bonus, noLunch: (autoLunch ? remoteAutoNoLunch(ds, attendance.remoteEntries) : noLunch) || undefined };
+      const toBonus = overQuota.has(ds);
+      const entry = { id:genId(), date: ds, memo, bonus: bonus || toBonus, noLunch: (toBonus ? false : autoLunch ? remoteAutoNoLunch(ds, attendance.remoteEntries) : noLunch) || undefined };
       if(half) entry.half = half;
       // 당겨쓰기는 실제 사용일과 무관하게 "아직 여유가 남은 가장 가까운 미래 달"의 재택 한도에서 차감되도록
       // creditMonth를 미리 배정함(한도가 없으니 계속 다음 달로 넘어가며 찾음) - 여러 날을 한 번에 넣을 때도
