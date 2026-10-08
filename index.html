@@ -12055,12 +12055,12 @@ function noticeCleanTableHtml(table, title){
   t.querySelectorAll('button').forEach(b=>{ if(/^오늘$/.test((b.textContent||'').trim())) b.remove(); }); // 날짜칸의 '오늘' 버튼
   const headRow = t.querySelector('thead tr:last-child') || t.querySelector('tr');
   const dropIdx = new Set();
-  if(headRow) [...headRow.children].forEach((th, i)=>{ if(/^(검증|메모|신고도움|손익보고서)$/.test((th.textContent||'').trim())) dropIdx.add(i); });
+  if(headRow) [...headRow.children].forEach((th, i)=>{ if(/^(검증|메모|Tip|신고도움|손익보고서)$/.test((th.textContent||'').trim())) dropIdx.add(i); });
   const cell = (c, tag)=>{ const txt = (c.textContent || '').replace(/\s+/g, ' ').trim(); const span = (c.rowSpan > 1 ? ` rowspan="${c.rowSpan}"` : '') + (c.colSpan > 1 ? ` colspan="${c.colSpan}"` : ''); return `<${tag}${span} style="border:1px solid #D9DBE6; padding:4px 8px; ${tag === 'th' ? 'background:#F1F2F8; font-weight:700;' : ''} white-space:nowrap; text-align:center;">${escHtml(txt)}</${tag}>`; };
   const rows = [...t.querySelectorAll('tr')].map(tr=>{
     const cells = [...tr.children];
     const isHead = tr.parentElement && tr.parentElement.tagName === 'THEAD';
-    const keep = (isHead && tr === headRow) || (!isHead && cells.length === (headRow ? headRow.children.length : cells.length)) ? cells.filter((c, i)=> !dropIdx.has(i)) : cells.filter(c=> !/^(검증|메모|신고도움|손익보고서)$/.test((c.textContent||'').trim()));
+    const keep = (isHead && tr === headRow) || (!isHead && cells.length === (headRow ? headRow.children.length : cells.length)) ? cells.filter((c, i)=> !dropIdx.has(i)) : cells.filter(c=> !/^(검증|메모|Tip|신고도움|손익보고서)$/.test((c.textContent||'').trim()));
     return `<tr>${keep.map(c=> cell(c, c.tagName === 'TH' ? 'th' : 'td')).join('')}</tr>`;
   }).join('');
   return `<p><b>${escHtml(title)}</b></p><table style="border-collapse:collapse; font-size:12px; margin:4px 0 10px;">${rows}</table><p><br></p>`;
@@ -15749,6 +15749,7 @@ function openClientNamedInfoModal(name, subtitle, bodyHtml){
   // 열면 부모가 숨겨진 채라 안 보였음 → 열 때 항상 문서 맨 바깥(body)으로 옮겨서 어느 화면에서든 보이게 함
   { const ov = document.getElementById('memoModalOverlay'); if(ov && ov.parentElement !== document.body) document.body.appendChild(ov); }
   document.getElementById('memoModalTitleExtra').innerHTML = '';
+  { const bx = document.getElementById('memoModalBox'); if(bx){ bx.style.maxWidth = '480px'; bx.style.maxHeight = '70vh'; } } // [2026.10.08] 신고도움 팝업만 넓게 열고, 다른 팝업은 원래 폭
   document.getElementById('memoModalTitle').textContent = name || '거래처';
   document.getElementById('memoModalBody').innerHTML = `<div style="text-align:center; margin-bottom:12px;"><span class="section-subtitle-label">${escHtml(subtitle||'')}</span></div>${bodyHtml||''}`;
   document.getElementById('memoModalOverlay').style.display = 'flex';
@@ -30555,7 +30556,8 @@ function renderIncomeTaxUnifiedInner(){
             const doneAll = lanesT.length && lanesT.every(k=> (ent[k]||{})[f] || (f === 'payslip' && itPayslipLaneSkip(c.id, ent[k])));
             return { l, done: !!doneAll, date: ds[ds.length-1] || '' };
           });
-          if(!bothDone) stageInfo.forEach(x=> tipRows.push([x.l, x.skip ? '해당 없음' : x.date ? fmtYmd(x.date) : '아직']));
+          // [2026.10.08] "신고 끝난 칸도 급여명세서 전달부터 전부 보이게"(요청) - 예전엔 신고까지 끝나면 신고일만 보였음
+          stageInfo.forEach(x=> tipRows.push([x.l, x.skip ? '해당 없음' : x.date ? fmtYmd(x.date) : '아직']));
           [['국세', csN], ['지방세', csL]].forEach(([lab, cs])=>{ if(['target','done'].includes(cs.state)) tipRows.push([`${lab} 신고`, cs.state === 'done' && cs.doneDate ? fmtYmd(cs.doneDate) : '아직']); });
           const taxDoneCnt = [csN, csL].filter(cs=> cs.state === 'done').length;
           if(bothDone) inner = '<span class="it-done-mark" aria-label="신고 완료"><svg viewBox="0 0 16 16"><path d="M4 8.3l2.6 2.6L12 5.5"/></svg></span>';
@@ -30574,7 +30576,8 @@ function renderIncomeTaxUnifiedInner(){
         // [2026.10.08] "신고대상 칸은 연한 회색, 지금 챙길 달(보라 테두리)에 진행 중인 칸만 노랑"(요청) - 미대상은 배경 없이 옅은 "-"(디자인 규칙 1과 같게, 대상 칸 회색과 헷갈리지 않게)
         const isFocusCell = !!fc(m) || nxFocus;
         if(state === 'notarget' && !inner) inner = '<span class="submit-na">-</span>';
-        const bg = inner ? 'transparent' : (state === 'target' && !isFocusCell ? '#F1F2F8' : st.bg);
+        // 반기 거래처의 신고 없는 달(halfyear)도 지금 챙길 달이면 급여 작업(명세서·급여마감) 차례라 노랑(요청 - "아무것도 안 됐는데 음영이 없다")
+        const bg = inner ? 'transparent' : (state === 'target' && !isFocusCell ? '#F1F2F8' : (state === 'halfyear' && isFocusCell ? '#FFF8DC' : st.bg));
         // [2026.10.07] "매월 신고인데 완료 체크칸이 안 눌린다"(요청) - 잠긴 칸은 이유를 말풍선으로(신고구분 이력상 그 달이 미대상이면 잠김)
         let lockTip = '';
         if(st.disabled){
@@ -30973,12 +30976,13 @@ function renderVatAllUnifiedInner(){
       set: async v=>{ sharedFilingStatus['부가세'] = sharedFilingStatus['부가세'] || {}; const pd = sharedFilingStatus['부가세'][pk] = sharedFilingStatus['부가세'][pk] || {}; const en = pd[cid] = pd[cid] || { status:'미확인', memo:'' }; en.memo = v; en.updatedAt = new Date().toLocaleString('ko-KR'); await saveSharedFilingStatus(); },
       after: renderVatAllUnified });
   }));
+  wrap.querySelectorAll('.vat-docs-btn').forEach(el=> el.addEventListener('click', e=>{
+    e.stopPropagation(); e.preventDefault();
+    openVatDocsModal(el.dataset.clientId, el.dataset.name, year, sendP);
+  }));
   wrap.querySelectorAll('.vat-help-btn').forEach(el=> el.addEventListener('click', e=>{
     e.stopPropagation(); e.preventDefault();
-    const cid = el.dataset.clientId;
-    openCellMemoModal({ name: el.dataset.name, subtitle: '신고도움', startEdit: el.classList.contains('st-memo-add'), get: ()=> vatHelpGet(cid),
-      set: async v=>{ sharedVatFilingTargets[cid] = sharedVatFilingTargets[cid] || {}; if(v) sharedVatFilingTargets[cid].__help = v; else delete sharedVatFilingTargets[cid].__help; await saveSharedVatFilingTargets(); },
-      after: renderVatAllUnified });
+    openVatHelpModal(el.dataset.clientId, el.dataset.name, year, sendP);
   }));
   wrap.querySelectorAll('.vat-memo-star').forEach(el=> el.addEventListener('click', e=>{
     e.stopPropagation(); e.preventDefault();
@@ -31260,11 +31264,132 @@ function setVatTbFilter(k){ vatTbFilter = k; renderVatAllUnified(); }
 // sharedVatFilingTargets[거래처].__help 에 둠(연도 키만 읽는 곳은 /^\d{4}$/로 거르므로 영향 없음). 모양은 다른 신고현황 메모 칸(stMemoCellHtml)과 같음
 function vatMemoPeriodKey(year, period){ const q = Object.keys(VAT_QUARTER_TO_TARGET_PERIOD).find(k=> VAT_QUARTER_TO_TARGET_PERIOD[k] === period); return `${year}-${q}`; }
 function vatMemoGet(cid, year, period){ return ((((sharedFilingStatus || {})['부가세'] || {})[vatMemoPeriodKey(year, period)] || {})[cid] || {}).memo || ''; }
-function vatHelpGet(cid){ return ((sharedVatFilingTargets || {})[cid] || {}).__help || ''; }
+// [2026.10.08] 신고도움은 정해진 칸으로(요청) - 차량(유무·차종·차량번호·공제/불공제·메모), 4대보험 직원(기수마다 - 그 귀속기간 시작~말일에 있었는지:
+// 특수관계인·일반근로자·단시간근로자), 신고유형(특이사항없음·안분·의제·면세·기타), 메모. 예전에 글로만 적은 값은 메모로 이어짐
+const VAT_HELP_STAFF = ['특수관계인','일반근로자','단시간근로자'];
+const VAT_HELP_KINDS = ['특이사항없음','안분','의제','면세','기타'];
+const VAT_PERIOD_RANGE = { '1기예정':['01-01','03-31'], '1기확정':['04-01','06-30'], '2기예정':['07-01','09-30'], '2기확정':['10-01','12-31'] };
+function vatHelpObj(cid){ const v = ((sharedVatFilingTargets || {})[cid] || {}).__help; if(!v) return {}; return typeof v === 'string' ? { memo: v } : v; }
+function vatHelpGet(cid){ const h = vatHelpObj(cid); return (h.vehicleYn || (h.vehicles||[]).length || (h.kinds||[]).length || h.memo || Object.keys(h.staff||{}).length) ? 'y' : ''; }
+function vatHelpTipRows(cid, year, period){
+  const h = vatHelpObj(cid), rows = [];
+  const vs = (h.vehicles || []).filter(v=> v && (v.type || v.no));
+  if(h.vehicleYn === '없음') rows.push(['차량', '없음']);
+  else if(h.vehicleYn === '있음' || vs.length) rows.push(['차량', vs.length ? vs.map(v=> `${v.type||''} ${v.no||''}${v.deduct ? ` (${v.deduct})` : ''}`.trim()).join(', ') : '있음']);
+  const st = (h.staff || {})[`${year}-${period}`];
+  if(st) rows.push(['직원', st.length ? st.join('·') : '없음']);
+  if((h.kinds||[]).length) rows.push(['신고유형', h.kinds.map(k=> k === '기타' && h.kindEtc ? `기타(${h.kindEtc})` : k).join('·')]);
+  return rows;
+}
 function vatMemoCellHtml(c, year, period){ return stMemoCellHtml(c, vatMemoGet(c.id, year, period)).replace(/st-memo-btn/g, 'vat-memo-btn'); }
-function vatHelpCellHtml(c){
-  const v = vatHelpGet(c.id).trim();
-  return `<td class="cvb">${v ? `<span class="it-note-ic vat-help-btn" role="button" data-client-id="${c.id}" data-name="${escHtml(c.name)}" data-tip="${escHtml(appTipHtml('신고도움', [], v)).replace(/"/g,'&quot;')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line></svg></span>` : `<button type="button" class="st-memo-add vat-help-btn" data-client-id="${c.id}" data-name="${escHtml(c.name)}" title="신고도움 쓰기" aria-label="신고도움 쓰기">+</button>`}</td>`;
+function vatHelpCellHtml(c, year, period){
+  const v = vatHelpGet(c.id);
+  return `<td class="cvb">${v ? `<span class="it-note-ic vat-help-btn" role="button" data-client-id="${c.id}" data-name="${escHtml(c.name)}" data-tip="${escHtml(appTipHtml('Tip', vatHelpTipRows(c.id, year, period), vatHelpObj(c.id).memo || undefined)).replace(/"/g,'&quot;')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="13" y2="17"></line></svg></span>` : `<button type="button" class="st-memo-add vat-help-btn" data-client-id="${c.id}" data-name="${escHtml(c.name)}" title="Tip 쓰기" aria-label="Tip 쓰기">+</button>`}</td>`;
+}
+// [2026.10.08] 신고도움 = 이 기수 신고에 참고할 파일(PDF 등) 올리기(요청). 회사 공유 드라이브(기안 첨부와 같은 곳, '부가세 신고도움' 폴더)에 올리고
+// sharedVatFilingTargets[거래처].__docs['연도-기수'] = [{id,name,url,mimeType}] 에 둠. 누르면 목록(미리보기·삭제) + 파일 올리기
+function vatDocsGet(cid, year, period){ return ((((sharedVatFilingTargets || {})[cid] || {}).__docs || {})[`${year}-${period}`]) || []; }
+function vatDocsCellHtml(c, year, period){
+  const n = vatDocsGet(c.id, year, period).length;
+  return `<td class="cvb">${n ? `<span class="it-note-ic vat-docs-btn" role="button" data-client-id="${c.id}" data-name="${escHtml(c.name)}" title="신고도움 파일 ${n}개"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>${n > 1 ? `<span style="font-size:10px; font-weight:800; margin-left:2px;">${n}</span>` : ''}</span>` : `<button type="button" class="st-memo-add vat-docs-btn" data-client-id="${c.id}" data-name="${escHtml(c.name)}" title="신고도움 파일 올리기" aria-label="신고도움 파일 올리기">+</button>`}</td>`;
+}
+function openVatDocsModal(cid, name, year, period){
+  const plab = `${year}년 ${VAT_TARGET_PERIOD_LABEL[period] || period}`;
+  const draw = ()=>{
+    const list = vatDocsGet(cid, year, period);
+    const rows = list.length ? list.map((f, i)=> `<div style="display:flex; align-items:center; gap:8px; padding:7px 4px; border-bottom:1px dashed var(--border);">
+        <a href="${escHtml(f.url)}" class="vd-open" data-i="${i}" style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--navy); font-weight:700; font-size:12.5px; cursor:pointer;">📎 ${escHtml(f.name)}</a>
+        <button type="button" class="del-btn vd-del" data-i="${i}" title="목록에서 지우기" style="height:26px; width:26px; padding:0; flex:0 0 auto;">✕</button></div>`).join('')
+      : `<div class="hint" style="text-align:center; margin:6px 0 10px;">아직 올린 파일이 없어요.</div>`;
+    openClientNamedInfoModal(name, `신고도움 · ${plab}`, `${rows}
+      <div style="display:flex; justify-content:center; margin-top:12px;"><label class="submit-btn" id="vdUploadLabel" style="width:auto; margin:0; padding:0 18px; height:31px; font-size:12.5px; display:inline-flex; align-items:center; cursor:pointer;"><span id="vdUploadText">파일 올리기 (PDF 등)</span><input type="file" id="vdFileInput" multiple accept=".pdf,application/pdf,image/*,.xlsx,.xls,.hwp,.docx" style="display:none;"></label></div>`);
+    const root = document.getElementById('memoModalBody');
+    root.querySelectorAll('.vd-open').forEach(a=> a.onclick = e=>{ e.preventDefault(); const f = list[Number(a.dataset.i)]; openAttachmentPreviewModal(f.url, f.name); });
+    root.querySelectorAll('.vd-del').forEach(b=> b.onclick = async ()=>{
+      const f = list[Number(b.dataset.i)];
+      if(!(await appConfirm(`"${f.name}"을(를) 목록에서 지울까요?\n(공유 드라이브의 파일은 그대로 남아요)`, { okText:'지우기', cancelText:'취소' }))) return;
+      const docs = sharedVatFilingTargets[cid].__docs; docs[`${year}-${period}`] = list.filter((_, j)=> j !== Number(b.dataset.i));
+      if(!docs[`${year}-${period}`].length) delete docs[`${year}-${period}`];
+      if(!Object.keys(docs).length) delete sharedVatFilingTargets[cid].__docs;
+      await saveSharedVatFilingTargets(); renderVatAllUnified(); draw();
+    });
+    root.querySelector('#vdFileInput').onchange = async e=>{
+      const files = Array.from(e.target.files || []); if(!files.length) return;
+      const label = root.querySelector('#vdUploadLabel'), txt = root.querySelector('#vdUploadText');
+      label.style.pointerEvents = 'none'; label.style.opacity = '0.6';
+      try{
+        for(let i=0;i<files.length;i++){
+          txt.textContent = `올리는 중... (${i+1}/${files.length})`;
+          const up = await gdriveUploadApprovalAttachment(files[i], '부가세 신고도움', { title: `${name} ${plab}`, drafter: (typeof currentStaffDisplayName === 'function' ? currentStaffDisplayName() : '') || '' });
+          sharedVatFilingTargets[cid] = sharedVatFilingTargets[cid] || {};
+          const docs = sharedVatFilingTargets[cid].__docs = sharedVatFilingTargets[cid].__docs || {};
+          (docs[`${year}-${period}`] = docs[`${year}-${period}`] || []).push({ id: up.id, name: files[i].name, url: up.url, mimeType: up.mimeType, at: new Date().toLocaleString('ko-KR') });
+          await saveSharedVatFilingTargets();
+        }
+        showCenterToast('올렸어요'); renderVatAllUnified(); draw();
+      }catch(err){
+        console.error('신고도움 파일 올리기 실패', err);
+        appAlert(err && err.message ? err.message : '파일을 올리지 못했어요. 회사 공유 드라이브("01.기장대리") 멤버인지 확인해 주세요.');
+        label.style.pointerEvents = ''; label.style.opacity = '';
+      }
+    };
+  };
+  draw();
+}
+function openVatHelpModal(cid, name, year, period){
+  const h = JSON.parse(JSON.stringify(vatHelpObj(cid)));
+  const pkey = `${year}-${period}`, rg = VAT_PERIOD_RANGE[period] || ['',''];
+  const inS = 'border:1.5px solid var(--border); border-radius:8px; padding:5px 8px; font-size:12px; font-family:Pretendard,sans-serif; background:var(--surface); color:var(--ink); box-sizing:border-box; height:30px;';
+  const lab = t=> `<div style="font-size:11.5px; font-weight:800; color:var(--ink-soft); margin:14px 0 6px;">${t}</div>`;
+  const chk = (grp, v, on)=> `<label style="display:inline-flex; align-items:center; gap:5px; margin:0 12px 6px 0; font-size:12.5px; cursor:pointer;"><input type="checkbox" data-grp="${grp}" value="${escHtml(v)}" ${on ? 'checked' : ''} style="accent-color:var(--indigo);">${escHtml(v)}</label>`;
+  const vRow = v=> `<div class="vh-vrow" style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
+      <input type="text" class="vh-type" placeholder="차종" value="${escHtml(v.type||'')}" style="${inS} width:110px;">
+      <input type="text" class="vh-no" placeholder="차량번호" value="${escHtml(v.no||'')}" style="${inS} width:110px;">
+      <select class="vh-deduct" style="${inS} width:84px;"><option value="">공제?</option>${['공제','불공제'].map(o=> `<option ${v.deduct === o ? 'selected' : ''}>${o}</option>`).join('')}</select>
+      <input type="text" class="vh-memo" placeholder="메모" value="${escHtml(v.memo||'')}" style="${inS} flex:1; min-width:0;">
+      <button type="button" class="del-btn vh-del" title="이 차량 지우기" style="height:30px; width:30px; padding:0; flex:0 0 auto;">✕</button></div>`;
+  const staff = h.staff && h.staff[pkey];
+  const body = `
+    ${lab('차량')}
+    <div style="display:flex; gap:12px; margin-bottom:6px;">${['있음','없음'].map(o=> `<label style="display:inline-flex; align-items:center; gap:5px; font-size:12.5px; cursor:pointer;"><input type="radio" name="vhYn" value="${o}" ${h.vehicleYn === o ? 'checked' : ''} style="accent-color:var(--indigo);">${o}</label>`).join('')}</div>
+    <div id="vhVehicles">${(h.vehicles && h.vehicles.length ? h.vehicles : [{}]).map(vRow).join('')}</div>
+    <button type="button" class="del-btn" id="vhAddVehicle" style="height:28px;">＋ 차량 추가</button>
+    ${lab(`4대보험 직원 <span style="font-weight:600;">· ${year}.${rg[0].replace('-','.')} ~ ${year}.${rg[1].replace('-','.')} 중 있었는지 (${escHtml(VAT_TARGET_PERIOD_LABEL[period] || period)})</span>`)}
+    <div>${VAT_HELP_STAFF.map(v=> chk('staff', v, staff && staff.includes(v))).join('')}${chk('staff', '없음', staff && !staff.length)}</div>
+    ${lab('신고유형')}
+    <div>${VAT_HELP_KINDS.map(v=> chk('kinds', v, (h.kinds||[]).includes(v))).join('')}<input type="text" id="vhKindEtc" placeholder="기타 내용" value="${escHtml(h.kindEtc||'')}" style="${inS} width:160px;"></div>
+    ${lab('메모')}
+    <textarea id="vhMemo" style="width:100%; min-height:70px; border:1.5px solid var(--border); border-radius:10px; padding:8px 10px; font-size:12.5px; line-height:1.6; font-family:Pretendard,sans-serif; background:var(--surface); color:var(--ink); box-sizing:border-box; resize:vertical;">${escHtml(h.memo||'')}</textarea>
+    <div style="display:flex; justify-content:center; gap:8px; margin-top:12px;"><button type="button" class="del-btn" id="vhCancel">취소</button><button type="button" class="submit-btn" id="vhSave" style="width:auto; margin:0; padding:0 18px; height:31px; font-size:12.5px;">저장</button></div>`;
+  openClientNamedInfoModal(name, 'Tip', `<div style="max-height:60vh; overflow-y:auto;">${body}</div>`);
+  { const bx = document.getElementById('memoModalBox'); if(bx){ bx.style.maxWidth = '620px'; bx.style.maxHeight = '86vh'; } }
+  const root = document.getElementById('memoModalBody');
+  const bindDel = ()=> root.querySelectorAll('.vh-del').forEach(b=> b.onclick = ()=>{ const rows = root.querySelectorAll('.vh-vrow'); if(rows.length > 1) b.closest('.vh-vrow').remove(); else b.closest('.vh-vrow').querySelectorAll('input, select').forEach(i=> i.value = ''); });
+  bindDel();
+  root.querySelector('#vhAddVehicle').onclick = ()=>{ root.querySelector('#vhVehicles').insertAdjacentHTML('beforeend', vRow({})); bindDel(); };
+  // '없음'과 직원 종류는 같이 못 고름
+  root.querySelectorAll('input[data-grp="staff"]').forEach(cb=> cb.addEventListener('change', ()=>{ if(!cb.checked) return; root.querySelectorAll('input[data-grp="staff"]').forEach(o=>{ if(o !== cb && ((cb.value === '없음') !== (o.value === '없음'))) o.checked = false; }); }));
+  root.querySelectorAll('input[data-grp="kinds"]').forEach(cb=> cb.addEventListener('change', ()=>{ if(!cb.checked) return; root.querySelectorAll('input[data-grp="kinds"]').forEach(o=>{ if(o !== cb && ((cb.value === '특이사항없음') !== (o.value === '특이사항없음'))) o.checked = false; }); }));
+  root.querySelector('#vhCancel').onclick = ()=>{ document.getElementById('memoModalOverlay').style.display = 'none'; };
+  root.querySelector('#vhSave').onclick = async ()=>{
+    const out = {};
+    const yn = root.querySelector('input[name="vhYn"]:checked'); if(yn) out.vehicleYn = yn.value;
+    const vs = [...root.querySelectorAll('.vh-vrow')].map(r=> ({ type:r.querySelector('.vh-type').value.trim(), no:r.querySelector('.vh-no').value.trim(), deduct:r.querySelector('.vh-deduct').value, memo:r.querySelector('.vh-memo').value.trim() })).filter(v=> v.type || v.no || v.memo);
+    if(vs.length && out.vehicleYn !== '없음') out.vehicles = vs;
+    const staffSel = [...root.querySelectorAll('input[data-grp="staff"]:checked')].map(i=> i.value);
+    out.staff = Object.assign({}, h.staff || {});
+    if(staffSel.length) out.staff[pkey] = staffSel.filter(v=> v !== '없음'); else delete out.staff[pkey];
+    if(!Object.keys(out.staff).length) delete out.staff;
+    const kinds = [...root.querySelectorAll('input[data-grp="kinds"]:checked')].map(i=> i.value); if(kinds.length) out.kinds = kinds;
+    const etc = root.querySelector('#vhKindEtc').value.trim(); if(etc) out.kindEtc = etc;
+    const memo = root.querySelector('#vhMemo').value.trim(); if(memo) out.memo = memo;
+    sharedVatFilingTargets[cid] = sharedVatFilingTargets[cid] || {};
+    if(Object.keys(out).length) sharedVatFilingTargets[cid].__help = out; else delete sharedVatFilingTargets[cid].__help;
+    await saveSharedVatFilingTargets();
+    document.getElementById('memoModalOverlay').style.display = 'none';
+    showCenterToast('저장됐어요');
+    renderVatAllUnified();
+  };
 }
 function vatTaxbotDetailHtml(year, period, q, verifyCellOf){
   // [2026.10.06] 부가세 화면의 본 목록이 됨(요청) - 예정은 택스봇 예정고지 불러온 값, 확정은 같은 틀(값은 나중에 채움).
@@ -31322,14 +31447,14 @@ function vatTaxbotDetailHtml(year, period, q, verifyCellOf){
       <td class="cvb vat-tb-r">${x.tb.noticeTax == null ? na : Number(x.tb.noticeTax).toLocaleString('ko-KR')}</td>
       <td class="cvb">${x.tb.office ? escHtml(x.tb.office) : na}</td>
       <td class="cvb">${x.tb.dueDate ? escHtml(x.tb.dueDate) : na}</td>
-      ${sendCells}${vatMemoCellHtml(x.c, year, period)}${vatHelpCellHtml(x.c)}${verifyCellOf ? verifyCellOf(x.c) : ''}
+      ${sendCells}${vatMemoCellHtml(x.c, year, period)}${vatHelpCellHtml(x.c, year, period)}${vatDocsCellHtml(x.c, year, period)}${verifyCellOf ? verifyCellOf(x.c) : ''}
     </tr>`;
   }).join('');
   const title = `<div class="vat-tb-title">${pre ? '예정고지' : '확정신고'} 상세<span>${plab}</span></div>`;
   const hint = pre && !list.some(x=> x.hasTb) ? `<div class="vat-tb-counts">불러온 택스봇 예정고지가 없어요. 표 오른쪽 위 택스봇 아이콘으로 "부가가치세예정고지" 엑셀을 가져와 주세요.</div>` : '';
   return `<div class="vat-tb-sec vat-tb-main">${title}${hint}
     <div class="vat-tb-counts"><span class="it-seg" role="group" aria-label="구분 필터">${segs.map(([k, label, cnt])=> `<button type="button" class="${vatTbFilter === k ? 'on' : ''}" onclick="setVatTbFilter('${k}')">${label} ${cnt}</button>`).join('')}</span></div>
-    <div class="table-scroll"><table class="vat-tb-table"><thead><tr><th class="cvb">순번</th><th class="cvb">상호명</th><th class="cvb">사업자번호</th><th class="cvb">구분</th><th class="cvb">제외사유</th><th class="cvb">직전 과세기간 공급가액</th><th class="cvb">예정고지세액</th><th class="cvb">관할서</th><th class="cvb">납부기한</th>${VAT_SEND_ITEMS.map(([, l])=> `<th class="cvb" style="width:80px;">${l}</th>`).join('')}<th class="cvb" style="width:52px;" title="이 기수 신고에 대한 특이사항">메모</th><th class="cvb" style="width:64px;" title="이 업체의 부가세 특징(차량·직원·안분·의제 등) - 기수와 상관없이 계속 이어져요">신고도움</th><th class="cvb" style="width:52px;">검증</th></tr></thead><tbody>${rows || `<tr><td colspan="${12}" style="padding:18px; color:var(--ink-soft);">${q ? '검색 결과가 없어요' : '거래처가 없어요'}</td></tr>`}</tbody></table></div>
+    <div class="table-scroll"><table class="vat-tb-table"><thead><tr><th class="cvb">순번</th><th class="cvb">상호명</th><th class="cvb">사업자번호</th><th class="cvb">구분</th><th class="cvb">제외사유</th><th class="cvb">직전 과세기간 공급가액</th><th class="cvb">예정고지세액</th><th class="cvb">관할서</th><th class="cvb">납부기한</th>${VAT_SEND_ITEMS.map(([, l])=> `<th class="cvb" style="width:80px;">${l}</th>`).join('')}<th class="cvb" style="width:52px;" title="이 기수 신고에 대한 특이사항">메모</th><th class="cvb" style="width:52px;" title="이 업체의 부가세 특징(차량·직원·안분·의제 등) - 기수와 상관없이 계속 이어져요(직원은 기수마다)">Tip</th><th class="cvb" style="width:64px;" title="이 기수 신고에 참고할 자료(PDF 등)를 올려 둬요">신고도움</th><th class="cvb" style="width:52px;">검증</th></tr></thead><tbody>${rows || `<tr><td colspan="${12}" style="padding:18px; color:var(--ink-soft);">${q ? '검색 결과가 없어요' : '거래처가 없어요'}</td></tr>`}</tbody></table></div>
   </div>`;
 }
 
@@ -42414,7 +42539,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.08 15:55';
+const APP_BUILD = '2026.10.08 16:40';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
