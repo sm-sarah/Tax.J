@@ -2113,6 +2113,8 @@ try{
   .rv-pay #reviewItIncomeWrap::before{ content:'급여'; }
   .rv-pay #reviewItIncomeWrap table tr > .rv-inc-rep{ display:none; } /* [2026.10.06] 칸 수가 급여종류에 따라 바뀌어서 순번(nth-child) 대신 클래스로 */
   .rv-pay #reviewItIncomeWrap{ margin-bottom:22px; }
+  #reviewItFullscreenOverlay tr.rv-off input:disabled{ opacity:.35; cursor:not-allowed; background:#F1F2F8 !important; } /* [2026.10.08] 급여 없는 달 잠금 */
+  #reviewItFullscreenOverlay tr.rv-off td.review-it-reg-cell{ pointer-events:none; opacity:.35; }
   /* [2026.10.08] "급여 탭 구분선이 너무 없다"(요청) - 신고서 탭과 같게 칸마다 얇은 세로선, 소득 종류·합계 묶음 사이는 굵은 선(rv-grp-start) */
   .rv-pay #reviewItIncomeWrap table th:not(:first-child), .rv-pay #reviewItIncomeWrap table td:not(:first-child),
   .rv-pay #reviewItTaxWrap > table:nth-of-type(1) th:not(:first-child), .rv-pay #reviewItTaxWrap > table:nth-of-type(1) td:not(:first-child){ border-left:1px solid rgba(29,30,51,0.08); }
@@ -2469,6 +2471,8 @@ try{
   .app-tip-txt{ white-space:pre-wrap; word-break:break-all; }
   /* [2026.10.02] 원천세 한 달 한 칸 - 칸 폭은 모두 같게, 국세·지방세 모두 신고하면 진행 표시(▶)와 같은 남색 동그라미 안 흰 체크(요청 - 체크가 잘 안 보이고 색이 안 맞음) */
   .it-all-table th.it-all-m1{ width:58px; min-width:58px; max-width:58px; box-sizing:border-box; }
+  .it-stage-txt{ display:inline-block; font-size:10px; font-weight:800; letter-spacing:-0.3px; white-space:nowrap; color:#5B5FEF; line-height:16px; vertical-align:middle; }
+  .it-all-table td:not(.it-focus):not(.it-focus-nx) .it-stage-txt{ color:var(--ink-soft); }
   .it-done-mark{ display:inline-flex; width:16px; height:16px; background:transparent; align-items:center; justify-content:center; vertical-align:middle; }
   .it-done-mark svg{ width:15px; height:15px; fill:none; stroke:#5B5FEF; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
   .it-all-table thead th.it-focus.it-all-m1.it-focus-l.it-focus-r{ box-shadow:inset 2px 2px 0 #5B5FEF, inset -2px 0 0 #5B5FEF; color:#3730A3 !important; }
@@ -30108,6 +30112,14 @@ const IT_ALL_STAGES = [['payslip','급여명세서 전달'], ['payroll','급여�
 // [2026.10.04] "급여명세서 전달은 필수가 아닐 때가 있다"(요청) - 원천세 총괄의 "급여명세서 전달방법"을 '전달 안 함'으로 둔 거래처는
 // 그 단계를 건너뜀: 신고일자 팝업엔 날짜칸 대신 "해당 없음", 표의 진행 점(▶)은 끝난 것으로 봄
 // [2026.10.05] 진행 표시 세그먼트 바 - st: 단계별 'on'(끝남)·'skip'(해당 없음)·''(아직). 아직인 첫 칸이 다음 차례(깜빡)
+// [2026.10.08] "단계 막대는 담당자만 안다 - 급여명세·급여마감·신고서마감·신고완료처럼 직관적으로"(요청, 짧은 이름 선택) -
+// 진행 중인 칸은 마지막으로 끝난 단계 이름 + ✓(명세✓ → 급여마감✓ → 신고서✓ → 국세✓/지방✓), 신고까지 끝나면 지금처럼 ✓만. 단계별 날짜는 말풍선
+function itStageLabelHtml(info, csN, csL){
+  const d = i=> info[i] && info[i].done && !info[i].skip;
+  const nDone = csN && csN.state === 'done', lDone = csL && csL.state === 'done';
+  const t = nDone ? '국세' : lDone ? '지방' : (d(2) && d(3)) ? '신고서' : d(1) ? '급여마감' : d(0) ? '명세' : '';
+  return t ? `<span class="it-stage-txt">${t}✓</span>` : '';
+}
 function itStageBarHtml(st){ const nx = st.indexOf(''); return `<span class="it-stage-tri">${st.map((x,i)=> `<i class="${x || (i === nx ? 'next' : '')}"></i>`).join('')}</span>`; }
 function itPayslipSkip(cid){ try{ return (itoEntry(cid).payslipVia || '') === '전달 안 함'; }catch(e){ return false; } }
 // [2026.10.06] "급여명세서를 안 보내는 달도 있다"(요청) - 신고일자 팝업에서 그 달·그 지급시기만 '해당 없음'(t.payslipNA)으로 둘 수 있음
@@ -30443,7 +30455,7 @@ function renderIncomeTaxUnifiedInner(){
           infoH.forEach(x=> tipRows.push([x.l, x.skip ? '해당 없음' : x.date ? fmtYmd(x.date) : '아직']));
           tipRows.push(['신고', `반기 신고(${m <= 6 ? 6 : 12}월 귀속에)`]);
           if(infoH.every(x=> x.done) && infoH.some(x=> !x.skip)) inner = '<span class="it-done-mark" aria-label="급여 작업 완료"><svg viewBox="0 0 16 16"><path d="M4 8.3l2.6 2.6L12 5.5"/></svg></span>';
-          else if(infoH.some(x=> x.done && !x.skip)) inner = itStageBarHtml(infoH.map(x=> x.skip ? 'skip' : x.done ? 'on' : ''));
+          else if(infoH.some(x=> x.done && !x.skip)) inner = itStageLabelHtml(infoH);
         }
         if(anyTarget){
           const tgt = csN.target || csL.target || filingTargetEntry(c.id, period);
@@ -30460,7 +30472,7 @@ function renderIncomeTaxUnifiedInner(){
           const taxDoneCnt = [csN, csL].filter(cs=> cs.state === 'done').length;
           if(bothDone) inner = '<span class="it-done-mark" aria-label="신고 완료"><svg viewBox="0 0 16 16"><path d="M4 8.3l2.6 2.6L12 5.5"/></svg></span>';
           // 국세·지방세 중 하나라도 신고했으면 앞 단계는 끝난 것으로 보고 바 3칸 모두(남은 건 다른 세목 신고)
-          else if(stageInfo.some(x=>x.done && !x.skip) || taxDoneCnt) inner = itStageBarHtml(stageInfo.map(x=> x.skip ? 'skip' : (x.done || taxDoneCnt) ? 'on' : ''));
+          else if(stageInfo.some(x=>x.done && !x.skip) || taxDoneCnt) inner = itStageLabelHtml(stageInfo, csN, csL);
         }
         // [2026.10.05] "익월지급은 앞 달 귀속분을 이번 달 귀속분과 같이 신고하니 그 칸도 같은 테두리로"(요청) - 지금 챙길 귀속월의
         // 바로 앞 달 칸 중 익월지급 줄(또는 익월지급만 등록한 한 줄 거래처)에 같은 보라 테두리
@@ -32631,6 +32643,28 @@ function renderReviewItSubmitTable(clientId, year){
     });
   });
 }
+// [2026.10.08] "급여가 발생한 달이 없으면 입력칸 비활성화"(요청) - 어느 달이든 발생 급여종류를 하나라도 골라 둔 거래처에서, 종류를 안 고른 달은
+// (이미 적힌 금액이 없으면) 그 줄 입력칸을 흐리게 잠금. 발생 급여종류 칸은 그대로 눌려서, 고르면 바로 풀림. 아무 달도 안 골랐으면 예전처럼 모두 열림
+function reviewItApplyOffMonths(clientId, year){
+  const months = Array.from({length:12}, (_,i)=> i+1);
+  const datas = months.map(m=> reviewItMonthData(clientId, year, m));
+  if(!datas.some(d=> (d.payKinds || []).length)) return;
+  const has = v=> v != null && v !== '' && Number(v) !== 0;
+  const off = new Set(months.filter((m, i)=>{
+    const d = datas[i];
+    if((d.payKinds || []).length) return false;
+    if(has(d.incomeReported) || has(d.taxReportedLocal)) return false;
+    if(Object.values(d.income || {}).some(has)) return false;
+    if(Object.values(d.tax || {}).some(t=> t && (has(t.tax) || has(t.local)))) return false;
+    if(Object.values(d.taxReported || {}).some(has)) return false;
+    return true;
+  }).map(String));
+  document.querySelectorAll('#reviewItIncomeWrap tr[data-month], #reviewItTaxWrap tr[data-month]').forEach(tr=>{
+    const isOff = off.has(tr.dataset.month);
+    tr.classList.toggle('rv-off', isOff);
+    tr.querySelectorAll('input').forEach(inp=>{ inp.disabled = isOff; if(isOff) inp.title = '이 달은 발생 급여종류를 고르지 않았어요 · 발생 급여종류를 고르면 입력할 수 있어요'; });
+  });
+}
 function renderReviewItFsSection(){
   const clientId = reviewItFsClientId;
   if(!clientId) return;
@@ -32640,6 +32674,7 @@ function renderReviewItFsSection(){
   renderReviewItTaxTable(clientId, year);
   if(viewingReviewItSection === 'tax') reviewItMergeTotalsIntoReturnTable();
   if(viewingReviewItSection === 'submit') renderReviewItSubmitTable(clientId, year);
+  reviewItApplyOffMonths(clientId, year);
   reviewItFixStickyHeads();
 }
 // [2026.10.06] "원천세 검증에서 키보드 화살표로 해당 칸으로 이동"(요청) - 엑셀처럼 ↑↓는 바로 위·아래 칸, ←→는 글자 맨 앞/끝에서
@@ -42220,7 +42255,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.08 11:05';
+const APP_BUILD = '2026.10.08 11:20';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
