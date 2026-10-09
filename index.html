@@ -31689,16 +31689,33 @@ async function importSubmitRaw(wb){
   const head = f.aoa[f.hIdx].map(xlsNorm);
   const iName = head.indexOf('상호'), iAtt = head.indexOf('귀속월'), iPay = head.indexOf('지급월');
   const cols = SUBMIT_RAW_COLS.map(([lbl, key])=> [key, head.findIndex(h=> lbl === '기타()' ? h === '기타()' : h.startsWith(xlsNorm(lbl)))]).filter(([,i])=> i >= 0);
+  // [2026.10.09] 반기·연간 칸도 가져오기(요청 - "매월/반기/연간 잘 구분해서"). 머리글: 근로(간이)=반기 / 근로·사업·기타(간이미대상)·퇴직·이자/배당=연간.
+  // 반기·연간은 그 칸의 제출일로 어느 기간인지 정함: 반기 = 제출일 1~3월이면 전년 하반기, 4~9월이면 그해 상반기, 10~12월이면 그해 하반기(날짜가 아니면 귀속월로)
+  // 연간 = 제출일이 속한 해의 전년(지급명세서는 다음 해 2~3월 제출. 날짜가 아니면 귀속월 1~6월 → 전년)
+  const exact = lbl=> head.findIndex(h=> h === xlsNorm(lbl));
+  const halfCols = [['근로간이', exact('근로(간이)')]].filter(([,i])=> i >= 0);
+  const annCols = [['근로연간', exact('근로')], ['사업연간', exact('사업')], ['기타연간', head.findIndex(h=> h.startsWith('기타(간이미'))], ['퇴직연간', exact('퇴직')], ['이자배당연간', head.findIndex(h=> /^이자/.test(h))]].filter(([,i])=> i >= 0);
   const normName = v=> String(v||'').replace(/\s+/g,'').replace(/주식회사|\(주\)|㈜|^주\)/g,'').toLowerCase();
   const pool = []; const seen = new Set(); [...bookkeepingClientList(), ...(clients.list||[])].forEach(c=>{ if(!seen.has(c.id)){ seen.add(c.id); pool.push(c); } });
-  const ym = v=>{ const d = gwExpenseDateStr(v); if(d) return d.slice(0,7); const m = String(v||'').trim().match(/^(\d{4})\D(\d{1,2})$/); return m ? `${m[1]}-${m[2].padStart(2,'0')}` : ''; };
+  // 상호는 공백·주식회사·(주) 빼고 같으면 같은 거래처. 그래도 없으면 한쪽이 다른 쪽을 포함하는 거래처가 딱 하나일 때만(예: '노아하우징쿱협동조합' ↔ '노아하우징쿱 협동조합')
+  const findClient = name=>{
+    const n = normName(name); let c = pool.find(x=> normName(x.name) === n); if(c) return c;
+    const cands = pool.filter(x=>{ const m = normName(x.name); return m && n && m.length >= 3 && n.length >= 3 && (m.includes(n) || n.includes(m)); });
+    return cands.length === 1 ? cands[0] : null;
+  };
+  const ym = v=>{ const d = gwExpenseDateStr(v); if(d) return d.slice(0,7); const t = String(v||'').trim().split('/').pop().trim(); let m = t.match(/^(\d{4})\D(\d{1,2})$/); if(m) return `${m[1]}-${m[2].padStart(2,'0')}`; m = t.match(/^(\d{2})\.(\d{1,2})$/); return m ? `20${m[1]}-${m[2].padStart(2,'0')}` : ''; };
+  const cellVal = v=>{ const d = gwExpenseDateStr(v); const t = String(v === null || v === undefined ? '' : v).trim(); if(d) return { date:d }; if(t && !/^(해당없음|급여없음|-)$/.test(t.replace(/\s/g,''))) return { note:t }; return null; };
+  const extra = []; // 반기·연간 [{ c, key(기간 저장 키), item, v }]
   const recs = [], unmatched = new Set(); let skipped = 0;
   f.aoa.slice(f.hIdx+1).forEach(r=>{
     const name = String(r[iName]||'').trim(); if(!name) return;
     const period = ym(r[iAtt]), payMonth = ym(r[iPay]) || period;
     if(!period){ skipped++; return; }
-    const c = pool.find(x=> normName(x.name) === normName(name));
+    const c = findClient(name);
     if(!c){ if(![...unmatched].some(u=> normName(u) === normName(name))) unmatched.add(name); return; }
+    halfCols.forEach(([item, i])=>{ const v = cellVal(r[i]); if(!v) return; const base = v.date || `${period}-01`; const y = Number(base.slice(0,4)), mo = Number(base.slice(5,7));
+      const key = v.date ? (mo <= 3 ? `${y-1}-H2` : mo <= 9 ? `${y}-H1` : `${y}-H2`) : `${y}-${mo <= 6 ? 'H1' : 'H2'}`; extra.push({ c, key, item, v }); });
+    annCols.forEach(([item, i])=>{ const v = cellVal(r[i]); if(!v) return; const y = v.date ? Number(v.date.slice(0,4)) - 1 : Number(period.slice(0,4)) - (Number(period.slice(5,7)) <= 6 ? 1 : 0); extra.push({ c, key: String(y), item, v }); });
     const vals = {};
     cols.forEach(([key, i])=>{
       const v = r[i]; const d = gwExpenseDateStr(v); const t = String(v === null || v === undefined ? '' : v).trim();
@@ -31707,10 +31724,10 @@ async function importSubmitRaw(wb){
     });
     recs.push({ c, period, payMonth, lane: payMonth > period ? 'nextMonth' : 'sameMonth', vals });
   });
-  if(!recs.length){ appAlert(`가져올 줄을 찾지 못했어요.${unmatched.size ? `\n\n상호를 못 찾은 거래처: ${[...unmatched].slice(0,8).join(', ')}` : ''}`); return; }
+  if(!recs.length && !extra.length){ appAlert(`가져올 줄을 찾지 못했어요.${unmatched.size ? `\n\n상호를 못 찾은 거래처: ${[...unmatched].slice(0,8).join(', ')}` : ''}`); return; }
   const groups = {}; recs.forEach(x=>{ const k = x.c.id + '|' + x.period; (groups[k] = groups[k] || new Set()).add(x.lane); });
   const cells = recs.reduce((a,x)=> a + Object.keys(x.vals).length, 0);
-  if(!(await appConfirm(`지급명세서 제출현황 원데이터를 가져올까요?\n\n· ${recs.length}줄 · 제출 기록 ${cells}칸 (지급월 포함)\n· 이미 있는 제출일은 엑셀 값으로 바뀌어요${skipped ? `\n· 귀속월을 읽지 못한 ${skipped}줄은 건너뜀` : ''}${unmatched.size ? `\n· 상호를 못 찾은 ${unmatched.size}곳: ${[...unmatched].slice(0,6).join(', ')}${unmatched.size > 6 ? ' 등' : ''}` : ''}`, { okText:'가져오기', cancelText:'취소' }))) return;
+  if(!(await appConfirm(`지급명세서 제출현황 원데이터를 가져올까요?\n\n· 매월 ${recs.length}줄 · 제출 기록 ${cells}칸 (지급월 포함)\n· 반기 ${extra.filter(x=> /H/.test(x.key)).length}칸 · 연간 ${extra.filter(x=> !/H/.test(x.key)).length}칸\n· 이미 있는 제출일은 엑셀 값으로 바뀌어요${skipped ? `\n· 귀속월을 읽지 못한 ${skipped}줄은 건너뜀` : ''}${unmatched.size ? `\n· 상호를 못 찾은 ${unmatched.size}곳: ${[...unmatched].slice(0,6).join(', ')}${unmatched.size > 6 ? ' 등' : ''}` : ''}`, { okText:'가져오기', cancelText:'취소' }))) return;
   sharedFilingStatus['원천세'] = sharedFilingStatus['원천세'] || {};
   recs.forEach(x=>{
     const pd = sharedFilingStatus['원천세'][x.period] = sharedFilingStatus['원천세'][x.period] || {};
@@ -31725,8 +31742,16 @@ async function importSubmitRaw(wb){
       else { delete e.itemDates[key]; e.itemNotes = e.itemNotes || {}; e.itemNotes[key] = v.note; }
     });
   });
+  extra.forEach(x=>{
+    const pd = sharedFilingStatus['원천세'][x.key] = sharedFilingStatus['원천세'][x.key] || {};
+    const e = pd[x.c.id] = pd[x.c.id] || { memo:'' }; e.items = e.items || {}; e.itemDates = e.itemDates || {};
+    e.items[x.item] = true;
+    if(x.v.date){ e.itemDates[x.item] = x.v.date; if(e.itemNotes) delete e.itemNotes[x.item]; }
+    else { delete e.itemDates[x.item]; e.itemNotes = e.itemNotes || {}; e.itemNotes[x.item] = x.v.note; }
+  });
   await saveSharedFilingStatus();
-  showCenterToast(`${recs.length}줄을 가져왔어요`);
+  showCenterToast(`매월 ${recs.length}줄 · 반기·연간 ${extra.length}칸을 가져왔어요${unmatched.size ? ` · 상호 못 찾음 ${unmatched.size}곳` : ''}`);
+  if(unmatched.size) appAlert(`상호를 못 찾아 건너뛴 거래처예요(거래처 목록 이름과 맞춘 뒤 다시 가져오면 돼요):\n${[...unmatched].join(', ')}`);
   renderSubmitStatusTable();
 }
 function renderSubmitStatusTable(){ const r = renderSubmitStatusTableInner(); tblPlaceXls(tblXlsBox('submitStatusXlsBox'), document.getElementById('submitStatusTableWrap')); return r; }
@@ -31744,7 +31769,7 @@ function renderSubmitStatusTableInner(){
   const periods = dueView ? [1,2,3].map(n=> submitAddMonth(period, -n)) : [period];
   const pdRead = p=> ((sharedFilingStatus['원천세'] || {})[p]) || {};
   const pdEnsure = p=>{ sharedFilingStatus['원천세'] = sharedFilingStatus['원천세'] || {}; return (sharedFilingStatus['원천세'][p] = sharedFilingStatus['원천세'][p] || {}); };
-  const inPeriod = (c, p)=> isSubmitStatusPayrollTarget(c.id, monthly ? [p] : null) || (monthly && (pdRead(p)[c.id] || pdRead(p)[c.id + '@nextMonth']));
+  const inPeriod = (c, p)=> isSubmitStatusPayrollTarget(c.id, monthly ? [p] : null) || !!pdRead(p)[c.id] || (monthly && !!pdRead(p)[c.id + '@nextMonth']); // [2026.10.09] 반기·연간도 가져온 기록이 있는 거래처는 명단에
   const list = bookkeepingClientList().filter(c=> periods.some(p=> inPeriod(c, p)));
   const wrap = document.getElementById('submitStatusTableWrap');
   if(!wrap) return;
@@ -42556,7 +42581,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.09 13:00';
+const APP_BUILD = '2026.10.09 13:20';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
