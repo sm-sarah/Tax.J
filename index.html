@@ -31698,8 +31698,20 @@ async function importSubmitRaw(wb){
   const normName = v=> String(v||'').replace(/\s+/g,'').replace(/주식회사|\(주\)|㈜|^주\)/g,'').toLowerCase();
   const pool = []; const seen = new Set(); [...bookkeepingClientList(), ...(clients.list||[])].forEach(c=>{ if(!seen.has(c.id)){ seen.add(c.id); pool.push(c); } });
   // 상호는 공백·주식회사·(주) 빼고 같으면 같은 거래처. 그래도 없으면 한쪽이 다른 쪽을 포함하는 거래처가 딱 하나일 때만(예: '노아하우징쿱협동조합' ↔ '노아하우징쿱 협동조합')
+  // [2026.10.09] "주식회사 프린웍스산업"과 개인사업자 "프린웍스 산업"처럼 주식회사를 떼면 이름이 같아지는 경우가 있어서(요청 - 엉뚱한 거래처로 들어감):
+  // ① 공백만 뺀 이름이 똑같은 거래처 ② 주식회사·(주)가 붙어 있으면 법인 쪽 ③ 기장거래처 순서로 고름. 같은 이름 후보는 collide에 모아 두고 잘못 들어간 기록을 정리
+  const sp = v=> String(v||'').replace(/\s+/g,'').toLowerCase();
+  const collide = new Map();
   const findClient = name=>{
-    const n = normName(name); let c = pool.find(x=> normName(x.name) === n); if(c) return c;
+    const n = normName(name);
+    const same = pool.filter(x=> normName(x.name) === n);
+    if(same.length){
+      const corp = /주식회사|\(주\)|㈜|^주\)/.test(String(name));
+      const c = same.find(x=> sp(x.name) === sp(name)) || same.find(x=> corp ? x.entityType === '법인' : x.entityType !== '법인') || same[0];
+      if(same.length > 1){ const set = collide.get(c.id) || new Set(); same.forEach(x=>{ if(x.id !== c.id) set.add(x.id); }); collide.set(c.id, set); }
+      return c;
+    }
+    let c = null;
     const cands = pool.filter(x=>{ const m = normName(x.name); return m && n && m.length >= 3 && n.length >= 3 && (m.includes(n) || n.includes(m)); });
     return cands.length === 1 ? cands[0] : null;
   };
@@ -31720,13 +31732,14 @@ async function importSubmitRaw(wb){
     cols.forEach(([key, i])=>{
       const v = r[i]; const d = gwExpenseDateStr(v); const t = String(v === null || v === undefined ? '' : v).trim();
       if(d) vals[key] = { date:d };
-      else if(t && !/^(해당없음|급여없음|-)$/.test(t.replace(/\s/g,''))) vals[key] = { note:t };
+      else if(/^(해당없음|급여없음)$/.test(t.replace(/\s/g,''))) vals[key] = { na:true }; // [2026.10.09] 해당없음 = 미대상으로 표시
+      else if(t && !/^-$/.test(t.replace(/\s/g,''))) vals[key] = { note:t };
     });
     recs.push({ c, period, payMonth, lane: payMonth > period ? 'nextMonth' : 'sameMonth', vals });
   });
   if(!recs.length && !extra.length){ appAlert(`가져올 줄을 찾지 못했어요.${unmatched.size ? `\n\n상호를 못 찾은 거래처: ${[...unmatched].slice(0,8).join(', ')}` : ''}`); return; }
   const groups = {}; recs.forEach(x=>{ const k = x.c.id + '|' + x.period; (groups[k] = groups[k] || new Set()).add(x.lane); });
-  const cells = recs.reduce((a,x)=> a + Object.keys(x.vals).length, 0);
+  const cells = recs.reduce((a,x)=> a + Object.values(x.vals).filter(v=> !v.na).length, 0);
   if(!(await appConfirm(`지급명세서 제출현황 원데이터를 가져올까요?\n\n· 매월 ${recs.length}줄 · 제출 기록 ${cells}칸 (지급월 포함)\n· 반기 ${extra.filter(x=> /H/.test(x.key)).length}칸 · 연간 ${extra.filter(x=> !/H/.test(x.key)).length}칸\n· 이미 있는 제출일은 엑셀 값으로 바뀌어요${skipped ? `\n· 귀속월을 읽지 못한 ${skipped}줄은 건너뜀` : ''}${unmatched.size ? `\n· 상호를 못 찾은 ${unmatched.size}곳: ${[...unmatched].slice(0,6).join(', ')}${unmatched.size > 6 ? ' 등' : ''}` : ''}`, { okText:'가져오기', cancelText:'취소' }))) return;
   sharedFilingStatus['원천세'] = sharedFilingStatus['원천세'] || {};
   recs.forEach(x=>{
@@ -31737,6 +31750,8 @@ async function importSubmitRaw(wb){
     const e = pd[ek] = pd[ek] || { memo:'' }; e.items = e.items || {}; e.itemDates = e.itemDates || {};
     e.payMonth = x.payMonth;
     Object.entries(x.vals).forEach(([key, v])=>{
+      if(v.na){ e.itemNA = e.itemNA || {}; e.itemNA[key] = true; if(!e.itemDates[key] && !(e.itemNotes||{})[key]) delete e.items[key]; return; }
+      if(e.itemNA){ delete e.itemNA[key]; if(!Object.keys(e.itemNA).length) delete e.itemNA; }
       e.items[key] = true;
       if(v.date){ e.itemDates[key] = v.date; if(e.itemNotes) delete e.itemNotes[key]; }
       else { delete e.itemDates[key]; e.itemNotes = e.itemNotes || {}; e.itemNotes[key] = v.note; }
@@ -31749,6 +31764,13 @@ async function importSubmitRaw(wb){
     if(x.v.date){ e.itemDates[x.item] = x.v.date; if(e.itemNotes) delete e.itemNotes[x.item]; }
     else { delete e.itemDates[x.item]; e.itemNotes = e.itemNotes || {}; e.itemNotes[x.item] = x.v.note; }
   });
+  // 같은 이름 후보(예: 개인 '프린웍스 산업')에 예전 가져오기로 잘못 들어간 기록 정리 - 그 기간에 급여·신고 기록이 없고 메모도 없는 칸만 지움
+  let cleaned = 0;
+  const touched = new Set(recs.map(x=> x.period).concat(extra.map(x=> x.key)));
+  collide.forEach(others=> others.forEach(oid=> touched.forEach(pk=>{
+    const pd = sharedFilingStatus['원천세'][pk]; if(!pd) return;
+    [oid, oid + '@nextMonth'].forEach(k=>{ const e = pd[k]; if(!e || (e.memo||'').trim()) return; if(/^\d{4}-\d{2}$/.test(pk) && isSubmitStatusPayrollTarget(oid, [pk])) return; delete pd[k]; cleaned++; });
+  })));
   await saveSharedFilingStatus();
   showCenterToast(`매월 ${recs.length}줄 · 반기·연간 ${extra.length}칸을 가져왔어요${unmatched.size ? ` · 상호 못 찾음 ${unmatched.size}곳` : ''}`);
   if(unmatched.size) appAlert(`상호를 못 찾아 건너뛴 거래처예요(거래처 목록 이름과 맞춘 뒤 다시 가져오면 돼요):\n${[...unmatched].join(', ')}`);
@@ -31808,14 +31830,16 @@ function renderSubmitStatusTableInner(){
     const subitemCells = subitems.map(it=>{
       const auto = submitAutoApplicable(c.id, it.key, period, monthly && rd.dual ? [rd.lane === 'nextMonth' ? c.id + '@nextMonth' : c.id] : null);
       const manual = submitItemApplicable(entry.items[it.key]);
-      const applicable = !!auto || manual;
+      // [2026.10.09] "원데이터에 해당없음인데 칸이 활성화돼 있다"(요청) - 원데이터의 '해당없음'(itemNA)은 검토표 금액보다 우선해서 미대상. 눌러서 다시 제출대상으로 지정 가능
+      const naMark = !!(entry.itemNA || {})[it.key];
+      const applicable = !naMark && (!!auto || manual);
       const dateVal = entry.itemDates[it.key] || '';
       const noteVal = (entry.itemNotes || {})[it.key] || ''; // [2026.10.07] 원데이터의 "노무사"처럼 날짜 대신 적힌 글자 = 다른 곳에서 처리(완료로 봄)
       const st = !applicable ? 'off' : ((dateVal || noteVal) ? 'done' : 'todo');
       const due = monthly ? submitDueDate(it.key, period, payMonth) : '';
       // [2026.10.02] "급여가 해당되는 칸만 활성화"(요청) - 검토표와 이어지는 칸(사업·기타·일용 등)은 금액이 없으면 눌리지 않음.
       // 특고·학자금상환·기타처럼 검토표와 안 이어지는 칸만 예전처럼 눌러서 제출대상으로 지정
-      const locked = st === 'off' && auto === false;
+      const locked = st === 'off' && auto === false && !naMark;
       const bg = st === 'off' ? '#EDEFF4' : st === 'todo' ? '#FFF8DC' : 'transparent';
       const dueLeft = due ? Math.round((parseDate(due) - parseDate(todayStr())) / 86400000) : null;
       const label = st === 'done' ? (dateVal ? md(dateVal) : escHtml(noteVal)) : st === 'todo' && due ? `<span style="font-weight:700; color:${dueLeft < 0 ? 'var(--coral)' : dueLeft <= 3 ? '#B7791F' : 'var(--ink-soft)'};">~${md(due)}</span>` : ''; // [2026.10.02] 9.1 모양 · 글자는 원천세 신고일과 같은 짙은 회색(요청)
@@ -31960,7 +31984,7 @@ function openSubmitCellMenu(anchor, apply){
   dd.querySelector('[data-act="today"]')?.addEventListener('click', ()=> setDate(todayStr()));
   dd.querySelector('[data-act="clear"]')?.addEventListener('click', ()=>{ close(); apply(e=>{ delete e.itemDates[key]; delete e.itemNotes[key]; }); });
   dd.querySelector('[data-act="off"]')?.addEventListener('click', ()=>{ close(); apply(e=>{ delete e.items[key]; delete e.itemDates[key]; }); });
-  dd.querySelector('[data-act="on"]')?.addEventListener('click', ()=>{ close(); apply(e=>{ e.items[key] = true; }); });
+  dd.querySelector('[data-act="on"]')?.addEventListener('click', ()=>{ close(); apply(e=>{ e.items[key] = true; if(e.itemNA){ delete e.itemNA[key]; if(!Object.keys(e.itemNA).length) delete e.itemNA; } }); });
 }
 // 예전엔 세부항목이 해당없음/검토중/제출완료 3단계 select였는데("미확인"이라 부르던 시절도 있었음), "제출
 // 여부만 체크하고 날짜만 입력하면 되지 굳이 단계를 나눌 필요가 있나"는 요청으로 해당여부(체크박스)+제출일
@@ -42581,7 +42605,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.09 13:20';
+const APP_BUILD = '2026.10.09 13:40';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
