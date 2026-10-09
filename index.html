@@ -30406,6 +30406,10 @@ function tblPlaceXls(box, wrap){
 function renderIncomeTaxUnified(){ renderIncomeTaxUnifiedInner(); tblPlaceXls(tblXlsBox('itAllXlsBox'), document.getElementById('itAllTableWrap')); autoSaveMount(tblXlsBox('itAllXlsBox'), 'itOverview', itAllView === 'overview'); try{ renderFilingTitleBadges(); }catch(e){} }
 // [2026.10.06] 연간대상 판정을 함수로 뺌 - 신고현황 '연간대상' 칩과 총괄 표(연간대상 거래처만, 요청)가 같이 씀
 function itIsNeverTarget(cid){ const recs = filingCycleRecordsOf(cid); return recs.length > 0 && recs.every(r=> !filingCycleRecApplicable(r)); }
+// [2026.10.09] "프린웍스 산업이 계속 안 없어진다"(요청) - 예전에 '매월'로 등록했다가 '미대상'으로 바꾼 거래처는 이력이 모두 미대상이 아니라서 남았음.
+// 이제 그 달(또는 그해) 시점의 신고구분으로 봄: 이력이 있고 그 시점이 미대상이면 빼기(연도 중에 바뀐 거래처는 대상 기간에만 나옴)
+function itCycleApplicableAt(cid, period){ const recs = filingCycleRecordsOf(cid); return !recs.length || filingCycleRecApplicable(filingCycleRecordAt(cid, period)); }
+function itCycleApplicableInYear(cid, year){ return Array.from({length:12}, (_,i)=> `${year}-${String(i+1).padStart(2,'0')}`).some(p=> itCycleApplicableAt(cid, p)); }
 function itIsAnnualTarget(c, year){
     if(!filingCycleRecordsOf(c.id).length) return false;
     // [2026.10.05] "미대상으로 수정했는데 대상 칩에서 안 사라진다"(요청) - 지금(지난 해를 보면 그 해 12월) 기준 미대상인 거래처는 숨김
@@ -30431,7 +30435,7 @@ function renderIncomeTaxUnifiedInner(){
   let list = bookkeepingClientList();
   if(q) list = list.filter(c=>(c.name||'').toLowerCase().includes(q));
   // [2026.10.09] "총괄에서 미대상인 거래처(그해 급여가 한 번도 없음)는 신고현황 목록에서 빼달라"(요청) - 신고구분 이력이 모두 미대상인 거래처는 신고현황에서 숨김(총괄은 그대로)
-  if(itAllView !== 'overview') list = list.filter(c=> !itIsNeverTarget(c.id));
+  if(itAllView !== 'overview') list = list.filter(c=> itCycleApplicableInYear(c.id, year));
   // 표 위 요약줄 - "지금 챙길 신고"(itFocusFiling) 기준 대상/완료/남음과 "미신고만 보기" 필터
   const focus = itFocusFiling(itAllPeriod);
   if(itAllOnlyPending) list = list.filter(c=> focus.pendingIds.has(c.id));
@@ -30940,7 +30944,53 @@ function vatFocusFiling(){
   return Object.assign(f, { label: f.period, quarter: q, dday: Math.round((f.due - t) / 86400000), total, done, pending: total - done, pendingIds: ids });
 }
 let vatAllSeg = 'all'; // all | target | focus | pending
-function renderVatAllUnified(){ renderVatAllUnifiedInner(); tblPlaceXls(tblXlsBox('vatAllXlsBox'), document.getElementById('vatAllTableWrap')); try{ renderFilingTitleBadges(); }catch(e){} }
+function renderVatAllUnified(){ renderVatAllUnifiedInner(); tblPlaceXls(tblXlsBox('vatAllXlsBox'), document.getElementById('vatAllTableWrap')); try{ renderFilingTitleBadges(); }catch(e){} try{ vatTbHeaderFilters(document.getElementById('vatAllTableWrap')); }catch(e){ console.error(e); } }
+// [2026.10.09] 부가세 상세 목록 머리글 엑셀식 필터(요청) - 구분·제외사유·관할서·납부기한·안내문·납부서 머리글을 누르면 값 목록에서 골라 보기.
+// 표를 다시 그려도 고른 값은 유지(머리글 글자 기준). 위의 구분 칩(전체·예정고지…)과 함께 걸려요. 칸 글자 그대로 비교(빈칸은 '(빈칸)')
+let vatTbColFilters = {};
+const VAT_TB_FILTER_COLS = ['구분','제외사유','관할서','납부기한','안내문','납부서'];
+function vatTbHeaderFilters(wrap){
+  const table = wrap && wrap.querySelector('table.vat-tb-table'); if(!table) return;
+  const ths = [...table.querySelectorAll('thead tr:last-child th')];
+  const rows = [...table.querySelectorAll('tbody tr')];
+  const cellTxt = (tr, i)=>{ const t = ((tr.children[i] || {}).textContent || '').replace(/\s+/g, ' ').trim(); return t || '(빈칸)'; };
+  const apply = ()=>{
+    rows.forEach(tr=>{ tr.style.display = ths.every((th, i)=>{ const f = vatTbColFilters[th.dataset.fk]; return !f || f.has(cellTxt(tr, i)); }) ? '' : 'none'; });
+    ths.forEach(th=>{ const ic = th.querySelector('.vat-tb-fic'); if(ic) ic.style.color = vatTbColFilters[th.dataset.fk] ? 'var(--indigo)' : 'var(--ink-soft)'; });
+  };
+  ths.forEach((th, i)=>{
+    const label = (th.textContent || '').trim();
+    if(!VAT_TB_FILTER_COLS.includes(label)) return;
+    th.dataset.fk = label; th.style.cursor = 'pointer'; th.title = `${label} 값으로 골라 보기`;
+    th.insertAdjacentHTML('beforeend', `<svg class="vat-tb-fic" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="margin-left:3px; vertical-align:-1px;"><path d="M3 4h18l-7 8v6l-4 2v-8z"/></svg>`);
+    th.addEventListener('click', ev=>{
+      ev.stopPropagation();
+      const ex = document.querySelector('.cal-owner-dropdown'); if(ex){ const same = ex._anchor === th; ex._close && ex._close(); if(same) return; }
+      const vals = [...new Set(rows.map(tr=> cellTxt(tr, i)))].sort((a,b)=> a.localeCompare(b, 'ko'));
+      const cur = vatTbColFilters[label];
+      const dd = document.createElement('div'); dd.className = 'cal-owner-dropdown'; dd._anchor = th; dd.style.padding = '8px'; dd.style.maxHeight = '320px'; dd.style.overflowY = 'auto';
+      dd.innerHTML = `<label style="display:flex; align-items:center; gap:6px; padding:3px 4px; font-size:12px; font-weight:800; cursor:pointer; border-bottom:1px dashed var(--border); margin-bottom:4px;"><input type="checkbox" class="vtf-all" ${!cur ? 'checked' : ''} style="accent-color:var(--indigo);">전체</label>`
+        + vals.map(v=> `<label style="display:flex; align-items:center; gap:6px; padding:3px 4px; font-size:12px; cursor:pointer; white-space:nowrap;"><input type="checkbox" class="vtf-v" value="${escHtml(v)}" ${!cur || cur.has(v) ? 'checked' : ''} style="accent-color:var(--indigo);">${escHtml(v)} <span style="color:var(--ink-soft); font-size:11px;">${rows.filter(tr=> cellTxt(tr, i) === v).length}</span></label>`).join('');
+      document.body.appendChild(dd);
+      const r = th.getBoundingClientRect();
+      dd.style.left = (Math.max(8, Math.min(window.innerWidth - dd.offsetWidth - 8, r.left))) / pageZoomF() + 'px';
+      dd.style.top = (r.bottom + 4) / pageZoomF() + 'px';
+      const sync = ()=>{
+        const on = [...dd.querySelectorAll('.vtf-v')].filter(x=> x.checked).map(x=> x.value);
+        if(on.length === vals.length) delete vatTbColFilters[label]; else vatTbColFilters[label] = new Set(on);
+        dd.querySelector('.vtf-all').checked = on.length === vals.length;
+        apply();
+      };
+      dd.querySelector('.vtf-all').addEventListener('change', e=>{ dd.querySelectorAll('.vtf-v').forEach(x=> x.checked = e.target.checked); sync(); });
+      dd.querySelectorAll('.vtf-v').forEach(x=> x.addEventListener('change', sync));
+      const onDoc = e=>{ if(!dd.contains(e.target) && !th.contains(e.target)) close(); };
+      function close(){ dd.remove(); document.removeEventListener('pointerdown', onDoc, true); }
+      dd._close = close;
+      setTimeout(()=> document.addEventListener('pointerdown', onDoc, true), 0);
+    });
+  });
+  apply();
+}
 function renderVatAllUnifiedInner(){
   if(!renderVatAllUnifiedInner._init){ // 처음 열 때는 지금 챙길 기수(예: 10월이면 2기 예정)
     renderVatAllUnifiedInner._init = true;
@@ -31802,7 +31852,10 @@ function renderSubmitStatusTableInner(){
   const hasSubmitContent = e=> !!e && (Object.keys(e.itemDates || {}).length > 0 || Object.keys(e.itemNotes || {}).length > 0 || Object.keys(e.itemNA || {}).length > 0 || Object.values(e.items || {}).some(submitItemApplicable)); // 원데이터에 줄이 있으면(해당없음 포함) 명단에
   const inPeriod = (c, p)=> (submitIsItClient(c.id) && isSubmitStatusPayrollTarget(c.id, monthly ? [p] : null)) || hasSubmitContent(pdRead(p)[c.id]) || (monthly && hasSubmitContent(pdRead(p)[c.id + '@nextMonth']));
   // [2026.10.09] 원천세 총괄에서 미대상(신고구분 이력이 모두 미대상)인 거래처는 빼기(요청). 연간(지난해 귀속 지급명세서)은 가져온 제출 기록이 있으면 그대로 보여줌
-  const list = bookkeepingClientList().filter(c=> (!itIsNeverTarget(c.id) || (submitState.sourceMode === '연간' && hasSubmitContent(pdRead(period)[c.id]))) && periods.some(p=> inPeriod(c, p)));
+  // 그 기간 시점 신고구분이 미대상이면 빼기: 매월 = 그 귀속월, 반기·연간 = 그 기간 안 한 달이라도 대상이면 남김. 연간(지난해 귀속)은 실제 제출 기록이 있으면 남김
+  const realContent = e=> !!e && (Object.keys(e.itemDates || {}).length > 0 || Object.keys(e.itemNotes || {}).length > 0);
+  const cycleOk = (c, p)=> monthly ? itCycleApplicableAt(c.id, p) : submitStatusPeriodMonths().some(m=> itCycleApplicableAt(c.id, m));
+  const list = bookkeepingClientList().filter(c=> periods.some(p=> (cycleOk(c, p) || (submitState.sourceMode === '연간' && realContent(pdRead(p)[c.id]))) && inPeriod(c, p)));
   const wrap = document.getElementById('submitStatusTableWrap');
   if(!wrap) return;
   if(!list.length){ wrap.innerHTML = `<div class="empty-state">이 기간에 검증 급여를 입력했거나 원천세 신고를 마친 거래처가 없어요.</div>`; return; }
@@ -32795,7 +32848,7 @@ function reviewItFilteredClientList(){
     const filtered = list.filter(c=>reviewItClientHasIncomeInYear(c.id, year));
     if(filtered.length) list = filtered;
     // [2026.10.09] "원천세 총괄에서 미대상인 거래처는 검증 목록에서도 빼달라"(요청) - 검색하면 그대로 찾을 수 있음
-    list = list.filter(c=> !itIsNeverTarget(c.id));
+    list = list.filter(c=> itCycleApplicableInYear(c.id, year));
   }
   return list;
 }
@@ -42635,7 +42688,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.09 15:35';
+const APP_BUILD = '2026.10.09 16:05';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
