@@ -5124,7 +5124,8 @@ try{
      "위쪽에만 검은 여백이 없어 보인다"는 의견이 있었음). 첨부가 여러 개일 때 openAttachmentPreviewModalMulti로
      열면 #attachPreviewModalPanels 안에 패널이 나란히 여러 개(최대 3개) 생겨서 동시에 비교해볼 수 있음 -->
 <div id="attachPreviewModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(10,11,20,0.92); z-index:9999; align-items:center; justify-content:center; padding:20px;">
-  <button type="button" id="attachPreviewModalClose" class="del-btn modal-close-btn" style="position:absolute; top:20px; right:20px; z-index:2;">✕</button>
+  <!-- [2026.10.08] 화면 구석의 ✕는 브라우저 창 닫기와 가까워 잘못 누르기 쉽고 위치가 들쭉날쭉해서(요청) 숨기고, 각 미리보기 제목줄 오른쪽 '닫기' 버튼으로 옮김 -->
+  <button type="button" id="attachPreviewModalClose" class="del-btn modal-close-btn" style="display:none;">✕</button>
   <div id="attachPreviewModalPanels" style="display:flex; align-items:stretch; justify-content:center; gap:14px; width:100%; height:100%; max-width:1600px;"></div>
 </div>
 <!-- 원천세 신고대상: 거래처 × 월 그리드의 한 칸을 눌렀을 때 뜨는 편집 팝업 -->
@@ -31815,7 +31816,8 @@ function renderSubmitStatusTableInner(){
     }).join('');
     // [2026.10.08] "당월지급·익월지급이 같이 있는 거래처는 순번·상호명을 합치고, 그 안에서 당월지급/익월지급으로 구분"(요청) -
     // 순번·상호명 칸은 두 줄을 하나로 합치고(rowspan), 지급월 칸 앞에 당월지급·익월지급 표시. 제출기한은 줄마다 그 줄의 지급월 기준
-    const laneTag = rd.dual || dueView ? `<span style="font-size:11px; font-weight:700; margin-right:4px; color:${rd.lane === 'sameMonth' ? '#0B8F6C' : '#D9480F'};">${rd.lane === 'sameMonth' ? '당월지급' : '익월지급'}</span>` : '';
+    // [2026.10.09] "귀속월을 골라 보니 지급월 칸의 당월지급/익월지급 글자는 없어도 된다"(요청) - 귀속월 기준에선 빼고, 제출월 기준(귀속월이 섞임)에서만 표시
+    const laneTag = dueView ? `<span style="font-size:11px; font-weight:700; margin-right:4px; color:${rd.lane === 'sameMonth' ? '#0B8F6C' : '#D9480F'};">${rd.lane === 'sameMonth' ? '당월지급' : '익월지급'}</span>` : '';
     const payCell = monthly ? `<td class="cvb" style="white-space:nowrap;">${laneTag}${submitPayMonthSelectHtml(rd.ek, period, payMonth)}</td>` : '';
     // 제출월 기준은 줄마다 귀속월이 다르므로 "귀속" 칸을 따로 둠
     const attCell = dueView ? `<td class="cvb" style="white-space:nowrap; font-size:12px; font-weight:700;">${period.slice(0,4) !== dueYm.slice(0,4) ? `${period.slice(2,4)}년 ` : ''}${Number(period.slice(5,7))}월</td>` : '';
@@ -35342,7 +35344,10 @@ function openAttachmentPreviewModalMulti(items){
     <div class="attach-preview-panel" style="background:var(--surface); border-radius:16px; padding:0; flex:1 1 0; min-width:0; max-width:920px; height:100%; box-shadow:0 20px 40px -12px rgba(0,0,0,0.6); position:relative; display:flex; flex-direction:column; overflow:hidden;">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 16px; border-bottom:1px solid var(--border); flex:0 0 auto; background:var(--surface);">
         <span style="font-weight:800; font-size:13.5px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml(r.name)}</span>
-        <a href="${escHtml(r.url)}" target="_blank" rel="noopener" class="del-btn" title="새 탭에서 열기" style="text-decoration:none; flex:0 0 auto;">새 탭에서 열기</a>
+        <span style="display:inline-flex; gap:6px; flex:0 0 auto;">
+          <a href="${escHtml(r.url)}" target="_blank" rel="noopener" class="del-btn" title="새 탭에서 열기" style="text-decoration:none; flex:0 0 auto;">새 탭에서 열기</a>
+          <button type="button" class="del-btn attach-prev-close" title="미리보기 닫기 (Esc)" style="flex:0 0 auto; cursor:pointer; background:var(--navy); color:#fff; border-color:var(--navy);">닫기</button>
+        </span>
       </div>
       <iframe src="${escHtml(r.embed)}" style="flex:1 1 auto; width:100%; border:none; background:var(--bg);"></iframe>
     </div>`).join('');
@@ -35358,6 +35363,8 @@ function closeAttachmentPreviewModal(){
   if(panelsWrap) panelsWrap.innerHTML = ''; // iframe들을 비워서 계속 백그라운드에서 로드/재생되지 않게 함
 }
 document.getElementById('attachPreviewModalClose')?.addEventListener('click', closeAttachmentPreviewModal);
+document.getElementById('attachPreviewModalPanels')?.addEventListener('click', e=>{ if(e.target.closest && e.target.closest('.attach-prev-close')) closeAttachmentPreviewModal(); });
+document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && document.getElementById('attachPreviewModalOverlay')?.style.display === 'flex') closeAttachmentPreviewModal(); });
 document.getElementById('attachPreviewModalOverlay')?.addEventListener('click', (e)=>{ if(e.target.id==='attachPreviewModalOverlay') closeAttachmentPreviewModal(); });
 
 function attachmentLinksHtml(attachmentLink){
@@ -36346,7 +36353,7 @@ function approvalDocVisualHtml(opts){
   const sealInk = status === '승인' ? 'var(--coral)' : 'var(--navy)';
   const dShort = (()=>{ const d = typeof parseKoDateTimeString === 'function' ? parseKoDateTimeString(decidedAt||'') : null; if(!d || isNaN(d)) return decidedAt || ''; const p2 = n=> String(n).padStart(2,'0'); return `${d.getFullYear()}.${p2(d.getMonth()+1)}.${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`; })();
   const decisionStampHtml = (status === '승인' || status === '반려') ? `
-    <div style="text-align:right; margin-top:16px;">
+    <div style="text-align:right; margin:0 0 14px;">
       <div style="display:inline-flex; align-items:center; gap:14px; border:1px solid rgba(29,30,51,0.22); border-radius:3px; padding:10px 18px 10px 12px; background:var(--surface);">
         <div style="width:46px; height:46px; border-radius:50%; border:2px solid ${sealInk}; position:relative; display:flex; align-items:center; justify-content:center; flex:0 0 auto; transform:rotate(-9deg); opacity:0.88;">
           <div style="position:absolute; inset:3px; border:1px solid ${sealInk}; border-radius:50%;"></div>
@@ -36389,8 +36396,8 @@ function approvalDocVisualHtml(opts){
       <div style="font-size:14.5px; font-weight:800; color:var(--ink);">${title}</div>
     </div>
     <div class="approval-doc-content" style="text-align:center; min-height:150px; font-size:13px; line-height:1.75; white-space:pre-wrap; user-select:text; padding:28px 20px; flex:1 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; box-sizing:border-box;">${contentHtml}</div>
+    ${decisionStampHtml /* [2026.10.08] "결재 승인 박스는 첨부파일 아래가 아니라 기안 내용 안에"(요청) - 본문 바로 아래, 첨부 위로 */}
     ${attachmentHtml ? `<div style="border-top:1px solid var(--border); padding-top:12px; margin-top:12px;">${attachmentHtml}</div>` : ''}
-    ${decisionStampHtml}
   `;
 }
 // 기안문 상세 내용(문서 양식 + 의견 + 승인/반려 버튼)을 만드는 공용 함수 - 목록 아래 인라인으로 펼칠 때와
@@ -42549,7 +42556,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.09 08:10';
+const APP_BUILD = '2026.10.09 13:00';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
