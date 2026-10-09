@@ -31432,7 +31432,8 @@ function vatTaxbotDetailHtml(year, period, q, verifyCellOf){
       mark = st === '신고완료' ? '<span class="it-done-mark" aria-label="신고 완료"><svg viewBox="0 0 16 16"><path d="M4 8.3l2.6 2.6L12 5.5"/></svg></span>' : (STAGE[st] ? itStageBarHtml([0,1,2].map(j=> j < STAGE[st] ? 'on' : '')) : '');
     }
     const tip = appTipHtml(plab, tipRows, memo || undefined);
-    const star = memo ? `<sup class="it-memo-star vat-memo-star" role="button" data-cid="${x.c.id}" data-period="${period}" data-name="${escHtml(x.c.name)}" data-label="${escHtml(plab)}">*</sup>` : '';
+    // [2026.10.08] "메모 남기면 구분 칸에 빨간 삼각형이 같이 생긴다"(요청) - 같은 메모를 이제 오른쪽 메모 칸에서 보여주므로 구분 칸 표시는 없앰
+    const star = '';
     const stCell = `<td class="cvb" style="position:relative;">${star}<button type="button" class="vat-all-cell-btn vat-tb-stbtn" data-client-id="${x.c.id}" data-period="${period}" data-filer="${cs.filerCase?'1':'0'}" data-tip="${escHtml(tip).replace(/"/g,'&quot;')}"><span class="vat-tb-st ${x.st}">${escHtml(labels[x.st] || '')}</span>${mark}</button></td>`;
     const sendCells = VAT_SEND_ITEMS.map(([k])=>{
       if(x.st === 'not-target') return `<td class="cvb"></td>`;
@@ -36857,6 +36858,7 @@ async function fetchCurrentUserEmail(){
   try{
     const data = await res.json();
     currentUserEmail = (data.email || '').toLowerCase();
+    try{ if(/@ciacc\.co\.kr$/.test(currentUserEmail)) localStorage.setItem('taxj_login_hint', currentUserEmail); }catch(e){} // 다음 로그인 때 계정 선택 없이(위 login_hint)
     // 로그인 확인 전에 그려진 알림 설정(기기 목록)을 내 이메일 기준으로 다시 그림
     setTimeout(()=>{ try{ if(typeof renderNotificationPrefsUI === 'function') renderNotificationPrefsUI(); }catch(e){} }, 0);
     isCurrentUserAdmin = sharedAdminEmails.map(e=>e.toLowerCase()).includes(currentUserEmail);
@@ -40754,6 +40756,7 @@ async function gdriveLogout(){
   const finishLogout = ()=>{
     if(typeof fsSignOut === 'function') fsSignOut();
     clearGdriveTokenStorage();
+    try{ localStorage.removeItem('taxj_login_hint'); }catch(e){} // 직접 로그아웃하면 다음엔 계정을 다시 고를 수 있게
     gdriveAccessToken = null;
     currentUserEmail = null;
     isCurrentUserAdmin = false;
@@ -42546,7 +42549,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.08 17:00';
+const APP_BUILD = '2026.10.09 08:10';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
@@ -42583,10 +42586,15 @@ function gdriveConnect(silent){
   // [2026.10.01] 안 읽은 메일 수 표시를 켠 계정이면 로그인할 때 메일 머리글 권한(gmail.metadata - 보낸 사람·제목만, 본문은 못 봄)도 함께 받음
   let loginScope = GDRIVE_SCOPE;
   try{ if(localStorage.getItem('taxj_gmail_unread_pref') === 'on') loginScope += ' https://www.googleapis.com/auth/gmail.metadata'; }catch(e){}
+  // [2026.10.08] "다른 계정 이력이 있어서 매번 계정을 골라야 한다"(요청) - 이 기기에서 마지막으로 로그인한 회사 계정을 login_hint로 넘겨서
+  // 계정 선택 창 없이 바로 그 계정으로 로그인(처음이거나 로그아웃한 뒤엔 회사 도메인 계정만 고르게 hd 지정)
+  let loginHint = ''; try{ loginHint = localStorage.getItem('taxj_login_hint') || ''; }catch(e){}
   gdriveTokenClient = google.accounts.oauth2.initTokenClient({
     client_id: clientId,
     scope: loginScope,
     include_granted_scopes: true,
+    hd: 'ciacc.co.kr',
+    ...(loginHint ? { login_hint: loginHint } : {}),
     callback: async (resp)=>{
       if(resp.error){
         gdriveSetStatus(silent ? '연결 안 됨 (자동 재연결 실패 — 아래 버튼으로 직접 연결해주세요)' : ('연결 실패: ' + resp.error));
