@@ -30403,6 +30403,7 @@ function tblPlaceXls(box, wrap){
 }
 function renderIncomeTaxUnified(){ renderIncomeTaxUnifiedInner(); tblPlaceXls(tblXlsBox('itAllXlsBox'), document.getElementById('itAllTableWrap')); autoSaveMount(tblXlsBox('itAllXlsBox'), 'itOverview', itAllView === 'overview'); try{ renderFilingTitleBadges(); }catch(e){} }
 // [2026.10.06] 연간대상 판정을 함수로 뺌 - 신고현황 '연간대상' 칩과 총괄 표(연간대상 거래처만, 요청)가 같이 씀
+function itIsNeverTarget(cid){ const recs = filingCycleRecordsOf(cid); return recs.length > 0 && recs.every(r=> !filingCycleRecApplicable(r)); }
 function itIsAnnualTarget(c, year){
     if(!filingCycleRecordsOf(c.id).length) return false;
     // [2026.10.05] "미대상으로 수정했는데 대상 칩에서 안 사라진다"(요청) - 지금(지난 해를 보면 그 해 12월) 기준 미대상인 거래처는 숨김
@@ -30427,6 +30428,8 @@ function renderIncomeTaxUnifiedInner(){
   const q = (document.getElementById('itAllSearch')?.value || '').trim().toLowerCase();
   let list = bookkeepingClientList();
   if(q) list = list.filter(c=>(c.name||'').toLowerCase().includes(q));
+  // [2026.10.09] "총괄에서 미대상인 거래처(그해 급여가 한 번도 없음)는 신고현황 목록에서 빼달라"(요청) - 신고구분 이력이 모두 미대상인 거래처는 신고현황에서 숨김(총괄은 그대로)
+  if(itAllView !== 'overview') list = list.filter(c=> !itIsNeverTarget(c.id));
   // 표 위 요약줄 - "지금 챙길 신고"(itFocusFiling) 기준 대상/완료/남음과 "미신고만 보기" 필터
   const focus = itFocusFiling(itAllPeriod);
   if(itAllOnlyPending) list = list.filter(c=> focus.pendingIds.has(c.id));
@@ -31592,6 +31595,7 @@ function submitStatusPeriodMonths(){
 }
 // [2026.10.02] "그 귀속월에 검증 급여를 입력했거나 신고완료된 거래처만"(요청) - 신고대상 지정만으로는 안 나옴.
 // 검토표(급여검증)에 그 달 금액이 하나라도 있거나, 원천세 신고현황에 그 달 국세 신고일이 있으면 명단에 넣음
+function submitIsItClient(cid){ try{ return filingCycleRecordsOf(cid).some(r=> filingCycleRecApplicable(r)); }catch(e){ return true; } }
 function isSubmitStatusPayrollTarget(clientId, periods){
   return (periods || submitStatusPeriodMonths()).some(period=>{
     const y = period.slice(0,4), m = String(Number(period.slice(5,7)));
@@ -31769,7 +31773,7 @@ async function importSubmitRaw(wb){
   const touched = new Set(recs.map(x=> x.period).concat(extra.map(x=> x.key)));
   collide.forEach(others=> others.forEach(oid=> touched.forEach(pk=>{
     const pd = sharedFilingStatus['원천세'][pk]; if(!pd) return;
-    [oid, oid + '@nextMonth'].forEach(k=>{ const e = pd[k]; if(!e || (e.memo||'').trim()) return; if(/^\d{4}-\d{2}$/.test(pk) && isSubmitStatusPayrollTarget(oid, [pk])) return; delete pd[k]; cleaned++; });
+    [oid, oid + '@nextMonth'].forEach(k=>{ const e = pd[k]; if(!e || (e.memo||'').trim()) return; if(/^\d{4}-\d{2}$/.test(pk) && submitIsItClient(oid) && isSubmitStatusPayrollTarget(oid, [pk])) return; delete pd[k]; cleaned++; });
   })));
   await saveSharedFilingStatus();
   showCenterToast(`매월 ${recs.length}줄 · 반기·연간 ${extra.length}칸을 가져왔어요${unmatched.size ? ` · 상호 못 찾음 ${unmatched.size}곳` : ''}`);
@@ -31791,8 +31795,12 @@ function renderSubmitStatusTableInner(){
   const periods = dueView ? [1,2,3].map(n=> submitAddMonth(period, -n)) : [period];
   const pdRead = p=> ((sharedFilingStatus['원천세'] || {})[p]) || {};
   const pdEnsure = p=>{ sharedFilingStatus['원천세'] = sharedFilingStatus['원천세'] || {}; return (sharedFilingStatus['원천세'][p] = sharedFilingStatus['원천세'][p] || {}); };
-  const inPeriod = (c, p)=> isSubmitStatusPayrollTarget(c.id, monthly ? [p] : null) || !!pdRead(p)[c.id] || (monthly && !!pdRead(p)[c.id + '@nextMonth']); // [2026.10.09] 반기·연간도 가져온 기록이 있는 거래처는 명단에
-  const list = bookkeepingClientList().filter(c=> periods.some(p=> inPeriod(c, p)));
+  // [2026.10.09] 반기·연간도 가져온 기록이 있는 거래처는 명단에. "원천세 거래처가 아닌 '프린웍스 산업'이 계속 나온다"(요청) - 검토표·신고 기록만으로 넣는 건
+  // 원천세 신고구분(매월·반기)이 등록된 거래처일 때만, 제출 기록은 원데이터에서 가져온 줄(제출일·처리 글자·해당없음)이 있을 때만(지급월만 있는 빈 기록은 빼고)
+  const hasSubmitContent = e=> !!e && (Object.keys(e.itemDates || {}).length > 0 || Object.keys(e.itemNotes || {}).length > 0 || Object.keys(e.itemNA || {}).length > 0 || Object.values(e.items || {}).some(submitItemApplicable)); // 원데이터에 줄이 있으면(해당없음 포함) 명단에
+  const inPeriod = (c, p)=> (submitIsItClient(c.id) && isSubmitStatusPayrollTarget(c.id, monthly ? [p] : null)) || hasSubmitContent(pdRead(p)[c.id]) || (monthly && hasSubmitContent(pdRead(p)[c.id + '@nextMonth']));
+  // [2026.10.09] 원천세 총괄에서 미대상(신고구분 이력이 모두 미대상)인 거래처는 빼기(요청). 연간(지난해 귀속 지급명세서)은 가져온 제출 기록이 있으면 그대로 보여줌
+  const list = bookkeepingClientList().filter(c=> (!itIsNeverTarget(c.id) || (submitState.sourceMode === '연간' && hasSubmitContent(pdRead(period)[c.id]))) && periods.some(p=> inPeriod(c, p)));
   const wrap = document.getElementById('submitStatusTableWrap');
   if(!wrap) return;
   if(!list.length){ wrap.innerHTML = `<div class="empty-state">이 기간에 검증 급여를 입력했거나 원천세 신고를 마친 거래처가 없어요.</div>`; return; }
@@ -31955,7 +31963,7 @@ function openSubmitCellMenu(anchor, apply){
         <button type="button" class="del-btn" data-act="today" style="height:26px; padding:0 8px;">오늘</button>
       </div>
       ${curVal || anchor.dataset.st === 'done' ? `<button type="button" class="cal-owner-dd-item" data-act="clear">제출일 지우기</button>` : ''}
-      ${!auto ? `<button type="button" class="cal-owner-dd-item" data-act="off">제출대상 해제</button>` : ''}`;
+      ${!auto ? `<button type="button" class="cal-owner-dd-item" data-act="off">제출대상 해제</button>` : `<button type="button" class="cal-owner-dd-item" data-act="na" title="검토표에 금액은 있지만 이 지급명세서는 낼 필요가 없을 때">해당없음으로 표시</button>`}`;
     // [2026.10.08] 반기 근로(간이)·연간 근로 칸은 제출금액도 여기서 적고 급여 합계와 검증(요청 - 검증 팝업 지급명세서 탭에서 옮김)
     if(anchor.dataset.amt){
       const ak = submitAmtKey(key, anchor.dataset.period || ''), ay = Number(String(anchor.dataset.period || '').slice(0,4));
@@ -31984,6 +31992,8 @@ function openSubmitCellMenu(anchor, apply){
   dd.querySelector('[data-act="today"]')?.addEventListener('click', ()=> setDate(todayStr()));
   dd.querySelector('[data-act="clear"]')?.addEventListener('click', ()=>{ close(); apply(e=>{ delete e.itemDates[key]; delete e.itemNotes[key]; }); });
   dd.querySelector('[data-act="off"]')?.addEventListener('click', ()=>{ close(); apply(e=>{ delete e.items[key]; delete e.itemDates[key]; }); });
+  // [2026.10.09] 검토표 금액 때문에 자동으로 대상이 된 칸도 '해당없음'으로 끌 수 있게(요청 - 원데이터에 없는 루나팸 8월 사업(간이)처럼)
+  dd.querySelector('[data-act="na"]')?.addEventListener('click', ()=>{ close(); apply(e=>{ e.itemNA = e.itemNA || {}; e.itemNA[key] = true; delete e.items[key]; delete e.itemDates[key]; if(e.itemNotes) delete e.itemNotes[key]; }); });
   dd.querySelector('[data-act="on"]')?.addEventListener('click', ()=>{ close(); apply(e=>{ e.items[key] = true; if(e.itemNA){ delete e.itemNA[key]; if(!Object.keys(e.itemNA).length) delete e.itemNA; } }); });
 }
 // 예전엔 세부항목이 해당없음/검토중/제출완료 3단계 select였는데("미확인"이라 부르던 시절도 있었음), "제출
@@ -32782,6 +32792,8 @@ function reviewItFilteredClientList(){
     const year = document.getElementById('reviewItYearSelect')?.value || todayStr().slice(0,4);
     const filtered = list.filter(c=>reviewItClientHasIncomeInYear(c.id, year));
     if(filtered.length) list = filtered;
+    // [2026.10.09] "원천세 총괄에서 미대상인 거래처는 검증 목록에서도 빼달라"(요청) - 검색하면 그대로 찾을 수 있음
+    list = list.filter(c=> !itIsNeverTarget(c.id));
   }
   return list;
 }
@@ -42605,7 +42617,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.09 13:40';
+const APP_BUILD = '2026.10.09 15:20';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
