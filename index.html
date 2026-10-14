@@ -22486,13 +22486,25 @@ function renderDashboardTaxSchedulePreview(){
   }
   // 원천세 "지금 챙길 신고" 알림 줄 - 미신고가 남아있으면 맨 위에 띄우고, 누르면 원천세 신고현황을
   // "미신고만 보기"로 바로 열어줌(관리자·일반 모두 같은 데이터를 봄)
+  // [2026.10.14] "여기는 날짜가 임박한 세무일정이 표기되는 게 좋겠다"(요청) - 맨 위 알림 줄은 원천세 고정이 아니라 기한이 가장 가까운
+  // 세무일정 한 건(오늘 이후, D-day)으로. 그 일정이 매월 원천세 신고면 예전처럼 미신고 건수를 붙이고 누르면 원천세 신고현황으로 감
   try{
-    const f = itFocusFiling();
-    if(f.total){
-      const dd = f.dday === 0 ? 'D-DAY' : f.dday > 0 ? `D-${f.dday}` : `${-f.dday}일 지남`;
-      const alertHtml = f.pending
-        ? `<button type="button" class="home-dash-it-alert${f.dday<=3 ? ' urgent' : ''}" id="dashItPendingBtn"><span>원천세 ${f.month}월 귀속</span><b>${dd}</b><span>미신고 <b>${f.pending}</b>곳 →</span></button>`
-        : `<div class="home-dash-it-alert done"><span>원천세 ${f.month}월 귀속</span><span>✓ ${f.total}곳 모두 신고 완료</span></div>`;
+    const today = todayStr();
+    const next = (items || []).find(it=> it.date >= today);
+    if(next){
+      const dday = Math.round((parseDate(next.date) - parseDate(today)) / 86400000);
+      const dd = dday === 0 ? 'D-DAY' : `D-${dday}`;
+      let title = next.title;
+      if(next.ruleId === 'withholding-monthly'){
+        const [ky, km] = String(next.id).split(':')[1].split('-').map(Number);
+        const ay = km === 1 ? ky - 1 : ky, am = km === 1 ? 12 : km - 1;
+        title = title.replace('(전월분)', `(${String(ay).slice(2)}년 ${String(am).padStart(2,'0')}월 귀속)`);
+      }
+      const md = `${Number(next.date.slice(5,7))}/${Number(next.date.slice(8,10))}`;
+      let f = null; try{ if(next.ruleId === 'withholding-monthly'){ f = itFocusFiling(); if(!f.total) f = null; } }catch(e){ f = null; }
+      const alertHtml = f && f.pending
+        ? `<button type="button" class="home-dash-it-alert${dday<=3 ? ' urgent' : ''}" id="dashItPendingBtn"><span>${md} ${escHtml(title)}</span><b>${dd}</b><span>미신고 <b>${f.pending}</b>곳 →</span></button>`
+        : `<div class="home-dash-it-alert${dday<=3 ? ' urgent' : ''}" style="cursor:default;"><span>${md} ${escHtml(title)}</span><b>${dd}</b>${f ? `<span>✓ ${f.total}곳 모두 신고 완료</span>` : ''}</div>`;
       body.insertAdjacentHTML('afterbegin', alertHtml);
       document.getElementById('dashItPendingBtn')?.addEventListener('click', (e)=>{
         e.stopPropagation();
@@ -22504,7 +22516,7 @@ function renderDashboardTaxSchedulePreview(){
         renderIncomeTaxUnified();
       });
     }
-  }catch(e){ console.error('원천세 알림 계산 실패', e); }
+  }catch(e){ console.error('세무일정 알림 계산 실패', e); }
 }
 // 세무일정 위젯 제목 줄에 붙는 신고현황 바로가기 칩 - 위젯 자체가 꺼져있으면 DOM에 없을 수 있으니
 // querySelectorAll 결과가 비어도(0건) 문제 없이 넘어감
@@ -42832,7 +42844,7 @@ function gdriveRefreshIfOtherTabChanged(){
     open(sel);
   }, true);
 })();
-const APP_BUILD = '2026.10.14 16:37';
+const APP_BUILD = '2026.10.14 16:42';
 document.querySelectorAll('.app-build-label').forEach(el=>{ el.textContent = `버전 ${APP_BUILD}`; });
 function gdriveScheduleSync(){
   // 처음 여는 브라우저(새 컴퓨터·새 직원)에서는 초기화 도중(즐겨찾기·대시보드 기본값을 처음 저장할 때)
