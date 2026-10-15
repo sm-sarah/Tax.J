@@ -7069,6 +7069,8 @@ try{
                당월귀속·익월지급도 추가하려면 어떻게 하냐"는 문의가 있었음 - 신고대상 설정 팝업(같은 칸을
                미등록 상태에서 처음 눌렀을 때 뜨는 팝업)을 여기서도 다시 열 수 있는 버튼을 추가함 -->
           <div style="text-align:right; margin:-4px 0 8px;">
+            <!-- [2026.10.15] "잘못 입력된 게 있어서 다 지워야 하는데 초기화 버튼"(요청) - 지급시기 변경 옆에 같은 크기로 -->
+            <button type="button" id="itAllDateEditResetBtn" class="del-btn" style="font-size:11px; padding:4px 8px; color:var(--coral);" title="이 창의 날짜(급여명세서 전달·급여마감·신고서 마감·신고 완료)와 '해당 없음'을 모두 비워요. 저장을 눌러야 반영돼요">초기화</button>
             <button type="button" id="itAllDateEditTimingBtn" class="del-btn" style="font-size:11px; padding:4px 8px;">지급시기 변경</button>
           </div>
           <div id="itAllDateEditBody"></div>
@@ -30899,6 +30901,23 @@ function renderItAllDateEditBody(){
 document.getElementById('itAllDateEditCloseBtn')?.addEventListener('click', closeItAllDateEditModal);
 document.getElementById('itAllDateEditModalOverlay')?.addEventListener('click', (e)=>{
   if(e.target.id === 'itAllDateEditModalOverlay') closeItAllDateEditModal();
+});
+// [2026.10.15] 초기화(요청) - 지금 창에 보이는 지급시기 줄의 날짜 칸을 모두 비우고 '해당 없음'도 해제. 메모는 그대로. 저장을 눌러야 실제로 반영
+document.getElementById('itAllDateEditResetBtn')?.addEventListener('click', async ()=>{
+  const { clientId, period } = itAllDateEditCtx;
+  const body = document.getElementById('itAllDateEditBody');
+  if(!clientId || !period || !body) return;
+  const blocks = [...body.querySelectorAll('.it-all-timing-block')];
+  if(!blocks.length) return;
+  if(!(await appConfirm('이 창에 입력된 날짜를 모두 지울까요?\n(급여명세서 전달·급여마감·신고서 마감·신고 완료 · 해당 없음)\n\n저장을 눌러야 반영돼요.', { okText:'초기화', cancelText:'취소' }))) return;
+  blocks.forEach(block=>{
+    const t = incomeTaxFilingEntry(period, block.dataset.clientId || clientId)[block.dataset.timing];
+    if(!t) return;
+    block.querySelectorAll('.it-all-date-input').forEach(inp=>{ t[inp.dataset.field] = null; });
+    delete t.payslipNA;
+  });
+  renderItAllDateEditBody();
+  showCenterToast('비웠어요 · 저장을 눌러야 반영돼요');
 });
 document.getElementById('itAllDateEditSaveBtn')?.addEventListener('click', async ()=>{
   await saveSharedIncomeTaxFilingStatus();
