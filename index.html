@@ -29462,8 +29462,22 @@ document.getElementById('filingCycleSaveBtn')?.addEventListener('click', async (
     if(!(await appConfirm(`이미 등록된 신고구분 이력 ${sharedFilingCycles[clientId].length}건이 있어요.\n기존 이력을 지우고 최초등록으로 다시 등록할까요?`))) return;
     sharedFilingCycles[clientId] = [];
   }
-  if(editingRecordId){
-    const rec = sharedFilingCycles[clientId].find(r=>r.id===editingRecordId);
+  // [2026.10.15] "청양공장은 26.5월부터 직원이 있는데 전체가 활성화 - 5월로 바꿔 저장해도 그대로"(요청) - 최초등록(2015-01부터 대상)이 맨 앞에 남아 있어서
+  // 새로 '대상 · 2026-05'를 등록해도 그 전 달이 계속 열려 있었음 → 대상으로 새로 등록할 때 앞에 최초등록이 있으면, 최초등록을 지우고 그 달부터 시작할지 물어봄.
+  // 같은 변경일자의 기록이 이미 있으면 새로 쌓지 않고 그 기록을 바꿈
+  if(!editingRecordId && !isInitial && applicable){
+    const init = sharedFilingCycles[clientId].filter(r=> r.effectiveFrom === FILING_CYCLE_INITIAL_EFFECTIVE_FROM && effectiveFrom > r.effectiveFrom);
+    const between = sharedFilingCycles[clientId].some(r=> r.effectiveFrom !== FILING_CYCLE_INITIAL_EFFECTIVE_FROM && r.effectiveFrom < effectiveFrom);
+    if(init.length && !between){
+      const [ey, em] = effectiveFrom.split('-');
+      if(await appConfirm(`최초등록(처음부터 대상)이 있어서 ${ey}년 ${Number(em)}월 전 달도 계속 대상으로 열려 있어요.\n\n최초등록을 지우고 ${ey}년 ${Number(em)}월부터 대상으로 시작할까요?\n(아니오 = 최초등록은 두고 이 달부터 바뀐 것으로만 등록)`, { okText:'이 달부터 시작', cancelText:'아니오' })){
+        sharedFilingCycles[clientId] = sharedFilingCycles[clientId].filter(r=> !init.includes(r));
+      }
+    }
+  }
+  const sameMonthRec = !editingRecordId && !isInitial ? sharedFilingCycles[clientId].find(r=> r.effectiveFrom === effectiveFrom) : null;
+  if(editingRecordId || sameMonthRec){
+    const rec = sameMonthRec || sharedFilingCycles[clientId].find(r=>r.id===editingRecordId);
     if(rec){ rec.applicable = applicable; rec.cycle = cycle; rec.effectiveFrom = effectiveFrom; rec.memo = memo; }
   } else {
     sharedFilingCycles[clientId].push({ id: genId(), applicable, cycle, effectiveFrom, memo, createdAt: todayStr() });
@@ -30750,6 +30764,36 @@ document.addEventListener('keydown', e=>{
   e.preventDefault();
   if(!t.value) return;
   t.value = '';
+  t.dispatchEvent(new Event('input', { bubbles:true }));
+  t.dispatchEvent(new Event('change', { bubbles:true }));
+}, true);
+// [2026.10.15] "날짜 복붙하고 싶어"(요청) - 브라우저 기본 날짜 칸은 복사·붙여넣기가 안 됐음 → 앱 전체 날짜 칸(date·month)에서
+//   Ctrl+C(복사)·Ctrl+X(잘라내기) = 'YYYY-MM-DD'로 복사, Ctrl+V(붙여넣기) = 2026-02-09 · 2026.2.9 · 2026/02/09 · 20260209 · 26.02.09 · 2026년 2월 9일 모양을 읽어 넣음.
+//   넣은 뒤 input·change 이벤트를 보내서 각 칸의 저장 로직이 그대로 돌게 함. 날짜로 못 읽는 글자는 무시
+function appParseDateText(txt, type){
+  const t = String(txt || '').trim().replace(/\s+/g, '');
+  let m = t.match(/^(\d{4}|\d{2})[.\-\/년](\d{1,2})[.\-\/월](\d{1,2})[.일]?$/) || t.match(/^(\d{4})(\d{2})(\d{2})$/);
+  let y, mo, d;
+  if(m){ [y, mo, d] = [m[1], m[2], m[3]]; }
+  else if((m = t.match(/^(\d{4})[.\-\/년](\d{1,2})[.월]?$/) || t.match(/^(\d{4})(\d{2})$/))){ [y, mo, d] = [m[1], m[2], '1']; }
+  else return '';
+  if(y.length === 2) y = '20' + y;
+  const iso = `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`, dt = new Date(iso + 'T00:00:00');
+  if(isNaN(dt) || dt.getMonth() + 1 !== Number(mo) || dt.getDate() !== Number(d)) return '';
+  return type === 'month' ? iso.slice(0, 7) : iso;
+}
+function appIsDateInp(t){ return t && t.tagName === 'INPUT' && (t.type === 'date' || t.type === 'month'); }
+['copy','cut'].forEach(evName=> document.addEventListener(evName, e=>{
+  const t = e.target; if(!appIsDateInp(t) || !t.value || !e.clipboardData) return;
+  e.clipboardData.setData('text/plain', t.value); e.preventDefault();
+  if(evName === 'cut' && !t.readOnly && !t.disabled){ t.value = ''; t.dispatchEvent(new Event('input', { bubbles:true })); t.dispatchEvent(new Event('change', { bubbles:true })); }
+}, true));
+document.addEventListener('paste', e=>{
+  const t = e.target; if(!appIsDateInp(t) || t.readOnly || t.disabled) return;
+  const v = appParseDateText(e.clipboardData && e.clipboardData.getData('text/plain'), t.type);
+  e.preventDefault();
+  if(!v || v === t.value) return;
+  t.value = v;
   t.dispatchEvent(new Event('input', { bubbles:true }));
   t.dispatchEvent(new Event('change', { bubbles:true }));
 }, true);
