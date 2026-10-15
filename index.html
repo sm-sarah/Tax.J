@@ -30348,8 +30348,16 @@ function itAllTimingBlockHtml(c, period, timingKey, half){
       <button type="button" class="del-btn it-all-payslip-na-btn" data-na="0" style="flex-shrink:0; padding:5px 9px; font-size:11px;">되돌리기</button>
     </div>` : row('payslip','급여명세서 전달').replace('</div>', `<button type="button" class="del-btn it-all-payslip-na-btn" data-na="1" title="이 달은 급여명세서를 전달하지 않아요" style="flex-shrink:0; padding:5px 9px; font-size:11px;">해당 없음</button>
     </div>`);
-      const grp = l=> `<div style="border-top:1px dashed var(--border); margin:2px 0;"></div><span style="font-size:11.5px; font-weight:800; color:var(--ink);">${l}</span>`;
-      return payslipRow + row('payroll','급여마감') + (half ? '' : grp('원천세') + row('returnClose','신고서 마감') + row('national','신고 완료') + grp('지방세') + row('returnCloseLocal','신고서 마감') + row('local','신고 완료'));
+      const grp = (l, extra)=> `<div style="border-top:1px dashed var(--border); margin:2px 0;"></div><div style="display:flex; align-items:center; justify-content:space-between; gap:6px;"><span style="font-size:11.5px; font-weight:800; color:var(--ink);">${l}</span>${extra || ''}</div>`;
+      // [2026.10.15] "날짜 일괄적용"(요청) - 날짜 하나를 골라 이 지급시기의 날짜 칸 전체에 넣음
+      const bulkRow = `<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding-bottom:7px; border-bottom:1px dashed var(--border);">
+      <span style="font-size:11px; font-weight:700; color:var(--ink-soft); white-space:nowrap; width:74px;">일괄 입력</span>
+      <input type="date" class="it-all-bulk-date" value="${todayStr()}" style="${inpS}">
+      <button type="button" class="del-btn it-all-bulk-btn" title="고른 날짜를 이 지급시기의 날짜 칸 전체에 넣어요" style="flex-shrink:0; padding:5px 9px; font-size:11px;">모두 적용</button>
+    </div>`;
+      // [2026.10.15] "원천세와 지방세는 보통 동시에 마감·신고 - 원천세와 동일 체크하면 같은 날짜가 각각 들어가게"(요청) - 체크하면 지방세 칸은 원천세 칸을 따라감(t.localSame)
+      const sameChk = `<label style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; color:var(--ink-soft); cursor:pointer;"><input type="checkbox" class="it-all-local-same" ${t.localSame ? 'checked' : ''} style="width:auto; margin:0; accent-color:var(--indigo);">원천세와 동일</label>`;
+      return bulkRow + payslipRow + row('payroll','급여마감') + (half ? '' : grp('원천세') + row('returnClose','신고서 마감') + row('national','신고 완료') + grp('지방세', sameChk) + row('returnCloseLocal','신고서 마감') + row('local','신고 완료'));
     })()}
     <!-- [2026.10.06] 이달 급여 특이사항 입력칸은 메모 칸의 "급여 특이사항" 팝업(월별)으로 옮김(요청 - 화면이 복잡) -->
   </div>`;
@@ -30868,6 +30876,43 @@ function renderItAllDateEditBody(){
       if(badge) badge.innerHTML = incomeTaxStatusBadgeHtml(entry[block.dataset.timing]);
     });
   });
+  // [2026.10.15] 지방세 '원천세와 동일'(요청) - 체크하면 지방세 신고서 마감·신고 완료 = 원천세 값, 지방세 칸은 잠기고 원천세를 바꾸면 같이 바뀜
+  const IT_LOCAL_PAIR = { returnClose:'returnCloseLocal', national:'local' };
+  const syncLocal = block=>{
+    const on = !!block.querySelector('.it-all-local-same')?.checked;
+    Object.entries(IT_LOCAL_PAIR).forEach(([nf, lf])=>{
+      const src = block.querySelector(`.it-all-date-input[data-field="${nf}"]`), dst = block.querySelector(`.it-all-date-input[data-field="${lf}"]`);
+      const tb = block.querySelector(`.it-all-today-btn[data-field="${lf}"]`);
+      if(!dst) return;
+      dst.disabled = on; if(tb) tb.disabled = on;
+      dst.style.opacity = on ? '.6' : ''; if(tb) tb.style.opacity = on ? '.5' : '';
+      if(on && src && dst.value !== src.value){ dst.value = src.value; dst.dispatchEvent(new Event('input', { bubbles:true })); }
+    });
+  };
+  body.querySelectorAll('.it-all-timing-block').forEach(block=>{
+    const chk = block.querySelector('.it-all-local-same');
+    if(!chk) return;
+    chk.addEventListener('change', ()=>{
+      const t = incomeTaxFilingEntry(period, block.dataset.clientId)[block.dataset.timing];
+      if(chk.checked) t.localSame = true; else delete t.localSame;
+      syncLocal(block);
+    });
+    Object.keys(IT_LOCAL_PAIR).forEach(nf=> block.querySelector(`.it-all-date-input[data-field="${nf}"]`)?.addEventListener('input', ()=> syncLocal(block)));
+    syncLocal(block);
+  });
+  // [2026.10.15] 일괄 입력(요청) - 고른 날짜를 이 지급시기의 날짜 칸 전체에. 이미 다른 날짜가 적힌 칸이 있으면 모두 바꿀지/빈 칸만 채울지 물어봄
+  body.querySelectorAll('.it-all-bulk-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const block = btn.closest('.it-all-timing-block');
+      const d = block && block.querySelector('.it-all-bulk-date')?.value;
+      if(!d){ appAlert('넣을 날짜를 골라주세요.'); return; }
+      const inps = [...block.querySelectorAll('.it-all-date-input')].filter(x=> !x.disabled);
+      const diff = inps.filter(x=> x.value && x.value !== d).length;
+      const all = diff ? await appConfirm(`이미 다른 날짜가 적힌 칸이 ${diff}개 있어요.\n그 칸도 ${d}로 바꿀까요?`, { okText:'모두 바꾸기', cancelText:'빈 칸만' }) : true;
+      inps.forEach(x=>{ if(!all && x.value) return; if(x.value === d) return; x.value = d; x.dispatchEvent(new Event('input', { bubbles:true })); });
+      showCenterToast('넣었어요 · 저장을 눌러야 반영돼요');
+    });
+  });
   // "신고일자에 오늘 날짜를 바로 넣는 버튼이 있으면 좋겠다"는 요청 - 날짜칸 옆에 "오늘" 버튼을 두고,
   // 누르면 오늘 날짜를 넣은 뒤 실제 입력칸의 input 이벤트를 그대로 발생시켜서 위 저장 로직을 그대로 탐
   body.querySelectorAll('.it-all-today-btn').forEach(btn=>{
@@ -30936,10 +30981,31 @@ const IT_BULK_FIELDS = IT_ALL_STAGES.concat([['national','원천세 신고'], ['
 const IT_BULK_OV_FIELDS = [['reportPayDay','신고 지급일'], ['actualPayDay','실 급여일']];
 const itBulkIsOv = f => IT_BULK_OV_FIELDS.some(([k])=> k === f);
 let itBulkField = 'payslip';
+// [2026.10.15] "그 달 귀속분을 일괄로 대상 등록"(요청) - 일괄 입력 항목에 '신고대상 등록'을 추가. 지급시기(당월·익월)는 가장 가까운 이전 달 설정을 그대로(없으면 당월지급)
+const IT_BULK_TARGET = '__target';
+function itBulkPrevLanes(cid, period){
+  let [y, m] = period.split('-').map(Number);
+  for(let i = 0; i < 12; i++){
+    m--; if(m < 1){ m = 12; y--; }
+    const t = (sharedFilingTargets[cid] || {})[`${y}-${String(m).padStart(2,'0')}`];
+    if(t && t.marked && t.applicable && (t.sameMonthPay || t.nextMonthPay)) return { sameMonthPay: !!t.sameMonthPay, nextMonthPay: !!t.nextMonthPay };
+  }
+  return { sameMonthPay: true, nextMonthPay: false };
+}
 function itBulkRows(){
   const period = itAllPeriod;
   const rows = [];
   if(!period) return rows;
+  if(itBulkField === IT_BULK_TARGET){
+    bookkeepingClientList().forEach(c=>{
+      if(!filingApplicableAt(c.id, period) || itIsHalfOffMonth(c.id, period)) return;   // 대상 기간이 아니거나 반기 거래처의 신고 없는 달은 빼요
+      const t = (sharedFilingTargets[c.id] || {})[period];   // 읽기만
+      const lanes = itBulkPrevLanes(c.id, period);
+      const laneTxt = lanes.sameMonthPay && lanes.nextMonthPay ? '당월·익월' : lanes.nextMonthPay ? '익월' : '당월';
+      rows.push({ c, lane:null, dual:false, lanes, laneTxt, cur: t && t.marked ? (t.applicable ? '대상' : '미대상') : '' });
+    });
+    return rows;
+  }
   if(itBulkIsOv(itBulkField)){
     bookkeepingClientList().forEach(c=>{ if(!filingApplicableAt(c.id, period)) return; rows.push({ c, lane:null, dual:false, cur: itoEntry(c.id)[itBulkField] || '' }); });
     return rows;
@@ -30966,11 +31032,11 @@ function renderItBulkModal(){
   const fs = document.getElementById('itBulkFieldSel');
   if(fs){
     const opt = ([f, l])=> `<option value="${f}" ${f === itBulkField ? 'selected' : ''}>${l}</option>`;
-    fs.innerHTML = `<optgroup label="진행 단계 (날짜)">${IT_BULK_FIELDS.map(opt).join('')}</optgroup><optgroup label="총괄">${IT_BULK_OV_FIELDS.map(opt).join('')}</optgroup>`;
+    fs.innerHTML = `<optgroup label="신고대상">${opt([IT_BULK_TARGET, '신고대상 등록 (지급시기는 이전 달과 같게)'])}</optgroup><optgroup label="진행 단계 (날짜)">${IT_BULK_FIELDS.map(opt).join('')}</optgroup><optgroup label="총괄">${IT_BULK_OV_FIELDS.map(opt).join('')}</optgroup>`;
     fs.onchange = ()=>{ itBulkField = fs.value; renderItBulkModal(); };
   }
-  const ov = itBulkIsOv(itBulkField);
-  const dr = document.getElementById('itBulkDateRow'); if(dr) dr.style.display = ov ? 'none' : 'flex';
+  const ov = itBulkIsOv(itBulkField), tg = itBulkField === IT_BULK_TARGET;
+  const dr = document.getElementById('itBulkDateRow'); if(dr) dr.style.display = ov || tg ? 'none' : 'flex';
   const pr = document.getElementById('itBulkPayDayRow'); if(pr) pr.style.display = ov ? 'flex' : 'none';
   const ps = document.getElementById('itBulkPayDaySel');
   if(ps && ov && !ps.options.length) ps.innerHTML = ITO_PAYDAY_SUGGEST.map(o=> `<option value="${escHtml(o)}">${escHtml(o)}</option>`).join('');
@@ -30978,9 +31044,9 @@ function renderItBulkModal(){
   const listEl = document.getElementById('itBulkList');
   if(!listEl) return;
   listEl.innerHTML = rows.length ? rows.map((r, i)=> `<label style="display:flex; align-items:center; gap:8px; padding:7px 2px; border-bottom:1px dashed var(--border); font-size:12.5px; cursor:pointer;">
-      <input type="checkbox" class="it-bulk-chk" data-i="${i}" ${r.cur ? '' : 'checked'}>
+      <input type="checkbox" class="it-bulk-chk" data-i="${i}" ${r.cur ? '' : 'checked'}${tg && r.cur === '대상' ? ' disabled' : ''}>
       <span style="font-weight:700; color:var(--ink); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml(r.c.name)}${r.dual ? ` <span style="font-weight:700; font-size:11px; color:${r.lane === 'sameMonth' ? 'var(--mint)' : 'var(--coral)'};">${r.lane === 'sameMonth' ? '당월' : '익월'}</span>` : ''}</span>
-      <span style="font-size:11.5px; color:var(--ink-soft); white-space:nowrap;">${r.cur ? escHtml(r.cur) : ''}</span>
+      <span style="font-size:11.5px; color:var(--ink-soft); white-space:nowrap;">${tg ? (r.cur === '대상' ? '이미 대상' : `${r.cur ? escHtml(r.cur) + ' → ' : ''}${escHtml(r.laneTxt)}지급`) : r.cur ? escHtml(r.cur) : ''}</span>
     </label>`).join('') : `<div class="empty-state">이 귀속월에 적용할 수 있는 거래처가 없어요.</div>`;
   const sync = ()=>{
     const all = [...listEl.querySelectorAll('.it-bulk-chk')], on = all.filter(x=> x.checked).length;
@@ -31001,7 +31067,7 @@ document.getElementById('itBulkOpenBtn')?.addEventListener('click', ()=>{
 });
 document.getElementById('itBulkTodayBtn')?.addEventListener('click', ()=>{ const d = document.getElementById('itBulkDate'); if(d) d.value = todayStr(); });
 document.getElementById('itBulkAll')?.addEventListener('change', (e)=>{
-  document.querySelectorAll('#itBulkList .it-bulk-chk').forEach(x=>{ x.checked = e.target.checked; });
+  document.querySelectorAll('#itBulkList .it-bulk-chk').forEach(x=>{ if(!x.disabled) x.checked = e.target.checked; });
   const all = document.querySelectorAll('#itBulkList .it-bulk-chk').length;
   const cnt = document.getElementById('itBulkCount'); if(cnt) cnt.textContent = `${e.target.checked ? all : 0} / ${all}`;
 });
@@ -31012,6 +31078,23 @@ document.getElementById('itBulkRunBtn')?.addEventListener('click', async ()=>{
   const rows = (listEl && listEl._rows) || [];
   const picked = [...listEl.querySelectorAll('.it-bulk-chk')].filter(x=> x.checked).map(x=> rows[Number(x.dataset.i)]).filter(Boolean);
   const label = (IT_BULK_FIELDS.concat(IT_BULK_OV_FIELDS).find(([f])=> f === itBulkField) || [,''])[1];
+  if(itBulkField === IT_BULK_TARGET){
+    if(!picked.length){ appAlert('대상으로 등록할 거래처를 체크해주세요.'); return; }
+    const [py, pm] = itAllPeriod.split('-');
+    const notT = picked.filter(r=> r.cur === '미대상').length;
+    if(!(await appConfirm(`${py}년 ${Number(pm)}월 귀속을 ${picked.length}곳 신고대상으로 등록할까요?\n지급시기(당월·익월)는 이전 달 설정을 그대로 따라요.${notT ? `\n미대상으로 돼 있던 ${notT}곳은 대상으로 바뀌어요.` : ''}`, { okText:'등록', cancelText:'취소' }))) return;
+    picked.forEach(r=>{
+      const old = (sharedFilingTargets[r.c.id] || {})[itAllPeriod];
+      if(old && old.marked && old.applicable) return;   // 이미 대상이면 지급시기 그대로
+      sharedFilingTargets[r.c.id] = sharedFilingTargets[r.c.id] || {};
+      sharedFilingTargets[r.c.id][itAllPeriod] = Object.assign({}, old || {}, { applicable:true, marked:true, cycle: effectiveCycleFor(r.c.id, itAllPeriod) }, r.lanes);
+    });
+    await saveSharedFilingTargets();
+    document.getElementById('itBulkModalOverlay').style.display = 'none';
+    showCenterToast(`${picked.length}곳을 대상으로 등록했어요`);
+    renderIncomeTaxUnified();
+    return;
+  }
   if(itBulkIsOv(itBulkField)){
     const v = document.getElementById('itBulkPayDaySel')?.value || '';
     if(!v){ appAlert('값을 골라주세요.'); return; }
