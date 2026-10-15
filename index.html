@@ -21334,7 +21334,7 @@ function dashGotoFilingStatus(taxType, vat){
   if(taxType === '원천세'){
     activateTab('approval', true);
     const f = itFocusFiling();
-    itAllYear = String(f.year); itAllPeriod = f.period;
+    itAllYear = String(f.year); itAllPeriod = f.period; itAllPeriodAuto = false;
     itAllOnlyMonth = true; itAllOnlyPending = false; itAllOnlyTarget = false;
     document.querySelector('.approval-cat-btn[data-approval-cat="itall"]')?.click();
     renderIncomeTaxUnified();
@@ -22536,7 +22536,7 @@ function renderDashboardTaxSchedulePreview(){
         // 미신고 알림은 원천세 신고현황(통합)에서 그 귀속월 미신고만
         activateTab('approval', true);
         itAllOnlyPending = false; itAllOnlyMonth = true; itAllOnlyTarget = false; itAllOnlyMismatch = false;   // [2026.10.15] 미신고 칩을 없애서 그 달 대상 보기로
-        itAllYear = String(f.year); itAllPeriod = f.period;
+        itAllYear = String(f.year); itAllPeriod = f.period; itAllPeriodAuto = false;
         document.querySelector('.approval-cat-btn[data-approval-cat="itall"]')?.click();
         renderIncomeTaxUnified();
       });
@@ -27274,10 +27274,10 @@ function restoreFilingSubviewState(){
           b.classList.toggle('active', b.dataset.submitType === st.sourceMode);
         });
       }
-      if(saved.submitState.year) st.year = saved.submitState.year;
-      if(saved.submitState.month) st.month = saved.submitState.month;
-      if(saved.submitState.half) st.half = saved.submitState.half;
+      // [2026.10.15] 새로 열 때 달은 기억하지 않고 '지금 내야 하는 달'로(요청) - 보기(귀속월/제출월 기준)만 기억
       if(saved.submitState.view) st.view = saved.submitState.view;
+      if(st.sourceMode === '월별'){ st.year = null; ensureSubmitStateInit(); }
+      else { if(saved.submitState.year) st.year = saved.submitState.year; if(saved.submitState.half) st.half = saved.submitState.half; }
       renderSubmitStatusTable();
     } else if(saved.cat === 'review' && saved.reviewType){
       document.querySelector(`#reviewTypeToggle .review-type-btn[data-filing-type="${saved.reviewType}"]`)?.click();
@@ -30042,6 +30042,7 @@ function renderIncomeTaxFilingStatusTable(){
 // 신고대상/신고현황 화면에 이미 입력해둔 내용이 여기 그대로 이어짐
 // ══════════════════════════════════════════════════════════
 let itAllYear = null;
+let itAllPeriodAuto = true;   // [2026.10.15] 귀속월을 직접 고르거나 다른 화면에서 달을 정해 들어오면 false
 let itAllPeriod = null; // [2026.10.02] 위에서 고른 귀속월('YYYY-MM') - 그 달 칸을 테두리로 강조하고 요약줄도 그 달 기준. null이면 지금 챙길 귀속월
 // ── [2026.10.01] 원천세 총괄(요청) ──
 // 원천세 화면 위 "신고현황 | 총괄" 전환. 총괄은 연도 구분 없이 거래처별 원천세 업무 정보(급여종류·지급일·급여일·전달방법·사업장관리번호·
@@ -30281,7 +30282,9 @@ function renderItAllPeriodControls(){
   const sortedYears = Array.from(years).sort((a,b)=> Number(b) - Number(a));
   // [2026.10.02] "연도만이 아니라 귀속월까지 고르고, 고른 달이 강조되게"(요청) - 처음엔 지금 챙길 귀속월
   const nowP = itFocusPeriodNow();
-  if(!itAllPeriod || itAllPeriod.slice(0,4) !== itAllYear) itAllPeriod = nowP.slice(0,4) === itAllYear ? nowP : `${itAllYear}-${nowP.slice(5,7)}`;
+  // [2026.10.15] 직접 고르기 전(itAllPeriodAuto)에는 그릴 때마다 '지금 챙길 귀속월'로 다시 맞춤 - 자료를 불러오기 전에 앞 달로 정해졌다가 신고가 다 끝나도 그대로 남지 않게
+  if(itAllPeriodAuto && nowP.slice(0,4) !== itAllYear){ itAllYear = nowP.slice(0,4); if(!yearSel.querySelector(`option[value^="${itAllYear}"]`)) sortedYears.push(itAllYear); }
+  if(itAllPeriodAuto || !itAllPeriod || itAllPeriod.slice(0,4) !== itAllYear) itAllPeriod = nowP.slice(0,4) === itAllYear ? nowP : `${itAllYear}-${nowP.slice(5,7)}`;
   yearSel.innerHTML = sortedYears.map(y=>`<optgroup label="${y}년">${Array.from({length:12},(_,i)=>12-i).map(m=>{ const v = `${y}-${String(m).padStart(2,'0')}`; return `<option value="${v}" ${v===itAllPeriod?'selected':''}>${y}년 ${m}월 귀속</option>`; }).join('')}</optgroup>`).join('');
 }
 // 신고대상으로 체크된 지급시기(당월/익월) 하나를 신고일자·지방세일자·상태뱃지·메모까지 한 덩어리로 보여줌 -
@@ -30422,7 +30425,15 @@ function itFocusPeriodNow(){
   const today = parseDate(todayStr());
   let fy = today.getFullYear(), fm = today.getMonth() + 1;
   if(today.getDate() <= 10){ fm = fm - 1; if(fm < 1){ fm = 12; fy = fy - 1; } }
-  return `${fy}-${String(fm).padStart(2,'0')}`;
+  const base = `${fy}-${String(fm).padStart(2,'0')}`;
+  // [2026.10.15] "원천세도 전부 신고가 끝나야 10월 귀속으로 넘어가야 하는데 지금 날짜 기준으로 바뀐다"(요청) - 앞 귀속월에 아직 신고 안 끝난 대상이 있으면
+  //   그 달에 머묾(다 끝나면 날짜 기준 달로). 거래처 자료를 아직 못 불러왔으면 앞 달로 둠
+  const prev = fm === 1 ? `${fy-1}-12` : `${fy}-${String(fm-1).padStart(2,'0')}`;
+  try{
+    if(!(bookkeepingClientList() || []).length) return prev;
+    if(itFocusFiling(prev).pending > 0) return prev;
+  }catch(e){}
+  return base;
 }
 // periodOverride('YYYY-MM')를 주면 그 귀속월 기준으로 대상/완료/남음·마감일을 계산(원천세 화면에서 귀속월을 고른 경우)
 // 앞 달(prevPeriod) 귀속분 중 익월지급으로 이번 신고에 같이 들어가는 줄 - 두 줄 거래처면 'nextMonth', 익월지급만 등록한
@@ -30783,7 +30794,7 @@ function syncStickyHeadOf(tbl){
 }
 window.addEventListener('scroll', ()=> syncItAllStickyHead(), { passive:true, capture:true });
 window.addEventListener('resize', ()=> syncItAllStickyHead(), { passive:true });
-document.getElementById('itAllYear')?.addEventListener('change', (e)=>{ const v = e.target.value; itAllPeriod = /^\d{4}-\d{2}$/.test(v) ? v : null; itAllYear = v.slice(0,4); renderIncomeTaxUnified(); saveFilingSubviewState(); });
+document.getElementById('itAllYear')?.addEventListener('change', (e)=>{ itAllPeriodAuto = false; const v = e.target.value; itAllPeriod = /^\d{4}-\d{2}$/.test(v) ? v : null; itAllYear = v.slice(0,4); renderIncomeTaxUnified(); saveFilingSubviewState(); });
 document.getElementById('itAllSearch')?.addEventListener('input', ()=> renderIncomeTaxUnified());
 // 신고일자 입력 팝업 - 이미 신고대상으로 등록된 달(칸)을 눌렀을 때 뜨며, 지급시기별 원천세·지방세 신고일자·
 // 메모를 입력함. 저장을 눌러야 실제로 반영됨(다른 신고대상/신고구분 팝업들과 같은 패턴)
@@ -31855,9 +31866,13 @@ function vatTaxbotDetailHtml(year, period, q, verifyCellOf){
 let submitState = { year:null, sourceMode:'월별', month:null, half:'H1', view:'att' }; // view: att = 귀속월 기준, due = 제출월 기준(2026.10.08 요청)
 function ensureSubmitStateInit(){
   if(submitState.year) return;
-  const monthStr = document.getElementById('monthSelect').value || todayStr().slice(0,7);
-  submitState.year = monthStr.slice(0,4);
-  submitState.month = String(Number(monthStr.slice(5,7)));
+  // [2026.10.15] "10월 제출 마감이 안 끝났는데 조회하면 11월 제출 / 10월 귀속으로 맞춰져서 자꾸 바꿔야 한다"(요청) - 처음 달을 이번 달 기준 대신
+  //   제출월 기준 = 이번 달 제출(매월 제출기한은 모두 그 달 안 - 10일·15일·말일), 귀속월 기준 = 지난달 귀속(이번 달에 내는 분)으로
+  const ym = todayStr().slice(0,7);
+  const att = submitAddMonth(ym, -1);
+  const use = submitState.view === 'due' ? ym : att;
+  submitState.year = use.slice(0,4);
+  submitState.month = String(Number(use.slice(5,7)));
 }
 function submitPeriodKey(){
   ensureSubmitStateInit();
