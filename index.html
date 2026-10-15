@@ -2193,6 +2193,9 @@ try{
   #itAllViewSeg{ background:transparent; border:none; padding:0; gap:6px; }
   #itAllViewSeg button{ height:32px; padding:0 16px; font-size:12.5px; font-weight:800; border:1.5px solid var(--border); border-radius:8px; background:var(--surface); color:var(--ink-soft); box-sizing:border-box; }
   #itAllViewSeg button.on{ background:var(--indigo); border-color:var(--indigo); color:#fff; }
+  /* [2026.10.15] "총괄·신고현황·지급명세서 칩 색을 아래 칩(매월·귀속월 기준 등)과 다르게"(요청) - 위 화면 칩은 진한 남색(navy), 아래 보기 칩은 그대로 인디고 */
+  #itAllViewSeg button.on{ background:var(--navy); border-color:var(--navy); color:#fff; }
+  #itAllViewSeg button:not(.on):hover{ border-color:var(--navy); color:var(--navy); }
   .it-ov-table th{ font-size:11.5px; line-height:1.3; }
   .it-ov-table tr.ito-off > td:not(.ito-cyc){ opacity:.4; }
   .it-ov-table .ito-cyc .ito-clear{ width:22px; height:22px; border-radius:6px; margin-left:2px; vertical-align:middle; } /* [2026.10.06] 미대상 거래처 줄은 흐리게(신고 칸만 또렷하게 - 눌러서 바꿀 수 있게) */
@@ -8601,7 +8604,8 @@ function setFilingTitleBadge(el, k, wrapId){
 }
 function renderFilingTitleBadges(){
   // [2026.10.07] 원천세 총괄(업무 정보 표)에는 진행률 없앰(요청) - 신고현황 화면에서만 꼬리줄에 보임
-  if(typeof itAllView !== 'undefined' && itAllView === 'overview'){ const b = document.getElementById('itAllTitleBadge'); if(b){ b.style.display = 'none'; b.textContent = ''; } }
+  // [2026.10.15] 지급명세서 화면에서도 신고 진행률은 숨김(요청 - 내용이 너무 많음)
+  if(typeof itAllView !== 'undefined' && (itAllView === 'overview' || itAllView === 'submit')){ const b = document.getElementById('itAllTitleBadge'); if(b){ b.style.display = 'none'; b.textContent = ''; } }
   else setFilingTitleBadge(document.getElementById('itAllTitleBadge'), '원천세', 'itAllTableWrap');
   setFilingTitleBadge(document.getElementById('vatAllTitleBadge'), '부가세', 'vatAllTableWrap');
   const t = typeof viewingFilingType !== 'undefined' ? viewingFilingType : '';
@@ -32334,7 +32338,11 @@ function renderSubmitStatusTableInner(){
       const pk = (((((sharedReviewFigures || {})[rd.ek] || {})[period.slice(0,4)] || {})[String(Number(period.slice(5,7)))] || {}).payKinds) || [];
       infoCells = `<td class="cvb" style="white-space:nowrap; font-size:11.5px; font-weight:700;">${escHtml(base)}${laneLab}</td><td class="cvb" style="white-space:nowrap;">${pk.length ? itoKindChips(pk) : '<span class="submit-na">-</span>'}</td>`;
     }
-    return { rd, hit, anyOn, entityColor, tail:`${infoCells}${attCell}${payCell}${subitemCells}` };
+    // [2026.10.15] "지급명세서도 검증 메뉴 필요"(요청) - 신고현황과 같은 돋보기 버튼(급여·신고서 검증 팝업). 매월은 그 줄의 지급시기·귀속월 검증 결과로 버튼 색
+    const vTiming = monthly && rd.dual ? rd.lane : '';
+    const vst = monthly ? itAllVerifyStatus(c.id, vTiming || null, Number(period.slice(0,4)), Number(period.slice(5,7))) : '';
+    const verifyCell = `<td class="cvb" style="white-space:nowrap;"><button type="button" class="del-btn review-it-open-btn submit-verify-btn${vst === 'ok' ? ' vst-ok' : vst === 'bad' ? ' vst-bad' : ''}" data-client-id="${c.id}" data-timing="${vTiming}" title="급여·신고서 검증 열기" aria-label="검증 열기" style="width:24px; height:24px; padding:0; display:inline-flex; align-items:center; justify-content:center; background:var(--surface); color:var(--indigo-deep); border:1.5px solid var(--indigo-bg); border-radius:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button></td>`;
+    return { rd, hit, anyOn, entityColor, tail:`${infoCells}${attCell}${payCell}${subitemCells}${verifyCell}` };
   });
   // [2026.10.12] "귀속월 기준도 제출월 기준처럼"(요청) - 귀속월 기준에서도 대상 칸이 하나도 없는(전부 '-') 줄은 빼기
   const shown = dueView ? built.filter(b=> b.hit) : built.filter(b=> b.anyOn);
@@ -32384,9 +32392,10 @@ function renderSubmitStatusTableInner(){
     <button type="button" class="del-btn" id="submitBulkApplyBtn" title="아직 제출 안 한 노란 칸 모두에 이 날짜를 넣어요" style="height:30px; box-sizing:border-box;">미제출 칸 모두 적용</button>
     ${submitSaveBtnHtml}
   </div>`;
-  wrap.innerHTML = toolbarHtml + `<div class="table-scroll"><table class="submit-status-table"><thead><tr><th class="cvb">순번</th><th class="cvb">상호명</th>${monthly ? '<th class="cvb">신고</th><th class="cvb">발생급여</th><th class="cvb">귀속월</th>' : ''}${monthly ? '<th class="cvb" title="그 귀속월 급여를 실제로 지급한 달 - 사업·기타·일용(지급) 제출기한(지급월 익월 말일)의 기준">지급월</th>' : ''}${subitemHeaderCells}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  wrap.innerHTML = toolbarHtml + `<div class="table-scroll"><table class="submit-status-table"><thead><tr><th class="cvb">순번</th><th class="cvb">상호명</th>${monthly ? '<th class="cvb">신고</th><th class="cvb">발생급여</th><th class="cvb">귀속월</th>' : ''}${monthly ? '<th class="cvb" title="그 귀속월 급여를 실제로 지급한 달 - 사업·기타·일용(지급) 제출기한(지급월 익월 말일)의 기준">지급월</th>' : ''}${subitemHeaderCells}<th class="cvb">검증</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   bindSubmitStatusSaveBtn(wrap);
   wrap.querySelector('#submitPrevNextNote')?.addEventListener('click', ()=> setSubmitView('due'));
+  wrap.querySelectorAll('.submit-verify-btn').forEach(b=> b.addEventListener('click', ()=> openReviewItFullscreen(b.dataset.clientId, 'income', b.dataset.timing || null)));
   const setVal = (p, cid, key, fn)=>{ const periodData = pdEnsure(p || period); periodData[cid] = periodData[cid] || { memo:'' }; periodData[cid].items = periodData[cid].items || {}; periodData[cid].itemDates = periodData[cid].itemDates || {}; periodData[cid].itemNotes = periodData[cid].itemNotes || {}; fn(periodData[cid]); if(!Object.keys(periodData[cid].itemNotes).length) delete periodData[cid].itemNotes; setSubmitStatusDirty(true); renderSubmitStatusTable(); setSubmitStatusDirty(true); };
   wrap.querySelectorAll('.submit-paymonth-sel').forEach(sel=> sel.addEventListener('change', ()=> setVal(sel.dataset.period, sel.dataset.ek, null, e=>{ e.payMonth = sel.value; })));
   wrap.querySelector('#submitBulkApplyBtn')?.addEventListener('click', ()=>{
