@@ -32834,9 +32834,11 @@ function reviewItRegCellHtml(storeKey, year, month, kind){
 // [2026.10.15] "환급금은 당월·익월 두 개를 한 번에 관리한다고 했는데 표기를 어떻게 이해하나 - 한 화면에 구분해서, 당월에서 보든 익월에서 보든 똑같이"(요청)
 // 두 줄 거래처는 신고서 표 아래에 '환급 이월 흐름' 표를 붙임: 두 줄의 신고서를 신고 순서(reviewItPaySlots)대로 한 표에 - 합계 − 환급금 − 전월미환급세액 = 납부세액, 차월이월.
 // 당월지급 표·익월지급 표 어디서 열어도 같은 내용(지금 보는 줄만 바탕색으로 표시). 숫자는 위 신고서 표와 같은 계산(reviewItRefundCalc)이라 입력하면 바로 바뀜
+// [2026.10.15] "이월 흐름은 신고서 탭 아래에, 평소에는 접혀 있게"(요청) - 신고서 탭에서만 보이고, 제목을 눌러 펼침(펼친 상태는 다시 그려도 유지)
+let reviewItChainOpen = false;
 function reviewItChainHtml(clientId, year){
   const key = reviewItStoreKey(clientId), cid = reviewItDualCid(key);
-  if(!cid) return '';
+  if(!cid || viewingReviewItSection !== 'tax') return '';
   const Y = Number(year), rows = [];
   for(let P = Y * 12; P <= Y * 12 + 12; P++){
     reviewItPaySlots(cid, P).forEach(sl=>{
@@ -32851,13 +32853,13 @@ function reviewItChainHtml(clientId, year){
     return `<tr${cur ? ' style="background:var(--indigo-bg);"' : ''}><td class="cvb">${i + 1}</td><td class="cvb">${py !== Y ? `${String(py).slice(2)}.` : ''}${pm}월</td><td class="cvb">${x.sl.m}월</td>
       <td class="cvb" style="font-weight:800; color:${nx ? '#D9480F' : '#0B8F6C'};">${nx ? '익월지급' : '당월지급'}${reviewItRegList(reviewItFigAt(x.sl.key, x.sl.y, x.sl.m)).some(r=> r && r.kind === '연말정산') ? ' <span style="font-size:10px; color:var(--ink-soft);">연말정산</span>' : ''}</td>${cells(x.t)}${cells(x.l)}</tr>`;
   }).join('');
-  return `<div style="font-size:12px; font-weight:800; color:var(--indigo-deep); margin:26px 0 4px 12px;">환급 이월 흐름 <span style="font-weight:600; color:var(--ink-soft);">· 당월지급·익월지급을 신고 순서대로 이어서 (당월·익월 어느 표에서 봐도 같아요. 바탕색 = 지금 보는 줄)</span></div>
+  return `<details class="rv-chain"${reviewItChainOpen ? ' open' : ''} ontoggle="reviewItChainOpen=this.open"><summary style="font-size:12px; font-weight:800; color:var(--indigo-deep); margin:26px 0 4px 12px; cursor:pointer;">환급 이월 흐름 <span style="font-weight:600; color:var(--ink-soft);">· 당월지급·익월지급을 신고 순서대로 이어서 (당월·익월 어느 표에서 봐도 같아요. 바탕색 = 지금 보는 줄)</span></summary>
     <div style="font-size:11px; color:var(--ink-soft); margin:0 0 8px 12px;">같은 지급월은 익월지급(전월 귀속) → 당월지급 순서, 연말정산 환급금을 등록한 당월지급 달만 당월지급이 먼저예요. 각 줄의 전월미환급세액 = 바로 윗줄의 차월이월</div>
     <table><thead>
       <tr><th class="cvb" rowspan="2">순서</th><th class="cvb" rowspan="2">지급월</th><th class="cvb" rowspan="2">귀속월</th><th class="cvb" rowspan="2">구분</th><th class="cvb" colspan="5">국세</th><th class="cvb" colspan="5" style="background:var(--indigo-bg);">지방세</th></tr>
       <tr><th class="cvb">합계</th><th class="cvb"><span style="color:var(--coral);">−</span> 환급금</th><th class="cvb"><span style="color:var(--coral);">−</span> 전월미환급세액</th><th class="cvb">= 납부세액</th><th class="cvb">차월이월</th>
         <th class="cvb" style="background:var(--indigo-bg);">세액</th><th class="cvb" style="background:var(--indigo-bg);"><span style="color:var(--coral);">−</span> 환급금</th><th class="cvb" style="background:var(--indigo-bg);"><span style="color:var(--coral);">−</span> 전월미환급세액</th><th class="cvb" style="background:var(--indigo-bg);">= 납부세액</th><th class="cvb" style="background:var(--indigo-bg);">차월이월</th></tr>
-    </thead><tbody>${body || `<tr><td class="cvb" colspan="14" style="padding:14px; color:var(--ink-soft);">${year}년에 입력된 신고서가 없어요</td></tr>`}</tbody></table>`;
+    </thead><tbody>${body || `<tr><td class="cvb" colspan="14" style="padding:14px; color:var(--ink-soft);">${year}년에 입력된 신고서가 없어요</td></tr>`}</tbody></table></details>`;
 }
 function refreshReviewItRefundAll(clientId, year){
   const wrap = document.getElementById('reviewItTaxWrap');
@@ -41135,7 +41137,11 @@ var pendingLastTabRestore = null;
 function restoreLastTabNow(lastTab){
   try{
     if(!lastTab || lastTab === 'home' || !document.getElementById('tab-'+lastTab)) return;
+    // [2026.10.15] "원천세에서 강력 새로고침하면 일용직 메뉴가 나온다"(요청) - 강력 새로고침처럼 조용히 다시 로그인한 뒤 복원하는 길에는
+    // 마지막 화면 기록 보호가 빠져 있어서, activateTab이 기본 화면(신고현황 > 일용직)을 그리며 기록을 덮어썼음 → 일반 새로고침과 같이 기록을 떠 두었다가 되돌림
+    let savedSubview = null; try{ savedSubview = localStorage.getItem('worklog_last_filing_subview'); }catch(e){}
     activateTab(lastTab, true);
+    if(savedSubview){ try{ localStorage.setItem('worklog_last_filing_subview', savedSubview); }catch(e){} }
     if(lastTab === 'approval' && typeof restoreFilingSubviewState === 'function') restoreFilingSubviewState();
     if(lastTab === 'settings' && typeof restoreSettingsSubviewState === 'function') restoreSettingsSubviewState();
     if(typeof window.restoreLastRailPanel === 'function') window.restoreLastRailPanel();
