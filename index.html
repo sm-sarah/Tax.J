@@ -2121,6 +2121,23 @@ try{
   .rv-pay #reviewItTaxWrap > table:nth-of-type(1) thead tr:nth-child(2) th:first-child{ border-left:2px solid #C9CBE0; }
   .rv-return #reviewItIncomeWrap{ display:none !important; }
   #reviewItSubmitWrap{ display:none; } .rv-submit #reviewItSubmitWrap{ display:block; } .rv-submit #reviewItIncomeWrap, .rv-submit #reviewItTaxWrap{ display:none !important; } /* [2026.10.07] 지급명세서 탭 */
+  /* [2026.10.15] 부가세 검증 카드 - 자료(남색 톤)·신고서(인디고 톤) 상자, 입력칸 격자(요청) */
+  .rv-vat-period{ display:inline-block; font-size:14px; font-weight:900; color:#fff; background:var(--navy); border-radius:999px; padding:3px 14px; }
+  .rv-vat-grid{ display:grid; grid-template-columns:40px minmax(0,1fr) minmax(0,1fr); gap:8px 10px; margin-bottom:10px; align-items:stretch; }
+  .rv-vat-colhead{ font-size:12.5px; font-weight:900; color:var(--navy); text-align:center; padding:2px 0; border-bottom:2px solid var(--navy); }
+  .rv-vat-colhead.rep{ color:var(--indigo-deep); border-bottom-color:var(--indigo); }
+  .rv-vat-colhead small{ font-size:10.5px; font-weight:700; color:var(--ink-soft); margin-left:3px; }
+  .rv-vat-rowhead{ display:flex; align-items:center; justify-content:center; writing-mode:vertical-rl; letter-spacing:4px; font-size:13px; font-weight:900; color:#fff; background:var(--ink-label); border-radius:10px; }
+  .rv-vat-box{ background:var(--navy-bg); border:1.5px solid var(--border); border-radius:12px; padding:10px 12px 8px; }
+  .rv-vat-box.rep{ background:var(--indigo-bg); }
+  .rv-vat-fields{ display:grid; grid-template-columns:repeat(auto-fill, minmax(96px, 1fr)); gap:8px 8px; }
+  .rv-vat-f{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+  .rv-vat-f label{ font-size:10.5px; font-weight:700; color:var(--ink-label); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rv-vat-f input{ width:100% !important; box-sizing:border-box; height:28px; border:1.5px solid var(--border) !important; border-radius:7px !important; padding:3px 6px !important; font-size:11.5px !important; background:var(--surface) !important; }
+  .rv-vat-f input.review-vat-text-input{ font-family:'Pretendard',sans-serif; }
+  .rv-vat-total{ text-align:right; font-size:12px; font-weight:800; color:var(--navy); margin-top:8px; padding-top:6px; border-top:1px dashed rgba(29,30,51,0.18); }
+  .rv-vat-foot{ display:grid; grid-template-columns:repeat(6, minmax(86px, 120px)) minmax(160px, 1fr); gap:8px; background:var(--bg); }
+  @media (max-width:900px){ .rv-vat-grid{ grid-template-columns:32px minmax(0,1fr); } .rv-vat-grid > div:first-child{ display:none; } .rv-vat-colhead{ display:none; } .rv-vat-foot{ grid-template-columns:repeat(auto-fill, minmax(96px,1fr)); } }
   .rv-sub-pill{ display:table; margin:14px auto 10px; padding:4px 18px; border-radius:999px; background:var(--indigo-bg); color:var(--indigo-deep); font-size:12.5px; font-weight:800; }
   /* [2026.10.15] 지급명세서 검증 표 - 제목줄 아래 구분선, 머리글 글씨 키움, 줄 높이 고정(입력칸 있는 줄만 높아지지 않게), 나란한 표가 넘치지 않게(요청) */
   .it-all-toolbar{ display:flex; justify-content:center; align-items:center; gap:6px; min-height:34px; margin-bottom:8px; }
@@ -34570,10 +34587,7 @@ function reviewVatMoneyInputHtml(cls, period, group, field, value, opts){
   return `<input type="text" inputmode="numeric" class="${cls}" data-period="${period}" data-group="${group}" data-field="${field}" value="${value!=null && value!==''?Number(value).toLocaleString():''}" style="width:${opts.width||'70px'}; border:1.5px solid var(--border); border-radius:6px; padding:3px 5px; font-family:'IBM Plex Mono',monospace; font-size:11px; text-align:right; background:${opts.bg||'var(--surface)'};">`;
 }
 function reviewVatFieldGroupHtml(period, group, fields, data){
-  return fields.map(f=>`<div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
-    <label style="font-size:10px; color:var(--ink-soft); white-space:nowrap;">${escHtml(f.label)}</label>
-    ${reviewVatMoneyInputHtml('review-vat-input', period, group, f.key, (data||{})[f.key])}
-  </div>`).join('');
+  return fields.map(f=>`<div class="rv-vat-f"><label title="${escHtml(f.label)}">${escHtml(f.label)}</label>${reviewVatMoneyInputHtml('review-vat-input', period, group, f.key, (data||{})[f.key])}</div>`).join('');
 }
 function reviewVatBadgeHtml(label, ok, clientId, year, period, field){
   // [2026.10.15] 아무것도 안 적은 기수는 초록 체크 대신 회색 '-'(요청 - 검증이 중요해서 빈 칸이 맞음으로 보이지 않게)
@@ -34622,7 +34636,7 @@ function reviewVatCardHtml(clientId, year, period){
     <div style="font-size:14px; font-weight:900; color:var(--navy); margin-bottom:10px;">${period}</div>${reviewVatLegacyHtml(clientId, year, period, entry)}</div>`;
   return `<div class="review-vat-card" data-period="${period}" style="border:1.5px solid var(--border); border-radius:14px; padding:14px 16px; margin-bottom:14px; background:var(--surface);">
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
-      <span style="font-size:14px; font-weight:900; color:var(--navy);">${period}</span>
+      <span class="rv-vat-period">${period}</span>
       <div class="review-vat-badges" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
         <span class="review-vat-badge-sales">${reviewVatBadgeHtml('매출', reviewVatSalesBadgeState(entry), clientId, year, period, 'sales')}</span>
         <span class="review-vat-badge-purchase">${reviewVatBadgeHtml('매입', reviewVatPurchaseBadgeState(entry), clientId, year, period, 'purchase')}</span>
@@ -34632,38 +34646,24 @@ function reviewVatCardHtml(clientId, year, period){
     </div>
     <div class="review-vat-detail" style="display:flex; flex-wrap:wrap; gap:4px 18px; font-size:11.5px; font-weight:700; margin:-4px 0 10px;">${reviewVatDetailHtml(entry)}</div>
     ${reviewVatLegacyHtml(clientId, year, period, entry)}
-    <div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:10px;">
-      <div style="flex:1 1 320px; border-top:1.5px dashed var(--border); padding-top:8px;">
-        <div style="font-size:11.5px; font-weight:800; color:var(--ink-soft); margin-bottom:6px;">매출자료</div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">${reviewVatFieldGroupHtml(period, 'dataSales', REVIEW_VAT_SALES_DATA_FIELDS, entry.dataSales)}</div>
-        <div class="review-vat-total-datasales" style="text-align:right; font-size:11px; font-weight:700; color:var(--navy); margin-top:6px;">합계 ${won(reviewVatDataSalesTotal(entry))}</div>
-      </div>
-      <div style="flex:1 1 320px; border-top:1.5px dashed var(--border); padding-top:8px;">
-        <div style="font-size:11.5px; font-weight:800; color:var(--ink-soft); margin-bottom:6px;">매출신고서</div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">${reviewVatFieldGroupHtml(period, 'reportSales', REVIEW_VAT_SALES_REPORT_FIELDS, entry.reportSales)}</div>
-        <div class="review-vat-total-reportsales" style="text-align:right; font-size:11px; font-weight:700; color:var(--navy); margin-top:6px;">합계 ${won(reviewVatReportSalesTotal(entry))}</div>
-      </div>
+    <!-- [2026.10.15] "눈에 잘 구분이 안 간다"(요청) - 매출·매입 줄 × 자료(홈택스)·신고서 칸을 색이 다른 상자로 나누고, 입력칸은 같은 폭 격자로 -->
+    <div class="rv-vat-grid">
+      <div></div><div class="rv-vat-colhead">자료 <small>홈택스</small></div><div class="rv-vat-colhead rep">신고서</div>
+      <div class="rv-vat-rowhead">매출</div>
+      <div class="rv-vat-box"><div class="rv-vat-fields">${reviewVatFieldGroupHtml(period, 'dataSales', REVIEW_VAT_SALES_DATA_FIELDS, entry.dataSales)}</div><div class="review-vat-total-datasales rv-vat-total">합계 ${won(reviewVatDataSalesTotal(entry))}</div></div>
+      <div class="rv-vat-box rep"><div class="rv-vat-fields">${reviewVatFieldGroupHtml(period, 'reportSales', REVIEW_VAT_SALES_REPORT_FIELDS, entry.reportSales)}</div><div class="review-vat-total-reportsales rv-vat-total">합계 ${won(reviewVatReportSalesTotal(entry))}</div></div>
+      <div class="rv-vat-rowhead">매입</div>
+      <div class="rv-vat-box"><div class="rv-vat-fields">${reviewVatFieldGroupHtml(period, 'dataPurchase', REVIEW_VAT_PURCHASE_DATA_FIELDS, entry.dataPurchase)}</div><div class="review-vat-total-datapurchase rv-vat-total">합계 ${won(reviewVatDataPurchaseTotal(entry))}</div></div>
+      <div class="rv-vat-box rep"><div class="rv-vat-fields">${reviewVatFieldGroupHtml(period, 'reportPurchase', REVIEW_VAT_PURCHASE_REPORT_FIELDS, entry.reportPurchase)}</div><div class="review-vat-total-reportpurchase rv-vat-total">합계 ${won(reviewVatReportPurchaseTotal(entry))}</div></div>
     </div>
-    <div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:10px;">
-      <div style="flex:1 1 320px; border-top:1.5px dashed var(--border); padding-top:8px;">
-        <div style="font-size:11.5px; font-weight:800; color:var(--ink-soft); margin-bottom:6px;">매입자료</div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">${reviewVatFieldGroupHtml(period, 'dataPurchase', REVIEW_VAT_PURCHASE_DATA_FIELDS, entry.dataPurchase)}</div>
-        <div class="review-vat-total-datapurchase" style="text-align:right; font-size:11px; font-weight:700; color:var(--navy); margin-top:6px;">합계 ${won(reviewVatDataPurchaseTotal(entry))}</div>
-      </div>
-      <div style="flex:1 1 320px; border-top:1.5px dashed var(--border); padding-top:8px;">
-        <div style="font-size:11.5px; font-weight:800; color:var(--ink-soft); margin-bottom:6px;">매입신고서</div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">${reviewVatFieldGroupHtml(period, 'reportPurchase', REVIEW_VAT_PURCHASE_REPORT_FIELDS, entry.reportPurchase)}</div>
-        <div class="review-vat-total-reportpurchase" style="text-align:right; font-size:11px; font-weight:700; color:var(--navy); margin-top:6px;">합계 ${won(reviewVatReportPurchaseTotal(entry))}</div>
-      </div>
-    </div>
-    <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; border-top:1.5px dashed var(--border); padding-top:8px;">
-      <div style="display:flex; flex-direction:column; align-items:center; gap:2px;"><label style="font-size:10px; color:var(--ink-soft);">예정(자료)</label>${reviewVatMoneyInputHtml('review-vat-input', period, 'root', 'dataPrelim', entry.dataPrelim)}</div>
-      <div style="display:flex; flex-direction:column; align-items:center; gap:2px;"><label style="font-size:10px; color:var(--ink-soft);">예정(신고서)</label>${reviewVatMoneyInputHtml('review-vat-input', period, 'root', 'reportPrelim', entry.reportPrelim)}</div>
-      <div style="display:flex; flex-direction:column; align-items:center; gap:2px;"><label style="font-size:10px; color:var(--ink-soft);">납부세액</label>${reviewVatMoneyInputHtml('review-vat-input', period, 'root', 'taxPay', entry.taxPay, {width:'86px'})}</div>
-      <div style="display:flex; flex-direction:column; gap:2px;"><label style="font-size:10px; color:var(--ink-soft);">신고현황</label><input type="text" class="review-vat-text-input" data-period="${period}" data-group="root" data-field="filingStatus" value="${escHtml(entry.filingStatus||'')}" style="width:86px; border:1.5px solid var(--border); border-radius:6px; padding:3px 5px; font-family:'Pretendard',sans-serif; font-size:11px;"></div>
-      <div style="display:flex; flex-direction:column; gap:2px;"><label style="font-size:10px; color:var(--ink-soft);">마감</label><input type="text" class="review-vat-text-input" data-period="${period}" data-group="root" data-field="deadline" value="${escHtml(entry.deadline||'')}" style="width:70px; border:1.5px solid var(--border); border-radius:6px; padding:3px 5px; font-family:'Pretendard',sans-serif; font-size:11px;"></div>
-      <div style="display:flex; flex-direction:column; gap:2px;"><label style="font-size:10px; color:var(--ink-soft);">결재</label><input type="text" class="review-vat-text-input" data-period="${period}" data-group="root" data-field="approval" value="${escHtml(entry.approval||'')}" style="width:70px; border:1.5px solid var(--border); border-radius:6px; padding:3px 5px; font-family:'Pretendard',sans-serif; font-size:11px;"></div>
-      <div style="display:flex; flex-direction:column; gap:2px; flex:1 1 160px;"><label style="font-size:10px; color:var(--ink-soft);">비고</label><input type="text" class="review-vat-text-input" data-period="${period}" data-group="root" data-field="note" value="${escHtml(entry.note||'')}" style="width:100%; border:1.5px solid var(--border); border-radius:6px; padding:3px 5px; font-family:'Pretendard',sans-serif; font-size:11px;"></div>
+    <div class="rv-vat-box rv-vat-foot">
+      <div class="rv-vat-f"><label>예정(자료)</label>${reviewVatMoneyInputHtml('review-vat-input', period, 'root', 'dataPrelim', entry.dataPrelim)}</div>
+      <div class="rv-vat-f"><label>예정(신고서)</label>${reviewVatMoneyInputHtml('review-vat-input', period, 'root', 'reportPrelim', entry.reportPrelim)}</div>
+      <div class="rv-vat-f"><label>납부세액</label>${reviewVatMoneyInputHtml('review-vat-input', period, 'root', 'taxPay', entry.taxPay)}</div>
+      <div class="rv-vat-f"><label>신고현황</label><input type="text" class="review-vat-text-input" data-period="${period}" data-group="root" data-field="filingStatus" value="${escHtml(entry.filingStatus||'')}"></div>
+      <div class="rv-vat-f"><label>마감</label><input type="text" class="review-vat-text-input" data-period="${period}" data-group="root" data-field="deadline" value="${escHtml(entry.deadline||'')}"></div>
+      <div class="rv-vat-f"><label>결재</label><input type="text" class="review-vat-text-input" data-period="${period}" data-group="root" data-field="approval" value="${escHtml(entry.approval||'')}"></div>
+      <div class="rv-vat-f wide"><label>비고</label><input type="text" class="review-vat-text-input" data-period="${period}" data-group="root" data-field="note" value="${escHtml(entry.note||'')}"></div>
     </div>
   </div>`;
 }
