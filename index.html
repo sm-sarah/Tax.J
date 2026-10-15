@@ -32438,7 +32438,7 @@ function renderSubmitStatusTableInner(){
   wrap.innerHTML = toolbarHtml + `<div class="table-scroll"><table class="submit-status-table"><thead><tr><th class="cvb">순번</th><th class="cvb">상호명</th>${monthly ? '<th class="cvb">신고</th><th class="cvb">발생급여</th><th class="cvb">귀속월</th>' : ''}${monthly ? '<th class="cvb" title="그 귀속월 급여를 실제로 지급한 달 - 사업·기타·일용(지급) 제출기한(지급월 익월 말일)의 기준">지급월</th>' : ''}${subitemHeaderCells}<th class="cvb">검증</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   bindSubmitStatusSaveBtn(wrap);
   wrap.querySelector('#submitPrevNextNote')?.addEventListener('click', ()=> setSubmitView('due'));
-  wrap.querySelectorAll('.submit-verify-btn').forEach(b=> b.addEventListener('click', ()=> openReviewItFullscreen(b.dataset.clientId, 'submit', b.dataset.timing || null))); // [2026.10.15] 지급명세서 검증은 지급명세서 표만(요청)
+  wrap.querySelectorAll('.submit-verify-btn').forEach(b=> b.addEventListener('click', ()=>{ reviewItSubTab = (submitState && submitState.sourceMode) || '월별'; openReviewItFullscreen(b.dataset.clientId, 'submit', b.dataset.timing || null); })); // 탭은 지금 보는 매월·반기·연간으로 [2026.10.15] 지급명세서 검증은 지급명세서 표만(요청)
   const setVal = (p, cid, key, fn)=>{ const periodData = pdEnsure(p || period); periodData[cid] = periodData[cid] || { memo:'' }; periodData[cid].items = periodData[cid].items || {}; periodData[cid].itemDates = periodData[cid].itemDates || {}; periodData[cid].itemNotes = periodData[cid].itemNotes || {}; fn(periodData[cid]); if(!Object.keys(periodData[cid].itemNotes).length) delete periodData[cid].itemNotes; setSubmitStatusDirty(true); renderSubmitStatusTable(); setSubmitStatusDirty(true); };
   wrap.querySelectorAll('.submit-paymonth-sel').forEach(sel=> sel.addEventListener('change', ()=> setVal(sel.dataset.period, sel.dataset.ek, null, e=>{ e.payMonth = sel.value; })));
   wrap.querySelector('#submitBulkApplyBtn')?.addEventListener('click', ()=>{
@@ -33474,6 +33474,7 @@ function reviewItIncSum(clientId, year, months, keys){
     return sum + keys.reduce((a, f)=> a + (Number((d.income || {})[f]) || 0), 0);
   }, 0);
 }
+let reviewItSubTab = '월별';   // [2026.10.15] 지급명세서 검증 팝업 안 매월·반기·연간 탭
 function renderReviewItSubmitTable(clientId, year){
   const wrap = document.getElementById('reviewItSubmitWrap');
   if(!wrap) return;
@@ -33490,39 +33491,55 @@ function renderReviewItSubmitTable(clientId, year){
   const halves = nx ? [['근로H1','상반기','1~5월 귀속',[1,2,3,4,5]], ['근로H2','하반기','6~12월 귀속',[6,7,8,9,10,11,12]]]
                     : [['근로H1','상반기','1~6월 귀속',[1,2,3,4,5,6]], ['근로H2','하반기','7~12월 귀속',[7,8,9,10,11,12]]];
   // [2026.10.15] ① 매월 간이·지급명세서(요청 - 원천세 엑셀 '간이·지급명세서(매월제출)' 수식 그대로): 귀속월마다 사업(간이)=사업소득, 기타(간이)=기타소득(간이대상), 일용(지급)=일용소득
-  const MK = [['사업간이','사업(간이)'], ['기타간이','기타(간이)'], ['일용지급','일용(지급)']];
+  // [2026.10.15] 화면 구성 변경(요청) - 팝업 안에 매월·반기·연간 탭, 표마다 기준 / 급여 합계(연동) / 제출금액(수기) / 검증 순서.
+  //   매월은 '간이지급명세서' 아래 사업소득·기타소득(간이대상)을 나눠서, 그 아래 '지급명세서'는 일용소득만
   const k0 = reviewItStoreKey(clientId);
-  const monthRows = [1,2,3,4,5,6,7,8,9,10,11,12].map(m=>{
-    const d = (((sharedReviewFigures[k0] || {})[year] || {})[String(m)]) || {};
-    const cells = MK.map(([k])=>{
+  const th = t=> `<th class="cvb">${t}</th>`;
+  const headRow = first=> `<tr>${th(first)}${th('기준')}${th('급여 합계')}${th('제출금액')}${th('검증')}</tr>`;
+  const ymLabel = (y, m)=> y !== year ? `${String(y).slice(2)}년 ${m}월` : `${m}월`;
+  const monthTable = (k, title)=>{
+    const rows = [1,2,3,4,5,6,7,8,9,10,11,12].map(m=>{
+      const d = (((sharedReviewFigures[k0] || {})[year] || {})[String(m)]) || {};
       const calc = (SUBMIT_AMT_M[k] || []).reduce((a, f)=> a + (Number((d.income || {})[f]) || 0), 0), rep = (d.submit || {})[k];
-      if(!calc && !has(rep)) return `<td class="cvb">${na}</td><td class="cvb">${na}</td><td class="cvb"></td>`;
-      return `<td>${inp(`data-scope="m" data-month="${m}" data-k="${k}"`, rep)}</td><td class="num cvb">${calc ? calc.toLocaleString() : na}</td><td class="cvb">${has(rep) ? chip(Number(rep) === calc, 'sub_' + k, `${year}-${String(m).padStart(2,'0')}`, false) : ''}</td>`;
+      const pm = nx ? (m === 12 ? [year+1, 1] : [year, m+1]) : [year, m];
+      const basis = `<td class="cvb" style="color:var(--ink-soft); font-size:11px;">${ymLabel(pm[0], pm[1])} 지급</td>`;
+      if(!calc && !has(rep)) return `<tr><td class="cvb" style="font-weight:700;">${m}월</td>${basis}<td class="cvb">${na}</td><td class="cvb">${na}</td><td class="cvb"></td></tr>`;
+      return `<tr><td class="cvb" style="font-weight:700;">${m}월</td>${basis}<td class="num cvb">${calc ? calc.toLocaleString() : na}</td><td>${inp(`data-scope="m" data-month="${m}" data-k="${k}"`, rep)}</td><td class="cvb">${has(rep) ? chip(Number(rep) === calc, 'sub_' + k, `${year}-${String(m).padStart(2,'0')}`, false) : ''}</td></tr>`;
     }).join('');
-    return `<tr><td class="cvb" style="font-weight:700;">${m}월</td>${cells}</tr>`;
-  }).join('');
+    return `<table><thead><tr><th class="cvb" colspan="5">${title}</th></tr>${headRow('귀속월')}</thead><tbody>${rows}</tbody></table>`;
+  };
   const yrRow = (k, label, basis, calc)=>{
     const show = has(sy[k]);   // [2026.10.15] 아직 안 낸(빈) 칸은 오류 표시 안 함 - 매월 표와 같게
-    return `<tr><td class="cvb" style="font-weight:700;">${label}</td><td class="cvb" style="color:var(--ink-soft); font-size:11px;">${basis}</td><td>${inp(`data-scope="y" data-k="${k}"`, sy[k])}</td><td class="num cvb">${calc ? calc.toLocaleString() : na}</td><td class="cvb">${show ? chip((Number(sy[k]) || 0) === calc, '', '', false) : na}</td></tr>`;
+    return `<tr><td class="cvb" style="font-weight:700;">${label}</td><td class="cvb" style="color:var(--ink-soft); font-size:11px;">${basis}</td><td class="num cvb">${calc ? calc.toLocaleString() : na}</td><td>${inp(`data-scope="y" data-k="${k}"`, sy[k])}</td><td class="cvb">${show ? chip((Number(sy[k]) || 0) === calc, '', '', false) : na}</td></tr>`;
   };
   const rowsH = halves.map(([k, l, b, ms])=> yrRow(k, l, b, reviewItIncSum(clientId, year, ms, LABOR))).join('');
   // ③ 연간
   const all = [1,2,3,4,5,6,7,8,9,10,11,12];
   // [2026.10.07] "근로소득 간이지급명세서와 지급명세서(근로)만 보면 된다"(요청)였는데, [2026.10.15] 엑셀 수식처럼 매월·연간 항목 모두 검증(요청)으로 다시 넣음
-  //   연간: 근로·퇴직·이자배당은 1~12월 귀속(지급의제), 사업·기타는 지급 기준(익월지급은 전년 12월~11월 귀속)
+  //   연간: 근로·퇴직·이자배당은 1~12월 귀속(지급의제), 사업·기타는 지급 기준(익월지급은 전년 12월~11월 귀속). 순서: 근로·사업·기타·퇴직·이자배당(요청)
   const payBasis = nx ? [[year-1, 12]].concat([1,2,3,4,5,6,7,8,9,10,11].map(m=> [year, m])) : all;
-  const ANN = [['근로','근로', `${year+1}.3.10`, all, LABOR], ['사업','사업', `${year+1}.3.10`, payBasis, ['사업']], ['퇴직','퇴직', `${year+1}.3.10`, all, ['퇴직']],
-    ['기타','기타(전체)', `${year+1}.2월 말`, payBasis, ['기타간이대상','기타간이미대상']], ['이자배당','이자·배당', `${year+1}.2월 말`, all, ['이자']]];
-  const rowsA = ANN.map(([k, l, due, ms, keys])=> yrRow(k, l, `기한 ${due}`, reviewItIncSum(clientId, year, ms, keys))).join('');
-  const th = t=> `<th class="cvb">${t}</th>`;
-  const thM = MK.map(([, l])=> `<th class="cvb" colspan="3">${l}</th>`).join('');
-  wrap.innerHTML = `
-    <div class="rv-sub-pill">간이·지급명세서 (매월 제출)<small>${nx ? '익월지급 · 귀속월 기준(지급월 = 다음 달)' : '당월지급 · 귀속월 = 지급월'} · 제출금액 / 급여 / 검증</small></div>
-    <table><thead><tr>${th('귀속월')}${thM}</tr></thead><tbody>${monthRows}</tbody></table>
-    <div class="rv-sub-pill">근로소득 간이지급명세서 (반기 제출)<small>${nx ? '익월지급 · 12월 귀속분은 지급의제로 그 해 하반기' : '당월지급 · 귀속월 = 지급월'}</small></div>
-    <table><thead><tr>${th('구분')}${th('기준')}${th('제출금액')}${th('급여 합계')}${th('검증')}</tr></thead><tbody>${rowsH}</tbody></table>
+  const payTxt = nx ? `${String(year-1).slice(2)}년 12월~11월 귀속` : '1~12월 귀속';
+  const ANN = [['근로','근로소득', `1~12월 귀속 · 기한 ${year+1}.3.10`, all, LABOR], ['사업','사업소득', `${payTxt} · 기한 ${year+1}.3.10`, payBasis, ['사업']],
+    ['기타','기타소득(전체)', `${payTxt} · 기한 ${year+1}.2월 말`, payBasis, ['기타간이대상','기타간이미대상']], ['퇴직','퇴직소득', `1~12월 귀속 · 기한 ${year+1}.3.10`, all, ['퇴직']],
+    ['이자배당','이자·배당소득', `1~12월 귀속 · 기한 ${year+1}.2월 말`, all, ['이자']]];
+  const rowsA = ANN.map(([k, l, basis, ms, keys])=> yrRow(k, l, basis, reviewItIncSum(clientId, year, ms, keys))).join('');
+  const tab = ['월별','반기','연간'].includes(reviewItSubTab) ? reviewItSubTab : '월별';
+  const seg = `<div style="display:flex; justify-content:center; margin:4px 0 2px;"><span class="it-seg" id="reviewItSubTabSeg">${[['월별','매월'],['반기','반기'],['연간','연간']].map(([v, l])=> `<button type="button" data-t="${v}" class="${v === tab ? 'on' : ''}">${l}</button>`).join('')}</span></div>`;
+  const timingTxt = nx ? '익월지급 · 지급월 = 귀속 다음 달' : '당월지급 · 귀속월 = 지급월';
+  const grid = inner=> `<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start;">${inner}</div>`;
+  const body = tab === '월별' ? `
+    <div class="rv-sub-pill">간이지급명세서 (매월 제출)<small>${timingTxt} · 지급월 다음 달 말일까지</small></div>
+    ${grid(monthTable('사업간이', '사업소득') + monthTable('기타간이', '기타소득(간이대상)'))}
+    <div class="rv-sub-pill">지급명세서 (매월 제출)<small>${timingTxt}</small></div>
+    ${grid(monthTable('일용지급', '일용소득') + '<div></div>')}`
+    : tab === '반기' ? `
+    <div class="rv-sub-pill">근로소득 간이지급명세서 (반기 제출)<small>${nx ? '익월지급 · 12월 귀속분은 지급의제로 그 해 하반기' : '당월지급 · 귀속월 = 지급월'} · 근로소득(과세) + 제출비과세</small></div>
+    <table><thead>${headRow('구분')}</thead><tbody>${rowsH}</tbody></table>`
+    : `
     <div class="rv-sub-pill">지급명세서 (연간 제출)<small>근로·퇴직·이자배당 1~12월 귀속(지급의제) · 사업·기타 지급 기준</small></div>
-    <table><thead><tr>${th('항목')}${th('기준')}${th('제출금액')}${th('급여 합계')}${th('검증')}</tr></thead><tbody>${rowsA}</tbody></table>`;
+    <table><thead>${headRow('항목')}</thead><tbody>${rowsA}</tbody></table>`;
+  wrap.innerHTML = seg + body;
+  wrap.querySelectorAll('#reviewItSubTabSeg button').forEach(b=> b.addEventListener('click', ()=>{ reviewItSubTab = b.dataset.t; renderReviewItSubmitTable(clientId, year); }));
   wrap.querySelectorAll('.rv-sub-in').forEach(el=>{
     el.addEventListener('input', ()=> formatMoneyInputLive(el));
     el.addEventListener('change', ()=>{
@@ -33789,6 +33806,7 @@ function openReviewItFullscreen(clientId, section, timing){
   const noteEl2 = document.getElementById('reviewItFsClientNote');
   if(noteEl2){ const nt = (itoEntry(clientId).note||'').trim(); noteEl2.textContent = nt ? '특이사항: ' + nt : ''; /* [2026.10.14] '특이사항 · ' → '특이사항: '(요청) */ noteEl2.title = nt; noteEl2.style.display = nt ? '' : 'none'; }
   populateReviewItYearSelectEl('reviewItFsYearSelect', clientId);
+  if(submitOnly) document.querySelectorAll('#reviewItFsYearSelect option').forEach(o=>{ o.textContent = `${o.value}년 귀속`; });   // [2026.10.15] 지급명세서 검증은 '2026년 귀속'(요청)
   renderReviewItFsMeta(clientId);
   showReviewItFsSection(viewingReviewItSection);
   setReviewItDirty(false);
