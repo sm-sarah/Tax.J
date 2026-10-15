@@ -2122,17 +2122,17 @@ try{
   .rv-return #reviewItIncomeWrap{ display:none !important; }
   #reviewItSubmitWrap{ display:none; } .rv-submit #reviewItSubmitWrap{ display:block; } .rv-submit #reviewItIncomeWrap, .rv-submit #reviewItTaxWrap{ display:none !important; } /* [2026.10.07] 지급명세서 탭 */
   /* [2026.10.15] 부가세 검증 카드 - 자료(남색 톤)·신고서(인디고 톤) 상자, 입력칸 격자(요청) */
-  .rv-vat-period{ display:inline-block; font-size:14px; font-weight:900; color:#fff; background:var(--navy); border-radius:999px; padding:3px 14px; }
+  .rv-vat-period{ display:inline-block; font-size:13.5px; font-weight:600; letter-spacing:0.3px; color:#fff; background:var(--navy); border-radius:999px; padding:3px 14px; -webkit-font-smoothing:antialiased; }   /* 흰 글씨는 굵으면 번져 보여서 얇게(요청) */
   .rv-vat-grid{ display:grid; grid-template-columns:40px minmax(0,1fr) minmax(0,1fr); gap:8px 10px; margin-bottom:10px; align-items:stretch; }
   .rv-vat-colhead{ font-size:12.5px; font-weight:900; color:var(--navy); text-align:center; padding:2px 0; border-bottom:2px solid var(--navy); }
   .rv-vat-colhead.rep{ color:var(--indigo-deep); border-bottom-color:var(--indigo); }
   .rv-vat-colhead small{ font-size:10.5px; font-weight:700; color:var(--ink-soft); margin-left:3px; }
-  .rv-vat-rowhead{ display:flex; align-items:center; justify-content:center; writing-mode:vertical-rl; letter-spacing:4px; font-size:13px; font-weight:900; color:#fff; background:var(--ink-label); border-radius:10px; }
+  .rv-vat-rowhead{ display:flex; align-items:center; justify-content:center; writing-mode:vertical-rl; letter-spacing:4px; font-size:13.5px; font-weight:600; color:#fff; background:var(--ink-label); border-radius:10px; -webkit-font-smoothing:antialiased; }
   .rv-vat-box{ background:var(--navy-bg); border:1.5px solid var(--border); border-radius:12px; padding:10px 12px 8px; }
   .rv-vat-box.rep{ background:var(--indigo-bg); }
   .rv-vat-fields{ display:grid; grid-template-columns:repeat(auto-fill, minmax(96px, 1fr)); gap:8px 8px; }
   .rv-vat-f{ display:flex; flex-direction:column; gap:3px; min-width:0; }
-  .rv-vat-f label{ font-size:10.5px; font-weight:700; color:var(--ink-label); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rv-vat-f label{ font-size:10.5px; font-weight:700; color:var(--ink-label); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-left:1.6em; }   /* 입력칸 위 제목은 두 글자쯤 들여쓰기(요청) */
   .rv-vat-f input{ width:100% !important; box-sizing:border-box; height:28px; border:1.5px solid var(--border) !important; border-radius:7px !important; padding:3px 6px !important; font-size:11.5px !important; background:var(--surface) !important; }
   .rv-vat-f input.review-vat-text-input{ font-family:'Pretendard',sans-serif; }
   .rv-vat-total{ text-align:right; font-size:12px; font-weight:800; color:var(--navy); margin-top:8px; padding-top:6px; border-top:1px dashed rgba(29,30,51,0.18); }
@@ -48546,10 +48546,11 @@ scheduleTwemojiParse();
 })();
 </script>
 <!-- [2026.10.06] 검토표 검증 계산식 정리(요청 - works 설정 화면에서 불러와 봄). 화면에는 안 보이는 데이터 블록.
-     reviewItIncomeTotal·reviewItTaxTotal·reviewItTaxLocalTotal·reviewItRefundCalc·itAllVerifyStatus 계산식을 바꾸면 이 내용도 같이 고친다 -->
+     reviewItIncomeTotal·reviewItTaxTotal·reviewItTaxLocalTotal·reviewItRefundCalc·itAllVerifyStatus 계산식을 바꾸면 이 내용도 같이 고친다
+     [2026.10.15] 지급명세서(submitAmtInfo·submitAmtInfoM)·부가세(reviewVatSalesItems·reviewVatPurchaseItems·vatSupplyOf) 검증식 추가 - 이것들도 바꾸면 같이 고친다 -->
 <script type="application/json" id="taxjFormulaDoc">
 {
- "title": "원천세 검토표 검증 계산식",
+ "title": "검토표 검증 계산식 (원천세 · 지급명세서 · 부가세)",
  "updated": "2026-10-15",
  "sections": [
   {
@@ -48625,6 +48626,70 @@ scheduleTwemojiParse();
     "빈칸: 비교할 신고서 값이 없거나 반기 거래처의 6·12월 외 달",
     "어떤 달이 새로 '맞음'이 되면 신고서 마감 설정을 물어봄 → 예: 원천세·지방세 신고서 마감일(빈 쪽)에 오늘 날짜",
     "신고완료(✓)는 검증과 별개로 원천세·지방세 신고 완료일이 둘 다 있을 때만"
+   ]
+  },
+  {
+   "title": "지급명세서 검증 (원천세 › 지급명세서)",
+   "formulas": [
+    "매월: 사업(간이) = 사업소득 · 기타(간이) = 기타소득(간이대상) · 일용(지급) = 일용소득 (그 귀속월 급여 칸)",
+    "근로 반기 = 근로소득(과세) + 제출비과세 — 당월지급 1~6월/7~12월 귀속, 익월지급 1~5월/6~12월 귀속",
+    "연간: 근로 = 근로(과세+제출비과세) 1~12월 귀속 · 퇴직 · 이자배당 1~12월 귀속 · 사업 · 기타(간이대상+간이미대상)은 지급월 기준(익월지급은 전년 12월~11월 귀속)",
+    "맞음 ⇔ 제출금액(직접 입력) = 급여 합계(연동)"
+   ],
+   "lines": [
+    "중도·연말·미제출비과세는 근로 지급명세서 금액에서 뺌",
+    "지급의제: 12월 귀속분을 다음 해 1~2월에 지급하면 그해 지급분으로 봄(근로·일용·퇴직·이자·배당·연말정산대상 사업소득만). 그래서 익월지급 근로 하반기는 6~12월 귀속",
+    "12월 귀속 일용을 다음 해 1~2월에 지급하면 제출기한은 1월 31일",
+    "제출금액이 비어 있으면 검증 표시 안 함(아직 안 낸 칸)"
+   ]
+  },
+  {
+   "title": "부가세 검증 — 원 단위 끝수",
+   "formulas": [
+    "공급가액 = 공급대가 − 세액 · 세액 = 공급대가 × 10/110 (원 미만 절사)"
+   ],
+   "lines": [
+    "신용카드·판매대행 매출(부가세 포함 금액)을 공급가액으로 바꿀 때 씀(세무프로그램·신고서 방식)",
+    "프로그램은 카드사·월별로 나눠 계산해서 합계가 몇 원 더 클 수 있음 → 카드·현금 항목은 100원 이내 차이를 ≈(끝수 차이)로 맞음 처리"
+   ]
+  },
+  {
+   "title": "부가세 검증 — 매출 (항목별)",
+   "formulas": [
+    "세금계산서: 자료 세금계산서 = 신고 세금계산서 + 영세 − 수기세금계산서",
+    "계산서: 자료 계산서 = 신고 계산서 − 수기계산서",
+    "카드·현금: 공급가액(카드 + 판매대행 − 카드·대행 중 면세) + (현영 − 현영 중 면세) ≈ 신고 카드,현금 등",
+    "매출 맞음 ⇔ 세 항목 모두 맞음(≈ 포함)"
+   ],
+   "lines": [
+    "현영 자료는 공급가액으로 입력(÷1.1 안 함)",
+    "수출(건별)·기타(건별)는 홈택스 자료에 없어서 비교에서 뺌",
+    "면세수입(계산서외)은 참고용 - 검증에 안 씀",
+    "비교할 두 값이 모두 0이면 그 항목은 건너뜀"
+   ]
+  },
+  {
+   "title": "부가세 검증 — 매입 (항목별)",
+   "formulas": [
+    "세금계산서: 자료 세금계산서 = 신고 세금계산서 − 수기세금계산서",
+    "계산서: 자료 계산서 = 신고 계산서 − 수기계산서",
+    "매입 맞음 ⇔ 두 항목 모두 맞음"
+   ],
+   "lines": [
+    "카드공제는 검증이 아니라 참고: (신고 그밖의 − 의제) − (자료 카드 + 현영) 차액을 '자료보다 ○원 더/덜 반영'으로 표시"
+   ]
+  },
+  {
+   "title": "부가세 검증 — 예정 · 합계 · 결과",
+   "formulas": [
+    "예정: 자료 예정 = 신고 예정",
+    "자료 매출 합계 = 세금계산서 + 계산서 + 현영 + 공급가액(카드+대행−면세) + 카드·대행 중 면세",
+    "신고 매출 합계 = 세금계산서 + 카드,현금 등 + 영세 + 수출(건별) + 기타(건별)",
+    "자료 매입 합계 = 세금계산서 + 계산서 · 신고 매입 합계 = 세금계산서 + 예정누락 + 그밖의 − 불공 − 의제"
+   ],
+   "lines": [
+    "맞음 초록 · 불일치 빨강 · 사유를 적으면 수기검증 주황 · 입력이 하나도 없으면 회색 -",
+    "2025·2024(예전 양식 엑셀)는 기수별 자료·신고 합계·납부세액·신고일만 조회용으로 보관, 다음 해 같은 기수에 전년 동기 비교로 표시"
    ]
   }
  ]
