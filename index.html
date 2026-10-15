@@ -32600,16 +32600,44 @@ function reviewItRefundBase(d, kind){
   const dd = { taxReported: t };
   return reviewItTaxReportedHasAny(dd) ? reviewItTaxReportedSum(dd) : null;
 }
+// [2026.10.15] 당월지급·익월지급 두 줄 거래처의 환급 이월 순서(요청: "근로소득은 익월지급, 기타·사업 같은 단발성 소득은 당월지급으로 신고 -
+//   연말정산을 당월귀속당월지급(2월귀속2월지급)에 같이 하고, 거기서 생긴 환급 차액을 1월귀속2월지급에 반영. 이건 연말정산 시기만 특이사항이고,
+//   나머지는 익월지급 → 당월지급 순으로 이월 반영")
+//   예전엔 줄마다 따로 '같은 줄의 전월'에서만 이어받아서 두 줄 사이로 넘어가는 환급금이 끊겼음 → 두 줄을 신고 순서대로 한 줄로 이어 계산.
+//   순서: 지급월 순. 같은 지급월 안에서는 익월지급(전월 귀속) → 당월지급(그 달 귀속). 단, 당월지급 쪽에 연말정산 환급금이 등록된 달은 당월지급이 먼저.
+//   입력이 없는 칸은 건너뛰고 바로 앞 신고서의 차월이월을 이어받음(1년까지). 한 줄만 있는 거래처는 예전과 같음(같은 줄의 전월)
+function reviewItFigAt(key, y, m){ return ((((sharedReviewFigures || {})[key] || {})[y] || {})[String(m)]); }
+function reviewItDualCid(storeKey){ const cid = String(storeKey).replace(/@nextMonth$/, ''); return (sharedReviewFigures || {})[cid + '@nextMonth'] ? cid : null; }
+// 지급월(P = 연*12 + 월-1)에 낸 두 신고서를 신고 순서대로
+function reviewItPaySlots(cid, P){
+  const same = { key: cid, y: Math.floor(P / 12), m: P % 12 + 1 }, next = { key: cid + '@nextMonth', y: Math.floor((P - 1) / 12), m: (P - 1) % 12 + 1 };
+  return reviewItRegList(reviewItFigAt(same.key, same.y, same.m)).some(r=> r && r.kind === '연말정산') ? [same, next] : [next, same];
+}
+// 바로 앞 신고서 { key, y, m } / 없으면 false / 한 줄 거래처면 null
+function reviewItPrevSlot(storeKey, year, month){
+  const cid = reviewItDualCid(storeKey); if(!cid) return null;
+  let P = Number(year) * 12 + (Number(month) - 1) + (storeKey === cid ? 0 : 1);
+  let slots = reviewItPaySlots(cid, P), i = slots.findIndex(x=> x.key === storeKey);
+  for(let n = 0; n < 24; n++){
+    if(--i < 0){ P--; slots = reviewItPaySlots(cid, P); i = 1; }
+    const x = slots[i]; if(reviewItFigAt(x.key, x.y, x.m)) return x;
+  }
+  return false;
+}
 // 그 달 계산(읽기만 함 - 빈 달을 새로 만들지 않음). storeKey = 검토표 저장 키(익월지급 줄이면 '거래처id@nextMonth')
 function reviewItRefundCalc(storeKey, year, month, kind, depth){
   depth = depth || 0;
   const d = ((((sharedReviewFigures || {})[storeKey] || {})[year] || {})[String(month)]);
-  // 전월에서 넘어온 잔액
+  // 전월(두 줄 거래처는 신고 순서상 바로 앞 신고서)에서 넘어온 잔액
   let carry = 0;
   if(depth < 36){
-    let py = Number(year), pm = month - 1; if(pm < 1){ pm = 12; py -= 1; }
-    const pd = ((((sharedReviewFigures || {})[storeKey] || {})[py] || {})[String(pm)]);
-    if(pd) carry = reviewItRefundCalc(storeKey, py, pm, kind, depth + 1).leftover;
+    const ps = reviewItPrevSlot(storeKey, year, month);
+    if(ps) carry = reviewItRefundCalc(ps.key, ps.y, ps.m, kind, depth + 1).leftover;
+    else if(ps === null){
+      let py = Number(year), pm = month - 1; if(pm < 1){ pm = 12; py -= 1; }
+      const pd = ((((sharedReviewFigures || {})[storeKey] || {})[py] || {})[String(pm)]);
+      if(pd) carry = reviewItRefundCalc(storeKey, py, pm, kind, depth + 1).leftover;
+    }
   }
   const explicit = d ? reviewItRefund(d, kind) : null;
   const refund = explicit != null ? explicit : carry;
@@ -39429,6 +39457,7 @@ HINT_INFO.reviewItRefund = { title:'신고서 · 환급금 · 전월미환급세
   '<b>환급금</b>: "등록"을 눌러 연말정산·중도퇴사 환급금을 적고, 신고서에 반영하는 귀속월을 골라요. 그 달 납부세액 계산에서 빠져요<br>'+
   '<b>환급금 검증</b>: 급여 쪽 근로-연말(연말정산)·근로-중도(중도퇴사) 한 해 합계와 등록한 환급금이 구분별로 같은지 등록 팝업에서 확인해요. 급여에서 차감한 달과 신고서 반영 달이 달라도 돼요<br>'+
   '<b>전월미환급세액</b>: 신고서에 적힌 금액을 플러스(+)로. 비워 두면 전월 차월이월 금액이 흐린 글씨로 자동으로 들어가요<br>'+
+  '<b>당월·익월 두 줄 거래처</b>: 두 줄을 신고 순서대로 이어서 넘겨요. 같은 지급월에서는 익월지급(전월 귀속) → 당월지급 순서이고, 당월지급에 연말정산 환급금을 등록한 달(보통 2월)만 당월지급 → 익월지급 순서예요. 예: 2월귀속2월지급 → 1월귀속2월지급 → 2월귀속3월지급 → 3월귀속3월지급<br>'+
   '<b>직접 적을 때</b>: 환급이 처음 생긴 달, 또는 환급을 받거나 조정돼서 자동 금액과 신고서 금액이 다른 달<br>'+
   '<b>검증</b>: 차감 전 합계로 해요(환급금·전월미환급세액은 검증에 들어가지 않아요)<br>'+
   '<b>지방세</b>: 세액 − 환급금 − 전월미환급세액 = 납부세액, 국세와 같은 방식이에요') };
@@ -47818,7 +47847,7 @@ scheduleTwemojiParse();
 <script type="application/json" id="taxjFormulaDoc">
 {
  "title": "원천세 검토표 검증 계산식",
- "updated": "2026-10-07",
+ "updated": "2026-10-15",
  "sections": [
   {
    "title": "검증 시점",
@@ -47871,7 +47900,8 @@ scheduleTwemojiParse();
    "lines": [
     "신고서 합계: 국세 = 신고서 6칸 합, 지방세 = 신고서 지방세",
     "환급금(등록): 그 달에 등록한 연말정산·중도퇴사 환급금 합(절댓값). 엑셀로 불러오면 연말정산은 2월, 중도퇴사는 급여에 나온 달로 자동 등록",
-    "전월미환급세액: 직접 적으면 그 값, 비우면 전월 차월이월을 자동으로 이어받음"
+    "전월미환급세액: 직접 적으면 그 값, 비우면 전월 차월이월을 자동으로 이어받음",
+    "당월·익월 두 줄 거래처: 두 줄을 신고 순서대로 이어 받음 - 지급월 순, 같은 지급월은 익월지급(전월 귀속) → 당월지급. 당월지급에 연말정산 환급금을 등록한 달만 당월지급 → 익월지급"
    ]
   },
   {
