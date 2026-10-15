@@ -2444,6 +2444,11 @@ try{
   .itm-sec:first-child{ margin-top:0; }
   .itm-box{ background:var(--bg); border-radius:10px; padding:10px 12px; font-size:12.5px; line-height:1.7; color:var(--ink); white-space:pre-wrap; word-break:break-all; }
   .itm-box.empty{ color:var(--ink-soft); }
+  /* [2026.10.15] 급여 특이사항 팝업 - 다른 연도 월별 특이사항(눌러서 펼침) */
+  .itm-yr{ border-bottom:1px dashed var(--border); }
+  .itm-yr > summary{ font-size:12px; font-weight:700; color:var(--ink); padding:8px 2px; cursor:pointer; }
+  .itm-yr > summary:hover{ color:var(--indigo-deep); }
+  .itm-yr .itm-row:last-child{ border-bottom:none; }
   .itm-row{ display:flex; gap:10px; align-items:flex-start; padding:8px 0; border-bottom:1px dashed var(--border); }
   .itm-row:last-child{ border-bottom:none; }
   .itm-m{ flex-shrink:0; width:44px; font-size:12px; font-weight:800; color:var(--indigo-deep); padding-top:2px; }
@@ -15873,6 +15878,7 @@ function openItClientMemoModal(cid, name, year){
   const btns = (pfx)=> `<span class="itm-acts"><button type="button" class="it-memo-act" data-act="${pfx}-edit" title="수정" aria-label="수정">${ICON_EDIT}</button><button type="button" class="it-memo-act del" data-act="${pfx}-del" title="삭제" aria-label="삭제">${ICON_DEL}</button></span>`;
   const after = ()=>{ try{ renderIncomeTaxUnified(); }catch(e){} };
   let editing = null;   // 'note' | 'm:YYYY-MM' | 'add'
+  const openYears = new Set();   // [2026.10.15] 펼쳐 둔 다른 연도(다시 그려도 유지)
   const lanesOf = (p)=>{ const t = (sharedFilingTargets[cid] || {})[p]; const l = t && t.marked && t.applicable ? [t.sameMonthPay ? 'sameMonth' : null, t.nextMonthPay ? 'nextMonth' : null].filter(Boolean) : []; return l.length ? l : ['sameMonth']; };
   const laneLab = { sameMonth:'당월지급', nextMonth:'익월지급' };
   const render = ()=>{
@@ -15881,7 +15887,7 @@ function openItClientMemoModal(cid, name, year){
     let h = `<div class="itm-sec"><span>전체 특이사항</span>${editing === 'note' ? '' : btns('note')}</div>`;
     h += editing === 'note'
       ? `<textarea class="itm-ta" id="itmNoteTa" placeholder="이 거래처 급여에 늘 해당하는 특이사항">${escHtml(note)}</textarea><div class="itm-btns"><button type="button" class="del-btn" data-act="cancel">취소</button><button type="button" class="submit-btn" style="width:auto; padding:6px 16px; margin:0;" data-act="note-save">저장</button></div>`
-      : `<div class="itm-box${note ? '' : ' empty'}">${note ? escHtml(note) : '없어요'}</div>`;
+      : (note ? `<div class="itm-box">${escHtml(note)}</div>` : '');   // [2026.10.15] 없을 때 '없어요' 문구 대신 빈칸(요청)
     h += `<div class="itm-sec"><span>월별 특이사항 · ${year}년 귀속</span>${editing === 'add' ? '' : `<button type="button" class="it-memo-act" data-act="add" title="월별 특이사항 추가" aria-label="추가">${ICON_ADD}</button>`}</div>`;
     if(editing === 'add'){
       const used = new Set(months.map(x=> x.m));
@@ -15889,7 +15895,7 @@ function openItClientMemoModal(cid, name, year){
       h += `<div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;"><select id="itmAddMonth" style="border:1.5px solid var(--border); border-radius:8px; padding:5px 8px; font-size:12px; font-family:'Pretendard',sans-serif; background:var(--surface);">${Array.from({length:12},(_,i)=>i+1).map(m=>`<option value="${m}" ${m===focusM?'selected':''}>${m}월${used.has(m)?' (있음)':''}</option>`).join('')}</select></div>
         <textarea class="itm-ta" id="itmAddTa" placeholder="그 달 급여 특이사항"></textarea><div class="itm-btns"><button type="button" class="del-btn" data-act="cancel">취소</button><button type="button" class="submit-btn" style="width:auto; padding:6px 16px; margin:0;" data-act="add-save">저장</button></div>`;
     }
-    if(!months.length && editing !== 'add') h += `<div class="itm-box empty">없어요</div>`;
+    // [2026.10.15] 월별 특이사항이 없을 때도 '없어요' 문구는 안 보이게(요청)
     h += months.map(x=>{
       if(editing === 'm:' + x.p){
         const ent = incomeTaxFilingEntry(x.p, cid);
@@ -15899,10 +15905,20 @@ function openItClientMemoModal(cid, name, year){
       const txt = x.parts.length > 1 ? x.parts.map(pp=> `[${pp.l}] ${pp.t}`).join('\n') : x.parts[0].t;
       return `<div class="itm-row"><span class="itm-m">${x.m}월</span><span class="itm-t">${escHtml(txt)}</span>${editing ? '' : btns('m:' + x.p)}</div>`;
     }).join('');
+    // [2026.10.15] "특정 귀속월을 골라야 그 연도 것만 보이는데, 연도별 메모도 펼쳐서 볼 수 있으면"(요청) - 다른 연도의 월별 특이사항을 연도마다 접어 두고 눌러서 펼쳐 봄(보기만, 고치려면 그 연도로 이동)
+    const otherYears = Array.from(new Set(Object.keys(sharedIncomeTaxFilingStatus || {}).filter(k=> /^\d{4}-\d{2}$/.test(k)).map(k=> k.slice(0,4))))
+      .filter(y=> y !== year).sort().reverse().map(y=> [y, itClientMonthMemos(cid, y)]).filter(([, l])=> l.length);
+    if(otherYears.length){
+      h += `<div class="itm-sec"><span>다른 연도 월별 특이사항</span></div>` + otherYears.map(([y, l])=> `<details class="itm-yr" data-y="${y}"${openYears.has(y) ? ' open' : ''}><summary>${y}년 귀속 · ${l.length}개월</summary>${l.map(x=>{
+        const txt = x.parts.length > 1 ? x.parts.map(pp=> `[${pp.l}] ${pp.t}`).join('\n') : x.parts[0].t;
+        return `<div class="itm-row"><span class="itm-m">${x.m}월</span><span class="itm-t">${escHtml(txt)}</span></div>`;
+      }).join('')}</details>`).join('');
+    }
     openClientNamedInfoModal(name, '급여 특이사항', h);
     const body = document.getElementById('memoModalBody');
     body.querySelector('textarea')?.focus();
     body.querySelectorAll('[data-act]').forEach(b=> b.addEventListener('click', ()=> onAct(b.dataset.act, b)));
+    body.querySelectorAll('details.itm-yr').forEach(d=> d.addEventListener('toggle', ()=>{ if(d.open) openYears.add(d.dataset.y); else openYears.delete(d.dataset.y); }));
   };
   const onAct = async (act, b)=>{
     if(act === 'cancel'){ editing = null; return render(); }
@@ -33318,14 +33334,21 @@ function openReviewItRefundRegModal(clientId, year, focusMonth){
     const rows = [];
     for(let m = 1; m <= 12; m++) reviewItRegList(raw(m)).forEach((r, i)=> rows.push({ m, i, r }));
     // 검증: 구분별로 급여 쪽 세액 유형(근로-연말 / 근로-중도) 한 해 합계(환급은 마이너스) ↔ 등록한 환급금 합계
-    const verify = REVIEW_REFUND_KINDS.map(kind=>{
+    // [2026.10.15] "검증이 등록(저장)할 때가 아니라 숫자 입력하자마자 바로 뜨게"(요청) - 아래 입력칸에 적는 중인 금액(pending)도 합쳐서 바로 다시 계산
+    //   수정 중이면 그 기존 등록 대신 입력 중인 값으로 계산. 저장 전 값이 들어간 구분에는 '입력 중 포함' 표시
+    const verifyOf = pending=> REVIEW_REFUND_KINDS.map(kind=>{
       const g = REVIEW_REFUND_GROUP[kind];
       let payT = 0, payL = 0, regT = 0, regL = 0;
       for(let m = 1; m <= 12; m++){ const d = raw(m); if(!d) continue; const y = (d.tax || {})[g] || {}; payT += Number(y.tax) || 0; payL += Number(y.local) || 0; }
-      rows.filter(x=> x.r.kind === kind).forEach(x=>{ regT += Math.abs(Number(x.r.tax)) || 0; regL += Math.abs(Number(x.r.local)) || 0; });
-      return { kind, label: (REVIEW_TAX_GROUPS.find(x=> x.key === g) || {}).label || g, payT, payL, regT, regL };
+      rows.filter(x=> x.r.kind === kind && !(editing && x.m === editing.m && x.i === editing.i && pending)).forEach(x=>{ regT += Math.abs(Number(x.r.tax)) || 0; regL += Math.abs(Number(x.r.local)) || 0; });
+      const pend = !!(pending && pending.kind === kind && (pending.tax || pending.local));
+      if(pend){ regT += pending.tax; regL += pending.local; }
+      return { kind, label: (REVIEW_TAX_GROUPS.find(x=> x.key === g) || {}).label || g, payT, payL, regT, regL, pend };
     });
+    const verify = verifyOf(null);
     const chk = (pay, reg)=>{ if(!pay && !reg) return '<span style="color:var(--ink-soft);">-</span>'; const ok = Math.abs(pay) === reg && (pay <= 0 || !reg); return `<span style="font-weight:800; color:${ok ? 'var(--mint)' : 'var(--coral)'};">${ok ? '✓ 일치' : '✕ 불일치'}</span>`; };
+    const verifyHtml = list=> list.map(v=> `<div class="itm-sec"><span>${v.kind} 환급금 검증 (급여 ${escHtml(v.label)} 한 해 합계 ↔ 등록 합계)${v.pend ? ' <span style="color:var(--indigo-deep);">· 입력 중 포함</span>' : ''}</span></div>
+      <div class="itm-box" style="white-space:normal;">국세: 급여 ${fmt(v.payT)} · 등록 ${fmt(v.regT)} → ${chk(v.payT, v.regT)}<br>지방세: 급여 ${fmt(v.payL)} · 등록 ${fmt(v.regL)} → ${chk(v.payL, v.regL)}</div>`).join('');
     const ed = editing ? rows.find(x=> x.m === editing.m && x.i === editing.i) : null;
     const fm = ed ? ed.m : (focusMonth || 2);
     const inSty = "border:1.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:12.5px; font-family:'Pretendard',sans-serif; background:var(--surface); box-sizing:border-box;";
@@ -33340,11 +33363,17 @@ function openReviewItRefundRegModal(clientId, year, focusMonth){
         <label style="font-size:11px; font-weight:700; color:var(--ink-soft);">지방세 환급금<input id="rrLocal" type="text" inputmode="numeric" value="${ed ? fmt(Math.abs(ed.r.local)) : ''}" style="${inSty} width:100%; margin-top:3px; text-align:right;"></label>
       </div>
       <div class="itm-btns">${ed ? '<button type="button" class="del-btn" data-act="cancel">취소</button>' : ''}<button type="button" class="submit-btn" style="width:auto; padding:6px 16px; margin:0;" data-act="save">${ed ? '저장' : '등록'}</button></div>
-      ${verify.map(v=> `<div class="itm-sec"><span>${v.kind} 환급금 검증 (급여 ${escHtml(v.label)} 한 해 합계 ↔ 등록 합계)</span></div>
-      <div class="itm-box" style="white-space:normal;">국세: 급여 ${fmt(v.payT)} · 등록 ${fmt(v.regT)} → ${chk(v.payT, v.regT)}<br>지방세: 급여 ${fmt(v.payL)} · 등록 ${fmt(v.regL)} → ${chk(v.payL, v.regL)}</div>`).join('')}`;
+      <div id="rrVerify">${verifyHtml(verify)}</div>`;
     openClientNamedInfoModal(name, '환급금 등록', h);
     const body = document.getElementById('memoModalBody');
-    ['rrTax','rrLocal'].forEach(id=>{ const el = document.getElementById(id); el?.addEventListener('input', ()=> formatMoneyInputLive(el)); });
+    const liveVerify = ()=>{
+      const tax = Math.abs(moneyParse(document.getElementById('rrTax')?.value) || 0), local = Math.abs(moneyParse(document.getElementById('rrLocal')?.value) || 0);
+      const box = document.getElementById('rrVerify');
+      if(box) box.innerHTML = verifyHtml(verifyOf((tax || local) ? { kind: document.getElementById('rrKind')?.value, tax, local } : null));
+    };
+    ['rrTax','rrLocal'].forEach(id=>{ const el = document.getElementById(id); el?.addEventListener('input', ()=>{ formatMoneyInputLive(el); liveVerify(); }); });
+    ['rrKind','rrMonth'].forEach(id=> document.getElementById(id)?.addEventListener('change', liveVerify));
+    if(editing) liveVerify();
     body.querySelectorAll('[data-act]').forEach(b=> b.addEventListener('click', ()=> onAct(b)));
   };
   const onAct = async (b)=>{
