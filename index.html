@@ -30739,6 +30739,18 @@ document.getElementById('itAllYear')?.addEventListener('change', (e)=>{ const v 
 document.getElementById('itAllSearch')?.addEventListener('input', ()=> renderIncomeTaxUnified());
 // 신고일자 입력 팝업 - 이미 신고대상으로 등록된 달(칸)을 눌렀을 때 뜨며, 지급시기별 원천세·지방세 신고일자·
 // 메모를 입력함. 저장을 눌러야 실제로 반영됨(다른 신고대상/신고구분 팝업들과 같은 패턴)
+// [2026.10.15] "날짜가 한번에 지워지게"(요청: 원천세 신고일자 창 → "다 적용") - 앱 전체의 날짜 칸(date·datetime-local·month·time)에서
+// Backspace·Delete를 누르면 연·월·일이 한 칸씩만 지워졌음 → 한 번에 전체를 지움. 각 칸의 저장 로직이 그대로 돌도록 input·change 이벤트를 같이 보냄
+document.addEventListener('keydown', e=>{
+  if(e.key !== 'Backspace' && e.key !== 'Delete') return;
+  const t = e.target;
+  if(!t || t.tagName !== 'INPUT' || !['date','datetime-local','month','time'].includes(t.type) || t.readOnly || t.disabled) return;
+  e.preventDefault();
+  if(!t.value) return;
+  t.value = '';
+  t.dispatchEvent(new Event('input', { bubbles:true }));
+  t.dispatchEvent(new Event('change', { bubbles:true }));
+}, true);
 let itAllDateEditCtx = { clientId:null, period:null };
 // [2026.10.06] "당월/당월 줄을 눌렀으면 당월/익월 칸은 필요 없다"(요청) - 지급시기 줄(당월·익월)이 나뉜 거래처는 누른 줄의 지급시기만 보여줌
 function openItAllDateEditModal(clientId, period, timing){
