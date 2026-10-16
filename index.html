@@ -31766,13 +31766,13 @@ function vatMemoGet(cid, year, period){ return ((((sharedFilingStatus || {})['�
 // [2026.10.08] 신고도움은 정해진 칸으로(요청) - 차량(유무·차종·차량번호·공제/불공제·메모), 4대보험 직원(기수마다 - 그 귀속기간 시작~말일에 있었는지:
 // 특수관계인·일반근로자·단시간근로자), 신고유형(특이사항없음·안분·의제·면세·기타), 메모. 예전에 글로만 적은 값은 메모로 이어짐
 const VAT_HELP_STAFF = ['특수관계인','일반근로자','단시간근로자'];
-const VAT_HELP_KINDS = ['특이사항없음','안분','의제','면세','기타'];
+const VAT_HELP_KINDS = ['일반','안분','의제','면세','기타'];   // [2026.10.16] '특이사항없음' → '일반'(요청). 예전에 저장된 '특이사항없음'은 읽을 때 '일반'으로 바꿔 보여줌
 // [2026.10.16] "신고유형 아래 수령자료 - 수기세금계산서 등 받는 자료 체크, 항목은 직접 추가도"(요청). 기본 항목 + 거래처별로 추가한 항목(recvItems), 체크한 것(recv)
 const VAT_HELP_RECV = ['수기세금계산서','수기계산서','통장매출내역','수출서류','수입서류','간이영수증','임대차계약서','판매대행','카드내역','해외용역'];   // [2026.10.16] 항목 바꿈(요청)
 const VAT_PERIOD_RANGE = { '1기예정':['01-01','03-31'], '1기확정':['04-01','06-30'], '2기예정':['07-01','09-30'], '2기확정':['10-01','12-31'] };
 // 기수별 직원: 예전엔 ['일반근로자', …] 배열, 이제 { 일반근로자: 3, … }(명수, 비우면 0). 없음 = {} . 기록 없음 = undefined
 function vatHelpStaffMap(v){ if(v == null) return null; if(Array.isArray(v)){ const o = {}; v.forEach(k=> o[k] = 0); return o; } return v; }
-function vatHelpObj(cid){ const v = ((sharedVatFilingTargets || {})[cid] || {}).__help; if(!v) return {}; return typeof v === 'string' ? { memo: v } : v; }
+function vatHelpObj(cid){ const v = ((sharedVatFilingTargets || {})[cid] || {}).__help; if(!v) return {}; if(typeof v === 'string') return { memo: v }; if(Array.isArray(v.kinds) && v.kinds.includes('특이사항없음')) return Object.assign({}, v, { kinds: v.kinds.map(k=> k === '특이사항없음' ? '일반' : k) }); return v; }
 function vatHelpGet(cid){ const h = vatHelpObj(cid); return (h.vehicleYn || (h.vehicles||[]).length || (h.kinds||[]).length || (h.recv||[]).length || h.memo || Object.keys(h.staff||{}).length) ? 'y' : ''; }
 function vatHelpTipRows(cid, year, period){
   const h = vatHelpObj(cid), rows = [];
@@ -32036,7 +32036,7 @@ function openVatHelpModal(cid, name, year, period){
   // '없음'과 직원 종류는 같이 못 고름
   const syncCnt = ()=> root.querySelectorAll('.vh-cnt').forEach(inp=>{ const cb = root.querySelector(`input[data-grp="staff"][value="${inp.dataset.k}"]`); inp.disabled = !(cb && cb.checked); if(inp.disabled) inp.value = ''; });
   root.querySelectorAll('input[data-grp="staff"]').forEach(cb=> cb.addEventListener('change', ()=>{ if(cb.checked) root.querySelectorAll('input[data-grp="staff"]').forEach(o=>{ if(o !== cb && ((cb.value === '없음') !== (o.value === '없음'))) o.checked = false; }); syncCnt(); if(cb.checked && cb.value !== '없음') root.querySelector(`.vh-cnt[data-k="${cb.value}"]`)?.focus(); }));
-  root.querySelectorAll('input[data-grp="kinds"]').forEach(cb=> cb.addEventListener('change', ()=>{ if(!cb.checked) return; root.querySelectorAll('input[data-grp="kinds"]').forEach(o=>{ if(o !== cb && ((cb.value === '특이사항없음') !== (o.value === '특이사항없음'))) o.checked = false; }); }));
+  root.querySelectorAll('input[data-grp="kinds"]').forEach(cb=> cb.addEventListener('change', ()=>{ if(!cb.checked) return; root.querySelectorAll('input[data-grp="kinds"]').forEach(o=>{ if(o !== cb && ((cb.value === '일반') !== (o.value === '일반'))) o.checked = false; }); }));
   root.querySelector('#vhCancel').onclick = ()=>{ document.getElementById('memoModalOverlay').style.display = 'none'; };
   root.querySelector('#vhSave').onclick = async ()=>{
     const out = {};
