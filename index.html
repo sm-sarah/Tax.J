@@ -2519,6 +2519,9 @@ try{
   .app-tip-r{ display:flex; gap:10px; justify-content:space-between; white-space:nowrap; }
   .app-tip-r span{ color:var(--ink-soft); font-weight:600; }
   .app-tip-r b{ font-weight:800; color:var(--ink); }
+  /* [2026.10.16] "Tip 글자가 말풍선 밖으로 넘어감"(요청) - 값이 길면 말풍선 폭 안에서 줄바꿈(항목명은 한 줄 유지) */
+  .app-tip-r span{ flex:none; }
+  .app-tip-r b{ white-space:normal; word-break:keep-all; overflow-wrap:anywhere; text-align:right; min-width:0; }
   .app-tip-note{ color:var(--ink-soft); font-size:11.5px; white-space:normal; }
   .app-tip-txt{ white-space:pre-wrap; word-break:break-all; }
   /* [2026.10.02] 원천세 한 달 한 칸 - 칸 폭은 모두 같게, 국세·지방세 모두 신고하면 진행 표시(▶)와 같은 남색 동그라미 안 흰 체크(요청 - 체크가 잘 안 보이고 색이 안 맞음) */
@@ -31755,11 +31758,17 @@ function vatHelpObj(cid){ const v = ((sharedVatFilingTargets || {})[cid] || {}).
 function vatHelpGet(cid){ const h = vatHelpObj(cid); return (h.vehicleYn || (h.vehicles||[]).length || (h.kinds||[]).length || (h.recv||[]).length || h.memo || Object.keys(h.staff||{}).length) ? 'y' : ''; }
 function vatHelpTipRows(cid, year, period){
   const h = vatHelpObj(cid), rows = [];
+  // [2026.10.16] "Tip에 해당 과세기간 - 예정은 그 분기, 확정은 그 기(1기·2기) 기간. 직원·차량은 귀속기간 말일 기준 표시"(요청)
+  const rg = VAT_PERIOD_RANGE[period] || ['',''], isPre = /예정/.test(period || ''), half = /^1기/.test(period || '') ? '1기' : '2기';
+  const md = d=> d ? `${Number(d.slice(0,2))}.${Number(d.slice(3,5))}` : '';
+  const from = isPre ? rg[0] : (half === '1기' ? '01-01' : '07-01');
+  if(year && period) rows.push(['', `${year}년 ${VAT_TARGET_PERIOD_LABEL[period] || period} · ${md(from)}~${md(rg[1])}`]);
+  const asOf = rg[1] ? ` (${md(rg[1])} 기준)` : '';
   const vs = (h.vehicles || []).filter(v=> v && (v.type || v.no || v.own));
-  if(h.vehicleYn === '없음') rows.push(['차량', '무']);
-  else if(h.vehicleYn === '있음' || vs.length) rows.push(['차량', vs.length ? vs.map(v=>{ const own = v.own === '기타' ? (v.ownEtc || '기타') : (v.own || ''); const tail = [own, v.deduct].filter(Boolean).join('·'); return `${v.type||''} ${v.no||''}${tail ? ` (${tail})` : ''}`.trim(); }).join(', ') : '유']);
+  if(h.vehicleYn === '없음') rows.push([`차량${asOf}`, '무']);
+  else if(h.vehicleYn === '있음' || vs.length) rows.push([`차량${asOf}`, vs.length ? vs.map(v=>{ const own = v.own === '기타' ? (v.ownEtc || '기타') : (v.own || ''); const tail = [own, v.deduct].filter(Boolean).join('·'); return `${v.type||''} ${v.no||''}${tail ? ` (${tail})` : ''}`.trim(); }).join(', ') : '유']);
   const st = vatHelpStaffMap((h.staff || {})[`${year}-${period}`]);
-  if(st) rows.push(['직원', Object.keys(st).length ? Object.entries(st).map(([k, n])=> n ? `${k} ${n}명` : k).join('·') : '없음']);
+  if(st) rows.push([`직원${asOf}`, Object.keys(st).length ? Object.entries(st).map(([k, n])=> n ? `${k} ${n}명` : k).join('·') : '없음']);
   if((h.kinds||[]).length) rows.push(['신고유형', h.kinds.map(k=> k === '기타' && h.kindEtc ? `기타(${h.kindEtc})` : k).join('·')]);
   if((h.recv||[]).length) rows.push(['수령자료', h.recv.join('·')]);
   return rows;
