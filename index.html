@@ -2302,6 +2302,7 @@ try{
   .vat-tb-counts{ text-align:center; font-size:12px; color:var(--ink-soft); margin:0 0 8px; }
   .vat-tb-counts b{ color:var(--ink); font-weight:800; }
   .vat-tb-table td, .vat-tb-table th{ white-space:nowrap; font-size:12px; }
+  .table-scroll .vat-tb-table td.vat-sm{ font-size:11.5px; }   /* [2026.10.16] 사업자번호~관할서 글자 9pt 정도(요청) */
   .vat-tb-table tr.vat-tb-filing > td{ background:rgba(91,95,239,0.07); } /* [2026.10.15] "예정신고 줄만 음영"(요청) - 구분이 예정신고인 줄 전체에 옅은 인디고 */
   .vat-tb-table td.vat-tb-r{ text-align:center; font-variant-numeric:tabular-nums; } /* [2026.10.06] 이 표는 제목·내용 모두 가운데 정렬(요청) */
   .vat-tb-table .vat-tb-na{ color:#C9CBD6; } /* [2026.10.06] 빈칸은 거래처 표 빈칸(client-cell-na)처럼 짧은 '-' + 아주 옅은 회색(요청) */
@@ -31805,7 +31806,7 @@ function vatHelpTipHtml(cid, year, period){
   else if(h.vehicleYn === '있음' || vs.length) out.push(sec('차량', vs.length ? vs.map(v=>{ const own = v.own === '기타' ? (v.ownEtc || '기타') : (v.own || '');
     return `<b>${e(v.type || '')}</b> ${e(v.no || '')}${[own, v.deduct].filter(Boolean).map(t=> ` <span class="vtip-chip">${e(t)}</span>`).join('')}${v.memo ? ` <span class="vtip-dim">${e(v.memo)}</span>` : ''}`; }) : ['유'], asOf));
   const st = vatHelpStaffMap((h.staff || {})[`${year}-${period}`]);
-  if(st) out.push(sec('직원', Object.keys(st).length ? Object.entries(st).map(([k, n])=> `${e(k)}${n ? ` <b>${n}명</b>` : ''}`) : ['없음'], asOf));
+  if(st) out.push(sec('직원', Object.keys(st).length ? Object.entries(st).map(([k, n])=> k === '있음' ? '유' : `${e(k)}${n ? ` <b>${n}명</b>` : ''}`) : ['무'], asOf));
   if((h.kinds||[]).length) out.push(sec('신고유형', [h.kinds.map(k=> `<span class="vtip-chip">${e(k === '기타' && h.kindEtc ? `기타(${h.kindEtc})` : k)}</span>`).join(' ')]));
   if((h.recv||[]).length) out.push(sec('수령자료', [h.recv.map(k=> `<span class="vtip-chip">${e(k)}</span>`).join(' ')]));
   const memo = (h.memo || '').trim();
@@ -31827,7 +31828,7 @@ function vatHelpStBtnHtml(c, year, period){
   const v = vatHelpStGet(c.id, year, period), st = (v && v.st) || '미진행';
   const color = st === '신고완료' ? 'var(--mint)' : st === '신고서마감' ? 'var(--indigo)' : st === '검토중' ? 'var(--amber)' : 'var(--ink-soft)';
   const d = v && v.date ? ` ${Number(v.date.slice(5,7))}/${Number(v.date.slice(8,10))}` : '';
-  return `<button type="button" class="vat-helpst-btn" data-client-id="${c.id}" data-name="${escHtml(c.name)}" title="신고도움 진행현황 · 눌러서 바꾸기" style="border:none; background:none; cursor:pointer; padding:0 2px; font-family:inherit; font-size:12px; font-weight:800; color:${color}; white-space:nowrap;">${st}${d}</button>`;
+  return `<button type="button" class="vat-helpst-btn" data-client-id="${c.id}" data-name="${escHtml(c.name)}" title="신고현황 · 눌러서 바꾸기" style="border:none; background:none; cursor:pointer; padding:0 2px; font-family:inherit; font-size:12px; font-weight:800; color:${color}; white-space:nowrap;">${st}${d}</button>`;
 }
 function openVatHelpStModal(cid, name, year, period){
   const cur = vatHelpStGet(cid, year, period) || {};
@@ -31835,7 +31836,7 @@ function openVatHelpStModal(cid, name, year, period){
       <div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center;">${VAT_HELP_ST.map(o=> `<label style="display:inline-flex; align-items:center; gap:5px; font-size:12.5px; cursor:pointer;"><input type="radio" name="vhsSt" value="${o}" ${((cur.st || '미진행') === o) ? 'checked' : ''} style="accent-color:var(--indigo);">${o}</label>`).join('')}</div>
       <div id="vhsDateRow" style="display:flex; gap:6px; align-items:center; font-size:12.5px;"><span style="color:var(--ink-soft); font-weight:700;">날짜</span><input type="date" id="vhsDate" value="${escHtml(cur.date || '')}" style="border:1.5px solid var(--border); border-radius:8px; padding:5px 8px; font-size:12px; height:30px;"><button type="button" class="del-btn" id="vhsToday" style="height:30px;">오늘</button></div>
       <div style="display:flex; justify-content:center; gap:8px;"><button type="button" class="del-btn" id="vhsCancel">취소</button><button type="button" class="submit-btn" id="vhsSave" style="width:auto; margin:0; padding:0 18px; height:31px; font-size:12.5px;">저장</button></div></div>`;
-  openClientNamedInfoModal(name, `신고도움 진행현황 · ${year}년 ${VAT_TARGET_PERIOD_LABEL[period] || period}`, body);
+  openClientNamedInfoModal(name, `신고현황 · ${year}년 ${VAT_TARGET_PERIOD_LABEL[period] || period}`, body);
   const root = document.getElementById('memoModalBody');
   const syncDate = ()=>{ const st = root.querySelector('input[name="vhsSt"]:checked')?.value; const needs = st === '신고서마감' || st === '신고완료'; root.querySelector('#vhsDateRow').style.display = needs ? 'flex' : 'none'; if(needs && !root.querySelector('#vhsDate').value) root.querySelector('#vhsDate').value = todayStr(); };
   root.querySelectorAll('input[name="vhsSt"]').forEach(r=> r.addEventListener('change', syncDate)); syncDate();
@@ -31853,7 +31854,7 @@ function openVatHelpStModal(cid, name, year, period){
 }
 function vatDocsCellHtml(c, year, period){
   const n = vatDocsGet(c.id, year, period).length;
-  return `<td class="cvb" style="white-space:nowrap;">${vatHelpStBtnHtml(c, year, period)} ${n ? `<span class="it-note-ic vat-docs-btn" role="button" data-client-id="${c.id}" data-name="${escHtml(c.name)}" title="신고도움 파일 ${n}개"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>${n > 1 ? `<span style="font-size:10px; font-weight:800; margin-left:2px;">${n}</span>` : ''}</span>` : `<button type="button" class="st-memo-add vat-docs-btn" data-client-id="${c.id}" data-name="${escHtml(c.name)}" title="신고도움 파일 올리기" aria-label="신고도움 파일 올리기">+</button>`}</td>`;
+  return `<td class="cvb">${n ? `<span class="it-note-ic vat-docs-btn" role="button" data-client-id="${c.id}" data-name="${escHtml(c.name)}" title="신고도움 파일 ${n}개"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>${n > 1 ? `<span style="font-size:10px; font-weight:800; margin-left:2px;">${n}</span>` : ''}</span>` : `<button type="button" class="st-memo-add vat-docs-btn" data-client-id="${c.id}" data-name="${escHtml(c.name)}" title="신고도움 파일 올리기" aria-label="신고도움 파일 올리기">+</button>`}</td>`;
 }
 function openVatDocsModal(cid, name, year, period){
   const plab = `${year}년 ${VAT_TARGET_PERIOD_LABEL[period] || period}`;
@@ -32001,12 +32002,11 @@ function openVatHelpModal(cid, name, year, period){
   const staff = vatHelpStaffMap(h.staff && h.staff[pkey]);
   const recvChk = (v, on)=> chk('recv', v, on).replace('margin:0 12px 6px 0;', 'margin:0;');
   const body = `
-    ${sec(`${lab('차량')}
-    <div style="display:flex; gap:12px; margin-bottom:6px;">${[['있음','유'],['없음','무']].map(([o, l])=> `<label style="display:inline-flex; align-items:center; gap:5px; font-size:12.5px; cursor:pointer;"><input type="checkbox" class="vh-yn" value="${o}" ${h.vehicleYn === o ? 'checked' : ''} style="accent-color:var(--indigo);">${l}</label>`).join('')}</div><!-- [2026.10.16] 있음·없음 라디오 → 유·무 체크(요청). 하나만 체크되고 저장 값은 그대로 '있음'·'없음' -->
+    ${sec(`<div style="display:flex; align-items:center; gap:14px; margin:0 0 8px;">${lab('차량').replace('margin:0 0 8px;', 'margin:0;')}<div style="display:flex; gap:12px;">${[['있음','유'],['없음','무']].map(([o, l])=> `<label style="display:inline-flex; align-items:center; gap:5px; font-size:12.5px; cursor:pointer;"><input type="checkbox" class="vh-yn" value="${o}" ${h.vehicleYn === o ? 'checked' : ''} style="accent-color:var(--indigo);">${l}</label>`).join('')}</div></div><!-- [2026.10.16] 있음·없음 라디오 → 유·무 체크(요청). 하나만 체크되고 저장 값은 그대로 '있음'·'없음'. 유·무는 '차량' 제목 오른쪽 같은 줄(요청) -->
     <div id="vhVehicles">${(h.vehicles && h.vehicles.length ? h.vehicles : [{}]).map(vRow).join('')}</div>
     <button type="button" class="del-btn" id="vhAddVehicle" style="height:28px;">＋ 차량 추가</button>`)}
-    ${sec(`${lab(`4대보험 직원 <span style="font-weight:600;">· *신고귀속기간 말일 기준 (${year}.${rg[1].replace('-','.')} · ${escHtml(VAT_TARGET_PERIOD_LABEL[period] || period)}) · 여러 개 고를 수 있어요</span>`)}
-    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 16px;">${VAT_HELP_STAFF.map(v=> `<span style="display:inline-flex; align-items:center; gap:5px;">${chk('staff', v, staff && v in staff).replace('margin:0 12px 6px 0;', 'margin:0;')}<input type="number" min="1" class="vh-cnt" data-k="${v}" value="${staff && staff[v] ? staff[v] : ''}" placeholder="0" ${staff && v in staff ? '' : 'disabled'} style="${inS} width:54px; text-align:right;"><span style="font-size:12px; color:var(--ink-soft);">명</span></span>`).join('')}${chk('staff', '없음', staff && !Object.keys(staff).length).replace('margin:0 12px 6px 0;', 'margin:0;')}</div>
+    ${sec(`<div style="display:flex; align-items:center; gap:14px; margin:0 0 8px;">${lab('4대보험 직원').replace('margin:0 0 8px;', 'margin:0;')}<div style="display:flex; gap:12px;">${[['유', staff && Object.keys(staff).length], ['무', staff && !Object.keys(staff).length]].map(([l, on])=> `<label style="display:inline-flex; align-items:center; gap:5px; font-size:12.5px; cursor:pointer;"><input type="checkbox" class="vh-syn" value="${l}" ${on ? 'checked' : ''} style="accent-color:var(--indigo);">${l}</label>`).join('')}</div></div><!-- [2026.10.16] 4대보험 직원도 차량처럼 제목 옆 유·무, 옆 설명 문구와 '없음' 체크는 없앰(요청). 무 = 예전 '없음'(빈 값) -->
+    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 16px;">${VAT_HELP_STAFF.map(v=> `<span style="display:inline-flex; align-items:center; gap:5px;">${chk('staff', v, staff && v in staff).replace('margin:0 12px 6px 0;', 'margin:0;')}<input type="number" min="1" class="vh-cnt" data-k="${v}" value="${staff && staff[v] ? staff[v] : ''}" placeholder="0" ${staff && v in staff ? '' : 'disabled'} style="${inS} width:54px; text-align:right;"><span style="font-size:12px; color:var(--ink-soft);">명</span></span>`).join('')}</div>
 `)}
     ${sec(`${lab('신고유형')}
     <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px;">${VAT_HELP_KINDS.map(v=> chk('kinds', v, (h.kinds||[]).includes(v)).replace('margin:0 12px 6px 0;', 'margin:0;')).join('')}<input type="text" id="vhKindEtc" placeholder="기타 내용" value="${escHtml(h.kindEtc||'')}" style="${inS} width:160px;"></div>
@@ -32035,7 +32035,10 @@ function openVatHelpModal(cid, name, year, period){
   root.querySelectorAll('.vh-yn').forEach(cb=> cb.addEventListener('change', ()=>{ if(cb.checked) root.querySelectorAll('.vh-yn').forEach(o=>{ if(o !== cb) o.checked = false; }); }));
   // '없음'과 직원 종류는 같이 못 고름
   const syncCnt = ()=> root.querySelectorAll('.vh-cnt').forEach(inp=>{ const cb = root.querySelector(`input[data-grp="staff"][value="${inp.dataset.k}"]`); inp.disabled = !(cb && cb.checked); if(inp.disabled) inp.value = ''; });
-  root.querySelectorAll('input[data-grp="staff"]').forEach(cb=> cb.addEventListener('change', ()=>{ if(cb.checked) root.querySelectorAll('input[data-grp="staff"]').forEach(o=>{ if(o !== cb && ((cb.value === '없음') !== (o.value === '없음'))) o.checked = false; }); syncCnt(); if(cb.checked && cb.value !== '없음') root.querySelector(`.vh-cnt[data-k="${cb.value}"]`)?.focus(); }));
+  // 직원 종류를 고르면 '유'로, '무'를 고르면 종류 체크를 지움. 유·무는 하나만
+  const synBox = v=> root.querySelector(`.vh-syn[value="${v}"]`);
+  root.querySelectorAll('input[data-grp="staff"]').forEach(cb=> cb.addEventListener('change', ()=>{ if(cb.checked){ synBox('유').checked = true; synBox('무').checked = false; } syncCnt(); if(cb.checked) root.querySelector(`.vh-cnt[data-k="${cb.value}"]`)?.focus(); }));
+  root.querySelectorAll('.vh-syn').forEach(cb=> cb.addEventListener('change', ()=>{ if(!cb.checked) return; root.querySelectorAll('.vh-syn').forEach(o=>{ if(o !== cb) o.checked = false; }); if(cb.value === '무'){ root.querySelectorAll('input[data-grp="staff"]').forEach(o=> o.checked = false); syncCnt(); } }));
   root.querySelectorAll('input[data-grp="kinds"]').forEach(cb=> cb.addEventListener('change', ()=>{ if(!cb.checked) return; root.querySelectorAll('input[data-grp="kinds"]').forEach(o=>{ if(o !== cb && ((cb.value === '일반') !== (o.value === '일반'))) o.checked = false; }); }));
   root.querySelector('#vhCancel').onclick = ()=>{ document.getElementById('memoModalOverlay').style.display = 'none'; };
   root.querySelector('#vhSave').onclick = async ()=>{
@@ -32047,7 +32050,11 @@ function openVatHelpModal(cid, name, year, period){
     if(vs.length && out.vehicleYn !== '없음') out.vehicles = vs;
     const staffSel = [...root.querySelectorAll('input[data-grp="staff"]:checked')].map(i=> i.value);
     out.staff = Object.assign({}, h.staff || {});
-    if(staffSel.length){ const m = {}; staffSel.filter(v=> v !== '없음').forEach(v=>{ m[v] = Math.max(0, parseInt(root.querySelector(`.vh-cnt[data-k="${v}"]`)?.value, 10) || 0); }); out.staff[pkey] = m; } else delete out.staff[pkey];
+    const syn = root.querySelector('.vh-syn:checked')?.value || '';
+    if(syn === '무') out.staff[pkey] = {};
+    else if(staffSel.length){ const m = {}; staffSel.forEach(v=>{ m[v] = Math.max(0, parseInt(root.querySelector(`.vh-cnt[data-k="${v}"]`)?.value, 10) || 0); }); out.staff[pkey] = m; }
+    else if(syn === '유') out.staff[pkey] = { '있음':0 };   // 유만 체크하고 종류는 안 고른 경우
+    else delete out.staff[pkey];
     if(!Object.keys(out.staff).length) delete out.staff;
     const kinds = [...root.querySelectorAll('input[data-grp="kinds"]:checked')].map(i=> i.value); if(kinds.length) out.kinds = kinds;
     const etc = root.querySelector('#vhKindEtc').value.trim(); if(etc) out.kindEtc = etc;
@@ -32116,15 +32123,15 @@ function vatTaxbotDetailHtml(year, period, q, verifyCellOf){
     return `<tr${x.st === 'filing' ? ' class="vat-tb-filing"' : ''}>
       <td class="num cvb" style="color:var(--ink-soft);">${i+1}</td>
       <td class="cvb" style="color:${entityColor}; font-weight:800;">${escHtml(x.c.name)}${clientGoneTagHtml(x.c)}</td>
-      <td class="cvb">${escHtml(formatBizRegNo ? formatBizRegNo(x.c.bizNo || '') : (x.c.bizNo || ''))}</td>
+      <td class="cvb vat-sm">${escHtml(formatBizRegNo ? formatBizRegNo(x.c.bizNo || '') : (x.c.bizNo || ''))}</td>
       ${stCell}
-      <td class="cvb">${reason}</td>
-      <td class="cvb vat-tb-r">${x.tb.prevSupply == null ? na : Number(x.tb.prevSupply).toLocaleString('ko-KR')}</td>
-      <td class="cvb vat-tb-r">${x.tb.noticeTax == null ? na : Number(x.tb.noticeTax).toLocaleString('ko-KR')}</td>
-      <td class="cvb">${x.tb.dueDate ? escHtml(x.tb.dueDate) : na}</td>
+      <td class="cvb vat-sm">${reason}</td>
+      <td class="cvb vat-tb-r vat-sm">${x.tb.prevSupply == null ? na : Number(x.tb.prevSupply).toLocaleString('ko-KR')}</td>
+      <td class="cvb vat-tb-r vat-sm">${x.tb.noticeTax == null ? na : Number(x.tb.noticeTax).toLocaleString('ko-KR')}</td>
+      <td class="cvb vat-sm">${x.tb.dueDate ? escHtml(x.tb.dueDate) : na}</td>
       ${sendCells.bill}
-      <td class="cvb">${x.tb.office ? escHtml(x.tb.office) : na}</td>
-      ${sendCells.notice}${vatDocsCellHtml(x.c, year, period)}${vatHelpCellHtml(x.c, year, period)}${vatMemoCellHtml(x.c, year, period)}${verifyCellOf ? verifyCellOf(x.c) : ''}
+      <td class="cvb vat-sm">${x.tb.office ? escHtml(x.tb.office) : na}</td>
+      ${sendCells.notice}${vatDocsCellHtml(x.c, year, period)}<td class="cvb" style="white-space:nowrap;">${vatHelpStBtnHtml(x.c, year, period)}</td>${vatHelpCellHtml(x.c, year, period)}${vatMemoCellHtml(x.c, year, period)}${verifyCellOf ? verifyCellOf(x.c) : ''}
     </tr>`;
   }).join('');
   // [2026.10.14] "예정고지 상세 소제목 삭제"(요청) - 화면에선 숨김. 공지에 표 붙일 때(noticeFilingListHtml) 이 글자를 제목으로 쓰므로 요소는 남겨둠
@@ -32132,7 +32139,7 @@ function vatTaxbotDetailHtml(year, period, q, verifyCellOf){
   const hint = pre && !list.some(x=> x.hasTb) ? `<div class="vat-tb-counts">불러온 택스봇 예정고지가 없어요. 표 오른쪽 위 택스봇 아이콘으로 "부가가치세예정고지" 엑셀을 가져와 주세요.</div>` : '';
   return `<div class="vat-tb-sec vat-tb-main">${title}${hint}
     <div class="vat-tb-counts"><span class="it-seg" role="group" aria-label="구분 필터">${segs.map(([k, label, cnt])=> `<button type="button" class="${vatTbFilter === k ? 'on' : ''}" onclick="setVatTbFilter('${k}')">${label} ${cnt}</button>`).join('')}</span></div>
-    <div class="table-scroll"><table class="vat-tb-table"><thead><tr><th class="cvb">순번</th><th class="cvb">상호명</th><th class="cvb">사업자번호</th><th class="cvb">구분</th><th class="cvb">제외사유</th><th class="cvb">직전 과세기간 공급가액</th><th class="cvb">예정고지세액</th><th class="cvb">납부기한</th><th class="cvb" style="width:80px;">납부서</th><th class="cvb">관할서</th><th class="cvb" style="width:80px;">안내문</th><th class="cvb" style="min-width:96px;" title="신고도움 진행현황(미진행·검토중·신고서마감·신고완료) · 클립 = 이 기수 신고에 참고할 자료(PDF 등)">신고도움</th><th class="cvb" style="width:52px;" title="이 업체의 부가세 특징(차량·직원·안분·의제 등) - 기수와 상관없이 계속 이어져요(직원은 기수마다)">Tip</th><th class="cvb" style="width:52px;" title="이 기수 신고에 대한 특이사항">메모</th><th class="cvb" style="width:52px;">검증</th></tr></thead><tbody>${rows || `<tr><td colspan="${12}" style="padding:18px; color:var(--ink-soft);">${q ? '검색 결과가 없어요' : '거래처가 없어요'}</td></tr>`}</tbody></table></div>
+    <div class="table-scroll"><table class="vat-tb-table"><thead><tr><th class="cvb">순번</th><th class="cvb">상호명</th><th class="cvb">사업자번호</th><th class="cvb">구분</th><th class="cvb">제외사유</th><th class="cvb">직전 과세기간 공급가액</th><th class="cvb">예정고지세액</th><th class="cvb">납부기한</th><th class="cvb" style="width:80px;">납부서</th><th class="cvb">관할서</th><th class="cvb" style="width:80px;">안내문</th><th class="cvb" style="width:64px;" title="이 기수 신고에 참고할 자료(PDF 등)를 올리고 미리 봐요">신고도움</th><th class="cvb" style="min-width:96px;" title="신고 진행현황(미진행·검토중·신고서마감·신고완료) · 눌러서 바꾸기">신고현황</th><th class="cvb" style="width:52px;" title="이 업체의 부가세 특징(차량·직원·안분·의제 등) - 기수와 상관없이 계속 이어져요(직원은 기수마다)">Tip</th><th class="cvb" style="width:52px;" title="이 기수 신고에 대한 특이사항">메모</th><th class="cvb" style="width:52px;">검증</th></tr></thead><tbody>${rows || `<tr><td colspan="${12}" style="padding:18px; color:var(--ink-soft);">${q ? '검색 결과가 없어요' : '거래처가 없어요'}</td></tr>`}</tbody></table></div>
   </div>`;
 }
 
