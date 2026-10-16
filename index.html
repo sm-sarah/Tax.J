@@ -2291,6 +2291,10 @@ try{
   /* [2026.10.06] 부가세 안내문·납부서 발송 체크 칸 - 안 보냄: 원천세 미입력 칸처럼 연노랑, 보냄: 날짜(민트) */
   .vat-send-btn{ width:100%; height:24px; border:none; border-radius:6px; background:#FFF8E1; color:var(--mint); font-family:inherit; font-size:11px; font-weight:800; cursor:pointer; }
   .vat-send-btn.on{ background:transparent; }
+  .vat-due-btn{ border:none; background:transparent; font:inherit; color:inherit; padding:3px 4px; border-radius:6px; cursor:pointer; }   /* [2026.10.16] 납부기한 수기 수정 */
+  .vat-due-btn:hover{ box-shadow:inset 0 0 0 1.5px var(--border); }
+  .vat-due-btn.man{ color:var(--indigo-deep); font-weight:700; }
+  .vat-due-btn sup{ color:var(--indigo); margin-left:1px; }
   .vat-send-btn:hover{ box-shadow:inset 0 0 0 1.5px var(--border); }
   /* [2026.10.06] 택스봇 예정고지 상세(요청) - 부가세 화면에서 '예정'을 고르면 표 아래에 나옴 / 기수 칸 팝업 안 상세 상자 */
   .vat-tb-sec{ margin-top:22px; }
@@ -9103,7 +9107,9 @@ async function pushDiagnoseThisDevice(){
         return;
       }
     }
+    // [2026.10.16] "알림 및 기기에는 기기명과 마지막 등록일자까지만, 자세한 건 개인웹에서"(요청) - 문제가 없으면 진단 문구를 숨기고(마우스를 올리면 보임), 문제가 있을 때만 경고를 보여줌
     let msg = `이 기기 알림 파일: ${ver ? (verOk ? '최신 버전' : '버전 '+ver) : '예전 버전'} · 알림 연결 ${regs.length}개`;
+    if(regs.length <= 1 && verOk && !waiting){ el.textContent = ''; el.title = msg; el.style.color = ''; return; }
     if(regs.length > 1) msg += ' ⚠️ 연결이 2개 이상이면 같은 알림이 두 번 와요 - 이 기기 줄의 재등록(돌아가는 화살표)을 눌러주세요.';
     else if(!verOk || waiting) msg += ' ⚠️ 예전 버전이면 알림이 두 번 와요 - 앱(탭)을 완전히 닫았다가 다시 열어주세요.';
     el.textContent = msg;
@@ -9254,7 +9260,7 @@ function renderMyPushDeviceList(){
   const rows = mine.map((t,idx)=>{
     const isThis = !viewingOther && t.token === myToken;
     let dateLabel = '';
-    try{ dateLabel = t.updatedAt ? new Date(t.updatedAt).toLocaleString('ko-KR') : ''; }catch(e){}
+    try{ dateLabel = t.updatedAt ? new Date(t.updatedAt).toLocaleDateString('ko-KR') : ''; }catch(e){}   // [2026.10.16] 날짜만(요청) - 시각은 마우스를 올리면
     // "위아래 각각 무슨 기기인지 모르겠다"는 요청으로, 등록할 때 정한 이름(deviceName)을 보여줌 - 아직 이름을
     // 안 정하고 등록한(이전 버전에서 등록된) 기기는 이름이 없을 수 있어서 "이름 없는 기기"로 대신 표시함
     const nameLabel = t.deviceName ? escHtml(t.deviceName) : '이름 없는 기기';
@@ -9273,7 +9279,7 @@ function renderMyPushDeviceList(){
     const testBtn = `<button type="button" class="del-btn my-push-device-test-btn" data-id="${t.id}" title="테스트 알림 보내기 (일반·출근·퇴근)" aria-label="테스트 알림 보내기" style="width:28px; height:28px; padding:0; display:inline-flex; align-items:center; justify-content:center;">${bellSvg}</button>`;
     return `<div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-bottom:1px solid var(--border);">
       <span style="flex:0 0 auto; font-size:11px; color:var(--ink-soft); width:16px;">${idx+1}</span>
-      <span style="flex:1 1 auto; font-size:12px; color:var(--ink);">${isThis ? `${devName} <span style="color:var(--navy);">(현재 기기)</span>` : devName} · 마지막 등록 ${escHtml(dateLabel)}${star}${pendingTag}</span>
+      <span style="flex:1 1 auto; font-size:12px; color:var(--ink);" title="${isThis ? '지금 이 기기 · ' : ''}마지막 등록 ${escHtml((()=>{ try{ return t.updatedAt ? new Date(t.updatedAt).toLocaleString('ko-KR') : ''; }catch(e){ return ''; } })())}">${devName} · ${escHtml(dateLabel)}${star}${pendingTag}</span>
       ${testBtn}
       ${retryBtn}
       <button type="button" class="del-btn my-push-device-rename-btn" data-id="${t.id}" title="이름변경" aria-label="이름변경" style="width:28px; height:28px; padding:0; display:inline-flex; align-items:center; justify-content:center;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
@@ -30868,7 +30874,9 @@ function renderIncomeTaxUnifiedInner(){
         const isFocusCell = !!fc(m) || nxFocus;
         if(state === 'notarget' && !inner) inner = '<span class="submit-na">-</span>';
         // 반기 거래처의 신고 없는 달(halfyear)도 지금 챙길 달이면 급여 작업(명세서·급여마감) 차례라 노랑(요청 - "아무것도 안 됐는데 음영이 없다")
-        const bg = inner ? 'transparent' : (state === 'target' && !isFocusCell ? '#F1F2F8' : (state === 'halfyear' && isFocusCell ? '#FFF8DC' : st.bg));
+        // [2026.10.16] "반기 거래처 달에 지급시기를 대상으로 바꿔도 회색 음영이 안 생긴다"(요청) - 그 달 신고대상 설정을 '대상'으로 해 두면 대상 칸처럼 연한 회색(설정을 새로 만들지 않고 읽기만)
+        const halfMarked = state === 'halfyear' && (()=>{ const t0 = (sharedFilingTargets[c.id] || {})[period]; return !!(t0 && t0.marked && t0.applicable); })();
+        const bg = inner ? 'transparent' : (state === 'target' && !isFocusCell ? '#F1F2F8' : (state === 'halfyear' && isFocusCell ? '#FFF8DC' : halfMarked ? '#F1F2F8' : st.bg));
         // [2026.10.07] "매월 신고인데 완료 체크칸이 안 눌린다"(요청) - 잠긴 칸은 이유를 말풍선으로(신고구분 이력상 그 달이 미대상이면 잠김)
         let lockTip = '';
         if(st.disabled){
@@ -31148,6 +31156,9 @@ document.getElementById('itAllDateEditResetBtn')?.addEventListener('click', asyn
   if(!clientId || !period || !body) return;
   const blocks = [...body.querySelectorAll('.it-all-timing-block')];
   if(!blocks.length) return;
+  // [2026.10.16] "초기화를 눌러도 아무 반응이 없다"(요청) - 지울 날짜가 없을 때도 알려 주고, 일괄 입력 날짜 칸도 같이 비움
+  const filled = blocks.some(block=> [...block.querySelectorAll('.it-all-date-input')].some(inp=> inp.value) || block.querySelector('.it-all-payslip-na-btn[data-na="0"]'));
+  if(!filled){ body.querySelectorAll('.it-all-bulk-date').forEach(x=>{ x.value = ''; }); appAlert('지울 날짜가 없어요. 이 창의 날짜 칸이 모두 비어 있어요.'); return; }
   if(!(await appConfirm('이 창에 입력된 날짜를 모두 지울까요?\n(급여명세서 전달·급여마감·신고서 마감·신고 완료 · 해당 없음)\n\n저장을 눌러야 반영돼요.', { okText:'초기화', cancelText:'취소' }))) return;
   blocks.forEach(block=>{
     const t = incomeTaxFilingEntry(period, block.dataset.clientId || clientId)[block.dataset.timing];
@@ -31459,11 +31470,23 @@ function renderVatAllUnifiedInner(){
   wrap.querySelectorAll('.review-vat-open-btn').forEach(btn=>{
     btn.addEventListener('click', ()=> openReviewVatFullscreen(btn.dataset.clientId));
   });
+  wrap.querySelectorAll('.vat-due-btn').forEach(btn=> btn.addEventListener('click', async ()=>{
+    const cid = btn.dataset.clientId, d = await vatDatePrompt(`납부기한 수정${btn.dataset.tb ? `\n(택스봇 값 ${btn.dataset.tb} · 비우고 저장하면 택스봇 값으로)` : ''}`, btn.dataset.due, '저장');
+    if(d == null) return;
+    const e = vatFilingTargetEntry(cid, year, sendP);
+    if(d && d !== btn.dataset.tb) e.dueManual = d; else delete e.dueManual;
+    await saveSharedVatFilingTargets(); renderVatAllUnified();
+  }));
   wrap.querySelectorAll('.vat-send-btn').forEach(btn=> btn.addEventListener('click', async ()=>{
     const { clientId, k } = btn.dataset, cur = vatSendGet(clientId, year, sendP, k);
     const label = (VAT_SEND_ITEMS.find(x=> x[0] === k) || [,''])[1];
     if(cur){ if(!(await appConfirm(`${label} 발송 체크(${cur})를 지울까요?`, { okText:'해제', cancelText:'취소' }))) return; vatSendSet(clientId, year, sendP, k, null); }
-    else vatSendSet(clientId, year, sendP, k, todayStr());
+    else{
+      // [2026.10.16] "해제하고 다시 체크할 때 날짜를 다시 입력하는 창이 떠야"(요청) - 오늘 날짜를 넣어 둔 날짜 창을 띄우고 고른 날로 체크
+      const d = await vatDatePrompt(`${label} 발송일`, todayStr(), '체크');
+      if(!d) return;
+      vatSendSet(clientId, year, sendP, k, d);
+    }
     await saveSharedVatFilingTargets(); renderVatAllUnified();
   }));
   wrap.querySelectorAll('.vat-memo-btn').forEach(el=> el.addEventListener('click', e=>{
@@ -31562,6 +31585,13 @@ document.getElementById('vatAllStatusEditSaveBtn')?.addEventListener('click', as
 // 표: 기수를 하나만 골라 볼 때 그 기수 옆에 두 칸. 일괄: 표 오른쪽 위 체크목록 아이콘 → 기수·항목·날짜·거래처를 골라 한 번에
 // ══════════════════════════════════════════════════════════
 const VAT_SEND_ITEMS = [['notice','안내문'], ['bill','납부서']];
+// [2026.10.16] 날짜 하나를 받는 창 - 확인창(appPromptText)의 입력칸을 잠깐 날짜 칸으로 바꿔 씀. 취소면 null, 비우고 확인이면 ''
+async function vatDatePrompt(message, value, okText){
+  const inp = document.getElementById('appConfirmModalInput'), old = inp ? inp.type : 'text';
+  if(inp) inp.type = 'date';
+  try{ const r = await appPromptText(message, { inputValue: value || '', okText: okText || '확인', cancelText:'취소' }); return r == null ? null : String(r).trim(); }
+  finally{ if(inp) inp.type = old; }
+}
 function vatSendGet(cid, year, period, k){ const e = ((sharedVatFilingTargets[cid] || {})[year] || {})[period]; return (e && e.send && e.send[k]) || ''; }
 function vatSendSet(cid, year, period, k, v){
   const e = vatFilingTargetEntry(cid, year, period);
@@ -32121,7 +32151,7 @@ function vatTaxbotDetailHtml(year, period, q, verifyCellOf){
       if(x.st === 'not-target') return `<td class="cvb"></td>`;
       if(pre && k === 'bill' && x.st === 'notice-excluded') return `<td class="cvb">${na}</td>`; // [2026.10.07] 예정 기수 납부서는 예정고지·예정신고만(요청) - 고지제외는 비활성 "-"
       const v = vatSendGet(x.c.id, year, period, k);
-      return `<td class="cvb"><button type="button" class="vat-send-btn${v ? ' on' : ''}" data-client-id="${x.c.id}" data-k="${k}" title="${v ? `${v} 발송 · 다시 누르면 해제` : '눌러서 오늘 발송으로 체크'}">${v ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : ''}</button></td>`;   // [2026.10.16] 날짜 대신 ✓, 마우스를 올리면 날짜(요청)
+      return `<td class="cvb"><button type="button" class="vat-send-btn${v ? ' on' : ''}" data-client-id="${x.c.id}" data-k="${k}" ${v ? `data-tip="${escHtml(appTipHtml((VAT_SEND_ITEMS.find(y=> y[0] === k) || [,''])[1], [['발송일', v], ['', '다시 누르면 해제']])).replace(/"/g,'&quot;')}"` : 'title="눌러서 발송일을 넣고 체크"'}>${v ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : ''}</button></td>`;   // [2026.10.16] 날짜 대신 ✓, 마우스를 올리면 날짜(요청)
     })(); });
     return `<tr${x.st === 'filing' ? ' class="vat-tb-filing"' : ''}>
       <td class="num cvb" style="color:var(--ink-soft);">${i+1}</td>
@@ -32131,7 +32161,12 @@ function vatTaxbotDetailHtml(year, period, q, verifyCellOf){
       <td class="cvb vat-sm">${reason}</td>
       <td class="cvb vat-tb-r vat-sm">${x.tb.prevSupply == null ? na : Number(x.tb.prevSupply).toLocaleString('ko-KR')}</td>
       <td class="cvb vat-tb-r vat-sm">${x.tb.noticeTax == null ? na : Number(x.tb.noticeTax).toLocaleString('ko-KR')}</td>
-      <td class="cvb vat-sm">${x.tb.dueDate ? escHtml(x.tb.dueDate) : na}</td>
+      ${(()=>{ // [2026.10.16] "납부기한은 수기로 수정 가능하게"(요청) - 직접 고친 값(dueManual)이 있으면 그 값, 없으면 택스봇 값. 누르면 날짜 창(비우고 확인 = 택스봇 값으로)
+        const man = ((sharedVatFilingTargets[x.c.id] || {})[year] || {})[period]?.dueManual || '', v = man || x.tb.dueDate || '';
+        if(x.st === 'not-target') return `<td class="cvb vat-sm">${v ? escHtml(v) : na}</td>`;
+        const tipD = appTipHtml('납부기한', [['납부기한', v || '없음']].concat(man ? [['택스봇 값', x.tb.dueDate || '없음'], ['', '직접 고친 값이에요 · 눌러서 비우면 택스봇 값으로']] : [['', '눌러서 직접 고쳐요']]));
+        return `<td class="cvb vat-sm"><button type="button" class="vat-due-btn${man ? ' man' : ''}" data-client-id="${x.c.id}" data-due="${escHtml(v)}" data-tb="${escHtml(x.tb.dueDate || '')}" data-tip="${escHtml(tipD).replace(/"/g,'&quot;')}">${v ? escHtml(v) : na}${man ? '<sup>*</sup>' : ''}</button></td>`;
+      })()}
       ${sendCells.bill}
       <td class="cvb vat-sm">${x.tb.office ? escHtml(x.tb.office) : na}</td>
       ${sendCells.notice}${vatDocsCellHtml(x.c, year, period)}${pre && x.st !== 'filing' ? `<td class="cvb client-cell-off" title="예정신고 대상이 아니에요">-</td>` : `<td class="cvb" style="white-space:nowrap;">${vatHelpStBtnHtml(x.c, year, period)}</td>`}<!-- [2026.10.16] 예정 때 신고대상이 아닌 거래처는 신고현황 비활성(요청) -->${vatHelpCellHtml(x.c, year, period)}${vatMemoCellHtml(x.c, year, period)}${verifyCellOf ? verifyCellOf(x.c) : ''}
