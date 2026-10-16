@@ -32001,11 +32001,13 @@ function openVatHelpModal(cid, name, year, period){
       <button type="button" class="del-btn vh-del" title="이 차량 지우기" style="height:30px; width:30px; padding:0; flex:0 0 auto;">✕</button></div>`;
   const staff = vatHelpStaffMap(h.staff && h.staff[pkey]);
   const recvChk = (v, on)=> chk('recv', v, on).replace('margin:0 12px 6px 0;', 'margin:0;');
+  // [2026.10.16] 차량·직원 제목 줄 오른쪽 끝에 귀속기간 말일 기준일(요청). flex 순서로 오른쪽 끝에 둠
+  const asOfTag = rg[1] ? `<span style="order:9; margin-left:auto; font-size:11px; font-weight:600; color:var(--ink-soft);">${year}.${rg[1].replace('-','.')} 기준</span>` : '';
   const body = `
-    ${sec(`<div style="display:flex; align-items:center; gap:14px; margin:0 0 8px;">${lab('차량').replace('margin:0 0 8px;', 'margin:0;')}<div style="display:flex; gap:12px;">${[['있음','유'],['없음','무']].map(([o, l])=> `<label style="display:inline-flex; align-items:center; gap:5px; font-size:12.5px; cursor:pointer;"><input type="checkbox" class="vh-yn" value="${o}" ${h.vehicleYn === o ? 'checked' : ''} style="accent-color:var(--indigo);">${l}</label>`).join('')}</div></div><!-- [2026.10.16] 있음·없음 라디오 → 유·무 체크(요청). 하나만 체크되고 저장 값은 그대로 '있음'·'없음'. 유·무는 '차량' 제목 오른쪽 같은 줄(요청) -->
+    ${sec(`<div style="display:flex; align-items:center; gap:14px; margin:0 0 8px;">${lab('차량').replace('margin:0 0 8px;', 'margin:0;')}${asOfTag}<div style="display:flex; gap:12px;">${[['있음','유'],['없음','무']].map(([o, l])=> `<label style="display:inline-flex; align-items:center; gap:5px; font-size:12.5px; cursor:pointer;"><input type="checkbox" class="vh-yn" value="${o}" ${h.vehicleYn === o ? 'checked' : ''} style="accent-color:var(--indigo);">${l}</label>`).join('')}</div></div><!-- [2026.10.16] 있음·없음 라디오 → 유·무 체크(요청). 하나만 체크되고 저장 값은 그대로 '있음'·'없음'. 유·무는 '차량' 제목 오른쪽 같은 줄(요청) -->
     <div id="vhVehicles">${(h.vehicles && h.vehicles.length ? h.vehicles : [{}]).map(vRow).join('')}</div>
     <button type="button" class="del-btn" id="vhAddVehicle" style="height:28px;">＋ 차량 추가</button>`)}
-    ${sec(`<div style="display:flex; align-items:center; gap:14px; margin:0 0 8px;">${lab('4대보험 직원').replace('margin:0 0 8px;', 'margin:0;')}<div style="display:flex; gap:12px;">${[['유', staff && Object.keys(staff).length], ['무', staff && !Object.keys(staff).length]].map(([l, on])=> `<label style="display:inline-flex; align-items:center; gap:5px; font-size:12.5px; cursor:pointer;"><input type="checkbox" class="vh-syn" value="${l}" ${on ? 'checked' : ''} style="accent-color:var(--indigo);">${l}</label>`).join('')}</div></div><!-- [2026.10.16] 4대보험 직원도 차량처럼 제목 옆 유·무, 옆 설명 문구와 '없음' 체크는 없앰(요청). 무 = 예전 '없음'(빈 값) -->
+    ${sec(`<div style="display:flex; align-items:center; gap:14px; margin:0 0 8px;">${lab('4대보험 직원').replace('margin:0 0 8px;', 'margin:0;')}${asOfTag}<div style="display:flex; gap:12px;">${[['유', staff && Object.keys(staff).length], ['무', staff && !Object.keys(staff).length]].map(([l, on])=> `<label style="display:inline-flex; align-items:center; gap:5px; font-size:12.5px; cursor:pointer;"><input type="checkbox" class="vh-syn" value="${l}" ${on ? 'checked' : ''} style="accent-color:var(--indigo);">${l}</label>`).join('')}</div></div><!-- [2026.10.16] 4대보험 직원도 차량처럼 제목 옆 유·무, 옆 설명 문구와 '없음' 체크는 없앰(요청). 무 = 예전 '없음'(빈 값) -->
     <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 16px;">${VAT_HELP_STAFF.map(v=> `<span style="display:inline-flex; align-items:center; gap:5px;">${chk('staff', v, staff && v in staff).replace('margin:0 12px 6px 0;', 'margin:0;')}<input type="number" min="1" class="vh-cnt" data-k="${v}" value="${staff && staff[v] ? staff[v] : ''}" placeholder="0" ${staff && v in staff ? '' : 'disabled'} style="${inS} width:54px; text-align:right;"><span style="font-size:12px; color:var(--ink-soft);">명</span></span>`).join('')}</div>
 `)}
     ${sec(`${lab('신고유형')}
@@ -32118,7 +32120,7 @@ function vatTaxbotDetailHtml(year, period, q, verifyCellOf){
       if(x.st === 'not-target') return `<td class="cvb"></td>`;
       if(pre && k === 'bill' && x.st === 'notice-excluded') return `<td class="cvb">${na}</td>`; // [2026.10.07] 예정 기수 납부서는 예정고지·예정신고만(요청) - 고지제외는 비활성 "-"
       const v = vatSendGet(x.c.id, year, period, k);
-      return `<td class="cvb"><button type="button" class="vat-send-btn${v ? ' on' : ''}" data-client-id="${x.c.id}" data-k="${k}" title="${v ? `${v} 발송 · 다시 누르면 해제` : '눌러서 오늘 발송으로 체크'}">${v ? Number(v.slice(5,7)) + '/' + Number(v.slice(8,10)) : ''}</button></td>`;
+      return `<td class="cvb"><button type="button" class="vat-send-btn${v ? ' on' : ''}" data-client-id="${x.c.id}" data-k="${k}" title="${v ? `${v} 발송 · 다시 누르면 해제` : '눌러서 오늘 발송으로 체크'}">${v ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : ''}</button></td>`;   // [2026.10.16] 날짜 대신 ✓, 마우스를 올리면 날짜(요청)
     })(); });
     return `<tr${x.st === 'filing' ? ' class="vat-tb-filing"' : ''}>
       <td class="num cvb" style="color:var(--ink-soft);">${i+1}</td>
@@ -32131,7 +32133,7 @@ function vatTaxbotDetailHtml(year, period, q, verifyCellOf){
       <td class="cvb vat-sm">${x.tb.dueDate ? escHtml(x.tb.dueDate) : na}</td>
       ${sendCells.bill}
       <td class="cvb vat-sm">${x.tb.office ? escHtml(x.tb.office) : na}</td>
-      ${sendCells.notice}${vatDocsCellHtml(x.c, year, period)}<td class="cvb" style="white-space:nowrap;">${vatHelpStBtnHtml(x.c, year, period)}</td>${vatHelpCellHtml(x.c, year, period)}${vatMemoCellHtml(x.c, year, period)}${verifyCellOf ? verifyCellOf(x.c) : ''}
+      ${sendCells.notice}${vatDocsCellHtml(x.c, year, period)}${pre && x.st !== 'filing' ? `<td class="cvb client-cell-off" title="예정신고 대상이 아니에요">-</td>` : `<td class="cvb" style="white-space:nowrap;">${vatHelpStBtnHtml(x.c, year, period)}</td>`}<!-- [2026.10.16] 예정 때 신고대상이 아닌 거래처는 신고현황 비활성(요청) -->${vatHelpCellHtml(x.c, year, period)}${vatMemoCellHtml(x.c, year, period)}${verifyCellOf ? verifyCellOf(x.c) : ''}
     </tr>`;
   }).join('');
   // [2026.10.14] "예정고지 상세 소제목 삭제"(요청) - 화면에선 숨김. 공지에 표 붙일 때(noticeFilingListHtml) 이 글자를 제목으로 쓰므로 요소는 남겨둠
