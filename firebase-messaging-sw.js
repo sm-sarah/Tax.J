@@ -25,7 +25,7 @@ const messaging = firebase.messaging();
 // 새 버전 파일을 올리면, 예전 버전이 앱을 완전히 닫을 때까지 계속 일하는 걸 막고 바로 새 버전으로 교체함
 // (예전 버전이 남아있으면 받는 기기에서 알림이 동시에 두 개씩 뜸)
 // 설정 › 알림에서 "이 기기가 새 버전 알림 파일을 쓰고 있는지" 확인할 때 쓰는 버전 표시
-const TAXJ_SW_VERSION = '2026.09.30-2';
+const TAXJ_SW_VERSION = '2026.10.21';
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'taxj-sw-version' && event.ports && event.ports[0]) event.ports[0].postMessage({ version: TAXJ_SW_VERSION });
 });
@@ -68,6 +68,8 @@ messaging.onBackgroundMessage((payload) => {
   const d = (payload && payload.data) || {};
   const title = d.title || 'Tax.J';
   const body = taxjPlain(d.body || '');
+  // [2026.10.21] 열려 있는 회사웹 창에 "이 알림 도착했어요"를 알려줌 - 출퇴근 알림 안전장치가 같은 알림을 한 번 더 띄우지 않게
+  try{ self.clients.matchAll({ type:'window', includeUncontrolled:true }).then(cs=> cs.forEach(c=> c.postMessage({ type:'taxj-push-arrived', title }))); }catch(e){}
   return self.registration.showNotification(title, {
     body,
     icon: d.icon || taxjTypeIcon(d.link, title) || 'icon-192.png',
